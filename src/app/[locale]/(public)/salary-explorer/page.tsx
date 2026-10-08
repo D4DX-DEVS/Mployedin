@@ -45,7 +45,7 @@ export default function SalaryExplorerPage() {
     `${currency} ${formatCount(Math.round(num))}`;
 
   return (
-    <main className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center gap-3">
           <DollarSign className="w-8 h-8 text-primary" />
@@ -161,6 +161,6 @@ export default function SalaryExplorerPage() {
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }

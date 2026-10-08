@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
 import Employer from "@/models/Employer";
+import Job from "@/models/Job";
 import Agent from "@/models/Agent";
-import SuperAgent from "@/models/SuperAgent";
 import ReferralLink from "@/models/ReferralLink";
+import { isReferralOwnerActive } from "@/lib/referrals/attachJobSeeker";
 import { CompanyUser, getDefaultPermissions } from "@/models/CompanyUser";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -124,9 +125,34 @@ export async function POST(req: NextRequest) {
         existing.createdAt &&
         Date.now() - new Date(existing.createdAt).getTime() > 24 * 60 * 60 * 1000;
 
+      // Only a stale, unverified *employer password signup* may be purged. Any
+      // other account (job seeker, staff, social login) or an employer that
+      // already has jobs or team memberships must never be deleted by an
+      // anonymous registration request.
       if (isStaleUnverified) {
+        const isPurgeableKind =
+          existing.role === "employer" && (existing.authProvider ?? "credentials") === "credentials";
+        if (!isPurgeableKind) {
+          return NextResponse.json({ message: "Email already in use" }, { status: 409 });
+        }
+        const staleEmployer = await Employer.findOne({ userId: existing._id }).select("_id").lean();
+        const hasEmployerActivity = Boolean(
+          (staleEmployer && (await Job.exists({ employerId: staleEmployer._id }))) ||
+          (await CompanyUser.exists({
+            $or: [
+              // A membership in any company other than their own stale one.
+              { userId: existing._id, ...(staleEmployer ? { companyId: { $ne: staleEmployer._id } } : {}) },
+              // Anyone else already invited into the stale company.
+              ...(staleEmployer ? [{ companyId: staleEmployer._id, userId: { $ne: existing._id } }] : []),
+            ],
+          })),
+        );
+        if (hasEmployerActivity) {
+          return NextResponse.json({ message: "Email already in use" }, { status: 409 });
+        }
+
         // Remove the stale user and their employer profile to allow re-registration
-        const staleEmployer = await Employer.findOne({ userId: existing._id }).lean();
+        await CompanyUser.deleteMany({ userId: existing._id });
         if (staleEmployer) {
           // Decrement usedCount on any ReferralLink that tracked this stale registration
           await ReferralLink.updateMany(
@@ -177,18 +203,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Create employer profile
+    // RF-1/RF-2/RF-3: a referral code only ATTRIBUTES the signup (User.referredBy
+    // + Employer.agentId). It never marks the employer agent-verified — anyone
+    // holding a public link could otherwise self-verify. Only ReferralLink codes
+    // count (the legacy Agent.referralCode fallback is gone), and a link whose
+    // owner is deactivated or archived attributes nothing.
     const referralCode = get("referralCode");
     let referrerAgentId: string | undefined;
-    let isAgentVerified = false;
-    let verifiedByAgentId: string | undefined;
     let matchedReferralLink: { _id: string } | null = null;
 
     try {
     if (referralCode) {
-      // 1. Check new ReferralLink collection first
       // A job-seeker link pasted into employer signup is not a referral.
       const rl = await ReferralLink.findOne({ code: referralCode, isActive: true, audience: { $ne: "job_seeker" } });
-      if (rl) {
+      const ownerActive = rl
+        ? await isReferralOwnerActive({ userId: rl.createdBy, agentId: rl.agentId, superAgentId: rl.superAgentId })
+        : false;
+      if (rl && ownerActive) {
         // Check expiry
         if (rl.expiresAt && rl.expiresAt < new Date()) {
           return NextResponse.json({ message: "This referral link has expired." }, { status: 400 });
@@ -209,44 +240,16 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ message: "This referral link has reached its maximum usage." }, { status: 400 });
         }
         matchedReferralLink = { _id: rl._id.toString() };
+        await User.updateOne({ _id: user._id }, { $set: { referredBy: rl.code } });
 
-        // Resolve agent/super-agent from the link
+        // Resolve the agent from the link. A super-agent link carries no agent:
+        // it does not say which agent should run the account, so an admin
+        // assigns one from the Employers page (the admin "new employer"
+        // notification links there).
         if (rl.agentId) {
           const agentRef = await Agent.findById(rl.agentId).select("_id userId").lean();
           if (agentRef) {
             referrerAgentId = agentRef._id.toString();
-            isAgentVerified = true;
-            verifiedByAgentId = agentRef.userId.toString();
-          }
-        } else if (rl.superAgentId) {
-          const saRef = await SuperAgent.findById(rl.superAgentId).select("userId").lean();
-          if (saRef) {
-            isAgentVerified = true;
-            verifiedByAgentId = saRef.userId.toString();
-            // No agent: a super-agent link does not say which agent should
-            // run the account. It used to hand every signup to the first
-            // agent on the team; an admin now assigns one from the Employers
-            // page (the admin "new employer" notification links there).
-          }
-        }
-      } else {
-        // 2. Fallback: legacy referral codes on Agent/SuperAgent models
-        const agentRef = await Agent.findOne({ referralCode }).select("_id userId").lean();
-        if (agentRef) {
-          referrerAgentId = agentRef._id.toString();
-          isAgentVerified = true;
-          verifiedByAgentId = agentRef.userId.toString();
-          // Also match the ReferralLink doc if it exists (created by /api/referral)
-          const fallbackRl = await ReferralLink.findOne({ code: referralCode });
-          if (fallbackRl) matchedReferralLink = { _id: fallbackRl._id.toString() };
-        } else {
-          const saRef = await SuperAgent.findOne({ referralCode }).select("userId").lean();
-          if (saRef) {
-            isAgentVerified = true;
-            verifiedByAgentId = saRef.userId.toString();
-            // No agent — same rule as super-agent ReferralLinks above.
-            const fallbackRl = await ReferralLink.findOne({ code: referralCode });
-            if (fallbackRl) matchedReferralLink = { _id: fallbackRl._id.toString() };
           }
         }
       }
@@ -266,8 +269,6 @@ export async function POST(req: NextRequest) {
       verificationLevel: verificationLevel === "standard" ? "company" : verificationLevel,
       verificationDocs: [tradeLicenseUrl, mohCertUrl].filter(Boolean),
       ...(referrerAgentId ? { agentId: referrerAgentId } : {}),
-      isAgentVerified,
-      ...(verifiedByAgentId ? { verifiedByAgentId } : {}),
     });
 
     // Track referral link usage (usedCount already atomically incremented during validation)

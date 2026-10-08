@@ -12,6 +12,35 @@ import { actingUserId, canManageTeam } from "@/lib/permissions/team";
 import { sendEmail } from "@/lib/communications/email";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import logger from "@/lib/logger";
+import { escapeHtml, sanitizeEmailSubject } from "@/lib/security/html-escape";
+
+/** RFC 1123 hostname with at least one dot and an alphabetic TLD. */
+const HOSTNAME_RE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+
+function normalizeHost(host: string): string {
+  return host.trim().toLowerCase().replace(/\.$/, "").replace(/^www\./, "");
+}
+
+/**
+ * Domains this employer can legitimately claim (SEC-B2): the hostname of their
+ * website and the domain of their company email. Verifying any other domain
+ * would let "Emirates Airlines" earn a Verified badge with attacker.com.
+ */
+function claimableDomains(employer: { website?: string; companyEmail?: string }): Set<string> {
+  const out = new Set<string>();
+  if (employer.website) {
+    try {
+      const raw = employer.website.trim();
+      const url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+      if (url.hostname) out.add(normalizeHost(url.hostname));
+    } catch {
+      // Unparseable website — contributes nothing.
+    }
+  }
+  const emailDomain = employer.companyEmail?.split("@")[1];
+  if (emailDomain) out.add(normalizeHost(emailDomain));
+  return out;
+}
 
 /**
  * POST /api/employers/verify-domain — send domain verification email
@@ -31,7 +60,11 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     return NextResponse.json({ error: "Rate limit: max 3 verification emails per day" }, { status: 429 });
   }
 
-  const { domain } = (await validateBody(req, domainVerifyRequestSchema)) as { domain: string };
+  const { domain: rawDomain } = (await validateBody(req, domainVerifyRequestSchema)) as { domain: string };
+  const domain = normalizeHost(rawDomain);
+  if (!HOSTNAME_RE.test(domain)) {
+    return NextResponse.json({ error: "Invalid domain" }, { status: 400 });
+  }
 
   await connectDB();
   const employer = await Employer.findOne({ userId: ctx.userId })
@@ -59,9 +92,17 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     return NextResponse.json({ error: "Only owners and admins can verify domain" }, { status: 403 });
   }
 
+  if (!claimableDomains(employer).has(domain)) {
+    return NextResponse.json(
+      { error: "Domain must match your company website or company email domain" },
+      { status: 400 },
+    );
+  }
+
   const token = randomBytes(32).toString("hex");
   employer.domainVerificationToken = token;
   employer.domainVerificationSentAt = new Date();
+  employer.domainVerificationDomain = domain;
   await employer.save();
 
   // Send verification email to admin@domain
@@ -72,11 +113,11 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   try {
     await sendEmail({
       to: verifyEmail,
-      subject: `Domain Verification for ${employer.companyName} — Mployedin`,
+      subject: sanitizeEmailSubject(`Domain Verification for ${employer.companyName} — Mployedin`),
       html: `
         <h2>Domain Verification</h2>
-        <p>${employer.companyName} is requesting domain verification on Mployedin.</p>
-        <p>Click below to verify ownership of <strong>${domain}</strong>:</p>
+        <p>${escapeHtml(employer.companyName)} is requesting domain verification on Mployedin.</p>
+        <p>Click below to verify ownership of <strong>${escapeHtml(domain)}</strong>:</p>
         <p><a href="${confirmUrl}" style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Verify Domain</a></p>
         <p>This link expires in 48 hours.</p>
         <p>If you did not request this, please ignore this email.</p>

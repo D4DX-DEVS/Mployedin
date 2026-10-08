@@ -6,9 +6,10 @@ const ROLE_HOME_SEGMENT: Record<string, string> = {
   super_agent: "super-agent",
 };
 
-/** The dashboard home for a role, e.g. `/en/super-agent`. Unknown roles land on the job-seeker home. */
+/** The dashboard home for a role, e.g. `/en/super-agent`. Unknown roles land on the public home, never a dashboard. */
 export function roleHomePath(locale: string, role: string | undefined | null): string {
-  return `/${locale}/${ROLE_HOME_SEGMENT[role ?? ""] ?? "job-seeker"}`;
+  const segment = Object.prototype.hasOwnProperty.call(ROLE_HOME_SEGMENT, role ?? "") ? ROLE_HOME_SEGMENT[role as string] : undefined;
+  return segment ? `/${locale}/${segment}` : `/${locale}`;
 }
 
 /** Where a user goes right after signing in: a job seeker who hasn't finished onboarding goes back to it. */

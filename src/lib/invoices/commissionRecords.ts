@@ -153,13 +153,18 @@ export async function createCommissionRecordsForInvoice({
 /**
  * Reverse (cancel) commissions tied to an invoice when it is voided or cancelled.
  *
- * - Pending/approved commissions → deleted
- * - Paid commissions → left untouched (require manual adjustment)
+ * - Pending/approved/disputed commissions → status `clawed_back` with the reason
+ *   appended to `notes` (CM-6). They are kept, not deleted, so the audit trail
+ *   and any dispute history survive; `clawed_back` is terminal.
+ * - Paid commissions → left untouched (money already went out; require manual
+ *   clawback via PATCH /api/commissions/[id]).
  *
  * Returns counts of reversed vs already-paid commissions.
  */
 export async function reverseCommissionsForInvoice(
   invoiceId: unknown,
+  reason = "Invoice voided or cancelled",
+  clawbackBy?: unknown,
 ): Promise<ReverseCommissionsResult> {
   const commissions = await Commission.find({ invoiceId }).lean();
 
@@ -168,20 +173,96 @@ export async function reverseCommissionsForInvoice(
   }
 
   const reversible = commissions.filter(
-    (c) => c.status === "pending" || c.status === "approved",
+    (c) => c.status === "pending" || c.status === "approved" || c.status === "disputed",
   );
   const alreadyPaid = commissions.filter((c) => c.status === "paid");
 
   if (reversible.length > 0) {
-    await Commission.deleteMany({
-      _id: { $in: reversible.map((c) => c._id) },
-    });
+    await clawBackCommissions(reversible, reason, clawbackBy);
   }
 
   return {
     reversed: reversible.length,
     alreadyPaid: alreadyPaid.length,
   };
+}
+
+function appendNote(existing: string | undefined, note: string): string {
+  return existing ? `${existing}\n${note}` : note;
+}
+
+async function clawBackCommissions(
+  lines: Array<{ _id: unknown; amount: number; notes?: string; status: string }>,
+  reason: string,
+  clawbackBy?: unknown,
+): Promise<void> {
+  const clawbackAt = new Date();
+  await Commission.bulkWrite(
+    lines.map((c) => ({
+      updateOne: {
+        // Status guard: never overwrite a line that moved on concurrently.
+        filter: { _id: c._id, status: c.status },
+        update: {
+          $set: {
+            status: "clawed_back",
+            clawbackAmount: c.amount,
+            clawbackReason: reason.slice(0, 1000),
+            clawbackAt,
+            ...(clawbackBy ? { clawbackBy } : {}),
+            notes: appendNote(c.notes, `Clawed back: ${reason}`),
+          },
+        },
+      },
+    })) as Parameters<typeof Commission.bulkWrite>[0],
+  );
+}
+
+/**
+ * CM-5: claw back commissions after money is returned to the client
+ * (credit note or gateway refund).
+ *
+ * Deliberately simple rule:
+ * - FULL refund/credit (`fullyRefunded`) → every non-terminal line (pending,
+ *   approved, disputed, paid) becomes `clawed_back`. Paid lines are included
+ *   because the fee they were earned on no longer exists; recovering the payout
+ *   from the agent is an offline finance step recorded by `clawbackAmount`.
+ * - PARTIAL refund/credit → lines are kept as they are, and a note recording
+ *   the partial amount is appended so finance can adjust manually. No
+ *   pro-rata maths is attempted.
+ */
+export async function clawBackCommissionsForRefund(
+  invoiceId: unknown,
+  opts: {
+    fullyRefunded: boolean;
+    amount: number;
+    currency: string;
+    reason: string;
+    clawbackBy?: unknown;
+    /** Written into the note; lines already carrying it are skipped (gateway retries). */
+    dedupeKey?: string;
+  },
+): Promise<{ clawedBack: number; annotated: number }> {
+  const candidates = await Commission.find({
+    invoiceId,
+    status: { $in: ["pending", "approved", "disputed", "paid"] },
+  }).lean();
+  const lines = opts.dedupeKey
+    ? candidates.filter((c) => !c.notes?.includes(opts.dedupeKey as string))
+    : candidates;
+  if (lines.length === 0) return { clawedBack: 0, annotated: 0 };
+
+  if (opts.fullyRefunded) {
+    await clawBackCommissions(lines, opts.reason, opts.clawbackBy);
+    return { clawedBack: lines.length, annotated: 0 };
+  }
+
+  const note = `Partial refund/credit of ${opts.amount} ${opts.currency} on the invoice (${opts.reason}) — review commission manually.${opts.dedupeKey ? ` [${opts.dedupeKey}]` : ""}`;
+  await Commission.bulkWrite(
+    lines.map((c) => ({
+      updateOne: { filter: { _id: c._id }, update: { $set: { notes: appendNote(c.notes, note) } } },
+    })) as Parameters<typeof Commission.bulkWrite>[0],
+  );
+  return { clawedBack: 0, annotated: lines.length };
 }
 
 export async function approvePendingCommissionsForPaidInvoice(

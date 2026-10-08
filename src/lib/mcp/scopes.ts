@@ -5,7 +5,8 @@ export type McpScope =
   | "read:applications"
   | "read:profile"
   | "read:employer_jobs"
-  | "read:applicants";
+  | "read:applicants"
+  | "read:insights";
 
 export const MCP_SCOPES: McpScope[] = [
   "read:jobs",
@@ -13,7 +14,15 @@ export const MCP_SCOPES: McpScope[] = [
   "read:profile",
   "read:employer_jobs",
   "read:applicants",
+  "read:insights",
 ];
+
+/**
+ * Scopes a client only receives when it asks for them by name. `read:insights`
+ * exposes platform-wide data (every tenant), so an admin connecting a client
+ * that omits `scope` must not end up holding it silently.
+ */
+export const MCP_OPT_IN_SCOPES: McpScope[] = ["read:insights"];
 
 /** Which role each scope is meaningful for — a job seeker can never be granted an employer scope and vice versa. */
 export const MCP_SCOPE_ROLES: Record<McpScope, UserRole[]> = {
@@ -22,6 +31,7 @@ export const MCP_SCOPE_ROLES: Record<McpScope, UserRole[]> = {
   "read:profile": ["job_seeker"],
   "read:employer_jobs": ["employer", "agent", "super_agent", "admin"],
   "read:applicants": ["employer", "agent", "super_agent", "admin"],
+  "read:insights": ["admin"],
 };
 
 export const MCP_SCOPE_DESCRIPTIONS: Record<McpScope, string> = {
@@ -30,11 +40,17 @@ export const MCP_SCOPE_DESCRIPTIONS: Record<McpScope, string> = {
   "read:profile": "View your job seeker profile",
   "read:employer_jobs": "View job postings within your assigned role scope",
   "read:applicants": "View applicants within your assigned role scope",
+  "read:insights": "Read platform-wide analytics and records (admin AI Data Access)",
 };
 
-/** All scopes the current role can hold. */
-export function defaultScopesForRole(role: UserRole): McpScope[] {
+/** All scopes the current role can hold (including opt-in ones). */
+export function allowedScopesForRole(role: UserRole): McpScope[] {
   return MCP_SCOPES.filter((scope) => MCP_SCOPE_ROLES[scope].includes(role));
+}
+
+/** Scopes granted when the client omits `scope` — excludes opt-in scopes. */
+export function defaultScopesForRole(role: UserRole): McpScope[] {
+  return allowedScopesForRole(role).filter((scope) => !MCP_OPT_IN_SCOPES.includes(scope));
 }
 
 /**

@@ -6,6 +6,7 @@ import { notify } from "@/lib/notifications/trigger";
 import { withRateLimit } from "@/lib/security/rateLimit";
 import { RESPONSE_TOKEN_RE } from "@/lib/interviews/responseToken";
 import logger from "@/lib/logger";
+import { userLocalePath } from "@/lib/i18n/localePath";
 
 /**
  * Public interview response, reached from the invitation email.
@@ -155,7 +156,7 @@ async function handler(req: NextRequest, ...args: unknown[]) {
               ? "Interview Declined"
               : "Reschedule Requested",
         message: `A candidate has ${label} their interview.${body.note ? ` Note: ${body.note}` : ""}`,
-        link: `/en/employer/interviews`,
+        link: await userLocalePath(employer.userId, "/employer/interviews"),
         sendEmail: true,
         metadata: { interviewId: String(interview._id), response: body.response },
       }).catch((err) => {

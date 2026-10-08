@@ -15,8 +15,9 @@ import Subscription from "@/models/Subscription";
 import type { UserRole } from "@/types/user";
 import type { AIFeatureKey } from "@/models/SubscriptionPlan";
 import { isSubscriptionEnforcementEnabled } from "./enforcementFlag";
-import { isInGracePeriod } from "./gracePeriod";
+import { getGracePeriodEmployerLimits, isInGracePeriod, isPastDueInGrace } from "./gracePeriod";
 import { isLimitFeatureForRole, isToggleEnabled } from "./helpers";
+import { countActiveTeamMembers } from "./featureGate";
 
 // ── Feature check types ──────────────────────────────────────────────────────
 
@@ -58,12 +59,20 @@ export function withSubscription(
 
     const targetRole = ctx.role === "employer" ? "employer" : "job_seeker";
 
-    // Find active subscription
+    // Find active subscription — or an unpaid renewal still inside its
+    // payment grace window (past_due keeps the plan's limits until then).
     const sub = await Subscription.findOne({
       userId: ctx.userId,
       targetRole,
-      status: "active",
+      status: { $in: ["active", "past_due"] },
     });
+
+    if (sub?.status === "past_due" && !isPastDueInGrace(sub)) {
+      return NextResponse.json(
+        { error: "PAYMENT_PAST_DUE", message: "Your subscription payment is overdue. Pay the renewal invoice to restore access" },
+        { status: 403 },
+      );
+    }
 
     // If no subscription, check grace period (30 days from signup → Gold-tier access)
     if (!sub) {
@@ -183,7 +192,8 @@ export function withSubscription(
         },
         teamMembers: {
           max: (limits as Record<string, unknown>).maxTeamMembers as number ?? -1,
-          current: 0, // Team count is checked externally
+          // Live seat count (SB-5) — only queried when this is the gated feature.
+          current: check.feature === "teamMembers" ? await countActiveTeamMembers(ctx.userId) : 0,
         },
       };
 
@@ -211,7 +221,11 @@ export function withSubscription(
 
       const usagePath = `usage.${check.feature}`;
       const reserveFilter: Record<string, unknown> = { _id: sub._id };
-      if (entry.max !== -1) {
+      // activeJobs is gated on the live count of active jobs when a job goes
+      // live (enforceActiveJobQuota) — this counter only ever increments, so
+      // drafts ate slots and closed jobs never gave them back. It is still
+      // kept for reporting.
+      if (entry.max !== -1 && check.feature !== "activeJobs") {
         reserveFilter.$expr = {
           $lt: [{ $ifNull: [`$${usagePath}`, 0] }, entry.max],
         };
@@ -273,4 +287,72 @@ export function withSubscription(
     // Fallthrough — unknown check type
     return handler(req, ctx, params);
   };
+}
+
+/**
+ * Plan limit on live jobs, checked whenever a job is about to become active —
+ * created as active, or moved draft/paused/expired → active — whoever the
+ * caller is. Agents and admins posting for an employer spend that employer's
+ * plan too; there is deliberately no role bypass here.
+ *
+ * Counts the employer's jobs that are active right now, so drafts cost nothing
+ * and a closed job frees its slot. Returns a 429 response when the employer is
+ * at the limit, otherwise null. An employer with no subscription is left to the
+ * route's subscription gate: there is no plan limit to compare against.
+ */
+export async function enforceActiveJobQuota(
+  employerId: string,
+  opts: { excludeJobId?: string } = {},
+): Promise<NextResponse | null> {
+  if (!(await isSubscriptionEnforcementEnabled())) return null;
+
+  await connectDB();
+  const { Employer } = await import("@/models/Employer");
+  const employer = (await Employer.findById(employerId).select("userId").lean()) as { userId?: unknown } | null;
+  if (!employer?.userId) return null;
+  const ownerUserId = String(employer.userId);
+
+  const sub = await Subscription.findOne({ userId: ownerUserId, targetRole: "employer", status: "active" })
+    .select("planSnapshot")
+    .lean();
+  let max: number | undefined;
+  if (sub) {
+    max = (sub.planSnapshot?.employerLimits as { maxActiveJobs?: number } | undefined)?.maxActiveJobs;
+  } else if (await isInGracePeriod(ownerUserId)) {
+    max = getGracePeriodEmployerLimits().maxActiveJobs;
+  }
+  if (typeof max !== "number" || max < 0) return null;
+
+  const live = await countLiveActiveJobs(employerId, opts);
+  if (live < max) return null;
+
+  return NextResponse.json(
+    {
+      error: "LIMIT_EXCEEDED",
+      message: `Active job limit reached (${max}). Close or pause a live job, or upgrade the plan.`,
+      feature: "activeJobs",
+      limit: max,
+      used: live,
+    },
+    { status: 429 },
+  );
+}
+
+/**
+ * Live active-job count for an employer (the activeJobs plan meter): jobs that
+ * are active right now and not soft-deleted. Drafts, paused and closed jobs
+ * cost nothing. Shared by the quota check and the subscription usage view.
+ */
+export async function countLiveActiveJobs(
+  employerId: string,
+  opts: { excludeJobId?: string } = {},
+): Promise<number> {
+  await connectDB();
+  const { default: Job } = await import("@/models/Job");
+  return Job.countDocuments({
+    employerId,
+    status: "active",
+    deletedAt: null,
+    ...(opts.excludeJobId ? { _id: { $ne: opts.excludeJobId } } : {}),
+  });
 }

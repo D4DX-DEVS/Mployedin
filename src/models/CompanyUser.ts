@@ -79,7 +79,17 @@ const CompanyUserSchema = new Schema<ICompanyUser>(
       default: "pending",
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      // The invite token is a bearer credential for joining the company; it
+      // must only ever travel inside the invite email, never an API response.
+      transform(_, ret: Record<string, unknown>) {
+        delete ret.inviteToken;
+        return ret;
+      },
+    },
+  }
 );
 
 // Unique only once an invite is claimed — pending invites all have no userId.

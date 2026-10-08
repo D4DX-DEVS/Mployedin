@@ -17,7 +17,13 @@ const REVIEW_STATUS_FILTERS = ["pending", "approved", "rejected", "all"] as cons
  * only way a review ever gets published. Moderation rides the `employers`
  * permission: a review belongs to a company.
  */
-async function getHandler(req: NextRequest, _ctx: AuthCtx) {
+async function getHandler(req: NextRequest, ctx: AuthCtx) {
+  // The matrix grants employers:read to agents and super-agents too; review
+  // moderation (and the reviewer identities behind it) is admin-only.
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await connectDB();
 
   const { searchParams } = new URL(req.url);
@@ -44,13 +50,22 @@ async function getHandler(req: NextRequest, _ctx: AuthCtx) {
       .skip((page - 1) * limit)
       .limit(limit)
       .populate("employerId", "companyName")
-      .populate("userId", "name email")
+      // Never the reviewer's email: moderation needs the words, not a way to
+      // contact (or retaliate against) the author.
+      .populate("userId", "name")
       .lean(),
     CompanyReview.countDocuments(query),
   ]);
 
+  // An anonymous review stays anonymous here too: drop the author entirely.
+  const safeItems = (items as Array<Record<string, unknown>>).map((item) => {
+    if (!item.isAnonymous) return item;
+    const { userId: _author, ...rest } = item;
+    return rest;
+  });
+
   return NextResponse.json({
-    items,
+    items: safeItems,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   });
 }

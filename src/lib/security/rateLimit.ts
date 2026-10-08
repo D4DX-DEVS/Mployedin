@@ -51,6 +51,9 @@ const DEFAULTS: Record<string, RateLimitConfig> = {
   // Checkout creates gateway orders and touches billing state. Nobody legitimately
   // starts a subscription more than a handful of times a minute.
   checkout: { limit: 5, windowSec: 60, prefix: "rl-checkout" },
+  // Return-page confirmation calls the provider API per request. A user lands
+  // there once per payment; a few reloads are fine, a loop is not.
+  paymentConfirm: { limit: 10, windowSec: 60, prefix: "rl-payment-confirm" },
 };
 
 // ── In-memory fallback store (per-instance) ─────────────────────────────────

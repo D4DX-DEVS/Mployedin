@@ -18,6 +18,41 @@ import { escapeRegex } from "@/lib/security/sanitize";
 import logger from "@/lib/logger";
 import { escapeHtml, sanitizeEmailSubject } from "@/lib/security/html-escape";
 
+/** A member row safe to return: the invite token is a bearer secret. */
+function publicMember(member: { toObject(): Record<string, unknown> }): Record<string, unknown> {
+  const obj = member.toObject();
+  delete obj.inviteToken;
+  return obj;
+}
+
+/**
+ * Map a duplicate-key error from an invite insert to a response (EMP-12).
+ * - { companyId, email }: a concurrent invite for the same address won → 409.
+ * - { companyId, userId }: the legacy non-partial `companyId_1_userId_1` index
+ *   is still in the DB, so a second pending invite (no userId yet) collides on
+ *   userId: null. That is an unapplied migration, not a client error — log it
+ *   loudly and answer 503 with a readable message instead of a bare 500.
+ *   Fix: `node scripts/migrate-companyuser-invite-index.mjs --apply`.
+ */
+function inviteConflictResponse(err: unknown): NextResponse | null {
+  const e = err as { code?: number; keyPattern?: Record<string, unknown> } | null;
+  if (e?.code !== 11000) return null;
+  if (e.keyPattern && "email" in e.keyPattern) {
+    return NextResponse.json(
+      { error: "User is already a team member", code: "ALREADY_MEMBER" },
+      { status: 409 },
+    );
+  }
+  logger.error(
+    { err, keyPattern: e.keyPattern },
+    "[team.invite] duplicate key on companyusers — run scripts/migrate-companyuser-invite-index.mjs --apply",
+  );
+  return NextResponse.json(
+    { error: "Team invitations are temporarily unavailable. Please try again later.", code: "INVITE_UNAVAILABLE" },
+    { status: 503 },
+  );
+}
+
 /**
  * GET /api/employers/team — list team members for the employer's company
  */
@@ -75,15 +110,17 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string;
   ]);
 
   // Enrich with user names
-  const userIds = members.filter((m) => m.userId).map((m) => m.userId);
+  const userIds = members.filter((m) => m.userId && m.status !== "pending").map((m) => m.userId);
   const users = await User.find({ _id: { $in: userIds } })
     .select("name email avatar")
     .lean();
   const userMap = new Map(users.map((u) => [String(u._id), u]));
 
+  // A pending invitation shows only the address that was typed in. Account
+  // details appear once the person has accepted.
   const enriched = members.map((m) => ({
     ...m,
-    user: m.userId ? userMap.get(String(m.userId)) ?? null : null,
+    user: m.userId && m.status !== "pending" ? userMap.get(String(m.userId)) ?? null : null,
   }));
 
   const statusCounts = Object.fromEntries(statusRows.map((row) => [row._id, row.count]));
@@ -105,9 +142,17 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string;
 /**
  * POST /api/employers/team — invite a new team member
  */
-async function postHandler(req: NextRequest, ctx: { userId: string; role: string; member?: AuthContext["member"] }) {
+async function postHandler(
+  req: NextRequest,
+  ctx: { userId: string; role: string; member?: AuthContext["member"]; tenantView?: AuthContext["tenantView"] },
+) {
   if (ctx.role !== "employer") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  // Staff browsing an employer workspace (tenant view) must not add people to
+  // that company: the invite would be issued "by the owner" with owner rights.
+  if (ctx.tenantView) {
+    return NextResponse.json({ error: "Team invitations cannot be sent in tenant view" }, { status: 403 });
   }
 
   const body = await validateBody(req, teamInviteSchema);
@@ -226,9 +271,9 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
       await sendInviteComms(existing.inviteToken);
 
-      return NextResponse.json({ member: existing, reactivated: true }, { status: 200 });
+      return NextResponse.json({ member: publicMember(existing), reactivated: true }, { status: 200 });
     }
-    return NextResponse.json({ error: "User is already a team member" }, { status: 409 });
+    return NextResponse.json({ error: "User is already a team member", code: "ALREADY_MEMBER" }, { status: 409 });
   }
 
   // Check for max team size (prevent abuse)
@@ -246,24 +291,30 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   // cannot hand us a permission set the role system never agreed to.
   const finalPermissions = computeEffectivePermissions(resolvedRoles, permissionOverrides);
 
-  // Check if the invited email matches an existing user
-  const existingUser = await User.findOne({ email }).select("_id").lean();
-
-  const member = await CompanyUser.create({
-    companyId: employer._id,
-    userId: existingUser?._id ?? undefined,
-    email,
-    companyRole: primaryRole,
-    companyRoles: resolvedRoles,
-    jobAccess: jobAccess ?? [],
-    permissions: finalPermissions,
-    permissionOverrides,
-    invitedBy: ctx.userId,
-    inviteToken,
-    inviteExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 hours
-    invitedAt: new Date(),
-    status: "pending",
-  });
+  // The invitee's account (if any) is bound on accept (team/accept), never
+  // here: a pending row that carried an existing user's id exposed that user
+  // through the team list and the activity logs before they ever agreed.
+  let member;
+  try {
+    member = await CompanyUser.create({
+      companyId: employer._id,
+      email,
+      companyRole: primaryRole,
+      companyRoles: resolvedRoles,
+      jobAccess: jobAccess ?? [],
+      permissions: finalPermissions,
+      permissionOverrides,
+      invitedBy: ctx.userId,
+      inviteToken,
+      inviteExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 hours
+      invitedAt: new Date(),
+      status: "pending",
+    });
+  } catch (err) {
+    const conflict = inviteConflictResponse(err);
+    if (conflict) return conflict;
+    throw err;
+  }
 
   // Send invite notification/email
   await sendInviteComms(inviteToken);
@@ -277,7 +328,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     req,
   });
 
-  return NextResponse.json({ member }, { status: 201 });
+  return NextResponse.json({ member: publicMember(member) }, { status: 201 });
 }
 
 export const GET = withAuth(getHandler);
@@ -287,4 +338,5 @@ export const GET = withAuth(getHandler);
 // lookup resolves the company. Seat limit restored as it was before the pause.
 export const POST = withAuth(
   withSubscription(postHandler, { type: "limit", feature: "teamMembers" }),
+  { resource: "employers", action: "update" },
 );

@@ -75,6 +75,8 @@ const PlacementSchema = new Schema<IPlacement>(
   { timestamps: true }
 );
 
+// One placement per hired application — the hire paths rely on it for idempotency.
+PlacementSchema.index({ applicationId: 1 }, { unique: true });
 PlacementSchema.index({ jobSeekerId: 1 });
 PlacementSchema.index({ employerId: 1 });
 PlacementSchema.index({ agentId: 1 });

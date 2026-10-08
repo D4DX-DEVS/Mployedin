@@ -49,10 +49,17 @@ async function handler(req: NextRequest, ctx: { userId: string }, params?: Recor
   if (!hasRelationship && seeker.profileVisibility !== "visible") {
     return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
   }
+  // SECURITY (SEC-B1): the CV's storage URL is only returned alongside a
+  // relationship (same rule as candidates/[id]/cv, which serves the file).
+  // Otherwise expose just whether a CV exists — the raw key was usable to
+  // attach a victim's CV to an attacker's own application.
+  const seekerCv = (seeker as { cv?: { originalUrl?: string } }).cv;
+  const hasCv = Boolean(seekerCv?.originalUrl);
   if (!hasRelationship) {
     const user = seeker.userId as { email?: string } | null;
     if (user) delete user.email;
     delete (seeker as { preferredSalary?: unknown }).preferredSalary;
+    delete (seeker as { cv?: unknown }).cv;
   }
 
   const [applications, interviews] = await Promise.all([
@@ -94,7 +101,7 @@ async function handler(req: NextRequest, ctx: { userId: string }, params?: Recor
   timeline.sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime());
 
   return NextResponse.json({
-    candidate: seeker,
+    candidate: { ...seeker, hasCv },
     company: employer.companyName,
     applications: applications.map((app) => ({
       _id: String(app._id),

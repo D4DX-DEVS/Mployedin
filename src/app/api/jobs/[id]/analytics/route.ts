@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import Job from "@/models/Job";
+import { canAccessJob } from "@/lib/jobs/access";
 import mongoose from "mongoose";
 
 export const GET = withAuth(
@@ -27,22 +28,12 @@ export const GET = withAuth(
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    // The jobs:read guard is role-level — every employer holds it — so without
-    // an ownership check any employer could read a competitor's pipeline stats
-    // (counts by status, interview/offer rates, daily trends) by job id.
-    if (ctx.role === "employer") {
-      const { Employer } = await import("@/models/Employer");
-      const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-      if (!emp || String(job.employerId) !== String(emp._id)) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    } else if (ctx.role === "agent") {
-      const { default: Agent } = await import("@/models/Agent");
-      const agent = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
-      const assigned = (agent?.assignedEmployerIds ?? []).map(String);
-      if (!assigned.includes(String(job.employerId))) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
+    // The jobs:read guard is role-level — every employer, job seeker and
+    // super-agent holds it — so without an ownership check anyone could read a
+    // competitor's pipeline stats by job id (SEC-C1). canAccessJob denies
+    // job seekers and unknown roles and scopes super-agents to their agents.
+    if (!(await canAccessJob({ userId: ctx.userId, role: ctx.role }, job))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Status breakdown

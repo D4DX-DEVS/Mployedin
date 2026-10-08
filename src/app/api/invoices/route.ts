@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { isPaymentGatewayEnabled } from "@/lib/payments";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
@@ -288,6 +289,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({
     invoices,
     summary,
+    // Lets the invoices page show "Pay now" only when a gateway is configured.
+    paymentGatewayEnabled: isPaymentGatewayEnabled(),
     total,
     page,
     limit,

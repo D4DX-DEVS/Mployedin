@@ -35,8 +35,9 @@ const screeningQuestionSchema = z.object({
 const locationSchema = z
   .object({
     country: z.string().min(1).max(100),
-    // Must contain at least one letter (any script) — blocks numeric-only junk.
-    city: z.string().min(1).max(100).regex(/\p{L}/u, "Enter a valid city name"),
+    // Must contain at least one letter (any script) — blocks numeric-only junk
+    // such as "12345" (JS-4). Trimmed first so "  " does not pass min(1).
+    city: z.string().trim().min(1).max(100).regex(/\p{L}/u, "Enter a valid city name"),
     isRemote: z.boolean().default(false),
     // Optional so existing callers and older drafts still validate. Absent
     // means "not stated", which the matcher treats as the job's own country.
@@ -54,20 +55,25 @@ const locationSchema = z
 
 const salarySchema = z
   .object({
-    min: z.number().min(0),
-    max: z.number().min(0),
+    // JS-4: "AED -100 – 9,000" reached the public list. Never negative, never NaN/Infinity.
+    min: z.number().finite().min(0, "Minimum salary can't be negative"),
+    max: z.number().finite().min(0, "Maximum salary can't be negative"),
     currency: z.string().length(3).default("USD"),
     isNegotiable: z.boolean().default(false),
     period: z.enum(["monthly", "yearly", "lpa"]).default("monthly"),
   })
-  .refine((s) => s.max >= s.min, { message: "max salary must be >= min" });
+  .refine((s) => s.max >= s.min, {
+    message: "Maximum salary must be greater than or equal to minimum",
+    path: ["max"],
+  });
 
 const requirementsSchema = z
   .object({
     skills: z.array(z.string().max(100)).max(50).optional(),
     preferredSkills: z.array(z.string().max(100)).max(30).optional(),
-    experienceMin: z.number().int().min(0).max(50).optional(),
-    experienceMax: z.number().int().min(0).max(50).optional(),
+    // JS-4: "0-99 yrs" reached the public list. 0–50 years, whole numbers.
+    experienceMin: z.number().int().min(0, "Experience can't be negative").max(50, "Experience can't exceed 50 years").optional(),
+    experienceMax: z.number().int().min(0, "Experience can't be negative").max(50, "Experience can't exceed 50 years").optional(),
     education: z.string().max(200).optional(),
     languages: z.array(z.string().max(100)).max(20).optional(),
     nationality: z.array(z.string().max(100)).max(50).optional(),
@@ -77,7 +83,7 @@ const requirementsSchema = z
       r.experienceMin === undefined ||
       r.experienceMax === undefined ||
       r.experienceMax >= r.experienceMin,
-    { message: "experienceMax must be >= experienceMin" }
+    { message: "Maximum experience must be greater than or equal to minimum", path: ["experienceMax"] }
   );
 
 export const jobCreateSchema = z.object({

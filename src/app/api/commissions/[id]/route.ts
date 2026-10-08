@@ -13,6 +13,8 @@ import { notifyCommissionApproved, notifyCommissionPaid } from "@/lib/notificati
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import type { UserRole } from "@/models/User";
+import type { CommissionStatus } from "@/models/Commission";
+import { isAllowedCommissionTransition, type CommissionTransitionActor } from "@/lib/commissions/transitions";
 import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -82,17 +84,50 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // disputed and annotate it; changing money, or settling it as paid/clawed_back,
   // still requires commissions:update.
   const FINANCIAL_FIELDS = ["amount", "rate", "currency", "type", "paymentRef", "clawbackAmount"] as const;
-  const SETTLEMENT_STATUSES = ["paid", "clawed_back"];
   const mayUpdate = canAccess(ctx.role, "commissions", "update");
+  const mayApprove = canAccess(ctx.role, "commissions", "approve");
+  const approver = await resolveCommissionApprover(ctx.userId);
+  // CM-3: the line's own beneficiary (matched via ctx.userId → agent/super-agent
+  // profile) may raise a dispute on it even without commissions:approve.
+  const isBeneficiary = isOwnCommissionLine(commission, approver);
+
   if (!mayUpdate) {
     const touchesMoney = FINANCIAL_FIELDS.some((f) => body[f] !== undefined);
-    const settles = body.status !== undefined && SETTLEMENT_STATUSES.includes(body.status);
-    if (touchesMoney || settles || !canAccess(ctx.role, "commissions", "approve")) {
+    const settles = body.status === "paid" || body.status === "clawed_back";
+    const beneficiaryDisputeOnly =
+      isBeneficiary &&
+      body.status === "disputed" &&
+      Object.entries(body).every(([k, v]) => v === undefined || k === "status" || k === "disputeReason");
+    if (touchesMoney || settles || body.disputeResolution !== undefined || (!mayApprove && !beneficiaryDisputeOnly)) {
       return NextResponse.json(
-        { error: "Forbidden — approving a commission does not permit editing or settling it" },
+        { error: "Forbidden — approving a commission does not permit editing or settling it (or resolving a dispute)" },
         { status: 403 },
       );
     }
+  }
+
+  // CM-1: explicit lifecycle. Dispute resolution ("resolved" without an explicit
+  // status) restores the pre-dispute status and is validated like any other move.
+  const fromStatus = commission.status as CommissionStatus;
+  let resolvedTarget: CommissionStatus | undefined;
+  if (body.disputeResolution !== undefined) {
+    if (fromStatus !== "disputed") {
+      return NextResponse.json(
+        { error: "invalid_transition", message: "Only a disputed commission can be resolved" },
+        { status: 409 },
+      );
+    }
+    if (body.disputeResolution === "resolved" && !body.status) {
+      resolvedTarget = commission.paidAt ? "paid" : commission.approvedAt ? "approved" : "pending";
+    }
+  }
+  const toStatus = (body.status ?? resolvedTarget ?? fromStatus) as CommissionStatus;
+  const actor: CommissionTransitionActor = mayUpdate ? "update" : mayApprove ? "approve" : "beneficiary";
+  if (!isAllowedCommissionTransition(fromStatus, toStatus, actor, { paidBefore: Boolean(commission.paidAt) })) {
+    return NextResponse.json(
+      { error: "invalid_transition", message: `Cannot move a commission from ${fromStatus} to ${toStatus}` },
+      { status: 409 },
+    );
   }
 
   // Segregation of duties: nobody advances their OWN commission toward payment.
@@ -102,14 +137,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // marked paid — approve it here and the next payout batch pays it out.
   // Disputing your own line is still allowed; only advancing it is not.
   const SELF_ADVANCING_STATUSES = ["approved", "paid"];
-  if (body.status !== undefined && SELF_ADVANCING_STATUSES.includes(body.status)) {
-    const approver = await resolveCommissionApprover(ctx.userId);
-    if (isOwnCommissionLine(commission, approver)) {
-      return NextResponse.json(
-        { error: "You cannot approve or settle your own commission — an admin must review it." },
-        { status: 403 },
-      );
-    }
+  if (body.status !== undefined && SELF_ADVANCING_STATUSES.includes(body.status) && isBeneficiary) {
+    return NextResponse.json(
+      { error: "You cannot approve or settle your own commission — an admin must review it." },
+      { status: 403 },
+    );
   }
 
   // Guard: block financial field edits on finalized (approved/paid) commissions
@@ -140,6 +172,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (body.status === "disputed" && commission.status !== "disputed") {
     update.disputedBy = ctx.userId;
     update.disputedAt = new Date();
+    // CM-9: a re-dispute opens a fresh dispute — drop the previous resolution so
+    // it can be resolved again (the resolution branch keys off resolvedAt).
+    update.resolvedAt = undefined;
+    update.resolvedBy = undefined;
+    update.disputeResolution = undefined;
   }
 
   // Auto-track dispute resolution
@@ -150,13 +187,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     // A previously-paid commission must return to "paid" — never "approved" —
     // otherwise the next payout batch (which matches status:"approved") would
     // pay it a second time with a fresh paymentRef (double payout).
-    if (body.disputeResolution === "resolved" && !body.status) {
-      update.status = commission.paidAt
-        ? "paid"
-        : commission.approvedAt
-          ? "approved"
-          : "pending";
-    }
+    if (resolvedTarget) update.status = resolvedTarget;
   }
 
   // Auto-track clawback
@@ -176,7 +207,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       amount: commission.amount,
       currency: commission.currency,
       status: "approved",
-    });
+    }, null); // commissions have no owning employer: platform webhooks only
     // Notify agent/super-agent about approval
     if (commission.agentId) {
       const agent = await Agent.findById(commission.agentId).select("userId").lean();
@@ -198,7 +229,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       status: "paid",
       paidAt: commission.paidAt?.toISOString(),
       paymentRef: commission.paymentRef,
-    });
+    }, null); // commissions have no owning employer: platform webhooks only
     // Notify agent/super-agent about payment
     if (commission.agentId) {
       const agent = await Agent.findById(commission.agentId).select("userId").lean();
@@ -219,7 +250,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       currency: commission.currency,
       status: "disputed",
       disputeReason: body.disputeReason,
-    });
+    }, null); // commissions have no owning employer: platform webhooks only
   } else if (body.status === "clawed_back") {
     dispatchWebhook("commission.clawed_back", {
       commissionId: params?.id,
@@ -228,7 +259,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       clawbackAmount: commission.clawbackAmount ?? commission.amount,
       clawbackReason: body.clawbackReason,
       status: "clawed_back",
-    });
+    }, null); // commissions have no owning employer: platform webhooks only
   }
 
   await logActivity({

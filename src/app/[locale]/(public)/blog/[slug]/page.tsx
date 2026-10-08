@@ -1,90 +1,114 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import { cache } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { ArrowLeft, Calendar, User, Tag } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { connectDB } from "@/lib/db/mongoose";
+import BlogPost from "@/models/BlogPost";
 import { sanitizeHtml } from "@/lib/security/html";
 
-interface Post {
-  _id: string;
-  title: string;
-  titleAr: string;
-  slug: string;
-  body: string;
-  bodyAr: string;
-  coverImage: string;
-  author: string;
-  tags: string[];
-  publishedAt: string;
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin-8a4rc.ondigitalocean.app";
+
+interface PageProps {
+  params: Promise<{ locale: string; slug: string }>;
 }
 
-export default function BlogDetailPage() {
-  const pathname = usePathname();
-  const parts = pathname.split("/");
-  const locale = parts[1] || "en";
-  const slug = parts[parts.length - 1];
+interface Post {
+  title: string;
+  titleAr?: string;
+  excerpt?: string;
+  excerptAr?: string;
+  body: string;
+  bodyAr?: string;
+  coverImage?: string;
+  author?: string;
+  tags?: string[];
+  publishedAt?: Date | string | null;
+}
+
+/**
+ * Same visibility rule as GET /api/public/blogs/[slug]. Server-rendered (JS-2):
+ * the page used to be a client component that fetched after hydration, so the
+ * document had the title "Blog", no h1 and no description until JS ran.
+ * `cache` shares the one lookup between generateMetadata and the page.
+ */
+const getPost = cache(async (slug: string): Promise<Post | null> => {
+  await connectDB();
+  const post = await BlogPost.findOne({ slug: slug.toLowerCase(), isActive: true, status: "published" })
+    .lean()
+    .catch(() => null);
+  return (post as Post | null) ?? null;
+});
+
+function plainText(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function localized(post: Post, isAr: boolean) {
+  const title = (isAr ? post.titleAr || post.title : post.title) || post.title;
+  const body = (isAr ? post.bodyAr || post.body : post.body) || "";
+  const excerpt = isAr ? post.excerptAr || post.excerpt : post.excerpt;
+  const description = (excerpt || plainText(body)).slice(0, 160);
+  return { title, body, description };
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const post = await getPost(slug);
+  if (!post) return { title: (await getTranslations("landing"))("articleNotFoundHeading") };
+
+  const { title, description } = localized(post, locale === "ar");
+  const canonicalUrl = `${BASE_URL}/${locale}/blog/${slug}`;
+  const publishedTime = post.publishedAt ? new Date(post.publishedAt).toISOString() : undefined;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalUrl,
+      languages: {
+        en: `${BASE_URL}/en/blog/${slug}`,
+        ar: `${BASE_URL}/ar/blog/${slug}`,
+        "x-default": `${BASE_URL}/en/blog/${slug}`,
+      },
+    },
+    openGraph: {
+      title: `${title} | MPLOYEDIN`,
+      description,
+      type: "article",
+      url: canonicalUrl,
+      ...(post.coverImage ? { images: [{ url: post.coverImage, width: 1200, height: 630, alt: title }] } : {}),
+      ...(publishedTime ? { publishedTime } : {}),
+      authors: post.author ? [post.author] : undefined,
+      tags: post.tags?.length ? post.tags : undefined,
+    },
+    twitter: {
+      card: post.coverImage ? "summary_large_image" : "summary",
+      title: `${title} | MPLOYEDIN`,
+      description,
+      ...(post.coverImage ? { images: [post.coverImage] } : {}),
+    },
+  };
+}
+
+export default async function BlogDetailPage({ params }: PageProps) {
+  const { locale, slug } = await params;
   const isAr = locale === "ar";
-  const t = useTranslations("landing");
+  const t = await getTranslations("landing");
 
-  const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  // Before any Suspense boundary, so a missing post is a real 404 rendered by
+  // (public)/not-found.tsx inside the site header and footer.
+  const post = await getPost(slug);
+  if (!post) notFound();
 
-  useEffect(() => {
-    if (!slug) return;
-    let cancelled = false;
-    fetch(`/api/public/blogs/${slug}`)
-      .then((r) => {
-        if (!r.ok) { setNotFound(true); return null; }
-        return r.json();
-      })
-      .then((d: { post?: Post } | null) => {
-        if (cancelled) return;
-        // The API answers { post }; storing the wrapper rendered every article blank.
-        if (!d?.post) { setNotFound(true); return; }
-        setPost(d.post);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setNotFound(true);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [slug]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (notFound || !post) {
-    return (
-      <div className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold mb-4">{t("articleNotFoundHeading")}</h1>
-        <Link href={`/${locale}/blog`}>
-          <Button variant="outline">{t("backToBlogLink")}</Button>
-        </Link>
-      </div>
-    );
-  }
-
-  const title = isAr ? post.titleAr || post.title : post.title;
-  const body = isAr ? post.bodyAr || post.body : post.body;
+  const { title, body } = localized(post, isAr);
 
   return (
     <article className="py-12">
       <div className="container mx-auto px-4 max-w-4xl">
         <Link href={`/${locale}/blog`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
-          <ArrowLeft className="h-4 w-4 mr-1.5" />
+          <ArrowLeft className="h-4 w-4 me-1.5 rtl:rotate-180" aria-hidden />
           {t("backToBlogLink")}
         </Link>
 
@@ -101,27 +125,29 @@ export default function BlogDetailPage() {
         <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-muted-foreground">
           {post.author && (
             <span className="flex items-center gap-1.5">
-              <User className="h-4 w-4" />
+              <User className="h-4 w-4" aria-hidden />
               {post.author}
             </span>
           )}
           {post.publishedAt && (
             <span className="flex items-center gap-1.5">
-              <Calendar className="h-4 w-4" />
-              {new Date(post.publishedAt).toLocaleDateString(isAr ? "ar-SA" : "en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
+              <Calendar className="h-4 w-4" aria-hidden />
+              <time dateTime={new Date(post.publishedAt).toISOString()}>
+                {new Date(post.publishedAt).toLocaleDateString(isAr ? "ar-SA" : "en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </time>
             </span>
           )}
         </div>
 
-        {post.tags?.length > 0 && (
+        {post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-4">
             {post.tags.map((tag) => (
               <span key={tag} className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs">
-                <Tag className="h-3 w-3" />
+                <Tag className="h-3 w-3" aria-hidden />
                 {tag}
               </span>
             ))}

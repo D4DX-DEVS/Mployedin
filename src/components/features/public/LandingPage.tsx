@@ -29,6 +29,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { ConsentEmbed } from "@/components/shared/consent/ConsentEmbed";
 
 interface Banner {
   _id: string;
@@ -215,20 +216,6 @@ export default function LandingPage() {
     if (locationTerm.trim()) params.set("location", locationTerm.trim());
     const target = params.size > 0 ? `/${locale}/jobs?${params.toString()}` : `/${locale}/jobs`;
     router.push(target);
-  };
-
-  const getEmbedUrl = (url: string) => {
-    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    if (ytMatch) {
-      return `https://www.youtube.com/embed/${ytMatch[1]}`;
-    }
-
-    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-    if (vimeoMatch) {
-      return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-    }
-
-    return url;
   };
 
   return (
@@ -630,12 +617,12 @@ export default function LandingPage() {
               {data.videos.slice(0, 3).map((video) => (
                 <div key={video._id} className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
                   <div className="aspect-video bg-black/5">
-                    <iframe
-                      src={getEmbedUrl(video.url)}
+                    {/* Third-party players set cookies: click-to-load until the
+                        visitor allows functional cookies (ePrivacy art 5(3)). */}
+                    <ConsentEmbed
+                      url={video.url}
                       title={isAr ? video.titleAr || video.title : video.title}
-                      className="h-full w-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
+                      locale={locale}
                     />
                   </div>
                   <div className="p-5">

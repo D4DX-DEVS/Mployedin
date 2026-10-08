@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import { Employer } from "@/models/Employer";
-import Job from "@/models/Job";
-import { Application } from "@/models/Application";
-import { Interview } from "@/models/Interview";
+import { getEmployerPipelineCounts } from "@/lib/employers/pipelineCounts";
 import { Placement } from "@/models/Placement";
 import type { UserRole } from "@/models/User";
 
@@ -24,24 +22,23 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
 
   const employerId = employer._id;
 
-  const [
-    activeJobs,
-    totalApplications,
-    scheduledInterviews,
-    placements,
-  ] = await Promise.all([
-    Job.countDocuments({ employerId, status: "active", deletedAt: null }),
-    Application.countDocuments({ employerId }),
-    Interview.countDocuments({ employerId, status: "scheduled" }),
+  // Shared definitions (src/lib/employers/pipelineCounts.ts) so these KPIs
+  // agree with the dashboard, analytics and applications workspace.
+  const [pipeline, placements] = await Promise.all([
+    getEmployerPipelineCounts(employerId),
     Placement.countDocuments({ employerId }),
   ]);
 
   return NextResponse.json({
     stats: {
-      activeJobs,
-      totalApplications,
-      scheduledInterviews,
+      activeJobs: pipeline.activeJobs,
+      totalApplications: pipeline.applications,
+      scheduledInterviews: pipeline.upcomingInterviews,
       placements,
+      inPipeline: pipeline.inPipeline,
+      hired: pipeline.hired,
+      conversionRate: pipeline.conversionRate,
+      byStatus: pipeline.byStatus,
     },
   });
 }

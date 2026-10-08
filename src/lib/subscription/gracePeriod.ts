@@ -33,6 +33,36 @@ export async function isInGracePeriod(userId: string): Promise<boolean> {
   }
 }
 
+// ── Past-due (unpaid renewal) grace ──────────────────────────────────────────
+
+/**
+ * Days a past_due subscription keeps its plan's access after the renewal
+ * invoice falls due. Override with PAYMENT_PAST_DUE_GRACE_DAYS (0–60).
+ */
+export function getPastDueGraceDays(): number {
+  const raw = Number(process.env.PAYMENT_PAST_DUE_GRACE_DAYS);
+  if (Number.isInteger(raw) && raw >= 0 && raw <= 60) return raw;
+  return 7;
+}
+
+/** End of the payment grace window for a subscription that went past_due at `pastDueSince`. */
+export function pastDueGraceEndsAt(pastDueSince: Date | string): Date {
+  return new Date(new Date(pastDueSince).getTime() + getPastDueGraceDays() * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * True while a past_due subscription is still inside its payment grace window.
+ * A past_due row without pastDueSince (legacy / manual edit) is treated as
+ * lapsed so it cannot grant indefinite access.
+ */
+export function isPastDueInGrace(
+  sub: { status?: string; pastDueSince?: Date | string | null },
+  now: Date = new Date(),
+): boolean {
+  if (sub.status !== "past_due" || !sub.pastDueSince) return false;
+  return now.getTime() < pastDueGraceEndsAt(sub.pastDueSince).getTime();
+}
+
 /**
  * Build a Gold-tier employer plan snapshot for grace period users.
  * Matches the employer_gold seed plan limits.

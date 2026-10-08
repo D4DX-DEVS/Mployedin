@@ -14,6 +14,7 @@ jest.mock("@/lib/logger", () => ({ __esModule: true, default: { warn: jest.fn(),
 
 const ENV_KEYS = [
   "RECAPTCHA_SECRET_KEY",
+  "NEXT_PUBLIC_RECAPTCHA_SITE_KEY",
   "RECAPTCHA_ALLOWED_HOSTS",
   "NEXTAUTH_URL",
   "NEXT_PUBLIC_BASE_URL",
@@ -56,11 +57,20 @@ describe("verifyRecaptcha — not configured", () => {
     await expect(verifyRecaptcha("anything", opts)).resolves.toEqual({ ok: true, skipped: true });
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  test("a secret without a site key is treated as not configured (the form cannot mint a token)", async () => {
+    global.fetch = jest.fn() as unknown as typeof fetch;
+    process.env.RECAPTCHA_SECRET_KEY = "secret-key";
+    expect(isRecaptchaConfigured()).toBe(false);
+    await expect(verifyRecaptcha(undefined, opts)).resolves.toEqual({ ok: true, skipped: true });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 });
 
 describe("verifyRecaptcha — configured", () => {
   beforeEach(() => {
     process.env.RECAPTCHA_SECRET_KEY = "secret-key";
+    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY = "site-key";
   });
 
   test("a missing token is refused with 403 CAPTCHA_REQUIRED before contacting Google", async () => {
@@ -125,6 +135,7 @@ describe("allowed hostnames", () => {
 
   test("the configured site URL wins over the request's Host header (which a caller controls)", async () => {
     process.env.RECAPTCHA_SECRET_KEY = "secret-key";
+    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY = "site-key";
     process.env.NEXTAUTH_URL = "https://mployedin.com";
     expect(recaptchaAllowedHosts("attacker.example")).toEqual(["mployedin.com"]);
 
@@ -146,6 +157,7 @@ describe("allowed hostnames", () => {
 
   test("RECAPTCHA_ALLOWED_HOSTS overrides everything (comma list, case-insensitive)", async () => {
     process.env.RECAPTCHA_SECRET_KEY = "secret-key";
+    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY = "site-key";
     process.env.NEXTAUTH_URL = "https://mployedin.com";
     process.env.RECAPTCHA_ALLOWED_HOSTS = "Localhost, testkey.google.com";
     expect(recaptchaAllowedHosts("whatever")).toEqual(["localhost", "testkey.google.com"]);

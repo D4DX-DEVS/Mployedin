@@ -112,36 +112,58 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     };
   });
 
-  // Summary aggregation
+  // Summary aggregation — grouped by status AND currency (CM-11). Summing AED
+  // and USD lines into one number produced a meaningless total.
   const summaryAgg = await Commission.aggregate([
     { $match: { ...query } },
     {
       $group: {
-        _id: "$status",
+        _id: { status: "$status", currency: "$currency" },
         total: { $sum: "$amount" },
         // Record count per status, alongside the amount. Clients showing
         // "N pending" were counting the current page instead of the whole set.
         count: { $sum: 1 },
-        currency: { $first: "$currency" },
       },
     },
   ]);
 
-  const summary: Record<string, unknown> = { pending: 0, approved: 0, paid: 0, disputed: 0, clawed_back: 0, currency: (currency && currency !== "all") ? currency : ((await SystemSettings.findOne().lean())?.defaultCurrency ?? "AED") };
-  const counts: Record<string, number> = { pending: 0, approved: 0, paid: 0, disputed: 0, clawed_back: 0 };
+  const STATUSES = ["pending", "approved", "paid", "disputed", "clawed_back"] as const;
+  type SummaryStatus = (typeof STATUSES)[number];
+  const isStatus = (s: unknown): s is SummaryStatus => STATUSES.includes(s as SummaryStatus);
+  const emptyTotals = (): Record<SummaryStatus, number> =>
+    ({ pending: 0, approved: 0, paid: 0, disputed: 0, clawed_back: 0 });
+
+  const totalsByCurrency: Record<string, Record<SummaryStatus, number>> = {};
+  const counts: Record<string, number> = emptyTotals();
   for (const row of summaryAgg) {
-    const s = row._id as string;
-    if (s === "pending" || s === "approved" || s === "paid" || s === "disputed" || s === "clawed_back") {
-      summary[s] = row.total;
-      counts[s] = row.count ?? 0;
-      summary.currency = row.currency ?? summary.currency;
-    }
+    const s = row._id?.status;
+    if (!isStatus(s)) continue;
+    const cur = (row._id?.currency as string | undefined) ?? "UNKNOWN";
+    totalsByCurrency[cur] ??= emptyTotals();
+    totalsByCurrency[cur][s] += row.total ?? 0;
+    counts[s] += row.count ?? 0;
   }
-  summary.counts = counts;
+
+  // Legacy single-currency fields: the filtered currency, else the only currency
+  // present, else the platform default. Amounts in other currencies are NOT
+  // folded in — read totalsByCurrency for the full picture.
+  const presentCurrencies = Object.keys(totalsByCurrency);
+  const summaryCurrency = (currency && currency !== "all")
+    ? currency
+    : presentCurrencies.length === 1
+      ? presentCurrencies[0]
+      : ((await SystemSettings.findOne().lean())?.defaultCurrency ?? "AED");
+  const summary: Record<string, unknown> = {
+    ...(totalsByCurrency[summaryCurrency] ?? emptyTotals()),
+    currency: summaryCurrency,
+    counts,
+    mixedCurrencies: presentCurrencies.length > 1,
+  };
 
   return NextResponse.json({
     commissions,
     summary,
+    totalsByCurrency,
     pagination: { page, limit, total, pages: limit > 0 ? Math.ceil(total / limit) : 1 },
   });
 }
@@ -183,7 +205,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     agentId,
     superAgentId,
     status: "pending",
-  });
+  }, null); // commissions have no owning employer: platform webhooks only
 
   return NextResponse.json({ commission }, { status: 201 });
 }

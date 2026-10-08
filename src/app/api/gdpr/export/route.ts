@@ -13,6 +13,12 @@ import { getClientIp } from "@/lib/security/clientIp";
 import logger from "@/lib/logger";
 import { redactUserMessages } from "@/lib/gdpr/redactMessages";
 import { deleteCvRecordsOfSeeker } from "@/lib/cv/cvDocuments";
+import { deactivateEmployerAccount } from "@/lib/employers/accountStatus";
+import Employer from "@/models/Employer";
+import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
+import CookieConsentRecord from "@/models/CookieConsentRecord";
+import { z } from "zod";
 
 /**
  * Record a completed self-service request in the GDPR register the admin page
@@ -59,13 +65,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // empty arrays, making the export incomplete. Resolve the profile first.
   const seekerProfile = await JobSeeker.findOne({ userId: ctx.userId }).lean<{ _id: unknown } | null>();
 
-  const [user, applications, interviews, notifications] = await Promise.all([
+  const [user, applications, interviews, notifications, cookieConsents] = await Promise.all([
     User.findById(ctx.userId).select("-passwordHash").lean(),
     seekerProfile
       ? Application.find({ jobSeekerId: seekerProfile._id }).populate("jobId", "title location").lean()
       : [],
     seekerProfile ? Interview.find({ jobSeekerId: seekerProfile._id }).lean() : [],
     Notification.find({ userId: ctx.userId }).lean(),
+    // Proof-of-consent history for cookies while signed in (art 15 access).
+    CookieConsentRecord.find({ userId: ctx.userId })
+      .select("consentId policyVersion choices method gpc locale pageUrl createdAt")
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean(),
   ]);
 
   await logActivity({ ...actorFromCtx(ctx), action: "gdpr.export", resource: "users", resourceId: ctx.userId, req });
@@ -85,52 +97,139 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     applications,
     interviews,
     notifications,
+    cookieConsents,
   });
 });
 
 /**
+ * GDPR-2: JobSeeker fields that SURVIVE erasure — identity/structure only
+ * (ids, references other records point through, timestamps, and the flags
+ * that keep the empty shell out of search). Every other top-level path of the
+ * schema is $unset, so a field added later is erased by default instead of
+ * silently surviving (the old deny-list missed name, DOB, national ID, visa,
+ * addresses, social links, salary, embeddings…).
+ */
+const JOB_SEEKER_ERASURE_KEEP = new Set([
+  "_id", "__v", "id", "userId", "agentId", "referral", "isAgentReferred",
+  "applicationIds", "createdAt", "updatedAt", "profileVisibility", "roleArchivedAt",
+]);
+/** Always cleared, even if schema introspection is unavailable. */
+const JOB_SEEKER_ERASURE_REQUIRED = [
+  "fullName", "dateOfBirth", "gender", "genderId", "maritalStatusId", "nationality",
+  "nationalId", "visaNumber", "passportNumber", "bankAccountNumber", "iban",
+  "currentLocation", "permanentAddress", "hometown", "pincode", "socialLinks",
+  "certifications", "projects", "accomplishments", "summary", "headline",
+  "currentSalary", "preferredSalary", "searchEmbedding", "embedding",
+  "cv", "skills", "experience", "education", "languages", "documents",
+  "careerProfile", "diversityInclusion",
+];
+
+function jobSeekerErasureUnset(): Record<string, 1> {
+  const schemaPaths = Object.keys((JobSeeker as { schema?: { paths?: Record<string, unknown> } }).schema?.paths ?? {})
+    .map((p) => p.split(".")[0]);
+  const fields = new Set([...JOB_SEEKER_ERASURE_REQUIRED, ...schemaPaths]);
+  const unset: Record<string, 1> = {};
+  for (const f of fields) if (!JOB_SEEKER_ERASURE_KEEP.has(f)) unset[f] = 1;
+  return unset;
+}
+
+const erasureBodySchema = z.object({ password: z.string().min(1).max(200).optional() }).passthrough();
+
+/**
  * DELETE /api/gdpr/export
  * Right to erasure — anonymizes the user's account and deletes personal data.
+ *
+ * Body: `{ password }` — required for accounts that have a password (a stolen
+ * session alone must not be able to destroy the account). OAuth-only
+ * accounts have no password to confirm.
  */
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
+  // Throttle password guesses through this endpoint.
+  const { allowed } = await checkRateLimit(`gdpr-erase:${ctx.userId}`, { limit: 5, windowSec: 3600, prefix: "gdpr" });
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many erasure attempts. Try again later." }, { status: 429 });
+  }
+
   await connectDB();
+
+  let rawBody: unknown = {};
+  try {
+    rawBody = await req.json();
+  } catch {
+    // no body
+  }
+  const parsedBody = erasureBodySchema.safeParse(rawBody ?? {});
+  const password = parsedBody.success ? parsedBody.data.password : undefined;
+
+  const account = await User.findById(ctx.userId).select("+passwordHash role isActive");
+  if (!account) return NextResponse.json({ error: "Account not found" }, { status: 404 });
+
+  // Fresh password confirmation for credentials users.
+  if (account.passwordHash) {
+    if (!password) {
+      return NextResponse.json(
+        { error: "password_confirmation_required", message: "Confirm your password to erase your account." },
+        { status: 400 },
+      );
+    }
+    if (!(await account.comparePassword(password))) {
+      return NextResponse.json({ error: "invalid_password", message: "Password is incorrect." }, { status: 403 });
+    }
+  }
+
+  const role = account.role as string;
+
+  // Never erase the platform's last active admin — nobody could administer it.
+  if (role === "admin") {
+    const otherAdmins = await User.countDocuments({ role: "admin", isActive: true, _id: { $ne: account._id } });
+    if (otherAdmins === 0) {
+      return NextResponse.json(
+        { error: "last_admin", message: "You are the last active admin. Appoint another admin before erasing this account." },
+        { status: 409 },
+      );
+    }
+  }
+
+  // Role-specific shutdown BEFORE the identity disappears.
+  const archivedAt = new Date();
+  if (role === "employer") {
+    // Pauses the company's live jobs and marks the employer inactive.
+    await deactivateEmployerAccount(ctx.userId);
+    await Employer.updateOne({ userId: ctx.userId }, { $set: { roleArchivedAt: archivedAt } });
+  } else if (role === "agent") {
+    await Agent.updateOne({ userId: ctx.userId }, { $set: { roleArchivedAt: archivedAt } });
+  } else if (role === "super_agent") {
+    await SuperAgent.updateOne({ userId: ctx.userId }, { $set: { roleArchivedAt: archivedAt } });
+  }
 
   const anonymizedEmail = `deleted_${ctx.userId}@anonymized.mployedin.com`;
 
   const [, seekerBefore] = await Promise.all([
-    // Anonymize user account
+    // Anonymize user account (same "Deleted User" identity redactUserMessages uses).
     User.findByIdAndUpdate(ctx.userId, {
-      name: "Deleted User",
-      email: anonymizedEmail,
-      phone: null,
-      isActive: false,
-      deletedAt: new Date(),
+      $set: {
+        name: "Deleted User",
+        email: anonymizedEmail,
+        isActive: false,
+        deletedAt: new Date(),
+      },
+      $unset: { phone: 1, avatar: 1 },
     }),
-    // Delete job seeker profile data. Field names MUST match the schema exactly
-    // or $unset silently no-ops: `cv` (holds originalUrl + parsed resume text)
-    // and `experience` were previously misnamed `cvUrl`/`workExperience`, so
-    // that PII survived "erasure". Also clear financial PII (bank/IBAN).
-    // findOneAndUpdate returns the PRE-update doc, so `seekerBefore` still
-    // carries cv.originalUrl for the storage hard-delete below.
+    // Allow-list erasure of the job seeker profile (GD-1). findOneAndUpdate
+    // returns the PRE-update doc, so `seekerBefore` still carries cv.originalUrl
+    // and documents for the storage hard-delete below.
     JobSeeker.findOneAndUpdate(
       { userId: ctx.userId },
       {
-        $unset: {
-          cv: 1,
-          skills: 1,
-          experience: 1,
-          education: 1,
-          languages: 1,
-          nationality: 1,
-          passportNumber: 1,
-          bankAccountNumber: 1,
-          iban: 1,
-          documents: 1,
-        },
+        $unset: jobSeekerErasureUnset(),
+        $set: { profileVisibility: "hidden", roleArchivedAt: archivedAt },
       }
     ).select("cv documents").lean<{ _id?: unknown; cv?: { originalUrl?: string }; documents?: { url?: string }[] } | null>(),
     // Delete notifications
     Notification.deleteMany({ userId: ctx.userId }),
+    // Keep cookie-consent proof (needed to demonstrate past consent) but cut
+    // the link to the erased account and drop the device details.
+    CookieConsentRecord.updateMany({ userId: ctx.userId }, { $unset: { userId: 1, userAgent: 1, ipHash: 1 } }),
   ]);
 
   // Messages the user wrote, and their name on other people's conversation lists.

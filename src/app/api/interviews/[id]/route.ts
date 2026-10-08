@@ -14,8 +14,28 @@ import { verifyInterviewAccess } from "@/lib/interviews/access";
 import { generateMeetingLink } from "@/lib/interviews/meetingLink";
 import { isMaterialChange } from "@/lib/interviews/materialChange";
 import { sendInterviewInvite } from "@/lib/interviews/sendInvite";
+import { cancelInterview } from "@/lib/interviews/cancelInterview";
 import { notify } from "@/lib/notifications/trigger";
+import { resolveRecipientTimeZone } from "@/lib/notifications/recipientZone";
+import { formatZonedDateTime } from "@/lib/datetime/zone";
+import { getUserLocale, localePath } from "@/lib/i18n/localePath";
+import { Employer } from "@/models/Employer";
+import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
+import { closeOpenItemsForExit } from "@/lib/hiring/closeOpenInterviews";
+import { z } from "zod";
 import type { UserRole } from "@/models/User";
+
+/** An interview outcome only moves an application that is still at or before interviewing. */
+const OUTCOME_SOURCE_STATUSES = ["shortlisted", "interview_scheduled"];
+
+// A failed outcome rejects the application, and a rejection needs a reason —
+// the same rule applicationUpdateSchema enforces on a direct reject.
+const interviewPatchSchema = interviewUpdateSchema.extend({
+  rejectionReason: z.string().max(500).trim().optional(),
+});
+
+/** Application fields the interview detail may carry — never recruiter notes or match internals. */
+const APPLICATION_PUBLIC_FIELDS = "jobId jobSeekerId employerId status appliedAt createdAt updatedAt";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
 
@@ -23,7 +43,11 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
   const interview = await Interview.findById(params?.id)
-    .populate({ path: "applicationId", populate: { path: "jobId", select: "title employerId" } })
+    .populate({
+      path: "applicationId",
+      select: APPLICATION_PUBLIC_FIELDS,
+      populate: { path: "jobId", select: "title employerId" },
+    })
     .lean();
   if (!interview) return NextResponse.json({ error: "Interview not found" }, { status: 404 });
 
@@ -42,24 +66,55 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const accessError = await verifyInterviewAccess(interview, ctx);
   if (accessError) return accessError;
 
-  const body = await validateBody(req, interviewUpdateSchema);
+  const { rejectionReason, ...body } = await validateBody(req, interviewPatchSchema);
+
+  // Resolve the outcome's effect on the application before anything is saved,
+  // so a missing rejection reason fails the request instead of half-applying.
+  const outcomeApplication =
+    body.status === "completed" && (body.outcome === "passed" || body.outcome === "failed")
+      ? await Application.findById(interview.applicationId)
+      : null;
+  const outcomeMovesApplication = Boolean(
+    outcomeApplication && OUTCOME_SOURCE_STATUSES.includes(outcomeApplication.status),
+  );
+  if (outcomeMovesApplication && body.outcome === "failed" && !rejectionReason) {
+    return NextResponse.json(
+      {
+        error: "Validation failed",
+        details: [{ path: "rejectionReason", message: "Rejection reason is required when rejecting an application" }],
+      },
+      { status: 400 },
+    );
+  }
+
   const update: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) if (v !== undefined) update[k] = v;
 
-  if (body.status === "rescheduled") {
+  // Cancelling goes through cancelInterview (SEQUENCE bump + ICS CANCEL), the
+  // same path DELETE takes; every other field in the request still applies.
+  const cancelling = body.status === "cancelled";
+  if (cancelling) delete update.status;
+
+  // The time moved — whatever else the request says. Keying this on
+  // `!body.status` let a reschedule sent with a status keep the candidate
+  // "confirmed" for a slot they never saw.
+  const timeChanged =
+    Boolean(body.scheduledAt) &&
+    new Date(body.scheduledAt as string).getTime() !== new Date(interview.scheduledAt).getTime();
+  // An editor resending the same time is not a change (and must not reissue the invite).
+  if (body.scheduledAt && !timeChanged) delete update.scheduledAt;
+
+  if (body.status === "rescheduled" || timeChanged) {
     update.rescheduleCount = (interview.rescheduleCount ?? 0) + 1;
   }
 
-  // Also increment rescheduleCount when scheduledAt is changed (in-place reschedule)
-  if (body.scheduledAt && !body.status) {
-    update.rescheduleCount = (interview.rescheduleCount ?? 0) + 1;
+  if (timeChanged) {
     // Reset candidate response since time changed — they need to re-confirm
     update.candidateResponse = "pending";
     update.candidateResponseAt = undefined;
-    // Keep status as "scheduled" even if it was previously "confirmed"
-    if (interview.status === "confirmed") {
-      update.status = "scheduled";
-    }
+    // A confirmation was for the old time.
+    if (!body.status && interview.status === "confirmed") update.status = "scheduled";
+    if (body.status === "confirmed") update.status = "scheduled";
   }
 
   // Auto-provision a video room for video/hybrid interviews that have none
@@ -72,8 +127,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   // A calendar client ignores an update whose SEQUENCE has not moved, so any
   // change the reader can see has to raise it — and then the invitation is
-  // reissued so their calendar actually follows.
-  const material = isMaterialChange(update);
+  // reissued so their calendar actually follows. A cancellation bumps it in
+  // cancelInterview instead.
+  const material = !cancelling && isMaterialChange(update);
   if (material) update.icsSequence = (interview.icsSequence ?? 0) + 1;
 
   // Validate before mutating the document. Previously a future interview was
@@ -92,103 +148,92 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   Object.assign(interview, update);
   await interview.save();
 
+  const seekerDoc = (await JobSeeker.findById(interview.jobSeekerId).select("userId").lean()) as { userId?: unknown } | null;
+  const seekerUserId = seekerDoc?.userId ? String(seekerDoc.userId) : null;
+  const seekerLocale = await getUserLocale(seekerUserId);
+
   if (material) {
     // Fire and forget: the interview is already saved, and a mail failure
-    // must not turn a successful edit into an error for the employer.
-    void sendInterviewInvite(String(interview._id), ctx.locale).catch(() => {});
+    // must not turn a successful edit into an error for the employer. This
+    // invitation is the email for the change — the notices below are in-app.
+    void sendInterviewInvite(String(interview._id), seekerLocale).catch(() => {});
   }
 
-  // Notify candidate when interview is rescheduled (in-place)
-  if (body.scheduledAt && !body.status) {
-    const jobSeeker = await JobSeeker.findById(interview.jobSeekerId).select("userId").lean();
+  if (cancelling && (await cancelInterview(interview._id))) {
+    interview.status = "cancelled";
+  }
+
+  // Tell the candidate the time moved, in their own zone and language.
+  if (timeChanged && !cancelling && seekerUserId) {
     const job = await Job.findById(interview.jobId).select("title").lean();
     const jobTitle = (job as { title?: string } | null)?.title ?? "a position";
-    if (jobSeeker) {
-      await notify({
-        userId: String((jobSeeker as { userId: unknown }).userId),
-        type: "interview_scheduled",
-        title: "Interview Rescheduled",
-        message: `Your interview for "${jobTitle}" has been rescheduled to ${new Date(body.scheduledAt).toLocaleString()}. Please confirm your availability.`,
-        link: `/en/job-seeker/interviews`,
-        sendEmail: true,
-        metadata: { jobTitle, interviewId: params?.id, scheduledAt: body.scheduledAt },
-      }).catch(() => { /* non-blocking */ });
-    }
+    const timeZone = await resolveRecipientTimeZone(seekerUserId);
+    const when = formatZonedDateTime(body.scheduledAt as string, { timeZone, locale: seekerLocale });
+    await notify({
+      userId: seekerUserId,
+      type: "interview_scheduled",
+      title: "Interview Rescheduled",
+      message: `Your interview for "${jobTitle}" has been rescheduled to ${when}. Please confirm your availability.`,
+      link: localePath(seekerLocale, "/job-seeker/interviews"),
+      // The reissued calendar invitation above is the email.
+      sendEmail: false,
+      metadata: { jobTitle, interviewId: params?.id, scheduledAt: body.scheduledAt },
+    }).catch(() => { /* non-blocking */ });
   }
 
-  // Notify candidate when interview is cancelled via PATCH
-  if (body.status === "cancelled") {
-    const jobSeeker = await JobSeeker.findById(interview.jobSeekerId).select("userId").lean();
-    const job = await Job.findById(interview.jobId).select("title").lean();
-    const jobTitle = (job as { title?: string } | null)?.title ?? "a position";
-    if (jobSeeker) {
-      await notify({
-        userId: String((jobSeeker as { userId: unknown }).userId),
-        type: "interview_update",
-        title: "Interview Cancelled",
-        message: `Your interview for "${jobTitle}" has been cancelled by the employer.`,
-        link: `/en/job-seeker/interviews`,
-        sendEmail: true,
-        metadata: { jobTitle, interviewId: params?.id },
-      }).catch(() => { /* non-blocking */ });
+  // Outcome-based workflow transitions. Only an application still at or before
+  // interviewing moves: an old round's result must not demote a candidate who
+  // is already selected, on offer or hired.
+  if (outcomeMovesApplication && outcomeApplication) {
+    const application = outcomeApplication;
+    const job = await Job.findById(interview.jobId).select("title employerId workflow").lean() as
+      | (WorkflowSettingsCarrier & { title?: string; employerId?: unknown })
+      | null;
+    const jobTitle = job?.title ?? "a position";
+    const employer = job?.employerId
+      ? ((await Employer.findById(job.employerId).select("workflow").lean()) as WorkflowSettingsCarrier | null)
+      : null;
+    const { notifyOnStageChange } = resolveHiringRulesForJob(job, employer);
+    const nextStatus = body.outcome === "failed" ? "rejected" : "selected";
+
+    application.status = nextStatus;
+    application.statusHistory = application.statusHistory || [];
+    application.statusHistory.push({
+      status: nextStatus,
+      changedAt: new Date(),
+      changedBy: ctx.userId as unknown as import("mongoose").Types.ObjectId,
+      note: `Interview round ${interview.interviewRound ?? 1} ${body.outcome}`,
+    });
+    if (nextStatus === "rejected") application.rejectionReason = rejectionReason;
+    await application.save();
+
+    if (nextStatus === "rejected") {
+      await closeOpenItemsForExit(application._id, "rejected", { actorRole: ctx.role });
     }
-  }
 
-  // Handle outcome-based workflow transitions
-  if (body.status === "completed" && body.outcome) {
-    const application = await Application.findById(interview.applicationId);
-    const jobSeeker = application
-      ? await JobSeeker.findById(interview.jobSeekerId).select("userId fullName").lean()
-      : null;
-    const job = application
-      ? await Job.findById(interview.jobId).select("title").lean()
-      : null;
-    const jobTitle = (job as { title?: string } | null)?.title ?? "a position";
-
-    if (body.outcome === "failed" && application) {
-      // Rejection: update application status and notify
-      application.status = "rejected";
-      application.statusHistory = application.statusHistory || [];
-      application.statusHistory.push({
-        status: "rejected",
-        changedAt: new Date(),
-        changedBy: ctx.userId,
-      });
-      await application.save();
-
-      if (jobSeeker) {
-        await notify({
-          userId: String((jobSeeker as { userId: unknown }).userId),
-          type: "application_status_update",
-          title: "Interview Result",
-          message: `Thank you for interviewing for "${jobTitle}". Unfortunately, we have decided to move forward with other candidates at this time.`,
-          link: `/en/job-seeker/applications`,
-          sendEmail: true,
-          metadata: { jobTitle, applicationId: String(application._id), outcome: "failed" },
-        }).catch(() => { /* non-blocking */ });
-      }
-    } else if (body.outcome === "passed" && application) {
-      // Passed: move application to selected stage
-      application.status = "selected";
-      application.statusHistory = application.statusHistory || [];
-      application.statusHistory.push({
-        status: "selected",
-        changedAt: new Date(),
-        changedBy: ctx.userId,
-      });
-      await application.save();
-
-      if (jobSeeker) {
-        await notify({
-          userId: String((jobSeeker as { userId: unknown }).userId),
-          type: "application_status_update",
-          title: "Interview Cleared!",
-          message: `Congratulations! You have cleared the round ${interview.interviewRound ?? 1} interview for "${jobTitle}". The employer will reach out with next steps soon.`,
-          link: `/en/job-seeker/applications`,
-          sendEmail: true,
-          metadata: { jobTitle, applicationId: String(application._id), outcome: "passed" },
-        }).catch(() => { /* non-blocking */ });
-      }
+    if (notifyOnStageChange && seekerUserId) {
+      const link = localePath(seekerLocale, "/job-seeker/applications");
+      await notify(
+        body.outcome === "failed"
+          ? {
+              userId: seekerUserId,
+              type: "application_status_update",
+              title: "Interview Result",
+              message: `Thank you for interviewing for "${jobTitle}". Unfortunately, we have decided to move forward with other candidates at this time.`,
+              link,
+              sendEmail: true,
+              metadata: { jobTitle, applicationId: String(application._id), outcome: "failed" },
+            }
+          : {
+              userId: seekerUserId,
+              type: "application_status_update",
+              title: "Interview Cleared!",
+              message: `Congratulations! You have cleared the round ${interview.interviewRound ?? 1} interview for "${jobTitle}". The employer will reach out with next steps soon.`,
+              link,
+              sendEmail: true,
+              metadata: { jobTitle, applicationId: String(application._id), outcome: "passed" },
+            },
+      ).catch(() => { /* non-blocking */ });
     }
   }
 
@@ -213,23 +258,11 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   const accessError = await verifyInterviewAccess(interview, ctx);
   if (accessError) return accessError;
 
-  interview.status = "cancelled";
-  await interview.save();
-
-  // Notify candidate about cancellation
-  const cancelledJobSeeker = await JobSeeker.findById(interview.jobSeekerId).select("userId").lean();
-  const cancelledJob = await Job.findById(interview.jobId).select("title").lean();
-  const cancelledJobTitle = (cancelledJob as { title?: string } | null)?.title ?? "a position";
-  if (cancelledJobSeeker) {
-    await notify({
-      userId: String((cancelledJobSeeker as { userId: unknown }).userId),
-      type: "interview_update",
-      title: "Interview Cancelled",
-      message: `Your interview for "${cancelledJobTitle}" has been cancelled by the employer.`,
-      link: `/en/job-seeker/interviews`,
-      sendEmail: true,
-      metadata: { jobTitle: cancelledJobTitle, interviewId: params?.id },
-    }).catch(() => { /* non-blocking */ });
+  // Same path as a PATCH cancel: SEQUENCE bump + ICS CANCEL, so the event
+  // leaves the candidate's calendar, plus an in-app notice.
+  const cancelled = await cancelInterview(interview._id);
+  if (!cancelled && interview.status !== "cancelled") {
+    return NextResponse.json({ error: "Only an open interview can be cancelled" }, { status: 409 });
   }
 
   await logActivity({

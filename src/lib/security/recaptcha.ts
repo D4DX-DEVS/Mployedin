@@ -3,8 +3,8 @@ import logger from "@/lib/logger";
 /**
  * Server-side reCAPTCHA v3 verification.
  *
- * Mirrors the policy already used by /api/contact: when RECAPTCHA_SECRET_KEY is
- * configured the check is mandatory and fails closed; when it is not configured
+ * Shared by /api/contact and /api/auth/apply-otp/start: when reCAPTCHA is
+ * configured (see isRecaptchaConfigured) the check is mandatory and fails closed; when it is not configured
  * the check is skipped, so environments without keys keep working unchanged.
  *
  * v3 is invisible — the visitor never solves anything. Google returns a score;
@@ -32,8 +32,14 @@ export interface VerifyRecaptchaOptions {
   minScore?: number;
 }
 
+/**
+ * Enforced only when BOTH keys are set. The browser can mint a token only when
+ * NEXT_PUBLIC_RECAPTCHA_SITE_KEY is present (src/lib/browser/recaptcha.ts), so
+ * requiring one on the secret alone locked every visitor out (JS-26). Callers
+ * keep their IP rate limit as the fallback protection.
+ */
 export function isRecaptchaConfigured(): boolean {
-  return Boolean(process.env.RECAPTCHA_SECRET_KEY);
+  return Boolean(process.env.RECAPTCHA_SECRET_KEY && process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
 }
 
 /** Hostnames a token may have been minted on, lower-cased. */
@@ -63,7 +69,7 @@ export async function verifyRecaptcha(
   opts: VerifyRecaptchaOptions,
 ): Promise<RecaptchaResult> {
   const secret = process.env.RECAPTCHA_SECRET_KEY;
-  if (!secret) return { ok: true, skipped: true };
+  if (!secret || !isRecaptchaConfigured()) return { ok: true, skipped: true };
 
   if (!token) return { ok: false, status: 403, error: "CAPTCHA_REQUIRED" };
 

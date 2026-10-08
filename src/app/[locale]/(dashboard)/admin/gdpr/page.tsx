@@ -18,8 +18,9 @@ import {
 import {
   Shield, RotateCcw, Download, Trash2, Eye, FileText,
   UserCheck, Clock, AlertTriangle, CheckCircle2, XCircle,
-  ShieldCheck, Database, Users, CalendarDays,
+  ShieldCheck, Database, Users, CalendarDays, Cookie,
 } from "lucide-react";
+import { CookieConsentPanel } from "@/components/features/admin/gdpr/CookieConsentPanel";
 import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
@@ -89,7 +90,7 @@ const DEFAULT_RETENTION: RetentionPolicy[] = [
 
 export default function AdminGdprPage() {
   const t = useTranslations("adminGdpr");
-  const [activeTab, setActiveTab] = useState<"requests" | "consent" | "retention">("requests");
+  const [activeTab, setActiveTab] = useState<"requests" | "consent" | "cookies" | "retention">("requests");
   const [requests, setRequests] = useState<GdprRequest[]>([]);
   const [consentLogs, setConsentLogs] = useState<ConsentLog[]>([]);
   const [retentionPolicies, setRetentionPolicies] = useState<RetentionPolicy[]>(DEFAULT_RETENTION);
@@ -188,6 +189,7 @@ export default function AdminGdprPage() {
   const TABS = [
     { key: "requests" as const, label: t("dataRequestsTab"), icon: <FileText className="h-4 w-4" /> },
     { key: "consent" as const, label: t("consentLogsTab"), icon: <UserCheck className="h-4 w-4" /> },
+    { key: "cookies" as const, label: t("cookieConsentTab"), icon: <Cookie className="h-4 w-4" /> },
     { key: "retention" as const, label: t("retentionPoliciesTab"), icon: <Database className="h-4 w-4" /> },
   ];
 
@@ -249,7 +251,7 @@ export default function AdminGdprPage() {
       </div>
 
       {/* Filters */}
-      {activeTab !== "retention" && (
+      {activeTab !== "retention" && activeTab !== "cookies" && (
         <TableToolbar
           title={t("gdprDataTitle")}
           description={activeTab === "requests" ? t("filterDataPrivacyDesc") : t("filterConsentLogsDesc")}
@@ -420,6 +422,8 @@ export default function AdminGdprPage() {
             )}
           </>
         )}
+
+        {activeTab === "cookies" && <CookieConsentPanel />}
 
         {activeTab === "retention" && (
           <div className="space-y-4">

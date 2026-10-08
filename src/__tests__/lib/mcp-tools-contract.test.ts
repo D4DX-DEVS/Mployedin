@@ -29,6 +29,12 @@ describe("MCP tool contract", () => {
       "get_my_profile",
       "list_my_job_postings",
       "list_applicants",
+      "insights_overview",
+      "insights_timeseries",
+      "insights_list",
+      "insights_get",
+      "insights_query",
+      "insights_search",
     ]);
 
     for (const config of tools.values()) {

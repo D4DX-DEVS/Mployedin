@@ -9,6 +9,8 @@ import { getPresignedUrl, urlToKey } from "@/lib/storage/spaces";
 import {
   classifyDocumentTier,
   canAccessApplicationDocument,
+  isStorageObjectUrl,
+  seekerOwnsStorageObject,
 } from "@/lib/security/documentAccess";
 
 /**
@@ -42,7 +44,7 @@ async function getHandler(
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
 
-  const seeker = await JobSeeker.findById(app.jobSeekerId).select("userId cv").lean();
+  const seeker = await JobSeeker.findById(app.jobSeekerId).select("userId cv documents.url").lean();
   if (!seeker) {
     return NextResponse.json({ error: "Application not found" }, { status: 404 });
   }
@@ -80,6 +82,19 @@ async function getHandler(
   });
   if (!allowed) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // SECURITY (SEC-B1): only presign objects the application's seeker owns. A
+  // foreign key (e.g. another candidate's CV attached via a crafted URL) is
+  // never signed. A non-storage link (portfolio) is not signed either — the
+  // caller is sent to the external URL as-is.
+  if (!isStorageObjectUrl(url)) {
+    const external = NextResponse.redirect(url, 302);
+    external.headers.set("Cache-Control", "private, no-store");
+    return external;
+  }
+  if (!(await seekerOwnsStorageObject(seeker, url))) {
+    return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
   // Track recruiter-side resume downloads for the job seeker's activity stats.

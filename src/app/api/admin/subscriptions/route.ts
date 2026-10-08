@@ -3,7 +3,7 @@
  *
  * Query params:
  *   page (default 1), limit (default 20, max 100),
- *   status (active|expired|cancelled|suspended),
+ *   status (active|past_due|expired|cancelled|suspended),
  *   role (employer|job_seeker),
  *   planId, search (name/email), sortBy, sortOrder,
  *   autoRenew (true|false), dateFrom, dateTo,
@@ -59,7 +59,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     filter.userId = { $in: employerUserIds };
   }
 
-  if (status && ["active", "expired", "cancelled", "suspended"].includes(status)) {
+  if (status && ["active", "past_due", "expired", "cancelled", "suspended"].includes(status)) {
     filter.status = status;
   }
   // The admin dashboard's "ending within 7 days" row links here. Same filter

@@ -37,6 +37,9 @@ export const MEMBER_ROUTE_FUNCTIONS: ReadonlyArray<readonly [string, PermissionF
   ["/api/employers/agents", "canManageCompanySettings"],
   ["/api/employers/saved-views", "canReviewApplicants"],
   ["/api/employers/stats", "canViewAnalytics"],
+  // Sits under the always-allowed /api/employers/me, and outranks it by being
+  // longer: the SMTP relay carries every email the company sends.
+  ["/api/employers/me/smtp", "canManageCompanySettings"],
   ["/api/employers", "canManageCompanySettings"],
   ["/api/employer/background-checks", "canRunScreening"],
   ["/api/employer/applications", "canReviewApplicants"],
@@ -95,14 +98,18 @@ export const MEMBER_ALWAYS_ALLOWED: readonly string[] = [
   "/api/employers/setup-status",
 ] as const;
 
-function matchLongestPrefix(pathname: string): PermissionFlag | null {
+function matchesPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(prefix + "/");
+}
+
+function matchLongestPrefix(pathname: string): { length: number; flag: PermissionFlag } | null {
   let best: { length: number; flag: PermissionFlag } | null = null;
   for (const [prefix, flag] of MEMBER_ROUTE_FUNCTIONS) {
-    if (pathname === prefix || pathname.startsWith(prefix + "/")) {
+    if (matchesPrefix(pathname, prefix)) {
       if (!best || prefix.length > best.length) best = { length: prefix.length, flag };
     }
   }
-  return best?.flag ?? null;
+  return best;
 }
 
 /**
@@ -115,10 +122,14 @@ export function memberCanAccessPath(
   pathname: string,
   permissions: ICompanyUserPermissions
 ): boolean {
+  // The most specific rule wins across both lists. An always-allowed prefix
+  // used to short-circuit everything beneath it, so /api/employers/me opened
+  // /api/employers/me/smtp to every colleague regardless of their functions.
+  let alwaysLength = -1;
   for (const prefix of MEMBER_ALWAYS_ALLOWED) {
-    if (pathname === prefix || pathname.startsWith(prefix + "/")) return true;
+    if (matchesPrefix(pathname, prefix)) alwaysLength = Math.max(alwaysLength, prefix.length);
   }
-  const flag = matchLongestPrefix(pathname);
-  if (!flag) return false;
-  return permissions[flag] === true;
+  const mapped = matchLongestPrefix(pathname);
+  if (mapped && mapped.length > alwaysLength) return permissions[mapped.flag] === true;
+  return alwaysLength >= 0;
 }

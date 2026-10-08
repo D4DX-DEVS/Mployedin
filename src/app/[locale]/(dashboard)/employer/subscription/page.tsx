@@ -33,6 +33,8 @@ import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { CurrencySelector } from "@/components/shared/CurrencySelector";
 import { PricingGrid } from "@/components/subscription/PricingGrid";
+import { CheckoutReturnHandler } from "@/components/payments/CheckoutReturnHandler";
+import { SubscriptionPaymentNotice } from "@/components/payments/SubscriptionPaymentNotice";
 import { convertAndFormat } from "@/lib/currency";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -90,6 +92,7 @@ export default function EmployerSubscriptionPage() {
 
   return (
     <div className="page-container">
+      <CheckoutReturnHandler />
       {/* Phones: title + the currency selector on one row; the description
           and the live-rate dot return from sm (the 180px selector is the
           widest thing in the row). */}
@@ -144,7 +147,7 @@ function ActiveView({
   const usageItems = [
     { label: t("activeJobs"), icon: <Briefcase className="h-5 w-5" />, used: usage?.activeJobs ?? 0, max: (limits?.maxActiveJobs as number) ?? 0 },
     { label: t("applicationsViewed"), icon: <Eye className="h-5 w-5" />, used: usage?.applicationsViewed ?? 0, max: (limits?.maxApplicationsViewPerMonth as number) ?? 0 },
-    { label: t("teamMembers"), icon: <Users className="h-5 w-5" />, used: 0, max: (limits?.maxTeamMembers as number) ?? 0 },
+    { label: t("teamMembers"), icon: <Users className="h-5 w-5" />, used: usage?.teamMembers ?? 0, max: (limits?.maxTeamMembers as number) ?? 0 },
   ];
 
   const hasWarning = usageItems.some((u) => u.max > 0 && u.max !== -1 && pctUsed(u.used, u.max) >= 80);
@@ -171,6 +174,7 @@ function ActiveView({
 
   return (
     <div className="space-y-3 sm:space-y-6">
+      <SubscriptionPaymentNotice subscription={subscription} />
       {/* ── 1. Current Plan ── */}
       <section className="rounded-2xl border border-border/60 bg-card panel-body">
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
@@ -182,7 +186,7 @@ function ActiveView({
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="heading-subsection font-bold">{snap?.name ?? "Unknown"}</h2>
                 <Badge className={subscription.status === "active" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30" : "bg-amber-500/10 text-amber-600 border border-amber-500/30"}>
-                  {subscription.status === "active" ? t("active") : subscription.status}
+                  {subscription.status === "active" ? t("active") : subscription.status === "past_due" ? t("statusPastDue") : subscription.status}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">

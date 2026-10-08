@@ -79,8 +79,14 @@ export function useInviteTeamMember() {
         body: JSON.stringify(inviteData),
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Failed to send invite");
+        const data = await res.json().catch(() => ({}));
+        // withSubscription answers { error: "LIMIT_EXCEEDED" | "SUBSCRIPTION_REQUIRED", limit };
+        // the route itself answers { error: <message>, code }.
+        throw Object.assign(new Error(data.message ?? data.error ?? "Failed to send invite"), {
+          status: res.status,
+          code: (data.code ?? data.error) as string | undefined,
+          limit: data.limit as number | undefined,
+        });
       }
       return res.json();
     },

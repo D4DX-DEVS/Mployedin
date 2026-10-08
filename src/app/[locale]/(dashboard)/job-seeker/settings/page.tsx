@@ -24,7 +24,7 @@ import {
   ShieldCheck,
   Settings2,
   Save,
-  ArrowLeft, ChevronRight } from "lucide-react";
+  ArrowLeft, ChevronRight, UserCog, Languages } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailabilityCalendar, type DayAvailability } from "@/components/features/job-seeker/settings/AvailabilityCalendar";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
+import { ChangePasswordCard } from "@/components/features/settings/ChangePasswordCard";
+import { DeleteAccountCard } from "@/components/features/settings/DeleteAccountCard";
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
 import { getCsrfToken } from "@/lib/security/csrf-client";
 
@@ -459,6 +462,7 @@ export default function JobSeekerSettingsPage() {
           <ArrowLeft className="h-4 w-4" />
           {t("back")}
         </Button>
+        <h1 className="sr-only">{t("pageHeading")}</h1>
 
         {/* ── Profile Header Card ────────────────────────────────────────── */}
         <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
@@ -611,6 +615,11 @@ export default function JobSeekerSettingsPage() {
               <Bell className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">{t("tabs.notifications")}</span>
               <span className="sm:hidden">{t("tabs.alerts")}</span>
+            </TabsTrigger>
+            <TabsTrigger value="account" className="flex-1 gap-2">
+              <UserCog className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">{t("tabs.accountSecurity")}</span>
+              <span className="sm:hidden">{t("tabs.account")}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -813,8 +822,21 @@ export default function JobSeekerSettingsPage() {
               </SettingCard>
             )}
 
-            <ChangeEmailCard />
             <CalendarFeedCard />
+          </TabsContent>
+
+          {/* ════════════════════ ACCOUNT & SECURITY TAB (JS-29) ════════════════════ */}
+          <TabsContent value="account" className="mt-5 space-y-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-4">
+            <SettingCard
+              icon={<Languages className="h-4 w-4" />}
+              title={t("account.languageTitle")}
+              description={t("account.languageDescription")}
+            >
+              <div className="py-3"><LanguageSwitcher /></div>
+            </SettingCard>
+            <ChangeEmailCard />
+            <ChangePasswordCard />
+            <DeleteAccountCard />
           </TabsContent>
 
           {/* ════════════════════ RESUME & AI TAB ════════════════════ */}

@@ -3,9 +3,13 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import mongoose from "mongoose";
+import { requestAllows } from "@/lib/consent/server";
 
 // POST /api/jobs/[id]/track-view — public endpoint (no auth required)
-// Increments view count; uses a cookie-based fingerprint for unique tracking.
+// Increments the view count. Unique views are de-duplicated with the `jv`
+// cookie, which is an analytics cookie: it is only read or set when the visitor
+// has opted in to analytics (ePrivacy art 5(3)). Without consent the total view
+// count still increases but no cookie is stored and no unique view is counted.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -24,9 +28,10 @@ export async function POST(
 
   await connectDB();
 
-  const viewedCookie = req.cookies.get("jv")?.value ?? "";
+  const analyticsAllowed = requestAllows(req, "analytics");
+  const viewedCookie = analyticsAllowed ? req.cookies.get("jv")?.value ?? "" : "";
   const viewedJobs = viewedCookie.split(",").filter(Boolean);
-  const isUnique = !viewedJobs.includes(id);
+  const isUnique = analyticsAllowed && !viewedJobs.includes(id);
 
   const inc: Record<string, number> = { views: 1 };
   if (isUnique) inc.uniqueViews = 1;
@@ -35,7 +40,9 @@ export async function POST(
 
   const res = NextResponse.json({ ok: true });
 
-  if (isUnique) {
+  if (!analyticsAllowed && req.cookies.has("jv")) {
+    res.cookies.set("jv", "", { path: "/", maxAge: 0 });
+  } else if (isUnique) {
     const updated = [...viewedJobs, id].slice(-100).join(",");
     res.cookies.set("jv", updated, {
       httpOnly: true,

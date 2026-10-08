@@ -28,7 +28,22 @@ export function StepIndicator({
   const t = useTranslations("common");
   return (
     <nav aria-label={t("a11yFormProgress")}>
-      <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Phones: one compact line + progress bar instead of five stacked
+          cards that filled the first screen (EMP-36). */}
+      <div className="md:hidden">
+        <p className="text-sm font-semibold text-foreground">
+          {t("stepProgress", { current: currentStep, total: steps.length })}
+          <span className="text-muted-foreground"> · {steps.find((s) => s.id === currentStep)?.label}</span>
+        </p>
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${Math.round((currentStep / Math.max(1, steps.length)) * 100)}%` }}
+          />
+        </div>
+      </div>
+      {/* xl:grid-cols-5 keeps all five steps on one row (EMP-34: step 5 wrapped). */}
+      <ol className="hidden gap-2 md:grid md:grid-cols-3 xl:grid-cols-5">
         {steps.map((step, index) => {
           const isCompleted = completedSteps.has(step.id);
           const isCurrent = step.id === currentStep;

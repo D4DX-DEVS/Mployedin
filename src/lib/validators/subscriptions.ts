@@ -110,6 +110,11 @@ export const subscriptionChangeSchema = z.object({
   reason: z.string().max(500).trim().optional(),
 });
 
+// ── POST /api/subscriptions/checkout (self-service, online payment) ──────────
+export const subscriptionCheckoutSchema = z.object({
+  planId: commonSchemas.objectId,
+});
+
 // ── PATCH /api/subscriptions/[id]/cancel ─────────────────────────────────────
 export const subscriptionCancelSchema = z.object({
   reason: z.string().max(500).trim().optional(),

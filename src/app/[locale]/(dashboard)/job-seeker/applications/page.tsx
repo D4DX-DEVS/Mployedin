@@ -537,7 +537,8 @@ function ApplicationCard({
 
         {(isActive || TERMINAL_STATUSES.includes(app.status)) && (
           <div className="mt-0.5 flex items-center justify-end gap-3 sm:mt-1.5">
-            {TERMINAL_STATUSES.includes(app.status) && (
+            {/* A withdrawn application had no employer experience to rate (JS-31). */}
+            {TERMINAL_STATUSES.includes(app.status) && app.status !== "withdrawn" && (
               <Button variant="ghost" size="sm" className="h-6 gap-1 px-0 text-[12px] text-amber-600 hover:text-amber-700" asChild>
                 <Link href={`/${locale}/job-seeker/applications/${app._id}/feedback`}>
                   <Star className="h-3.5 w-3.5" /> {t("rateExperience")}

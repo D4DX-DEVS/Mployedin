@@ -11,7 +11,7 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
 
   await connectDB();
   const seeker = await JobSeeker.findOne({ userId: ctx.userId })
-    .select("fullName phone skills documents cv socialLinks")
+    .select("fullName phone skills documents cv socialLinks profileCompleteness")
     .lean();
 
   if (!seeker) {
@@ -34,6 +34,7 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
         documents,
         cvUrl: seeker.cv?.originalUrl ?? null,
         socialLinks: (seeker.socialLinks ?? []).map((l: { label: string; url: string }) => ({ label: l.label, url: l.url })),
+        profileCompleteness: seeker.profileCompleteness ?? null,
       },
     },
     { headers: { "Cache-Control": "no-store, max-age=0" } }

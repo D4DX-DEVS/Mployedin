@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAtsCheck, type AtsReport } from "@/hooks/useCandidates";
+import { canTransitionApplication } from "@/lib/hiring/applicationTransitions";
+import type { ApplicationStatus } from "@/models/Application";
 
 interface CandidateInfo {
   role?: string;
@@ -38,7 +40,8 @@ interface ResumeViewerModalProps {
   matchBreakdown?: MatchBreakdown;
   strengths?: string[];
   gaps?: string[];
-  onStatusChange?: (status: string) => void;
+  /** Resolve `false` when the move did not happen (refused, or handed to a dialog). */
+  onStatusChange?: (status: string) => void | boolean | Promise<void | boolean>;
   /** JobSeeker _id — enables the ATS compatibility analysis panel. */
   jobSeekerId?: string;
   /** Job _id — the keyword-match panel only renders when a job is in context. */
@@ -225,6 +228,9 @@ export function ResumeViewerModal({
   const hasRightPanel = !!(candidate || aiMatchScore != null || jobSeekerId);
   const hasActions = !!(applicationId && onStatusChange);
   const statusCfg = currentStatus ? STATUS_CONFIG[currentStatus] : null;
+  // Offer only the moves the transition map allows from the current stage.
+  const canMove = (to: string) =>
+    !currentStatus || canTransitionApplication(currentStatus as ApplicationStatus, to as ApplicationStatus, "staff");
   const initials = getInitials(candidateName);
 
   const scoreColor =
@@ -307,8 +313,8 @@ export function ResumeViewerModal({
     if (!onStatusChange) return;
     setActionLoading(newStatus);
     try {
-      await Promise.resolve(onStatusChange(newStatus));
-      setCurrentStatus(newStatus);
+      const moved = await Promise.resolve(onStatusChange(newStatus));
+      if (moved !== false) setCurrentStatus(newStatus);
     } finally {
       setActionLoading(null);
     }
@@ -343,7 +349,7 @@ export function ResumeViewerModal({
           <div className="flex items-center gap-1.5 shrink-0">
             {hasActions && !hasRightPanel && (
               <>
-                {currentStatus !== "shortlisted" && currentStatus !== "selected" && (
+                {currentStatus !== "shortlisted" && currentStatus !== "selected" && canMove("shortlisted") && (
                   <Button size="dense" variant="outline"
                     className="gap-1.5 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                     disabled={actionLoading !== null}
@@ -353,7 +359,7 @@ export function ResumeViewerModal({
                     {actionLoading === "shortlisted" ? "…" : t("shortlist")}
                   </Button>
                 )}
-                {currentStatus !== "interview_scheduled" && (
+                {currentStatus !== "interview_scheduled" && canMove("interview_scheduled") && (
                   <Button size="dense" variant="outline"
                     className="gap-1.5 text-xs border-purple-300 text-purple-700 hover:bg-purple-50"
                     disabled={actionLoading !== null}
@@ -363,7 +369,7 @@ export function ResumeViewerModal({
                     {actionLoading === "interview_scheduled" ? "…" : t("interview")}
                   </Button>
                 )}
-                {currentStatus !== "rejected" && (
+                {currentStatus !== "rejected" && canMove("rejected") && (
                   <Button size="dense" variant="outline"
                     className="gap-1.5 text-xs border-red-300 text-red-700 hover:bg-red-50"
                     disabled={actionLoading !== null}
@@ -649,7 +655,7 @@ export function ResumeViewerModal({
               {/* ── Divider + Action Buttons (sticky bottom) ── */}
               {hasActions && (
                 <div className="mt-auto border-t border-border/60 p-4 space-y-2.5 bg-background">
-                  {currentStatus !== "shortlisted" && currentStatus !== "selected" && (
+                  {currentStatus !== "shortlisted" && currentStatus !== "selected" && canMove("shortlisted") && (
                     <Button
                       className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                       disabled={actionLoading !== null}
@@ -664,7 +670,7 @@ export function ResumeViewerModal({
                       <CheckCircle2 className="w-4 h-4" /> {t("shortlisted")}
                     </div>
                   )}
-                  {currentStatus !== "interview_scheduled" && (
+                  {currentStatus !== "interview_scheduled" && canMove("interview_scheduled") && (
                     <Button
                       variant="outline"
                       className="w-full gap-2 border-purple-300 text-purple-700 hover:bg-purple-50"
@@ -675,7 +681,7 @@ export function ResumeViewerModal({
                       {actionLoading === "interview_scheduled" ? t("saving") : t("scheduleInterview")}
                     </Button>
                   )}
-                  {currentStatus !== "rejected" && (
+                  {currentStatus !== "rejected" && canMove("rejected") && (
                     <Button
                       variant="outline"
                       className="w-full gap-2 border-red-300 text-red-600 hover:bg-red-50"

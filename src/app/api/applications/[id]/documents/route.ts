@@ -5,6 +5,7 @@ import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { isStorageObjectUrl, seekerOwnsStorageObject } from "@/lib/security/documentAccess";
 import { z } from "zod";
 import type { UserRole } from "@/models/User";
 
@@ -93,7 +94,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   }
 
   // Verify ownership
-  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id cv.originalUrl documents.url").lean();
   if (!seeker || String(application.jobSeekerId) !== String(seeker._id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -110,6 +111,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   const parsed = documentSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid document data", details: parsed.error.flatten() }, { status: 400 });
+  }
+
+  // SECURITY (SEC-B1): a stored-file URL is later presigned by the download
+  // route, so it must be one this seeker uploaded. Otherwise a seeker could
+  // attach another candidate's CV key and obtain a signed link to it.
+  if (isStorageObjectUrl(parsed.data.url) && !(await seekerOwnsStorageObject(seeker, parsed.data.url))) {
+    return NextResponse.json({ error: "Document must be one of your own uploaded files" }, { status: 400 });
   }
 
   if ((application.documents?.length ?? 0) >= MAX_DOCUMENTS) {

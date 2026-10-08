@@ -38,7 +38,16 @@ jest.mock("@/lib/communications/email", () => ({
       text: "",
       html: "",
     }),
+    employerAccountSetup: jest.fn().mockReturnValue({
+      subject: "Welcome",
+      html: "",
+    }),
   },
+}));
+
+const mockAutoAssign = jest.fn().mockResolvedValue(undefined);
+jest.mock("@/lib/subscription/autoAssign", () => ({
+  autoAssignDefaultPlan: (...args: unknown[]) => mockAutoAssign(...args),
 }));
 
 jest.mock("bcryptjs", () => ({
@@ -158,6 +167,14 @@ describe("Employer admin API", () => {
     expect(body.employer.companyName).toBe("Acme");
     expect(body.employer.email).toBe("emp@example.com");
     expect(mockCreateUser).toHaveBeenCalledWith(expect.objectContaining({ email: "emp@example.com", role: "employer" }));
-    expect(mockCreateEmployer).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Acme", companyEmail: "emp@example.com" }));
+    expect(mockCreateEmployer).toHaveBeenCalledWith(expect.objectContaining({ companyName: "Acme", companyEmail: "emp@example.com", createdVia: "admin" }));
+    // EC-4: the default plan is assigned like self-registration.
+    expect(mockAutoAssign).toHaveBeenCalledWith("user_001", "employer");
+    // EC-2: the chosen password is never emailed — a setup link is.
+    const { sendEmail, EmailTemplates } = jest.requireMock("@/lib/communications/email");
+    expect(EmailTemplates.employerWelcome).not.toHaveBeenCalled();
+    expect(EmailTemplates.employerAccountSetup).toHaveBeenCalled();
+    expect(JSON.stringify(sendEmail.mock.calls)).not.toContain("Str0ng!Passw0rd");
+    expect(mockCreateUser).toHaveBeenCalledWith(expect.objectContaining({ tempPasswordIssuedAt: expect.any(Date) }));
   });
 });

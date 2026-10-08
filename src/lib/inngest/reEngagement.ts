@@ -84,21 +84,22 @@ export const reEngagementCron = inngest.createFunction(
         .select("_id name email locale lastLogin")
         .lean();
 
-      // Filter out users who received re-engagement recently
+      // JS-2: marketing is OPT-IN (CATEGORY_DEFAULTS.marketing.enabled is
+      // false). Only users whose stored preferences explicitly enable it are
+      // mailed — a missing preference document means "not opted in". Users
+      // mailed within the cooldown or unsubscribed from everything are dropped.
       const userIds = users.map((u) => u._id.toString());
-      const recentlySent = await NotificationPreference.find({
+      const optedIn = await NotificationPreference.find({
         userId: { $in: userIds },
-        $or: [
-          { lastReEngagementSentAt: { $gte: cooldownThreshold } },
-          { unsubscribedAll: true },
-          { "categories.marketing.enabled": false },
-        ],
+        "categories.marketing.enabled": true,
+        unsubscribedAll: { $ne: true },
+        lastReEngagementSentAt: { $not: { $gte: cooldownThreshold } },
       })
         .select("userId")
         .lean();
 
-      const excludeSet = new Set(recentlySent.map((p) => p.userId.toString()));
-      return users.filter((u) => !excludeSet.has(u._id.toString()));
+      const includeSet = new Set(optedIn.map((p) => p.userId.toString()));
+      return users.filter((u) => includeSet.has(u._id.toString()));
     });
 
     if (inactiveUsers.length === 0) {
@@ -275,19 +276,18 @@ export const profileCompletionCron = inngest.createFunction(
         // never compared anything against it, so its documented 14-day gap was
         // never enforced and every seeker under the threshold was reminded
         // again every single morning.
-        const excludePrefs = await NotificationPreference.find({
+        // JS-2: marketing is opt-in — only explicitly enabled users qualify.
+        const optedInPrefs = await NotificationPreference.find({
           userId: { $in: userIds },
-          $or: [
-            { lastProfileReminderSentAt: { $gte: cooldownThreshold } },
-            { unsubscribedAll: true },
-            { "categories.marketing.enabled": false },
-          ],
+          "categories.marketing.enabled": true,
+          unsubscribedAll: { $ne: true },
+          lastProfileReminderSentAt: { $not: { $gte: cooldownThreshold } },
         })
           .select("userId")
           .lean();
 
-        const excludeSet = new Set(
-          excludePrefs.map((p) => p.userId.toString()),
+        const includeSet = new Set(
+          optedInPrefs.map((p) => p.userId.toString()),
         );
 
         const targets: Array<{
@@ -300,7 +300,7 @@ export const profileCompletionCron = inngest.createFunction(
 
         for (const s of seekers) {
           const userId = (s.userId as { toString(): string }).toString();
-          if (excludeSet.has(userId)) continue;
+          if (!includeSet.has(userId)) continue;
 
           const result = profileCompleteness(s as Parameters<typeof profileCompleteness>[0]);
 

@@ -12,6 +12,7 @@ const SCOPE_TRANSLATION_KEY: Record<McpScope, string> = {
   "read:profile": "scopeReadProfile",
   "read:employer_jobs": "scopeReadEmployerJobs",
   "read:applicants": "scopeReadApplicants",
+  "read:insights": "scopeReadInsights",
 };
 
 /**

@@ -46,6 +46,8 @@ export const ENFORCED_PERMISSIONS: Partial<Record<Resource, Action[]>> = {
   targets: ["create", "read", "update", "delete"],
   onboarding: ["read", "update"],
   invoices: ["create", "read", "update"],
+  // AI Data Access: read = query /api/insights; create/delete = issue/revoke keys.
+  insights: ["create", "read", "delete"],
   // ai_cv, ai_match and ai_assistant are deliberately absent: nothing in the
   // app gates on them today, so the editor would be offering dead controls.
 };

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { getLocalizedCountryName } from "@/lib/i18n/locations";
 import { useTranslations } from "next-intl";
 import { Plus, Edit2, Eye, FileText, Trash2, Copy, Users, BriefcaseBusiness, Search, Sparkles, ArrowRight, SlidersHorizontal, PauseCircle, PlayCircle, MoreHorizontal, Send, MapPin, CalendarDays, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -291,7 +292,8 @@ export default function EmployerJobsPage() {
     if (!job.location) return t("locationNotSet");
     if (typeof job.location === "string") return job.location;
     if (job.location.isRemote) return t("workModeRemote");
-    return [job.location.city, job.location.country].filter(Boolean).join(", ") || t("locationNotSet");
+    // Country names are stored in English; localize them for /ar (EMP-38).
+    return [job.location.city, getLocalizedCountryName(job.location.country, locale)].filter(Boolean).join(", ") || t("locationNotSet");
   }
 
   function formatSalary(job: Job): string {

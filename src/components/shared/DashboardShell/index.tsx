@@ -307,7 +307,10 @@ export function DashboardShell({
         {/* Page content */}
           {isJobSeeker ? (
             <>
-              <main className="dashboard-main isolate flex-1 bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+              {/* Bottom padding = mobile nav (4rem) + Copilot FAB (3rem) + its
+                  gaps, so the last card's actions scroll clear of the FAB
+                  (JS-39); desktop only needs the FAB's own footprint. */}
+              <main className="dashboard-main isolate flex-1 bg-background pb-[calc(8.5rem+env(safe-area-inset-bottom))] lg:pb-20">
                 {children}
               </main>
               <JobSeekerBottomNav locale={locale} navGroups={navGroups} counts={navCounts} />

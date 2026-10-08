@@ -89,7 +89,7 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <main className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">{t("title")}</h1>
         <p className="text-muted-foreground">{t("subtitle")}</p>
@@ -208,6 +208,6 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }

@@ -7,6 +7,7 @@ import User from "@/models/User";
 import Employer from "@/models/Employer";
 import { CompanyUser, getDefaultPermissions } from "@/models/CompanyUser";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { leadConvertSchema } from "@/lib/validators/leads";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
@@ -46,7 +47,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const lead = await Lead.findById(id);
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-  if (lead.status === "converted") {
+  // LD-2: an employer link means the lead was already converted, whatever its
+  // status field says (e.g. someone moved it back via the old PATCH enum).
+  if (lead.status === "converted" || lead.convertedToEmployerId) {
     return NextResponse.json({ error: "Lead is already converted" }, { status: 409 });
   }
 
@@ -75,13 +78,21 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Parse optional overrides from request body
-  let body: Record<string, string> = {};
+  // Parse optional overrides from request body (LD-4: validated, not trusted).
+  let rawBody: unknown = {};
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     // Body is optional — defaults from lead
   }
+  const parsedBody = leadConvertSchema.safeParse(rawBody ?? {});
+  if (!parsedBody.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsedBody.error.flatten().fieldErrors },
+      { status: 400 },
+    );
+  }
+  const body = parsedBody.data;
 
   const contactEmail = (body.contactEmail || lead.contactEmail || "").toLowerCase().trim();
   const contactPerson = body.contactPerson || lead.contactPerson || "";

@@ -81,6 +81,8 @@ interface CandidateProfile {
     badges?: string[];
     isAgentReferred?: boolean;
     cv?: { originalUrl?: string };
+    /** Returned instead of `cv.originalUrl` when there is no relationship yet. */
+    hasCv?: boolean;
     headline?: string;
     totalExperienceYears?: number;
     preferredSalary?: { min: number; max: number; currency: string };
@@ -284,6 +286,11 @@ export default function UnifiedCandidatePage() {
                   </Button>
                 </a>
               </div>
+            )}
+            {!cvViewHref && candidate.hasCv && (
+              <p className="flex items-center gap-1.5 pt-2 text-xs text-muted-foreground">
+                <FileText className="h-3 w-3 shrink-0" aria-hidden /> {t("cvAvailableAfterApply")}
+              </p>
             )}
           </div>
 

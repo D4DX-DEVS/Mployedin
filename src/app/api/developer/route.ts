@@ -2,11 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import ApiKey from "@/models/ApiKey";
-import Webhook from "@/models/Webhook";
+import Webhook, { EMPLOYER_ALLOWED_EVENTS, type WebhookEvent } from "@/models/Webhook";
+import type { ApiKeyScope } from "@/models/ApiKey";
 import Employer from "@/models/Employer";
 import { logActivity } from "@/lib/audit/log";
 import mongoose from "mongoose";
 import crypto from "crypto";
+
+/**
+ * SECURITY (SEC-C8): the only scopes an employer may self-grant. Write scopes,
+ * `webhooks` and `full_access` are never issued from self-service; anything
+ * else the client sends is dropped server-side.
+ *
+ * NOTE: `mpd_` API keys are not yet consumed by any endpoint — no request path
+ * authenticates with them. When a validator is added it must enforce
+ * `isActive`, `expiresAt` and these scopes.
+ */
+const SELF_SERVICE_API_KEY_SCOPES: ApiKeyScope[] = ["read:jobs", "read:applications", "read:candidates"];
 
 async function getHandler(req: NextRequest, ctx: { userId: string; role: string }) {
   await connectDB();
@@ -51,6 +63,10 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     const count = await ApiKey.countDocuments({ employerId: employer._id });
     if (count >= 10) return NextResponse.json({ error: "Maximum 10 API keys allowed" }, { status: 400 });
 
+    const requested: unknown[] = Array.isArray(body.scopes) ? body.scopes : [];
+    const filtered = SELF_SERVICE_API_KEY_SCOPES.filter((s) => requested.includes(s));
+    const scopes: ApiKeyScope[] = filtered.length > 0 ? filtered : ["read:jobs"];
+
     const key = `mpd_${crypto.randomBytes(32).toString("hex")}`;
     const keyPrefix = key.substring(0, 12);
     const keyHash = crypto.createHash("sha256").update(key).digest("hex");
@@ -60,14 +76,14 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
       name,
       keyPrefix,
       keyHash,
-      scopes: body.scopes || ["read:jobs"],
+      scopes,
       isActive: true,
       expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
       rateLimit: Math.min(Math.max(body.rateLimit || 60, 10), 1000),
       createdBy: new mongoose.Types.ObjectId(ctx.userId),
     });
 
-    await logActivity({ action: "api_key.created", actorId: ctx.userId, resource: "ApiKey", resourceId: apiKey._id.toString(), meta: { name, scopes: body.scopes } });
+    await logActivity({ action: "api_key.created", actorId: ctx.userId, resource: "ApiKey", resourceId: apiKey._id.toString(), meta: { name, scopes } });
 
     // Return the key only once (on creation)
     return NextResponse.json({ apiKey: { ...apiKey.toObject(), key, keyHash: undefined }, message: "Store this key securely - it won't be shown again" }, { status: 201 });
@@ -76,8 +92,14 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   // Create Webhook
   if (body.type === "webhook") {
     const { name, url: webhookUrl, events } = body;
-    if (!name || !webhookUrl || !events?.length) {
+    if (!name || !webhookUrl || !Array.isArray(events) || !events.length) {
       return NextResponse.json({ error: "name, url, events required" }, { status: 400 });
+    }
+    // SECURITY (SEC-A1): employers may only subscribe to their own recruiting
+    // events — never invoice/commission/payment events.
+    const disallowed = events.filter((e: unknown) => !EMPLOYER_ALLOWED_EVENTS.includes(e as WebhookEvent));
+    if (disallowed.length > 0) {
+      return NextResponse.json({ error: "Unsupported webhook events", events: disallowed }, { status: 400 });
     }
 
     const secret = crypto.randomBytes(32).toString("hex");
@@ -90,6 +112,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
       headers: body.headers || {},
       isActive: true,
       retryCount: body.retryCount || 3,
+      employerId: employer._id,
       createdBy: new mongoose.Types.ObjectId(ctx.userId),
     });
 
@@ -111,16 +134,22 @@ async function deleteHandler(req: NextRequest, ctx: { userId: string; role: stri
   if (!id || !mongoose.isValidObjectId(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   if (type === "webhook") {
-    await Webhook.findOneAndDelete({ _id: id, createdBy: new mongoose.Types.ObjectId(ctx.userId) });
+    const deleted = await Webhook.findOneAndDelete({ _id: id, createdBy: new mongoose.Types.ObjectId(ctx.userId) });
+    if (deleted) {
+      await logActivity({ action: "webhook.deleted", actorId: ctx.userId, resource: "Webhook", resourceId: id });
+    }
   } else {
     const employer = await Employer.findOne({ userId: ctx.userId }).lean();
     if (!employer) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
-    await ApiKey.findOneAndDelete({ _id: id, employerId: employer._id });
+    const deleted = await ApiKey.findOneAndDelete({ _id: id, employerId: employer._id });
+    if (deleted) {
+      await logActivity({ action: "api_key.deleted", actorId: ctx.userId, resource: "ApiKey", resourceId: id, meta: { name: deleted.name } });
+    }
   }
 
   return NextResponse.json({ message: "Deleted" });
 }
 
 export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+export const POST = withAuth(postHandler, { resource: "employers", action: "update" });
 export const DELETE = withAuth(deleteHandler);

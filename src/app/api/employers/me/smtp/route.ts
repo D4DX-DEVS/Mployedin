@@ -6,6 +6,7 @@ import { encryptIfPlain, decrypt } from "@/lib/security/encryption";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { employerSmtpConfigSchema } from "@/lib/validators/settings";
+import { assertPublicHost } from "@/lib/security/ssrf";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -54,6 +55,17 @@ async function putHandler(req: NextRequest, ctx: AuthCtx) {
 
   const body = await validateBody(req, employerSmtpConfigSchema);
   const smtp = body.smtp;
+
+  // The app server dials this host on every company send. Refuse private,
+  // loopback and metadata addresses here; the sender re-checks at send time
+  // because DNS can change after save.
+  if (smtp.smtpHost) {
+    try {
+      await assertPublicHost(smtp.smtpHost);
+    } catch {
+      return NextResponse.json({ error: "SMTP host is not allowed" }, { status: 400 });
+    }
+  }
 
   const update: Record<string, unknown> = {};
   if (smtp.smtpEmail !== undefined) update["smtpOverride.smtpEmail"] = smtp.smtpEmail;

@@ -12,6 +12,7 @@ import { checkRateLimitDual } from "@/lib/security/rateLimit";
 import { z } from "zod";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
+import { userLocalePath } from "@/lib/i18n/localePath";
 
 interface AuthCtx {
   userId: string;
@@ -100,7 +101,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
       type: "interview_update",
       title: `Interview ${response === "confirmed" ? "Confirmed" : response === "declined" ? "Declined" : "Reschedule Requested"}`,
       message: `A candidate has ${responseLabel} their interview.${rescheduleNote ? ` Note: ${rescheduleNote}` : ""}`,
-      link: `/en/employer/interviews`,
+      link: await userLocalePath(employer.userId, "/employer/interviews"),
       sendEmail: true,
       metadata: { interviewId: params?.id, response },
     }).catch((err) => { logger.error({ err, interviewId: params?.id, response }, "Failed to send interview update notification to employer"); });

@@ -23,6 +23,9 @@ import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import logger from "@/lib/logger";
 import { ALL_APPLICATION_STATUSES, isPipelineStage, stagesFrom } from "@/lib/hiring/pipeline";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { publicJobFilter } from "@/lib/jobs/publicFilter";
+import { isStorageObjectUrl } from "@/lib/security/documentAccess";
+import { SEEKER_APPLICATION_PROJECTION, redactApplicationForSeeker } from "@/lib/applications/seekerView";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AuthCtx = any;
@@ -372,9 +375,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       .limit(limit)
       // The employer's judgement stays with the employer: notes, narrative,
       // the requirements checklist and the (possibly re-weighted) ranking.
-      .select(ctx.role === "job_seeker"
-        ? "-employerNotes -matchStrengths -matchGaps -rejectionReason -matchBreakdown -qualifications -requirementsStatus -missingSkills -weightsApplied"
-        : "")
+      .select(ctx.role === "job_seeker" ? SEEKER_APPLICATION_PROJECTION : "")
       .populate({
         path: "jobId",
         // requirements powers the "matching skills" column in the employer list
@@ -581,12 +582,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   return NextResponse.json({
     applications: applications.map((app) => ({
-      ...app,
-      // A seeker is shown the engine's number for the pair, never an
-      // employer's re-weighted ranking (equal unless weights were saved).
-      ...(ctx.role === "job_seeker" && typeof app.seekerMatchScore === "number"
-        ? { aiMatchScore: app.seekerMatchScore }
-        : {}),
+      // A seeker gets the redacted view: no internal notes or scores, their
+      // own engine number rather than the employer's re-weighted ranking.
+      ...(ctx.role === "job_seeker"
+        ? redactApplicationForSeeker(app as unknown as Record<string, unknown>, ctx.userId)
+        : app),
       otherApplicationsCount: Math.max(0, (crossAppCounts[String(app.jobSeekerId?._id)] ?? 1) - 1),
       ...(interviewMap[String(app._id)] ? { latestInterview: interviewMap[String(app._id)] } : {}),
       ...(offerMap[String(app._id)] ? { latestOffer: offerMap[String(app._id)] } : {}),
@@ -620,8 +620,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const body = await validateBody(req, applicationCreateSchema);
   const { jobId, coverLetter, screeningAnswers, documentIds, includeProfileCv, portfolioUrl } = body;
 
-  const job = await Job.findById(jobId).lean();
-  if (!job || job.status !== "active") {
+  // AP-7 / JL-8: same visibility + expiry rule as the public job list.
+  const job = await Job.findOne({ _id: jobId, ...publicJobFilter() }).lean();
+  if (!job) {
     return NextResponse.json({ error: "Job not found or inactive" }, { status: 404 });
   }
 
@@ -704,6 +705,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     appDocuments.push({ name: "CV", url: profileCvUrl, type: "resume" });
   }
 
+  // SECURITY (SEC-B1): the portfolio link is free text and is never presigned.
+  // Refuse one that points into our storage bucket, or it becomes a way to
+  // attach another candidate's private file to this application.
+  if (portfolioUrl && isStorageObjectUrl(portfolioUrl)) {
+    return NextResponse.json({ error: "Portfolio link must be an external website" }, { status: 400 });
+  }
   if (portfolioUrl) {
     appDocuments.push({ name: "Portfolio", url: portfolioUrl, type: "portfolio" });
   }

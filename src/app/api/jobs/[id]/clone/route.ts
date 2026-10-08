@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import type { AuthContext } from "@/lib/auth/withAuth";
 import Job from "@/models/Job";
 import { Employer } from "@/models/Employer";
 import Agent from "@/models/Agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { memberMayAccessJob } from "@/lib/permissions/team";
 import type { UserRole } from "@/models/User";
 
-interface AuthCtx { userId: string; role: UserRole; locale: string; }
+type AuthCtx = Pick<AuthContext, "userId" | "role" | "locale" | "member" | "tenantView">;
 
 // POST /api/jobs/[id]/clone — duplicate a job as a new draft
 async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
@@ -20,7 +22,8 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   await connectDB();
 
-  const source = await Job.findById(params?.id).lean();
+  // JL-5: a soft-deleted job is not a clone source.
+  const source = await Job.findOne({ _id: params?.id, deletedAt: null }).lean();
   if (!source) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
@@ -31,7 +34,12 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   if (ctx.role === "employer") {
     const emp = await Employer.findOne({ userId: ctx.userId }).select("_id agentId").lean();
-    if (!emp || String(source.employerId) !== String(emp._id)) {
+    // JL-5: a team member restricted to specific jobs may only clone those.
+    if (
+      !emp ||
+      String(source.employerId) !== String(emp._id) ||
+      !(await memberMayAccessJob(ctx, emp._id, source._id))
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     // Use current employer agent if source had none
@@ -106,4 +114,4 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   return NextResponse.json({ job: clone }, { status: 201 });
 }
 
-export const POST = withAuth(cloneHandler);
+export const POST = withAuth(cloneHandler, { resource: "jobs", action: "create" });

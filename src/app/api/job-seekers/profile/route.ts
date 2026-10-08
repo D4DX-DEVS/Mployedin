@@ -27,7 +27,12 @@ const experienceEntrySchema = z.object({
 
 const educationEntrySchema = z.object({
   degree: z.string().min(1).max(200),
-  institution: z.string().min(1).max(200).optional(),
+  // School-level answers (12th / 10th / below 10th) have no institution field,
+  // so the form sends "" — treat it as absent rather than failing min(1) (JS-25).
+  institution: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().min(1).max(200).optional(),
+  ),
   field: z.string().max(200).optional(),
   course: z.string().max(200).optional(),
   startYear: z.number().int().min(1950).max(2050).optional(),

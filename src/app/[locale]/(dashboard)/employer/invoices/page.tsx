@@ -42,6 +42,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { CheckoutReturnHandler } from "@/components/payments/CheckoutReturnHandler";
 import type { ExportColumn } from "@/lib/export";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -921,6 +922,30 @@ export default function EmployerInvoicesPage() {
   const { displayCurrency } = useCurrencyPreference();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [gatewayEnabled, setGatewayEnabled] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const PAYABLE_ROW_STATUSES = ["issued", "sent", "partially_paid", "overdue"];
+  const payInvoice = async (inv: Invoice) => {
+    setPayingId(inv._id);
+    try {
+      const res = await fetch(`/api/invoices/${inv._id}/pay`, { method: "POST", headers: { "Content-Type": "application/json" } });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+      if (res.status === 501) {
+        toast.info(t("toastOnlineComingSoon"));
+        return;
+      }
+      toast.error(t("toastPaymentFailed"));
+    } catch {
+      toast.error(t("toastPaymentFailed"));
+    } finally {
+      setPayingId(null);
+    }
+  };
 
   const [summary, setSummary] = useState<InvoiceSummary>({ issued: 0, paid: 0, partially_paid: 0, overdue: 0, totalAmount: 0, totalPaid: 0, totalBalance: 0 });
 
@@ -937,6 +962,7 @@ export default function EmployerInvoicesPage() {
       if (!res.ok) throw new Error("Failed to load invoices");
       const data = await res.json();
       setInvoices(data.invoices ?? []);
+      setGatewayEnabled(Boolean(data.paymentGatewayEnabled));
       updateTotal(data.total ?? 0);
       if (data.summary) setSummary(prev => ({ ...prev, ...data.summary }));
     } catch (err) {
@@ -980,6 +1006,7 @@ export default function EmployerInvoicesPage() {
 
   return (
     <div className="page-container">
+      <CheckoutReturnHandler onSettled={fetchInvoices} />
       {/* Pattern A (compact workspace): title + the invoice count (with the
           description from sm). The billing stat card it replaced said the
           same number in a box of its own. */}
@@ -1124,6 +1151,17 @@ export default function EmployerInvoicesPage() {
                   <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? formatDate(new Date(inv.dueDate)) : "—"}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
+                      {gatewayEnabled && PAYABLE_ROW_STATUSES.includes(inv.status) && (inv.balanceDue ?? 0) > 0 && (
+                        <Button
+                          variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs"
+                          disabled={payingId !== null}
+                          onClick={() => payInvoice(inv)}
+                          aria-label={t("payNowRow", { number: inv.invoiceNumber })}
+                        >
+                          <CreditCard className="h-3.5 w-3.5" />
+                          {payingId === inv._id ? t("payNowRedirecting") : t("payNowShort")}
+                        </Button>
+                      )}
                       <Button variant="ghost" size="sm" onClick={() => setSelectedInvoice(inv)} className="h-7 w-7 p-0" title={t("view")} aria-label={t("view")}><Eye className="h-3.5 w-3.5" /></Button>
                       <Button
                         variant="ghost" size="sm" className="h-7 w-7 p-0" title={t("downloadPdf")} aria-label={t("downloadPdf")}

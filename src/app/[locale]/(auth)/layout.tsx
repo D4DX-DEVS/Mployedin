@@ -133,7 +133,9 @@ export default async function AuthLayout({
               </div>
             </div>
 
-            <div className="text-sm text-muted-foreground/70">
+            {/* DS-14: clear of the bottom corner, where floating status pills
+                (and the dev build indicator) sit. */}
+            <div className="pb-10 text-sm text-muted-foreground/70">
               {t("copyright", { year: new Date().getFullYear() })}
             </div>
           </div>

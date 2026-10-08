@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
+import { buildInterviewQuestionsPrintHtml } from "@/lib/export/interviewQuestionsPrint";
 
 interface Question {
   question: string;
@@ -171,26 +172,14 @@ export function AIInterviewQuestionsPanel({
 
   function printQuestions() {
     const allQ = getAllDisplayQuestions();
-    const html = `
-      <html><head><title>Interview Questions — ${jobTitle}</title>
-      <style>body{font-family:sans-serif;padding:24px;max-width:700px;margin:auto}
-      h1{font-size:18px;margin-bottom:4px}p.meta{color:#666;font-size:13px;margin-bottom:20px}
-      .q{border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-bottom:14px}
-      .q h3{font-size:14px;font-weight:600;margin:0 0 8px}
-      .label{font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin:6px 0 2px}
-      .val{font-size:13px;color:#374151}
-      .redflag{color:#dc2626}</style></head>
-      <body>
-      <h1>${t("printTitle", { job: jobTitle })}</h1>
-      <p class="meta">${candidateName ? `${t("printCandidate", { name: candidateName })} · ` : ""}${t("printType", { type: activeTab.replace("_", " ") })} · ${t("printQuestionCount", { count: allQ.length })}</p>
-      ${allQ.map((q, i) => `
-        <div class="q">
-          <h3>Q${i + 1}: ${q.question}</h3>
-          <div class="label">${t("tests")}</div><div class="val">${q.tests}</div>
-          <div class="label">${t("strongAnswer")}</div><div class="val">${q.strongAnswer}</div>
-          <div class="label redflag">${t("redFlag")}</div><div class="val">${q.redFlag}</div>
-        </div>`).join("")}
-      </body></html>`;
+    // Built by an escaping helper: this window shares our origin, and the
+    // candidate name and AI output are untrusted.
+    const html = buildInterviewQuestionsPrintHtml({
+      title: t("printTitle", { job: jobTitle }),
+      meta: `${candidateName ? `${t("printCandidate", { name: candidateName })} · ` : ""}${t("printType", { type: activeTab.replace("_", " ") })} · ${t("printQuestionCount", { count: allQ.length })}`,
+      labels: { tests: t("tests"), strongAnswer: t("strongAnswer"), redFlag: t("redFlag") },
+      questions: allQ,
+    });
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); w.print(); }
   }

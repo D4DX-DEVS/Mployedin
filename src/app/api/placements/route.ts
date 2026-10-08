@@ -16,9 +16,8 @@ import { placementCreateSchema } from "@/lib/validators/placements";
 // Ensure referenced schemas are registered for populate() on cold starts.
 void Job; void JobSeeker; void Agent; void User;
 
-import logger from "@/lib/logger";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { notifySuperAgentPlacement } from "@/lib/notifications/trigger";
+import { announcePlacement } from "@/lib/hiring/createPlacementForHire";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -285,51 +284,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     throw err;
   }
 
-  // Increment agent performance counter
-  if (body.agentId) {
-    const { incrementAgentCounter } = await import("@/lib/agentPerformance");
-    incrementAgentCounter(String(body.agentId), "placementsCompleted");
-  }
-
-  // Notify super agent about new placement
-  if (body.agentId) {
-    const { getSuperAgentUserId, notifySuperAgentPlacement } = await import("@/lib/notifications/trigger");
-    const saUserId = await getSuperAgentUserId(body.agentId);
-    if (saUserId) {
-      // Resolve candidate name, job title, and company name
-      const [User, Job, Employer] = await Promise.all([
-        import("@/models/User").then(m => m.default),
-        import("@/models/Job").then(m => m.default),
-        import("@/models/Employer").then(m => m.default),
-      ]);
-      const [jsUser, jobDoc, empDoc] = await Promise.all([
-        jobSeekerId ? User.findById(jobSeekerId).select("name").lean() : null,
-        jobId ? Job.findById(jobId).select("title").lean() : null,
-        employerId ? Employer.findById(employerId).select("companyName").lean() : null,
-      ]);
-      const candidateName = (jsUser as { name?: string })?.name ?? "A candidate";
-      const jobTitle = (jobDoc as { title?: string })?.title ?? "a position";
-      const companyName = (empDoc as { companyName?: string })?.companyName ?? "a company";
-      notifySuperAgentPlacement(saUserId, candidateName, jobTitle, companyName, String(placement._id), ctx.locale).catch((err) => logger.error({ err, placementId: String(placement._id) }, "Failed to notify super agent of new placement"));
-    }
-  }
-
-  // Admins oversee the platform's revenue events and were told about none of
-  // them — the super-agent had four dedicated triggers and admin had zero.
-  {
-    const { notifyAdminsPlacement } = await import("@/lib/notifications/trigger");
-    const [jsUser, jobDoc, empDoc] = await Promise.all([
-      jobSeekerId ? User.findById(jobSeekerId).select("name").lean() : null,
-      jobId ? Job.findById(jobId).select("title").lean() : null,
-      employerId ? Employer.findById(employerId).select("companyName").lean() : null,
-    ]);
-    notifyAdminsPlacement(
-      (jsUser as { name?: string })?.name ?? "A candidate",
-      (jobDoc as { title?: string })?.title ?? "a position",
-      (empDoc as { companyName?: string })?.companyName ?? "a company",
-      String(placement._id),
-    ).catch((err) => logger.error({ err, placementId: String(placement._id) }, "Failed to notify admins of new placement"));
-  }
+  // Agent counter + super-agent/admin notices, shared with the hire paths.
+  // (The candidate name resolves through JobSeeker.userId — jobSeekerId is a
+  // JobSeeker id, so looking it up as a User always read "A candidate".)
+  await announcePlacement(placement, ctx.locale);
 
   await logActivity({
     ...actorFromCtx(ctx),

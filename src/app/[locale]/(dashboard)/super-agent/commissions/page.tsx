@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import { CalendarDays, CheckCircle2, Coins, Info, ReceiptText, Search, Settings2, SlidersHorizontal, X } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
@@ -34,7 +35,9 @@ import { formatDate } from "@/lib/ui/intlFormat";
 
 interface Commission {
   _id: string;
-  agentId?: { fullName?: string; userId?: { name?: string; email?: string } };
+  /** Flattened by the API from the linked User (CM-12). */
+  agentName?: string | null;
+  agentId?: { name?: string | null; fullName?: string; userId?: { name?: string; email?: string } };
   type?: string;
   amount: number;
   currency?: string;
@@ -44,6 +47,11 @@ interface Commission {
   clawbackAmount?: number;
   clawbackReason?: string;
   createdAt: string;
+}
+
+/** Agent column: the API's flattened `agentName`, with older shapes as fallback. */
+function agentLabel(c: Commission): string {
+  return c.agentName ?? c.agentId?.name ?? c.agentId?.fullName ?? c.agentId?.userId?.name ?? "";
 }
 
 export default function SuperAgentCommissionsPage() {
@@ -132,7 +140,7 @@ export default function SuperAgentCommissionsPage() {
   };
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: t("tableHeaderAgent"), key: "agentId", formatter: (_v, row) => { const a = row.agentId as { fullName?: string; userId?: { name?: string } }; return a?.fullName ?? a?.userId?.name ?? ""; } },
+    { header: t("tableHeaderAgent"), key: "agentName", formatter: (_v, row) => agentLabel(row as unknown as Commission) },
     { header: t("tableHeaderType"), key: "type" },
     { header: t("tableHeaderNotes"), key: "notes" },
     { header: t("tableHeaderAmount"), key: "amount" },
@@ -327,8 +335,7 @@ export default function SuperAgentCommissionsPage() {
                 ) : commissions.map((c) => (
                     <TableRow key={c._id} className="bg-transparent">
                     <TableCell>
-                        <div className="font-medium text-foreground">{c.agentId?.fullName ?? c.agentId?.userId?.name ?? "—"}</div>
-                        <div className="text-xs text-muted-foreground">{c.agentId?.userId?.email ?? ""}</div>
+                        <div className="font-medium text-foreground">{agentLabel(c) || "—"}</div>
                     </TableCell>
                       <TableCell className="hidden md:table-cell capitalize text-muted-foreground">{(c.type ?? "placement").replace(/_/g, " ")}</TableCell>
                       <TableCell className="hidden md:table-cell max-w-xs truncate text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
@@ -341,10 +348,21 @@ export default function SuperAgentCommissionsPage() {
                           {t("actionApprove")}
                         </Button>
                       )}
+                      {/* Payout is an admin action (super-agents lack the permission and the
+                          API answers 403), so the step is shown but not offered. */}
                       {c.status === "approved" && (
-                        <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-700" onClick={() => updateStatus(c._id, "paid")}>
-                          {t("actionMarkPaid")}
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span tabIndex={0} className="inline-flex rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                                <Button variant="ghost" size="sm" className="h-7 text-xs" disabled aria-describedby={`paid-by-admin-${c._id}`}>
+                                  {t("actionMarkPaid")}
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent id={`paid-by-admin-${c._id}`}>{t("paidByAdmin")}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                       {c.status === "paid" && <span className="text-xs text-muted-foreground">{t("statusPaid")}</span>}
                     </TableCell>

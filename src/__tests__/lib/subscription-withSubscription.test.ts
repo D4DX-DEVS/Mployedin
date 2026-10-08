@@ -193,14 +193,27 @@ describe("withSubscription", () => {
   // ── Numeric limit checks ────────────────────────────────────────────────
 
   describe("numeric limit checks", () => {
-    test("allows when under limit and increments usage on success", async () => {
+    test("counts activeJobs usage for reporting without gating on the counter", async () => {
+      // The live-job quota is enforced on the live active-job count when a job
+      // goes active (enforceActiveJobQuota); this counter never decrements.
       mockFindOne.mockResolvedValue(activeSub);
       const wrapped = withSubscription(mockHandler, { type: "limit", feature: "activeJobs" });
       await wrapped(makeReq(), employerCtx);
       expect(mockHandler).toHaveBeenCalled();
       expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({ _id: "sub1", $expr: expect.any(Object) }),
+        { _id: "sub1" },
         { $inc: { "usage.activeJobs": 1 } },
+        { new: true },
+      );
+    });
+
+    test("still gates other numeric limits on the counter", async () => {
+      mockFindOne.mockResolvedValue(activeSub);
+      const wrapped = withSubscription(mockHandler, { type: "limit", feature: "applicationsViewed" });
+      await wrapped(makeReq(), employerCtx);
+      expect(mockFindOneAndUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ _id: "sub1", $expr: expect.any(Object) }),
+        { $inc: { "usage.applicationsViewed": 1 } },
         { new: true },
       );
     });
@@ -336,7 +349,7 @@ describe("withSubscription", () => {
       expect(mockFindOne).toHaveBeenCalledWith({
         userId: "u4",
         targetRole: "job_seeker",
-        status: "active",
+        status: { $in: ["active", "past_due"] },
       });
     });
   });

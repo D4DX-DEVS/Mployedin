@@ -680,6 +680,31 @@ export async function getAdminUserIds(): Promise<string[]> {
 }
 
 /**
+ * MS-1: a direct message arrived. In-app always; email goes through the
+ * orchestrator, which honours the recipient's "messages" category and channels.
+ * `recipientRole` picks the dashboard the link opens in.
+ */
+export async function notifyDirectMessageReceived(
+  recipientUserId: string,
+  recipientRole: string,
+  senderName: string,
+  conversationId: string,
+  preview: string,
+): Promise<void> {
+  const segment = recipientRole.replace(/_/g, "-");
+  await notify({
+    userId: recipientUserId,
+    type: "message",
+    title: "New Message",
+    message: `${senderName}: ${preview}`,
+    link: `/${segment}/messages?conv=${conversationId}`,
+    sendEmail: true,
+    metadata: { conversationId, senderName },
+    params: { senderName },
+  });
+}
+
+/**
  * A support ticket was assigned to one admin by the round-robin in
  * `/api/dm/customer-care`. That assignment was previously silent: the ticket
  * was excluded from `/api/dm`, so no badge, no bell and no count anywhere named

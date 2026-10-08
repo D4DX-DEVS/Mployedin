@@ -56,9 +56,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   }
 
   // Get all team member userIds (including owner)
+  // Pending invitations are not members: an invite to an existing account
+  // used to bind its userId up front, which pulled a stranger's (even an
+  // admin's) platform-wide audit trail into this list.
   const teamMembers = await CompanyUser.find({
     companyId: employer._id,
     userId: { $exists: true, $ne: null },
+    status: { $ne: "pending" },
   })
     .select("userId email companyRole")
     .lean();
@@ -100,6 +104,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     actorId: memberId
       ? memberId
       : { $in: teamUserIds },
+    // AuditLog is platform-global. Only rows about this company qualify: the
+    // owner's own actions, or a colleague acting in the owner's workspace
+    // (actorFromCtx records the owner as onBehalfOfId). A member's activity
+    // at another company, or before joining, stays out.
+    $or: [{ actorId: ctx.userId }, { onBehalfOfId: ctx.userId }],
   };
 
   if (action) query.action = new RegExp(escapeRegex(action), "i");

@@ -9,21 +9,30 @@
  * - Converts prices to the user's selected display currency
  * - Highlights the currently active tier
  * - "Activate Free Plan" self-assigns the default plan
- * - "Upgrade" on paid plans shows a "contact admin" toast (no payment gateway yet)
+ * - "Upgrade" on paid plans redirects to the hosted checkout (Stripe / Razorpay)
+ *   when a gateway is configured; a downgrade is scheduled for period end.
+ *   Without a gateway it opens a "payment not available yet" dialog with a
+ *   "Request upgrade" email action
  * - Feature comparison table collapsed by default behind accordion
  */
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { Check, X, Sparkles, Crown, Zap, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { AvailablePlan } from "@/hooks/useSubscription";
 import { useSelfAssignFreePlan } from "@/hooks/useSubscription";
 import { convertAndFormat } from "@/lib/currency";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+const SUPPORT_EMAIL = "support@mployedin.com";
 
 function numLabel(n: number) {
   return n === -1 ? "Unlimited" : String(n);
@@ -122,8 +131,12 @@ export function PricingGrid({
 }: PricingGridProps) {
   const t = useTranslations("pricingGrid");
   const { mutate: selfAssign, isPending: activating } = useSelfAssignFreePlan();
+  const queryClient = useQueryClient();
   const [showComparison, setShowComparison] = useState(false);
   const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
+  // EMP-15: a toast in the bottom corner was missed entirely (and hid under the
+  // assistant bubble); a blocked upgrade now opens a dialog that stays put.
+  const [unavailablePlan, setUnavailablePlan] = useState<string | null>(null);
 
   async function startCheckout(planId: string) {
     setCheckoutPlanId(planId);
@@ -138,11 +151,26 @@ export function PricingGrid({
         window.location.href = data.checkoutUrl;
         return;
       }
-      toast.info(t("upgradeComingSoon"), {
-        description:
-          data.message ??
-          t("paymentNotAvailable"),
-      });
+      if (res.ok && data.scheduled) {
+        // Downgrade: nothing charged now; switches at the end of the paid period.
+        toast.success(t("downgradeScheduledTitle", { name: data.planName ?? "" }), {
+          description: data.effectiveAt
+            ? t("downgradeScheduledBody", { date: new Date(data.effectiveAt).toLocaleDateString() })
+            : undefined,
+        });
+        void queryClient.invalidateQueries();
+        return;
+      }
+      if (res.ok && data.applied) {
+        toast.success(t("planChangedTitle"));
+        void queryClient.invalidateQueries();
+        return;
+      }
+      if (res.status === 503) {
+        setUnavailablePlan(plans.find((p) => p._id === planId)?.name ?? "");
+        return;
+      }
+      toast.error(t("checkoutError"));
     } catch {
       toast.error(t("checkoutError"));
     } finally {
@@ -165,8 +193,27 @@ export function PricingGrid({
     : plans.length === 3 ? "sm:grid-cols-2 lg:grid-cols-3"
     : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
 
+  const upgradeMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+    t("upgradeRequestSubject", { name: unavailablePlan ?? "" }),
+  )}`;
+
   return (
     <div className="space-y-5">
+      <Dialog open={unavailablePlan !== null} onOpenChange={(open) => !open && setUnavailablePlan(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("paymentUnavailableTitle")}</DialogTitle>
+            <DialogDescription>{t("paymentUnavailableBody", { name: unavailablePlan ?? "" })}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUnavailablePlan(null)}>{t("close")}</Button>
+            <Button asChild>
+              <a href={upgradeMailto} onClick={() => setUnavailablePlan(null)}>{t("requestUpgrade")}</a>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Plan cards ── */}
       <div className={`grid gap-3 ${colClass}`}>
         {plans.map((plan) => {

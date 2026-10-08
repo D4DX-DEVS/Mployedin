@@ -35,6 +35,8 @@ import { useCurrencyPreference } from "@/hooks/useCurrencyPreference";
 import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { CurrencySelector } from "@/components/shared/CurrencySelector";
 import { PricingGrid } from "@/components/subscription/PricingGrid";
+import { CheckoutReturnHandler } from "@/components/payments/CheckoutReturnHandler";
+import { SubscriptionPaymentNotice } from "@/components/payments/SubscriptionPaymentNotice";
 import { ActivityOverview } from "@/components/subscription/ActivityOverview";
 import { WhyUpgrade } from "@/components/subscription/WhyUpgrade";
 import { SubscriptionFAQ } from "@/components/subscription/SubscriptionFAQ";
@@ -85,6 +87,7 @@ export default function JobSeekerSubscriptionPage() {
 
   return (
     <div className="page-container">
+      <CheckoutReturnHandler />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <PageHeader title={t("title")} description={t("description")} />
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -157,6 +160,7 @@ function ActiveView({
 
   return (
     <div className="space-y-6">
+      <SubscriptionPaymentNotice subscription={subscription} />
       {/* ── 1. Current Plan ── */}
       <section className="rounded-2xl border border-border/60 bg-card space-y-5 panel-body">
         <div className="flex items-start justify-between gap-4">
@@ -168,7 +172,7 @@ function ActiveView({
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="heading-subsection font-bold">{snap?.name ?? t("unknown")}</h3>
                 <Badge className={subscription.status === "active" ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30" : "bg-amber-500/10 text-amber-600 border border-amber-500/30"}>
-                  {subscription.status === "active" ? t("statusActive") : subscription.status}
+                  {subscription.status === "active" ? t("statusActive") : subscription.status === "past_due" ? t("statusPastDue") : subscription.status}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">

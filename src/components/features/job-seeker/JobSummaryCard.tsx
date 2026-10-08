@@ -119,7 +119,9 @@ export function formatSalaryRange(
     n >= 1000
       ? new Intl.NumberFormat(numberLocale, { notation: "compact", maximumFractionDigits: 1 }).format(n)
       : n.toLocaleString(numberLocale);
-  return `${fmt(salary.min)}–${fmt(salary.max)} ${salary.currency}`;
+  // LRI…PDI keeps the range in min–max order inside RTL text; Arabic-Indic
+  // digits around a dash otherwise render reversed (JS-41).
+  return `\u2066${fmt(salary.min)}–${fmt(salary.max)}\u2069 ${salary.currency}`;
 }
 
 /** Employment types the Job model accepts. Anything else renders no chip. */
@@ -203,9 +205,9 @@ export function JobSummaryCard({
             </h3>
             <p className="mt-0.5 truncate text-sm text-muted-foreground">{companyName}</p>
 
-          {/* Meta — always one line. Phones scroll it rather than wrapping to a
-              second row, which is what made cards different heights. */}
-          <div className="scrollbar-none mt-2 flex flex-nowrap items-center gap-x-3 gap-y-1 overflow-x-auto text-xs text-muted-foreground">
+          {/* Meta — wraps on phones. A one-line scrolling row clipped the job
+              type at the card edge with no scroll affordance (JS-40). */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span className="inline-flex shrink-0 items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
               {formatLocalizedLocation(job.location ?? undefined, locale, {

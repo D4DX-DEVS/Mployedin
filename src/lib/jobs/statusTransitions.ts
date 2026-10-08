@@ -6,13 +6,14 @@ import type { JobStatus } from "@/models/Job";
  * Closed is final — decision 5 was "no reopen"; a support case reopens a job
  * in the database, not through the UI. Expired → active is an extension, so
  * the request must also move the deadline forward or drop it (see
- * `expiryExtended`), or the nightly sweep expires the job again.
+ * `expiryExtended`), or the nightly sweep expires the job again. An expired
+ * job the employer will not extend can be closed for good.
  */
 export const JOB_STATUS_TRANSITIONS: Readonly<Record<JobStatus, readonly JobStatus[]>> = {
   draft: ["active"],
   active: ["paused", "closed"],
   paused: ["active", "closed"],
-  expired: ["active"],
+  expired: ["active", "closed"],
   closed: [],
 };
 

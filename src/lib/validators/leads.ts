@@ -18,6 +18,9 @@ const stripEmptyStrings = (val: unknown): unknown => {
   return val;
 };
 
+/** Statuses a PATCH / bulk move may set. "converted" is reserved for the convert route. */
+export const LEAD_EDITABLE_STATUSES = ["new", "contacted", "interested", "negotiating", "lost"] as const;
+
 export const leadCreateSchema = z.preprocess(stripEmptyStrings, z.object({
   companyName: z.string().min(2).max(200).trim(),
   contactPerson: z.string().min(2).max(100).trim(),
@@ -44,10 +47,22 @@ export const leadUpdateSchema = z.preprocess(stripEmptyStrings, z.object({
   industry: z.string().max(100).optional(),
   expectedRevenue: z.number().min(0).optional(),
   expectedRevenueCurrency: z.string().length(3).optional(),
-  status: z.enum(["new", "contacted", "interested", "negotiating", "converted", "lost"]).optional(),
+  // "converted" is not settable here (LD-1): only POST /api/leads/[id]/convert
+  // may convert, because it is what creates the employer account.
+  status: z.enum(LEAD_EDITABLE_STATUSES).optional(),
   lostReason: z.string().max(500).trim().optional(),
   source: z.string().max(100).optional(),
   notes: z.string().max(2000).trim().optional(),
   followUpAt: z.string().optional(),
   exhibitionId: commonSchemas.objectId.optional(),
+}));
+
+/** Optional overrides for POST /api/leads/[id]/convert (LD-4). */
+export const leadConvertSchema = z.preprocess(stripEmptyStrings, z.object({
+  contactEmail: commonSchemas.email.optional(),
+  contactPerson: z.string().min(2).max(100).trim().optional(),
+  companyName: z.string().min(2).max(200).trim().optional(),
+  contactPhone: commonSchemas.phone.optional(),
+  industry: z.string().max(100).trim().optional(),
+  country: z.string().max(100).trim().optional(),
 }));

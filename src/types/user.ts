@@ -5,6 +5,13 @@ export type UserRole =
   | "employer"
   | "job_seeker";
 
+/** Every role the platform recognises. Anything else in a DB row or token is rejected. */
+export const VALID_ROLES: readonly UserRole[] = ["admin", "super_agent", "agent", "employer", "job_seeker"];
+
+export function isValidRole(role: unknown): role is UserRole {
+  return typeof role === "string" && (VALID_ROLES as readonly string[]).includes(role);
+}
+
 export type PermissionMode = "role_default" | "custom";
 
 export type Resource =
@@ -14,7 +21,7 @@ export type Resource =
   | "ai_cv" | "ai_match" | "ai_assistant" | "tasks"
   | "job_attributes" | "location_data" | "cms" | "contact_submissions"
   | "offers" | "subscriptions" | "exhibitions" | "resources" | "targets"
-  | "onboarding" | "invoices";
+  | "onboarding" | "invoices" | "insights";
 
 export type Action = "create" | "read" | "update" | "delete" | "approve" | "export" | "impersonate";
 

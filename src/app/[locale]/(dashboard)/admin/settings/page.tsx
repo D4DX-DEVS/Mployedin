@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CurrencySelect } from "@/components/ui/currency-select";
 import { Switch } from "@/components/ui/switch";
 import { TwoFactorCard } from "@/components/features/settings/TwoFactorCard";
+import { PaymentGatewayStatusCard } from "@/components/features/settings/PaymentGatewayStatusCard";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 
 interface SmtpConfig {
@@ -633,6 +634,8 @@ export default function AdminSettingsPage() {
           </div>
         </div>
       </section>
+
+      <PaymentGatewayStatusCard />
 
       <TwoFactorCard />
 

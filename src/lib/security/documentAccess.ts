@@ -24,6 +24,7 @@
  */
 
 import type { AuthContext } from "@/lib/auth/withAuth";
+import { urlToKey, keyToUrl } from "@/lib/storage/spaces";
 
 export type DocTier = "standard" | "strict";
 
@@ -126,4 +127,55 @@ export async function canAccessApplicationDocument(
   }
 
   return false;
+}
+
+// ─── Storage-key ownership (SEC-B1) ──────────────────────────────────────────
+//
+// Upload keys are `<prefix>/<folder>/<uuid>.<ext>` and carry no owner, so
+// ownership is resolved from the records that point at the object: the
+// seeker's profile CV, their profile documents, and the CV registry (which
+// keeps CVs a seeker has since replaced but that an application still uses).
+// A download route must never presign a key that is not owned this way —
+// otherwise a seeker can attach a victim's CV URL to their own application
+// and receive a presigned link to it.
+
+/**
+ * True when `url` addresses (or could address) an object in our bucket, i.e.
+ * presigning `urlToKey(url)` would grant access to a stored file. Anything
+ * that is not an http(s) URL is treated as a bare object key.
+ */
+export function isStorageObjectUrl(url: string): boolean {
+  if (!/^https?:\/\//i.test(url)) return true;
+  if (urlToKey(url) !== url) return true;
+  try {
+    return /(^|\.)digitaloceanspaces\.com$/i.test(new URL(url).hostname);
+  } catch {
+    return true;
+  }
+}
+
+export interface SeekerFileRecords {
+  _id?: unknown;
+  cv?: { originalUrl?: string | null } | null;
+  documents?: { url?: string | null }[] | null;
+}
+
+/**
+ * True when `url` resolves to a storage object the given job seeker uploaded.
+ * Compares object keys (not raw strings) so CDN/key spellings cannot bypass it.
+ */
+export async function seekerOwnsStorageObject(
+  seeker: SeekerFileRecords,
+  url: string,
+): Promise<boolean> {
+  if (!url) return false;
+  const key = urlToKey(url);
+  const owned = [seeker.cv?.originalUrl, ...(seeker.documents ?? []).map((d) => d?.url)];
+  if (owned.some((u) => !!u && urlToKey(u) === key)) return true;
+  if (!seeker._id) return false;
+  // Historical CVs (replaced on the profile but still attached to applications).
+  const { CvDocument } = await import("@/models/CvDocument");
+  const candidates = Array.from(new Set([url, key, keyToUrl(key)]));
+  const hit = await CvDocument.exists({ jobSeekerId: seeker._id, fileUrl: { $in: candidates } });
+  return !!hit;
 }

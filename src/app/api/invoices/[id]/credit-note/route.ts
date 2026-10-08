@@ -6,13 +6,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { generateInvoiceNumber } from "@/lib/subscription/invoiceNumber";
-import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
 import type { UserRole } from "@/types/user";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
+import { issueCreditNote, CreditNoteError } from "@/lib/invoices/creditNote";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
@@ -39,48 +38,21 @@ async function postHandler(
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
   }
 
-  if (["void", "cancelled"].includes(invoice.status)) {
-    return NextResponse.json({ error: `Cannot issue credit note for ${invoice.status} invoice` }, { status: 400 });
+  let result;
+  try {
+    result = await issueCreditNote(invoice, {
+      amount: body.amount,
+      reason: body.reason,
+      notes: body.notes,
+      actorUserId: ctx.userId,
+    });
+  } catch (err) {
+    if (err instanceof CreditNoteError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
   }
-
-  const maxRefundable = invoice.totalAmount - (invoice.refundedAmount || 0);
-  if (body.amount > maxRefundable) {
-    return NextResponse.json({
-      error: `Refund amount exceeds maximum refundable amount of ${maxRefundable}`,
-    }, { status: 400 });
-  }
-
-  // Create credit note invoice
-  const creditNoteNumber = await generateInvoiceNumber();
-  const creditNote = await Invoice.create({
-    invoiceNumber: creditNoteNumber,
-    category: invoice.category,
-    userId: invoice.userId,
-    jobId: invoice.jobId,
-    employerId: invoice.employerId,
-    agentId: invoice.agentId,
-    type: invoice.type,
-    description: `Credit note for ${invoice.invoiceNumber}: ${body.reason}`,
-    lineItems: [{ description: `Credit note — ${body.reason}`, quantity: 1, unitPrice: body.amount, amount: body.amount }],
-    subtotal: body.amount,
-    totalAmount: body.amount,
-    amount: body.amount,
-    currency: invoice.currency,
-    billingDetails: invoice.billingDetails,
-    status: "credit_note",
-    issuedAt: new Date(),
-    notes: body.notes,
-    creditNoteNumber,
-    parentInvoiceId: invoice._id,
-    createdBy: ctx.userId,
-  });
-
-  // Update original invoice
-  invoice.refundedAmount = (invoice.refundedAmount || 0) + body.amount;
-  if (invoice.refundedAmount >= invoice.totalAmount) {
-    invoice.status = "refunded";
-  }
-  await invoice.save();
+  const { creditNote, creditNoteNumber, commissionClawback } = result;
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -92,16 +64,10 @@ async function postHandler(
       creditNoteNumber,
       amount: body.amount,
       reason: body.reason,
+      commissionsClawedBack: commissionClawback.clawedBack,
+      commissionsAnnotated: commissionClawback.annotated,
     },
     req,
-  });
-
-  dispatchWebhook("invoice.credit_note", {
-    invoiceId: String(invoice._id),
-    creditNoteId: String(creditNote._id),
-    creditNoteNumber,
-    amount: body.amount,
-    currency: invoice.currency,
   });
 
   return NextResponse.json({

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ArrowRight, ChevronDown, Mail, MapPin } from "lucide-react";
+import { CookieSettingsButton } from "@/components/shared/consent/CookieSettingsButton";
+import { AccessibilityButton } from "@/components/shared/a11y/AccessibilityButton";
 
 type FooterVariant = "full" | "embedded";
 
@@ -85,10 +87,12 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
   const companySection: FooterSection = {
     title: t("company"),
     links: [
+      { href: `/${locale}/about`, label: t("about") },
       { href: `/${locale}/privacy`, label: t("privacy") },
       { href: `/${locale}/terms`, label: t("terms") },
       { href: `/${locale}/cookies`, label: t("cookies") },
       { href: `/${locale}/gdpr`, label: t("gdpr") },
+      { href: `/${locale}/accessibility`, label: t("accessibility") },
       { href: `/${locale}/contact`, label: t("support") },
     ],
   };
@@ -145,7 +149,7 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
                 className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[hsl(var(--brand-blue-dark))] transition-transform hover:-translate-y-0.5"
               >
                 {t("browseJobs")}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
               {!isEmbedded && (
                 <Link
@@ -179,11 +183,11 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
         <div className="mt-6 flex flex-col gap-4 border-t border-white/10 pt-4 text-sm text-white/60 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-x-6 gap-y-2 sm:flex-row sm:items-center">
             <span className={`min-w-0 items-center gap-2 ${isEmbedded ? "hidden sm:inline-flex" : "inline-flex"}`}>
-              <MapPin className="h-4 w-4 shrink-0 text-white/70" />
+              <MapPin className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
               {COMPANY_ADDRESS}
             </span>
             <span className="inline-flex min-w-0 items-center gap-2">
-              <Mail className="h-4 w-4 shrink-0 text-white/70" />
+              <Mail className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
               <a
                 href={mounted ? `mailto:${SUPPORT_EMAIL}` : undefined}
                 className="min-w-0 transition-colors [overflow-wrap:anywhere] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
@@ -192,6 +196,14 @@ export default function PublicFooter({ locale, variant = "full" }: PublicFooterP
                 {mounted ? SUPPORT_EMAIL : t("contactSupport")}
               </a>
             </span>
+          </div>
+
+          {/* Always reachable, also inside the app shell on phones: changing or
+              withdrawing cookie consent must be as easy as giving it (GDPR
+              art 7(3)); display settings serve the accessibility statement. */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <CookieSettingsButton className="min-h-6 text-sm text-white/72 underline-offset-2 transition-colors hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" />
+            <AccessibilityButton className="min-h-6 text-sm text-white/72 underline-offset-2 transition-colors hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" />
           </div>
 
           <div className="flex items-center gap-3">

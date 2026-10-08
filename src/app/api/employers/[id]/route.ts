@@ -9,8 +9,26 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import { buildEmployerAdminUpdatePayload } from "@/lib/employers/admin";
 import { deactivateEmployerAccount } from "@/lib/employers/accountStatus";
+import type { AuthContext } from "@/lib/auth/withAuth";
 
-interface AuthCtx { userId: string; role: UserRole; locale: string; }
+interface AuthCtx {
+  userId: string;
+  role: UserRole;
+  locale: string;
+  member?: AuthContext["member"];
+  tenantView?: AuthContext["tenantView"];
+}
+
+/**
+ * This route edits the owner's User document. For a colleague or a tenant-view
+ * actor, withAuth has swapped ctx.userId to the owner, so the "own account"
+ * check passes for someone who is not the owner — and a login-email change
+ * here is account takeover. Only the owner themselves, an assigned agent or an
+ * admin act through this route.
+ */
+function actingForSomeoneElse(ctx: AuthCtx): boolean {
+  return Boolean(ctx.member || ctx.tenantView);
+}
 
 async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
@@ -50,6 +68,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+  if (actingForSomeoneElse(ctx)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectDB();
   const user = await User.findById(params?.id);
   if (!user) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
@@ -66,6 +85,14 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   const body = await validateBody(req, employerAdminUpdateSchema);
+  // A direct login-email change skips the verified email-change flow, so it is
+  // an administrator's tool only. Everyone else uses /api/user/email-change.
+  if (body.email !== undefined && ctx.role !== "admin") {
+    return NextResponse.json(
+      { error: "Email changes must go through email verification", code: "EMAIL_CHANGE_REQUIRES_VERIFICATION" },
+      { status: 403 },
+    );
+  }
   const payload = buildEmployerAdminUpdatePayload(body);
 
   const userUpdate = payload.userUpdate;
@@ -97,6 +124,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
 async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+  if (actingForSomeoneElse(ctx)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   await connectDB();
   const user = await User.findById(params?.id);
   if (!user) return NextResponse.json({ error: "Employer not found" }, { status: 404 });

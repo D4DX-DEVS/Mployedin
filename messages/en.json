@@ -57,7 +57,8 @@
     "breadcrumbDetails": "Details",
     "scorecards": "Scorecards",
     "tasksTab": "Tasks",
-    "candidates": "Candidates"
+    "candidates": "Candidates",
+    "a11yMainNav": "Main"
   },
   "auth": {
     "login": "Login",
@@ -150,7 +151,10 @@
     "hiringQuestion": "Hiring?",
     "registerAsEmployer": "Register as an employer",
     "referralNotice": "You're joining through a partner referral",
-    "referralNoticeWrongAudience": "This link is for employers. You can still create a job-seeker account."
+    "referralNoticeWrongAudience": "This link is for employers. You can still create a job-seeker account.",
+    "invalidRole": "This account can't sign in here. Please use the correct sign-in page for your account type.",
+    "oauthUnverified": "Your Google email address isn't verified. Verify it with Google, or sign in with your email and password.",
+    "signInTemporarilyUnavailable": "Sign-in is temporarily unavailable on our side. Please try again in a few minutes."
   },
   "authLayout": {
     "aiPowered": "AI-powered",
@@ -438,7 +442,8 @@
     "addMore": "Add more…",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
-    "generatePassword": "Generate password"
+    "generatePassword": "Generate password",
+    "stepProgress": "Step {current} of {total}"
   },
   "table": {
     "search": "Search...",
@@ -1130,7 +1135,8 @@
       "confirmed": "Confirmed",
       "declined": "Declined",
       "completed": "Completed",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "rescheduled": "Rescheduled"
     },
     "round": "Round {round}",
     "documentTitle": "Interviews · MPLOYEDIN",
@@ -1282,7 +1288,8 @@
       "invoiceId": "Invoice ID",
       "invoiceDate": "Date",
       "invoiceAmount": "Amount",
-      "invoiceStatus": "Status"
+      "invoiceStatus": "Status",
+      "statusPastDue": "Payment due"
     },
     "search": {
       "title": "AI Job Search",
@@ -1472,7 +1479,9 @@
       "cvRead": "Read — employers' match scores use this CV",
       "cvReading": "We're reading this CV. This usually takes a minute.",
       "cvUnreadable": "We couldn't read this file. Upload a PDF or Word file with selectable text.",
-      "profileCvUnreadable": "We couldn't read the CV on your profile, so employers are matching you on your profile details only. Upload a PDF or Word file with selectable text."
+      "profileCvUnreadable": "We couldn't read the CV on your profile, so employers are matching you on your profile details only. Upload a PDF or Word file with selectable text.",
+      "cvReadingSlow": "Processing is taking longer than expected.",
+      "cvReadingRetry": "Check again"
     },
     "experience": {
       "title": "Work Experience",
@@ -1830,7 +1839,9 @@
         "resumeAi": "Resume & AI",
         "ai": "AI",
         "notifications": "Notifications",
-        "alerts": "Alerts"
+        "alerts": "Alerts",
+        "accountSecurity": "Account & security",
+        "account": "Account"
       },
       "interviews": {
         "title": "Interview Scheduling",
@@ -1895,6 +1906,11 @@
         "interviewNotificationsDescription": "Reminders and updates about scheduled interviews.",
         "advancedTitle": "Notification delivery",
         "advancedDescription": "Choose email, in-app or WhatsApp per alert, set your daily digest time, or unsubscribe."
+      },
+      "pageHeading": "Settings",
+      "account": {
+        "languageTitle": "Language",
+        "languageDescription": "Choose the language for the site and your emails."
       }
     },
     "smartWelcome": {
@@ -2948,7 +2964,13 @@
     "cookiesAgreement": "By continuing to use our website, you consent to the use of cookies as described in this policy.",
     "gdprIntro": "This page explains how we comply with the General Data Protection Regulation (GDPR) and your data rights when using mployedin.com.",
     "gdprLastUpdated": "Last Updated: 8th June 2023",
-    "gdprAgreement": "We are committed to protecting your data rights in full compliance with GDPR and UK data protection laws."
+    "gdprAgreement": "We are committed to protecting your data rights in full compliance with GDPR and UK data protection laws.",
+    "faqCategoryGeneral": "General",
+    "faqCategoryJobSeeker": "Job Seekers",
+    "faqCategoryEmployer": "Employers",
+    "faqCategoryAgent": "Agents",
+    "faqCategoryBilling": "Billing",
+    "faqCategoryPrivacy": "Privacy"
   },
   "locationData": {
     "title": "Location Data",
@@ -3548,7 +3570,8 @@
     "autoRenewAdminOnly": "Auto-renew changes require an administrator. Contact support to update this.",
     "a11yLiveExchangeRates": "Live exchange rates",
     "a11yDisplayCurrency": "Display currency",
-    "addInline": "Add"
+    "addInline": "Add",
+    "statusPastDue": "Payment due"
   },
   "invoiceManagement": {
     "title": "Invoices",
@@ -4025,7 +4048,9 @@
     "terms": "Terms",
     "gdpr": "GDPR",
     "support": "Support",
-    "homepage": "Homepage"
+    "homepage": "Homepage",
+    "about": "About us",
+    "accessibility": "Accessibility"
   },
   "profileDropdown": {
     "preferences": "Preferences",
@@ -5055,11 +5080,14 @@
     "freeSlotsLabel": "Free slots for {name}",
     "roleFit": "Role fit",
     "ivTimeZoneHint": "Times are in your time zone ({zone})",
-    "searchOrDescribe": "Search or describe who you need"
+    "searchOrDescribe": "Search or describe who you need",
+    "invalidTransition": "This status change isn't allowed from the application's current stage.",
+    "bulkInvalidSkipped": "{count, plural, one {# application was skipped because the status change isn't allowed} other {# applications were skipped because the status change isn't allowed}}",
+    "shortlistedAndLater": "Shortlisted & later"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
-    "description": "Review funnel health, hiring velocity, job-level performance, and response commitments from one cleaner employer workspace.",
+    "description": "Review funnel health, hiring speed, job performance and response times in one place.",
     "loadError": "We couldn't load analytics. Your hiring data is unchanged. Try again.",
     "pipeline": "Pipeline",
     "historical": "Historical",
@@ -5087,7 +5115,7 @@
     "rejected": "Rejected",
     "conversion": "Conversion",
     "pipelineFunnel": "Pipeline Funnel",
-    "pipelineFunnelDesc": "See how candidate volume compresses from first application to final hire.",
+    "pipelineFunnelDesc": "How many candidates reached each stage, including those who have since moved further on.",
     "appliedToShortlisted": "Applied → Shortlisted",
     "shortlistedToInterview": "Shortlisted → Interview",
     "interviewToOffer": "Interview → Offer",
@@ -5454,7 +5482,8 @@
     "fieldCompanyName": "company name",
     "fieldCompanyEmail": "company email",
     "fieldIndustry": "industry",
-    "fieldPhone": "phone number"
+    "fieldPhone": "phone number",
+    "verificationPremium": "Premium"
   },
   "adminDashboard": {
     "roles": {
@@ -6746,6 +6775,13 @@
       "canViewAnalytics": "Reports and analytics",
       "canManageCompanySettings": "Company settings",
       "canManageTeam": "Manage team"
+    },
+    "inviteErrors": {
+      "seatLimit": "Your plan includes {limit} team members. Upgrade your plan to invite more.",
+      "subscriptionRequired": "An active subscription is required to invite team members.",
+      "alreadyMember": "This person is already on your team or has a pending invite.",
+      "forbidden": "Only owners and admins can invite team members.",
+      "unavailable": "Team invitations are temporarily unavailable. Please try again later or contact support."
     }
   },
   "employerActivity": {
@@ -7843,7 +7879,8 @@
     "postHeldTitle": "Saved as a draft, not published",
     "postHeldDescription": "Add your company name, email and industry before this job can go on the public board.",
     "completeCompanyProfile": "Complete company profile",
-    "publishBlockedProfile": "Add your company name, email and industry before publishing this job."
+    "publishBlockedProfile": "Add your company name, email and industry before publishing this job.",
+    "draftSaved": "Draft saved"
   },
   "employerCommon": {
     "workspace": "Employer workspace",
@@ -7973,7 +8010,12 @@
     "roadmapStep1": "Step 1: Configure gateway keys (this page)",
     "roadmapStep2": "Step 2: Connect to subscription billing (coming soon)",
     "roadmapStep3": "Step 3: Enable automated invoicing",
-    "roadmapStep4": "Step 4: Set up webhook for payment events"
+    "roadmapStep4": "Step 4: Set up webhook for payment events",
+    "comingSoonSubtitle": "Billing for your Mployedin plan",
+    "comingSoonTitle": "Online payments are coming soon",
+    "comingSoonBody": "You don't need to set anything up here. When online payment is available you'll be able to add a card for your plan. Until then, our team handles plan changes and sends invoices.",
+    "viewPlan": "View my plan",
+    "viewInvoices": "View invoices"
   },
   "exhibitions": {
     "viewDetails": "View details",
@@ -9736,7 +9778,8 @@
     "matchBreakdown": "Match Breakdown",
     "applicationsShort": "Applied",
     "showAllSkills": "Show all {count} skills",
-    "showFewerSkills": "Show fewer skills"
+    "showFewerSkills": "Show fewer skills",
+    "cvAvailableAfterApply": "CV available once this candidate applies to one of your jobs"
   },
   "employerAiExtract": {
     "title": "AI Job Extractor",
@@ -9991,7 +10034,9 @@
     "remoteCountriesEmpty": "Add at least one country you can hire from.",
     "remoteScopeUnset": "Not set — until you choose, this job is only matched to candidates in the country above.",
     "placeholderRemoteCountry": "Type a country, then press Enter",
-    "removeCountry": "Remove {country}"
+    "removeCountry": "Remove {country}",
+    "saveChanges": "Save changes",
+    "descriptionLive": "This job is live. Saved changes appear on the posting straight away."
   },
   "employerPanel": {
     "title": "Hiring Panel Review",
@@ -10193,7 +10238,10 @@
     "issuedByPlatform": "Mployedin",
     "serviceCharge": "Service charge",
     "amountPayable": "Amount payable",
-    "qtyTimesPrice": "{qty} × {price}"
+    "qtyTimesPrice": "{qty} × {price}",
+    "payNowShort": "Pay",
+    "payNowRedirecting": "…",
+    "payNowRow": "Pay invoice {number} online"
   },
   "adminJobAttributes": {
     "nameEnglish": "Name (English)",
@@ -10398,7 +10446,9 @@
     "openCv": "Open CV",
     "viewJob": "View job",
     "viewCandidateProfile": "Open candidate in Job Seekers",
-    "staleFilterLabel": "Needs review (48h+)"
+    "staleFilterLabel": "Needs review (48h+)",
+    "invalidTransition": "This status change isn't allowed from the application's current stage.",
+    "bulkInvalidSkipped": "{count, plural, one {# application was skipped because the status change isn't allowed} other {# applications were skipped because the status change isn't allowed}}"
   },
   "adminCmsFaqs": {
     "title": "FAQs",
@@ -11625,7 +11675,8 @@
     "failedLoadConsentLogs": "We couldn't load consent logs",
     "statusUpdatedSuccess": "Request status updated",
     "failedUpdateStatus": "We couldn't update status",
-    "errorUpdatingRequest": "Error updating request"
+    "errorUpdatingRequest": "Error updating request",
+    "cookieConsentTab": "Cookie Consent"
   },
   "adminInterviews": {
     "recruitmentControl": "Recruitment Control",
@@ -11716,8 +11767,8 @@
     "status_rescheduled": "Rescheduled",
     "status_completed": "Completed",
     "status_cancelled": "Cancelled",
-    "status_no_show": "No show"
-    ,"changeStatusFor": "Change interview status for {candidate}"
+    "status_no_show": "No show",
+    "changeStatusFor": "Change interview status for {candidate}"
   },
   "adminInvoices": {
     "title": "Invoices",
@@ -14220,7 +14271,8 @@
     "statusPaid": "Paid",
     "actionApprove": "Approve",
     "actionMarkPaid": "Mark Paid",
-    "loadCommissionsError": "We couldn't load commissions. Please try again."
+    "loadCommissionsError": "We couldn't load commissions. Please try again.",
+    "paidByAdmin": "Payouts are marked as paid by an admin."
   },
   "superAgentJobSeekers": {
     "pageTitle": "Job Seekers",
@@ -15392,7 +15444,9 @@
     "noFileSelected": "No file selected",
     "cvParsingFailed": "CV parsing failed",
     "couldNotExtractCV": "Could not extract data from this CV. Try a different file.",
-    "universityRequired": "Please enter a university or institution name"
+    "universityRequired": "Please enter a university or institution name",
+    "saveFieldsInvalid": "Please check: {fields}",
+    "saveFailed": "We couldn't save this step. Please try again."
   },
   "verifyEmail": {
     "resendSuccess": "Verification email sent! Check your inbox.",
@@ -15420,7 +15474,7 @@
     "troubleSendingBefore": "We had trouble sending that email. Tap",
     "resendWord": "Resend",
     "troubleSendingAfter": " below to get your code.",
-    "otpPlaceholder": "Enter 6-digit code",
+    "otpPlaceholder": "6-digit code",
     "verificationCodeAria": "Verification code",
     "verifyingEllipsis": "Verifying…",
     "verifyCode": "Verify code",
@@ -16212,7 +16266,15 @@
     "hide": "Hide",
     "viewAll": "View all",
     "featuresComparison": "features comparison",
-    "feature": "Feature"
+    "feature": "Feature",
+    "paymentUnavailableTitle": "Online payment isn't available yet",
+    "paymentUnavailableBody": "You can't pay for {name} online yet. Send us an upgrade request and our team will contact you to switch your plan.",
+    "requestUpgrade": "Request upgrade",
+    "upgradeRequestSubject": "Upgrade request: {name} plan",
+    "close": "Close",
+    "downgradeScheduledTitle": "Switch to {name} scheduled",
+    "downgradeScheduledBody": "Your current plan stays active until {date}; the new plan starts then. Nothing is charged today.",
+    "planChangedTitle": "Your plan has been updated"
   },
   "cmsPage": {
     "cmsWorkspace": "CMS Workspace",
@@ -16734,7 +16796,7 @@
     "googleSignInFailed": "Google sign-in failed. Please try again.",
     "accountInactive": "This account has been deactivated. Contact support@mployedin.com to have it restored.",
     "signInApply": "Sign in to Apply",
-    "jobSeekersOnly": "Job seekers only can apply",
+    "jobSeekersOnly": "Only job seekers can apply",
     "applicationSubmitted": "Application submitted!",
     "sentProfile": "We've sent your profile to the employer.",
     "answerRequired": "Please answer the required question: \"{label}\"",
@@ -16806,7 +16868,14 @@
     "browseMoreJobs": "Browse more jobs",
     "profileCompletionOptional": "Profile completion is optional — you can do it anytime.",
     "fullName": "Full Name",
-    "enterFullName": "Enter your full name"
+    "enterFullName": "Enter your full name",
+    "confirmTitle": "Send your application?",
+    "confirmDescription": "Review what the employer will receive for {jobTitle}.",
+    "confirmNoCv": "No CV attached",
+    "confirmCoverLetter": "Cover letter",
+    "confirmIncluded": "Included",
+    "confirmEdit": "Review again",
+    "confirmSend": "Send application"
   },
   "socialShare": {
     "shareJob": "Share this job",
@@ -17228,7 +17297,8 @@
       "contract": "Contract",
       "internship": "Internship",
       "freelance": "Freelance",
-      "walk_in": "Walk-in"
+      "walk_in": "Walk-in",
+      "any": "Any job type"
     },
     "time": {
       "justNow": "Just now",
@@ -17466,7 +17536,8 @@
     "resultDone": "Completed",
     "resultCancelled": "Cancelled",
     "journeyCheckRequest": "Request check",
-    "journeyCheckView": "View check"
+    "journeyCheckView": "View check",
+    "boardMoveNotAllowed": "{name} can't be moved to {stage} from their current stage."
   },
   "formErrors": {
     "fallback": "We couldn't save your changes. Nothing was changed. Review the fields and try again.",
@@ -17795,5 +17866,389 @@
     "scoreRange": "AI score {min}–{max}%",
     "fromDate": "From {date}",
     "toDate": "Until {date}"
+  },
+  "publicNotFound": {
+    "title": "We couldn't find that page",
+    "description": "The page or job you're looking for may have been moved, closed or never existed.",
+    "browseJobs": "Browse jobs",
+    "home": "Go to homepage"
+  },
+  "aiAccess": {
+    "nameRequired": "Enter a name for the key",
+    "createFailed": "Couldn't create the key. Please try again.",
+    "created": "API key created",
+    "revokeTitle": "Revoke API key?",
+    "revokeMessage": "\"{name}\" will stop working immediately. This can't be undone.",
+    "revoke": "Revoke",
+    "revoked": "API key revoked",
+    "revokeFailed": "Couldn't revoke the key. Please try again.",
+    "tryFailed": "Request failed. Please try again.",
+    "title": "AI Access",
+    "description": "Create API keys that let AI tools and scripts query platform insights over the API or MCP.",
+    "activeKeys": "Active keys",
+    "totalKeys": "Total keys",
+    "totalRequests": "Total requests",
+    "createKey": "Create key",
+    "keyShownOnce": "Copy this key now. For security it won't be shown again.",
+    "done": "Done",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Claude Desktop – analytics",
+    "piiLabel": "Include personal data",
+    "piiHelp": "Allow this key to return names and contact details. Leave off unless required.",
+    "rateLimitLabel": "Requests per minute",
+    "expiresInDaysLabel": "Expires in (days)",
+    "neverExpires": "Never expires",
+    "keysHeading": "API keys",
+    "refresh": "Refresh",
+    "emptyTitle": "No API keys yet",
+    "emptyDescription": "Create a key to connect an AI assistant or script.",
+    "colName": "Name",
+    "colPrefix": "Prefix",
+    "colScopes": "Scopes",
+    "colCreated": "Created",
+    "colLastUsed": "Last used",
+    "colRequests": "Requests",
+    "colStatus": "Status",
+    "colActions": "Actions",
+    "byCreator": "by {name}",
+    "never": "Never",
+    "statusRevoked": "Revoked",
+    "statusExpired": "Expired",
+    "statusActive": "Active",
+    "perMinute": "{count}/min",
+    "quickStartHeading": "Quick start",
+    "quickStartIntro": "Use a key with the REST API or connect it to an MCP-capable AI client.",
+    "curlHeading": "Call the API",
+    "mcpHeading": "Connect over MCP",
+    "mcpHelp": "Add this server URL to your AI client and send the key as a Bearer token.",
+    "schemaLink": "Schema",
+    "openapiLink": "OpenAPI spec",
+    "docsLink": "Docs for AI",
+    "tryHeading": "Try it",
+    "tryHelp": "Pick an endpoint and run it with your session to preview the response.",
+    "tryButton": "Run"
+  },
+  "consent": {
+    "bannerTitle": "Your privacy choices",
+    "bannerText": "MPLOYEDIN uses strictly necessary cookies to keep you signed in and secure. With your permission we would also use optional cookies for embedded videos and anonymous usage statistics. Optional cookies stay off unless you switch them on, and you can change your choice at any time under \"Cookie settings\" in the footer.",
+    "cookiePolicy": "Cookie policy",
+    "privacyPolicy": "Privacy policy",
+    "acceptAll": "Accept all",
+    "rejectAll": "Reject all",
+    "customize": "Customise",
+    "saveChoices": "Save my choices",
+    "cookieSettings": "Cookie settings",
+    "preferencesTitle": "Cookie preferences",
+    "preferencesDescription": "Choose which optional cookies and similar technologies we may use. Strictly necessary ones are needed for the site to work and cannot be switched off. Optional categories are off until you turn them on.",
+    "categoriesLabel": "Cookie categories",
+    "alwaysActive": "Always active",
+    "showCookies": "Show {count, plural, one {# item} other {# items}}",
+    "noneInUse": "We do not use any cookies in this category at the moment.",
+    "firstParty": "MPLOYEDIN (first party)",
+    "policyVersion": "Policy version {version}. We keep your choice for 6 months, then ask again. We also ask again if we change how we use cookies.",
+    "gpcDetected": "Your browser sends a Global Privacy Control signal, so marketing cookies stay off unless you switch them on yourself.",
+    "embedBlocked": "This video is hosted by {provider}, which may set cookies and collect data when it plays.",
+    "embedPlayOnce": "Play this video",
+    "embedPlayOnceLabel": "Play video: {title}",
+    "embedAllowAlways": "Always allow videos",
+    "categories": {
+      "necessary": {
+        "title": "Strictly necessary",
+        "description": "Sign-in, security (CSRF and fraud protection), your language, remembering this cookie choice and features you ask for. These do not need consent."
+      },
+      "functional": {
+        "title": "Functional and media",
+        "description": "Embedded content from other providers, such as YouTube or Vimeo videos. These providers may set their own cookies."
+      },
+      "analytics": {
+        "title": "Analytics",
+        "description": "Anonymous statistics, such as counting unique views of a job posting, so we can improve the service. No advertising use."
+      },
+      "marketing": {
+        "title": "Marketing",
+        "description": "Personalised advertising and measuring campaigns on other websites. We currently use none, but you can decide in advance."
+      }
+    },
+    "inventory": {
+      "sessionPurpose": "Keeps you signed in to your account",
+      "authFlowPurpose": "Protects the sign-in flow and returns you to the right page",
+      "csrfPurpose": "Protects forms against cross-site request forgery",
+      "consentPurpose": "Remembers your cookie choice and links it to our consent record",
+      "localePurpose": "Remembers the language you selected",
+      "referralPurpose": "Carries the referral link you opened through sign-up",
+      "tenantPurpose": "Keeps an authorised agent's workspace view during a session",
+      "a11yPurpose": "Remembers the display settings you chose",
+      "rememberPurpose": "Remembers your email address when you tick \"Remember me\"",
+      "draftsPurpose": "Keeps unsent drafts and assistant history on this device",
+      "recaptchaPurpose": "Detects bots on sign-in and contact forms",
+      "videoPurpose": "Plays embedded videos and remembers player settings",
+      "jobViewPurpose": "Counts each job view only once per day",
+      "sessionDuration": "Session, up to 30 days",
+      "untilBrowserClose": "Until you close the browser",
+      "twoHours": "2 hours",
+      "oneHour": "1 hour",
+      "oneDay": "24 hours",
+      "sixMonths": "6 months",
+      "oneYear": "1 year",
+      "untilCleared": "Until you clear it",
+      "providerDefined": "Set by the provider"
+    },
+    "kinds": {
+      "cookie": "Cookie",
+      "localStorage": "Local storage",
+      "sessionStorage": "Session storage"
+    },
+    "table": {
+      "name": "Name",
+      "category": "Category",
+      "purpose": "Purpose",
+      "duration": "Duration",
+      "provider": "Provider",
+      "type": "Type"
+    },
+    "manageTitle": "Manage your cookie choice",
+    "manageText": "You can give, change or withdraw your consent at any time. Withdrawing does not affect anything done before, but optional cookies stop being used from that moment.",
+    "manageButton": "Change cookie settings",
+    "withdraw": "Withdraw consent",
+    "currentChoice": "Your current choice",
+    "noChoice": "You have not made a choice yet, so only strictly necessary cookies are used.",
+    "choiceSavedOn": "Saved on {date}",
+    "statusOn": "On",
+    "statusOff": "Off",
+    "inventoryHeading": "Cookies and similar technologies we use",
+    "inventoryIntro": "This list is generated from the same configuration the cookie banner uses, so it always matches what the site actually sets.",
+    "privacyChoicesTitle": "Your privacy choices",
+    "privacyChoicesText": "Control cookies, download a copy of your data or ask us to delete it.",
+    "privacyExport": "Your data rights (GDPR)"
+  },
+  "accessibility": {
+    "skipToContent": "Skip to main content",
+    "openSettings": "Accessibility settings",
+    "settingsLink": "Accessibility settings",
+    "panelTitle": "Accessibility settings",
+    "panelDescription": "Adjust how MPLOYEDIN looks and behaves on this device. Changes apply straight away and are saved in this browser.",
+    "textSize": "Text size",
+    "options": {
+      "highContrast": {
+        "title": "High contrast",
+        "description": "Darker text and stronger borders."
+      },
+      "reduceMotion": {
+        "title": "Reduce motion",
+        "description": "Stops animations, transitions and smooth scrolling."
+      },
+      "underlineLinks": {
+        "title": "Underline links",
+        "description": "Makes every link easy to spot."
+      },
+      "textSpacing": {
+        "title": "Increase text spacing",
+        "description": "More space between lines, letters and words."
+      },
+      "readableFont": {
+        "title": "Readable font",
+        "description": "Switches to Atkinson Hyperlegible, a font designed for low vision."
+      },
+      "strongFocus": {
+        "title": "Strong focus indicator",
+        "description": "A thick, high-contrast outline around the focused element."
+      },
+      "bigCursor": {
+        "title": "Large cursor",
+        "description": "A bigger mouse pointer."
+      },
+      "readingGuide": {
+        "title": "Reading guide",
+        "description": "A band that follows your pointer to help you keep your place."
+      }
+    },
+    "osHint": "We also respect your device settings, such as reduced motion, high contrast and browser zoom up to 400%.",
+    "statementLink": "Read our accessibility statement",
+    "reset": "Reset",
+    "done": "Done"
+  },
+  "accessibilityStatement": {
+    "metaTitle": "Accessibility statement",
+    "metaDescription": "How MPLOYEDIN meets WCAG 2.2 AA, EN 301 549 and the European Accessibility Act, known limitations, and how to report a barrier.",
+    "heading": "Accessibility statement",
+    "subheading": "We want everyone to be able to find work and hire through MPLOYEDIN, including people who use assistive technology.",
+    "lastReviewed": "Statement prepared on 28 September 2026. Last reviewed on 28 September 2026.",
+    "onThisPage": "On this page",
+    "sections": {
+      "commitment": {
+        "title": "Our commitment",
+        "body": "MPLOYEDIN UK LTD is committed to making its website and web app accessible in line with the European Accessibility Act (Directive (EU) 2019/882) as implemented in EU member states, the UK Equality Act 2010 and similar laws in the markets we serve. This statement applies to the MPLOYEDIN website, the job-seeker, employer, agent and admin workspaces, in English and Arabic."
+      },
+      "service": {
+        "title": "About the service",
+        "body": "MPLOYEDIN is an online recruitment platform. Job seekers can search and filter jobs, create a profile and CV, apply, schedule interviews and message employers. Employers and agents can post jobs, review and shortlist candidates, run interviews and make offers. Everything works in a web browser; no plug-ins are needed."
+      },
+      "standard": {
+        "title": "Standards we follow",
+        "body": "Our target is the Web Content Accessibility Guidelines (WCAG) 2.2 at level AA. This is the level required by the harmonised European standard EN 301 549 (version 3.2.1 references WCAG 2.1 AA; version 4.1.1, published in September 2026, adopts WCAG 2.2 AA)."
+      },
+      "status": {
+        "title": "Conformance status",
+        "body": "MPLOYEDIN is partially conformant with WCAG 2.2 level AA. Partially conformant means that some parts of the content do not yet fully meet the standard. The known gaps are listed below together with how you can work around them."
+      },
+      "measures": {
+        "title": "How we meet the requirements",
+        "items": [
+          "Semantic page structure with landmarks, headings and a \"Skip to main content\" link on every page.",
+          "Full keyboard operation with a visible focus indicator that is not hidden by sticky headers or banners.",
+          "Text alternatives for images and icons, and labels and error messages for every form field.",
+          "Colour contrast of at least 4.5:1 for text, and information that never depends on colour alone.",
+          "Content in English and Arabic with the correct language and right-to-left layout marked up for screen readers.",
+          "Layouts that reflow at 320 px width and at 400% zoom, touch targets of at least 24 × 24 px, and respect for reduced-motion settings.",
+          "Sign-in that allows password managers, pasting and one-time codes, without cognitive puzzles.",
+          "Accessibility settings for text size, contrast, spacing, fonts, motion, focus and cursor that you can open from the header or footer.",
+          "Automated accessibility testing (axe-core) and lint rules in our development process, plus manual keyboard and screen-reader checks."
+        ]
+      },
+      "limitations": {
+        "title": "Known limitations",
+        "intro": "We know about the following issues and are working on them. If one of them stops you, contact us and we will help you complete the task another way.",
+        "items": [
+          "Some charts in the employer, agent and admin dashboards do not yet have a complete text or table alternative.",
+          "Hiring pipeline boards can be used without dragging through each card's move menu, but screen-reader announcements when a card moves are still being improved.",
+          "CVs, offer letters and other documents uploaded by users may not be accessible PDFs. We can provide the information in another format on request.",
+          "Older pages and articles published through our content system may contain images without meaningful descriptions.",
+          "Videos from YouTube or Vimeo use the provider's player; captions depend on the original video."
+        ]
+      },
+      "compatibility": {
+        "title": "Compatibility",
+        "body": "MPLOYEDIN is designed to work with the latest two versions of Chrome, Edge, Firefox and Safari, and with common assistive technologies including NVDA and JAWS on Windows, VoiceOver on macOS and iOS, and TalkBack on Android. It relies on HTML, WAI-ARIA, CSS and JavaScript."
+      },
+      "assessment": {
+        "title": "How we assessed this",
+        "body": "This statement is based on a self-assessment carried out in September 2026 using automated testing with axe-core, keyboard-only testing and screen-reader spot checks on key journeys: searching jobs, registering, applying, and posting a job. We review it at least once a year and whenever we make major changes."
+      },
+      "feedback": {
+        "title": "Feedback and contact",
+        "body": "If you find a barrier, need information in another format (for example large print, audio or plain text), or would like to speak to someone, email {email} with the subject \"Accessibility\". Tell us the page address and what went wrong. We aim to reply within 5 working days.",
+        "button": "Email us about accessibility"
+      },
+      "enforcement": {
+        "title": "Enforcement procedure",
+        "body": "If you are not happy with our response, you can contact the market surveillance authority for accessibility in your EU country. In Germany this is the Marktüberwachungsstelle der Länder für die Barrierefreiheit von Produkten und Dienstleistungen (MLBF) in Magdeburg. In the UK you can contact the Equality Advisory and Support Service (EASS)."
+      },
+      "provider": {
+        "title": "Service provider",
+        "body": "MPLOYEDIN UK LTD, X2 Greenleaf Walk, Southall, UB1 1FR, United Kingdom."
+      }
+    },
+    "settingsTitle": "Adjust the display",
+    "settingsText": "Open the accessibility settings to change text size, contrast, spacing and more on this device.",
+    "settingsButton": "Open accessibility settings"
+  },
+  "adminCookieConsent": {
+    "title": "Cookie consent records",
+    "description": "Proof of consent for every choice made in the cookie banner (GDPR art 7(1)). Current policy version: {version}. Records are pseudonymous and deleted automatically after 3 years.",
+    "periodLabel": "Period",
+    "lastDays": "Last {days} days",
+    "methodLabel": "Choice",
+    "allMethods": "All choices",
+    "methods": {
+      "accept_all": "Accept all",
+      "reject_all": "Reject all",
+      "custom": "Custom",
+      "withdraw": "Withdrawn",
+      "gpc": "GPC signal"
+    },
+    "statTotal": "Choices recorded",
+    "statAcceptAll": "Accepted all",
+    "statRejectAll": "Rejected or withdrew",
+    "statAnalytics": "Allowed analytics",
+    "loadError": "Could not load consent records.",
+    "retry": "Try again",
+    "colDate": "Date",
+    "colConsentId": "Consent ID",
+    "colMethod": "Choice",
+    "colChoices": "Categories",
+    "colVersion": "Policy",
+    "colContext": "Context",
+    "empty": "No consent records in this period.",
+    "categories": {
+      "functional": "Functional",
+      "analytics": "Analytics",
+      "marketing": "Marketing"
+    },
+    "on": "on",
+    "off": "off",
+    "signedIn": "Signed in",
+    "anonymous": "Anonymous",
+    "pageOf": "Page {page} of {total}",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "accountSettings": {
+    "passwordTitle": "Password",
+    "passwordDescription": "Change the password you use to sign in with your email.",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "passwordHint": "At least {min} characters, with an uppercase letter, a lowercase letter, a number and a symbol.",
+    "passwordMismatch": "The new passwords don't match.",
+    "passwordChanged": "Your password has been changed.",
+    "updatePassword": "Update password",
+    "cancel": "Cancel",
+    "genericError": "We couldn’t save that change. Please try again.",
+    "deleteTitle": "Delete account",
+    "deleteDescription": "Permanently erase your account, profile, CVs and documents. Employers will no longer see your applications' personal details.",
+    "deleteAccount": "Delete my account",
+    "deleteConfirmTitle": "Delete your account?",
+    "deleteConfirmDescription": "This can't be undone. You'll be signed out and your personal data erased.",
+    "deletePasswordLabel": "Confirm with your password",
+    "deletePasswordHint": "Leave blank if you only sign in with Google.",
+    "deletePasswordRequired": "Enter your password to confirm.",
+    "deletePasswordInvalid": "That password is incorrect.",
+    "deleteConfirm": "Delete permanently"
+  },
+  "paymentReturn": {
+    "confirming": "Confirming your payment…",
+    "paidTitle": "Payment received",
+    "paidBody": "Thank you! Your payment has been recorded.",
+    "partialBody": "Thank you! Your payment was recorded and the remaining balance is shown on the invoice.",
+    "pendingTitle": "Payment processing",
+    "pendingBody": "Your bank is still confirming the payment. We'll update your account as soon as it clears.",
+    "failedTitle": "Payment failed",
+    "failedBody": "The payment didn't go through. You haven't been charged — please try again or use another method.",
+    "cancelledTitle": "Payment cancelled",
+    "cancelledBody": "No payment was taken. You can try again at any time.",
+    "confirmFailedTitle": "Couldn't confirm the payment yet",
+    "confirmFailedBody": "If you completed the payment, it will appear here shortly once the provider notifies us.",
+    "paidNeedsReviewTitle": "Payment received — needs review",
+    "paidNeedsReviewBody": "We received your payment but couldn't apply it automatically. Our team will review it and contact you."
+  },
+  "subscriptionPayment": {
+    "pastDueTitle": "Your renewal payment is due",
+    "pastDueBody": "Pay the renewal invoice by {date} to keep your current plan.",
+    "pastDueBodyNoDate": "Pay the renewal invoice to keep your current plan.",
+    "payNow": "Pay now",
+    "redirecting": "Redirecting…",
+    "onlineUnavailable": "Online payment isn't available right now. Please pay by bank transfer from your invoices.",
+    "payFailed": "Could not start the payment. Please try again.",
+    "downgradeScheduled": "Your plan changes to {name} on {date}. You keep your current plan until then."
+  },
+  "paymentGatewayStatus": {
+    "title": "Online payments",
+    "enabled": "Enabled",
+    "manualOnly": "Manual only",
+    "liveMode": "Live mode",
+    "testMode": "Test mode",
+    "description": "Card / UPI checkout for subscriptions and invoices. Keys are set in the server environment and are never shown here.",
+    "loadFailed": "Couldn't load the payment gateway status.",
+    "providerLabel": "Provider",
+    "none": "None (manual billing)",
+    "currencyLabel": "Default currency",
+    "secretKey": "Secret API key",
+    "webhookSecret": "Webhook signing secret",
+    "publishableKey": "Publishable / public key",
+    "webhookUrlLabel": "Webhook endpoint — paste this into the provider dashboard",
+    "copyWebhookUrl": "Copy webhook URL",
+    "eventsLabel": "Events to enable",
+    "envHint": "To change the provider or keys, update the environment variables and restart the app (see docs/PAYMENTS.md)."
   }
 }

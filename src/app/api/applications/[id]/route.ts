@@ -13,10 +13,14 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { memberMayAccessJob } from "@/lib/permissions/team";
 import { isBackwardsStageMove } from "@/lib/hiring/pipeline";
-import { advancesPastInterviewing, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
+import { advancesPastInterviewing, closeOpenInterviewsForAdvance, closeOpenItemsForExit } from "@/lib/hiring/closeOpenInterviews";
+import { canTransitionApplication, invalidTransitionBody, isRecordBackedStatus } from "@/lib/hiring/applicationTransitions";
+import { announcePlacement, createPlacementForHire } from "@/lib/hiring/createPlacementForHire";
+import { OPEN_OFFER_STATUSES } from "@/lib/offers/status";
 import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
+import { redactApplicationForSeeker } from "@/lib/applications/seekerView";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
 
@@ -133,6 +137,31 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const prevStatus = application.status;
 
+  if (status && status !== prevStatus) {
+    if (!canTransitionApplication(prevStatus, status, ctx.role === "job_seeker" ? "job_seeker" : "staff")) {
+      return NextResponse.json(invalidTransitionBody(prevStatus, status), { status: 409 });
+    }
+    // "offer" and "interview_scheduled" describe an Offer / Interview record.
+    // Their own routes set them; a stage edit may only when the record exists.
+    if (isRecordBackedStatus(status)) {
+      const live = status === "offer"
+        ? await (await import("@/models/Offer")).default.exists({ applicationId: application._id, status: { $in: [...OPEN_OFFER_STATUSES] } })
+        : await (await import("@/models/Interview")).default.exists({ applicationId: application._id, status: { $in: ["scheduled", "confirmed", "rescheduled"] } });
+      if (!live) {
+        return NextResponse.json(
+          invalidTransitionBody(
+            prevStatus,
+            status,
+            status === "offer"
+              ? "Send an offer to move this candidate to Offer."
+              : "Schedule an interview to move this candidate to Interviewing.",
+          ),
+          { status: 409 },
+        );
+      }
+    }
+  }
+
   // A backwards stage move over a live interview is how the funnel silently
   // desyncs from the Interviews tab: the candidate lands back at, say,
   // shortlisted while a scheduled interview stays open, so Overview reads
@@ -194,6 +223,22 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const effectiveStatus = application.status;
   const statusChanged = effectiveStatus !== prevStatus;
+
+  if (statusChanged && (effectiveStatus === "rejected" || effectiveStatus === "withdrawn")) {
+    // Out of the pipeline: cancel open interviews (ICS CANCEL) and withdraw
+    // open offers, so no reminder or acceptable offer outlives the decision.
+    await closeOpenItemsForExit(application._id, effectiveStatus, { actorRole: ctx.role });
+  }
+
+  if (statusChanged && effectiveStatus === "hired") {
+    // A hire is a placement — invoices and commissions hang off it.
+    try {
+      const result = await createPlacementForHire(application._id);
+      if (result?.created) await announcePlacement(result.placement, ctx.locale);
+    } catch (err) {
+      logger.error({ err, applicationId: params?.id }, "Failed to create placement for hire");
+    }
+  }
 
   if (statusChanged) {
     const jobTitle = (application.jobId as unknown as { title?: string })?.title ?? "a job";
@@ -308,7 +353,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   const includes = include.split(",").map((s) => s.trim());
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result: Record<string, any> = { ...application };
+  let result: Record<string, any> = { ...application };
 
   // Candidates never see recruiter-internal fields. The list handler already
   // strips these for job_seeker (handlers.ts .select("-employerNotes ...")), but
@@ -317,13 +362,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   // applicant. The seeker UI renders aiMatchScore, so it carries the seeker's
   // own number: the engine score, not an employer's re-weighted ranking.
   if (ctx.role === "job_seeker") {
-    if (typeof result.seekerMatchScore === "number") result.aiMatchScore = result.seekerMatchScore;
-    for (const key of [
-      "employerNotes", "agentNotes", "rejectionReason", "matchStrengths", "matchGaps", "matchBreakdown", "notes",
-      "qualifications", "requirementsStatus", "missingSkills", "weightsApplied",
-    ]) {
-      delete result[key];
-    }
+    result = redactApplicationForSeeker(result, ctx.userId);
   }
 
   if (includes.includes("interviews")) {

@@ -183,6 +183,22 @@ export class OpenInterviewError extends Error {
   }
 }
 
+/**
+ * Thrown when the server refuses a stage move the transition map does not
+ * allow (409 `invalid_transition`), so callers can explain it instead of
+ * showing a generic failure.
+ */
+export class InvalidTransitionError extends Error {
+  readonly from?: string;
+  readonly to?: string;
+  constructor(body?: { error?: string; from?: string; to?: string } | null) {
+    super(body?.error ?? "This stage change isn't allowed.");
+    this.name = "InvalidTransitionError";
+    this.from = body?.from;
+    this.to = body?.to;
+  }
+}
+
 /** Update a single application's status */
 export function useUpdateApplicationStatus() {
   const qc = useQueryClient();
@@ -212,6 +228,7 @@ export function useUpdateApplicationStatus() {
         if (body?.code === "OPEN_INTERVIEW" && body.interview) {
           throw new OpenInterviewError(body.interview as OpenInterviewConflict);
         }
+        if (body?.code === "invalid_transition") throw new InvalidTransitionError(body);
       }
       if (!res.ok) throw new Error("Application status was not updated");
       return res.json();
@@ -237,6 +254,10 @@ export function useBulkAction() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (res.status === 409) {
+        const data = await res.json().catch(() => null);
+        if (data?.code === "invalid_transition") throw new InvalidTransitionError(data);
+      }
       if (!res.ok) throw new Error("Failed to perform bulk action");
       return res.json();
     },

@@ -354,7 +354,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     employerId,
     jobId,
     status: finalInvoiceStatus,
-  });
+  }, employerId);
 
   return NextResponse.json({
     invoice,

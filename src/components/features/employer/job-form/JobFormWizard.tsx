@@ -77,6 +77,9 @@ interface JobFormWizardProps {
    *  renders its own PageHeader above it — two h1s on one page. Callers that
    *  already have an h1 pass 2. */
   headingLevel?: 1 | 2;
+  /** Resume an existing server draft (Edit on a draft job): the form loads that
+   *  job, saves PATCH it, and the wizard opens on its last (review) step. */
+  resumeJobId?: string;
 }
 
 interface EmployerOption {
@@ -142,7 +145,19 @@ function mergeJobFormValues(base: JobFormValues, incoming: Partial<JobFormValues
   };
 }
 
-export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employer", headingLevel = 1 }: JobFormWizardProps) {
+/** A saved job document → wizard values: only form keys, nulls dropped. */
+function jobToFormValues(job: Record<string, unknown>): Partial<JobFormValues> {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(DEFAULT_JOB_FORM_VALUES)) {
+    const value = job[key];
+    if (value !== null && value !== undefined) out[key] = value;
+  }
+  if (typeof out.expiresAt === "string") out.expiresAt = out.expiresAt.slice(0, 10);
+  if (out.agentId && typeof out.agentId === "object") out.agentId = String((out.agentId as { _id?: unknown })._id ?? out.agentId);
+  return out as Partial<JobFormValues>;
+}
+
+export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employer", headingLevel = 1, resumeJobId }: JobFormWizardProps) {
   const router = useRouter();
   const isAdmin = basePath === "admin";
   const [employerOptions, setEmployerOptions] = useState<EmployerOption[]>([]);
@@ -171,7 +186,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   const { watch, trigger, handleSubmit, reset, formState } = methods;
   const formValues = watch();
 
-  const { draftId, savedIndicator, saveDraft, loadDraft, autosaveLocal, clearDraft } = useJobFormDraft(locale);
+  const { draftId, savedIndicator, saveDraft, loadDraft, autosaveLocal, clearDraft, adoptDraftId } = useJobFormDraft(locale);
 
   // Admins post on behalf of an employer, so they must pick one — POST /api/jobs
   // rejects an admin-authored job that carries no employerId.
@@ -201,10 +216,30 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
     extractionDraftIndex: number;
   } | null>(null);
 
+  // EMP-21: "Edit" on a draft job reopens this wizard on the review step with
+  // the saved draft loaded, instead of a different single-page editor.
+  useEffect(() => {
+    if (!resumeJobId) return;
+    let cancelled = false;
+    fetch(`/api/jobs/${resumeJobId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { job?: Record<string, unknown> } | null) => {
+        if (cancelled || !d?.job) return;
+        aiPrefillApplied.current = true; // a stale local draft must not overwrite it
+        reset(mergeJobFormValues(DEFAULT_JOB_FORM_VALUES, jobToFormValues(d.job)));
+        adoptDraftId(resumeJobId);
+        const last = JOB_FORM_STEPS.length;
+        setCompletedSteps(new Set(Array.from({ length: last - 1 }, (_, i) => i + 1)));
+        setCurrentStep(last);
+      })
+      .catch(() => { /* the empty wizard stays usable */ });
+    return () => { cancelled = true; };
+  }, [resumeJobId, reset, adoptDraftId]);
+
   // Restore draft from localStorage on mount
   useEffect(() => {
     // If AI prefill was already applied, skip any further resets from this effect
-    if (aiPrefillApplied.current) return;
+    if (aiPrefillApplied.current || resumeJobId) return;
 
     if (useAiPrefill && typeof window !== "undefined") {
       const rawPrefill = sessionStorage.getItem(AI_PREFILL_STORAGE_KEY);
@@ -240,7 +275,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
     // and could publish its stale contents without noticing.
     const saved = loadDraft();
     if (saved) setPendingDraft(saved);
-  }, [loadDraft, useAiPrefill]);
+  }, [loadDraft, useAiPrefill, resumeJobId]);
 
   function restorePendingDraft() {
     if (!pendingDraft) return;
@@ -362,12 +397,9 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
       setSubmitError(t("draftSaveFailed"));
       return;
     }
-    // Navigate to the saved draft or jobs list after saving
-    if (savedId) {
-      router.push(`/${locale}/${basePath}/jobs/${savedId}`);
-    } else {
-      router.push(`/${locale}/${basePath}/jobs`);
-    }
+    // EMP-20: stay on the current step. Leaving for the job page mid-flow lost
+    // the employer's place in a 5-step form; later saves PATCH the same draft.
+    toast.success(t("draftSaved"));
   }
 
   // ─── Submit ───────────────────────────────────────────────────────────────────

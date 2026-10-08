@@ -15,6 +15,9 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import { agentOwnsOffer, superAgentOwnsOffer } from "@/lib/offers/access";
 import { CLOSED_APPLICATION_STATUSES, OPEN_OFFER_STATUSES } from "@/lib/offers/status";
+import { announcePlacement, createPlacementForHire } from "@/lib/hiring/createPlacementForHire";
+import { userLocalePath } from "@/lib/i18n/localePath";
+import type { IPlacement } from "@/models/Placement";
 
 interface AuthCtx {
   userId: string;
@@ -92,6 +95,16 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const prevStatus = offer.status;
   const respondedAt = new Date();
+
+  // The expiry cron runs once a day; until it does, a lapsed offer is still
+  // "pending" and must not be accepted into a hire.
+  const isExpired = offer.expiresAt != null && new Date(offer.expiresAt).getTime() <= respondedAt.getTime();
+  if (status === "accepted" && isExpired) {
+    return NextResponse.json(
+      { error: "This offer has expired and can no longer be accepted", code: "offer_expired" },
+      { status: 409 },
+    );
+  }
   const seekerName = await User.findById(ctx.userId).select("name").lean();
   const event = {
     type: status,
@@ -117,6 +130,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
 
   let committedOffer: IOffer;
+  let newPlacement = null as IPlacement | null;
   const session = await mongoose.startSession();
   try {
     const transactionOffer = await session.withTransaction(async () => {
@@ -126,6 +140,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
           jobSeekerId: seeker._id,
           // A candidate gets exactly one response opportunity per issued revision.
           status: "pending",
+          // Re-checked here so an offer lapsing mid-request cannot be accepted.
+          ...(status === "accepted" ? { $or: [{ expiresAt: null }, { expiresAt: { $gt: respondedAt } }] } : {}),
         },
         {
           $set: setFields,
@@ -169,6 +185,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
           },
           { session },
         );
+        // The hire becomes a placement in the same transaction, so there is
+        // never a hired application without one.
+        const result = await createPlacementForHire(offer.applicationId, { session, offer: updatedOffer });
+        newPlacement = result?.created ? result.placement : null;
       }
       return updatedOffer;
     });
@@ -192,6 +212,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     await session.endSession();
   }
 
+  if (newPlacement) await announcePlacement(newPlacement, ctx.locale);
+
   // Notify employer
   const employer = await Employer.findById(committedOffer.employerId).select("userId").lean();
   if (employer) {
@@ -211,7 +233,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       type: "offer_update",
       title,
       message,
-      link: `/${ctx.locale}/employer/applications`,
+      link: await userLocalePath(employer.userId, "/employer/applications"),
       sendEmail: true,
       metadata: { offerId: String(committedOffer._id), status },
     }).catch(() => {
@@ -241,7 +263,8 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
   const offer = await Offer.findById(params?.id);
   if (!offer) return NextResponse.json({ error: "Offer not found" }, { status: 404 });
 
-  // Only an employer or an assigned agent can withdraw, and only while pending.
+  // Only an employer or an assigned agent can withdraw, and only while the
+  // offer is open (pending, or countered and awaiting a revision).
   if (!["employer", "agent", "super_agent"].includes(ctx.role)) {
     return NextResponse.json({ error: "Not allowed to withdraw offers" }, { status: 403 });
   }
@@ -261,7 +284,7 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
 
   const withdrawnAt = new Date();
   const withdrawnOffer = await Offer.findOneAndUpdate(
-    { _id: offer._id, status: "pending" },
+    { _id: offer._id, status: { $in: [...OPEN_OFFER_STATUSES] } },
     {
       $set: { status: "withdrawn", respondedAt: withdrawnAt },
       $push: {
@@ -277,6 +300,17 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
     );
   }
 
+  // The candidate is no longer on offer: back to selected, on the record too.
+  await Application.updateOne(
+    { _id: offer.applicationId, status: "offer" },
+    {
+      $set: { status: "selected" },
+      $push: {
+        statusHistory: { status: "selected", changedAt: withdrawnAt, changedBy: ctx.userId, note: "Offer withdrawn" },
+      },
+    },
+  );
+
   // Notify job seeker
   const jobSeeker = await JobSeeker.findById(offer.jobSeekerId).select("userId").lean();
   if (jobSeeker) {
@@ -285,7 +319,7 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx, params?: Record<str
       type: "application_status_update",
       title: "Offer Withdrawn",
       message: "An offer you received has been withdrawn.",
-      link: `/en/job-seeker/offers`,
+      link: await userLocalePath(jobSeeker.userId, "/job-seeker/offers"),
       sendEmail: true,
       metadata: { offerId: String(offer._id) },
     }).catch(() => {

@@ -23,6 +23,7 @@ import {
   type ExistingInterview,
 } from "@/lib/interviews/conflict";
 import { FALLBACK_TIME_ZONE } from "@/lib/datetime/zone";
+import { CLOSED_APPLICATION_STATUSES } from "@/lib/offers/status";
 import { notifyInterviewScheduled } from "@/lib/notifications/trigger";
 import { addMinutes } from "date-fns";
 import { escapeRegex } from "@/lib/security/sanitize";
@@ -112,7 +113,10 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   if (Array.isArray(scopeQuery.$or)) scopeQuery.$or = [...scopeQuery.$or];
   const now = new Date();
 
-  if (status) query.status = status;
+  // A declined interview keeps its "scheduled" status — the decline is
+  // recorded on candidateResponse — so the Declined tab filters on that.
+  if (status === "declined") query.candidateResponse = "declined";
+  else if (status) query.status = status;
   // Cast ids to ObjectId: `find` casts strings via the schema but the
   // statusCounts `aggregate` below does not, so string ids silently returned
   // empty counts for job/application-scoped requests.
@@ -232,6 +236,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   // Build base query without status for aggregate counts
   const baseQuery = { ...query };
   delete baseQuery.status;
+  if (status === "declined") delete baseQuery.candidateResponse;
 
   const [interviews, total, statusAgg, counts] = await Promise.all([
     Interview.find(query)
@@ -331,7 +336,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const { applicationId, type, scheduledAt, duration, location, meetLink, instructions } = body;
 
   const app = await Application.findById(applicationId)
-    .select("jobId jobSeekerId employerId")
+    .select("jobId jobSeekerId employerId status")
     .populate("jobId", "title")
     .lean();
   if (!app) return NextResponse.json({ error: "Application not found" }, { status: 404 });
@@ -354,6 +359,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     if (accessError) return accessError;
   } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // A hired, rejected or withdrawn candidate is out of the pipeline. Scheduling
+  // used to succeed and then drag the application back to interview_scheduled.
+  if (CLOSED_APPLICATION_STATUSES.includes(app.status)) {
+    return NextResponse.json(
+      { error: "This application is closed, so no interview can be scheduled", code: "application_closed" },
+      { status: 409 },
+    );
   }
 
   // ── Check candidate availability ─────────────────────────────────────────
@@ -500,18 +514,27 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     incrementAgentCounter(String(resolvedAgentId), "interviewsScheduled");
   }
 
-  await Application.findByIdAndUpdate(applicationId, {
-    $set: { status: "interview_scheduled" },
-    $addToSet: { interviewIds: interview._id },
-    $push: {
-      statusHistory: {
-        status: "interview_scheduled",
-        changedAt: new Date(),
-        changedBy: ctx.userId,
-        note: "Interview scheduled",
+  // Only an application still before interviewing moves forward; a candidate
+  // already selected or on offer keeps their stage (the interview is recorded).
+  // The status filter also keeps a concurrent reject/withdraw from being undone.
+  const advanced = await Application.updateOne(
+    { _id: applicationId, status: { $in: ["applied", "shortlisted"] } },
+    {
+      $set: { status: "interview_scheduled" },
+      $addToSet: { interviewIds: interview._id },
+      $push: {
+        statusHistory: {
+          status: "interview_scheduled",
+          changedAt: new Date(),
+          changedBy: ctx.userId,
+          note: "Interview scheduled",
+        },
       },
     },
-  });
+  );
+  if (advanced.matchedCount === 0) {
+    await Application.updateOne({ _id: applicationId }, { $addToSet: { interviewIds: interview._id } });
+  }
 
   if (seekerDoc?.userId) {
     await notifyInterviewScheduled(

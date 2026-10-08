@@ -86,8 +86,10 @@ export default function JobWorkspaceLayout({ children }: { children: ReactNode }
     setBusy(action);
     try {
       await updateStatus.mutateAsync({ jobId: id, status });
-      await Promise.all([refetch(), summaryQuery.refetch()]);
       toast.success(t("statusUpdated"));
+      // The mutation already wrote the new status into the cache; refresh the
+      // rest in the background rather than holding the button busy on it.
+      void Promise.all([refetch(), summaryQuery.refetch()]);
     } catch (error: unknown) {
       toast.error(toUserFacingError(error, { fallback: t("statusUpdateError") }).message);
     } finally {

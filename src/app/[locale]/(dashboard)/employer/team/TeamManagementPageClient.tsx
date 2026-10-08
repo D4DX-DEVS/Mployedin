@@ -138,7 +138,13 @@ export default function TeamManagementPage() {
       setInviteData({ email: "", companyRoles: ["hiring_manager"], jobAccess: [] });
       setInvitePermissionOverrides({});
     } catch (err: unknown) {
-      setError(t("failedToSendInvite"));
+      const { status, code, limit } = (err ?? {}) as { status?: number; code?: string; limit?: number };
+      if (code === "LIMIT_EXCEEDED") setError(t("inviteErrors.seatLimit", { limit: limit ?? 0 }));
+      else if (code === "SUBSCRIPTION_REQUIRED") setError(t("inviteErrors.subscriptionRequired"));
+      else if (status === 409) setError(t("inviteErrors.alreadyMember"));
+      else if (status === 403) setError(t("inviteErrors.forbidden"));
+      else if (status === 503) setError(t("inviteErrors.unavailable"));
+      else setError(t("failedToSendInvite"));
     } finally {
       setSaving(false);
     }

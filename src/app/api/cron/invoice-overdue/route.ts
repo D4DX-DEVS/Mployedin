@@ -4,6 +4,12 @@
  * Runs daily. Finds invoices where dueDate has passed and status is still
  * one of the payable statuses (issued, sent, partially_paid), then marks
  * them overdue and sends a notification to admin/accounting.
+ *
+ * Online-payment dunning (gateway mode): an overdue renewal invoice whose
+ * subscription is still active moves it to past_due, and past_due
+ * subscriptions whose payment grace window (PAYMENT_PAST_DUE_GRACE_DAYS) has
+ * run out are suspended. Abandoned self-service checkout invoices (new plan /
+ * upgrade never paid) are not escalated to admins as overdue.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -14,6 +20,10 @@ import { forEachBounded } from "@/lib/cron/scale";
 import Invoice from "@/models/Invoice";
 import { notify } from "@/lib/notifications/trigger";
 import User from "@/models/User";
+import {
+  markSubscriptionPastDue,
+  suspendLapsedPastDueSubscriptions,
+} from "@/lib/payments/subscriptionFulfillment";
 
 export const maxDuration = 300;
 
@@ -31,8 +41,10 @@ export async function GET(req: NextRequest) {
   const overdueInvoices = await Invoice.find({
     dueDate: { $lt: now },
     status: { $in: ["issued", "sent", "partially_paid"] },
+    // Unpaid self-service checkout invoices are abandoned carts, not debts.
+    $nor: [{ activationPending: true, type: { $in: ["new", "upgrade", "downgrade"] } }],
   })
-    .select("_id invoiceNumber status dueDate totalAmount currency userId employerId")
+    .select("_id invoiceNumber status dueDate totalAmount currency userId employerId type subscriptionId activationPending")
     .limit(500)
     .lean();
 
@@ -98,6 +110,27 @@ export async function GET(req: NextRequest) {
     if (result.failed > 0) errors.push(`${result.failed} notifications failed (see logs)`);
   }
 
+  // ── Subscription dunning: renewal unpaid → past_due → suspended ──────────
+  let pastDue = 0;
+  let suspended = 0;
+  for (const inv of overdueInvoices) {
+    if (inv.type !== "renewal" || !inv.subscriptionId || !inv.activationPending) continue;
+    try {
+      if (await markSubscriptionPastDue(inv.subscriptionId, {
+        since: inv.dueDate ? new Date(inv.dueDate) : now,
+        reason: "Renewal invoice overdue",
+        invoiceNumber: inv.invoiceNumber,
+      })) pastDue++;
+    } catch (err) {
+      errors.push(`past_due transition failed for ${String(inv._id)}: ${String(err)}`);
+    }
+  }
+  try {
+    suspended = await suspendLapsedPastDueSubscriptions(now);
+  } catch (err) {
+    errors.push(`Suspending lapsed past_due subscriptions failed: ${String(err)}`);
+  }
+
   if (errors.length > 0) {
     logger.error({ errors }, `[cron/invoice-overdue] ${errors.length} errors during processing`);
   }
@@ -108,6 +141,8 @@ export async function GET(req: NextRequest) {
       found: overdueInvoices.length,
       updated,
       notified,
+      pastDue,
+      suspended,
       errors: errors.length > 0 ? errors : undefined,
       timestamp: now.toISOString(),
     },

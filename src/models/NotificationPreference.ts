@@ -43,6 +43,8 @@ export interface INotificationPreference extends Document {
     placements: CategoryPreference;
     commissions: CategoryPreference;
     team: CategoryPreference;
+    /** Direct messages from other users (MS-1). */
+    messages: CategoryPreference;
   };
   unsubscribedAll: boolean;
   dailyDigestTime: string; // "HH:mm" format, default "09:00"
@@ -100,6 +102,7 @@ export const CATEGORY_DEFAULTS: Record<string, CategoryPreference> = {
   placements: { enabled: true, channels: DEFAULT_CHANNELS },
   commissions: { enabled: true, channels: DEFAULT_CHANNELS },
   team: { enabled: true, channels: DEFAULT_CHANNELS },
+  messages: { enabled: true, channels: DEFAULT_CHANNELS },
 };
 
 /** The category keys a client may write. */
@@ -157,6 +160,10 @@ const NotificationPreferenceSchema = new Schema<INotificationPreference>(
         default: () => ({ enabled: true, channels: DEFAULT_CHANNELS }),
       },
       team: {
+        type: CategoryPreferenceSchema,
+        default: () => ({ enabled: true, channels: DEFAULT_CHANNELS }),
+      },
+      messages: {
         type: CategoryPreferenceSchema,
         default: () => ({ enabled: true, channels: DEFAULT_CHANNELS }),
       },
@@ -268,11 +275,14 @@ export function typeToCategory(
     case "target_at_risk":
     case "target_milestone":
       return "team";
+    // Direct messages have their own switch (MS-1). The admin support-ticket
+    // and contact-enquiry notices also use "message"; they are in-app only.
+    case "message":
+      return "messages";
     case "verification":
     case "system":
     case "lead_converted":
     case "mention":
-    case "message":
     case "employer_registered":
     case "job_seeker_registered":
       return "system";

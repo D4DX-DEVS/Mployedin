@@ -8,6 +8,7 @@ import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { z } from "zod";
 import { validateBody } from "@/lib/validators";
+import { LEAD_EDITABLE_STATUSES } from "@/lib/validators/leads";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -20,7 +21,8 @@ const bulkActionSchema = z.object({
   // and whether the new owner is notified, are open questions).
   action: z.enum(["move_status", "delete"]),
   params: z.object({
-    status: z.enum(["new", "contacted", "interested", "negotiating", "converted", "lost"]).optional(),
+    // "converted" only via POST /api/leads/[id]/convert (LD-1).
+    status: z.enum(LEAD_EDITABLE_STATUSES).optional(),
     lostReason: z.string().max(500).optional(),
   }).optional(),
 });
@@ -64,10 +66,8 @@ export const POST = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
       if (params.status === "lost" && params.lostReason) {
         update.lostReason = params.lostReason;
       }
-      if (params.status === "converted") {
-        update.convertedAt = new Date();
-      }
-      const res = await Lead.updateMany(filter, { $set: update });
+      // LD-2: converted leads are final — skip them rather than reopen them.
+      const res = await Lead.updateMany({ ...filter, status: { $ne: "converted" } }, { $set: update });
       result.modified = res.modifiedCount;
       break;
     }

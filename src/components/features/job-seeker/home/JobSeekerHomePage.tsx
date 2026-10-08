@@ -112,10 +112,19 @@ type RecommendationSummary = {
 export type InitialHomeData = {
   profile: ProfileData;
   stats: DashboardStats;
-  /** Recommended jobs only: eligible and at or above the admin threshold. */
-  jobs: FeedJob[];
+  /**
+   * Recommended jobs only: eligible and at or above the admin threshold.
+   * Omitted when the page streams them through `recommendations` instead.
+   */
+  jobs?: FeedJob[];
   recommendation?: RecommendationSummary;
   appliedJobs?: AppliedJobSnippet[];
+};
+
+/** The recommender's answer, streamed separately because scoring can be slow. */
+export type HomeRecommendations = {
+  jobs: FeedJob[];
+  recommendation: RecommendationSummary;
 };
 
 /**
@@ -143,10 +152,13 @@ function timeAgo(iso: string, locale: string, translate: any): string {
 export function JobSeekerHomePage({
   locale,
   initialData,
+  recommendations,
   userName,
 }: {
   locale: string;
   initialData?: InitialHomeData;
+  /** Streamed from the server; the recommended cards show a skeleton until it settles. */
+  recommendations?: Promise<HomeRecommendations>;
   userName?: string;
   /** Kept for call-site compatibility; the home page no longer renders an avatar. */
   userImage?: string;
@@ -160,6 +172,7 @@ export function JobSeekerHomePage({
   const [appliedJobs, setAppliedJobs] = useState<AppliedJobSnippet[]>(initialData?.appliedJobs ?? []);
   // If SSR data was provided this is false from the start — no loading flash
   const [loading, setLoading] = useState(!initialData);
+  const [recommendationsPending, setRecommendationsPending] = useState(Boolean(recommendations));
   const [homeDataError, setHomeDataError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   // Resolved after mount: the server and the browser can sit in different time
@@ -185,8 +198,10 @@ export function JobSeekerHomePage({
     if (initialData) {
       setProfile(initialData.profile ?? null);
       setStats(initialData.stats ?? null);
-      setJobs(initialData.jobs ?? []);
-      setRecommendation(initialData.recommendation ?? null);
+      if (initialData.jobs) {
+        setJobs(initialData.jobs);
+        setRecommendation(initialData.recommendation ?? null);
+      }
       setAppliedJobs(initialData.appliedJobs ?? []);
       setLoading(false);
       return;
@@ -266,6 +281,26 @@ export function JobSeekerHomePage({
     };
   }, [initialData, t]);
 
+  useEffect(() => {
+    if (!recommendations) return;
+    let active = true;
+    recommendations
+      .then((result) => {
+        if (!active) return;
+        setJobs(result.jobs);
+        setRecommendation(result.recommendation);
+      })
+      .catch(() => {
+        if (active) setHomeDataError(t("messages.homeDataError"));
+      })
+      .finally(() => {
+        if (active) setRecommendationsPending(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [recommendations, t]);
+
   const name = userName ?? t("defaults.jobSeekerName");
 
   // Completeness uses the same formula as the profile page. It is kept as a
@@ -310,7 +345,8 @@ export function JobSeekerHomePage({
     .join(", ");
   const preferredSalary =
     profile?.preferredSalary?.min && profile?.preferredSalary?.max && profile?.preferredSalary?.currency
-      ? `${profile.preferredSalary.min.toLocaleString(numberLocale)}-${profile.preferredSalary.max.toLocaleString(numberLocale)} ${profile.preferredSalary.currency}`
+      // LRI…PDI isolates the range so RTL doesn't flip it to "max-min" (JS-41).
+      ? `\u2066${profile.preferredSalary.min.toLocaleString(numberLocale)}–${profile.preferredSalary.max.toLocaleString(numberLocale)}\u2069 ${profile.preferredSalary.currency}`
       : null;
 
   /**
@@ -324,7 +360,12 @@ export function JobSeekerHomePage({
   const preferenceChips = [
     primaryRole,
     preferredLocation || null,
-    profile?.preferredJobType ? profile.preferredJobType.replace(/_/g, " ") : null,
+    // Translated where a label exists ("any" read raw in Arabic — JS-41).
+    profile?.preferredJobType
+      ? tCard.has(`employment.${profile.preferredJobType}`)
+        ? tCard(`employment.${profile.preferredJobType}` as "employment.full_time")
+        : profile.preferredJobType.replace(/_/g, " ")
+      : null,
     preferredSalary,
   ].filter((chip): chip is string => Boolean(chip));
 
@@ -447,7 +488,7 @@ export function JobSeekerHomePage({
               <Link
                 key={`${chip}-${idx}`}
                 href={`/${locale}/job-seeker/preferences`}
-                className="inline-flex items-center rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs font-medium capitalize text-muted-foreground transition-all hover:border-primary/40 hover:bg-card hover:text-foreground hover:shadow-xs"
+                className="inline-flex min-h-11 items-center rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs font-medium capitalize text-muted-foreground transition-all hover:border-primary/40 hover:bg-card hover:text-foreground hover:shadow-xs"
               >
                 {chip}
               </Link>
@@ -479,7 +520,7 @@ export function JobSeekerHomePage({
           </h2>
           <Link
             href={`/${locale}/job-seeker/jobs`}
-            className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+            className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary hover:underline"
           >
             {t("recommendedJobs.viewAll")}
             <ArrowRight className="h-4 w-4" aria-hidden />
@@ -492,7 +533,7 @@ export function JobSeekerHomePage({
           </div>
         )}
 
-        {loading ? (
+        {loading || recommendationsPending ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, index) => (
               <div key={index} className="h-[132px] animate-pulse rounded-2xl bg-muted/60" />

@@ -204,20 +204,20 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
-    if (userRole === "employer") {
-      const { default: Interview } = await import("@/models/Interview");
-      const { Employer } = await import("@/models/Employer");
-      const interview = await Interview.findById(interviewId).select("employerId").lean();
-      if (!interview) {
-        return NextResponse.json({ error: "Interview not found" }, { status: 404 });
-      }
-      const employer = await Employer.findOne({ userId: session.user.id }).select("_id").lean();
-      if (
-        !employer ||
-        String((interview as { employerId?: unknown }).employerId) !== String(employer._id)
-      ) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
+    // SEC-C2: same ownership rule as POST — employers see their own company's
+    // interviews, agents / super-agents only their scoped employers'.
+    const { default: Interview } = await import("@/models/Interview");
+    const interview = await Interview.findById(interviewId).select("employerId").lean().catch(() => null);
+    if (!interview) {
+      return NextResponse.json({ error: "Interview not found" }, { status: 404 });
+    }
+    const { getScopedEmployerIds } = await import("@/lib/auth/agentRestrictions");
+    const employerIds = await getScopedEmployerIds({ userId: session.user.id!, role: userRole });
+    if (
+      employerIds !== null &&
+      !employerIds.map(String).includes(String((interview as { employerId?: unknown }).employerId))
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const saved = await InterviewQuestion.find({ interviewId })

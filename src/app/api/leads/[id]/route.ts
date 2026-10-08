@@ -43,12 +43,16 @@ export const PATCH = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
   const update: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) if (v !== undefined) update[k] = v;
 
-  // Auto-set convertedAt when status transitions to "converted"
   const current = await Lead.findById(id).lean() as Record<string, unknown> | null;
   if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (update.status === "converted" && current.status !== "converted") {
-    update.convertedAt = new Date();
+  // LD-2: a converted lead is linked to an employer account — its status is
+  // final. (The validator already refuses "converted" as a target, LD-1.)
+  if (update.status !== undefined && current.status === "converted") {
+    return NextResponse.json(
+      { error: "invalid_transition", message: "A converted lead's status cannot be changed" },
+      { status: 409 },
+    );
   }
 
   // Re-route if country changed and lead has no manual superAgent assignment
@@ -84,8 +88,15 @@ export const PATCH = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
   update.score = score;
   update.qualificationLevel = deriveQualification(score);
 
-  const lead = await Lead.findByIdAndUpdate(id, { $set: update }, { returnDocument: "after" });
-  if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  // Status guard in the write itself, so a concurrent convert cannot be undone.
+  const writeFilter: Record<string, unknown> = { _id: id };
+  if (update.status !== undefined) writeFilter.status = { $ne: "converted" };
+  const lead = await Lead.findOneAndUpdate(writeFilter, { $set: update }, { returnDocument: "after" });
+  if (!lead) {
+    return update.status !== undefined
+      ? NextResponse.json({ error: "invalid_transition", message: "A converted lead's status cannot be changed" }, { status: 409 })
+      : NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),

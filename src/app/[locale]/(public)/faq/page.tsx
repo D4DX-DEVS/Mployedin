@@ -14,6 +14,16 @@ interface FAQ {
   category: string;
 }
 
+/** `landing.*` labels for the FAQ categories the CMS uses. */
+const FAQ_CATEGORY_KEYS: Record<string, string> = {
+  general: "faqCategoryGeneral",
+  job_seeker: "faqCategoryJobSeeker",
+  employer: "faqCategoryEmployer",
+  agent: "faqCategoryAgent",
+  billing: "faqCategoryBilling",
+  privacy: "faqCategoryPrivacy",
+};
+
 export default function FAQPage() {
   const pathname = usePathname();
   const locale = pathname.split("/")[1] || "en";
@@ -34,6 +44,14 @@ export default function FAQPage() {
   }, []);
 
   const categories = ["all", ...Array.from(new Set(faqs.map((f) => f.category)))];
+  // JS-10: chips showed the raw stored value ("job_seeker"). Known categories
+  // get a translated label; anything else an admin typed is humanised.
+  const categoryLabel = (cat: string) => {
+    const key = FAQ_CATEGORY_KEYS[cat];
+    if (key) return t(key);
+    const text = cat.replace(/[_-]+/g, " ").trim();
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  };
   const filtered = activeCategory === "all" ? faqs : faqs.filter((f) => f.category === activeCategory);
 
   if (loading) {
@@ -67,7 +85,7 @@ export default function FAQPage() {
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 }`}
               >
-                {cat === "all" ? t("allCategories2") : cat}
+                {cat === "all" ? t("allCategories2") : categoryLabel(cat)}
               </button>
             ))}
           </div>

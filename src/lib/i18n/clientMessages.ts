@@ -15,17 +15,17 @@ import type { AbstractIntlMessages } from "next-intl";
  */
 export const CLIENT_NAMESPACES = {
   /** Rendered by the [locale] root layout itself, outside every group. */
-  root: ["pwaInstallPrompt"],
+  root: ["accessibility", "common", "consent", "pwaInstallPrompt"],
   public: [
-    "auth", "calendar", "companyReviews", "easyApply", "errorBoundary", "footer",
-    "landing", "nav", "publicJobDetail", "salaryExplorer", "similarJobs", "socialShare",
+    "accessibility", "auth", "calendar", "common", "companyReviews", "consent", "easyApply", "errorBoundary",
+    "footer", "landing", "nav", "publicJobDetail", "salaryExplorer", "similarJobs", "socialShare",
   ],
   auth: [
     "agentRegister", "auth", "calendar", "common", "confirmEmailChange", "employerRegister",
     "forgotPasswordPage", "formErrors", "interviewResponse", "mcpAuthorize", "resetPassword",
     "teamJoin", "verifyEmail",
   ],
-  onboarding: ["common", "footer", "onboarding"],
+  onboarding: ["accessibility", "common", "consent", "footer", "onboarding"],
   poster: ["posterShareView"],
 } as const satisfies Record<string, readonly string[]>;
 

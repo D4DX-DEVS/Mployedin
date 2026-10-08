@@ -21,6 +21,7 @@ import { PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
 import { isStaleInvoiceWrite, staleInvoiceResponse } from "@/lib/invoices/concurrency";
 import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/resolveRate";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
+import { applyPaidInvoiceToSubscription } from "@/lib/payments/subscriptionFulfillment";
 import connectDB from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
 import Invoice from "@/models/Invoice";
@@ -379,6 +380,13 @@ async function patchHandler(
 
   // Dispatch webhook for paid status
   if (body.status === "paid") {
+    // Checkout / gateway-renewal invoices switch or extend the subscription
+    // only once paid (no-op for invoices without activationPending).
+    try {
+      await applyPaidInvoiceToSubscription(invoice, { provider: "manual" });
+    } catch (err) {
+      logger.error({ err, invoiceId: String(invoice._id) }, "Subscription activation after marking paid failed");
+    }
     dispatchWebhook("invoice.paid", {
       invoiceId: invoice._id.toString(),
       invoiceNumber: invoice.invoiceNumber,
@@ -386,7 +394,7 @@ async function patchHandler(
       currency: invoice.currency,
       status: "paid",
       paidAt: invoice.paidAt?.toISOString(),
-    });
+    }, invoice.employerId ? String(invoice.employerId) : null);
   }
 
   await logActivity({

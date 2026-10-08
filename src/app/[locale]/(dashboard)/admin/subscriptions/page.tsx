@@ -63,6 +63,7 @@ function daysUntil(d: string | undefined) {
 
 const STATUS_CONFIG: Record<string, { color: string; icon: typeof CheckCircle }> = {
   active: { color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30", icon: CheckCircle },
+  past_due: { color: "bg-amber-500/10 text-amber-600 border-amber-500/30", icon: AlertTriangle },
   expired: { color: "bg-amber-500/10 text-amber-600 border-amber-500/30", icon: AlertTriangle },
   cancelled: { color: "bg-red-500/10 text-red-600 border-red-500/30", icon: XCircle },
   suspended: { color: "bg-orange-500/10 text-orange-600 border-orange-500/30", icon: AlertTriangle },

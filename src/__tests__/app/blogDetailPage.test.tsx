@@ -1,50 +1,65 @@
 /**
  * @jest-environment jsdom
  *
- * /api/public/blogs/[slug] answers { post }, but the page stored the wrapper as
- * the post, so every article rendered an empty title and body (audit
- * 2026-09-24 re-audit, PUB-03).
+ * The blog post page is server-rendered (JS-2): it reads the post with the
+ * same visibility rule as /api/public/blogs/[slug], renders an <h1> and the
+ * body on first paint, and calls notFound() for a missing slug so the 404 is
+ * real and rendered inside the public layout.
  */
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
 const t = (key: string) => key;
-jest.mock("next-intl", () => ({ useTranslations: () => t }));
-jest.mock("next/navigation", () => ({ usePathname: () => "/en/blog/hiring-in-dubai" }));
+jest.mock("next-intl/server", () => ({ getTranslations: async () => t }));
 jest.mock("next/link", () => ({
   __esModule: true,
   default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
 }));
+const notFound = jest.fn(() => { throw new Error("NEXT_NOT_FOUND"); });
+jest.mock("next/navigation", () => ({ notFound: () => notFound() }));
+jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn(async () => undefined) }));
 
-import BlogDetailPage from "@/app/[locale]/(public)/blog/[slug]/page";
+const findOne = jest.fn();
+jest.mock("@/models/BlogPost", () => ({
+  __esModule: true,
+  default: { findOne: (...args: unknown[]) => findOne(...args) },
+}));
 
-function mockFetch(status: number, body: unknown) {
-  global.fetch = jest.fn(async () => ({ ok: status < 400, status, json: async () => body })) as unknown as typeof fetch;
+import BlogDetailPage, { generateMetadata } from "@/app/[locale]/(public)/blog/[slug]/page";
+
+function mockPost(post: unknown) {
+  findOne.mockReturnValue({ lean: () => Promise.resolve(post) });
 }
 
-it("renders the post the API returns", async () => {
-  mockFetch(200, {
-    post: {
-      _id: "1", slug: "hiring-in-dubai", title: "Hiring in Dubai", titleAr: "", body: "<p>Article body</p>", bodyAr: "",
-      coverImage: "", author: "Editor", tags: ["hiring"], publishedAt: "2026-09-01T00:00:00.000Z",
-    },
-  });
-  render(<BlogDetailPage />);
+const params = (slug: string, locale = "en") => ({ params: Promise.resolve({ locale, slug }) });
 
-  expect(await screen.findByRole("heading", { level: 1, name: "Hiring in Dubai" })).toBeInTheDocument();
+const POST = {
+  title: "Hiring in Dubai", titleAr: "", excerpt: "", body: "<p>Article body</p>", bodyAr: "",
+  coverImage: "", author: "Editor", tags: ["hiring"], publishedAt: "2026-09-01T00:00:00.000Z",
+};
+
+beforeEach(() => { findOne.mockReset(); notFound.mockClear(); });
+
+it("server-renders the published post with an h1", async () => {
+  mockPost(POST);
+  render(await BlogDetailPage(params("hiring-in-dubai")));
+
+  expect(screen.getByRole("heading", { level: 1, name: "Hiring in Dubai" })).toBeInTheDocument();
   expect(screen.getByText("Article body")).toBeInTheDocument();
+  expect(findOne).toHaveBeenCalledWith({ slug: "hiring-in-dubai", isActive: true, status: "published" });
 });
 
-it("shows the not-found state for an unknown slug", async () => {
-  mockFetch(404, { error: "Blog post not found" });
-  render(<BlogDetailPage />);
-
-  expect(await screen.findByRole("heading", { level: 1, name: "articleNotFoundHeading" })).toBeInTheDocument();
+it("calls notFound() for an unknown slug", async () => {
+  mockPost(null);
+  await expect(BlogDetailPage(params("missing"))).rejects.toThrow("NEXT_NOT_FOUND");
+  expect(notFound).toHaveBeenCalled();
 });
 
-it("shows the not-found state when the response has no post", async () => {
-  mockFetch(200, {});
-  render(<BlogDetailPage />);
+it("builds title, description and Open Graph metadata from the post", async () => {
+  mockPost(POST);
+  const meta = await generateMetadata(params("hiring-in-dubai"));
 
-  expect(await screen.findByRole("heading", { level: 1, name: "articleNotFoundHeading" })).toBeInTheDocument();
+  expect(meta.title).toBe("Hiring in Dubai");
+  expect(meta.description).toBe("Article body");
+  expect(meta.openGraph).toMatchObject({ title: "Hiring in Dubai | MPLOYEDIN", type: "article" });
 });

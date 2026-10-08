@@ -38,8 +38,17 @@ interface UploadedDocument {
   cvStatus?: CvStatus;
 }
 
-function CvReadingNote({ status }: { status: CvStatus }) {
+/**
+ * Reading runs in a background job (Inngest `process-cv-document`). When that
+ * worker is not running — e.g. locally without `npx inngest-cli dev` — the
+ * status never leaves "uploaded", so after this long say so instead of
+ * promising "a minute" forever (JS-28).
+ */
+const CV_READING_SLOW_MS = 5 * 60 * 1000;
+
+function CvReadingNote({ status, uploadedAt, onRetry }: { status: CvStatus; uploadedAt?: string; onRetry?: () => void }) {
   const t = useTranslations("jobSeekerExtra.documents");
+  const slow = !!uploadedAt && Date.now() - new Date(uploadedAt).getTime() > CV_READING_SLOW_MS;
   if (status === "processed") {
     return (
       <p className="mt-0.5 flex items-center gap-1 text-xs text-emerald-700">
@@ -53,6 +62,19 @@ function CvReadingNote({ status }: { status: CvStatus }) {
       <p className="mt-0.5 flex items-start gap-1 text-xs text-amber-800">
         <AlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden="true" />
         {t("cvUnreadable")}
+      </p>
+    );
+  }
+  if (slow) {
+    return (
+      <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-amber-800">
+        <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+        {t("cvReadingSlow")}
+        {onRetry ? (
+          <button type="button" onClick={onRetry} className="min-h-6 font-medium underline underline-offset-2 hover:text-amber-900">
+            {t("cvReadingRetry")}
+          </button>
+        ) : null}
       </p>
     );
   }
@@ -139,6 +161,19 @@ export default function JobSeekerDocumentsPage() {
     document.title = t("documentTitle");
     fetchDocuments();
   }, [t]);
+
+  // Re-check while a CV is still being read, so "reading" resolves without a
+  // manual reload. Stops once nothing is pending or it has run past the slow
+  // threshold (the note then offers Retry instead).
+  useEffect(() => {
+    const reading = documents.some(
+      (d) => d.category === "resume" && (d.cvStatus === "uploaded" || d.cvStatus === "processing")
+        && Date.now() - new Date(d.uploadedAt).getTime() <= CV_READING_SLOW_MS,
+    );
+    if (!reading) return;
+    const id = window.setTimeout(fetchDocuments, 15_000);
+    return () => window.clearTimeout(id);
+  }, [documents]);
 
   async function fetchDocuments() {
     try {
@@ -566,7 +601,7 @@ export default function JobSeekerDocumentsPage() {
                         {getCategoryLabel(doc.category)} · {(doc.size / 1024).toFixed(0)} KB
                         {doc.uploadedAt && ` · ${new Date(doc.uploadedAt).toLocaleDateString(numberLocale)}`}
                       </p>
-                      {doc.category === "resume" && doc.cvStatus ? <CvReadingNote status={doc.cvStatus} /> : null}
+                      {doc.category === "resume" && doc.cvStatus ? <CvReadingNote status={doc.cvStatus} uploadedAt={doc.uploadedAt} onRetry={fetchDocuments} /> : null}
                     </div>
                     <div className="flex items-center gap-1">
                       {doc.url && (

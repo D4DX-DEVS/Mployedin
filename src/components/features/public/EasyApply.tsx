@@ -16,6 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 export interface EasyApplyScreeningQuestion {
   id: string;
@@ -112,6 +115,8 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
   const [checkingApplied, setCheckingApplied] = useState(true);
   const [error, setError] = useState("");
   const [fetchingProfile, setFetchingProfile] = useState(false);
+  // JS-30: one review step before a no-questions apply goes out.
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string | string[] | boolean>>({});
 
   // C1 / C3 state
@@ -180,6 +185,7 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
             socialLinks: js.socialLinks ?? [],
           });
           setDocuments(docs);
+          if (typeof js.profileCompleteness === "number") setProfileCompleteness((prev) => prev ?? js.profileCompleteness);
           // Default-select a CV: parsed profile CV first, else a resume document
           const resumeDoc = docs.find((d) => d.category === "resume");
           if (js.cvUrl) setSelectedCvKey(PROFILE_CV_KEY);
@@ -592,12 +598,12 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
             size="lg"
             type="button"
             variant="outline"
-            className="w-full justify-start gap-2 rounded-xl text-sm"
+            className="h-auto min-h-11 w-full justify-start gap-2 whitespace-normal rounded-xl py-2 text-start text-sm"
             onClick={() => anonCvInputRef.current?.click()}
             disabled={anonPhase !== "idle"}
           >
             {anonCvFile ? <FileText className="h-4 w-4 text-primary" /> : <Upload className="h-4 w-4" />}
-            <span className="truncate">{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
+            <span className={anonCvFile ? "min-w-0 truncate" : "min-w-0"}>{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
           </Button>
 
           <div className="field">
@@ -697,12 +703,12 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
             size="lg"
             type="button"
             variant="outline"
-            className="w-full justify-start gap-2 rounded-xl text-sm"
+            className="h-auto min-h-11 w-full justify-start gap-2 whitespace-normal rounded-xl py-2 text-start text-sm"
             onClick={() => anonCvInputRef.current?.click()}
             disabled={anonPhase !== "idle" || anonOtpResendCountdown > 0}
           >
             {anonCvFile ? <FileText className="h-4 w-4 text-primary" /> : <Upload className="h-4 w-4" />}
-            <span className="truncate">{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
+            <span className={anonCvFile ? "min-w-0 truncate" : "min-w-0"}>{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
           </Button>
 
           <Input
@@ -791,12 +797,12 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
           size="lg"
           type="button"
           variant="outline"
-          className="w-full justify-start gap-2 rounded-xl text-sm"
+          className="h-auto min-h-11 w-full justify-start gap-2 whitespace-normal rounded-xl py-2 text-start text-sm"
           onClick={() => anonCvInputRef.current?.click()}
           disabled={anonPhase !== "idle"}
         >
           {anonCvFile ? <FileText className="h-4 w-4 text-primary" /> : <Upload className="h-4 w-4" />}
-          <span className="truncate">{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
+          <span className={anonCvFile ? "min-w-0 truncate" : "min-w-0"}>{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
         </Button>
 
         {showEmailFirst ? (
@@ -938,12 +944,15 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
         </div>
 
         <div className="space-y-2 pt-2">
-          <Link
-            href={`/${locale}/onboarding`}
-            className="block w-full text-center px-4 py-2.5 rounded-2xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
-          >
-            {t("completeProfile")}
-          </Link>
+          {/* JS-30: don't push "Complete your profile" at a nearly complete one. */}
+          {(profileCompleteness === null || profileCompleteness < 90) && (
+            <Link
+              href={`/${locale}/onboarding`}
+              className="block w-full text-center px-4 py-2.5 rounded-2xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
+            >
+              {t("completeProfile")}
+            </Link>
+          )}
           <Link
             href={`/${locale}/jobs`}
             className="block w-full text-center px-4 py-2.5 rounded-2xl border border-border bg-secondary/80 text-foreground text-sm font-medium hover:bg-accent transition-colors"
@@ -952,9 +961,11 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
           </Link>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">
-          {t("profileCompletionOptional")}
-        </p>
+        {(profileCompleteness === null || profileCompleteness < 90) && (
+          <p className="text-center text-xs text-muted-foreground">
+            {t("profileCompletionOptional")}
+          </p>
+        )}
       </div>
     );
   }
@@ -1414,7 +1425,9 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       </div>
 
       <Button size="lg"
-        onClick={handleApply}
+        // Screening answers are already a review on this panel; without them a
+        // single click used to send the application straight away (JS-30).
+        onClick={hasQuestions ? handleApply : () => { setError(""); setConfirmOpen(true); }}
         disabled={loading}
         className="w-full rounded-2xl text-base font-medium gap-2"
       >
@@ -1433,6 +1446,46 @@ export default function EasyApply({ jobId, jobTitle, locale, screeningQuestions 
       <p className="text-center text-xs text-muted-foreground">
         {t("profileAutoAttached")}
       </p>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("confirmTitle")}</DialogTitle>
+            <DialogDescription>{t("confirmDescription", { jobTitle })}</DialogDescription>
+          </DialogHeader>
+          <dl className="space-y-2 text-sm">
+            <div className="flex flex-wrap justify-between gap-2">
+              <dt className="text-muted-foreground">{t("applyingAs")}</dt>
+              <dd className="font-medium text-foreground">{[profile?.name, profile?.email].filter(Boolean).join(" · ") || "—"}</dd>
+            </div>
+            <div className="flex flex-wrap justify-between gap-2">
+              <dt className="text-muted-foreground">{t("profileCv")}</dt>
+              <dd className="font-medium text-foreground">
+                {selectedCvKey === PROFILE_CV_KEY
+                  ? t("profileCvLabel")
+                  : selectedCvKey === NO_CV_KEY
+                    ? t("confirmNoCv")
+                    : documents.find((d) => d.id === selectedCvKey)?.name ?? t("confirmNoCv")}
+              </dd>
+            </div>
+            {coverLetter.trim() && (
+              <div className="flex flex-wrap justify-between gap-2">
+                <dt className="text-muted-foreground">{t("confirmCoverLetter")}</dt>
+                <dd className="font-medium text-foreground">{t("confirmIncluded")}</dd>
+              </div>
+            )}
+          </dl>
+          <DialogFooter>
+            <Button type="button" variant="outline" className="min-h-11" onClick={() => setConfirmOpen(false)}>
+              {t("confirmEdit")}
+            </Button>
+            <Button type="button" className="min-h-11 gap-2" onClick={() => { setConfirmOpen(false); void handleApply(); }}>
+              <Zap className="h-4 w-4" aria-hidden="true" />
+              {t("confirmSend")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

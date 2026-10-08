@@ -68,6 +68,10 @@ export interface IEmployer extends Document {
   domainVerifiedAt?: Date;
   domainVerificationToken?: string;
   domainVerificationSentAt?: Date;
+  /** Domain the pending verification email was sent for (SEC-B2). */
+  domainVerificationDomain?: string;
+  /** Domain actually proven by the confirm link — shown next to the badge. */
+  verifiedDomain?: string;
   // Agent-verified badge
   isAgentVerified: boolean;
   verifiedByAgentId?: mongoose.Types.ObjectId;
@@ -204,6 +208,8 @@ const EmployerSchema = new Schema<IEmployer>(
     domainVerifiedAt: Date,
     domainVerificationToken: { type: String, select: false },
     domainVerificationSentAt: Date,
+    domainVerificationDomain: { type: String, lowercase: true, trim: true },
+    verifiedDomain: { type: String, lowercase: true, trim: true },
     isAgentVerified: { type: Boolean, default: false },
     verifiedByAgentId: { type: Schema.Types.ObjectId, ref: "User" },
     workflowMode: { type: String, enum: ["auto", "manual"], default: "manual" },

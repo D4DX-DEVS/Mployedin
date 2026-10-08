@@ -16,6 +16,7 @@ import Invoice from "@/models/Invoice";
 import SubscriptionHistory from "@/models/SubscriptionHistory";
 import User from "@/models/User";
 import type { UserRole } from "@/types/user";
+import { MRR_EXPR } from "@/lib/subscriptions/mrr";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
@@ -62,22 +63,6 @@ function normalizeCountry(raw: string): string | null {
   if (!raw || raw === "Unknown" || raw === "unknown" || raw === "") return null;
   return COUNTRY_NORMALIZE[raw] || raw;
 }
-
-// MRR normalization pipeline expression
-const MRR_EXPR = {
-  $divide: [
-    { $ifNull: ["$planSnapshot.price", 0] },
-    {
-      $switch: {
-        branches: [
-          { case: { $eq: ["$planSnapshot.billingCycle", "yearly"] }, then: 12 },
-          { case: { $eq: ["$planSnapshot.billingCycle", "quarterly"] }, then: 3 },
-        ],
-        default: 1,
-      },
-    },
-  ],
-};
 
 // ── Handler ──────────────────────────────────────────────────────────────────
 

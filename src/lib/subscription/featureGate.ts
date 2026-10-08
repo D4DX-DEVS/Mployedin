@@ -10,10 +10,13 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db/mongoose";
 import Subscription from "@/models/Subscription";
+import { Employer } from "@/models/Employer";
+import { CompanyUser } from "@/models/CompanyUser";
 import type { FeatureCheck } from "./withSubscription";
 import { isSubscriptionEnforcementEnabled } from "./enforcementFlag";
 import {
   isInGracePeriod,
+  isPastDueInGrace,
   getGracePeriodEmployerLimits,
   getGracePeriodJobSeekerLimits,
 } from "./gracePeriod";
@@ -25,6 +28,16 @@ export interface FeatureGateResult {
   limit?: number;
   used?: number;
   remaining?: number;
+}
+
+/**
+ * Live seat usage for the teamMembers limit (SB-5): active CompanyUser rows of
+ * the company owned by `ownerUserId` (the subscription holder).
+ */
+export async function countActiveTeamMembers(ownerUserId: string): Promise<number> {
+  const employer = await Employer.findOne({ userId: ownerUserId }).select("_id").lean();
+  if (!employer) return 0;
+  return CompanyUser.countDocuments({ companyId: employer._id, status: "active" });
 }
 
 /**
@@ -46,11 +59,23 @@ export async function checkFeatureGate(
 
   const role = targetRole ?? "employer"; // caller should provide
 
+  // SB-9: an "active" row whose period has ended (the expiry cron has not run
+  // yet) is treated as no subscription.
+  // One lookup covers both the live plan and an unpaid renewal (past_due):
+  // the plan keeps working through the payment grace window, then the gate
+  // closes until the invoice is paid (the invoice-overdue cron suspends it).
   const sub = await Subscription.findOne({
     userId,
     targetRole: role,
-    status: "active",
+    $or: [
+      { status: "active", endDate: { $gt: new Date() } },
+      { status: "past_due" },
+    ],
   }).lean();
+
+  if (sub?.status === "past_due" && !isPastDueInGrace(sub)) {
+    return { allowed: false, reason: "PAYMENT_PAST_DUE" };
+  }
 
   // No subscription — allow during the signup grace period, otherwise require one.
   if (!sub) {
@@ -121,7 +146,7 @@ export async function checkFeatureGate(
       },
       teamMembers: {
         max: (limitsObj.maxTeamMembers as number) ?? -1,
-        current: 0,
+        current: check.feature === "teamMembers" ? await countActiveTeamMembers(userId) : 0,
       },
     };
 
@@ -192,6 +217,8 @@ export async function enforceFeatureGate(
         message:
           gate.reason === "SUBSCRIPTION_REQUIRED"
             ? "An active subscription is required to use this feature"
+            : gate.reason === "PAYMENT_PAST_DUE"
+              ? "Your subscription payment is overdue. Pay the renewal invoice to restore access"
             : gate.reason === "LIMIT_EXCEEDED"
               ? `Monthly limit reached for this feature`
               : `This feature is not available in your plan`,
@@ -206,7 +233,7 @@ export async function enforceFeatureGate(
   // requests all pass the same stale count and overshoot the monthly cap.
   if (check.type === "ai") {
     const usagePath = `usage.aiUsage.${check.feature}`;
-    const reserveFilter: Record<string, unknown> = { userId, targetRole, status: "active" };
+    const reserveFilter: Record<string, unknown> = { userId, targetRole, status: { $in: ["active", "past_due"] } };
     const capped = gate.limit !== undefined && gate.limit > 0;
     if (capped) {
       reserveFilter.$expr = { $lt: [{ $ifNull: [`$${usagePath}`, 0] }, gate.limit] };
@@ -252,11 +279,14 @@ export async function getFeatureGateMap(
 
   await connectDB();
 
-  const sub = await Subscription.findOne({
+  const found = await Subscription.findOne({
     userId,
     targetRole,
-    status: "active",
+    status: { $in: ["active", "past_due"] },
   }).lean();
+  // A past_due subscription past its payment grace grants nothing.
+  if (found?.status === "past_due" && !isPastDueInGrace(found)) return {};
+  const sub = found;
 
   // No subscription — grant a Gold-tier map during the grace period, else nothing.
   if (!sub) {

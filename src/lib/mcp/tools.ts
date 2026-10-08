@@ -18,6 +18,15 @@ import { getHandler as jobGetByIdHandler } from "@/app/api/jobs/[id]/handlers";
 import { getHandler as recommendedJobsGetHandler } from "@/app/api/jobs/recommended/handlers";
 import { applicationsGetHandler } from "@/app/api/applications/handlers";
 import { getHandler as jobSeekerProfileGetHandler } from "@/app/api/job-seeker/profile/handlers";
+import { ENTITY_KEYS, getEntity } from "@/lib/insights/entities";
+import { InsightsError } from "@/lib/insights/errors";
+import { getEntityRecord, listEntity } from "@/lib/insights/list";
+import { getOverview } from "@/lib/insights/overview";
+import { parseDate, parseListParams } from "@/lib/insights/params";
+import { runQuery } from "@/lib/insights/query";
+import { searchAll } from "@/lib/insights/search";
+import { TIMESERIES_INTERVALS, TIMESERIES_METRICS, getTimeseries } from "@/lib/insights/timeseries";
+import { logActivity } from "@/lib/audit/log";
 
 interface TokenExtra {
   userId: string;
@@ -452,5 +461,185 @@ export function registerMcpTools(server: McpServer) {
       if (!ok) return errorResult(JSON.stringify(body));
       return jsonResult(minimizeApplicantList(body));
     },
+  );
+
+  registerInsightsTools(server);
+}
+
+// ── AI Data Access (admin-only, read:insights) ───────────────────────────────
+// Same lib functions as /api/insights/*, so MCP and HTTP clients see identical
+// field allow-lists, redaction and limits. Admin tokens see PII (as the admin
+// dashboard does); every call is audited as insights.read via "mcp".
+
+const OBJECT_ID = z.string().regex(/^[a-f\d]{24}$/i, "must be a MongoDB ObjectId");
+const ENTITY_ENUM = z.enum(ENTITY_KEYS as [string, ...string[]]);
+
+async function runInsightsTool(
+  toolName: string,
+  authInfo: AuthInfo | undefined,
+  args: Record<string, unknown>,
+  fn: (pii: boolean) => Promise<unknown>,
+) {
+  const auth = authorize(authInfo, ["admin"], "read:insights", "insights");
+  if (!auth.ok) return auth.error;
+  try {
+    const body = await fn(true);
+    void logActivity({
+      actorId: auth.userId,
+      actorRole: auth.role,
+      action: "insights.read",
+      resource: "insights",
+      meta: { via: "mcp", tool: toolName, args },
+    });
+    return jsonResult(body);
+  } catch (err) {
+    if (err instanceof InsightsError) return errorResult(`${err.code}: ${err.message}`);
+    throw err;
+  }
+}
+
+function registerInsightsTools(server: McpServer) {
+  server.registerTool(
+    "insights_overview",
+    {
+      title: "Platform overview",
+      description:
+        "Use this when an admin wants platform-wide KPIs: users, employers, jobs, applications, interviews, offers, placements, commissions, invoices, subscriptions/MRR and leads, with 30-day trends.",
+      inputSchema: {},
+      outputSchema: RESULT_SCHEMA,
+      annotations: READ_ONLY_ANNOTATIONS,
+      _meta: oauthMeta("read:insights"),
+    },
+    async (_args, extra) => runInsightsTool("insights_overview", extra.authInfo, {}, () => getOverview()),
+  );
+
+  server.registerTool(
+    "insights_timeseries",
+    {
+      title: "Metric over time",
+      description:
+        "Use this when an admin wants a trend line: new users, employers, jobs, applications, interviews, placements, subscriptions or paid invoice amounts per day, week or month.",
+      inputSchema: {
+        metric: z.enum(Object.keys(TIMESERIES_METRICS) as [string, ...string[]]),
+        interval: z.enum(TIMESERIES_INTERVALS as [string, ...string[]]).optional(),
+        from: z.string().max(40).optional().describe("ISO date"),
+        to: z.string().max(40).optional().describe("ISO date"),
+        currency: z.string().length(3).optional(),
+      },
+      outputSchema: RESULT_SCHEMA,
+      annotations: READ_ONLY_ANNOTATIONS,
+      _meta: oauthMeta("read:insights"),
+    },
+    async (args, extra) =>
+      runInsightsTool("insights_timeseries", extra.authInfo, args, () =>
+        getTimeseries({
+          metric: args.metric,
+          interval: args.interval,
+          from: parseDate(args.from, "from"),
+          to: parseDate(args.to, "to"),
+          currency: args.currency,
+        }),
+      ),
+  );
+
+  server.registerTool(
+    "insights_list",
+    {
+      title: "List platform records",
+      description:
+        "Use this when an admin needs rows of one entity (users, employers, job-seekers, agents, super-agents, jobs, applications, interviews, offers, placements, commissions, invoices, subscriptions, leads, audit-logs) with filters and pagination. Call with entity only to see allowed filters in the error, or read insights schema first.",
+      inputSchema: {
+        entity: ENTITY_ENUM,
+        filters: z.record(z.string(), z.string()).optional().describe("Entity filter params, e.g. { status: \"active\", employerId: \"…\" }"),
+        limit: z.number().int().min(1).max(200).optional(),
+        page: z.number().int().min(1).optional(),
+        cursor: z.string().max(40).optional(),
+        from: z.string().max(40).optional(),
+        to: z.string().max(40).optional(),
+        sort: z.string().max(60).optional(),
+        fields: z.string().max(1000).optional().describe("Comma-separated field names"),
+        q: z.string().max(200).optional(),
+      },
+      outputSchema: RESULT_SCHEMA,
+      annotations: READ_ONLY_ANNOTATIONS,
+      _meta: oauthMeta("read:insights"),
+    },
+    async (args, extra) =>
+      runInsightsTool("insights_list", extra.authInfo, args, async (pii) => {
+        const entity = getEntity(args.entity);
+        if (!entity) throw new InsightsError(404, "unknown_entity", `Unknown entity ${args.entity}`);
+        const { entity: _e, filters, ...rest } = args;
+        const params = parseListParams({ ...rest, ...(filters ?? {}) }, entity);
+        return listEntity(entity, params, { pii });
+      }),
+  );
+
+  server.registerTool(
+    "insights_get",
+    {
+      title: "Get one platform record",
+      description: "Use this when an admin needs every field of one record (by entity and id) from the platform data.",
+      inputSchema: { entity: ENTITY_ENUM, id: OBJECT_ID },
+      outputSchema: RESULT_SCHEMA,
+      annotations: READ_ONLY_ANNOTATIONS,
+      _meta: oauthMeta("read:insights"),
+    },
+    async (args, extra) =>
+      runInsightsTool("insights_get", extra.authInfo, args, async (pii) => {
+        const entity = getEntity(args.entity);
+        if (!entity) throw new InsightsError(404, "unknown_entity", `Unknown entity ${args.entity}`);
+        return { data: await getEntityRecord(entity, args.id, { pii }) };
+      }),
+  );
+
+  server.registerTool(
+    "insights_query",
+    {
+      title: "Aggregate platform data",
+      description:
+        "Use this when an admin wants counts, sums or averages grouped by a field or by createdAt:day|week|month (e.g. applications by status per employer, commission amount by agent). Only whitelisted fields are accepted.",
+      inputSchema: {
+        entity: ENTITY_ENUM,
+        groupBy: z.string().max(120).optional().describe("0–2 comma-separated groupable paths, or createdAt:month"),
+        metric: z.string().max(80).optional().describe("count | sum:<field> | avg:<field> | min:<field> | max:<field>"),
+        filters: z.record(z.string(), z.string()).optional(),
+        from: z.string().max(40).optional(),
+        to: z.string().max(40).optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+        labels: z.boolean().optional().describe("Add *_label names for id groups"),
+      },
+      outputSchema: RESULT_SCHEMA,
+      annotations: READ_ONLY_ANNOTATIONS,
+      _meta: oauthMeta("read:insights"),
+    },
+    async (args, extra) =>
+      runInsightsTool("insights_query", extra.authInfo, args, (pii) =>
+        runQuery(
+          {
+            entity: args.entity,
+            groupBy: args.groupBy,
+            metric: args.metric,
+            filters: args.filters,
+            from: parseDate(args.from, "from"),
+            to: parseDate(args.to, "to"),
+            limit: args.limit,
+            labels: args.labels,
+          },
+          { pii },
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "insights_search",
+    {
+      title: "Search platform by name",
+      description: "Use this when an admin mentions a job, company, lead or person by name and you need their ids.",
+      inputSchema: { q: z.string().min(2).max(200) },
+      outputSchema: RESULT_SCHEMA,
+      annotations: READ_ONLY_ANNOTATIONS,
+      _meta: oauthMeta("read:insights"),
+    },
+    async (args, extra) => runInsightsTool("insights_search", extra.authInfo, args, (pii) => searchAll(args.q, { pii })),
   );
 }

@@ -51,6 +51,9 @@ describe("MCP OAuth security helpers", () => {
     expect(scopesForRole(["read:jobs", "read:applicants"], "employer")).toEqual([
       "read:applicants",
     ]);
+    // read:insights is admin-only and opt-in: never granted by an omitted scope.
+    expect(scopesForRole(["read:insights"], "admin")).toEqual(["read:insights"]);
+    expect(scopesForRole(["read:insights"], "super_agent")).toEqual([]);
     expect(defaultScopesForRole("agent")).toContain("read:employer_jobs");
     expect(defaultScopesForRole("super_agent")).toContain("read:applicants");
   });

@@ -84,7 +84,7 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       // blob: lets the candidate CV viewer frame an in-memory PDF. The proxied
       // CV response sets X-Frame-Options: DENY / frame-ancestors 'none', so it
       // can only be embedded via a blob: URL, never by its same-origin URL.
-      "frame-src 'self' blob: https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://www.youtube.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
+      "frame-src 'self' blob: https://*.firebaseapp.com https://accounts.google.com https://www.google.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
       // object-src is required so the resource/document PDF preview <embed> can
       // load from our own Spaces CDN. Without it, <embed> falls back to
       // default-src 'self' and the preview renders blank.

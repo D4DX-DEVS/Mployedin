@@ -26,6 +26,16 @@ interface SidebarProps {
   companyLogo?: string;
 }
 
+/**
+ * DS-12: beside a count badge a long label ("Communication", "Exhibition
+ * Requests") wrapped to two lines at the default rail width. With a badge the
+ * label truncates on one line (the link carries the full text in `title`);
+ * without one it may still wrap to two.
+ */
+function labelClampClass(hasBadge: boolean): string {
+  return hasBadge ? "truncate" : "break-words line-clamp-2";
+}
+
 export function Sidebar({
   navGroups,
   locale,
@@ -420,6 +430,8 @@ export function Sidebar({
 
   function renderSubmenuLink(child: NavItem, variant: "inline" | "panel", siblingHrefs: string[]) {
     const ChildIcon = getIcon(child.icon);
+    const childLabel = locale === "ar" ? child.titleAr : child.title;
+    const childLabelClass = labelClampClass(badgeCount(child) > 0);
     const isChildActive = isActiveChildItem(child.href, siblingHrefs);
     const focusRingClass = usesLightWorkspaceSidebar
       ? "focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70"
@@ -446,17 +458,18 @@ export function Sidebar({
           type="button"
           data-sidebar-subitem=""
           onClick={() => setActiveMobileNestedItem(child)}
+          title={childLabel}
           className={cn(
             "group flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-3 text-[13px] font-medium text-muted-foreground transition-all hover:bg-card/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
             isRtl ? "text-right" : "text-left"
           )}
         >
           <ChildIcon className="h-[18px] w-[18px] shrink-0 text-muted-foreground group-hover:text-primary" />
-          <span className="min-w-0 flex-1 break-words leading-5 line-clamp-2">
-            {locale === "ar" ? child.titleAr : child.title}
+          <span className={cn("min-w-0 flex-1 leading-5", childLabelClass)}>
+            {childLabel}
           </span>
           {badgeCount(child) > 0 && (
-            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
               {badgeCount(child) > 99 ? "99+" : badgeCount(child)}
             </span>
           )}
@@ -529,27 +542,29 @@ export function Sidebar({
         {variant === "panel" ? (
           <span
             className={cn(
-              "min-w-0 flex-1 break-words text-[13px] leading-5 line-clamp-2",
+              "min-w-0 flex-1 text-[13px] leading-5",
+              childLabelClass,
               isRtl ? "text-right" : "text-left"
             )}
           >
-            {locale === "ar" ? child.titleAr : child.title}
+            {childLabel}
           </span>
         ) : (
           <span
             className={cn(
-              "min-w-0 flex-1 break-words leading-5 line-clamp-2",
+              "min-w-0 flex-1 leading-5",
+              childLabelClass,
               isRtl ? "text-right" : "text-left"
             )}
           >
-            {locale === "ar" ? child.titleAr : child.title}
+            {childLabel}
           </span>
         )}
         {/* A group's badge is a sum of its children (see badgeCount); if the
             panel that opens does not repeat the count on the child that owns
             it, the trail dies here and the user cannot find what was flagged. */}
         {badgeCount(child) > 0 && (
-          <span className="ms-auto flex h-5 min-w-5 shrink-0 items-center justify-center self-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
+          <span className="ms-auto flex h-5 min-w-5 shrink-0 items-center justify-center self-center whitespace-nowrap rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
             {badgeCount(child) > 99 ? "99+" : badgeCount(child)}
           </span>
         )}
@@ -680,11 +695,11 @@ export function Sidebar({
             const dualTierContent = (
               <>
                 <Icon className="mt-0.5 h-[18px] w-[18px] shrink-0" />
-                <span className="min-w-0 flex-1 break-words text-[13px] font-medium leading-5 line-clamp-2">
+                <span className={cn("min-w-0 flex-1 text-[13px] font-medium leading-5", labelClampClass(badgeCount(item) > 0))}>
                   {dualTierLabel}
                 </span>
                 {badgeCount(item) > 0 && (
-                  <span className="ms-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
+                  <span className="ms-auto flex h-5 min-w-5 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
                     {badgeCount(item) > 99 ? "99+" : badgeCount(item)}
                   </span>
                 )}
@@ -770,7 +785,7 @@ export function Sidebar({
                 {locale === "ar" ? item.titleAr : item.title}
               </span>
               {badgeCount(item) > 0 && (
-                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
+                <span className="ms-auto flex h-5 min-w-5 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
                   {badgeCount(item) > 99 ? "99+" : badgeCount(item)}
                 </span>
               )}

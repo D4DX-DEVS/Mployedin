@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
-import { advancesPastInterviewing, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
+import { advancesPastInterviewing, closeOpenInterviewsForAdvance, closeOpenItemsForExit } from "@/lib/hiring/closeOpenInterviews";
+import { BULK_MOVE_TARGETS, canTransitionApplication } from "@/lib/hiring/applicationTransitions";
+import type { ApplicationStatus } from "@/models/Application";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
@@ -72,6 +74,17 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   } else if (action === "move_stage") {
     if (!params?.targetStage) {
       return NextResponse.json({ error: "targetStage is required for move_stage action" }, { status: 400 });
+    }
+    // Offer, interviewing and hired each need a record behind them (an Offer,
+    // an Interview, a Placement) that a bulk stage move cannot create.
+    if (!BULK_MOVE_TARGETS.includes(params.targetStage)) {
+      return NextResponse.json(
+        {
+          error: `Bulk moves can only target ${BULK_MOVE_TARGETS.join(", ")}.`,
+          code: "invalid_transition",
+        },
+        { status: 409 },
+      );
     }
     newStatus = params.targetStage;
   } else if (action === "send_message") {
@@ -185,6 +198,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         : String(jobSeeker?.userId ?? "");
       const notifyCandidate = shouldNotifyCandidate(app);
 
+      // Same transition map as the single-application PATCH: a hired or
+      // withdrawn candidate is not swept along by a bulk move.
+      if (newStatus && app.status !== newStatus && !canTransitionApplication(app.status, newStatus as ApplicationStatus, "staff")) {
+        errors.push(`Application ${app._id}: can't move from ${app.status} to ${newStatus} (invalid_transition)`);
+        continue;
+      }
+
       // Status change actions
       if (newStatus && app.status !== newStatus) {
         app.status = newStatus as typeof app.status;
@@ -204,6 +224,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         // left to inflate the Interviews tab and fire reminders.
         if (advancesPastInterviewing(newStatus)) {
           await closeOpenInterviewsForAdvance(app._id, { now });
+        }
+        if (newStatus === "rejected") {
+          await closeOpenItemsForExit(app._id, "rejected", { now, actorRole: ctx.role });
         }
 
         // Send notification + email based on new status (both follow the notify rule)

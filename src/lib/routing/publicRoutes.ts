@@ -19,6 +19,8 @@ const PUBLIC_ROUTES = [
   "/api/image-proxy",
   // Browser crash reports: errors happen for signed-out visitors too.
   "/api/client-errors",
+  // Cookie consent must be recordable before anyone signs in.
+  "/api/consent",
   "/about",
   "/contact",
   "/blog",
@@ -27,6 +29,7 @@ const PUBLIC_ROUTES = [
   "/cookies",
   "/terms",
   "/gdpr",
+  "/accessibility",
   "/companies",
   "/poster",
   "/salary-explorer",

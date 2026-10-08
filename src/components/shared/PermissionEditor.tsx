@@ -44,6 +44,7 @@ const RESOURCE_LABEL_KEYS: Record<Resource, string> = {
   targets: "resourceTargets",
   onboarding: "resourceOnboarding",
   invoices: "resourceInvoices",
+  insights: "resourceInsights",
 };
 
 /* Actions are written out in full beside their checkbox now. The old matrix
@@ -75,7 +76,7 @@ const RESOURCE_GROUPS: { id: string; labelKey: string; resources: Resource[] }[]
   {
     id: "system",
     labelKey: "groupSystem",
-    resources: ["notifications", "reports", "audit_logs", "tasks", "onboarding"],
+    resources: ["notifications", "reports", "audit_logs", "tasks", "onboarding", "insights"],
   },
   {
     id: "ai",

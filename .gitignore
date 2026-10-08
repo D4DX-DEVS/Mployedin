@@ -173,3 +173,5 @@ PLAN.md
 /firebase-audit.js
 /test-*.js
 /test_*.js
+qa-reports/
+!.env.example

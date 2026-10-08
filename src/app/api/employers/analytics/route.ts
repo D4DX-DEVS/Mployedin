@@ -5,7 +5,7 @@ import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { Employer } from "@/models/Employer";
 import Job from "@/models/Job";
 import { Application } from "@/models/Application";
-import { Placement } from "@/models/Placement";
+import { getEmployerPipelineCounts } from "@/lib/employers/pipelineCounts";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -39,6 +39,10 @@ interface ConversionMetrics {
 }
 
 interface AnalyticsResponse {
+  /** Applications still in play (shared definition, pipelineCounts.ts). */
+  inPipeline: number;
+  /** hired / applications, whole percent (shared definition). */
+  conversionRate: number;
   funnel: FunnelStage[];
   trend: TrendData[];
   topJobs: TopJob[];
@@ -72,6 +76,8 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx): Promise<NextResponse
   if (jobIds.length === 0) {
     // No jobs, return empty analytics
     return NextResponse.json({
+      inPipeline: 0,
+      conversionRate: 0,
       funnel: [],
       trend: [],
       topJobs: [],
@@ -203,18 +209,22 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx): Promise<NextResponse
       0
     );
 
-  // Count placements for "hired"
-  const hiredCount = await Placement.countDocuments({ employerId });
+  // "hired" is the shared definition — applications whose current status is
+  // hired — not Placement rows (AP-2/EMP-13: 0 placements beside a funnel
+  // that showed hires made "Conversion 8%" sit next to "0 hired").
+  const counts = await getEmployerPipelineCounts(employerId);
 
   const conversion: ConversionMetrics = {
     applied: reachedAtLeast(0),
     shortlisted: reachedAtLeast(1),
     interview: reachedAtLeast(2),
     selected: reachedAtLeast(3),
-    hired: hiredCount,
+    hired: counts.hired,
   };
 
   const response: AnalyticsResponse = {
+    inPipeline: counts.inPipeline,
+    conversionRate: counts.conversionRate,
     funnel,
     trend,
     topJobs,

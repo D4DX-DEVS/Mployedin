@@ -15,7 +15,7 @@ import {
 } from "@/lib/jobRecommendations";
 import { scoreSeekerPool } from "@/lib/matching/seekerMatches";
 import { JobSeekerHomePage } from "@/components/features/job-seeker/home/JobSeekerHomePage";
-import type { InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
+import type { HomeRecommendations, InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import { setRequestLocale } from "next-intl/server";
 import { countryKeyFromLocationText } from "@/lib/i18n/locations";
 
@@ -147,20 +147,26 @@ export default async function JobSeekerPage({
     countPromises.push(Promise.resolve(0));
   }
 
-  // Add optional unread message count if model exists
+  // Add optional unread message count if model exists. Summed over every
+  // conversation the seeker can see, and only their own slot of unreadCounts
+  // (keyed by User id) — the same number useUnreadMessageCount shows.
   if (Conversation) {
+    const userObjectId = new (await import("mongoose")).Types.ObjectId(seeker.userId);
+    const userKey = String(seeker.userId);
     countPromises.push(
-      Conversation.findOne({
-        participants: new (await import("mongoose")).Types.ObjectId(seeker.userId),
+      Conversation.find({
+        participants: userObjectId,
         type: { $ne: "customer_care" },
+        hiddenFor: { $ne: userObjectId },
       })
         .select("unreadCounts")
         .lean()
-        .then((conv: unknown) => {
-          const c = conv as { unreadCounts?: Record<string, number> } | null;
-          if (!c?.unreadCounts) return 0;
-          return Object.values(c.unreadCounts).reduce((sum, count) => sum + (count || 0), 0);
-        })
+        .then((convs: unknown) =>
+          (convs as Array<{ unreadCounts?: Record<string, number> }>).reduce(
+            (sum, c) => sum + (c.unreadCounts?.[userKey] ?? 0),
+            0,
+          ),
+        )
         .catch(() => 0)
     );
   } else {
@@ -169,51 +175,66 @@ export default async function JobSeekerPage({
 
   const [appCount, interviewCount, viewCount, recentJobs, appliedApps, pendingOfferCount, unreadMessageCount] = await Promise.all(countPromises);
 
-  const seekerProfile = await effectiveSeekerProfile(userId, seeker);
+  // Scoring can take many seconds on a cold embedding cache, so it is not
+  // awaited here: the rest of the page renders at once and the recommended
+  // cards stream in behind their skeleton when this promise settles.
+  const recommendations: Promise<HomeRecommendations> = (async () => {
+    const seekerProfile = await effectiveSeekerProfile(userId, seeker);
 
-  // The engine the emails use, so the cards here are the jobs the digest would
-  // send and carry the same percentage. Only `recommended` jobs (eligible and
-  // at or above the admin threshold) may sit under "Recommended jobs"; this
-  // list used to be the top four of the whole pool, which led with a 67% job
-  // whenever nothing better existed. An empty answer is final and the page
-  // explains it with the pool's limitingFactor.
-  const pool = await scoreSeekerPool(seekerProfile, recentJobs as Array<Record<string, unknown>>);
-  const scoredJobs = pool.jobs
-    .filter((job) => job.recommended)
-    .slice(0, HOME_RECOMMENDED_JOB_COUNT)
-    // Fully serialize to plain primitives — populated subdocs still carry
-    // Mongoose ObjectIds, which cannot cross the server/client boundary.
-    .map((job) => {
-      const emp = job.employerId as { _id?: unknown; companyName?: string; logo?: string } | null;
-      const loc = job.location as { city?: string; country?: string; isRemote?: boolean } | null;
-      const sal = job.salary as { min?: number; max?: number; currency?: string } | null;
-      const rawDate = job.createdAt instanceof Date ? job.createdAt : new Date((job.createdAt as string) ?? 0);
-      const reqs = job.requirements as { skills?: string[] } | null;
-      return {
-        _id: String(job._id),
-        title: String(job.title ?? ""),
-        createdAt: isNaN(rawDate.getTime()) ? new Date(0).toISOString() : rawDate.toISOString(),
-        matchScore: job.matchScore,
-        employmentType: job.employmentType ? String(job.employmentType) : undefined,
-        // The card shows three skills and marks the ones the seeker already
-        // has, so both the list and the overlap have to reach the client.
-        skills: (reqs?.skills ?? []).map(String),
-        matchedSkills: job.matchedSkills,
-        location: loc
-          ? { city: loc.city ?? undefined, country: loc.country ?? undefined, isRemote: loc.isRemote ?? false }
-          : undefined,
-        salary: sal
-          ? { min: sal.min ?? undefined, max: sal.max ?? undefined, currency: sal.currency ?? undefined }
-          : undefined,
-        employerId: emp
-          ? {
-              _id: emp._id ? String(emp._id) : undefined,
-              companyName: emp.companyName ?? undefined,
-              logo: emp.logo ?? undefined,
-            }
-          : undefined,
-      };
-    });
+    // The engine the emails use, so the cards here are the jobs the digest would
+    // send and carry the same percentage. Only `recommended` jobs (eligible and
+    // at or above the admin threshold) may sit under "Recommended jobs"; this
+    // list used to be the top four of the whole pool, which led with a 67% job
+    // whenever nothing better existed. An empty answer is final and the page
+    // explains it with the pool's limitingFactor.
+    const pool = await scoreSeekerPool(seekerProfile, recentJobs as Array<Record<string, unknown>>);
+    const scoredJobs = pool.jobs
+      .filter((job) => job.recommended)
+      .slice(0, HOME_RECOMMENDED_JOB_COUNT)
+      // Fully serialize to plain primitives — populated subdocs still carry
+      // Mongoose ObjectIds, which cannot cross the server/client boundary.
+      .map((job) => {
+        const emp = job.employerId as { _id?: unknown; companyName?: string; logo?: string } | null;
+        const loc = job.location as { city?: string; country?: string; isRemote?: boolean } | null;
+        const sal = job.salary as { min?: number; max?: number; currency?: string } | null;
+        const rawDate = job.createdAt instanceof Date ? job.createdAt : new Date((job.createdAt as string) ?? 0);
+        const reqs = job.requirements as { skills?: string[] } | null;
+        return {
+          _id: String(job._id),
+          title: String(job.title ?? ""),
+          createdAt: isNaN(rawDate.getTime()) ? new Date(0).toISOString() : rawDate.toISOString(),
+          matchScore: job.matchScore,
+          employmentType: job.employmentType ? String(job.employmentType) : undefined,
+          // The card shows three skills and marks the ones the seeker already
+          // has, so both the list and the overlap have to reach the client.
+          skills: (reqs?.skills ?? []).map(String),
+          matchedSkills: job.matchedSkills,
+          location: loc
+            ? { city: loc.city ?? undefined, country: loc.country ?? undefined, isRemote: loc.isRemote ?? false }
+            : undefined,
+          salary: sal
+            ? { min: sal.min ?? undefined, max: sal.max ?? undefined, currency: sal.currency ?? undefined }
+            : undefined,
+          employerId: emp
+            ? {
+                _id: emp._id ? String(emp._id) : undefined,
+                companyName: emp.companyName ?? undefined,
+                logo: emp.logo ?? undefined,
+              }
+            : undefined,
+        };
+      });
+    const result: HomeRecommendations = {
+      jobs: scoredJobs,
+      recommendation: {
+        threshold: pool.threshold,
+        bestScore: pool.bestScore,
+        recommendedCount: pool.recommendedCount,
+        limitingFactor: pool.limitingFactor ?? null,
+      },
+    };
+    return JSON.parse(JSON.stringify(result));
+  })();
 
   const initialData: InitialHomeData = {
     profile: JSON.parse(JSON.stringify(seeker)),
@@ -223,13 +244,6 @@ export default async function JobSeekerPage({
       recruiterViews: { total: viewCount as number },
       pendingOffers: { count: Math.max(0, Number(pendingOfferCount) || 0) },
       unreadMessages: { count: Math.max(0, Number(unreadMessageCount) || 0) },
-    },
-    jobs: scoredJobs,
-    recommendation: {
-      threshold: pool.threshold,
-      bestScore: pool.bestScore,
-      recommendedCount: pool.recommendedCount,
-      limitingFactor: pool.limitingFactor ?? null,
     },
     appliedJobs: (appliedApps as Array<Record<string, unknown>>).map((app) => {
       const job = app.jobId as Record<string, unknown> | null;
@@ -255,6 +269,7 @@ export default async function JobSeekerPage({
     <JobSeekerHomePage
       locale={locale}
       initialData={JSON.parse(JSON.stringify(initialData))}
+      recommendations={recommendations}
       userName={sessionUser.name ?? undefined}
       userImage={sessionUser.image ?? undefined}
     />

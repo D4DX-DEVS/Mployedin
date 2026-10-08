@@ -7,7 +7,7 @@ import McpToken from "@/models/McpToken";
 import User from "@/models/User";
 import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
 import { isValidPkceVerifier } from "@/lib/mcp/oauth";
-import { defaultScopesForRole, type McpScope } from "@/lib/mcp/scopes";
+import { allowedScopesForRole, type McpScope } from "@/lib/mcp/scopes";
 import { mintToken } from "@/lib/security/mintToken";
 
 const ACCESS_TOKEN_TTL_SECONDS = 3600; // 1h
@@ -27,8 +27,8 @@ function tokenSuccess(body: Record<string, unknown>) {
 }
 
 
-function retainAuthorizedScopes(scopes: readonly string[], role: Parameters<typeof defaultScopesForRole>[0]): McpScope[] {
-  const allowed = new Set(defaultScopesForRole(role));
+function retainAuthorizedScopes(scopes: readonly string[], role: Parameters<typeof allowedScopesForRole>[0]): McpScope[] {
+  const allowed = new Set(allowedScopesForRole(role));
   return scopes.filter((scope): scope is McpScope => allowed.has(scope as McpScope));
 }
 

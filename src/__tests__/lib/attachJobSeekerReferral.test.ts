@@ -41,6 +41,16 @@ jest.mock("@/models/User", () => ({
   },
 }));
 
+const agentFindById = jest.fn();
+jest.mock("@/models/Agent", () => ({
+  __esModule: true,
+  default: { findById: (...a: unknown[]) => agentFindById(...a) },
+}));
+jest.mock("@/models/SuperAgent", () => ({
+  __esModule: true,
+  default: { findById: jest.fn(() => ({ select: () => ({ lean: async () => ({ userId: "64d000000000000000000002" }) }) })) },
+}));
+
 const lean = (v: unknown) => ({ lean: async () => v });
 const selectLean = (v: unknown) => ({ select: () => ({ lean: async () => v }) });
 
@@ -70,6 +80,13 @@ describe("attachJobSeekerReferral", () => {
     seekerFindOne.mockReturnValue(selectLean(SEEKER));
     seekerUpdateOne.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
     linkUpdateOne.mockResolvedValue({ matchedCount: 1 });
+    agentFindById.mockReturnValue(selectLean({ userId: LINK.createdBy, roleArchivedAt: null }));
+  });
+
+  it("attributes nothing when the link owner's agent profile is archived (RF-3)", async () => {
+    agentFindById.mockReturnValue(selectLean({ userId: LINK.createdBy, roleArchivedAt: new Date() }));
+    expect(await attach()).toEqual({ attached: false, reason: "owner_inactive" });
+    expect(linkFindOneAndUpdate).not.toHaveBeenCalled();
   });
 
   it("consumes the link atomically, stamps the seeker, logs and notifies", async () => {

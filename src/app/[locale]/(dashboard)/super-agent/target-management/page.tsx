@@ -31,7 +31,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   ResponsiveContainer, Cell, PieChart, Pie,
 } from "recharts";
-import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
   Building2, Users, DollarSign, SplitSquareVertical,
@@ -39,7 +40,7 @@ import {
   Search, AlertCircle, CheckCircle2,
   ClipboardList, TimerReset, Info, MapPin,
   Eye, SlidersHorizontal, CircleDollarSign,
-  BarChart3,
+  BarChart3, Plus,
 } from "lucide-react";
 import { formatCount } from "@/lib/ui/intlFormat";
 
@@ -270,6 +271,7 @@ function DashboardMetricCard({
 export default function SuperAgentTargetProfilesPage() {
   const t = useTranslations("targets");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const currentYear = new Date().getFullYear();
 
@@ -534,6 +536,12 @@ export default function SuperAgentTargetProfilesPage() {
         <Badge variant="outline" className="rounded-full px-2.5 py-1.5 sm:px-3">
           <CircleDollarSign className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{currencyLabel}</span>
         </Badge>
+        {/* BL-8: the create route existed but nothing on the page led to it. */}
+        <Button asChild size="sm" className="gap-1 rounded-lg px-2 text-xs font-semibold sm:gap-2 sm:px-4 sm:text-sm">
+          <Link href={`/${locale}/super-agent/target-management/create`}>
+            <Plus className="h-4 w-4 shrink-0" aria-hidden /> {t("newTargetProfile")}
+          </Link>
+        </Button>
       </SuperAgentPageIntro>
 
       <div className="flex flex-wrap items-center gap-2">

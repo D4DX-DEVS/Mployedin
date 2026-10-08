@@ -17,6 +17,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { escapeRegex, isValidObjectId } from "@/lib/security/sanitize";
 import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import { notify } from "@/lib/notifications/trigger";
+import { userLocalePath } from "@/lib/i18n/localePath";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -316,8 +317,17 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     throw err;
   }
 
-  // Update application status to "offer"
-  await Application.findByIdAndUpdate(applicationId, { status: "offer" });
+  // Update application status to "offer", on the record too — the timeline
+  // and time-to-hire read statusHistory.
+  if (application.status !== "offer") {
+    await Application.updateOne(
+      { _id: applicationId, status: { $nin: [...CLOSED_APPLICATION_STATUSES] } },
+      {
+        $set: { status: "offer" },
+        $push: { statusHistory: { status: "offer", changedAt: new Date(), changedBy: ctx.userId, note: "Offer extended" } },
+      },
+    );
+  }
 
   // The interview that led to this offer is over. Left open it kept the
   // Interviews tab counting it and the Overview inbox promising an "upcoming
@@ -335,7 +345,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       type: "application_status_update",
       title: "Job Offer Received",
       message: `You have received an offer for ${jobTitle}.\n\nSalary: ${salaryText}\nStart Date: ${startText}${benefits ? `\nBenefits: ${benefits}` : ""}\n\nPlease review and respond to this offer.`,
-      link: `/en/job-seeker/offers`,
+      link: await userLocalePath(jobSeeker.userId, "/job-seeker/offers"),
       sendEmail: true,
       metadata: { offerId: String(offer._id), applicationId, salary: salaryText, startDate: startText },
     }).catch(() => {

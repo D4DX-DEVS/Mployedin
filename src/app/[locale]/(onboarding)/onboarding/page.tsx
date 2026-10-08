@@ -909,8 +909,17 @@ export default function JobSeekerOnboardingPage() {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const d = await res.json().catch(() => ({})) as { error?: string };
-      throw new Error(d.error ?? "Failed to save");
+      const d = await res.json().catch(() => ({})) as { error?: string; details?: { path?: string }[] };
+      // Name the offending fields instead of a bare "Validation failed" (JS-25).
+      const labels: Record<string, string> = {
+        name: t("fullName"), institution: t("university"), degree: t("highestQualification"),
+        course: t("course"), field: t("specialization"), courseType: t("courseType"),
+        headline: t("resumeHeadline"), jobTitle: t("currentJobTitle"), company: t("companyName"),
+      };
+      const fields = [...new Set((d.details ?? []).map((x) => x.path?.split(".").pop()).filter((f): f is string => !!f))]
+        .map((f) => labels[f] ?? f);
+      if (fields.length) throw new Error(t("saveFieldsInvalid", { fields: fields.join(", ") }));
+      throw new Error(d.error ?? t("saveFailed"));
     }
     return res.json();
   };
@@ -965,7 +974,8 @@ export default function JobSeekerOnboardingPage() {
           // verbatim, which read "graduation in C".
           degree: QUALIFICATION_OPTIONS.find((q) => q.value === step2.qualification)?.label
             ?? step2.qualification,
-          institution: step2.university || "",
+          // Omitted for school levels, which have no institution field (JS-25).
+          institution: step2.university.trim() || undefined,
           // Course and specialization are two separate answers; the old
           // `specialization || course` fallback silently dropped one.
           field: step2.specialization || undefined,

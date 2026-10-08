@@ -33,6 +33,12 @@ export interface IConversation extends Document {
   lastSenderId?: mongoose.Types.ObjectId;
   unreadCounts: Map<string, number>; // userId (string) → unread count
   customerCare?: ICustomerCare;
+  /** Who started the thread — the daily new-conversation limit counts these (MS-6). */
+  createdBy?: mongoose.Types.ObjectId;
+  /** Participants who deleted the thread from their own list (MS-2). Per-user soft hide. */
+  hiddenFor: mongoose.Types.ObjectId[];
+  /** userId (string) → when that participant cleared their history; older messages are hidden from them. */
+  clearedAt: Map<string, Date>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -92,6 +98,9 @@ const ConversationSchema = new Schema<IConversation>(
     lastSenderId: { type: Schema.Types.ObjectId, ref: "User" },
     unreadCounts: { type: Map, of: Number, default: {} },
     customerCare: CustomerCareSchema,
+    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+    hiddenFor: { type: [Schema.Types.ObjectId], ref: "User", default: [] },
+    clearedAt: { type: Map, of: Date, default: {} },
   },
   { timestamps: true }
 );

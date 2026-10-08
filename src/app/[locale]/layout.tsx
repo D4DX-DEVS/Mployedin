@@ -4,6 +4,9 @@ import { getMessages, setRequestLocale } from "next-intl/server";
 import { pickMessages } from "@/lib/i18n/clientMessages";
 import { notFound } from "next/navigation";
 import { PWAInstallPrompt } from "@/components/shared/PWAInstallPrompt";
+import CookieConsent from "@/components/shared/CookieConsent";
+import { SkipLink } from "@/components/shared/a11y/SkipLink";
+import { AccessibilitySettings } from "@/components/shared/a11y/AccessibilitySettings";
 
 const locales = ["en", "ar"];
 
@@ -74,9 +77,14 @@ export default async function LocaleLayout({
   return (
     <div lang={locale} dir={dir} className={locale === "ar" ? "font-arabic" : ""}>
       {/* Groups bring their own provider and subset; see clientMessages.ts. */}
+      {/* Skip link, consent manager and display settings live here so every
+          route group (public, auth, onboarding, dashboards) gets them once. */}
       <NextIntlClientProvider locale={locale} messages={pickMessages(messages, "root")}>
+        <SkipLink />
         {children}
         <PWAInstallPrompt />
+        <CookieConsent locale={locale} />
+        <AccessibilitySettings locale={locale} />
       </NextIntlClientProvider>
     </div>
   );

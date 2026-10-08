@@ -3,9 +3,11 @@ import Credentials from "next-auth/providers/credentials";
 import LinkedIn from "next-auth/providers/linkedin";
 import Apple from "next-auth/providers/apple";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import connectDB from "@/lib/db/mongoose";
 import { User } from "@/models/User";
 import type { UserRole } from "@/models/User";
+import { isValidRole } from "@/types/user";
 import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
@@ -17,13 +19,14 @@ import { fetchLinkedInExtras } from "@/lib/auth/linkedin-profile";
 import { encrypt, decrypt } from "@/lib/security/encryption";
 import { verifyTotp, hashRecoveryCode } from "@/lib/security/totp";
 import { checkRateLimit } from "@/lib/security/rateLimit";
-import { resolveCompanyContext } from "@/lib/auth/companyContext";
+import { resolveCompanyContext, type CompanyContext } from "@/lib/auth/companyContext";
 import { getClientIp } from "@/lib/security/clientIp";
 import { attachJobSeekerReferral } from "@/lib/referrals/attachJobSeeker";
 import { hashOtp, otpHashesMatch } from "@/lib/auth/emailVerification";
 import PendingSignin, { PENDING_SIGNIN_MAX_ATTEMPTS } from "@/models/PendingSignin";
 import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 import { isSessionRevoked, revokeSession } from "@/lib/auth/sessionRevocation";
+import { decideOAuthLink, providerEmailVerified, type LinkableProvider } from "@/lib/auth/oauthLinking";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -63,6 +66,47 @@ class AccountInactiveError extends CredentialsSignin {
   code = "account_inactive";
 }
 
+/** Thrown when a Firebase token is not a verified-email Google sign-in. */
+class OAuthUnverifiedError extends CredentialsSignin {
+  code = "oauth_unverified";
+}
+/** Thrown when the account's stored role is not one the platform recognises. */
+class InvalidRoleError extends CredentialsSignin {
+  code = "invalid_role";
+}
+
+/**
+ * bcrypt hash (cost 12, same as signup) of a throwaway string. Compared against
+ * when the account has no password or does not exist, so every credentials
+ * attempt costs one bcrypt round and response timing does not reveal which
+ * addresses are registered.
+ */
+const DUMMY_PASSWORD_HASH = "$2b$12$XB2dnx1HJiux1M2w1vHqCefijPnWeU8HJyEkjlBHBi32Z5HQk25JS";
+
+/** Company-workspace claims cached on the JWT. */
+const COMPANY_CLAIMS = [
+  "companyId",
+  "companyOwnerUserId",
+  "companyUserRole",
+  "companyRoles",
+  "companyPermissions",
+  "jobAccess",
+] as const;
+
+/** Write (or, for `null`, drop) the company-workspace claims on a token. */
+function applyCompanyContext(token: Record<string, unknown>, company: CompanyContext | null): void {
+  if (!company) {
+    for (const claim of COMPANY_CLAIMS) delete token[claim];
+    return;
+  }
+  token.companyId = company.companyId;
+  token.companyOwnerUserId = company.companyOwnerUserId;
+  token.companyUserRole = company.companyUserRole;
+  token.companyRoles = company.companyRoles;
+  token.companyPermissions = company.permissions;
+  token.jobAccess = company.jobAccess;
+}
+
 /** Thrown when credentials could not be checked because the service failed. */
 class AuthenticationUnavailableError extends CredentialsSignin {
   code = "authentication_unavailable";
@@ -83,6 +127,13 @@ export const authConfig: NextAuthConfig = {
         const user = await User.findOne({
           email: parsed.data.email.toLowerCase(),
         }).select("+passwordHash +failedLoginAttempts +lockUntil +twoFactorSecretEnc +twoFactorRecoveryCodes");
+
+        // Run exactly one bcrypt comparison on every path (unknown address,
+        // password-less, locked, inactive, real) BEFORE any early return, so
+        // response timing does not reveal which case applied.
+        const valid = user?.passwordHash
+          ? await user.comparePassword(parsed.data.password)
+          : (await bcrypt.compare(parsed.data.password, DUMMY_PASSWORD_HASH), false);
 
         if (!user || !user.passwordHash) {
           const ipCheck = await checkRateLimit(ip, {
@@ -128,7 +179,6 @@ export const authConfig: NextAuthConfig = {
           throw new AccountInactiveError();
         }
 
-        const valid = await user.comparePassword(parsed.data.password);
         if (!valid) {
           const ipCheck = await checkRateLimit(ip, {
             limit: 10,
@@ -194,6 +244,19 @@ export const authConfig: NextAuthConfig = {
           });
           if (nowLocked) throw new AccountLockedError();
           return null;
+        }
+
+        // A role outside the enum (bad migration, manual DB edit) must never
+        // mint a session — downstream code would treat it as some default role.
+        if (!isValidRole(user.role)) {
+          logActivity({
+            actorId: user._id.toString(),
+            action: "login.failed",
+            resource: "auth",
+            ipAddress: ip,
+            meta: { email: user.email, reason: "invalid_role" },
+          });
+          throw new InvalidRoleError();
         }
 
         // ── Two-factor authentication (TOTP) ─────────────────────────────
@@ -309,7 +372,24 @@ export const authConfig: NextAuthConfig = {
 
           const email = decoded.email?.toLowerCase();
           if (!email) return null;
-          const isEmailVerified = decoded.email_verified ?? false;
+          // Only a Google sign-in whose address Google has verified may claim
+          // (or create) the account for that email. Any other Firebase provider
+          // (password, anonymous, phone, custom token) or an unverified address
+          // would let anyone take over an existing account by email alone.
+          if (decoded.email_verified !== true || decoded.firebase?.sign_in_provider !== "google.com") {
+            logActivity({
+              action: "login.failed",
+              resource: "auth",
+              meta: {
+                email,
+                reason: "oauth_unverified",
+                provider: "firebase",
+                signInProvider: decoded.firebase?.sign_in_provider,
+              },
+            });
+            throw new OAuthUnverifiedError();
+          }
+          const isEmailVerified = true;
 
           await connectDB();
           let dbUser = await User.findOne({ email });
@@ -424,6 +504,42 @@ export const authConfig: NextAuthConfig = {
               meta: { email, reason: "account_inactive", provider: "firebase-google" },
             });
             throw new AccountInactiveError();
+          }
+
+          // Same lockout the password path enforces: Google must not bypass it.
+          if (dbUser.isLocked()) {
+            logActivity({
+              actorId: dbUser._id.toString(),
+              actorRole: dbUser.role,
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "account_locked", provider: "firebase-google" },
+            });
+            throw new AccountLockedError();
+          }
+
+          if (!isValidRole(dbUser.role)) {
+            logActivity({
+              actorId: dbUser._id.toString(),
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "invalid_role", provider: "firebase-google" },
+            });
+            throw new InvalidRoleError();
+          }
+
+          // Google verified this address (checked above). If the account was
+          // still unverified, someone may have pre-registered it with a
+          // password of their choosing: discard that password and end its
+          // sessions before handing the account to the proven owner. Runs
+          // after the inactive/locked/role refusals so a refused sign-in
+          // changes nothing.
+          if (!dbUser.isEmailVerified) {
+            await User.findByIdAndUpdate(dbUser._id, {
+              $set: { isEmailVerified: true, passwordChangedAt: new Date(Date.now() - 1000) },
+              $unset: { passwordHash: 1, emailVerificationToken: 1 },
+            });
+            dbUser.isEmailVerified = true;
           }
 
           // Update lastLogin for returning Firebase/Google users
@@ -644,6 +760,16 @@ export const authConfig: NextAuthConfig = {
             });
           }
 
+          if (!isValidRole(user.role)) {
+            logActivity({
+              actorId: user._id.toString(),
+              action: "login.failed",
+              resource: "auth",
+              meta: { email, reason: "invalid_role", provider: "email-otp" },
+            });
+            throw new InvalidRoleError();
+          }
+
           // SECURITY: Only job_seeker accounts sign in via email-OTP.
           // Staff (admin/agent/super_agent) and employers stay on password-based auth.
           // The start route never mints a code for them, so reaching this branch
@@ -732,6 +858,7 @@ export const authConfig: NextAuthConfig = {
             isOnboarded: jobSeeker?.isOnboarded ?? false,
           };
         } catch (err) {
+          if (err instanceof InvalidRoleError) throw err;
           logger.error({ err }, "Email-OTP authorize error");
           return null;
         }
@@ -787,7 +914,7 @@ export const authConfig: NextAuthConfig = {
     },
   },
   callbacks: {
-    async jwt({ token, user, account, trigger, session: updateData }) {
+    async jwt({ token, user, account, profile, trigger, session: updateData }) {
       // Signed-out sessions stay dead: the JWT itself would stay valid until it
       // expires, so a cookie copied before sign-out used to keep working.
       if (!user && typeof token.sid === "string" && (await isSessionRevoked(token.sid))) {
@@ -815,7 +942,8 @@ export const authConfig: NextAuthConfig = {
             .select("role isEmailVerified")
             .lean() as { role?: UserRole; isEmailVerified?: boolean } | null;
           if (dbUser) {
-            token.role = dbUser.role ?? token.role;
+            if (!isValidRole(dbUser.role)) return null;
+            token.role = dbUser.role;
             token.isEmailVerified = dbUser.isEmailVerified ?? false;
           }
           if (data.isOnboarded !== undefined) {
@@ -886,9 +1014,25 @@ export const authConfig: NextAuthConfig = {
           // caches these at login, so refresh them on the same periodic check
           // (previously an admin-converted employer got 403 on job posting
           // until they logged out and back in).
-          token.role = dbUser.role ?? token.role;
+          // An out-of-enum role ends the session (proxy sends it to /login).
+          if (!isValidRole(dbUser.role)) return null;
+          token.role = dbUser.role;
           token.permissionMode = dbUser.permissionMode ?? "role_default";
           token.customPermissions = dbUser.customPermissions ?? undefined;
+
+          // Company membership changes (removal, deactivation, role/permission
+          // edits) must reach live sessions too — the claims below were cached
+          // once at sign-in and otherwise survived for the whole session.
+          if (dbUser.role === "employer") {
+            try {
+              applyCompanyContext(token, await resolveCompanyContext(token.id as string));
+            } catch (err) {
+              // Transient lookup failure: keep the cached claims until next check.
+              logger.warn({ err, userId: token.id }, "Company context refresh failed");
+            }
+          } else {
+            applyCompanyContext(token, null);
+          }
 
           if (dbUser.passwordChangedAt) {
             const changedAt = Math.floor(
@@ -912,8 +1056,40 @@ export const authConfig: NextAuthConfig = {
       // here so that gate keeps covering Google sign-in.
       if (account && account.provider !== "credentials" && account.provider !== "email-otp") {
         await connectDB();
-        let dbUser = await User.findOne({ email: token.email });
+        let dbUser = await User.findOne({ email: token.email }).select("+passwordHash");
         const isNewUser = !dbUser;
+
+        // LinkedIn / Apple: the email is only a hint. Require the provider to
+        // have verified it, and once linked, match on the provider subject
+        // (see lib/auth/oauthLinking.ts).
+        const socialProvider: LinkableProvider | null =
+          account.provider === "linkedin" || account.provider === "apple" ? account.provider : null;
+        const linkDecision = socialProvider
+          ? decideOAuthLink({
+              provider: socialProvider,
+              providerAccountId: account.providerAccountId,
+              emailVerified: providerEmailVerified(profile),
+              existing: dbUser
+                ? {
+                    role: dbUser.role,
+                    isEmailVerified: dbUser.isEmailVerified,
+                    hasPassword: Boolean(dbUser.passwordHash),
+                    linkedinSub: dbUser.linkedinSub,
+                    appleSub: dbUser.appleSub,
+                  }
+                : null,
+            })
+          : null;
+        if (linkDecision && !linkDecision.allow) {
+          logActivity({
+            ...(dbUser ? { actorId: dbUser._id.toString(), actorRole: dbUser.role } : {}),
+            action: "login.failed",
+            resource: "auth",
+            meta: { email: token.email, reason: `oauth_${linkDecision.reason}`, provider: account.provider },
+          });
+          return null;
+        }
+
         if (!dbUser) {
           dbUser = await User.create({
             email: token.email,
@@ -937,40 +1113,37 @@ export const authConfig: NextAuthConfig = {
           // Update lastLogin for returning OAuth users
           await User.findByIdAndUpdate(dbUser._id, { lastLogin: new Date() });
           if (!dbUser.isActive) return null;
+          if (!isValidRole(dbUser.role)) return null;
         }
 
-        if (!isNewUser && account.provider === "linkedin" && !dbUser.linkedinSub) {
-          // Link LinkedIn to existing account (auto-link — both sides verify email)
-          const linkedAvatar = !dbUser.avatar && token.picture
-            ? ((await rehostExternalAvatar(token.picture as string)) ?? (token.picture as string))
-            : undefined;
-          await User.findByIdAndUpdate(dbUser._id, {
-            linkedinSub: account.providerAccountId,
-            isEmailVerified: true,
-            emailVerificationToken: undefined,
-            ...(linkedAvatar ? { avatar: linkedAvatar } : {}),
-          });
-          dbUser.isEmailVerified = true;
-        } else if (!isNewUser && account.provider === "linkedin" && !dbUser.isEmailVerified) {
-          // Existing linked user still unverified — LinkedIn verified the email via OAuth
-          await User.findByIdAndUpdate(dbUser._id, {
-            isEmailVerified: true,
-            emailVerificationToken: undefined,
-          });
-          dbUser.isEmailVerified = true;
-        } else if (!isNewUser && account.provider === "apple" && !dbUser.appleSub) {
-          // Link Apple to existing account (auto-link — both sides verify email)
-          await User.findByIdAndUpdate(dbUser._id, {
-            appleSub: account.providerAccountId,
-            isEmailVerified: true,
-            emailVerificationToken: undefined,
-          });
-          dbUser.isEmailVerified = true;
-        } else if (!isNewUser && account.provider === "apple" && !dbUser.isEmailVerified) {
-          await User.findByIdAndUpdate(dbUser._id, {
-            isEmailVerified: true,
-            emailVerificationToken: undefined,
-          });
+        if (!isNewUser && socialProvider && linkDecision?.allow) {
+          const set: Record<string, unknown> = {};
+          const unset: Record<string, 1> = {};
+          if (linkDecision.linkSubject) {
+            set[socialProvider === "linkedin" ? "linkedinSub" : "appleSub"] = account.providerAccountId;
+            if (socialProvider === "linkedin" && !dbUser.avatar && token.picture) {
+              set.avatar = (await rehostExternalAvatar(token.picture as string)) ?? (token.picture as string);
+            }
+          }
+          if (!dbUser.isEmailVerified) {
+            // The provider verified the address.
+            set.isEmailVerified = true;
+            unset.emailVerificationToken = 1;
+          }
+          if (linkDecision.discardPassword) {
+            // Pre-account hijacking: whoever registered this unverified
+            // account chose its password, and the real owner has now proven
+            // the email. Drop the password and end any sessions it opened
+            // (backdated a second so this sign-in's own token survives).
+            unset.passwordHash = 1;
+            set.passwordChangedAt = new Date(Date.now() - 1000);
+          }
+          if (Object.keys(set).length || Object.keys(unset).length) {
+            await User.findByIdAndUpdate(dbUser._id, {
+              ...(Object.keys(set).length ? { $set: set } : {}),
+              ...(Object.keys(unset).length ? { $unset: unset } : {}),
+            });
+          }
           dbUser.isEmailVerified = true;
         }
 
@@ -1099,14 +1272,7 @@ export const authConfig: NextAuthConfig = {
       if (resolvedRole === "employer" && token.id && !token.companyId) {
         try {
           const company = await resolveCompanyContext(token.id as string);
-          if (company) {
-            token.companyId = company.companyId;
-            token.companyOwnerUserId = company.companyOwnerUserId;
-            token.companyUserRole = company.companyUserRole;
-            token.companyRoles = company.companyRoles;
-            token.companyPermissions = company.permissions;
-            token.jobAccess = company.jobAccess;
-          }
+          if (company) applyCompanyContext(token, company);
         } catch {
           // Non-critical — default to no company role
         }

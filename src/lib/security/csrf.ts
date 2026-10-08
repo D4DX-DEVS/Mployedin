@@ -147,6 +147,11 @@ const CSRF_EXEMPT_PREFIXES = [
  */
 const CSRF_EXEMPT_EXACT_PATHS = new Set([
   "/api/mcp",
+  // Payment gateway webhooks (Stripe / Razorpay) are server-to-server POSTs
+  // with no cookies; the provider's HMAC signature over the raw body is the
+  // anti-forgery guard (verified in the route). Exact match only — nothing
+  // else under /api/payments/ (e.g. /confirm) is exempt.
+  "/api/payments/webhook",
 ]);
 
 /**

@@ -90,8 +90,10 @@ import {
   useUpdateApplicationStatus,
   fetchShortlistPool,
   OpenInterviewError,
+  InvalidTransitionError,
   type OpenInterviewConflict,
 } from "@/hooks/useApplications";
+import { canTransitionApplication } from "@/lib/hiring/applicationTransitions";
 import {
   RequirementsBadge,
   RequirementsChecklist,
@@ -533,6 +535,26 @@ export function ApplicationsWorkspace({
   const computeAiMatch = useComputeAiMatch();
   const bulkAiMatch = useBulkAiMatch();
   const qc = useQueryClient();
+  // EMP-13: "Across N open roles" uses the shared active-job definition
+  // (status active, not deleted — src/lib/employers/pipelineCounts.ts). The
+  // job-filter list below also carries closed and soft-deleted jobs, so its
+  // "active" count ran 2–3 higher than the dashboard. Falls back to that list
+  // for callers the stats endpoint refuses (agents, colleagues without analytics).
+  const [companyActiveJobs, setCompanyActiveJobs] = useState<number | null>(null);
+  useEffect(() => {
+    if (embedded) return;
+    let cancelled = false;
+    // Started inside the chain so any failure lands in .catch, not the effect.
+    Promise.resolve()
+      .then(() => fetch("/api/employers/stats"))
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { stats?: { activeJobs?: unknown } } | null) => {
+        const n = data?.stats?.activeJobs;
+        if (!cancelled && typeof n === "number") setCompanyActiveJobs(n);
+      })
+      .catch(() => { /* keep the job-list fallback */ });
+    return () => { cancelled = true; };
+  }, [embedded]);
   const startConversation = useStartConversation();
 
   // ── Derived values ────────────────────────────────────────────────
@@ -700,8 +722,14 @@ export function ApplicationsWorkspace({
   function reportBulkActionResult(result: { processed?: number; total?: number; errors?: string[] }) {
     const processed = result.processed ?? 0;
     const total = result.total ?? processed;
-    const errors = result.errors ?? [];
-    if (errors.length === 0) {
+    // Rows the transition map refused are not failures to retry: say so plainly
+    // instead of echoing "can't move from hired to shortlisted (invalid_transition)".
+    const skipped = (result.errors ?? []).filter((e) => e.includes("invalid_transition")).length;
+    const errors = (result.errors ?? []).filter((e) => !e.includes("invalid_transition"));
+    if (skipped > 0) toast.info(t("bulkInvalidSkipped", { count: skipped }));
+    if (skipped > 0 && errors.length === 0) {
+      if (processed > 0) toast.success(`${processed}/${total} application(s) updated`);
+    } else if (errors.length === 0) {
       toast.success(`${processed}/${total} application(s) updated`);
     } else if (processed > 0) {
       toast(`${processed}/${total} updated, ${errors.length} failed: ${errors.slice(0, 3).join("; ")}`);
@@ -789,6 +817,10 @@ export function ApplicationsWorkspace({
       // After successful shortlist, prompt user to schedule interviews
       setPostShortlistPrompt({ shortlistedIds: ids, candidateNames: names });
     } catch (err) {
+      if (err instanceof InvalidTransitionError) {
+        toast.error(t("invalidTransition"));
+        return;
+      }
       toast.error("We couldn't shortlist the selected candidates. Their current stages are unchanged. Review the selection and try again.");
     }
   }
@@ -1091,6 +1123,10 @@ export function ApplicationsWorkspace({
       setShowRejectPrompt(false);
       setEmailPreviewModal(null);
     } catch (err) {
+      if (err instanceof InvalidTransitionError) {
+        toast.error(t("invalidTransition"));
+        return;
+      }
       toast.error("We couldn't complete the bulk action. Check the candidate stages before trying again.");
     }
   }
@@ -1175,25 +1211,35 @@ export function ApplicationsWorkspace({
 
   const canUpdate = can("applications", "update");
 
-  async function handleStageChange(app: Applicant, nextStatus: string, reason?: string) {
-    if (nextStatus === app.status) return;
+  /**
+   * Routes a stage move. Interviewing and Offer are backed by records, so they
+   * open the scheduler / offer form instead of writing the status. Returns
+   * false when the move was handed to a dialog (or refused) rather than made.
+   */
+  async function handleStageChange(app: Applicant, nextStatus: string, reason?: string): Promise<boolean> {
+    if (nextStatus === app.status) return false;
+
+    if (!canTransitionApplication(app.status as ApplicationStatus, nextStatus as ApplicationStatus, "staff")) {
+      toast.error(t("invalidTransition"));
+      return false;
+    }
 
     if (nextStatus === "interview_scheduled") {
       openInterviewModal(app);
-      return;
+      return false;
     }
 
     if (nextStatus === "offer") {
       setOfferModal({ appId: app._id });
-      return;
+      return false;
     }
 
-    await applyStageChange(app, nextStatus, reason);
+    return applyStageChange(app, nextStatus, reason);
   }
 
   /** The stage write itself, retried with `acknowledged` once the person has
    *  seen the open interview a backwards move would leave behind. */
-  async function applyStageChange(app: Applicant, nextStatus: string, reason?: string, acknowledged?: boolean) {
+  async function applyStageChange(app: Applicant, nextStatus: string, reason?: string, acknowledged?: boolean): Promise<boolean> {
     try {
       await updateApplicationStatus(app._id, nextStatus, reason, acknowledged);
       // Keep the open detail panel in sync — the list refetches, but the panel renders
@@ -1202,13 +1248,15 @@ export function ApplicationsWorkspace({
       const stageLabel = pipelineStages.find((s) => s.value === nextStatus)?.label ?? nextStatus;
       toast.success(t("stageUpdatedTo", { stage: stageLabel }));
       setOpenInterviewWarning(null);
+      return true;
     } catch (err) {
       if (err instanceof OpenInterviewError) {
         // Never silently strand the interview: show it and let them choose.
         setOpenInterviewWarning({ app, nextStatus, reason, interview: err.interview });
-        return;
+        return false;
       }
-      toast.error(t("stageUpdateFailed"));
+      toast.error(err instanceof InvalidTransitionError ? t("invalidTransition") : t("stageUpdateFailed"));
+      return false;
     }
   }
 
@@ -1239,7 +1287,7 @@ export function ApplicationsWorkspace({
             selectedJob
               ? selectedJob.title
               : jobsLoaded
-                ? t("openRolesContext", { count: employerJobs.filter((j) => j.status === "active").length })
+                ? t("openRolesContext", { count: companyActiveJobs ?? employerJobs.filter((j) => j.status === "active").length })
                 : "\u00a0"
           }
           metrics={[
@@ -1277,7 +1325,9 @@ export function ApplicationsWorkspace({
               }`}
             >
               <span className={`h-2 w-2 shrink-0 rounded-full ${STAGE_DOT_CLASS[stage.value as ApplicationStatus] ?? "bg-muted-foreground"}`} aria-hidden="true" />
-              <span>{stage.label}</span>
+              {/* Counts shortlisted AND every later stage, unlike the
+                  "Shortlisted" card above (current stage only) — say so. */}
+              <span>{t("shortlistedAndLater")}</span>
               <span className="tabular-nums">{metricValue(stageCount)}</span>
             </button>
           );
@@ -1897,7 +1947,13 @@ export function ApplicationsWorkspace({
                 unreviewed: unreviewedOnly || undefined,
               }}
               onOpen={openDetailPanel}
-              onMove={async (app, status) => { await updateApplicationStatus(app._id, status); }}
+              onMove={async (app, status) => {
+                // Interviewing / Offer open their dialogs; everything else PATCHes.
+                if (status === "interview_scheduled") { openInterviewModal(app); return false; }
+                if (status === "offer") { setOfferModal({ appId: app._id }); return false; }
+                await updateApplicationStatus(app._id, status);
+                return true;
+              }}
             />
           ) : (
             <TableView
@@ -2062,7 +2118,22 @@ export function ApplicationsWorkspace({
           jobId={viewingCv.jobId}
           onStatusChange={
             viewingCv.applicationId && canUpdate
-              ? (newStatus) => updateApplicationStatus(viewingCv.applicationId!, newStatus)
+              ? async (newStatus) => {
+                  const app = applications.find((a) => a._id === viewingCv.applicationId);
+                  // Interviewing needs an Interview behind it: hand over to the scheduler.
+                  if (newStatus === "interview_scheduled" && app) {
+                    setViewingCv(null);
+                    openInterviewModal(app);
+                    return false;
+                  }
+                  try {
+                    await updateApplicationStatus(viewingCv.applicationId!, newStatus);
+                    return true;
+                  } catch (err) {
+                    toast.error(err instanceof InvalidTransitionError ? t("invalidTransition") : t("stageUpdateFailed"));
+                    return false;
+                  }
+                }
               : undefined
           }
         />
@@ -2455,7 +2526,7 @@ function ApplicationDetailsPanel({
   onViewCv?: (app: Applicant) => void;
   onViewDocument?: (app: Applicant, url: string) => void;
   onCreateOffer?: (app: Applicant) => void;
-  onChangeStatus?: (app: Applicant, nextStatus: string, reason?: string) => Promise<void>;
+  onChangeStatus?: (app: Applicant, nextStatus: string, reason?: string) => Promise<boolean | void>;
   getCandidateName: (app: Applicant) => string;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -2531,6 +2602,9 @@ function ApplicationDetailsPanel({
     : [];
   const stageOptions = pipelineStages
     .filter((stage) => stage.value !== app.status)
+    // Only the moves the transition map allows (Hired only from Selected/Offer,
+    // nothing out of Hired or Withdrawn); the server answers 409 otherwise.
+    .filter((stage) => canTransitionApplication(app.status as ApplicationStatus, stage.value as ApplicationStatus, "staff"))
     .map((stage) => ({ value: stage.value, label: stage.label }));
 
   // The stage that actually comes next, so the menu can lead with it. A flat
@@ -3082,7 +3156,7 @@ function ApplicationDetailsPanel({
                     <CheckCheck className="me-1.5 h-3.5 w-3.5" /> {t("shortlistAction")}
                   </Button>
                 ) : null}
-                {!(["rejected", "offer"]).includes(app.status) && onChangeStatus ? (
+                {app.status !== "offer" && canTransitionApplication(app.status as ApplicationStatus, "rejected", "staff") && onChangeStatus ? (
                   <Button size="sm" variant="ghost" className="rounded-xl bg-rose-500/10 text-[11px] text-status-rejected hover:bg-rose-500/15" onClick={() => setNextStage("rejected")}>
                     {t("rejectAction")}
                   </Button>

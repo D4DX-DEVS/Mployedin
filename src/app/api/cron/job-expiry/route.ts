@@ -13,7 +13,8 @@ export const maxDuration = 300;
 const defaultLocale = "en";
 
 // Called by cron scheduler (e.g. Vercel Cron)
-// Closes all active jobs whose expiresAt has passed
+// Expires active jobs whose expiresAt has passed (an employer can extend an
+// expired job) and closes active jobs that reached their applicant limit.
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronRequest(req);
@@ -58,8 +59,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, closed: 0, timestamp: now.toISOString() });
   }
 
-  const jobIds = allJobs.map((j) => j._id);
-  await Job.updateMany({ _id: { $in: jobIds } }, { $set: { status: "closed" } });
+  // A passed deadline is "expired", not "closed": closed is final, so the
+  // employer could never extend a lapsed job and the Expired tab stayed empty.
+  // A job that is also full still expires — extending it is the employer's call.
+  const expiredIds = new Set(expiredJobs.map((j) => String(j._id)));
+  const expiredJobIds = expiredJobs.map((j) => j._id);
+  const closedJobIds = allJobs.filter((j) => !expiredIds.has(String(j._id))).map((j) => j._id);
+  await Promise.all([
+    expiredJobIds.length
+      ? Job.updateMany({ _id: { $in: expiredJobIds }, status: "active" }, { $set: { status: "expired" } })
+      : null,
+    closedJobIds.length
+      ? Job.updateMany({ _id: { $in: closedJobIds }, status: "active" }, { $set: { status: "closed" } })
+      : null,
+  ]);
 
   // Batch-fetch employers and users
   const employerIds = allJobs.map((j) => j.employerId).filter(Boolean);
@@ -84,18 +97,22 @@ export async function GET(req: NextRequest) {
       return;
     }
 
+    const expired = expiredIds.has(String(job._id));
     await notify({
       userId: String(user._id),
       type: "system",
-      title: "Job listing expired",
-      message: `Your job posting "${job.title}" has expired and been closed automatically. Repost it to receive new applications.`,
+      title: expired ? "Job listing expired" : "Job listing closed",
+      message: expired
+        ? `Your job posting "${job.title}" has expired. Extend its deadline to receive new applications.`
+        : `Your job posting "${job.title}" reached its applicant limit and has been closed automatically.`,
       link: `/${defaultLocale}/employer/jobs`,
     });
   });
 
   return NextResponse.json({
     success: true,
-    closed: allJobs.length,
+    closed: closedJobIds.length,
+    expired: expiredJobIds.length,
     errors: failed,
     timestamp: now.toISOString(),
   });

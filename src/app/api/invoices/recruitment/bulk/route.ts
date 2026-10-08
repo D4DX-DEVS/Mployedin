@@ -282,7 +282,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         jobId: jobIdStr,
         status: invoiceStatus,
         bulkGenerated: true,
-      });
+      }, String(emp._id));
 
       results.push({
         placementId: String(placement._id),

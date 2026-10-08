@@ -148,7 +148,9 @@ export function StickyActionBar({
           </div>
         </div>
 
-        <div className="grid grid-cols-[auto_auto_1fr] gap-2 sm:hidden">
+        {/* pe-16: the phone Copilot FAB (right-4, 56px, bottom 4.5rem) sits on
+            this row; keep Next clear of it (EMP-35). */}
+        <div className="grid grid-cols-[auto_auto_1fr] gap-2 pe-16 sm:hidden">
           <Button
             type="button"
             variant="ghost"

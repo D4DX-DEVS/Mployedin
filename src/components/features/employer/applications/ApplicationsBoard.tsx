@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Dot, FolderOpen, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReferredBadge } from "@/components/shared/ReferredBadge";
-import { useInfiniteApplications, type ApplicationsFilters } from "@/hooks/useApplications";
+import { InvalidTransitionError, useInfiniteApplications, type ApplicationsFilters } from "@/hooks/useApplications";
+import { canTransitionApplication } from "@/lib/hiring/applicationTransitions";
+import type { ApplicationStatus } from "@/models/Application";
 import { PIPELINE_STAGES, OFF_PATH_STATUSES, STAGE_LABEL_KEYS, STAGE_DOT_CLASS } from "@/lib/hiring/pipeline";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -35,7 +37,17 @@ export interface ApplicationsBoardProps {
   baseFilters: BoardFilters;
   statusCounts?: Record<string, number>;
   onOpen: (app: Applicant, trigger?: HTMLElement | null) => void;
-  onMove: (app: Applicant, status: string) => Promise<void>;
+  /**
+   * Performs the move. Resolve `false` when it was handed to a dialog instead
+   * (Interviewing opens the scheduler, Offer the offer form), so the board
+   * does not announce a move that has not happened yet.
+   */
+  onMove: (app: Applicant, status: string) => Promise<boolean | void>;
+}
+
+/** Whether the transition map lets staff move `app` to `to`. */
+function canMoveTo(app: Applicant, to: string): boolean {
+  return canTransitionApplication(app.status as ApplicationStatus, to as ApplicationStatus, "staff");
 }
 
 // Shape of next-intl's translator, so the hooks' `t` can be passed straight down.
@@ -125,6 +137,9 @@ function BoardCard({
   const daysInStage = daysSinceDate(app.appliedAt);
   const isNew = app.status === "applied" && !app.viewedByEmployerAt;
   const appliedOn = app.appliedAt ? format.dateTime(new Date(app.appliedAt), { month: "short", day: "numeric" }) : "";
+  // Only the moves the transition map allows; a hired or withdrawn card has none.
+  const moveTargets = PIPELINE_STAGES.filter((s) => s !== status && canMoveTo(app, s));
+  const canReject = status !== "rejected" && canMoveTo(app, "rejected");
 
   return (
     // Mouse users can click anywhere on the card; the keyboard target is the
@@ -198,6 +213,7 @@ function BoardCard({
           <p className="truncate">{t("boardDaysInStage", { days: daysInStage })}</p>
         </div>
         {/* Opening the menu must not also open the candidate: the click stops here. */}
+        {moveTargets.length > 0 || canReject ? (
         <div onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -208,20 +224,24 @@ function BoardCard({
           <DropdownMenuContent align="end" className="w-40">
             {/* Only the canonical stages are move targets; Reject is its own verb
                 and Withdrawn belongs to the candidate. */}
-            {PIPELINE_STAGES
-              .filter((s) => s !== status)
+            {moveTargets
               .map((s) => (
                 <DropdownMenuItem key={s} onClick={() => void onMoveCard(app, s)}>
                   {tp(STAGE_LABEL_KEYS[s])}
                 </DropdownMenuItem>
               ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => void onMoveCard(app, "rejected")} className="text-destructive">
-              {t("boardReject")}
-            </DropdownMenuItem>
+            {canReject ? (
+              <>
+                {moveTargets.length > 0 ? <DropdownMenuSeparator /> : null}
+                <DropdownMenuItem onClick={() => void onMoveCard(app, "rejected")} className="text-destructive">
+                  {t("boardReject")}
+                </DropdownMenuItem>
+              </>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
         </div>
+        ) : null}
       </div>
     </article>
   );
@@ -284,6 +304,13 @@ function BoardColumn({
   const dropHandlers = droppable
     ? {
         onDragOver: (e: React.DragEvent<HTMLElement>) => {
+          // A stage the transition map forbids is not a drop target: skipping
+          // preventDefault makes the browser show "no drop" and refuse it.
+          const drag = dragState.current;
+          if (drag && drag.fromStatus !== status && !canMoveTo(drag.app, status)) {
+            if (e.dataTransfer) e.dataTransfer.dropEffect = "none";
+            return;
+          }
           // Required, or the browser refuses the drop.
           e.preventDefault();
           if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
@@ -460,12 +487,17 @@ export function ApplicationsBoard({
   const moveCard = async (app: Applicant, newStatus: string) => {
     if (newStatus === app.status || movingId) return;
     const name = getCandidateName(app);
+    const stage = tp(STAGE_LABEL_KEYS[newStatus as keyof typeof STAGE_LABEL_KEYS] ?? newStatus);
+    if (!canMoveTo(app, newStatus)) {
+      toast.error(t("boardMoveNotAllowed", { name, stage }));
+      return;
+    }
     setMovingId(app._id);
     try {
-      await onMove(app, newStatus);
-      toast.success(t("boardMoved", { name, stage: tp(STAGE_LABEL_KEYS[newStatus as keyof typeof STAGE_LABEL_KEYS] ?? newStatus) }));
-    } catch {
-      toast.error(t("boardMoveError", { name }));
+      const moved = await onMove(app, newStatus);
+      if (moved !== false) toast.success(t("boardMoved", { name, stage }));
+    } catch (err) {
+      toast.error(err instanceof InvalidTransitionError ? t("boardMoveNotAllowed", { name, stage }) : t("boardMoveError", { name }));
     } finally {
       setMovingId(null);
     }

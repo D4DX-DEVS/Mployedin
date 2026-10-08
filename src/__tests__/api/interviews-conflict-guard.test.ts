@@ -49,7 +49,11 @@ function chain<T>(result: T) {
 
 jest.mock("@/models/Application", () => ({
   __esModule: true,
-  default: { findById: jest.fn(), findByIdAndUpdate: jest.fn(async () => ({})) },
+  default: {
+    findById: jest.fn(),
+    findByIdAndUpdate: jest.fn(async () => ({})),
+    updateOne: jest.fn(async () => ({ matchedCount: 1 })),
+  },
 }));
 jest.mock("@/models/JobSeeker", () => ({ __esModule: true, default: { findById: jest.fn() } }));
 jest.mock("@/models/Interview", () => ({

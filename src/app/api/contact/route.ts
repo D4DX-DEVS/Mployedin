@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
+import { verifyRecaptcha } from "@/lib/security/recaptcha";
 
 /**
  * Public contact form submission — NO AUTH required.
@@ -26,51 +27,17 @@ export async function POST(req: NextRequest) {
 
     const { name, email, phone, subject, message, captchaToken } = body;
 
-    // When reCAPTCHA is configured it is mandatory and fails closed.
-    const captchaSecret = process.env.RECAPTCHA_SECRET_KEY;
-    if (captchaSecret) {
-      if (!captchaToken) {
-        return NextResponse.json({ error: "CAPTCHA verification required" }, { status: 403 });
-      }
-      try {
-        const params = new URLSearchParams();
-        params.append("secret", captchaSecret);
-        params.append("response", captchaToken);
-        const captchaRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: params.toString(),
-        });
-        if (!captchaRes.ok) throw new Error(`CAPTCHA service returned ${captchaRes.status}`);
-        const captchaData = (await captchaRes.json()) as {
-          success?: boolean;
-          score?: number;
-          action?: string;
-          hostname?: string;
-        };
-        const allowedHosts = (process.env.RECAPTCHA_ALLOWED_HOSTS ?? req.nextUrl.hostname)
-          .split(",")
-          .map((host) => host.trim().toLowerCase())
-          .filter(Boolean);
-        if (
-          !captchaData.success ||
-          (captchaData.score !== undefined && captchaData.score < 0.3) ||
-          (captchaData.action !== undefined && captchaData.action !== "contact") ||
-          !captchaData.hostname ||
-          !allowedHosts.includes(captchaData.hostname.toLowerCase())
-        ) {
-          return NextResponse.json(
-            { error: "CAPTCHA verification failed" },
-            { status: 403 }
-          );
-        }
-      } catch (error) {
-        logger.warn({ error }, "[Contact] CAPTCHA service unavailable");
-        return NextResponse.json(
-          { error: "CAPTCHA verification is temporarily unavailable" },
-          { status: 503 },
-        );
-      }
+    // When reCAPTCHA is configured (secret AND site key, so the form can
+    // actually mint a token — JS-26) it is mandatory and fails closed. The
+    // rate limit above stays the protection when it is not configured.
+    const captcha = await verifyRecaptcha(captchaToken, { action: "contact", hostname: req.nextUrl.hostname });
+    if (!captcha.ok) {
+      const message = {
+        CAPTCHA_REQUIRED: "CAPTCHA verification required",
+        CAPTCHA_FAILED: "CAPTCHA verification failed",
+        CAPTCHA_UNAVAILABLE: "CAPTCHA verification is temporarily unavailable",
+      }[captcha.error];
+      return NextResponse.json({ error: message, code: captcha.error }, { status: captcha.status });
     }
 
     const ipAddress = ip;

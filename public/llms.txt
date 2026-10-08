@@ -24,6 +24,14 @@ The platform supports Arabic (RTL) and English, serving the GCC region (UAE, Sau
 - https://mployedin-8a4rc.ondigitalocean.app/en/about: About MPLOYEDIN
 - https://mployedin-8a4rc.ondigitalocean.app/en/contact: Contact information
 
+## AI Data Access (for AI assistants)
+
+Read-only, key-protected platform data API for ChatGPT, Claude, n8n and other tools. Requires an admin-issued key (Authorization: Bearer mpi_…) or an admin MCP connection.
+- https://mployedin-8a4rc.ondigitalocean.app/api/insights/openapi.json: OpenAPI 3.1 spec (import into GPT Actions)
+- https://mployedin-8a4rc.ondigitalocean.app/api/insights/schema: Entities, fields and parameters (key required; read first)
+- https://mployedin-8a4rc.ondigitalocean.app/api/mcp: MCP server (OAuth, admin scope read:insights)
+- Docs: docs/AI-DATA-ACCESS.md in the repository
+
 ## Sitemap
 https://mployedin-8a4rc.ondigitalocean.app/sitemap.xml
 

@@ -3,7 +3,6 @@ import { getMessages } from "next-intl/server";
 import { pickMessages } from "@/lib/i18n/clientMessages";
 import PublicHeader from "@/components/shared/PublicHeader";
 import PublicFooter from "@/components/shared/PublicFooter";
-import CookieConsent from "@/components/shared/CookieConsent";
 import { SessionWrapper } from "@/components/shared/SessionWrapper";
 import { DashboardProviders } from "@/components/shared/DashboardProviders";
 import { CsrfProvider } from "@/components/shared/CsrfProvider";
@@ -82,9 +81,8 @@ export default async function PublicLayout({
         <DashboardProviders>
           <div className="flex min-h-screen flex-col [&_a]:cursor-pointer [&_button]:cursor-pointer">
             <PublicHeader locale={locale} />
-            <main className="flex-1">{children}</main>
+            <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">{children}</main>
             <PublicFooter locale={locale} />
-            <CookieConsent locale={locale} />
           </div>
         </DashboardProviders>
         </CsrfProvider>

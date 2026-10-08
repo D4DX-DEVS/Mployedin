@@ -6,6 +6,7 @@ import { notify } from "@/lib/notifications/trigger";
 import { verifyCronRequest } from "@/lib/security/cron-auth";
 import { forEachBounded } from "@/lib/cron/scale";
 import logger from "@/lib/logger";
+import { userLocalePath } from "@/lib/i18n/localePath";
 
 // This route is meant to be called by a cron job (e.g. Vercel Cron, external scheduler)
 // Secured with a shared CRON_SECRET header
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest) {
       type: "interview_reminder",
       title: "Interview Starting Soon",
       message: `Your interview for "${job?.title ?? "a position"}" starts in ${minutesUntil} minutes.${meetLink ? ` Join: ${meetLink}` : ""}`,
-      link: `/en/job-seeker/interviews`,
+      link: await userLocalePath(candidate.userId._id, "/job-seeker/interviews"),
       sendEmail: true,
       metadata: { interviewId: String(interview._id), minutesUntil },
     });

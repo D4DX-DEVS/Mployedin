@@ -92,6 +92,8 @@ export default function LoginPage() {
     const oauthError = params.get("error");
     if (oauthError === "OAuthAccountNotLinked") {
       setError({ kind: "oauth", message: t("oauthAccountNotLinked") });
+    } else if (oauthError === "invalid_role") {
+      setError({ kind: "session", message: t("invalidRole") });
     } else if (oauthError) {
       setError({ kind: "oauth", message: t("oauthError") });
     }
@@ -115,6 +117,18 @@ export default function LoginPage() {
         const code = (res as { code?: string }).code;
         if (code === "account_inactive") {
           setError({ kind: "inactive", message: t("accountInactive") });
+          return;
+        }
+        if (code === "account_locked") {
+          setError({ kind: "locked", message: t("accountLocked") });
+          return;
+        }
+        if (code === "oauth_unverified") {
+          setError({ kind: "oauth", message: t("oauthUnverified") });
+          return;
+        }
+        if (code === "invalid_role") {
+          setError({ kind: "session", message: t("invalidRole") });
           return;
         }
         setError({ kind: "oauth", message: t("googleSignInFailed") });
@@ -182,12 +196,18 @@ export default function LoginPage() {
           setError({ kind: "inactive", message: t("accountInactive") });
           return;
         }
+        if (code === "invalid_role") {
+          setError({ kind: "session", message: t("invalidRole") });
+          return;
+        }
         if (code === "login_rate_limited") {
           setError({ kind: "rate-limit", message: t("loginRateLimited") });
           return;
         }
         if (code === "authentication_unavailable") {
-          setError({ kind: "service", message: t("authenticationUnavailable") });
+          // JS-12: the server (or its database) failed after the request
+          // arrived — not the user's connection, so don't tell them to check it.
+          setError({ kind: "service", message: t("signInTemporarilyUnavailable") });
           return;
         }
         if (!code || code === "credentials") {

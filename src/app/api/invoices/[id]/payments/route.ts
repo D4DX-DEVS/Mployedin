@@ -20,6 +20,7 @@ import {
 import { PAYMENT_BLOCKED_INVOICE_STATUSES } from "@/lib/invoices/status";
 import { isStaleInvoiceWrite, staleInvoiceResponse } from "@/lib/invoices/concurrency";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
+import { applyPaidInvoiceToSubscription } from "@/lib/payments/subscriptionFulfillment";
 import connectDB from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
 import Invoice from "@/models/Invoice";
@@ -216,6 +217,16 @@ async function postHandler(
     req,
   });
 
+  // A checkout / gateway-renewal invoice settled by bank transfer still has to
+  // switch or extend the subscription (no-op for invoices without activationPending).
+  if (invoice.status === "paid") {
+    try {
+      await applyPaidInvoiceToSubscription(invoice, { provider: "manual", paymentId: body.referenceNumber });
+    } catch (err) {
+      logger.error({ err, invoiceId: String(invoice._id) }, "Subscription activation after manual payment failed");
+    }
+  }
+
   if (invoice.status === "paid") {
     dispatchWebhook("invoice.paid", {
       invoiceId: invoice._id.toString(),
@@ -224,7 +235,7 @@ async function postHandler(
       currency: invoice.currency,
       status: "paid",
       paidAt: invoice.paidAt?.toISOString(),
-    });
+    }, invoice.employerId ? String(invoice.employerId) : null);
   }
 
   return NextResponse.json({

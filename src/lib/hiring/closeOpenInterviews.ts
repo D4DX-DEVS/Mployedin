@@ -64,3 +64,78 @@ export async function closeOpenInterviewsForAdvance(
 
   return summary;
 }
+
+export interface ExitCleanupSummary {
+  interviewsCompleted: number;
+  interviewsCancelled: number;
+  offersWithdrawn: number;
+}
+
+/**
+ * Close everything still open on an application that has left the pipeline
+ * (rejected or withdrawn).
+ *
+ * Both used to stay open: the reminder cron kept mailing a rejected candidate
+ * about an interview, and a pending offer sat there to be accepted after the
+ * candidate had withdrawn. A slot already in the past is recorded `completed`;
+ * a future one is cancelled through `cancelInterview`, which sends the ICS
+ * CANCEL so it leaves the candidate's calendar. Open offers are withdrawn with
+ * a timeline event saying why.
+ *
+ * Never throws — the status change that called this has already been saved.
+ */
+export async function closeOpenItemsForExit(
+  applicationId: string | mongoose.Types.ObjectId,
+  exitStatus: "rejected" | "withdrawn",
+  opts: { now?: Date; actorRole?: string } = {},
+): Promise<ExitCleanupSummary> {
+  const now = opts.now ?? new Date();
+  const summary: ExitCleanupSummary = { interviewsCompleted: 0, interviewsCancelled: 0, offersWithdrawn: 0 };
+
+  try {
+    const [{ cancelInterview }, { default: Offer }, { OPEN_OFFER_STATUSES }] = await Promise.all([
+      import("@/lib/interviews/cancelInterview"),
+      import("@/models/Offer"),
+      import("@/lib/offers/status"),
+    ]);
+
+    const completed = await Interview.updateMany(
+      { applicationId, status: { $in: ["scheduled", "confirmed"] }, scheduledAt: { $lte: now } },
+      { $set: { status: "completed" } },
+    );
+    summary.interviewsCompleted = completed.modifiedCount ?? 0;
+
+    const upcoming = (await Interview.find({
+      applicationId,
+      status: { $in: ["scheduled", "confirmed", "rescheduled"] },
+      scheduledAt: { $gt: now },
+    })
+      .select("_id")
+      .lean()) as Array<{ _id: mongoose.Types.ObjectId }>;
+    for (const iv of upcoming) {
+      // The rejection / withdrawal is the candidate-facing news; the ICS
+      // CANCEL still goes out so the slot leaves their calendar.
+      if (await cancelInterview(iv._id, { notifyCandidate: false })) summary.interviewsCancelled++;
+    }
+
+    const withdrawn = await Offer.updateMany(
+      { applicationId, status: { $in: [...OPEN_OFFER_STATUSES] } },
+      {
+        $set: { status: "withdrawn", respondedAt: now },
+        $push: {
+          events: {
+            type: "withdrawn",
+            at: now,
+            actorRole: opts.actorRole ?? "system",
+            note: exitStatus === "rejected" ? "Application rejected" : "Application withdrawn",
+          },
+        },
+      },
+    );
+    summary.offersWithdrawn = withdrawn.modifiedCount ?? 0;
+  } catch (err) {
+    logger.error({ err, applicationId: String(applicationId), exitStatus }, "failed to close open interviews/offers on exit");
+  }
+
+  return summary;
+}

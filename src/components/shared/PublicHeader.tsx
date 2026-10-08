@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { roleHomePath } from "@/lib/auth/roleHome";
+import { AccessibilityButton } from "@/components/shared/a11y/AccessibilityButton";
 
 interface PublicHeaderProps {
   locale: string;
@@ -34,6 +35,12 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
     { href: `/${locale}/blog`, label: tLanding("blog") },
   ];
   const mobileMenuId = "public-mobile-navigation";
+  // The switcher's label is in the *other* language — mark it up so screen
+  // readers pronounce it correctly (WCAG 3.1.2 Language of Parts).
+  const otherLocale = locale === "en" ? "ar" : "en";
+  const otherLocaleLabel = locale === "en" ? "العربية" : "English";
+  const iconButtonClass =
+    "inline-flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground";
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -44,7 +51,7 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav aria-label={tNav("a11yMainNav")} className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -59,35 +66,31 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
 
         {/* Auth & Language */}
         <div className="hidden md:flex items-center gap-3">
-          <Link href={locale === "en" ? "/ar" : "/en"}>
-            <Button variant="ghost" size="sm">
-              {locale === "en" ? "العربية" : "English"}
-            </Button>
-          </Link>
-          {dashboardHref ? (
-            <Link href={dashboardHref}>
-              <Button size="sm">
-                {tNav("dashboard")}
-              </Button>
+          <AccessibilityButton variant="icon" className={iconButtonClass} />
+          <Button asChild variant="ghost" size="sm">
+            <Link href={`/${otherLocale}`} hrefLang={otherLocale} lang={otherLocale}>
+              {otherLocaleLabel}
             </Link>
+          </Button>
+          {dashboardHref ? (
+            <Button asChild size="sm">
+              <Link href={dashboardHref}>{tNav("dashboard")}</Link>
+            </Button>
           ) : (
             <>
-              <Link href={`/${locale}/login`}>
-                <Button variant="ghost" size="sm">
-                  {tAuth("login")}
-                </Button>
-              </Link>
-              <Link href={`/${locale}/register`}>
-                <Button size="sm">
-                  {tLanding("getStartedBtn")}
-                </Button>
-              </Link>
+              <Button asChild variant="ghost" size="sm">
+                <Link href={`/${locale}/login`}>{tAuth("login")}</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href={`/${locale}/register`}>{tLanding("getStartedBtn")}</Link>
+              </Button>
             </>
           )}
         </div>
 
         {/* Mobile Menu Button */}
         <div className="flex items-center gap-2 md:hidden">
+          <AccessibilityButton variant="icon" className={iconButtonClass} />
           <Button
             variant="ghost"
             size="icon"
@@ -96,7 +99,7 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
             aria-expanded={mobileOpen}
             aria-controls={mobileMenuId}
           >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
           </Button>
         </div>
       </div>
@@ -104,7 +107,7 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
       {/* Mobile Menu */}
       {mobileOpen && (
         <div id={mobileMenuId} className="border-t md:hidden">
-          <nav className="container mx-auto flex flex-col gap-2 px-4 py-4">
+          <nav aria-label={tNav("a11yMainNav")} className="container mx-auto flex flex-col gap-2 px-4 py-4">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -118,30 +121,28 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
             ))}
             <hr className="my-2" />
             <Link
-              href={locale === "en" ? "/ar" : "/en"}
+              href={`/${otherLocale}`}
+              hrefLang={otherLocale}
+              lang={otherLocale}
               className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent"
               onClick={() => setMobileOpen(false)}
             >
-              {locale === "en" ? "العربية" : "English"}
+              {otherLocaleLabel}
             </Link>
             {dashboardHref ? (
-              <Link href={dashboardHref} className="w-full" onClick={() => setMobileOpen(false)}>
-                <Button size="sm" className="w-full">
+              <Button asChild size="sm" className="w-full">
+                <Link href={dashboardHref} onClick={() => setMobileOpen(false)}>
                   {tNav("dashboard")}
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             ) : (
               <div className="flex gap-2">
-                <Link href={`/${locale}/login`} className="flex-1">
-                  <Button variant="outline" size="sm" className="w-full">
-                    {tAuth("login")}
-                  </Button>
-                </Link>
-                <Link href={`/${locale}/register`} className="flex-1">
-                  <Button size="sm" className="w-full">
-                    {tLanding("getStartedBtn")}
-                  </Button>
-                </Link>
+                <Button asChild variant="outline" size="sm" className="flex-1">
+                  <Link href={`/${locale}/login`}>{tAuth("login")}</Link>
+                </Button>
+                <Button asChild size="sm" className="flex-1">
+                  <Link href={`/${locale}/register`}>{tLanding("getStartedBtn")}</Link>
+                </Button>
               </div>
             )}
           </nav>

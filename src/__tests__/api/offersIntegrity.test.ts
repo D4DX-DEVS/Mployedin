@@ -57,6 +57,12 @@ jest.mock("@/lib/validators/offers", () => ({ offerCreateSchema: {}, offerRespon
 jest.mock("@/lib/audit/log", () => ({ actorFromCtx: jest.fn(() => ({})), logActivity: jest.fn() }));
 jest.mock("@/lib/notifications/trigger", () => ({ notify: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/hiring/closeOpenInterviews", () => ({ closeOpenInterviewsForAdvance: jest.fn() }));
+const createPlacementForHire = jest.fn().mockResolvedValue({ placement: { _id: "pl_1" }, created: true });
+const announcePlacement = jest.fn();
+jest.mock("@/lib/hiring/createPlacementForHire", () => ({
+  createPlacementForHire: (...a: unknown[]) => createPlacementForHire(...a),
+  announcePlacement: (...a: unknown[]) => announcePlacement(...a),
+}));
 
 const session = {
   withTransaction: jest.fn(async (fn: () => Promise<unknown>) => fn()),
@@ -173,6 +179,48 @@ describe("PATCH /api/offers/[id] integrity", () => {
       expect.objectContaining({ $set: expect.objectContaining({ status: "withdrawn" }) }),
       expect.objectContaining({ session }),
     );
+    // The hire becomes a placement inside the same transaction, announced after commit.
+    expect(createPlacementForHire).toHaveBeenCalledWith(APP_ID, expect.objectContaining({ session }));
+    expect(announcePlacement).toHaveBeenCalledWith({ _id: "pl_1" }, "en");
+  });
+});
+
+describe("offer expiry and withdrawal (OF-1 / OF-3)", () => {
+  function req(method: string, body?: unknown) {
+    return new NextRequest(`http://localhost/api/offers/${OFFER_ID}`, { method, body: body ? JSON.stringify(body) : undefined });
+  }
+
+  it("refuses to accept a lapsed offer the expiry cron has not reached yet", async () => {
+    ctxState.role = "job_seeker";
+    ctxState.userId = "user_seeker";
+    Offer.findById.mockResolvedValue({
+      _id: OFFER_ID, applicationId: APP_ID, jobSeekerId: "seeker_1", employerId: "emp_1", status: "pending",
+      expiresAt: new Date(Date.now() - 60_000),
+    });
+    JobSeeker.findOne.mockReturnValue(chain({ _id: "seeker_1" }));
+    validateBody.mockResolvedValue({ status: "accepted", signatureName: "Cand" });
+    const { PATCH } = await import("@/app/api/offers/[id]/route");
+    const res = await PATCH(req("PATCH", { status: "accepted" }), { params: Promise.resolve({ id: OFFER_ID }) });
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("offer_expired");
+    expect(Offer.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("withdraws a countered offer and reverts the application to selected with history", async () => {
+    ctxState.role = "employer";
+    ctxState.userId = "user_emp";
+    Offer.findById.mockResolvedValue({ _id: OFFER_ID, applicationId: APP_ID, jobSeekerId: "seeker_1", employerId: "emp_1", status: "countered" });
+    Offer.findOneAndUpdate.mockResolvedValue({ _id: OFFER_ID, status: "withdrawn" });
+    Application.updateOne.mockResolvedValue({ matchedCount: 1 });
+    const { DELETE } = await import("@/app/api/offers/[id]/route");
+    const res = await DELETE(req("DELETE"), { params: Promise.resolve({ id: OFFER_ID }) });
+    expect(res.status).toBe(200);
+    const [offerFilter] = Offer.findOneAndUpdate.mock.calls[0];
+    expect(offerFilter.status.$in).toEqual(["pending", "countered"]);
+    const [appFilter, appUpdate] = Application.updateOne.mock.calls[0];
+    expect(appFilter).toEqual({ _id: APP_ID, status: "offer" });
+    expect(appUpdate.$set.status).toBe("selected");
+    expect(appUpdate.$push.statusHistory).toEqual(expect.objectContaining({ status: "selected", note: "Offer withdrawn" }));
   });
 });
 

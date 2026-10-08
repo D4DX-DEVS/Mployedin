@@ -62,7 +62,7 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
   const jobCount = await Job.countDocuments({ employerId: id, status: "active", deletedAt: null });
 
   return (
-    <main className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
       {/* Company Header */}
       <div className="bg-card border border-border rounded-xl p-6 md:p-8 mb-8">
         <div className="flex items-start gap-6">
@@ -202,6 +202,6 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
           <ArrowLeft className="me-1 inline h-4 w-4 align-[-3px] rtl:rotate-180" aria-hidden="true" />{t("backToAllCompanies")}
         </Link>
       </div>
-    </main>
+    </div>
   );
 }

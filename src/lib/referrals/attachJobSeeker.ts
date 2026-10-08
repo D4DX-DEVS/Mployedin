@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server";
 import ReferralLink from "@/models/ReferralLink";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
+import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
 import { logActivity } from "@/lib/audit/log";
 import { notifyReferrerJobSeekerRegistered } from "@/lib/notifications/trigger";
 import { REFERRAL_CODE_RE } from "@/lib/referrals/url";
@@ -26,7 +28,8 @@ export type AttachFailureReason =
   | "max_reached"
   | "already_referred"
   | "no_profile"
-  | "account_too_old";
+  | "account_too_old"
+  | "owner_inactive";
 
 export type AttachResult =
   | { attached: true; linkId: string; referrerRole: "agent" | "super_agent" }
@@ -52,6 +55,30 @@ interface LeanSeeker {
   referral?: unknown;
 }
 
+/**
+ * RF-3: a referral only attributes to a link owner who is still working here.
+ * The owner's agent / super-agent profile must exist and not be archived
+ * (`roleArchivedAt`), and their User must not be deactivated.
+ */
+export async function isReferralOwnerActive(owner: {
+  userId?: unknown;
+  agentId?: unknown;
+  superAgentId?: unknown;
+}): Promise<boolean> {
+  type Profile = { userId?: unknown; roleArchivedAt?: Date | null } | null;
+  let ownerUserId = owner.userId;
+  if (owner.agentId || owner.superAgentId) {
+    const profile = (owner.agentId
+      ? await Agent.findById(owner.agentId).select("userId roleArchivedAt").lean()
+      : await SuperAgent.findById(owner.superAgentId).select("userId roleArchivedAt").lean()) as Profile;
+    if (!profile || profile.roleArchivedAt) return false;
+    ownerUserId = profile.userId ?? ownerUserId;
+  }
+  if (!ownerUserId) return false;
+  const ownerUser = (await User.findById(ownerUserId).select("isActive").lean()) as { isActive?: boolean } | null;
+  return Boolean(ownerUser && ownerUser.isActive !== false);
+}
+
 export async function attachJobSeekerReferral(input: {
   userId: string;
   code: string | null | undefined;
@@ -66,6 +93,9 @@ export async function attachJobSeekerReferral(input: {
   if (link.audience !== "job_seeker") return { attached: false, reason: "wrong_audience" };
   if (!link.isActive) return { attached: false, reason: "inactive" };
   if (link.expiresAt && new Date(link.expiresAt) < new Date()) return { attached: false, reason: "expired" };
+  if (!(await isReferralOwnerActive({ userId: link.createdBy, agentId: link.agentId, superAgentId: link.superAgentId }))) {
+    return { attached: false, reason: "owner_inactive" };
+  }
 
   const seeker = (await JobSeeker.findOne({ userId: input.userId })
     .select("_id fullName createdAt referral")

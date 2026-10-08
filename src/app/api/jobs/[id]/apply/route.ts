@@ -11,6 +11,7 @@ import User from "@/models/User";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
 import { sendEmail } from "@/lib/communications/email";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { publicJobFilter } from "@/lib/jobs/publicFilter";
 import { checkRateLimitDual } from "@/lib/security/rateLimit";
 import { inngest } from "@/lib/inngest/client";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -61,6 +62,11 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   }
   if (job.status !== "active") {
     return NextResponse.json({ error: "Job is not active" }, { status: 422 });
+  }
+  // JL-8 / AP-7: the job must also be publicly visible and not past its
+  // deadline — the daily expiry cron lags `expiresAt` by up to 24h.
+  if (!(await Job.exists({ _id: jobId, ...publicJobFilter() }))) {
+    return NextResponse.json({ error: "Job is not accepting applications" }, { status: 422 });
   }
   if (!seeker) {
     return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });

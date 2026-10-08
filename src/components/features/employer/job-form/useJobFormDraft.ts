@@ -14,6 +14,8 @@ interface UseJobFormDraftReturn {
   loadDraft: () => StoredDraft | null;
   autosaveLocal: (values: JobFormValues) => void;
   clearDraft: () => void;
+  /** Point later saves at an existing server draft (resuming it from "Edit"). */
+  adoptDraftId: (id: string) => void;
 }
 
 export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
@@ -161,7 +163,7 @@ export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
     };
   }, []);
 
-  return { draftId, savedIndicator, saveDraft, loadDraft, autosaveLocal, clearDraft };
+  return { draftId, savedIndicator, saveDraft, loadDraft, autosaveLocal, clearDraft, adoptDraftId: setDraftId };
 }
 
 /** Debounce a callback — returns stable function */

@@ -30,16 +30,25 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // SECURITY (SEC-B2): a token issued before the requested domain was stored
+  // proves nothing about which domain was checked — make them request again.
+  const verifiedDomain = employer.domainVerificationDomain;
+  if (!verifiedDomain) {
+    return NextResponse.json({ error: "Verification link is no longer valid — please request a new one" }, { status: 400 });
+  }
+
   employer.domainVerified = true;
   employer.domainVerifiedAt = new Date();
+  employer.verifiedDomain = verifiedDomain;
   employer.domainVerificationToken = undefined;
+  employer.domainVerificationDomain = undefined;
   await employer.save();
 
   await logActivity({
     action: "employer.domain_verified",
     resource: "employers",
     resourceId: String(employer._id),
-    changes: { after: { domainVerified: true } },
+    changes: { after: { domainVerified: true, verifiedDomain } },
   });
 
   // Redirect to a success page

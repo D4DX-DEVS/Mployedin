@@ -28,7 +28,7 @@ export interface AdminSubscriptionItem {
     currency: string;
     billingCycle: string;
   };
-  status: "active" | "expired" | "cancelled" | "suspended";
+  status: "active" | "past_due" | "expired" | "cancelled" | "suspended";
   startDate: string;
   endDate: string;
   autoRenew: boolean;

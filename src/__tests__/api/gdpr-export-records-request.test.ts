@@ -43,6 +43,11 @@ jest.mock("@/models/JobSeeker", () => ({
 }));
 jest.mock("@/models/Application", () => ({ __esModule: true, default: { find: jest.fn(() => leanChain([])) } }));
 jest.mock("@/models/Interview", () => ({ __esModule: true, default: { find: jest.fn(() => leanChain([])) } }));
+// Cookie-consent proof: listed on export, unlinked from the account on erasure.
+jest.mock("@/models/CookieConsentRecord", () => {
+  const chain = { select: () => chain, sort: () => chain, limit: () => chain, lean: () => Promise.resolve([]) };
+  return { __esModule: true, default: { find: jest.fn(() => chain), updateMany: jest.fn().mockResolvedValue({}) } };
+});
 jest.mock("@/models/Notification", () => ({
   __esModule: true,
   default: { find: jest.fn(() => leanChain([])), deleteMany: jest.fn().mockResolvedValue(undefined) },

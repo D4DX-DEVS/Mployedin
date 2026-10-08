@@ -11,7 +11,7 @@ import type { NextRequest } from "next/server";
 import type { NextAuthRequest } from "next-auth";
 import { getDashboardPath } from "@/lib/permissions/matrix";
 import { withCallback } from "@/lib/routing/callbackUrl";
-import type { UserRole } from "@/types/user";
+import { isValidRole, type UserRole } from "@/types/user";
 import { SECURITY_HEADERS, getSecurityHeaders } from "@/lib/security/headers";
 import { setCsrfCookie, validateCsrf, isCsrfExempt } from "@/lib/security/csrf";
 import { TENANT_COOKIE_NAME, verifyTenantCookie } from "@/lib/security/tenantCookie";
@@ -55,7 +55,8 @@ function isRoleAllowed(role: UserRole, pathname: string): boolean {
   const inDashboard = dashboardSections.some((s) => stripped === s || stripped.startsWith(s + "/"));
   if (!inDashboard) return true;
   // Check if role has access to this section
-  const allowed = ROLE_ROUTES[role] ?? [];
+  // Unknown roles (outside the enum) get no dashboard section at all.
+  const allowed = isValidRole(role) ? ROLE_ROUTES[role] ?? [] : [];
   return allowed.some((prefix) => stripped === prefix || stripped.startsWith(prefix + "/"));
 }
 
@@ -143,6 +144,11 @@ export default auth(async function middleware(req: NextAuthRequest) {
     // admin-published templates. Anonymous requests fall through to each
     // route's withAuth() 401.
     const apiRole = (req as unknown as { auth?: { user?: { role: UserRole } } }).auth?.user?.role;
+    // A session carrying a role outside the enum gets nothing but the auth
+    // endpoints (so it can sign out / sign back in).
+    if (apiRole && !isValidRole(apiRole) && !pathname.startsWith("/api/auth/")) {
+      return withSecurityHeaders(NextResponse.json({ error: "Forbidden" }, { status: 403 }));
+    }
     if (apiRole) {
       const forbidden =
         (pathname.startsWith("/api/super-agent/") && apiRole !== "super_agent" && apiRole !== "admin") ||
@@ -226,6 +232,22 @@ export default auth(async function middleware(req: NextAuthRequest) {
     }
   }
 
+  // A session whose role is outside the enum must never reach a dashboard, and
+  // the usual "send signed-in users to their home" redirects would bounce it
+  // between the landing page and itself. Send it to the login page exactly
+  // once with a reason; on /login it is treated as signed out so the visitor
+  // can sign in again (the jwt refresh also drops such sessions).
+  const hasInvalidRole = Boolean(session?.user) && !pending2fa && !isValidRole(session?.user?.role);
+  if (hasInvalidRole) {
+    const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
+    if (!stripped.startsWith("/login")) {
+      const urlLocale = locales.includes(pathLocale as (typeof locales)[number]) ? pathLocale : defaultLocale;
+      const loginUrl = new URL(`/${urlLocale}/login`, req.url);
+      loginUrl.searchParams.set("error", "invalid_role");
+      return withSecurityHeaders(NextResponse.redirect(loginUrl));
+    }
+  }
+
   // Block dashboard access for users with unverified email
   if (session?.user && !isPublic) {
     const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
@@ -267,7 +289,7 @@ export default auth(async function middleware(req: NextAuthRequest) {
   }
 
   // Redirect authenticated users away from auth pages and the landing page
-  if (session?.user && isPublic) {
+  if (session?.user && isPublic && !hasInvalidRole) {
     const stripped = pathname.replace(/^\/(?:en|ar)/, "") || "/";
     const isAuthRoute = AUTH_ROUTES.some((r) => stripped.startsWith(r));
     const isVerifyEmailRoute = stripped.startsWith("/verify-email");

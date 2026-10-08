@@ -93,6 +93,11 @@ jest.mock("@/models/CompanyUser", () => ({ __esModule: true, default: {} }));
 jest.mock("@/models/SuperAgent", () => ({ __esModule: true, default: {} }));
 
 jest.mock("@/lib/agentPerformance", () => ({ incrementAgentCounter: jest.fn() }));
+jest.mock("@/lib/employers/publishGate", () => ({
+  ...jest.requireActual("@/lib/employers/publishGate"),
+  isEmployerPublishGated: jest.fn().mockResolvedValue(false),
+}));
+jest.mock("@/lib/subscription/withSubscription", () => ({ enforceActiveJobQuota: jest.fn().mockResolvedValue(null) }));
 jest.mock("@/lib/notifications/trigger", () => ({
   getSuperAgentUserId: jest.fn().mockResolvedValue(null),
   notifySuperAgentNewJob: jest.fn(),

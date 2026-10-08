@@ -26,6 +26,10 @@ export interface ConversionMetrics {
 }
 
 export interface AnalyticsData {
+  /** Applications still in play (src/lib/employers/pipelineCounts.ts). */
+  inPipeline?: number;
+  /** Current hires / applications, whole percent (pipelineCounts.ts). */
+  conversionRate?: number;
   funnel: FunnelStage[];
   trend: TrendData[];
   topJobs: TopJob[];

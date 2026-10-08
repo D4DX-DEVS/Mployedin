@@ -169,7 +169,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx): Promise<NextResponse>
     shortlistedToInterview: pct(reachedCount("interview_scheduled"), reachedCount("shortlisted")),
     interviewToOffer: pct(reachedCount("offer"), reachedCount("interview_scheduled")),
     offerToHired: pct(reachedCount("hired"), reachedCount("offer")),
-    overallHireRate: pct(reachedCount("hired"), total),
+    // Shared definition (pipelineCounts.ts): current hires / applications —
+    // the same figure as the overview's conversionRate and "Hired" card.
+    overallHireRate: pct(stageDistribution.find((s) => s.stage === "hired")?.count ?? 0, total),
   };
 
   // 4. Stalled applications (in same stage > 7 days without activity)

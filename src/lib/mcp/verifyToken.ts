@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import McpToken from "@/models/McpToken";
 import User from "@/models/User";
 import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
-import { defaultScopesForRole, type McpScope } from "@/lib/mcp/scopes";
+import { allowedScopesForRole, type McpScope } from "@/lib/mcp/scopes";
 
 export async function verifyMcpToken(
   _req: Request,
@@ -30,7 +30,7 @@ export async function verifyMcpToken(
     return undefined;
   }
 
-  const allowedScopes = new Set(defaultScopesForRole(user.role));
+  const allowedScopes = new Set(allowedScopesForRole(user.role));
   const scopes = token.scopes.filter((scope: string): scope is McpScope =>
     allowedScopes.has(scope as McpScope)
   );

@@ -169,8 +169,8 @@ export async function cascadeDeleteJobSeeker(
 /**
  * Detach/clean dependents when an Agent or Super Agent user is permanently
  * deleted. Agents are operational, not financial owners, so we DETACH their
- * optional references on operational records and remove their Leads, but we do
- * NOT delete Commissions (retained for accounting; they also carry invoiceId).
+ * optional references on operational records (Leads, Employers and Commissions
+ * included — nothing is deleted). We do NOT delete Commissions (retained for accounting; they also carry invoiceId).
  * @param userId  The User._id of the agent/super_agent.
  * @param role    "agent" | "super_agent"
  */
@@ -187,7 +187,20 @@ export async function cascadeDeleteAgentUser(
       .lean<{ _id: Types.ObjectId } | null>();
     if (agent?._id) {
       const agentId = agent._id;
-      await track(summary, "leads", Lead.deleteMany({ agentId }));
+      // LD-6: leads, employers and commissions are business records, not the
+      // agent's personal data — detach them (unassigned, for re-homing) rather
+      // than destroying the pipeline. Commissions keep their amounts/history.
+      await track(summary, "leadsDetached", Lead.updateMany({ agentId }, { $unset: { agentId: "" } }));
+      await track(
+        summary,
+        "employersDetached",
+        Employer.updateMany({ agentId }, { $unset: { agentId: "" } }),
+      );
+      await track(
+        summary,
+        "commissionsDetached",
+        Commission.updateMany({ agentId }, { $unset: { agentId: "" } }),
+      );
       await track(
         summary,
         "superAgentLinks",

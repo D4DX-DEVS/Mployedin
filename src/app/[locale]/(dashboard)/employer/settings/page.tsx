@@ -25,6 +25,7 @@ import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard"
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useEmployerProfile, useUpdateEmployerProfile, useUploadDocument, useDeleteDocument } from "@/hooks/useEmployerProfile";
+import { useMySubscription } from "@/hooks/useSubscription";
 import type { CompanyData } from "@/hooks/useEmployerProfile";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
 import { useFieldHighlight } from "@/hooks/useFieldHighlight";
@@ -43,10 +44,11 @@ const WORK_TYPES = [
   { value: "flexible", label: "Flexible" },
 ];
 
-const VERIFICATION_BADGES: Record<string, { label: string; color: string; icon: typeof Shield }> = {
-  basic: { label: "Basic", color: "bg-slate-100 text-slate-600 border-slate-200", icon: Shield },
-  company: { label: "Verified", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
-  premium: { label: "Premium", color: "bg-amber-50 text-amber-700 border-amber-200", icon: Sparkles },
+// labelKey is an employerSettings message key (EMP-38: badges were English in /ar).
+const VERIFICATION_BADGES: Record<string, { labelKey: "basic" | "verified" | "verificationPremium"; color: string; icon: typeof Shield }> = {
+  basic: { labelKey: "basic", color: "bg-slate-100 text-slate-600 border-slate-200", icon: Shield },
+  company: { labelKey: "verified", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
+  premium: { labelKey: "verificationPremium", color: "bg-amber-50 text-amber-700 border-amber-200", icon: Sparkles },
 };
 
 type TabKey = "profile" | "contact" | "hiring" | "notifications" | "account";
@@ -213,6 +215,11 @@ function CompanySettingsPage() {
 
   // React Query hooks
   const { data: company, isLoading: loading } = useEmployerProfile();
+  // EMP-14: the plan comes from the active Subscription (same source as the
+  // Subscription page), not the legacy Employer.subscriptionType flag, which a
+  // cancelled paid plan can leave behind as "premium".
+  const { data: subscription } = useMySubscription();
+  const currentPlanName = subscription?.planSnapshot?.name;
   const { data: countries = [] } = useCountrySearch("", { loadAll: true });
   const updateProfile = useUpdateEmployerProfile();
   const uploadDocMutation = useUploadDocument();
@@ -457,11 +464,11 @@ function CompanySettingsPage() {
                 <h2 className="heading-section font-semibold truncate">{company?.companyName}</h2>
                 <Badge variant="outline" className={`${vBadge.color} text-[11px] font-medium px-2 py-0.5 border inline-flex items-center leading-none`}>
                   <VBadgeIcon className="w-3 h-3 me-1 shrink-0" />
-                  <span>{vBadge.label}</span>
+                  <span>{t(vBadge.labelKey)}</span>
                 </Badge>
-                {company?.subscriptionType && (
+                {currentPlanName && (
                   <Badge variant="outline" className="text-[11px] font-medium capitalize px-2 py-0.5 inline-flex items-center leading-none">
-                    <span>{company.subscriptionType} {t("plan")}</span>
+                    <span>{currentPlanName} {t("plan")}</span>
                   </Badge>
                 )}
               </div>
@@ -939,7 +946,7 @@ function CompanySettingsPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className={`${vBadge.color} text-[11px] font-medium px-2 py-0.5 border`}>
-                            {vBadge.label}
+                            {t(vBadge.labelKey)}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1.5">
@@ -965,7 +972,7 @@ function CompanySettingsPage() {
                         <div>
                           <p className="text-[11px] text-muted-foreground">{t("currentPlan")}</p>
                           <p className="text-sm font-medium capitalize">
-                            {company?.subscriptionType ?? t("freePlan")}
+                            {currentPlanName ?? t("freePlan")}
                           </p>
                         </div>
                       </div>

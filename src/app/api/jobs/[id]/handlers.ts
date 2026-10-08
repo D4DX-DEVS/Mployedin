@@ -12,6 +12,7 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import { getScopedEmployerIds, getSuperAgentBook } from "@/lib/auth/agentRestrictions";
 import { canTransitionJobStatus, expiryExtended } from "@/lib/jobs/statusTransitions";
 import { isEmployerPublishGated, PUBLISH_GATE_ERROR } from "@/lib/employers/publishGate";
+import { enforceActiveJobQuota } from "@/lib/subscription/withSubscription";
 import { stripPrivateJobFields } from "@/lib/jobs/visibility";
 import { mergeScreeningKnockouts, splitScreeningQuestions, type KnockoutRule } from "@/lib/matching/knockouts";
 import { queueApplicantRescore } from "@/lib/inngest/rescoreJobApplicants";
@@ -152,6 +153,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         { error: PUBLISH_GATE_ERROR, from: job.status, to: nextStatus },
         { status: 409 },
       );
+    }
+    // Publishing, resuming or extending spends a live-job slot of the
+    // employer's plan — the same check as creating an active job, any role.
+    if (nextStatus === "active" && job.employerId) {
+      const quotaError = await enforceActiveJobQuota(String(job.employerId), { excludeJobId: String(job._id) });
+      if (quotaError) return quotaError;
     }
   }
 

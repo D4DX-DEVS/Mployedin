@@ -20,7 +20,8 @@ import { checkAdvert } from "@/lib/compliance/inclusiveWording";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import { getMemberJobRestriction } from "@/lib/permissions/team";
-import { isPublishGated, PUBLISH_GATE_SELECT, PUBLISH_GATE_ERROR, type PublishGateFields } from "@/lib/employers/publishGate";
+import { isEmployerPublishGated, isPublishGated, PUBLISH_GATE_SELECT, PUBLISH_GATE_ERROR, type PublishGateFields } from "@/lib/employers/publishGate";
+import { enforceActiveJobQuota } from "@/lib/subscription/withSubscription";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateBody } from "@/lib/validators";
 import { jobCreateSchema } from "@/lib/validators/jobs";
@@ -264,8 +265,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         // it (which must stay whole-set to be worth reading). Leaving it global
         // printed "41 open positions" above six drafts — numbers that visibly
         // disagree, and the same figure did move when a search was typed.
+        // EMP-13: on the unfiltered tab the "open positions" figure summed the
+        // vacancies of drafts and closed jobs too (45 beside 20 live roles);
+        // with no status tab it now counts live (active) jobs only.
         const vacancies = portfolioJobs
-          .filter((j) => !status || (j as { status?: string }).status === status)
+          .filter((j) => (j as { status?: string }).status === (status || "active"))
           .reduce((sum, j) => sum + ((j as { vacancies?: number }).vacancies ?? 0), 0);
         const totalApplicants = portfolioJobIds.length
           ? await Application.countDocuments({ jobId: { $in: portfolioJobIds } })
@@ -438,6 +442,8 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
         { status: 403 }
       );
     }
+    // The company-profile gate is the employer's, whoever posts for them.
+    publishGated = await isEmployerPublishGated(employerId);
   } else if (ctx.role === "admin") {
     // An admin posts on behalf of an employer. Job.employerId is `required: true`,
     // so a missing/unknown id previously surfaced as an unhandled Mongoose
@@ -453,6 +459,7 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     }
     employerId = String(emp._id);
     if (body.agentId) agentId = body.agentId;
+    publishGated = await isEmployerPublishGated(employerId);
   }
 
   // No approval queue: employers and agents publish directly. Admins and
@@ -465,6 +472,12 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
   // response carries the reason so the UI can link them straight there.
   const heldForProfile = publishGated && resolvedStatus === "active";
   if (heldForProfile) resolvedStatus = "draft";
+
+  // Going live spends a slot of the employer's plan, for every caller role.
+  if (resolvedStatus === "active" && employerId) {
+    const quotaError = await enforceActiveJobQuota(employerId);
+    if (quotaError) return quotaError;
+  }
 
   // Advisory only, mirroring the UI panel: the platform cannot know an
   // employer's context (a genuine occupational requirement, positive action, or

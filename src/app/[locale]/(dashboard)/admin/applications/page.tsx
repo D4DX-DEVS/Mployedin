@@ -29,6 +29,8 @@ import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/Inli
 import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
+import { BULK_MOVE_TARGETS, canTransitionApplication, isRecordBackedStatus } from "@/lib/hiring/applicationTransitions";
+import type { ApplicationStatus } from "@/models/Application";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -121,6 +123,20 @@ interface AdminAiSnapshot {
   skills: string;
   showAdvancedFilters: boolean;
 }
+
+/**
+ * Stages a row's status menu may offer: the current one plus every move the
+ * transition map allows. Interviewing and Offer need an Interview / Offer
+ * record, which this page cannot create, so they are never offered as moves.
+ */
+function rowStatusOptions(current: string): string[] {
+  return STATUSES.filter((s) =>
+    s === current
+    || (!isRecordBackedStatus(s) && canTransitionApplication(current as ApplicationStatus, s as ApplicationStatus, "staff")));
+}
+
+/** Bulk moves the API accepts: `move_stage` targets plus Reject. */
+const BULK_STATUSES = STATUSES.filter((s) => (BULK_MOVE_TARGETS as readonly string[]).includes(s));
 
 function statusLabelKey(s: string): string {
   const key: Record<string, string> = {
@@ -400,7 +416,7 @@ export default function AdminApplicationsPage() {
         setApplications((prev) => prev.map((a) => (a._id === id ? { ...a, status: newStatus } : a)));
       } else {
         const e = await res.json().catch(() => ({}));
-        toast.error(e.error ?? t("failedToUpdateStatus"));
+        toast.error(e.code === "invalid_transition" ? t("invalidTransition") : e.error ?? t("failedToUpdateStatus"));
       }
     } catch {
       toast.error(t("failedToUpdateStatus"));
@@ -436,9 +452,11 @@ export default function AdminApplicationsPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data.error ?? t("failedToUpdateStatus"));
+        toast.error(data.code === "invalid_transition" ? t("invalidTransition") : data.error ?? t("failedToUpdateStatus"));
         return;
       }
+      const skipped = ((data.errors ?? []) as string[]).filter((e) => e.includes("invalid_transition")).length;
+      if (skipped > 0) toast.info(t("bulkInvalidSkipped", { count: skipped }));
       toast.success(t("bulkStatusUpdated", { count: data.processed ?? selectedIds.length }));
       setSelectedIds([]);
       setBulkStatus("");
@@ -749,7 +767,7 @@ export default function AdminApplicationsPage() {
               </span>
               <SearchableSelect
                 className="h-9 w-44 rounded-lg border-border bg-card text-xs"
-                options={STATUSES.map((value) => ({ value, label: t(statusLabelKey(value)) }))}
+                options={BULK_STATUSES.map((value) => ({ value, label: t(statusLabelKey(value)) }))}
                 value={bulkStatus}
                 onValueChange={(value) => setBulkStatus(value ?? "")}
                 placeholder={t("bulkChangeStatus")}
@@ -899,7 +917,7 @@ export default function AdminApplicationsPage() {
                     <span className="hidden sm:inline-flex"><ScoreBadge score={app.aiMatchScore} /></span>
                     <SearchableSelect
                       className="h-8 w-40 rounded-lg border-border bg-card text-xs"
-                      options={STATUSES.map((s) => ({ value: s, label: t(statusLabelKey(s)) }))}
+                      options={rowStatusOptions(app.status).map((s) => ({ value: s, label: t(statusLabelKey(s)) }))}
                       value={app.status}
                       onValueChange={(v) => { if (v && v !== app.status) void handleStatusChange(app._id, v); }}
                       placeholder={t("status")}

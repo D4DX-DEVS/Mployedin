@@ -54,4 +54,6 @@ export { ProfileView } from "./ProfileView";
 export { SubscriptionPlan } from "./SubscriptionPlan";
 export { Subscription } from "./Subscription";
 export { Invoice } from "./Invoice";
+export { PaymentEvent } from "./PaymentEvent";
 export { SubscriptionHistory } from "./SubscriptionHistory";
+export { CookieConsentRecord } from "./CookieConsentRecord";

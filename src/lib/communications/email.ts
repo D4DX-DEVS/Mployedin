@@ -194,9 +194,16 @@ async function resolveTransporter(employerId?: string): Promise<{ transporter: n
           smtpPort: employer.smtpOverride.smtpPort,
           smtpSecure: employer.smtpOverride.smtpSecure,
         };
+        // Employer-supplied host, dialled from our network: re-validate at send
+        // time (DNS may have changed since save). A refusal throws into the
+        // catch below and the message goes out through the system relay.
+        const { assertPublicHost } = await import("@/lib/security/ssrf");
+        await assertPublicHost(smtp.smtpHost || "smtp.gmail.com");
         return { transporter: createSmtpTransporter(smtp), fromEmail: smtp.smtpEmail };
       }
-    } catch { /* fall through to system-wide */ }
+    } catch (err) {
+      logger.warn({ err, employerId }, "[email] employer SMTP override unusable, using system relay");
+    }
   }
 
   // 2. Try system-wide SMTP from DB
@@ -588,6 +595,33 @@ export const EmailTemplates = {
             <a href="${loginUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Log In</a>
           </div>
           <p style="color: #6b7280; font-size: 14px;">Please change this password after your first sign-in, from Settings or by using <a href="${setupUrl}" style="color: #0D6FD8;">this link</a> (valid for 24 hours).</p>
+          <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
+        </div>
+      </div>
+    `,
+  }),
+
+  /**
+   * Employer account created FOR someone (admin / agent / bulk import): a
+   * password-setup link only — never a password in the mail body (EC-1, EC-2).
+   */
+  employerAccountSetup: (contactName: string, email: string, setupUrl: string, creatorName: string) => ({
+    subject: "Welcome to MPLOYEDIN – Set Up Your Employer Account",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #0D6FD8; padding: 24px; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">MPLOYEDIN</h1>
+        </div>
+        <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p>Dear <strong>${esc(contactName)}</strong>,</p>
+          <p>Your employer account has been created by <strong>${esc(creatorName)}</strong>. Set your password to start posting jobs and managing candidates on MPLOYEDIN.</p>
+          <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 4px 0;"><strong>Email:</strong> ${esc(email)}</p>
+          </div>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${setupUrl}" style="background: #0D6FD8; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Set Your Password</a>
+          </div>
+          <p style="color: #6b7280; font-size: 14px;">This link is valid for 24 hours.</p>
           <p style="color: #6b7280; font-size: 14px;">Best regards,<br>The MPLOYEDIN Team</p>
         </div>
       </div>

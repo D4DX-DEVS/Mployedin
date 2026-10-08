@@ -50,17 +50,25 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const cycle = sub.planSnapshot?.billingCycle ?? "monthly";
   const newEnd = calcEndDate(newStart, cycle);
 
+  // SB-4: only a period that has actually ended starts with fresh usage. An
+  // early renewal of a running period must not wipe this month's counters
+  // (that handed out a second monthly allowance). activeJobs is a live gauge,
+  // not a monthly counter, so it is carried over either way.
+  const periodEnded = sub.status === "expired" || !sub.endDate || new Date(sub.endDate) <= new Date();
+
   // Update subscription
   sub.startDate = newStart;
   sub.endDate = newEnd;
   sub.status = "active";
-  sub.usage = {
-    activeJobs: 0,
-    applicationsViewed: 0,
-    applicationsSubmitted: 0,
-    aiUsage: initAiUsage(),
-  } as typeof sub.usage;
-  sub.usageResetAt = nextUsageReset(newStart);
+  if (periodEnded) {
+    sub.usage = {
+      activeJobs: sub.usage?.activeJobs ?? 0,
+      applicationsViewed: 0,
+      applicationsSubmitted: 0,
+      aiUsage: initAiUsage(),
+    } as typeof sub.usage;
+    sub.usageResetAt = nextUsageReset(newStart);
+  }
   await sub.save();
 
   // History

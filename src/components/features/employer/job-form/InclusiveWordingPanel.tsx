@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CheckCircle2, ChevronDown, ExternalLink, ShieldAlert } from "lucide-react";
+import { CheckCircle2, ChevronDown, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   checkAdvert,
@@ -107,16 +107,9 @@ export function InclusiveWordingPanel({ values }: InclusiveWordingPanelProps) {
       )}
 
       <p className="border-t border-border/70 pt-2 text-xs leading-5 text-muted-foreground">
-        {t("advisory")}{" "}
-        <a
-          href={t("guidanceHref")}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          {t("guidanceLink")}
-          <ExternalLink className="h-3 w-3" aria-hidden="true" />
-        </a>
+        {/* The GOV.UK link was UK law on a Gulf platform (EMP-22); the
+            advisory stands on its own until localized guidance exists. */}
+        {t("advisory")}
       </p>
     </section>
   );

@@ -327,6 +327,12 @@ export function SharedJobEditPage({
   const updateJob = useUpdateJob();
 
   const loading = jobLoading || (!formLoaded && !jobError);
+  // EMP-21: "Save" never changes status (only Publish sets active), but on a
+  // live job the old "Save Draft" label and "Changes save as draft" subtitle
+  // read as if saving would unpublish it. Non-draft jobs get "Save changes".
+  const jobStatus = (jobData as { status?: string } | undefined)?.status;
+  const isDraftJob = !jobStatus || jobStatus === "draft";
+  const isLiveJob = jobStatus === "active";
 
   // Populate form when job data arrives
   useEffect(() => {
@@ -641,20 +647,22 @@ export function SharedJobEditPage({
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-bold">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{t("description")}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{isDraftJob ? t("description") : t("descriptionLive")}</p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[110px]">
+          <Button type="button" variant={isLiveJob ? "default" : "outline"} disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[110px]">
             {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("saving")}</>
               : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />{t("saved")}</>
               : submitState === "error" ? <><AlertCircle className="w-3.5 h-3.5 me-1.5 text-destructive" />{t("error")}</>
-              : t("saveDraft")}
+              : isDraftJob ? t("saveDraft") : t("saveChanges")}
           </Button>
+          {!isLiveJob && (
           <Button type="button" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(true)}
             className="min-w-[130px] bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-sm">
             {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("publishing")}</>
               : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
           </Button>
+          )}
         </div>
       </div>
 
@@ -1347,16 +1355,18 @@ export function SharedJobEditPage({
 
           {/* Bottom CTAs */}
           <div className="flex gap-3 pb-8">
-            <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[120px]">
+            <Button type="button" variant={isLiveJob ? "default" : "outline"} disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[120px]">
               {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("saving")}</>
                 : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />{t("saved")}</>
-                : t("saveDraft")}
+                : isDraftJob ? t("saveDraft") : t("saveChanges")}
             </Button>
+            {!isLiveJob && (
             <Button type="button" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(true)}
               className="min-w-[140px] bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white">
               {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("publishing")}</>
                 : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
             </Button>
+            )}
             <Button type="button" variant="ghost" onClick={() => router.push(backHref)}>
               {t("cancel")}
             </Button>

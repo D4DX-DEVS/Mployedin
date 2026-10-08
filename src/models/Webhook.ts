@@ -39,6 +39,15 @@ export const WEBHOOK_EVENTS: WebhookEvent[] = [
   "candidate.hired",
 ];
 
+/**
+ * SECURITY (SEC-A1): the only events an employer-owned webhook may subscribe
+ * to. Financial events (invoice.*, commission.*, payments) are platform-only
+ * and can be subscribed to solely from the admin webhooks page.
+ */
+export const EMPLOYER_ALLOWED_EVENTS: WebhookEvent[] = WEBHOOK_EVENTS.filter((e) =>
+  /^(job|application|interview|offer)\./.test(e),
+);
+
 export interface IWebhookDelivery {
   event: string;
   status: "success" | "failed";
@@ -70,6 +79,7 @@ export interface IWebhook extends Document {
   lastTriggeredAt?: Date;
   lastStatus?: "success" | "failed";
   deliveryLog: IWebhookDelivery[];
+  employerId?: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -104,6 +114,14 @@ const WebhookSchema = new Schema<IWebhook>(
       default: [],
       validate: [(v: IWebhookDelivery[]) => v.length <= 50, "Max 50 delivery logs"],
     },
+    /**
+     * SECURITY (SEC-A1): owning tenant. Required for every webhook created via
+     * /api/developer (employer self-service). Left optional ONLY because
+     * /api/admin/webhooks creates platform-level webhooks that intentionally
+     * have no tenant and receive all events; the dispatcher treats an unscoped
+     * webhook as platform-level only when its creator is an admin.
+     */
+    employerId: { type: Schema.Types.ObjectId, ref: "Employer" },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true },
@@ -111,6 +129,7 @@ const WebhookSchema = new Schema<IWebhook>(
 
 WebhookSchema.index({ events: 1, isActive: 1 });
 WebhookSchema.index({ createdBy: 1 });
+WebhookSchema.index({ employerId: 1, events: 1, isActive: 1 });
 
 export const Webhook =
   mongoose.models.Webhook || mongoose.model<IWebhook>("Webhook", WebhookSchema);

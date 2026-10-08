@@ -8,7 +8,9 @@
 
 import crypto from "crypto";
 import { connectDB } from "@/lib/db/mongoose";
+import mongoose from "mongoose";
 import Webhook from "@/models/Webhook";
+import User from "@/models/User";
 import type { WebhookEvent, IWebhook } from "@/models/Webhook";
 import logger from "@/lib/logger";
 import { safeFetch } from "@/lib/security/ssrf";
@@ -22,29 +24,70 @@ interface WebhookPayload {
 /**
  * Dispatch a webhook event to all matching active webhooks.
  * Non-blocking — errors are caught and logged, never thrown to caller.
+ *
+ * SECURITY (SEC-A1): `employerId` is the tenant that owns the event. Only
+ * webhooks registered by that employer, plus platform (admin) webhooks that
+ * carry no `employerId`, receive it. Pass `null` for events with no owning
+ * employer (e.g. commissions) — those reach platform webhooks only.
  */
 export function dispatchWebhook(
   event: WebhookEvent,
   data: Record<string, unknown>,
+  employerId: string | mongoose.Types.ObjectId | null | undefined,
 ): void {
   // Fire-and-forget
-  dispatchAsync(event, data).catch((err) => {
+  dispatchAsync(event, data, employerId).catch((err) => {
     logger.error({ err, webhookEvent: event }, "Webhook dispatch failed");
   });
+}
+
+/** Exported for tests — resolves the webhooks allowed to receive an event. */
+export async function findWebhookTargets(
+  event: WebhookEvent,
+  employerId: string | mongoose.Types.ObjectId | null | undefined,
+): Promise<IWebhook[]> {
+  const tenantClause: Record<string, unknown>[] = [
+    { employerId: { $exists: false } },
+    { employerId: null },
+  ];
+  if (employerId && mongoose.isValidObjectId(employerId)) {
+    tenantClause.push({ employerId: new mongoose.Types.ObjectId(String(employerId)) });
+  }
+
+  const webhooks = (await Webhook.find({
+    events: event,
+    isActive: true,
+    $or: tenantClause,
+  })
+    .select("+secret")
+    .lean()) as unknown as IWebhook[];
+
+  // Webhooks without an employerId are treated as platform webhooks only when
+  // an admin created them. Legacy employer-created rows (pre-SEC-A1, no
+  // employerId) fail closed rather than receiving every tenant's events.
+  const unscoped = webhooks.filter((w) => !w.employerId);
+  if (unscoped.length === 0) return webhooks;
+  const adminIds = new Set(
+    (
+      await User.find({
+        _id: { $in: unscoped.map((w) => w.createdBy) },
+        role: "admin",
+      })
+        .select("_id")
+        .lean()
+    ).map((u) => String((u as { _id: unknown })._id)),
+  );
+  return webhooks.filter((w) => w.employerId || adminIds.has(String(w.createdBy)));
 }
 
 async function dispatchAsync(
   event: WebhookEvent,
   data: Record<string, unknown>,
+  employerId: string | mongoose.Types.ObjectId | null | undefined,
 ): Promise<void> {
   await connectDB();
 
-  const webhooks = await Webhook.find({
-    events: event,
-    isActive: true,
-  })
-    .select("+secret")
-    .lean();
+  const webhooks = await findWebhookTargets(event, employerId);
 
   if (webhooks.length === 0) return;
 

@@ -1,5 +1,14 @@
 @import "tailwindcss" source("../../src");
 
+/* DS-1: tailwind.config.ts is never loaded (Tailwind v4 reads config from CSS
+   and there is no `@config`). Loading it wholesale is NOT safe: its `blue`
+   scale would repaint ~170 `blue-*` call sites and its `borderRadius`
+   (lg = var(--radius) = 1rem) would double every `rounded-lg`. Instead the
+   tokens the product actually uses are registered in `@theme` below and the
+   animation plugin is loaded here, so `animate-in`, `fade-in-0`, `zoom-in-95`,
+   `slide-in-from-*` (dialogs, selects, tooltips, popovers) stop being no-ops. */
+@plugin "tailwindcss-animate";
+
 /* Prevent horizontal overflow on all viewports — use clip instead of hidden
    so position:sticky still works (overflow:hidden creates a scroll container) */
 html,
@@ -103,6 +112,39 @@ input[type="number"] {
      once. Left at the Tailwind default so the 69 pre-existing `rounded-3xl`
      call sites keep rendering exactly as they did. */
   --radius-3xl: 1.5rem;
+
+  /* ── Tokens migrated from tailwind.config.ts (DS-1) ─────────────────────
+     Same values the config declared; without them `bg-brand-blue/15`,
+     `text-sidebar-fg`, `bg-surface-2`, `shadow-soft` … compiled to nothing. */
+  --color-brand-blue: hsl(var(--brand-blue));
+  --color-brand-blue-hover: hsl(var(--brand-blue-hover));
+  --color-brand-blue-light: hsl(var(--brand-blue-light));
+  --color-brand-blue-pale: hsl(var(--brand-blue-pale));
+  --color-brand-blue-dark: hsl(var(--brand-blue-dark));
+  --color-brand-cyan: hsl(var(--brand-cyan));
+
+  --color-sidebar-bg: hsl(var(--sidebar-bg));
+  --color-sidebar-fg: hsl(var(--sidebar-fg));
+  --color-sidebar-active-bg: hsl(var(--sidebar-active-bg));
+  --color-sidebar-active-fg: hsl(var(--sidebar-active-fg));
+  --color-sidebar-hover-bg: hsl(var(--sidebar-hover-bg));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-icon: hsl(var(--sidebar-icon));
+
+  --color-surface-1: hsl(var(--surface-1));
+  --color-surface-2: hsl(var(--surface-2));
+  --color-surface-3: hsl(var(--surface-3));
+
+  --color-ai-from: hsl(var(--ai-gradient-from));
+  --color-ai-to: hsl(var(--ai-gradient-to));
+  --color-ai-bubble: hsl(var(--ai-bubble-bg));
+  --color-ai-sparkle: hsl(var(--ai-sparkle));
+
+  --shadow-card: 0 2px 10px rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.02);
+  --shadow-card-hover: 0 12px 24px -4px rgb(0 0 0 / 0.08), 0 4px 8px -2px rgb(0 0 0 / 0.04);
+  --shadow-sidebar: 4px 0 24px rgb(0 0 0 / 0.04);
+  --shadow-ai-glow: 0 0 30px hsl(var(--brand-blue) / 0.2);
+  --shadow-soft: 0 4px 20px -2px rgb(0 0 0 / 0.05);
 }
 
 /* ═══════════════════════════════════════════════
@@ -126,8 +168,8 @@ input[type="number"] {
   --brand-white: 0 0% 100%;
   --brand-text: 224 33% 18%;
   /* #1f2c47 */
-  --brand-muted: 218 15% 46%;
-  /* #667085 */
+  --brand-muted: 218 15% 42%;
+  /* was #667085 — darkened with --muted-foreground for AA contrast */
 
   /* ── SEMANTIC TOKENS (shadcn/ui reads these) ── */
   --background: 0 0% 100%;
@@ -143,7 +185,9 @@ input[type="number"] {
   --secondary: 210 22% 95%;
   --secondary-foreground: 224 33% 18%;
   --muted: 210 22% 95%;
-  --muted-foreground: 218 15% 46%;
+  /* 42% (was 46%): 5.1:1 on --muted and 5.7:1 on white — WCAG 1.4.3 AA.
+     46% was 4.39:1 on the muted chip background used across job cards. */
+  --muted-foreground: 218 15% 42%;
   --accent: 204 70% 95%;
   --accent-foreground: 224 33% 18%;
   --destructive: 0 84% 60%;
@@ -221,7 +265,7 @@ input[type="number"] {
 
 .theme-light {
   --brand-text: 224 33% 18%;
-  --brand-muted: 218 15% 46%;
+  --brand-muted: 218 15% 42%;
 
   --background: 0 0% 100%;
   --foreground: 224 33% 18%;
@@ -234,7 +278,7 @@ input[type="number"] {
   --secondary: 210 22% 95%;
   --secondary-foreground: 224 33% 18%;
   --muted: 210 22% 95%;
-  --muted-foreground: 218 15% 46%;
+  --muted-foreground: 218 15% 42%;
   --accent: 204 70% 95%;
   --accent-foreground: 224 33% 18%;
   --destructive: 0 84% 60%;
@@ -2187,12 +2231,12 @@ input::placeholder {
 /* Keep fixed consent content compact and give the document enough scrollable
    clearance that it never permanently covers the final page controls. */
 :root[data-cookie-banner="visible"] body {
-  padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(15rem + env(safe-area-inset-bottom));
 }
 
 @media (min-width: 640px) {
   :root[data-cookie-banner="visible"] body {
-    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(8rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -4366,5 +4410,165 @@ table.workspace-list-table tbody tr:focus-visible {
       width: 2.25rem;
       height: 2.25rem;
     }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ACCESSIBILITY — skip link, user display settings, OS preferences
+   Settings are data-a11y-* attributes on <html>, set by
+   lib/a11y/preferences.ts (and its no-flash inline script). They are user
+   conveniences on top of WCAG 2.2 AA markup, not a replacement for it.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* WCAG 2.4.1 — first focusable element, visible on focus only. */
+.skip-link {
+  position: fixed;
+  inset-inline-start: 0.75rem;
+  top: 0.75rem;
+  z-index: 10002;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 600;
+  text-decoration: underline;
+  transform: translateY(-200%);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: none;
+  outline: 3px solid hsl(var(--focus-ring));
+  outline-offset: 2px;
+}
+
+/* WCAG 2.4.11 — keep focused elements clear of the sticky public header
+   (4rem) and the cookie banner when the browser scrolls them into view. */
+html {
+  scroll-padding-top: 5rem;
+}
+:root[data-cookie-banner="visible"] {
+  scroll-padding-bottom: 12rem;
+}
+
+/* Text size — Tailwind sizes are rem-based, so the whole UI scales. */
+:root[data-a11y-text="115"] { font-size: 115%; }
+:root[data-a11y-text="130"] { font-size: 130%; }
+:root[data-a11y-text="150"] { font-size: 150%; }
+
+/* High contrast — darker text, borders and brand tone; no see-through surfaces. */
+:root[data-a11y-contrast="on"] {
+  --foreground: 224 60% 8%;
+  --card-foreground: 224 60% 8%;
+  --popover-foreground: 224 60% 8%;
+  --secondary-foreground: 224 60% 8%;
+  --accent-foreground: 224 60% 8%;
+  --muted-foreground: 222 30% 22%;
+  --brand-muted: 222 30% 22%;
+  --border: 222 25% 38%;
+  --input: 222 25% 38%;
+  --primary: 226 91% 31%;
+  --ring: 226 91% 25%;
+  --focus-ring: 0 0% 0%;
+}
+:root[data-a11y-contrast="on"] body * {
+  backdrop-filter: none !important;
+  text-shadow: none !important;
+}
+:root[data-a11y-contrast="on"] :is(p, span, li, label, td, th, dd, dt, small) {
+  opacity: 1 !important;
+}
+
+/* Reduce motion — same effect as the OS preference below. */
+:root[data-a11y-motion="on"] *,
+:root[data-a11y-motion="on"] *::before,
+:root[data-a11y-motion="on"] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0ms !important;
+}
+
+/* Underline links. */
+:root[data-a11y-links="on"] a[href] {
+  text-decoration-line: underline !important;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: from-font;
+}
+
+/* WCAG 1.4.12 Text Spacing values. */
+:root[data-a11y-spacing="on"] body :is(p, li, dd, dt, td, th, label, span, a, h1, h2, h3, h4, h5, h6, button, input, textarea) {
+  line-height: 1.5 !important;
+  letter-spacing: 0.12em !important;
+  word-spacing: 0.16em !important;
+}
+:root[data-a11y-spacing="on"] body p {
+  margin-bottom: 2em !important;
+}
+/* Arabic script is joined — extra letter spacing breaks it apart. */
+:root[data-a11y-spacing="on"] [lang="ar"] :is(p, li, dd, dt, td, th, label, span, a, h1, h2, h3, h4, h5, h6, button, input, textarea),
+:root[data-a11y-spacing="on"][lang="ar"] body * {
+  letter-spacing: normal !important;
+}
+
+/* Readable font (Atkinson Hyperlegible, Latin only; Arabic keeps Noto). */
+:root[data-a11y-font="on"] body,
+:root[data-a11y-font="on"] body .font-sans {
+  font-family: var(--font-readable), Verdana, system-ui, sans-serif !important;
+}
+:root[data-a11y-font="on"] body .font-arabic {
+  font-family: var(--font-arabic), var(--font-readable), system-ui, sans-serif !important;
+}
+
+/* Strong focus indicator (beyond WCAG 2.4.13 AAA). */
+:root[data-a11y-focus="on"] :focus-visible {
+  outline: 4px solid hsl(var(--focus-ring)) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 7px hsl(var(--background)) !important;
+}
+
+/* Large cursor. */
+:root[data-a11y-cursor="on"],
+:root[data-a11y-cursor="on"] * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24'%3E%3Cpath d='M4 2l16 10-7 1.5L9.5 21z' fill='black' stroke='white' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 4 2, auto !important;
+}
+:root[data-a11y-cursor="on"] :is(a[href], button, [role="button"], summary, label, select),
+:root[data-a11y-cursor="on"] :is(a[href], button, [role="button"], summary, label, select) * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24'%3E%3Cpath d='M4 2l16 10-7 1.5L9.5 21z' fill='%230242CE' stroke='white' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 4 2, pointer !important;
+}
+
+/* OS-level "increase contrast". */
+@media (prefers-contrast: more) {
+  :root {
+    --muted-foreground: 222 30% 25%;
+    --border: 222 25% 45%;
+    --input: 222 25% 45%;
+  }
+}
+
+/* Windows High Contrast / forced colours: keep focus and controls visible. */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid CanvasText !important;
+    outline-offset: 2px;
+  }
+  button,
+  [role="button"],
+  [role="switch"] {
+    border: 1px solid ButtonText;
+  }
+  [role="switch"][data-state="checked"] {
+    background: Highlight !important;
+  }
+  .skip-link {
+    border: 2px solid CanvasText;
+  }
+}
+
+@media print {
+  .skip-link,
+  [data-cookie-consent],
+  [data-reading-guide] {
+    display: none !important;
   }
 }

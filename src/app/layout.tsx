@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import type React from "react";
-import { Manrope, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
+import { Atkinson_Hyperlegible, Manrope, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
 import { headers } from "next/headers";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
 import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
 import { CspNonceProvider } from "@/components/shared/CspNonceProvider";
 import "@/app/globals.css";
 import { getStorageFallbackScript } from "@/lib/storage-fallback";
+import { getA11yInitScript } from "@/lib/a11y/preferences";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -20,6 +21,15 @@ const notoArabic = Noto_Sans_Arabic({
   weight: ["400", "500", "600", "700"],
   display: "swap",
   preload: false, // loaded on-demand only for Arabic locale
+});
+// Accessibility setting "Readable font" — only downloaded when that setting
+// switches the font-family to it (the @font-face alone costs nothing).
+const atkinson = Atkinson_Hyperlegible({
+  subsets: ["latin"],
+  variable: "--font-readable",
+  weight: ["400", "700"],
+  display: "swap",
+  preload: false,
 });
 // Variable font: one file per subset instead of four static weights.
 const notoMalayalam = Noto_Sans_Malayalam({
@@ -93,10 +103,19 @@ export default async function RootLayout({
           nonce={nonce}
           dangerouslySetInnerHTML={{ __html: getStorageFallbackScript() }}
         />
+        {/* Applies saved accessibility settings (text size, contrast, …)
+            before first paint so they never flash the default styling. */}
+        <script
+          id="a11y-prefs-init"
+          async
+          suppressHydrationWarning
+          nonce={nonce}
+          dangerouslySetInnerHTML={{ __html: getA11yInitScript() }}
+        />
       </head>
       <body
         suppressHydrationWarning
-        className={`${manrope.variable} ${notoArabic.variable} ${notoMalayalam.variable} font-sans antialiased`}
+        className={`${manrope.variable} ${notoArabic.variable} ${notoMalayalam.variable} ${atkinson.variable} font-sans antialiased`}
         {...(nonce ? { "data-nonce": nonce } : {})}
       >
         {/* Publishes the nonce to runtime style injectors (react-style-singleton,

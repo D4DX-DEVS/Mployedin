@@ -10,11 +10,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { canAccessInvoice } from "@/lib/invoices/access";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
-import {
-  approvePendingCommissionsForPaidInvoice,
-  isOwnCommissionLine,
-  createCommissionRecordsForInvoice,
-} from "@/lib/invoices/commissionRecords";
+import { markInvoicePaid } from "@/lib/payments/markInvoicePaid";
 import { PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
 import { isStaleInvoiceWrite, staleInvoiceResponse } from "@/lib/invoices/concurrency";
 import connectDB from "@/lib/db/mongoose";
@@ -78,70 +74,40 @@ async function postHandler(
     notification.verifiedBy = ctx.userId as unknown as typeof invoice.markedPaidBy;
     notification.verifiedAt = now;
 
-    // Auto-mark invoice as paid if balance is covered
+    // Record the remaining balance through the shared payment path — the same
+    // rules (payable status, balance cap, commission create+approve, invoice.paid
+    // webhook, subscription activation) as a gateway payment. The notification
+    // flag above rides along in the same version-checked save.
     const total = invoice.totalAmount || invoice.amount;
     const currentPaid = invoice.paidAmount || 0;
     const remainingBalance = Math.max(0, Math.round((total - currentPaid) * 100) / 100);
 
+    let recorded = false;
     if (remainingBalance > 0 && (PAYABLE_INVOICE_STATUSES as readonly string[]).includes(invoice.status)) {
-      invoice.payments.push({
+      const result = await markInvoicePaid(invoice, {
+        provider: "manual",
+        paymentId: notification.referenceNumber || "VERIFIED-PAYMENT",
         amount: remainingBalance,
-        paymentDate: now,
-        paymentMethod: notification.paymentMethod || "bank_transfer",
-        referenceNumber: notification.referenceNumber || "VERIFIED-PAYMENT",
+        currency: invoice.currency,
+        method: notification.paymentMethod || "bank_transfer",
+        actorUserId: ctx.userId,
+        actorRole: ctx.role,
         notes: body.notes || `Payment verified by ${ctx.role}`,
-        recordedBy: ctx.userId as unknown as typeof invoice.markedPaidBy,
+        notifyPayer: false,
+        audit: false,
       });
-
-      invoice.status = "paid";
-      invoice.paidAt = now;
-      invoice.paidAmount = total;
-      invoice.balanceDue = 0;
-      invoice.markedPaidBy = ctx.userId as unknown as typeof invoice.markedPaidBy;
+      if (result.status === "conflict") return staleInvoiceResponse();
+      recorded = result.status === "paid" || result.status === "partially_paid";
     }
 
-    // Version-checked: if another request already recorded a payment on this
-    // invoice, fail with 409 instead of stacking a second verified payment.
-    invoice.increment();
-    try {
-      await invoice.save();
-    } catch (err) {
-      if (isStaleInvoiceWrite(err)) return staleInvoiceResponse();
-      throw err;
-    }
-
-    // Create + approve commissions for paid invoice
-    if (invoice.status === "paid") {
+    if (!recorded) {
+      // Nothing to record (already settled / not payable) — persist the flag alone.
+      invoice.increment();
       try {
-        await createCommissionRecordsForInvoice({
-          invoiceId: invoice._id,
-          commissions: invoice.commissions ?? [],
-          currency: invoice.currency,
-        });
-        const approvalResult = await approvePendingCommissionsForPaidInvoice(
-          invoice._id,
-          ctx.userId,
-          { sendNotifications: true },
-        );
-
-        // Mirror onto the embedded lines, with the same self-approval
-        // exclusion the other two paid paths apply — otherwise the embedded
-        // copy stays "pending" forever and diverges from the Commission record.
-        if (approvalResult.approved > 0) {
-          let embeddedChanged = false;
-          for (const commission of invoice.commissions ?? []) {
-            if (
-              commission.status === "pending" &&
-              !isOwnCommissionLine(commission, approvalResult.approver)
-            ) {
-              commission.status = "approved";
-              embeddedChanged = true;
-            }
-          }
-          if (embeddedChanged) await invoice.save();
-        }
+        await invoice.save();
       } catch (err) {
-        logger.error({ err, invoiceId: String(invoice._id) }, "Commission processing after verify-payment failed");
+        if (isStaleInvoiceWrite(err)) return staleInvoiceResponse();
+        throw err;
       }
     }
 

@@ -51,8 +51,19 @@ export async function buildInterviewIcal(userId: string, role: UserRole): Promis
       { employerId: { $in: agent.assignedEmployerIds ?? [] } },
       { agentId: agent._id },
     ];
+  } else if (role === "super_agent") {
+    // SECURITY (SEC-B5 / IN-1): only interviews in the super-agent's territory
+    // (their agents' interviews, or those agents' employers). An empty
+    // territory yields a match-nothing filter.
+    const { getSuperAgentBook } = await import("@/lib/auth/agentRestrictions");
+    const book = await getSuperAgentBook(userId);
+    if (!book) return null;
+    Object.assign(query, book.ownershipMatch);
+  } else if (role !== "admin") {
+    // Unknown role: default-deny — an empty calendar, never every interview.
+    query._id = { $in: [] };
   }
-  // admin/super_agent: all interviews (matches existing export behavior)
+  // admin: all interviews
 
   // Cancelled interviews stay in the feed as tombstones for a while.
   // Dropping a row makes a subscriber delete the event only on its next poll

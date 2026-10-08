@@ -46,12 +46,26 @@ const JOB_SEEKER_DAILY_CONV_LIMIT = 10;
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
+  const me = new mongoose.Types.ObjectId(ctx.userId);
   const conversations = await Conversation.find({
-    participants: new mongoose.Types.ObjectId(ctx.userId),
+    participants: me,
     type: { $ne: "customer_care" },
+    // MS-2: threads this user deleted from their own list.
+    hiddenFor: { $ne: me },
   })
     .sort({ lastMessageAt: -1, updatedAt: -1 })
     .lean();
+
+  // A cleared history must not leak back through the list preview.
+  for (const conv of conversations) {
+    const cleared = (conv.clearedAt as unknown as Record<string, Date | string> | undefined)?.[ctx.userId];
+    if (cleared && conv.lastMessageAt && new Date(conv.lastMessageAt) <= new Date(cleared)) {
+      conv.lastMessage = undefined;
+    }
+    // Other participants' private view state is not this user's business.
+    delete (conv as { clearedAt?: unknown }).clearedAt;
+    delete (conv as { hiddenFor?: unknown }).hiddenFor;
+  }
 
   // Backfill missing avatars — older conversations may have been created
   // before the avatar field was correctly populated.
@@ -128,13 +142,20 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // Find existing or create new
   let conversation = await Conversation.findOne({ participants: { $all: sortedIds, $size: 2 } }).lean();
 
+  // Re-opening a thread you deleted brings it back to your list (MS-2).
+  if (conversation && (conversation.hiddenFor ?? []).some((id) => id.toString() === ctx.userId)) {
+    await Conversation.updateOne({ _id: conversation._id }, { $pull: { hiddenFor: new mongoose.Types.ObjectId(ctx.userId) } });
+  }
+
   if (!conversation) {
-    // Rate limit: job seekers can only create 10 new conversations per day
+    // Rate limit: job seekers can only create 10 new conversations per day.
+    // MS-6: count only threads THIS user started (being messaged by others
+    // used to eat the quota), per UTC day so the window is server-TZ independent.
     if (ctx.role === "job_seeker") {
       const dayStart = new Date();
-      dayStart.setHours(0, 0, 0, 0);
+      dayStart.setUTCHours(0, 0, 0, 0);
       const todayCount = await Conversation.countDocuments({
-        participants: new mongoose.Types.ObjectId(ctx.userId),
+        createdBy: new mongoose.Types.ObjectId(ctx.userId),
         type: "dm",
         createdAt: { $gte: dayStart },
       });
@@ -178,6 +199,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     conversation = await Conversation.create({
       participants: sortedIds,
       participantsKey: sortedIds.map((id) => id.toString()).join(":"),
+      createdBy: new mongoose.Types.ObjectId(ctx.userId),
       participantDetails: [
         {
           userId: userA._id,

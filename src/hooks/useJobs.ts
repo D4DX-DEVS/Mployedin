@@ -131,7 +131,11 @@ export function useUpdateJobStatus() {
       if (!res.ok) throw new Error("Failed to update job status");
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, { jobId, status }) => {
+      // Show the new status at once; the refetch below can take seconds
+      // (publishing kicks off matching), which left "Publishing…" and the
+      // Draft badge on screen until a reload (EMP-16).
+      qc.setQueryData<Job>(jobKeys.detail(jobId), (old) => (old ? { ...old, status } as Job : old));
       qc.invalidateQueries({ queryKey: jobKeys.lists() });
       qc.invalidateQueries({ queryKey: jobKeys.details() });
       qc.invalidateQueries({ queryKey: ["job-hiring-summary"] });

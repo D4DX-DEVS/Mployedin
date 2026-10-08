@@ -174,7 +174,10 @@ export default function EmployerAnalyticsPage() {
       ? [
           {
             label: t("inPipeline"),
-            value: Math.max(0, data.conversion.applied - data.conversion.hired - (pipeline.perJob.reduce((sum, j) => sum + (j.stages.find((s) => s.status === "rejected")?.count || 0), 0))),
+            // Shared definition (pipelineCounts.ts). The old client-side sum
+            // subtracted rejections from the current page of jobs only and
+            // ignored withdrawn, so it drifted from every other screen.
+            value: data.inPipeline ?? 0,
             description: t("inPipelineDesc"),
             icon: TrendingUp,
             color: "indigo",

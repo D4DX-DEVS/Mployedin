@@ -16,6 +16,8 @@ import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { closesInDays } from "@/lib/jobs/expiry";
+import { publicJobFilter } from "@/lib/jobs/publicFilter";
+import { isValidObjectId } from "@/lib/security/sanitize";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -92,13 +94,17 @@ export default async function JobDetailPage({ params }: PageProps) {
   const { locale, id } = await params;
   const t = await getTranslations("publicJobDetail");
 
+  if (!isValidObjectId(id)) notFound();
+
   await connectDB();
-  const job = await Job.findById(id)
+  // JL-8: same visibility rule as the public list — private, invite-only,
+  // soft-deleted and expired jobs are not reachable by URL either.
+  const job = await Job.findOne({ _id: id, ...publicJobFilter() })
     .populate("employerId", "companyName country industry city website domainVerified isAgentVerified")
     .lean()
     .catch(() => null);
 
-  if (!job || job.status !== "active") notFound();
+  if (!job) notFound();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const employer = job.employerId as any;
@@ -333,10 +339,9 @@ export default async function JobDetailPage({ params }: PageProps) {
                   locale={locale}
                   screeningQuestions={(job as Record<string, unknown>).screeningQuestions as EasyApplyScreeningQuestion[] | undefined}
                 />
-
-                <p className="text-xs text-muted-foreground text-center mt-3">
-                  {t("autoAttachedProfile")}
-                </p>
+                {/* JS-11: "Your profile is auto-attached" used to sit here for
+                    everyone, anonymous visitors included. EasyApply shows it
+                    in its signed-in branch only. */}
               </div>
 
               {/* Employer info */}

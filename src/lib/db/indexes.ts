@@ -7,6 +7,7 @@
  */
 import mongoose from "mongoose";
 import logger from "@/lib/logger";
+import { COOKIE_CONSENT_RETENTION_DAYS } from "@/models/CookieConsentRecord";
 
 type IndexSpec = mongoose.mongo.IndexDescription;
 
@@ -392,6 +393,8 @@ export async function ensureIndexes() {
     { key: { endDate: 1, status: 1 } },
     { key: { planId: 1 } },
     { key: { usageResetAt: 1, status: 1 } },
+    // past_due → suspended sweep (invoice-overdue cron).
+    { key: { status: 1, pastDueSince: 1 } },
   ]);
 
   // ── Invoices ──────────────────────────────────────────────────────────────
@@ -413,6 +416,19 @@ export async function ensureIndexes() {
     { key: { agentId: 1 } },
     { key: { superAgentId: 1 } },
     { key: { dueDate: 1, status: 1 } },
+    // Online payments: webhook / return-page lookups by provider ids, and
+    // gateway-refund credit-note dedupe.
+    { key: { "gatewaySession.sessionId": 1 }, sparse: true },
+    { key: { "payments.referenceNumber": 1 }, sparse: true },
+    { key: { parentInvoiceId: 1, externalRef: 1 }, sparse: true },
+  ]);
+
+  // ── Payment gateway webhook ledger (idempotency) ─────────────────────────
+  await safeCreateIndexes(db, "paymentevents", [
+    // The atomic claim: a duplicate (provider, eventId) insert fails with E11000.
+    { key: { provider: 1, eventId: 1 }, unique: true },
+    { key: { invoiceId: 1, createdAt: -1 } },
+    { key: { createdAt: 1 }, expireAfterSeconds: 90 * 24 * 60 * 60 },
   ]);
 
   // ── Subscription History ──────────────────────────────────────────────────
@@ -453,6 +469,12 @@ export async function ensureIndexes() {
     { key: { keyHash: 1 }, unique: true },
     { key: { employerId: 1 } },
     { key: { keyPrefix: 1 } },
+  ]);
+
+  await safeCreateIndexes(db, "platformapikeys", [
+    { key: { keyHash: 1 }, unique: true },
+    { key: { keyPrefix: 1 } },
+    { key: { isActive: 1, createdAt: -1 } },
   ]);
 
   await safeCreateIndexes(db, "applicationfeedbacks", [
@@ -845,6 +867,14 @@ export async function ensureIndexes() {
     { key: { createdAt: -1 } },
     // "latest consent per (user, type)" aggregation + per-user history
     { key: { userId: 1, consentType: 1, createdAt: -1 } },
+  ]);
+
+  // Cookie consent proof (GDPR art 7(1)). The TTL index enforces the
+  // retention period in COOKIE_CONSENT_RETENTION_DAYS (3 years).
+  await safeCreateIndexes(db, "cookieconsentrecords", [
+    { key: { consentId: 1, createdAt: -1 } },
+    { key: { userId: 1 }, sparse: true },
+    { key: { createdAt: 1 }, name: "cookie_consent_ttl", expireAfterSeconds: COOKIE_CONSENT_RETENTION_DAYS * 24 * 60 * 60 },
   ]);
 
   logger.info("[DB] Indexes ensured ✅");

@@ -153,15 +153,19 @@ export default function InterviewsPage() {
     fetchCalendarMonth();
   }, [view, fetchCalendarMonth]);
 
-  // Filter out legacy "rescheduled" rows (superseded by in-place updates)
-  const activeInterviews = interviews.filter((i) => i.status !== "rescheduled");
-  const calendarEvents = calendarInterviews.filter((i) => i.status !== "rescheduled");
+  // "rescheduled" rows stay visible: staff can set that status in place, and
+  // hiding it made the candidate's interview silently disappear.
+  const activeInterviews = interviews;
+  const calendarEvents = calendarInterviews;
 
+  // A declined interview keeps status "scheduled" (the decline lives on
+  // candidateResponse), so it is not upcoming for the candidate who declined it.
+  const isClosedForSeeker = (i: Interview) => i.status === "cancelled" || i.candidateResponse === "declined";
   const now = new Date();
   const upcoming = activeInterviews
-    .filter((i) => new Date(i.scheduledAt) >= now && i.status !== "cancelled")
+    .filter((i) => new Date(i.scheduledAt) >= now && !isClosedForSeeker(i))
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-  const past = activeInterviews.filter((i) => new Date(i.scheduledAt) < now || i.status === "cancelled");
+  const past = activeInterviews.filter((i) => new Date(i.scheduledAt) < now || isClosedForSeeker(i));
 
   const exportData = interviews.map((iv) => ({
     jobTitle: iv.jobTitle ?? "",
@@ -405,6 +409,10 @@ function InterviewCard({ interview: iv, upcoming, onRefresh }: { interview: Inte
             {iv.status === "cancelled" ? (
               <Badge variant="outline" className="text-xs text-red-600">
                 {t("status.cancelled")}
+              </Badge>
+            ) : iv.status === "rescheduled" && !responseLabel ? (
+              <Badge variant="outline" className="text-xs text-amber-600">
+                {t("status.rescheduled")}
               </Badge>
             ) : responseLabel && (
               <Badge variant="outline" className={`text-xs ${responseColor}`}>

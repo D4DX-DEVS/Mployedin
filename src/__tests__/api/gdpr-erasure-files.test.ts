@@ -45,8 +45,20 @@ jest.mock("@/models/Application", () => ({
   __esModule: true,
   default: { find: (...a: unknown[]) => appFind(...a), updateMany: (...a: unknown[]) => appUpdateMany(...a) },
 }));
-jest.mock("@/models/User", () => ({ __esModule: true, default: { findByIdAndUpdate: jest.fn().mockResolvedValue(undefined) } }));
+jest.mock("@/models/User", () => ({
+  __esModule: true,
+  default: {
+    // OAuth-only job seeker: no password to confirm.
+    findById: jest.fn(() => ({ select: jest.fn().mockResolvedValue({ _id: USER_ID, role: "job_seeker" }) })),
+    findByIdAndUpdate: jest.fn().mockResolvedValue(undefined),
+  },
+}));
 jest.mock("@/models/Interview", () => ({ __esModule: true, default: { find: jest.fn() } }));
+// Cookie-consent proof: listed on export, unlinked from the account on erasure.
+jest.mock("@/models/CookieConsentRecord", () => {
+  const chain = { select: () => chain, sort: () => chain, limit: () => chain, lean: () => Promise.resolve([]) };
+  return { __esModule: true, default: { find: jest.fn(() => chain), updateMany: jest.fn().mockResolvedValue({}) } };
+});
 jest.mock("@/models/Notification", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
 jest.mock("@/models/GdprRequest", () => ({ __esModule: true, default: { create: jest.fn().mockResolvedValue({}) } }));
 const deleteCvRecordsOfSeeker = jest.fn().mockResolvedValue(undefined);
@@ -60,6 +72,12 @@ describe("DELETE /api/gdpr/export removes every uploaded file", () => {
 
     const [, update] = seekerUpdate.mock.calls[0] as unknown as [unknown, { $unset: Record<string, unknown> }];
     expect(update.$unset).toHaveProperty("documents");
+    // Allow-list erasure (GD-1): identity fields go, structural refs stay.
+    for (const f of ["fullName", "dateOfBirth", "nationalId", "visaNumber", "hometown", "socialLinks", "searchEmbedding"]) {
+      expect(update.$unset).toHaveProperty(f);
+    }
+    expect(update.$unset).not.toHaveProperty("userId");
+    expect((update as unknown as { $set: Record<string, unknown> }).$set).toMatchObject({ profileVisibility: "hidden" });
 
     expect(appFind).toHaveBeenCalledWith({ jobSeekerId: SEEKER_ID });
     expect(appUpdateMany).toHaveBeenCalledWith({ jobSeekerId: SEEKER_ID }, { $set: { documents: [] } });

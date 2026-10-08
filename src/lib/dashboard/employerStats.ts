@@ -6,6 +6,11 @@ import { Application } from "@/models/Application";
 import { Interview } from "@/models/Interview";
 import { Placement } from "@/models/Placement";
 import { Offer } from "@/models/Offer";
+import {
+  ACTIVE_INTERVIEW_STATUSES,
+  activeJobsFilter,
+  upcomingInterviewsFilter,
+} from "@/lib/employers/pipelineCounts";
 
 export interface EmployerDashboardStats {
   companyName?: string;
@@ -15,10 +20,10 @@ export interface EmployerDashboardStats {
   totalApplications: number;
   newApplications: number;
   inReview: number;
+  /** Upcoming scheduled/confirmed interviews (see pipelineCounts.ts). */
   scheduledInterviews: number;
   /** Interviews scheduled for today (server-local day) — powers the
-   *  "Today's Interviews" KPI card + hero chip. Distinct from
-   *  scheduledInterviews (all-time), which feeds the pipeline funnel. */
+   *  "Today's Interviews" KPI card + hero chip. */
   interviewsToday: number;
   placements: number;
   offerCount: number;
@@ -128,17 +133,19 @@ export async function getEmployerDashboardStats(
     timeToHireResult,
     lastActivity,
   ] = await Promise.all([
-    Job.countDocuments({ employerId, status: "active", deletedAt: null }),
+    Job.countDocuments(activeJobsFilter(employerId)),
     Job.countDocuments({ employerId, status: "draft", deletedAt: null }),
     Job.countDocuments({ employerId, status: "paused", deletedAt: null }),
     Application.countDocuments({ employerId }),
     Application.countDocuments({ employerId, status: "applied" }),
     Application.countDocuments({ employerId, status: "shortlisted" }),
-    Interview.countDocuments({ employerId, status: "scheduled" }),
+    // Upcoming scheduled/confirmed interviews — the shared definition
+    // (src/lib/employers/pipelineCounts.ts); past "scheduled" rows no longer count.
+    Interview.countDocuments(upcomingInterviewsFilter(employerId)),
     // Interviews scheduled for today only — backs the "Today's Interviews" card.
     Interview.countDocuments({
       employerId,
-      status: "scheduled",
+      status: { $in: ACTIVE_INTERVIEW_STATUSES },
       scheduledAt: { $gte: startOfToday, $lt: startOfTomorrow },
     }),
     Placement.countDocuments({ employerId }),

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { MapPin, Phone, Mail, Send, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getRecaptchaToken } from "@/lib/browser/recaptcha";
 
 const COMPANY_ADDRESS = "MPLOYEDIN UK LTD, X2 Greenleaf Walk, Southall, UB1 1FR";
 const SUPPORT_EMAIL = "support@mployedin.com";
@@ -39,10 +40,13 @@ export default function ContactPage() {
     setSubmitting(true);
     setError("");
     try {
+      // Invisible reCAPTCHA v3; null when no site key is configured, in which
+      // case the server skips the check too (JS-26).
+      const captchaToken = await getRecaptchaToken("contact");
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, ...(captchaToken ? { captchaToken } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to send");

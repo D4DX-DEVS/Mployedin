@@ -26,12 +26,21 @@ export interface MySubscription {
     employerLimits?: Record<string, unknown>;
     jobSeekerLimits?: Record<string, unknown>;
   };
-  status: "active" | "expired" | "cancelled" | "suspended";
+  status: "active" | "past_due" | "expired" | "cancelled" | "suspended";
   startDate: string;
   endDate: string;
   autoRenew: boolean;
+  /** Set while a renewal invoice is unpaid (grace window start). */
+  pastDueSince?: string;
+  /** End of the payment grace window (past_due only). */
+  graceEndsAt?: string;
+  /** Downgrade scheduled for the end of the current period. */
+  pendingPlanChange?: { planId: string; planName?: string; effectiveAt: string } | null;
   usage: {
+    /** Live count of active jobs (employer; computed by /api/subscriptions/my). */
     activeJobs?: number;
+    /** Live count of active team members (employer; computed by /api/subscriptions/my). */
+    teamMembers?: number;
     applicationsViewed?: number;
     applicationsSubmitted?: number;
     aiUsage: Record<string, number>;

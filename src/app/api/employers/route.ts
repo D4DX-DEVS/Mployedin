@@ -15,6 +15,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import logger from "@/lib/logger";
 import { buildEmployerAdminCreatePayload } from "@/lib/employers/admin";
+import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { resolveEmployerAgents, unassignedEmployerFilter } from "@/lib/agents/employerAssignment";
 
@@ -440,43 +441,69 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   const payload = buildEmployerAdminCreatePayload({ name, email, password, companyName, industry, location, phone });
   const passwordHash = await bcrypt.hash(payload.password, 12);
+  // EC-2: the chosen password is never emailed; the employer gets a setup link
+  // and is prompted to replace the password someone else picked.
+  const rawSetupToken = crypto.randomBytes(32).toString("hex");
+  const hashedSetupToken = crypto.createHash("sha256").update(rawSetupToken).digest("hex");
   const user = await User.create({
     ...payload.userUpdate,
     passwordHash,
     role: "employer",
     isActive: true,
     isEmailVerified: true,
+    passwordResetToken: hashedSetupToken,
+    passwordResetExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    tempPasswordIssuedAt: new Date(),
   });
 
   // Resolve agentId — for agents, use their own Agent doc; for super_agents, leave null
   let agentId: string | undefined;
-  if (ctx.role === "agent") {
-    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
-    agentId = agentDoc?._id?.toString();
+  let employer: InstanceType<typeof Employer>;
+  // EC-6: same rollback as self-registration — a failure after User.create must
+  // not leave an orphan User that blocks retrying with the same email.
+  try {
+    if (ctx.role === "agent") {
+      const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+      agentId = agentDoc?._id?.toString();
+    }
+
+    // Create Employer profile (matching employer-register flow)
+    employer = await Employer.create({
+      userId: user._id,
+      ...payload.employerUpdate,
+      ...(agentId ? { agentId } : {}),
+      verificationLevel: "basic",
+      createdVia: "admin",
+      isAgentVerified: !!(ctx.role === "agent" || ctx.role === "super_agent"),
+      verifiedByAgentId: ctx.role === "agent" || ctx.role === "super_agent" ? ctx.userId : undefined,
+    });
+
+    // Create CompanyUser entry (owner)
+    await CompanyUser.create({
+      companyId: employer._id,
+      userId: user._id,
+      email,
+      companyRole: "owner",
+      permissions: getDefaultPermissions("owner"),
+      invitedBy: user._id,
+      invitedAt: new Date(),
+      acceptedAt: new Date(),
+      status: "active",
+    });
+  } catch (creationErr) {
+    logger.error({ err: creationErr }, "[Employer Create] Rolling back partial employer creation");
+    await Promise.allSettled([
+      CompanyUser.deleteMany({ userId: user._id }),
+      Employer.deleteOne({ userId: user._id }),
+      User.deleteOne({ _id: user._id }),
+    ]);
+    return NextResponse.json({ error: "Could not create the employer. Please try again." }, { status: 500 });
   }
 
-  // Create Employer profile (matching employer-register flow)
-  const employer = await Employer.create({
-    userId: user._id,
-    ...payload.employerUpdate,
-    ...(agentId ? { agentId } : {}),
-    verificationLevel: "basic",
-    isAgentVerified: !!(ctx.role === "agent" || ctx.role === "super_agent"),
-    verifiedByAgentId: ctx.role === "agent" || ctx.role === "super_agent" ? ctx.userId : undefined,
-  });
-
-  // Create CompanyUser entry (owner)
-  await CompanyUser.create({
-    companyId: employer._id,
-    userId: user._id,
-    email,
-    companyRole: "owner",
-    permissions: getDefaultPermissions("owner"),
-    invitedBy: user._id,
-    invitedAt: new Date(),
-    acceptedAt: new Date(),
-    status: "active",
-  });
+  // EC-4: same default plan self-registered employers get (fire-and-forget).
+  autoAssignDefaultPlan(user._id.toString(), "employer").catch((err) =>
+    logger.error({ err }, "[Employer Create] Failed to auto-assign subscription"),
+  );
 
   // Link employer to agent's assignedEmployerIds
   if (agentId) {
@@ -497,22 +524,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
-  // Send welcome email with a password-setup link instead of the plaintext password
+  // Send welcome email with a password-setup link — never the password itself.
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
-  const loginUrl = `${baseUrl}/login`;
   const creatorName = ctx.role === "agent" || ctx.role === "super_agent" ? "Your MPLOYEDIN Agent" : "MPLOYEDIN Admin";
-  const rawSetupToken = crypto.randomBytes(32).toString("hex");
-  const hashedSetupToken = crypto.createHash("sha256").update(rawSetupToken).digest("hex");
-  await User.findByIdAndUpdate(user._id, {
-    passwordResetToken: hashedSetupToken,
-    passwordResetExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
-  });
-  const setupUrl = `${baseUrl}/en/reset-password?token=${rawSetupToken}`;
+  const setupUrl = `${baseUrl}/${ctx.locale === "ar" ? "ar" : "en"}/reset-password?token=${rawSetupToken}`;
   await sendEmail({
     to: email,
-    // Here the agent chose the password on the form, so the employer is sent
-    // the same one rather than a generated one.
-    ...EmailTemplates.employerWelcome(name, email, payload.password, setupUrl, creatorName, loginUrl),
+    ...EmailTemplates.employerAccountSetup(name, email, setupUrl, creatorName),
     userId: user._id.toString(),
     source: "employer-onboard",
     category: "onboarding",

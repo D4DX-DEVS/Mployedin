@@ -11,7 +11,7 @@ export const ALL_RESOURCES: Resource[] = [
   "ai_cv", "ai_match", "ai_assistant", "tasks",
   "job_attributes", "location_data", "cms", "contact_submissions", "offers",
   "subscriptions", "exhibitions", "resources", "targets", "onboarding",
-  "invoices",
+  "invoices", "insights",
 ];
 
 /** All available actions */
@@ -50,6 +50,8 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     targets: ["create", "read", "update", "delete", "export"],
     onboarding: ["create", "read", "update", "delete"],
     invoices: ["create", "read", "update", "delete", "export"],
+    // AI Data Access: read = query /api/insights; create/delete = issue/revoke mpi_ keys.
+    insights: ["create", "read", "delete"],
   },
   super_agent: {
     // "create"/"update" exist for tenant view only. Inside an employer they
@@ -210,5 +212,6 @@ export function getDashboardPath(role: UserRole, locale = "en"): string {
     employer: `/${locale}/employer`,
     job_seeker: `/${locale}/job-seeker`,
   };
-  return paths[role] ?? `/${locale}/job-seeker`;
+  // An unknown role must not land on any dashboard — send it to the public home.
+  return paths[role] ?? `/${locale}`;
 }

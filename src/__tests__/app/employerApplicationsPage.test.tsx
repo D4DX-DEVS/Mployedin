@@ -578,7 +578,7 @@ describe("EmployerApplicationsPage", () => {
       render(<ApplicationsWorkspace jobId="job-1" />);
 
       const chips = screen.getByRole("group", { name: /filter by stage/i });
-      expect(within(chips).getAllByRole("button").map((b) => b.textContent?.trim())).toEqual(["Shortlisted4"]);
+      expect(within(chips).getAllByRole("button").map((b) => b.textContent?.trim())).toEqual(["Shortlisted & later4"]);
       expect(within(chips).queryByRole("button", { name: /applied/i })).not.toBeInTheDocument();
     });
 
@@ -588,7 +588,7 @@ describe("EmployerApplicationsPage", () => {
     it("keeps counting candidates who have since advanced", () => {
       withCounts();
       render(<ApplicationsWorkspace jobId="job-1" />);
-      expect(screen.getByRole("button", { name: /shortlisted 4/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /shortlisted & later 4/i })).toBeInTheDocument();
     });
 
     it("leaves out anyone rejected or still untriaged", () => {
@@ -602,7 +602,7 @@ describe("EmployerApplicationsPage", () => {
       });
       render(<ApplicationsWorkspace jobId="job-1" />);
       // 1 shortlisted + 1 hired; applied, rejected and withdrawn are excluded.
-      expect(screen.getByRole("button", { name: /shortlisted 2/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /shortlisted & later 2/i })).toBeInTheDocument();
     });
 
     it("filters to the shortlist in one click, and back out again", async () => {
@@ -610,13 +610,13 @@ describe("EmployerApplicationsPage", () => {
       withCounts();
       render(<ApplicationsWorkspace jobId="job-1" />);
 
-      await user.click(screen.getByRole("button", { name: /shortlisted 4/i }));
+      await user.click(screen.getByRole("button", { name: /shortlisted & later 4/i }));
       await waitFor(() => expect(useApplicationsMock).toHaveBeenCalledWith(
         expect.objectContaining({ status: undefined, stageFrom: "shortlisted" }),
       ));
-      expect(screen.getByRole("button", { name: /shortlisted 4/i })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: /shortlisted & later 4/i })).toHaveAttribute("aria-pressed", "true");
 
-      await user.click(screen.getByRole("button", { name: /shortlisted 4/i }));
+      await user.click(screen.getByRole("button", { name: /shortlisted & later 4/i }));
       await waitFor(() => expect(useApplicationsMock).toHaveBeenLastCalledWith(
         expect.objectContaining({ status: undefined, stageFrom: undefined }),
       ));
@@ -634,12 +634,12 @@ describe("EmployerApplicationsPage", () => {
       const user = userEvent.setup();
       withCounts();
       const { rerender } = render(<ApplicationsWorkspace jobId="job-1" />);
-      await user.click(screen.getByRole("button", { name: /shortlisted 4/i }));
+      await user.click(screen.getByRole("button", { name: /shortlisted & later 4/i }));
 
       withCounts(0, 0);
       rerender(<ApplicationsWorkspace jobId="job-1" />);
 
-      expect(screen.getByRole("button", { name: /shortlisted 0/i })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: /shortlisted & later 0/i })).toHaveAttribute("aria-pressed", "true");
     });
 
     it("shows a dash until the totals arrive", () => {
@@ -648,7 +648,7 @@ describe("EmployerApplicationsPage", () => {
         isLoading: true,
       });
       render(<ApplicationsWorkspace jobId="job-1" />);
-      expect(screen.getByRole("button", { name: /shortlisted —/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /shortlisted & later —/i })).toBeInTheDocument();
     });
   });
   describe("Move Stage menu", () => {
@@ -672,12 +672,14 @@ describe("EmployerApplicationsPage", () => {
       expect(items[0]).toBe("Interviewing");
     });
 
-    it("keeps every other stage available below, backwards ones included", async () => {
+    it("keeps every other allowed stage below, backwards ones included", async () => {
       const { panel } = await openStageMenu();
 
       const menu = within(panel).getByRole("menu", { name: /move stage/i });
       const items = within(menu).getAllByRole("menuitem").map((n) => n.textContent?.trim());
-      expect(items).toEqual(["Interviewing", "Applied", "Selected", "Offer", "Hired", "Rejected"]);
+      // The transition map (lib/hiring/applicationTransitions) allows no jump
+      // from Shortlisted straight to Offer or Hired, so neither is offered.
+      expect(items).toEqual(["Interviewing", "Applied", "Selected", "Rejected"]);
       expect(within(menu).getByRole("group", { name: /move elsewhere/i })).toBeInTheDocument();
     });
 

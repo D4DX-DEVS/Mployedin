@@ -41,6 +41,18 @@ export interface IInvoicePayment {
   createdAt?: Date;
 }
 
+// ── Gateway checkout session (embedded) ──────────────────────────────────────
+export interface IInvoiceGatewaySession {
+  provider: "stripe" | "razorpay";
+  sessionId: string;
+  checkoutUrl?: string;
+  amount: number;
+  currency: string;
+  attempt: number;
+  createdAt: Date;
+  expiresAt?: Date;
+}
+
 // ── Billing Details (embedded) ───────────────────────────────────────────────
 export interface IBillingDetails {
   companyName?: string;
@@ -166,6 +178,25 @@ export interface IInvoice extends Document {
   refundedAmount: number;
   creditNoteNumber?: string;
   parentInvoiceId?: mongoose.Types.ObjectId;
+  /** Provider reference for credit notes created from a gateway refund (dedupe key). */
+  externalRef?: string;
+
+  // Online payment (Stripe / Razorpay)
+  /** Latest hosted-checkout session opened for this invoice. */
+  gatewaySession?: IInvoiceGatewaySession;
+  /** Number of checkout sessions opened — feeds provider idempotency keys. */
+  gatewayAttempt?: number;
+  /** Failed gateway attempts (provider ids + reason only — never card data). */
+  gatewayFailures?: Array<{ provider: string; paymentId?: string; reason?: string; at: Date }>;
+  /**
+   * True on invoices whose subscription effect (new plan / plan change /
+   * renewal) is applied only once the invoice is paid. Cleared on fulfilment.
+   */
+  activationPending?: boolean;
+  /** When the paid invoice's subscription effect was applied. */
+  fulfilledAt?: Date;
+  /** Unused-days credit from the previous plan deducted from this invoice. */
+  prorationCredit?: number;
 
   createdAt: Date;
   updatedAt: Date;
@@ -356,6 +387,42 @@ const InvoiceSchema = new Schema<IInvoice>(
     refundedAmount: { type: Number, min: 0, default: 0 },
     creditNoteNumber: String,
     parentInvoiceId: { type: Schema.Types.ObjectId, ref: "Invoice" },
+    externalRef: { type: String, maxlength: 200 },
+
+    // Online payment
+    gatewaySession: {
+      type: new Schema<IInvoiceGatewaySession>(
+        {
+          provider: { type: String, enum: ["stripe", "razorpay"], required: true },
+          sessionId: { type: String, required: true, maxlength: 200 },
+          checkoutUrl: { type: String, maxlength: 2000 },
+          amount: { type: Number, required: true, min: 0 },
+          currency: { type: String, required: true, maxlength: 3 },
+          attempt: { type: Number, required: true, min: 1 },
+          createdAt: { type: Date, required: true },
+          expiresAt: Date,
+        },
+        { _id: false },
+      ),
+    },
+    gatewayAttempt: { type: Number, min: 0, default: 0 },
+    gatewayFailures: {
+      type: [
+        new Schema(
+          {
+            provider: { type: String, maxlength: 20 },
+            paymentId: { type: String, maxlength: 200 },
+            reason: { type: String, maxlength: 200 },
+            at: { type: Date, default: Date.now },
+          },
+          { _id: false },
+        ),
+      ],
+      default: undefined,
+    },
+    activationPending: Boolean,
+    fulfilledAt: Date,
+    prorationCredit: { type: Number, min: 0 },
   },
   { timestamps: true },
 );
@@ -369,6 +436,10 @@ InvoiceSchema.index({ employerId: 1 });
 InvoiceSchema.index({ agentId: 1 });
 InvoiceSchema.index({ dueDate: 1, status: 1 });
 InvoiceSchema.index({ invoiceNumber: 1 });
+// Webhook / return-page lookups by provider ids.
+InvoiceSchema.index({ "gatewaySession.sessionId": 1 }, { sparse: true });
+InvoiceSchema.index({ "payments.referenceNumber": 1 }, { sparse: true });
+InvoiceSchema.index({ parentInvoiceId: 1, externalRef: 1 }, { sparse: true });
 
 // ── Pre-save: auto-calculate totals ──────────────────────────────────────────
 // All derived amounts are computed in integer minor units (cents/fils) so IEEE754

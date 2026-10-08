@@ -65,7 +65,7 @@ jest.mock("@/models/Job", () => ({
       mockJobCtor(doc);
       return { ...doc, _id: "64b000000000000000000010", save: mockSave };
     }),
-    { findById: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(SOURCE) }) },
+    { findOne: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(SOURCE) }) },
   ),
 }));
 jest.mock("@/models/Employer", () => ({
