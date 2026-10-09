@@ -643,7 +643,9 @@ export function Sidebar({
                 className={cn(
                   // The dual-tier rail is light (data-sidebar-tone="theme-aware"),
                   // so the white heading it used to get was invisible on it.
-                  "px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70 first:pt-1"
+                  // BUG-009: /70 opacity on 10px uppercase failed WCAG contrast —
+                  // full-opacity muted keeps the hierarchy without the failure.
+                  "px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground first:pt-1"
                 )}
               >
                 {groupLabel}
@@ -654,7 +656,7 @@ export function Sidebar({
               <div
                 key="group-main"
                 data-sidebar-section-label=""
-                className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70"
+                className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
               >
                 {locale === "ar" ? "الرئيسية" : "MAIN"}
               </div>
@@ -1047,7 +1049,7 @@ export function Sidebar({
                   return groups.map((g) => (
                     <div key={g.key || "_ungrouped"}>
                       {g.label && (
-                        <h3 data-sidebar-section-label="" className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/75">
+                        <h3 data-sidebar-section-label="" className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                           {g.label}
                         </h3>
                       )}

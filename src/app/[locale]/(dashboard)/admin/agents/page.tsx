@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { Inbox } from "lucide-react";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { UserAvatar } from "@/components/shared/UserAvatar";
@@ -137,11 +138,27 @@ export default function AdminAgentsPage() {
     { header: tr("exportStatus"), key: "isActive", formatter: (v) => v !== false ? tr("active") : tr("inactive") },
     { header: tr("exportJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllAgents = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (search.trim()) base.set("search", search.trim());
+    if (statusFilter !== "all") base.set("status", statusFilter);
+    base.set("sortBy", sortBy);
+    base.set("sortOrder", sortOrder);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/admin/agents?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.agents ?? []) as Record<string, unknown>[]),
+        total: Number((json.pagination as { total?: number } | undefined)?.total ?? 0),
+      }),
+    );
+  }, [search, statusFilter, sortBy, sortOrder]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: agents as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agents",
     title: tr("agents"),
+    fetchAll: fetchAllAgents,
   });
 
   // Fetch super agents with region data for dropdown + auto-fill
@@ -176,7 +193,7 @@ export default function AdminAgentsPage() {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (search) params.set("search", search);
+    if (search.trim()) params.set("search", search.trim());
     if (statusFilter !== "all") params.set("status", statusFilter);
     params.set("sortBy", sortBy);
     params.set("sortOrder", sortOrder);

@@ -222,7 +222,7 @@ export default function SuperAgentLeadsPage() {
     const f = { ...filters, ...overrideFilters };
     const params = new URLSearchParams({ page: String(page), limit: String(limit), distinct: "true" });
     if (f.status) params.set("status", f.status);
-    if (f.search) params.set("search", f.search);
+    if (f.search.trim()) params.set("search", f.search.trim());
     if (f.country) params.set("country", f.country);
     if (f.industry) params.set("industry", f.industry);
     if (f.source) params.set("source", f.source);

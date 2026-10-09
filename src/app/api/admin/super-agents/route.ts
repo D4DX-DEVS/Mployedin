@@ -55,7 +55,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const directoryMode = searchParams.get("directory") === "create-target";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(directoryMode ? 500 : 100, parseInt(searchParams.get("limit") ?? "10"));
-  const search = searchParams.get("search") ?? "";
+  const search = searchParams.get("search")?.trim() ?? "";
   const targetYear = Math.max(2020, parseInt(searchParams.get("targetYear") ?? String(new Date().getFullYear())));
   const availabilityFilter = searchParams.get("availability") ?? "all";
   const riskFilter = searchParams.get("riskScore") ?? "all";

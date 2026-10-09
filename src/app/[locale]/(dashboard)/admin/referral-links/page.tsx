@@ -12,6 +12,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
@@ -155,11 +156,27 @@ export default function AdminReferralLinksPage() {
     { header: t("tableHeaderExpires"), key: "expiresAt" as keyof ReferralLinkItem, formatter: (v) => formatDate(v as string) },
     { header: t("tableHeaderCreated"), key: "createdAt" as keyof ReferralLinkItem, formatter: (v) => formatDate(v as string) },
   ];
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllReferralLinks = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (search) base.set("search", search);
+    if (audienceFilter) base.set("audience", audienceFilter);
+    base.set("sortBy", sortBy);
+    base.set("sortOrder", sortOrder);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/referral-links?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.links ?? []) as Record<string, unknown>[]),
+        total: Number(json.total ?? 0),
+      }),
+    );
+  }, [search, audienceFilter, sortBy, sortOrder]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: links as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "referral-links",
     title: t("exportTitle"),
+    fetchAll: fetchAllReferralLinks,
   });
 
   return (

@@ -179,10 +179,10 @@ export default function AdminAnalyticsPage() {
     try {
       const reportTitle = resolvedReportTitle;
       const rows = parseReportRows(result, reportTitle);
-      exportExcelRows([
+      await exportExcelRows([
         ["Report", "Section", "Type", "Content"],
         ...rows.map((row) => [reportTitle, row.section, row.kind, row.content]),
-      ], `${getExportFileBaseName()}.xls`, reportTitle);
+      ], `${getExportFileBaseName()}.xlsx`, reportTitle);
     } catch {
       toast.error(t("exportFailedExcel"));
     } finally {

@@ -32,6 +32,19 @@ jest.mock("@/models/Agent", () => ({
   },
 }));
 
+// BUG-03: the Active Accounts tile resolves Employer.userId -> User.isActive.
+// Both mocked (same bson-ESM reason as the other models): 2 visible, both active.
+jest.mock("@/models/Employer", () => ({
+  __esModule: true,
+  default: {
+    find: () => ({ select: () => ({ lean: async () => [{ userId: "u-e1" }, { userId: "u-e2" }] }) }),
+  },
+}));
+jest.mock("@/models/User", () => ({
+  __esModule: true,
+  default: { countDocuments: async () => 2 },
+}));
+
 jest.mock("@/models/Job", () => ({
   __esModule: true,
   default: {
@@ -73,6 +86,25 @@ jest.mock("@/lib/agents/assignedRegion", () => ({
 jest.mock("@/lib/auth/agentRestrictions", () => ({
   __esModule: true,
   getAgentEmployerIds: jest.fn(async () => ["employer-1", "employer-2"]),
+  getAgentSeekerArea: jest.fn(async () => null),
+  seekerRegionMatch: jest.fn(() => null),
+}));
+
+// The talent spotlight: seeker counts plus the three newest onboarded and
+// premium seekers.
+const recentSeekersChain = {
+  sort: () => recentSeekersChain,
+  limit: () => recentSeekersChain,
+  select: () => recentSeekersChain,
+  populate: () => recentSeekersChain,
+  lean: async () => [],
+};
+jest.mock("@/models/JobSeeker", () => ({
+  __esModule: true,
+  default: {
+    countDocuments: async () => 0,
+    find: () => recentSeekersChain,
+  },
 }));
 
 jest.mock("@/models/Application", () => ({

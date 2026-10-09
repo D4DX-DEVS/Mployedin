@@ -23,6 +23,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import {
@@ -266,12 +267,30 @@ export default function AdminCommissionsPage() {
     { label: t("paidOutLabel"), value: moneyStrip((row) => row.paid), icon: ReceiptText, iconSurfaceClassName: "workspace-tone-sky" },
   ];
 
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllCommissions = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (status) base.set("status", status);
+    if (typeFilter) base.set("type", typeFilter);
+    if (searchTerm.trim()) base.set("search", searchTerm.trim());
+    if (dateFrom) base.set("dateFrom", dateFrom);
+    if (dateTo) base.set("dateTo", dateTo);
+    if (currencyFilter) base.set("currency", currencyFilter);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/commissions?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: (((json.items ?? json.commissions ?? []) as Record<string, unknown>[])),
+        total: Number(json.total ?? json.totalCount ?? (json.pagination as { total?: number } | undefined)?.total ?? 0),
+      }),
+    );
+  }, [status, typeFilter, searchTerm, dateFrom, dateTo, currencyFilter]);
   const exportColumns = commissionExportColumns(t, TYPE_LABELS);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: commissions as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "commissions",
     title: t("exportTitle"),
+    fetchAll: fetchAllCommissions,
   });
 
 

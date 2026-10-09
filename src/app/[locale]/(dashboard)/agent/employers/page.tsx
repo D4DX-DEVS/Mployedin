@@ -8,6 +8,7 @@ import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/pas
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePermissions } from "@/hooks/usePermissions";
 import Link from "next/link";
@@ -104,7 +105,7 @@ export default function AgentEmployersPage() {
     setLoadError(false);
     try {
       const params = pagination.paginationParams();
-      if (search) params.set("search", search);
+      if (search.trim()) params.set("search", search.trim());
       const res = await fetch(`/api/employers?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -247,11 +248,25 @@ export default function AgentEmployersPage() {
     { header: tc("active"), key: "isActive", formatter: (v) => v ? tc("yes") : tc("no") },
   ];
 
+  // BUG-06: export the full filtered result set, not just the visible page.
+  const fetchAllEmployers = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (search.trim()) base.set("search", search.trim());
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/employers?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.employers ?? []) as Record<string, unknown>[]),
+        total: Number((json.pagination as { total?: number } | undefined)?.total ?? json.total ?? 0),
+      }),
+    );
+  }, [search]);
+
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: employers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agent-employers",
     title: t("exportTitle"),
+    fetchAll: fetchAllEmployers,
   });
 
   const listProps: EmployerListProps = {
@@ -261,6 +276,7 @@ export default function AgentEmployersPage() {
     canUpdate: can("employers", "update"),
     canDelete: can("employers", "delete"),
     switchingEmployerId,
+    hasActiveFilters: search.trim().length > 0,
     onSwitch: handleSwitchToEmployerView,
     onEdit: (em) => { setEditEmployer(em); setModalOpen(true); },
     onDelete: handleDelete,

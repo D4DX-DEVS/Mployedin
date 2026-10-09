@@ -9,6 +9,7 @@ import Placement from "@/models/Placement";
 import Commission from "@/models/Commission";
 import Interview from "@/models/Interview";
 import Offer from "@/models/Offer";
+import { getAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -42,6 +43,24 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
   const sixtyDaysAgo = new Date(now.getTime() - THIRTY_DAYS_MS * 2);
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
+  // BUG-04: single source of truth with the lists and the agent dashboard —
+  // portfolio scope (own jobs + jobs at visible employers), NOT bare agentId.
+  // Application.agentId is almost never stamped, so bare-agentId counts
+  // returned ~0 applications; Job.agentId misses employer-owned jobs.
+  const visibleEmployerIds = await getAgentEmployerIds(String(ctx.userId));
+  const portfolioFilter: Record<string, unknown> = {
+    $or: [
+      { agentId },
+      ...(visibleEmployerIds.length > 0 ? [{ employerId: { $in: visibleEmployerIds } }] : []),
+    ],
+  };
+  const portfolioJobIds = (
+    await Job.find({ ...portfolioFilter, deletedAt: null }).select("_id").lean()
+  ).map((j) => j._id);
+  const appFilter: Record<string, unknown> =
+    portfolioJobIds.length > 0 ? { jobId: { $in: portfolioJobIds } } : { _id: { $in: [] } };
+  const jobFilter = { ...portfolioFilter, deletedAt: null };
+
   // ── KPIs with trend comparisons ──
   const [
     currentLeads, previousLeads,
@@ -53,19 +72,19 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
   ] = await Promise.all([
     Lead.countDocuments({ agentId, createdAt: { $gte: thirtyDaysAgo } }),
     Lead.countDocuments({ agentId, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
-    Placement.countDocuments({ agentId, createdAt: { $gte: thirtyDaysAgo } }),
-    Placement.countDocuments({ agentId, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
-    Application.countDocuments({ agentId, createdAt: { $gte: thirtyDaysAgo } }),
-    Application.countDocuments({ agentId, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
+    Placement.countDocuments({ ...portfolioFilter, createdAt: { $gte: thirtyDaysAgo } }),
+    Placement.countDocuments({ ...portfolioFilter, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
+    Application.countDocuments({ ...appFilter, createdAt: { $gte: thirtyDaysAgo } }),
+    Application.countDocuments({ ...appFilter, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
     Interview.countDocuments({ agentId, createdAt: { $gte: thirtyDaysAgo } }),
     Interview.countDocuments({ agentId, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
     Lead.countDocuments({ agentId }),
-    Placement.countDocuments({ agentId }),
-    Application.countDocuments({ agentId }),
-    Job.countDocuments({ agentId, status: "active" }),
-    // Offers have no agentId; scope them to the agent's assigned employers.
-    agent.assignedEmployerIds?.length
-      ? Offer.countDocuments({ employerId: { $in: agent.assignedEmployerIds } })
+    Placement.countDocuments(portfolioFilter),
+    Application.countDocuments(appFilter),
+    Job.countDocuments({ ...jobFilter, status: "active" }),
+    // Offers have no agentId; scope them to the agent's visible employers.
+    visibleEmployerIds.length > 0
+      ? Offer.countDocuments({ employerId: { $in: visibleEmployerIds } })
       : Promise.resolve(0),
     Interview.countDocuments({ agentId, status: "scheduled" }),
   ]);
@@ -85,9 +104,9 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
   const leadFunnelMap: Record<string, number> = {};
   for (const r of leadFunnel) leadFunnelMap[r._id] = r.count;
 
-  // ── Application Status Breakdown ──
+  // ── Application Status Breakdown (portfolio scope — BUG-04) ──
   const appStatus = await Application.aggregate([
-    { $match: { agentId } },
+    { $match: appFilter },
     { $group: { _id: "$status", count: { $sum: 1 } } },
     { $sort: { count: -1 } },
   ]);
@@ -115,11 +134,11 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
       { $group: { _id: { y: { $year: "$createdAt" }, m: { $month: "$createdAt" } }, count: { $sum: 1 } } },
     ]),
     Placement.aggregate([
-      { $match: { agentId, createdAt: { $gte: sixMonthsAgo } } },
+      { $match: { ...portfolioFilter, createdAt: { $gte: sixMonthsAgo } } },
       { $group: { _id: { y: { $year: "$createdAt" }, m: { $month: "$createdAt" } }, count: { $sum: 1 } } },
     ]),
     Application.aggregate([
-      { $match: { agentId, createdAt: { $gte: sixMonthsAgo } } },
+      { $match: { ...appFilter, createdAt: { $gte: sixMonthsAgo } } },
       { $group: { _id: { y: { $year: "$createdAt" }, m: { $month: "$createdAt" } }, count: { $sum: 1 } } },
     ]),
   ]);
@@ -166,7 +185,7 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
       activeJobs,
       totalOffers,
       scheduledInterviews,
-      employers: agent.assignedEmployerIds?.length ?? 0,
+      employers: visibleEmployerIds.length,
       overdueFollowUps,
     },
     trends: {

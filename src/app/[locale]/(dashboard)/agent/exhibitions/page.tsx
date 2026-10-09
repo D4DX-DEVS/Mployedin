@@ -233,11 +233,13 @@ export default function AgentExhibitionsPage() {
     pendingReview: number;
     approved: number;
     rejected: number;
+    revisionRequested: number;
   }>({
     total: 0,
     pendingReview: 0,
     approved: 0,
     rejected: 0,
+    revisionRequested: 0,
   });
 
   // Fetch agent's default currency and country on mount
@@ -270,8 +272,8 @@ export default function AgentExhibitionsPage() {
       if (categoryFilter !== "all") {
         params.set("category", categoryFilter);
       }
-      if (search) {
-        params.set("search", search);
+      if (search.trim()) {
+        params.set("search", search.trim());
       }
       const response = await fetch(`/api/exhibitions?${params.toString()}`);
       if (response.ok) {
@@ -284,6 +286,7 @@ export default function AgentExhibitionsPage() {
             pendingReview: data.summary.pendingReview ?? 0,
             approved: data.summary.approved ?? 0,
             rejected: data.summary.rejected ?? 0,
+            revisionRequested: data.summary.revisionRequested ?? 0,
           });
         }
       }
@@ -538,7 +541,7 @@ export default function AgentExhibitionsPage() {
           { label: tc("total"), value: total, icon: CalendarDays, tone: "primary" },
           { label: t("statusSubmitted"), value: summary.pendingReview, icon: Send, tone: "info" },
           { label: t("approved"), value: summary.approved, icon: Save, tone: "success" },
-          { label: t("statusRevision"), value: summary.rejected, icon: AlertTriangle, tone: "warning" },
+          { label: t("statusRevision"), value: summary.revisionRequested, icon: AlertTriangle, tone: "warning" },
         ] : undefined}
       />
 

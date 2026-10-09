@@ -208,7 +208,7 @@ export default function AgentInterviewsPage() {
       if (jobFilter !== "all") params.set("jobId", jobFilter);
       if (typeFilter) params.set("type", typeFilter);
       if (outcomeFilter) params.set("outcome", outcomeFilter);
-      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
 

@@ -19,6 +19,7 @@ import {
 import { useUserSearch, type SearchUser } from "@/hooks/useUserSearch";
 import { useSubscriptionPlans, type SubscriptionPlanItem } from "@/hooks/useSubscriptionPlans";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -314,11 +315,33 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
     { header: t("tableHeaderDaysLeft"), key: "endDate" as keyof AdminSubscriptionItem, formatter: (v, r) => (r as unknown as AdminSubscriptionItem).status === "active" ? String(daysUntil(v as string)) : "—" },
   ], [t]);
 
+  // BUG-004: export the full filtered result set, not just the visible page.
+  // Mirrors queryFilters above (same filters, pages walked to the total).
+  const fetchAllSubscriptions = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (filters.status) base.set("status", filters.status);
+    if (filters.role) base.set("role", filters.role);
+    if (filters.planId) base.set("planId", filters.planId);
+    if (debouncedSearch) base.set("search", debouncedSearch);
+    base.set("sortBy", sortBy);
+    base.set("sortOrder", sortOrder);
+    if (filters.autoRenew) base.set("autoRenew", filters.autoRenew);
+    if (expiring) base.set("expiring", expiring);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/admin/subscriptions?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.subscriptions ?? []) as Record<string, unknown>[]),
+        total: Number(json.total ?? 0),
+      }),
+    );
+  }, [filters, debouncedSearch, expiring, sortBy, sortOrder]);
+
   const { handleExportCsv: exportCsv, handleExportExcel: exportExcel, handleExportPdf: exportPdf } = useTableExport({
     data: subscriptions as unknown as Record<string, unknown>[],
     columns: subExportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "subscribers-export",
     title: t("exportTitleSubscribers"),
+    fetchAll: fetchAllSubscriptions,
   });
 
   return (

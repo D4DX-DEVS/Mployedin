@@ -33,7 +33,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
   }
 
-  const search = params.get("search") ?? "";
+  const search = params.get("search")?.trim() ?? "";
   const page = Math.max(1, Number(params.get("page")) || 1);
   const limit = Math.min(100, Math.max(1, Number(params.get("limit")) || 10));
 

@@ -20,7 +20,7 @@ import logger from "@/lib/logger";
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
   const { searchParams } = new URL(req.url);
-  const search = searchParams.get("search");
+  const search = searchParams.get("search")?.trim() || undefined;
   const performance = searchParams.get("performance"); // high_performer | needs_attention | slow_response | no_activity
   const status = searchParams.get("status"); // active | inactive — the account switch, not performance
   const leadsMin = searchParams.get("leadsMin");

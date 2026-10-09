@@ -92,7 +92,7 @@ export default function SuperAgentInvoicesPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (statusFilter) params.set("status", statusFilter);
       if (categoryFilter) params.set("category", categoryFilter);
-      if (search) params.set("search", search);
+      if (search.trim()) params.set("search", search.trim());
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
       const res = await fetch(`/api/invoices?${params}`);
@@ -112,7 +112,7 @@ export default function SuperAgentInvoicesPage() {
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
   useEffect(() => { document.title = t("pageTitle"); }, [t]);
 
-  const hasActiveFilters = Boolean(statusFilter || categoryFilter || dateFrom || dateTo);
+  const hasActiveFilters = Boolean(statusFilter || categoryFilter || dateFrom || dateTo || search.trim());
 
   const exportColumns: ExportColumn<Invoice>[] = [
     { header: t("invoiceNumber"), key: "invoiceNumber" },
@@ -282,6 +282,7 @@ export default function SuperAgentInvoicesPage() {
               loading={loading}
               role="super_agent"
               onSelect={setSelectedInvoiceId}
+              hasActiveFilters={hasActiveFilters}
             />
           </section>
           <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

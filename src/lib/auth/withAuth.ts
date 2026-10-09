@@ -145,6 +145,36 @@ export function withAuth(
     }).companyPermissions;
     const jobAccess = (session.user as unknown as { jobAccess?: string[] }).jobAccess ?? [];
 
+    // BUG-003: deactivation must sign existing sessions out immediately, not
+    // at the next JWT refresh (up to 5 min later). Fresh sign-ins are already
+    // refused in authorize()/jwt; without this per-request check a deactivated
+    // account's bearer session kept returning 200 on every data API.
+    //
+    // The live-connection gate keeps unit tests (mocked connectDB, no database)
+    // from paying a real round-trip: with no connection there is nothing to
+    // re-check against, and the JWT periodic re-check remains the backstop.
+    try {
+      await connectDB();
+      const mongoose = (await import("mongoose")).default;
+      if (mongoose.connection.readyState === 1) {
+        const { default: User } = await import("@/models/User");
+        const live = await User.findById(userId)
+          .select("isActive")
+          .lean<{ isActive?: boolean } | null>();
+        if (!live || live.isActive === false) {
+          return NextResponse.json(
+            { error: "Account deactivated" },
+            { status: 401 }
+          );
+        }
+      }
+    } catch (err) {
+      // Fail open on transient DB errors — the handler's own queries will fail
+      // anyway, and hard-blocking here would turn a blip into a full outage.
+      // A definitively inactive account is refused above, never here.
+      logger.debug({ err }, "[withAuth] isActive re-check skipped");
+    }
+
     // A colleague of an employer: they hold role "employer" but own no Employer
     // document, so the session resolved the owner's user id for them. Swap it in
     // so every employer lookup resolves the company, and gate which paths they

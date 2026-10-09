@@ -24,6 +24,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 
@@ -304,11 +305,32 @@ export default function AdminInterviewOversightPage() {
     { header: t("exportHeaderScheduled"), key: "scheduledAt", formatter: (v) => v ? formatDateTime(new Date(String(v))) : "—" },
     { header: t("exportHeaderDurationMin"), key: "duration", formatter: (v) => String(v ?? "—") },
   ];
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllInterviews = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (search) base.set("search", search);
+    if (statusFilter !== "all") base.set("status", statusFilter);
+    if (typeFilter !== "all") base.set("type", typeFilter);
+    if (dateRange !== "all") base.set("dateRange", dateRange);
+    if (selectedEmployer !== "all") base.set("employerId", selectedEmployer);
+    if (selectedAgent !== "all") base.set("agentId", selectedAgent);
+    if (selectedSuperAgent !== "all") base.set("superAgentId", selectedSuperAgent);
+    base.set("sortBy", sortBy);
+    base.set("sortOrder", sortOrder);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/admin/interviews?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.interviews ?? []) as Record<string, unknown>[]),
+        total: Number(json.total ?? 0),
+      }),
+    );
+  }, [search, statusFilter, typeFilter, dateRange, selectedEmployer, selectedAgent, selectedSuperAgent, sortBy, sortOrder]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: interviews as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "interviews",
     title: t("interviewOversight"),
+    fetchAll: fetchAllInterviews,
   });
 
   // Platform-wide hero stats from the API; fall back to current-page data.

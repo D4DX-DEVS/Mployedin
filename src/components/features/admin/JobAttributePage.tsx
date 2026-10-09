@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { PlatformDataTabs } from "@/components/features/admin/PlatformDataTabs";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
@@ -26,6 +27,7 @@ import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { singularizeTitle } from "@/lib/ui/singularize";
 
 interface AttributeItem {
   _id: string;
@@ -137,6 +139,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
     if (!res.ok) {
       throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: CREATE_FIELDS });
     }
+    toast.success(t("createSuccess"));
     fetchItems();
   };
 
@@ -157,6 +160,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
     if (!res.ok) {
       throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: CREATE_FIELDS });
     }
+    toast.success(t("updateSuccess"));
     setEditItem(null);
     fetchItems();
   };
@@ -164,7 +168,12 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
   const handleDelete = async (id: string) => {
     const ok = await confirmDialog(t("confirmDelete"));
     if (!ok) return;
-    await fetch(`/api/admin/job-attributes/${category}/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/job-attributes/${category}/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error(t("deleteFailed"));
+      return;
+    }
+    toast.success(t("deleteSuccess"));
     fetchItems();
   };
 
@@ -326,7 +335,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
       <CrudModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        title={t("addTitle", { title: displayTitle.replace(/s$/, "") })}
+        title={t("addTitle", { title: singularizeTitle(displayTitle) })}
         fields={CREATE_FIELDS}
         onSubmit={handleCreate}
       />
@@ -334,7 +343,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
       <CrudModal
         open={!!editItem}
         onClose={() => setEditItem(null)}
-        title={t("editTitle", { title: displayTitle.replace(/s$/, "") })}
+        title={t("editTitle", { title: singularizeTitle(displayTitle) })}
         fields={CREATE_FIELDS}
         initialValues={
           editItem

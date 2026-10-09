@@ -39,6 +39,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const experienceYears = parseInt(searchParams.get("experienceYears") ?? "0"); // minimum experience years
   const referred = searchParams.get("referred")?.trim();                // any | agent | super_agent | none | mine
   const view = searchParams.get("view")?.trim();                        // area: only seekers in the caller's area
+  const onboarded = searchParams.get("onboarded")?.trim();              // "1": only isOnboarded seekers (dashboard deep-link)
+  const premium = searchParams.get("premium")?.trim();                  // "1": only badges[] = premium (dashboard deep-link)
 
   // ── Agent scoping — an agent sees only their own job seekers ───
   let agentScopeFilter: Record<string, unknown> = {};
@@ -148,6 +150,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     filterConditions.push({ skills: { $in: skills.map(s => new RegExp(escapeRegex(s), "i")) } });
   }
   if (hasCV === "1") filterConditions.push({ "cv.originalUrl": { $exists: true, $ne: "" } });
+  if (onboarded === "1") filterConditions.push({ isOnboarded: true });
+  if (premium === "1") filterConditions.push({ badges: "premium" });
   if (jobType) filterConditions.push({ preferredJobType: jobType });
   if (education) {
     // Education synonym expansion — ONLY spelling variants of the same degree, not related degrees

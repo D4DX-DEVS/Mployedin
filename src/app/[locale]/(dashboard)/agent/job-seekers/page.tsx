@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { WorkspaceTabs, type WorkspaceTab } from "@/components/shared/WorkspaceTabs";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -18,8 +19,9 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, BriefcaseBusiness, Handshake, Edit2, Inbox, MapPin, UserRoundSearch, Users } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Handshake, Edit2, Inbox, MapPin, UserRoundSearch, Users, X, Crown } from "lucide-react";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
@@ -45,6 +47,7 @@ interface JobSeeker {
   availabilityStatus?: string;
   preferredJobType?: string;
   cv?: { originalUrl?: string };
+  badges?: string[];
   referralSummary?: ReferralSummary;
   /** "area": lives in the agent's area — view only; "own": the agent's to edit. */
   staffAccess?: "own" | "area";
@@ -114,6 +117,10 @@ export default function AgentJobSeekersPage() {
   const [hasCV, setHasCV] = useState(false);
   const [jobType, setJobType] = useUrlFilter("jobType", "");
   const [sortBy, setSortBy] = useState("newest");
+  // Dashboard deep-links: ?onboarded=1 (isOnboarded) and ?premium=1 (badges).
+  // Both round-trip in the URL so the dashboard metric and this list agree.
+  const [onboardedOnly, setOnboardedOnly] = useUrlFilter("onboarded", "");
+  const [premiumOnly, setPremiumOnly] = useUrlFilter("premium", "");
   // All my job seekers | In my area | Referred by me (client report
   // 2026-09-30, #5). "Referred by me" used to be a toggle in the filter panel.
   const [view] = useUrlFilter("view", "all", { allow: VIEWS });
@@ -139,6 +146,8 @@ export default function AgentJobSeekersPage() {
     skillsFilter,
     hasCV,
     jobType,
+    onboardedOnly === "1",
+    premiumOnly === "1",
     minProfile > 0 || maxProfile < 100,
   ].filter(Boolean).length;
 
@@ -150,19 +159,23 @@ export default function AgentJobSeekersPage() {
     setSkillsFilter("");
     setHasCV(false);
     setJobType("");
+    setOnboardedOnly("");
+    setPremiumOnly("");
     setSortBy("newest");
   };
 
   const fetchSeekers = useCallback(async () => {
     setLoading(true);
     const params = pagination.paginationParams();
-    if (search) params.set("search", search);
+    if (search.trim()) params.set("search", search.trim());
     if (availability) params.set("availability", availability);
     if (minProfile > 0) params.set("minProfile", String(minProfile));
     if (maxProfile < 100) params.set("maxProfile", String(maxProfile));
     if (skillsFilter) params.set("skills", skillsFilter);
     if (locationFilter) params.set("location", locationFilter);
     if (hasCV) params.set("hasCV", "1");
+    if (onboardedOnly === "1") params.set("onboarded", "1");
+    if (premiumOnly === "1") params.set("premium", "1");
     if (view === "referred") params.set("referred", "mine");
     if (view === "area") params.set("view", "area");
     if (jobType) params.set("jobType", jobType);
@@ -176,11 +189,36 @@ export default function AgentJobSeekersPage() {
     }
     setLoading(false);
 
-  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, view, jobType, sortBy, pagination.page, pagination.limit]);
+  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, onboardedOnly, premiumOnly, view, jobType, sortBy, pagination.page, pagination.limit]);
 
   useEffect(() => { fetchSeekers(); }, [fetchSeekers]);
 
-  useEffect(() => { pagination.resetPage(); }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, view, jobType, sortBy]);
+  useEffect(() => { pagination.resetPage(); }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, onboardedOnly, premiumOnly, view, jobType, sortBy]);
+
+  // Premium is the `premium` entry in badges[] — what the dashboard's
+  // Premium card and ?premium=1 count. Only seekers the agent manages.
+  const [premiumPendingId, setPremiumPendingId] = useState<string | null>(null);
+  const togglePremium = async (s: JobSeeker) => {
+    const next = !(s.badges ?? []).includes("premium");
+    setPremiumPendingId(s._id);
+    try {
+      const res = await fetch(`/api/job-seekers/${s._id}/premium`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ premium: next }),
+      });
+      if (!res.ok) {
+        toast.error(t("premiumUpdateError"));
+        return;
+      }
+      setSeekers((rows) => rows.map((r) => (r._id === s._id
+        ? { ...r, badges: next ? [...(r.badges ?? []), "premium"] : (r.badges ?? []).filter((b) => b !== "premium") }
+        : r)));
+      toast.success(next ? t("premiumGranted", { name: s.userId?.name ?? "" }) : t("premiumRevoked", { name: s.userId?.name ?? "" }));
+    } catch {
+      toast.error(t("premiumUpdateError"));
+    } finally {
+      setPremiumPendingId(null);
+    }
+  };
 
   const handleSave = async (values: Record<string, string>) => {
     if (!editSeeker) return;
@@ -210,11 +248,37 @@ export default function AgentJobSeekersPage() {
     { header: t("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(String(v), locale) : "" },
   ];
 
+  // BUG-06: export the full filtered result set, not just the visible page.
+  const fetchAllSeekers = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (search.trim()) base.set("search", search.trim());
+    if (availability) base.set("availability", availability);
+    if (minProfile > 0) base.set("minProfile", String(minProfile));
+    if (maxProfile < 100) base.set("maxProfile", String(maxProfile));
+    if (skillsFilter.trim()) base.set("skills", skillsFilter.trim());
+    if (locationFilter.trim()) base.set("location", locationFilter.trim());
+    if (hasCV) base.set("hasCV", "1");
+    if (onboardedOnly === "1") base.set("onboarded", "1");
+    if (premiumOnly === "1") base.set("premium", "1");
+    if (view === "referred") base.set("referred", "mine");
+    if (view === "area") base.set("view", "area");
+    if (jobType) base.set("jobType", jobType);
+    if (sortBy !== "newest") base.set("sort", sortBy);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/job-seekers?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.items ?? []) as Record<string, unknown>[]),
+        total: Number(json.total ?? 0),
+      }),
+    );
+  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, onboardedOnly, premiumOnly, view, jobType, sortBy]);
+
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: seekers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agent-job-seekers",
     title: t("exportTitle"),
+    fetchAll: fetchAllSeekers,
   });
 
   const completenessColor = (_pct: number) => "bg-primary";
@@ -303,6 +367,20 @@ export default function AgentJobSeekersPage() {
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
         />
+        {/* Dashboard deep-link chips: the metric links here with ?onboarded=1 /
+            ?premium=1, so the active filter must be visible and removable. */}
+        {onboardedOnly === "1" && (
+          <Button variant="outline" size="sm" onClick={() => { setOnboardedOnly(""); pagination.resetPage(); }} className="h-11 shrink-0 rounded-lg border-primary/25 bg-primary/5 px-3 text-primary hover:bg-primary/10 sm:h-9">
+            <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{t("filterOnboarded")}</span>
+          </Button>
+        )}
+        {premiumOnly === "1" && (
+          <Button variant="outline" size="sm" onClick={() => { setPremiumOnly(""); pagination.resetPage(); }} className="h-11 shrink-0 rounded-lg border-amber-300/40 bg-amber-50 px-3 text-amber-700 hover:bg-amber-100 sm:h-9">
+            <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{t("filterPremium")}</span>
+          </Button>
+        )}
         {/* In the search row, as on super-agent Job Seekers: as the bar's
             footer it sat alone on a second line under the search box. */}
         <CandidateDataNotice variant="candidateList" compact />
@@ -346,8 +424,19 @@ export default function AgentJobSeekersPage() {
               </TableRow>
             ) : seekers.map((s) => {
               const actions: RowAction[] = [];
+              const menuActions: RowAction[] = [];
+              const isPremium = (s.badges ?? []).includes("premium");
               if (can("job_seekers", "update")) {
                 if (s.staffAccess !== "area") {
+                  menuActions.push({
+                    key: "premium",
+                    label: isPremium ? t("removePremium") : t("makePremium"),
+                    icon: Crown,
+                    iconClassName: "text-amber-600",
+                    pending: premiumPendingId === s._id,
+                    disabled: premiumPendingId === s._id,
+                    onSelect: () => { void togglePremium(s); },
+                  });
                   actions.push({
                     key: "edit",
                     label: tc("edit"),
@@ -377,6 +466,12 @@ export default function AgentJobSeekersPage() {
                               {availabilityLabel(s.availabilityStatus)}
                             </span>
                           ) : null}
+                          {isPremium && (
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium leading-none text-amber-800">
+                              <Crown className="h-3 w-3" aria-hidden="true" />
+                              {t("premiumChip")}
+                            </span>
+                          )}
                           <ReferralSourceChip namespace="agentJobSeekers" summary={s.referralSummary} />
                           {s.staffAccess === "area" && (
                             <span
@@ -429,7 +524,7 @@ export default function AgentJobSeekersPage() {
                           {t("viewOnly")}
                         </span>
                       ) : (
-                        <RowActions name={s.userId?.name ?? "job seeker"} quick={actions} />
+                        <RowActions name={s.userId?.name ?? "job seeker"} quick={actions} menu={menuActions} />
                       )}
                     </TableCell>
                   )}

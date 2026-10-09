@@ -242,9 +242,10 @@ export default function AgentReferralLinksPage() {
               ) : links.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={6} className="py-12">
+                    {/* BUG-11: filtered-to-zero must not show first-use copy. */}
                     <EmptyState
-                      title={t("emptyStateTitle")}
-                      description={t("emptyStateDescription")}
+                      title={search.trim() ? t("noResultsTitle") : t("emptyStateTitle")}
+                      description={search.trim() ? t("noResultsDescription") : t("emptyStateDescription")}
                       icon={Link2}
                     />
                   </TableCell>

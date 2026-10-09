@@ -17,13 +17,18 @@ const REVIEW_STATUS_FILTERS = ["pending", "approved", "rejected", "all"] as cons
  * only way a review ever gets published. Moderation rides the `employers`
  * permission: a review belongs to a company.
  */
-async function getHandler(req: NextRequest, _ctx: AuthCtx) {
+async function getHandler(req: NextRequest, ctx: AuthCtx) {
+  // BUG-001: moderation queue (includes reviewer names/emails) is admin-only.
+  // Agents keep their own company visibility through /api/employers/*.
+  if (ctx.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
 
   const { searchParams } = new URL(req.url);
   const rawStatus = searchParams.get("status") ?? "pending";
   const status = (REVIEW_STATUS_FILTERS as readonly string[]).includes(rawStatus) ? rawStatus : "pending";
-  const search = (searchParams.get("search") ?? "").trim();
+  const search = (searchParams.get("search")?.trim() ?? "").trim();
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1") || 1);
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "10") || 10));
 

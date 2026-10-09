@@ -234,7 +234,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (agentDoc) {
       const visibleEmployerIds = await getAgentEmployerIds(ctx.userId);
+      // BUG-04: same portfolio scope as the dashboard + /api/agent/analytics,
+      // and deleted jobs stay out (the Jobs tab hides them, so their
+      // applications must not inflate Candidates).
       const jobFilter: Record<string, unknown> = {
+        deletedAt: null,
         $or: [
           { agentId: agentDoc._id },
           ...(visibleEmployerIds.length > 0

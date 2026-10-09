@@ -122,7 +122,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const status = searchParams.get("status") ?? "active";
   const region = searchParams.get("region");
   const assigneeRole = searchParams.get("assigneeRole");
-  const search = (searchParams.get("search") ?? "").trim().toLowerCase();
+  const search = (searchParams.get("search")?.trim() ?? "").trim().toLowerCase();
   const risk = searchParams.get("risk");
   const completion = searchParams.get("completion");
   const sortBy = searchParams.get("sortBy");

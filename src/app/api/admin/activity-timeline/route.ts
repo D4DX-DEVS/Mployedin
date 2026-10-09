@@ -25,7 +25,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const url = new URL(req.url);
   const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit") ?? 20)));
-  const search = url.searchParams.get("search") ?? "";
+  const search = url.searchParams.get("search")?.trim() ?? "";
   const resource = url.searchParams.get("resource") ?? "";
   const role = url.searchParams.get("role") ?? "";
 

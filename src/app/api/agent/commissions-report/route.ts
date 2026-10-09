@@ -23,9 +23,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const dateTo = new Date(year, 11, 31, 23, 59, 59, 999);
 
   // Resolve agent profile
-  const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+  const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id currencyCode").lean();
   if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
   const agentId = agentDoc._id;
+  // BUG-16: report in the agent's configured currency, not hardcoded AED.
+  const currency = (agentDoc as { currencyCode?: string }).currencyCode ?? "AED";
 
   // ── Monthly trend ───────────────────────────────────────────────────
   const monthlyAgg = await Commission.aggregate([
@@ -122,7 +124,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       approvedCount: countByStatus("approved"),
       paidCount: countByStatus("paid"),
       estimatedNextPayment,
-      currency: "AED",
+      currency,
     },
     monthlyBreakdown,
     typeBreakdown,

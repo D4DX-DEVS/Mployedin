@@ -15,9 +15,11 @@ interface AuthCtx {
   locale: string;
 }
 
-/** GET — list all subscription plans (optionally filtered by targetRole, isActive) */
+/** GET — list all subscription plans (optionally filtered by targetRole, isActive). Admin only. */
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
-  if (!["admin", "super_agent", "agent"].includes(ctx.role)) {
+  // BUG-001: plan catalogue with subscriber counts is admin-only. Non-admin
+  // clients use the public /api/subscriptions/plans endpoint instead.
+  if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   await connectDB();

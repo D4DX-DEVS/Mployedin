@@ -30,6 +30,7 @@ import {
 import { exhibitionFiltersAreActive } from "@/components/features/exhibitions/ExhibitionHeroFilters";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations, useLocale } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilters } from "@/hooks/useUrlFilter";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -262,6 +263,9 @@ export default function SuperAgentExhibitionsPage() {
 
   // Detail dialog
   const [detailItem, setDetailItem] = useState<ExhibitionRequest | null>(null);
+  // BUG-09: sidebar badge reads /api/super-agent/action-counts (60s stale).
+  // Invalidate it on approve/reject/revise so the badge drops with the queue.
+  const queryClient = useQueryClient();
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -271,7 +275,7 @@ export default function SuperAgentExhibitionsPage() {
       if (filters.status !== "all") params.set("status", filters.status);
       if (filters.priority !== "all") params.set("priority", filters.priority);
       if (filters.category !== "all") params.set("category", filters.category);
-      if (filters.search) params.set("search", filters.search);
+      if (filters.search.trim()) params.set("search", filters.search.trim());
       const res = await fetch(`/api/exhibitions?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -312,6 +316,7 @@ export default function SuperAgentExhibitionsPage() {
         };
         toast.success(t(actionMap[reviewAction] || "toastExhibitionApproved"));
         setReviewItem(null); setReviewNote(""); setApprovedBudget(""); setBudgetError(""); fetchItems();
+        void queryClient.invalidateQueries({ queryKey: ["super-agent", "action-counts"] });
       } else { const err = await res.json(); toast.error(err.error ?? t("errorUpdatingExhibition")); }
     } catch { toast.error(t("errorUpdatingExhibition")); }
   };

@@ -338,6 +338,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       .populate("employerId", "companyName name country industry")
       .populate("agentId", "userId")
       .sort({ [sortField]: sortOrder })
+      // BUG-08: case-insensitive title sort — without collation Mongo sorts
+      // binary ("Zebra" < "apple"), grouping lowercase titles apart.
+      .collation({ locale: "en", strength: 2 })
       .skip(skip)
       .limit(limit)
       .select(

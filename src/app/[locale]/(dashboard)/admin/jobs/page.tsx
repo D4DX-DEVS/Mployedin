@@ -19,6 +19,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { TableSortControl } from "@/components/shared/TableSortControl";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -330,11 +331,34 @@ export default function AdminJobsPage() {
     { header: t("applicantsCountLabel"), key: "applicantsCount", formatter: (v) => String(v ?? 0) },
     { header: t("createdLabel"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllJobs = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (search) base.set("search", search);
+    if (status !== "all") base.set("status", status);
+    if (selectedEmployer !== "all") base.set("employerId", selectedEmployer);
+    if (selectedAgent !== "all") base.set("agentId", selectedAgent);
+    if (workMode !== "all") base.set("workMode", workMode);
+    if (employmentType !== "all") base.set("employmentType", employmentType);
+    if (locationFilter) base.set("location", locationFilter);
+    if (skillsFilter) base.set("skills", skillsFilter);
+    if (applicationsFilter === "none") base.set("applications", "none");
+    if (expiring) base.set("expiring", expiring);
+    base.set("sortBy", sortBy);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/admin/jobs?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: (((json.jobs ?? json.items ?? []) as Record<string, unknown>[])),
+        total: Number((json.pagination as { total?: number } | undefined)?.total ?? json.total ?? json.totalCount ?? 0),
+      }),
+    );
+  }, [search, status, selectedEmployer, selectedAgent, workMode, employmentType, locationFilter, skillsFilter, applicationsFilter, expiring, sortBy]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobs as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "jobs",
     title: t("exportTitle"),
+    fetchAll: fetchAllJobs,
   });
 
   function resetFilters() {

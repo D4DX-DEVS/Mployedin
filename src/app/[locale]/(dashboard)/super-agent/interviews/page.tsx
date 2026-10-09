@@ -77,7 +77,7 @@ export default function SuperAgentInterviewsPage() {
     setLoadFailed(false);
     try {
       const params = pagination.paginationParams();
-      if (filters.search) params.set("search", filters.search);
+      if (filters.search.trim()) params.set("search", filters.search.trim());
       if (filters.status !== "all") params.set("status", filters.status);
       if (filters.type !== "all") params.set("type", filters.type);
       if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);

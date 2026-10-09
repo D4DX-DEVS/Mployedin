@@ -174,7 +174,7 @@ export default function SuperAgentAgentsPage() {
     setLoading(true);
     setError(false);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (filters.search) params.set("search", filters.search);
+    if (filters.search.trim()) params.set("search", filters.search.trim());
     if (filters.status) params.set("status", filters.status);
     if (filters.performance) params.set("performance", filters.performance);
     if (filters.leadsMin) params.set("leadsMin", filters.leadsMin);
@@ -305,7 +305,10 @@ export default function SuperAgentAgentsPage() {
     { header: t("conversions"), key: "conversions" },
     { header: t("placements"), key: "placements" },
     { header: t("convRateShort"), key: "conversionRate", formatter: (v) => `${v ?? 0}%` },
-    { header: t("avgResponseShort"), key: "avgResponseHours" },
+    { header: t("avgResponseShort"), key: "avgResponseHours",
+      // BUG-07: API uses -1 as "no data" sentinel — never write it (or its
+      // quoted CSV form '-1) into exports; leave the cell empty instead.
+      formatter: (v) => (v == null || Number(v) < 0 ? "" : String(v)) },
   ];
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({

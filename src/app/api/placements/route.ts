@@ -41,7 +41,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const lifecycleStatus = searchParams.get("status");
   const visaStatus = searchParams.get("visaStatus");
   const commissionPaid = searchParams.get("commissionPaid");
-  const search = searchParams.get("search");
+  const search = searchParams.get("search")?.trim() || undefined;
   const agentId = searchParams.get("agentId");
   const employerId = searchParams.get("employerId");
   const currency = searchParams.get("currency");

@@ -16,7 +16,7 @@ import Job from "@/models/Job";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import { escapeRegex } from "@/lib/security/sanitize";
-import { isInvoiceStatus, NON_REVENUE_INVOICE_STATUSES, PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
+import { isInvoiceStatus, NON_REVENUE_INVOICE_STATUSES, PENDING_BALANCE_INVOICE_STATUSES } from "@/lib/invoices/status";
 import { INVOICE_DISPUTE_OPEN_FILTER, PAYMENT_NOTICE_PENDING_FILTER } from "@/lib/admin/queueFilters";
 import type { UserRole } from "@/types/user";
 
@@ -216,9 +216,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // in the per-status counts but out of the money totals (as in /analytics).
   // ANDed, not spread: the list's own status filter must still apply.
   const revenueMatch = { $and: [aggregationMatch, { status: { $nin: NON_REVENUE_INVOICE_STATUSES } }] };
-  // "Pending" is money someone can pay now, as in /analytics: a draft or an
-  // invoice still awaiting approval has a balance but is not owed yet.
-  const payable: readonly string[] = PAYABLE_INVOICE_STATUSES;
+  // "Pending" is outstanding balance due, as in /analytics: pending_approval
+  // counts (BUG-02) — only drafts are not yet real receivables.
+  const payable: readonly string[] = PENDING_BALANCE_INVOICE_STATUSES;
 
   const [summaryAgg, currencyAgg] = await Promise.all([
     Invoice.aggregate([

@@ -193,7 +193,11 @@ export default auth(async function middleware(req: NextAuthRequest) {
     if (isProtected) {
       const locale = pathname.split("/")[1] || defaultLocale;
       const loginUrl = new URL(`/${locale}/login`, req.url);
-      loginUrl.searchParams.set("callbackUrl", req.url);
+      // BUG-010: store the path, not the full URL — safeCallbackPath rejects
+      // absolute URLs (open-redirect defense), so a full URL here silently
+      // dropped the deep link and every protected deep link landed on the
+      // dashboard after sign-in instead of the requested page.
+      loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname + req.nextUrl.search);
       return withSecurityHeaders(NextResponse.redirect(loginUrl));
     }
   }

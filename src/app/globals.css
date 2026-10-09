@@ -2186,6 +2186,10 @@ input::placeholder {
 }
 
 @media (min-width: 1024px) {
+  /* QA BUG-02: desktop dock stays at 1rem so the shared PaginationControls
+     lg:mb-16 (4rem) scroll clearance keeps lifting the footer exactly clear of
+     the 3rem FAB + 1rem dock. Dragged positions are kept out of this corner by
+     clampFabPos (96px reserve) + the drop-point dodge in Copilot/index.tsx. */
   .copilot-fab,
   .copilot-panel {
     inset-inline-end: 1rem;

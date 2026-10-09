@@ -71,6 +71,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { formatCurrency } from "@/lib/currency";
 
 /* ────────────────────────────── Types ────────────────────────────── */
 
@@ -252,7 +253,7 @@ export default function SuperAgentJobsPage() {
 
       if (jobStatus !== "all") p.set("status", jobStatus);
       const q = overrides?.search ?? searchQuery;
-      if (q) p.set("search", q);
+      if (q.trim()) p.set("search", q.trim());
       if (dateFrom) p.set("dateFrom", dateFrom);
       if (dateTo) p.set("dateTo", dateTo);
       if (employmentType !== "all") p.set("employmentType", employmentType);
@@ -427,12 +428,18 @@ export default function SuperAgentJobsPage() {
     return [loc.city, loc.country].filter(Boolean).join(", ") || "—";
   };
 
+  // BUG-04: one currency renderer — the shared formatCurrency helper (per-row
+  // currency, prefix symbol: ₹ / $ / AED). The old suffix-code style
+  // ("10,000 INR") mismatched reports/commissions ("₹ 10,000").
   const formatSalary = (salary?: RegionalJob["salary"]) => {
     if (!salary) return "—";
     if (salary.isNegotiable) return t("negotiable");
+    const cur = salary.currency ?? "AED";
     if (salary.min && salary.max) {
-      return `${formatCount(salary.min)}–${formatCount(salary.max)} ${salary.currency ?? ""}`;
+      return `${formatCurrency(salary.min, cur)} – ${formatCurrency(salary.max, cur)}`;
     }
+    if (salary.min) return formatCurrency(salary.min, cur);
+    if (salary.max) return formatCurrency(salary.max, cur);
     return "—";
   };
 

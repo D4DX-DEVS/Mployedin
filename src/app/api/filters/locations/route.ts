@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   const level = searchParams.get("level") ?? "countries";
   const countryId = searchParams.get("countryId");
   const stateId = searchParams.get("stateId");
-  const search = searchParams.get("search");
+  const search = searchParams.get("search")?.trim() || undefined;
 
   try {
     if (search) {

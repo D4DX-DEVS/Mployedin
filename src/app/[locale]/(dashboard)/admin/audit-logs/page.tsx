@@ -19,6 +19,7 @@ import { TableSortControl, SortableTableHeader } from "@/components/shared/Table
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { formatCount, formatDateTime, formatListDate, formatTime } from "@/lib/ui/intlFormat";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -181,11 +182,31 @@ export default function AuditLogsPage() {
     { header: t("ipAddress"), key: "ipAddress" },
     { header: t("country"), key: "country", formatter: (v) => String(v ?? "—") },
   ];
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllLogs = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (actorSearch.trim()) base.set("search", actorSearch.trim());
+    if (actorRole && actorRole !== "all") base.set("actorRole", actorRole);
+    if (resource && resource !== "all") base.set("resource", resource);
+    if (action) base.set("action", action);
+    if (country) base.set("country", country);
+    if (fromDate) base.set("from", fromDate);
+    if (toDate) base.set("to", toDate);
+    base.set("sortOrder", sortOrder);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/admin/audit-logs?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.logs ?? []) as Record<string, unknown>[]),
+        total: Number((json.pagination as { total?: number } | undefined)?.total ?? 0),
+      }),
+    );
+  }, [actorSearch, actorRole, resource, action, country, fromDate, toDate, sortOrder]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: logs as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "audit-logs",
     title: t("auditLogs"),
+    fetchAll: fetchAllLogs,
   });
 
   const fetchLogs = useCallback(async () => {
@@ -193,7 +214,7 @@ export default function AuditLogsPage() {
     setError(null);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (actorSearch) params.set("search", actorSearch);
+      if (actorSearch.trim()) params.set("search", actorSearch.trim());
       if (actorRole && actorRole !== "all") params.set("actorRole", actorRole);
       if (resource && resource !== "all") params.set("resource", resource);
       if (action) params.set("action", action);

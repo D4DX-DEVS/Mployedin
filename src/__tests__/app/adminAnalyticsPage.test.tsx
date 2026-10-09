@@ -145,7 +145,7 @@ describe("AdminAnalyticsPage", () => {
 
     await waitFor(() => expect(anchorClickSpy).toHaveBeenCalled());
 
-    expect(createdAnchors.at(-1)?.download).toMatch(/^admin-analytics-\d{4}-\d{2}-\d{2}\.xls$/);
+    expect(createdAnchors.at(-1)?.download).toMatch(/^admin-analytics-\d{4}-\d{2}-\d{2}\.xlsx$/);
     expect(URL.createObjectURL).toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: /export/i }));

@@ -94,7 +94,9 @@ export default function AgentPlacementsPage() {
 
   const hasActiveFilters = (statusFilter !== "all") || debouncedSearch || dateFrom || dateTo;
 
-  const completedPlacements = placements.filter((placement) => placement.status === "completed" || placement.status === "hired").length;
+  // BUG-05: model status enum is active/completed/terminated — legacy "hired" /
+  // "offer" / "signed" strings never occur, so count the real placed states.
+  const completedPlacements = placements.filter((placement) => placement.status === "completed" || placement.status === "active").length;
   const signedOffers = placements.filter((placement) => placement.status === "offer" || placement.status === "signed").length;
   const startedCount = placements.filter((placement) => Boolean(placement.startDate)).length;
   const totalCompensation = placements.reduce((sum, placement) => sum + (placement.salary ?? 0), 0);

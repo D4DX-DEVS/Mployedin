@@ -23,7 +23,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "20"));
-  const search = searchParams.get("search") ?? "";
+  const search = searchParams.get("search")?.trim() ?? "";
   const category = searchParams.get("category") ?? "";
   const tag = searchParams.get("tag") ?? "";
   const sort = searchParams.get("sort") ?? "newest"; // newest, popular, a-z

@@ -20,7 +20,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "50"));
-  const search = searchParams.get("search") ?? "";
+  const search = searchParams.get("search")?.trim() ?? "";
   const status = searchParams.get("status") ?? "";
   const category = searchParams.get("category") ?? "";
   const priority = searchParams.get("priority") ?? "";
@@ -116,6 +116,16 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     ];
   }
 
+  // BUG-01: Model.aggregate() does NOT auto-cast $match values the way find()
+  // does. The agent scope carries agentId as a plain string, which compares
+  // against an ObjectId field and silently matches nothing — summary returned
+  // all zeros while the list was populated. Cast through the schema first
+  // (same pattern as /api/invoices).
+  const aggregationMatch = ExhibitionRequest.find(scopeQuery).cast(ExhibitionRequest) as Record<string, unknown>;
+  const countryMatch = ExhibitionRequest.find({ ...scopeQuery, country: { $nin: [null, ""] } }).cast(
+    ExhibitionRequest,
+  ) as Record<string, unknown>;
+
   const [items, total, summaryRows, countries, budgetRows] = await Promise.all([
     ExhibitionRequest.find(query)
       .populate("agentId", "name email")
@@ -134,11 +144,12 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
       awaitingApproval: number;
       approved: number;
       rejected: number;
+      revisionRequested: number;
       budgetRequested: number;
       budgetApproved: number;
       budgetUtilized: number;
     }>([
-      { $match: scopeQuery },
+      { $match: aggregationMatch },
       {
         $group: {
           _id: null,
@@ -147,19 +158,23 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
           pendingReview: { $sum: { $cond: [{ $in: ["$status", ["submitted", "under_review"]] }, 1, 0] } },
           financeReview: { $sum: { $cond: [{ $eq: ["$status", "approved"] }, 1, 0] } },
           awaitingApproval: { $sum: { $cond: [{ $in: ["$status", ["budget_approved", "resources_assigned"]] }, 1, 0] } },
-          approved: { $sum: { $cond: [{ $in: ["$status", ["budget_approved", "resources_assigned", "active"]] }, 1, 0] } },
+          // BUG-01: the "Approved" card must count every approved-stage request,
+          // including literal "approved" (labelled "Operationally Approved" in
+          // the list). financeReview/awaitingApproval stay as admin sub-detail.
+          approved: { $sum: { $cond: [{ $in: ["$status", ["approved", "budget_approved", "resources_assigned", "active"]] }, 1, 0] } },
           rejected: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
+          revisionRequested: { $sum: { $cond: [{ $eq: ["$status", "revision_requested"] }, 1, 0] } },
           budgetRequested: { $sum: { $ifNull: ["$estimatedBudget", 0] } },
           budgetApproved: { $sum: { $ifNull: ["$approvedBudget", 0] } },
           budgetUtilized: { $sum: { $ifNull: ["$actualSpend", 0] } },
         },
       },
     ]),
-    ExhibitionRequest.distinct("country", { ...scopeQuery, country: { $nin: [null, ""] } }),
+    ExhibitionRequest.distinct("country", countryMatch),
     // Budgets per currency. The summary sums above add USD, INR and AED
     // together; the page labelled that total "AED".
     ExhibitionRequest.aggregate<{ _id: string | null; requested: number; approved: number; utilized: number }>([
-      { $match: scopeQuery },
+      { $match: aggregationMatch },
       {
         $group: {
           _id: "$budgetCurrency",
@@ -179,6 +194,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     awaitingApproval: 0,
     approved: 0,
     rejected: 0,
+    revisionRequested: 0,
     budgetRequested: 0,
     budgetApproved: 0,
     budgetUtilized: 0,

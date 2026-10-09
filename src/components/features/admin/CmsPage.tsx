@@ -33,6 +33,7 @@ import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { singularizeTitle } from "@/lib/ui/singularize";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
@@ -207,6 +208,7 @@ export default function CmsPage({
     if (!r.ok) {
       throw await formErrorFromResponse(r, { t: tf, locale, fieldLabels: fields });
     }
+    toast.success(t("createSuccess"));
     await fetchItems();
   };
 
@@ -221,6 +223,7 @@ export default function CmsPage({
     if (!r.ok) {
       throw await formErrorFromResponse(r, { t: tf, locale, fieldLabels: fields });
     }
+    toast.success(t("updateSuccess"));
     setEditItem(null);
     await fetchItems();
   };
@@ -239,6 +242,7 @@ export default function CmsPage({
       toast.error(err.error || t("deleteFailed"));
       return;
     }
+    toast.success(t("deleteSuccess"));
     setItems((current) => current.filter((item) => String(item._id) !== id));
     await fetchItems();
   };
@@ -511,7 +515,7 @@ export default function CmsPage({
         <CrudModal
           open={showAdd}
           onClose={() => setShowAdd(false)}
-          title={t("addTitle", { title })}
+          title={t("addTitle", { title: singularizeTitle(title) })}
           fields={fields}
           onSubmit={handleCreate}
         />
@@ -521,7 +525,7 @@ export default function CmsPage({
         <CrudModal
           open={!!editItem}
           onClose={() => setEditItem(null)}
-          title={t("editTitle", { title })}
+          title={t("editTitle", { title: singularizeTitle(title) })}
           fields={fields}
           initialValues={toStringRecord(editItem)}
           onSubmit={handleUpdate}

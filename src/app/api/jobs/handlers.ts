@@ -51,7 +51,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
   // Trimmed: "QA " used to switch to word search and return 9 jobs to "QA"'s 3 (QA EMP-009).
-  const search = (searchParams.get("search") ?? "").trim().slice(0, 500);
+  const search = (searchParams.get("search")?.trim() ?? "").trim().slice(0, 500);
   const status = searchParams.get("status") ?? "";
   const category = (searchParams.get("category") ?? "").slice(0, 200);
   const location = (searchParams.get("location") ?? "").slice(0, 200);

@@ -30,6 +30,10 @@ jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
 }));
 
+// Full-page render + userEvent typing exceeds the 5 s default under parallel
+// load (same reason adminWhatsApp* suites use 20 s).
+jest.setTimeout(20_000);
+
 describe("AdminApplicationsPage", () => {
   const fetchMock = jest.fn();
 

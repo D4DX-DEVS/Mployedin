@@ -223,6 +223,7 @@ export default function SuperAgentCommissionsPage() {
                       <SelectItem value="USD">USD</SelectItem>
                       <SelectItem value="EUR">EUR</SelectItem>
                       <SelectItem value="SAR">SAR</SelectItem>
+                      <SelectItem value="INR">INR</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

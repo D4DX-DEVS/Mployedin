@@ -22,13 +22,14 @@ interface AuthCtx {
   locale: string;
 }
 
-/** GET — get a single subscription plan by ID */
+/** GET — get a single subscription plan by ID. Admin only. */
 async function getHandler(
   _req: NextRequest,
   ctx: AuthCtx,
   params?: Record<string, string>,
 ) {
-  if (!["admin", "super_agent", "agent"].includes(ctx.role)) {
+  // BUG-001: same as the list endpoint — admin only.
+  if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   await connectDB();

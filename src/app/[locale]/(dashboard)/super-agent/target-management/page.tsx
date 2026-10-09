@@ -520,7 +520,9 @@ export default function SuperAgentTargetProfilesPage() {
     title: t("title"),
   });
 
-  const pct = (a: number, tgt: number) => tgt > 0 ? Math.round((a / tgt) * 100) : 0;
+  // BUG-10: same 999% cap as profileAchievementCalculator.pct — 27/2 = 1350%
+  // must render 999% here too, not 1350%, or the two pages disagree.
+  const pct = (a: number, tgt: number) => tgt > 0 ? Math.min(Math.round((a / tgt) * 100), 999) : 0;
   // The empty table had two branches on the same condition: the first caught
   // every empty list, so the filtered-empty branch (with its Clear action)
   // never rendered and a filtered-to-zero search dead-ended with no way back.

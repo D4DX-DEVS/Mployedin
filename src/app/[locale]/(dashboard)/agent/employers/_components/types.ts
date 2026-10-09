@@ -22,4 +22,6 @@ export interface EmployerListProps {
   onSwitch: (employerId: string) => void;
   onEdit: (employer: Employer) => void;
   onDelete: (employerId: string) => void;
+  /** True when a search/filter is active — shows the "no results" copy (BUG-11). */
+  hasActiveFilters?: boolean;
 }

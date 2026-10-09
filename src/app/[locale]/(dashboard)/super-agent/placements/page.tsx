@@ -213,7 +213,7 @@ export default function SuperAgentPlacementsPage() {
     setError(false);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (filters.visaStatus) params.set("visaStatus", filters.visaStatus);
-    if (search) params.set("search", search);
+    if (search.trim()) params.set("search", search.trim());
     if (filters.commissionPaid) params.set("commissionPaid", filters.commissionPaid);
     if (filters.currency) params.set("currency", filters.currency);
     if (filters.salaryMin) params.set("salaryMin", filters.salaryMin);

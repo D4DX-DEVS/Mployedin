@@ -157,7 +157,11 @@ export function Copilot({ className }: CopilotProps) {
   const clampFabPos = useCallback((x: number, y: number) => {
     const size = 48;
     const margin = 4;
-    const reservedBottom = window.innerWidth < 1024 ? 72 : margin;
+    // QA BUG-02: keep the dragged FAB out of the bottom-right pagination
+    // corner. Desktop pagination is right-aligned; the default dock sits 5.5rem
+    // up (see globals.css). Reserve the same zone for dragged positions so a
+    // parked button can't cover "Last page" (») or last-row actions.
+    const reservedBottom = window.innerWidth < 1024 ? 72 : 96;
     return {
       x: Math.min(Math.max(x, margin), window.innerWidth - size - margin),
       y: Math.min(Math.max(y, margin), window.innerHeight - size - reservedBottom),
@@ -216,11 +220,30 @@ export function Copilot({ className }: CopilotProps) {
     dragRef.current.dragging = false;
     setFabPos((current) => {
       try {
-        if (current) localStorage.setItem("copilot-fab-pos", JSON.stringify(current));
+        if (current) {
+          // QA BUG-02 collision dodge: if the drop point lands on pagination
+          // controls or row actions, nudge the FAB above them so the click
+          // target underneath stays reachable. elementFromPoint at the FAB
+          // centre returning a pagination/action element means overlap.
+          const cx = current.x + 24;
+          const cy = current.y + 24;
+          const hit = typeof document.elementFromPoint === "function"
+            ? document.elementFromPoint(cx, cy)
+            : null;
+          const overlap = hit?.closest?.(
+            '[aria-label*="page" i], [title*="page" i], [data-table-action], [data-row-actions]'
+          );
+          let next = current;
+          if (overlap) {
+            next = clampFabPos(current.x, current.y - 72);
+          }
+          localStorage.setItem("copilot-fab-pos", JSON.stringify(next));
+          return next;
+        }
       } catch { /* ignore unavailable storage */ }
       return current;
     });
-  }, []);
+  }, [clampFabPos]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
