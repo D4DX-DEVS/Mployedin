@@ -6248,7 +6248,13 @@
       "targetShort": "Target",
       "targetNotSet": "no target set",
       "commissionThisMonth": "Commission this month",
-      "commissionShort": "Commission"
+      "commissionShort": "Commission",
+      "onboardedSeekers": "Onboarded job seekers",
+      "onboardedSeekersShort": "Onboarded",
+      "premiumCandidates": "Premium candidates",
+      "premiumCandidatesShort": "Premium",
+      "employerConversion": "Employer conversion",
+      "employerConversionShort": "Conversion"
     },
     "smartHeader": {
       "welcomeBack": "Welcome back, {userName}",
@@ -6293,6 +6299,19 @@
       "offers": "Offers",
       "emptyTitle": "No roles to compare yet",
       "emptyDescription": "Once you have live roles with applicants, their conversion appears here."
+    },
+    "spotlight": {
+      "title": "Talent",
+      "description": "Who you've onboarded and who's premium.",
+      "onboarded": "Onboarded job seekers",
+      "premium": "Premium candidates",
+      "onboardedDetail": "{count, plural, one {# premium among them} other {# premium among them}}",
+      "premiumDetail": "{count, plural, one {# onboarded among them} other {# onboarded among them}}",
+      "seeAll": "See all",
+      "onboardedEmpty": "No onboarded job seekers yet.",
+      "premiumEmpty": "No premium candidates yet. Mark one from Job Seekers.",
+      "premiumBadge": "Premium",
+      "viaReferral": "Via referral"
     }
   },
   "agentCommon": {
@@ -15426,6 +15445,14 @@
     "editJobSeeker": "Edit {name}",
     "referredByYouChip": "Referred by you",
     "filterReferredMine": "Referred by me",
+    "filterOnboarded": "Onboarded only",
+    "filterPremium": "Premium only",
+    "makePremium": "Make premium",
+    "removePremium": "Remove premium",
+    "premiumChip": "Premium",
+    "premiumGranted": "{name} is now premium",
+    "premiumRevoked": "{name} is no longer premium",
+    "premiumUpdateError": "Couldn't update premium. Try again.",
     "viewLabel": "Show",
     "viewAll": "All my job seekers",
     "viewArea": "In my area",

@@ -86,6 +86,25 @@ jest.mock("@/lib/agents/assignedRegion", () => ({
 jest.mock("@/lib/auth/agentRestrictions", () => ({
   __esModule: true,
   getAgentEmployerIds: jest.fn(async () => ["employer-1", "employer-2"]),
+  getAgentSeekerArea: jest.fn(async () => null),
+  seekerRegionMatch: jest.fn(() => null),
+}));
+
+// The talent spotlight: seeker counts plus the three newest onboarded and
+// premium seekers.
+const recentSeekersChain = {
+  sort: () => recentSeekersChain,
+  limit: () => recentSeekersChain,
+  select: () => recentSeekersChain,
+  populate: () => recentSeekersChain,
+  lean: async () => [],
+};
+jest.mock("@/models/JobSeeker", () => ({
+  __esModule: true,
+  default: {
+    countDocuments: async () => 0,
+    find: () => recentSeekersChain,
+  },
 }));
 
 jest.mock("@/models/Application", () => ({

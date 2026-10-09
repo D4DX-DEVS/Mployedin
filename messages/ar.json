@@ -6248,7 +6248,13 @@
       "targetShort": "الهدف",
       "targetNotSet": "لم يُحدَّد هدف",
       "commissionThisMonth": "عمولة هذا الشهر",
-      "commissionShort": "العمولة"
+      "commissionShort": "العمولة",
+      "onboardedSeekers": "الباحثون المُسجَّلون",
+      "onboardedSeekersShort": "المُسجَّلون",
+      "premiumCandidates": "المرشحون المميزون",
+      "premiumCandidatesShort": "المميزون",
+      "employerConversion": "تحويل أصحاب العمل",
+      "employerConversionShort": "التحويل"
     },
     "smartHeader": {
       "welcomeBack": "مرحباً بعودتك، {userName}",
@@ -6293,6 +6299,19 @@
       "offers": "العروض",
       "emptyTitle": "لا توجد وظائف للمقارنة بعد",
       "emptyDescription": "بمجرد وجود وظائف نشطة لديها متقدمون، سيظهر معدل تحويلها هنا."
+    },
+    "spotlight": {
+      "title": "المواهب",
+      "description": "من سجّلتهم ومن هم المميزون.",
+      "onboarded": "الباحثون المُسجَّلون",
+      "premium": "المرشحون المميزون",
+      "onboardedDetail": "{count, plural, zero {لا يوجد مميزون بينهم} one {مميز واحد بينهم} two {مميزان بينهم} few {# مميزين بينهم} many {# مميزاً بينهم} other {# مميز بينهم}}",
+      "premiumDetail": "{count, plural, zero {لا يوجد مُسجَّلون بينهم} one {مُسجَّل واحد بينهم} two {مُسجَّلان بينهم} few {# مُسجَّلين بينهم} many {# مُسجَّلاً بينهم} other {# مُسجَّل بينهم}}",
+      "seeAll": "عرض الكل",
+      "onboardedEmpty": "لا يوجد باحثون عن عمل مُسجَّلون بعد.",
+      "premiumEmpty": "لا يوجد مرشحون مميزون بعد. يمكنك تمييز أحدهم من قائمة الباحثين عن عمل.",
+      "premiumBadge": "مميز",
+      "viaReferral": "عبر رابط إحالة"
     }
   },
   "agentCommon": {
@@ -15426,6 +15445,14 @@
     "editJobSeeker": "تحرير {name}",
     "referredByYouChip": "أحلته أنت",
     "filterReferredMine": "من إحالتي",
+    "filterOnboarded": "المُسجَّلون فقط",
+    "filterPremium": "المميزون فقط",
+    "makePremium": "جعله مميزًا",
+    "removePremium": "إزالة التمييز",
+    "premiumChip": "مميز",
+    "premiumGranted": "أصبح {name} مميزًا",
+    "premiumRevoked": "لم يعد {name} مميزًا",
+    "premiumUpdateError": "تعذّر تحديث التمييز. حاول مرة أخرى.",
     "viewLabel": "عرض",
     "viewAll": "كل الباحثين عن عمل لدي",
     "viewArea": "في منطقتي",
