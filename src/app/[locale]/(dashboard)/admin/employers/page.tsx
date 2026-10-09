@@ -20,6 +20,7 @@ import { useOpenFromUrl } from "@/hooks/useOpenFromUrl";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/shared/UserAvatar";
@@ -135,11 +136,29 @@ export default function AdminEmployersPage() {
     { header: t("exportColumnStatus"), key: "status", formatter: (v, r) => r.status ?? (r.isActive !== false ? "active" : "inactive") },
     { header: t("exportColumnJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllEmployers = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (search.trim()) base.set("search", search.trim());
+    if (agentFilter !== "all") base.set("agentId", agentFilter);
+    if (coverageFilter !== "all") base.set("coverage", coverageFilter);
+    base.set("status", statusFilter);
+    base.set("sortBy", sortBy);
+    base.set("sortOrder", sortOrder);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/employers?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: (((json.items ?? json.employers ?? []) as Record<string, unknown>[])),
+        total: Number(json.total ?? json.totalCount ?? (json.pagination as { total?: number } | undefined)?.total ?? 0),
+      }),
+    );
+  }, [search, agentFilter, coverageFilter, statusFilter, sortBy, sortOrder]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: employers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "employers",
     title: t("exportTitle"),
+    fetchAll: fetchAllEmployers,
   });
 
   const visibleStats = useMemo(() => ({
@@ -152,7 +171,7 @@ export default function AdminEmployersPage() {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (search) params.set("search", search);
+    if (search.trim()) params.set("search", search.trim());
     if (agentFilter !== "all") params.set("agentId", agentFilter);
     if (coverageFilter !== "all") params.set("coverage", coverageFilter);
     params.set("status", statusFilter);

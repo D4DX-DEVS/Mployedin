@@ -27,6 +27,8 @@ const BODY = { model: "gemini-3.1-flash-lite", messages: [{ role: "user", conten
 
 beforeEach(() => {
   providerFetch.mockReset();
+  // The request headers read the key; CI has no .env.
+  process.env.OPENROUTER_API_KEY = "or-test-key";
 });
 
 describe("openRouterChatFetch service tiers", () => {

@@ -20,7 +20,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const { searchParams } = new URL(req.url);
-  const search = searchParams.get("search") ?? "";
+  const search = searchParams.get("search")?.trim() ?? "";
   const status = searchParams.get("status") ?? "";
   const stateId = searchParams.get("stateId") ?? "";
   const sortByParam = searchParams.get("sortBy") ?? "sortOrder";

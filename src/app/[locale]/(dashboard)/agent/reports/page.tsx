@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatCount, formatTime } from "@/lib/ui/intlFormat";
+import { formatCurrency } from "@/lib/currency";
 
 /* ─── AI Report Templates ─── */
 
@@ -60,6 +61,17 @@ export default function AgentReportsPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ReportResult | null>(null);
   const [error, setError] = useState("");
+  // BUG-16: commissions must render in the agent's configured currency, not hardcoded AED.
+  const [currencyCode, setCurrencyCode] = useState("AED");
+
+  useEffect(() => {
+    fetch("/api/agent/settings")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.settings?.currencyCode) setCurrencyCode(data.settings.currencyCode);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/agent/analytics")
@@ -191,7 +203,7 @@ export default function AgentReportsPage() {
                 <div key={c.label} className="min-w-0 workspace-glass-panel card-pad rounded-2xl text-center">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.label}</p>
                   <p className={`mt-2 text-xl sm:text-2xl font-semibold ${c.color}`}>{c.data?.count ?? 0}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{formatCount((c.data?.total ?? 0))} AED</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatCurrency((c.data?.total ?? 0), currencyCode)}</p>
                 </div>
               ))}
             </div>

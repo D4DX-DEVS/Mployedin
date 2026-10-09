@@ -192,6 +192,32 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     await session.endSession();
   }
 
+  // BUG-05: an accepted offer hires the candidate — record the placement
+  // automatically so Dashboard / Placements / Commissions agree with the
+  // Hired application instead of showing 0. Best-effort: never fails the
+  // response; duplicates (11000) mean a placement already exists.
+  if (status === "accepted") {
+    try {
+      const { default: Placement } = await import("@/models/Placement");
+      const app = await Application.findById(offer.applicationId)
+        .select("jobId jobSeekerId employerId agentId")
+        .lean() as { jobId?: unknown; jobSeekerId?: unknown; employerId?: unknown; agentId?: unknown } | null;
+      if (app) {
+        await Placement.create({
+          applicationId: offer.applicationId,
+          jobId: app.jobId,
+          jobSeekerId: app.jobSeekerId,
+          employerId: app.employerId,
+          ...(app.agentId ? { agentId: app.agentId } : {}),
+          placedAt: new Date(),
+          commissionPaid: false,
+        });
+      }
+    } catch {
+      /* placement recording must never fail the offer response */
+    }
+  }
+
   // Notify employer — naming the candidate and the job, and opening that
   // application (QA EMP-013: "Your offer has been accepted" said neither).
   const employer = await Employer.findById(committedOffer.employerId).select("userId").lean();

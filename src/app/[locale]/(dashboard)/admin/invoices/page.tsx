@@ -30,6 +30,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import type { ExportColumn } from "@/lib/export";
 
 import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailView";
@@ -266,11 +267,32 @@ export default function AdminInvoicesPage() {
     { header: t("exportHeaderDueDate"), key: "dueDate" as keyof Invoice, formatter: v => v ? formatListDate(new Date(String(v))) : "—" },
     { header: t("exportHeaderIssued"), key: "issuedAt", formatter: v => v ? formatListDate(new Date(String(v))) : "—" },
   ];
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllInvoices = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (statusFilter) base.set("status", statusFilter);
+    if (attentionFilter) base.set("attention", attentionFilter);
+    if (categoryFilter) base.set("category", categoryFilter);
+    if (typeFilter) base.set("type", typeFilter);
+    if (searchTerm.trim()) base.set("search", searchTerm.trim());
+    if (dateFrom) base.set("dateFrom", dateFrom);
+    if (dateTo) base.set("dateTo", dateTo);
+    base.set("sortBy", sortBy);
+    base.set("sortOrder", sortOrder);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/invoices?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.invoices ?? []) as Record<string, unknown>[]),
+        total: Number(json.total ?? 0),
+      }),
+    );
+  }, [statusFilter, attentionFilter, categoryFilter, typeFilter, searchTerm, dateFrom, dateTo, sortBy, sortOrder]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: invoices as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "invoices-finance",
     title: t("exportTitle"),
+    fetchAll: fetchAllInvoices,
   });
 
   return (

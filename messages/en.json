@@ -405,6 +405,7 @@
     "sortDescending": "Sort descending",
     "export": "Export",
     "exportData": "Export data",
+    "exportFullFailed": "Only the current page could be exported. Please try again for the full list.",
     "searchEllipsis": "Search…",
     "loading": "Loading...",
     "confirm": "Confirm",
@@ -10439,7 +10440,11 @@
     "maritalStatusesTitle": "Marital Status",
     "maritalStatusesDescription": "Manage marital status options",
     "jobCategoriesTitle": "Job categories",
-    "jobCategoriesDescription": "The categories every job form offers. Renaming one also updates the jobs and workflow rules that use it; switch one off to hide it from new jobs."
+    "jobCategoriesDescription": "The categories every job form offers. Renaming one also updates the jobs and workflow rules that use it; switch one off to hide it from new jobs.",
+    "createSuccess": "Created successfully.",
+    "updateSuccess": "Saved successfully.",
+    "deleteSuccess": "Deleted successfully.",
+    "deleteFailed": "We couldn't delete that item. Please try again."
   },
   "adminLocationData": {
     "filter": "Filter",
@@ -10509,7 +10514,11 @@
     "adjustFiltersCity": "Adjust the filters or add a new city.",
     "addCityTitle": "Add New City",
     "editCityTitle": "Edit City",
-    "confirmDeleteCity": "Are you sure you want to delete this city?"
+    "confirmDeleteCity": "Are you sure you want to delete this city?",
+    "createSuccess": "Created successfully.",
+    "updateSuccess": "Saved successfully.",
+    "deleteSuccess": "Deleted successfully.",
+    "deleteFailed": "We couldn't delete that item. Please try again."
   },
   "adminApplications": {
     "recruitmentControl": "Recruitment Control",
@@ -13743,7 +13752,7 @@
     "selectCountry": "Select a country",
     "countryAutoFill": "Selecting a country auto-fills the currency used in that region.",
     "displayCurrency": "Display Currency",
-    "currencyDesc": "This currency will be used to display commissions, revenue, and all monetary values.",
+    "currencyDesc": "Default currency for new invoices, targets and report totals. Existing records keep the currency they were created in — amounts are never silently converted.",
     "saveRegionSettings": "Save Region Settings",
     "currencyPreview": "Currency Display Preview",
     "currencyPreviewDesc": "How monetary values will appear across your workspace",
@@ -14308,7 +14317,7 @@
     "emptyStateFiltered": "No placements match the current filters. Try adjusting your criteria.",
     "emptyStateDefault": "Placements will appear here once your team closes successful hires.",
     "kpiPlacements": "Placements",
-    "kpiPlacementsHelper": "Total placement records matching current filters.",
+    "kpiPlacementsHelper": "Placement records created for candidates who started. \"Hired\" on Applications means offer accepted; a placement is recorded separately once the candidate starts.",
     "kpiUpcomingStarts": "Upcoming Starts",
     "kpiUpcomingStartsHelper": "Candidates scheduled to start within the next two weeks.",
     "kpiCommissionPaid": "Commission Paid",
@@ -15013,6 +15022,8 @@
     "allExhibitions": "All exhibitions",
     "emptyPipelineTitle": "No leads in your pipeline yet",
     "emptyPipelineDescription": "Create your first lead to get started",
+    "noResultsTitle": "No leads match your search",
+    "noResultsDescription": "Try a different search term or clear the filters to see more leads.",
     "tableHeaderCompany": "Company",
     "tableHeaderContact": "Contact",
     "tableHeaderLocation": "Location",
@@ -15463,6 +15474,8 @@
     "searchEmployersPlaceholder": "Search employers",
     "emptyStateTitle": "No employer accounts yet",
     "emptyStateDescription": "Assigned companies will appear here once they are available to your workspace.",
+    "noResultsTitle": "No employers match your search",
+    "noResultsDescription": "Try a different search term to see more employer accounts.",
     "cardFieldIndustry": "Industry",
     "cardFieldLocation": "Location",
     "cardPostJobButton": "Post Job",
@@ -15562,7 +15575,7 @@
     "stageContacted": "Contacted",
     "stageInterested": "Interested",
     "stageNegotiating": "Negotiating",
-    "stageConverted": "Converted",
+    "stageConverted": "Won",
     "stageLost": "Lost",
     "commissionSummary": "Commission Summary",
     "commissionPending": "Pending",
@@ -15636,7 +15649,9 @@
     "dueDate": "Due Date",
     "emptyTitle": "No invoices yet",
     "emptyDescriptionAgent": "Create your first invoice to start tracking commissions.",
-    "emptyDescriptionSuperAgent": "Team invoices will appear here when agents create them."
+    "emptyDescriptionSuperAgent": "Team invoices will appear here when agents create them.",
+    "noResultsTitle": "No invoices match your search",
+    "noResultsDescription": "Try a different search term or clear the filters to see more invoices."
   },
   "agentInvoices": {
     "title": "My Invoices & Commissions",
@@ -15776,8 +15791,11 @@
     "resetButton": "Reset",
     "emptyStateTitle": "No tasks yet",
     "emptyStateDescription": "Create your first task to start tracking follow-ups",
+    "noResultsTitle": "No tasks match your search",
+    "noResultsDescription": "Try a different search term or clear the filters to see more tasks.",
     "loadTasksFailed": "We couldn't load tasks",
     "taskTitleRequired": "Task title is required",
+    "taskTitleMax": "Title must be 200 characters or fewer",
     "taskCreatedSuccess": "Task created",
     "createTaskFailed": "We couldn't create task",
     "taskUpdatedSuccess": "Task updated",
@@ -15816,6 +15834,8 @@
     "searchPlaceholder": "Search by code or label...",
     "emptyStateTitle": "No referral links yet",
     "emptyStateDescription": "Create your first referral link to start onboarding employers.",
+    "noResultsTitle": "No referral links match your search",
+    "noResultsDescription": "Try a different search term to see more referral links.",
     "tableHeaderCode": "Code",
     "tableHeaderLabel": "Label",
     "tableHeaderUsed": "Used",
@@ -17013,7 +17033,10 @@
     "deleteFailed": "We couldn't delete that item. Please try again.",
     "searchFallback": "Search {title}…",
     "deleteConfirmTitle": "Delete this item?",
-    "deleteConfirmMessage": "It will be removed from the site. This can't be undone."
+    "deleteConfirmMessage": "It will be removed from the site. This can't be undone.",
+    "createSuccess": "Created successfully.",
+    "updateSuccess": "Saved successfully.",
+    "deleteSuccess": "Deleted successfully."
   },
   "exhibitionHeroFilters": {
     "hideFilters": "Hide Filters",

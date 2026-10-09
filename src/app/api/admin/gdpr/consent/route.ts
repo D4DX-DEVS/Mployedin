@@ -25,7 +25,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const url = new URL(req.url);
   const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit") ?? 10)));
-  const search = url.searchParams.get("search") ?? "";
+  const search = url.searchParams.get("search")?.trim() ?? "";
   const type = url.searchParams.get("type") ?? "";
   const sortDir = url.searchParams.get("sortOrder") === "asc" ? 1 : -1;
 

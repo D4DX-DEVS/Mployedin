@@ -87,6 +87,11 @@ describe("emailHeader", () => {
 });
 
 describe("emailFooter", () => {
+  // The signed unsubscribe link needs a secret; CI has no .env.
+  beforeEach(() => {
+    process.env.JWT_SECRET = "test-secret";
+  });
+
   it("renders no unsupported CSS", () => {
     assertEmailSafe(emailFooter({ locale: "en", baseUrl: "https://x.test", reason: "r", unsubRef: "digest" }));
   });

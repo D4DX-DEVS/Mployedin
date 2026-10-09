@@ -23,6 +23,7 @@ export function EmployerTable({
   onSwitch,
   onEdit,
   onDelete,
+  hasActiveFilters = false,
 }: EmployerListProps) {
   const t = useTranslations("agentEmployers");
   const tc = useTranslations("common");
@@ -85,7 +86,11 @@ export function EmployerTable({
               ) : employers.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={COLUMN_COUNT} className="py-12">
-                    <EmptyState title={t("emptyStateTitle")} description={t("emptyStateDescription")} icon={Building2} />
+                    <EmptyState
+                      title={hasActiveFilters ? t("noResultsTitle") : t("emptyStateTitle")}
+                      description={hasActiveFilters ? t("noResultsDescription") : t("emptyStateDescription")}
+                      icon={Building2}
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

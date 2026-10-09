@@ -63,7 +63,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "10"));
   const status = searchParams.get("status") ?? "";
-  const search = searchParams.get("search") ?? "";
+  const search = searchParams.get("search")?.trim() ?? "";
   const scope = searchParams.get("scope") ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

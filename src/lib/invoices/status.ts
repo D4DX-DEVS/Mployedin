@@ -67,6 +67,18 @@ export const PAYABLE_INVOICE_STATUSES = [
   "overdue",
 ] as const;
 
+/**
+ * BUG-02: balances shown under the "Pending" KPI. An invoice awaiting approval
+ * has a real balance due (QA: INV-202609-00045 + INV-202610-00001 showed
+ * Pending 0 while money was outstanding), so pending_approval counts here.
+ * Drafts stay out — they are not yet real receivables. This is display
+ * aggregation only; PAYMENT_BLOCKED_* still guards actual payment.
+ */
+export const PENDING_BALANCE_INVOICE_STATUSES = [
+  ...PAYABLE_INVOICE_STATUSES,
+  "pending_approval",
+] as const;
+
 export function isInvoiceStatus(status: string | null): status is InvoiceStatusValue {
   return Boolean(status && (INVOICE_STATUSES as readonly string[]).includes(status));
 }

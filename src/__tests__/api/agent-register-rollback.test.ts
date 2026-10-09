@@ -56,6 +56,8 @@ const request = () =>
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // The verification code is peppered with this; CI has no .env.
+  process.env.NEXTAUTH_SECRET = "test-secret";
   userCreate.mockResolvedValue({ _id: "u1" });
 });
 

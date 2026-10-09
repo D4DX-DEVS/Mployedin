@@ -18,7 +18,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const { searchParams } = new URL(req.url);
-  const search = searchParams.get("search") ?? "";
+  const search = searchParams.get("search")?.trim() ?? "";
   const status = searchParams.get("status") ?? "";
   const category = searchParams.get("category") ?? "";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));

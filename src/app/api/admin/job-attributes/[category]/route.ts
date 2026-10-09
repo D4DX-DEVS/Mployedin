@@ -27,7 +27,7 @@ async function handler(req: NextRequest, ctx: AuthCtx, params?: Record<string, s
   const Model = await meta.model();
 
   const { searchParams } = new URL(req.url);
-  const search = searchParams.get("search") ?? "";
+  const search = searchParams.get("search")?.trim() ?? "";
   const status = searchParams.get("status") ?? "";
   const sortBy = searchParams.get("sortBy") ?? "sortOrder";
   const sortOrder = searchParams.get("sortOrder") === "desc" ? -1 : 1;

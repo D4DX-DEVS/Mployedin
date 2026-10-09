@@ -31,6 +31,7 @@ import {
 import { useDroppable } from "@dnd-kit/core";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
@@ -403,7 +404,7 @@ export default function AgentLeadsPage() {
   // Filters every request carries, whichever view is asking.
   const sharedParams = useCallback(() => {
     const params = new URLSearchParams();
-    if (search) params.set("search", search);
+    if (search.trim()) params.set("search", search.trim());
     if (exhibitionFilter !== "all") params.set("exhibitionId", exhibitionFilter);
     if (followUpFilter !== "all") params.set("followUp", followUpFilter);
     return params;
@@ -595,11 +596,29 @@ export default function AgentLeadsPage() {
     { header: t("exportHeaderCreated"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "" },
   ];
 
+  // BUG-11: filtered-to-zero must not show first-use copy.
+  const hasActiveFilters =
+    search.trim().length > 0 || statusFilter !== "all" || exhibitionFilter !== "all" || followUpFilter !== "all";
+
+  // BUG-06: table export resolves the full filtered set, not just the page.
+  const fetchAllLeads = useCallback(async () => {
+    const base = sharedParams();
+    if (statusFilter !== "all") base.set("status", statusFilter);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/leads?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.items ?? []) as Record<string, unknown>[]),
+        total: Number(json.total ?? 0),
+      }),
+    );
+  }, [sharedParams, statusFilter]);
+
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: leads as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: t("exportFilename"),
     title: t("pageTitle"),
+    fetchAll: fetchAllLeads,
   });
 
   // On the board there is no single `leads` page to hand the exporter — each
@@ -618,7 +637,7 @@ export default function AgentLeadsPage() {
     const name = t("exportFilename");
     const mod = await import("@/lib/export");
     if (kind === "csv") mod.exportCSV(rows, cols, `${name}.csv`);
-    else if (kind === "excel") await mod.exportExcel(rows, cols, `${name}.xls`, t("pageTitle"));
+    else if (kind === "excel") await mod.exportExcel(rows, cols, `${name}.xlsx`, t("pageTitle"));
     else await mod.exportPdf(rows, cols, `${name}.pdf`, t("pageTitle"));
   }, [sharedParams, statusFilter, exportColumns, t]);
 
@@ -841,7 +860,19 @@ export default function AgentLeadsPage() {
         </section>
       ) : viewMode === "board" ? (
         /* ──── KANBAN BOARD with Drag & Drop ──── */
-        <DndContext
+        <>
+          {/* BUG-11: a filtered-to-zero board must not look like an empty
+              pipeline — per-column empties alone read as "no leads yet". */}
+          {hasActiveFilters && pagination.total === 0 && (
+            <div className="workspace-panel-surface mb-2 flex items-center gap-3 rounded-2xl px-4 py-3">
+              <Inbox className="h-5 w-5 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">{t("noResultsTitle")}</p>
+                <p className="truncate text-xs text-muted-foreground">{t("noResultsDescription")}</p>
+              </div>
+            </div>
+          )}
+          <DndContext
           sensors={dndSensors}
           collisionDetection={closestCorners}
           onDragStart={handleDragStart}
@@ -880,7 +911,8 @@ export default function AgentLeadsPage() {
               </div>
             ) : null}
           </DragOverlay>
-        </DndContext>
+          </DndContext>
+        </>
       ) : (
         /* ──── TABLE VIEW ──── */
         <>
@@ -909,7 +941,12 @@ export default function AgentLeadsPage() {
                     ) : leads.length === 0 ? (
                       <TableRow className="hover:bg-transparent">
                         <TableCell colSpan={7} className="py-12">
-                          <EmptyState title={t("emptyPipelineTitle")} description={t("emptyPipelineDescription")} icon={Inbox} />
+                          {/* BUG-11: filtered-to-zero must not show first-use copy. */}
+                          <EmptyState
+                            title={hasActiveFilters ? t("noResultsTitle") : t("emptyPipelineTitle")}
+                            description={hasActiveFilters ? t("noResultsDescription") : t("emptyPipelineDescription")}
+                            icon={Inbox}
+                          />
                         </TableCell>
                       </TableRow>
                     ) : leads.map((lead) => {

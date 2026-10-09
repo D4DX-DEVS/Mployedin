@@ -82,7 +82,13 @@ export function PaginationControls({
         // floating Copilot FAB (fixed, bottom-right) without the old pb-20,
         // which stacked on the scroll container's own nav reserve and left
         // ~160px of dead space under the last page of every list.
-        "flex flex-row items-center justify-center gap-3 px-1 text-xs sm:justify-between sm:gap-3 sm:px-0 sm:text-[13px]",
+        // BUG-008: on desktop the shell reserves no bottom padding (lg:pb-0)
+        // while the FAB docks at bottom:1rem — scrolled to the end, the last
+        // page button and the last row's actions slid underneath it. This
+        // margin only extends the scroll region past the final footer, so it
+        // is invisible until scrolled to the very bottom, where it lifts the
+        // footer exactly clear of the 3rem FAB + 1rem dock offset.
+        "flex flex-row items-center justify-center gap-3 px-1 text-xs sm:justify-between sm:gap-3 sm:px-0 sm:text-[13px] lg:mb-16",
         className
       )}
     >

@@ -7,6 +7,10 @@ import userEvent from "@testing-library/user-event";
 import EmployerApplicationsPage from "@/app/[locale]/(dashboard)/employer/applications/page";
 import { ApplicationsWorkspace } from "@/components/features/employer/applications/ApplicationsWorkspace";
 
+// Full workspace render + userEvent interaction exceeds the 5 s default under
+// parallel load (same reason adminWhatsApp* suites use 20 s).
+jest.setTimeout(20_000);
+
 const useApplicationsMock = jest.fn();
 const replaceMock = jest.fn();
 const updateStatusMutateAsyncMock = jest.fn();

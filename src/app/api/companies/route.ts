@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1", 10) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") ?? "12", 10) || 12));
-  const search = url.searchParams.get("search") ?? "";
+  const search = url.searchParams.get("search")?.trim() ?? "";
   const industry = (url.searchParams.get("industry") ?? "").trim();
 
   // Only surface employers that are actively hiring (≥1 active job). This also

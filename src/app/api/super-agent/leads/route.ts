@@ -17,7 +17,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // --- Filters ---
   const status = searchParams.get("status");
   const agentId = searchParams.get("agentId");
-  const search = searchParams.get("search");
+  const search = searchParams.get("search")?.trim() || undefined;
   const country = searchParams.get("country");
   const industry = searchParams.get("industry");
   const source = searchParams.get("source");

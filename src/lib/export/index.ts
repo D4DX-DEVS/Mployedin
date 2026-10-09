@@ -1,7 +1,9 @@
 import { formatCount } from "@/lib/ui/intlFormat";
 /**
- * Client-side export utilities: CSV, Excel-compatible HTML, PDF (jspdf).
+ * Client-side export utilities: CSV, Excel (real XLSX), PDF (jspdf).
  */
+
+export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 export interface ExportColumn<T> {
   header: string;
@@ -42,10 +44,87 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function normalizeExcelFilename(filename: string): string {
-  return filename.replace(/\.xlsx$/i, ".xls") || "export.xls";
+export function normalizeExcelFilename(filename: string): string {
+  // BUG-15: always a genuine .xlsx — the old HTML-in-.xls triggered Excel's
+  // format/extension mismatch warning.
+  const base = filename.replace(/\.(xls|xlsx)$/i, "") || "export";
+  return `${base}.xlsx`;
 }
 
+function colLetter(index: number): string {
+  let out = "";
+  let i = index + 1;
+  while (i > 0) {
+    const mod = (i - 1) % 26;
+    out = String.fromCharCode(65 + mod) + out;
+    i = Math.floor((i - 1) / 26);
+  }
+  return out;
+}
+
+/**
+ * BUG-15: build a genuine OOXML workbook (no spreadsheet library in the
+ * dependency tree — jszip, already a dependency, does the zipping). Inline
+ * strings keep it dependency-free; Excel/LibreOffice open it with no repair
+ * prompt.
+ */
+export async function xlsxBlobFromRows(rows: string[][], sheetName = "Sheet1"): Promise<Blob> {
+  const { default: JSZip } = await import("jszip");
+  const safeSheet = sheetName.replace(/[\\/*?:[\]]/g, " ").slice(0, 31) || "Sheet1";
+  const sheetData = rows
+    .map(
+      (row, r) =>
+        `<row r="${r + 1}">` +
+        row
+          .map(
+            (cell, c) =>
+              `<c r="${colLetter(c)}${r + 1}" t="inlineStr"><is><t xml:space="preserve">${escapeHtml(sanitizeSpreadsheetCell(cell))}</t></is></c>`,
+          )
+          .join("") +
+        `</row>`,
+    )
+    .join("");
+  const zip = new JSZip();
+  zip.file(
+    "[Content_Types].xml",
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+      `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+      `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+      `<Default Extension="xml" ContentType="application/xml"/>` +
+      `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
+      `<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
+      `</Types>`,
+  );
+  zip.file(
+    "_rels/.rels",
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>` +
+      `</Relationships>`,
+  );
+  zip.file(
+    "xl/workbook.xml",
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+      `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+      `<sheets><sheet name="${escapeHtml(safeSheet)}" sheetId="1" r:id="rId1"/></sheets>` +
+      `</workbook>`,
+  );
+  zip.file(
+    "xl/_rels/workbook.xml.rels",
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>` +
+      `</Relationships>`,
+  );
+  zip.file(
+    "xl/worksheets/sheet1.xml",
+    `<?xml version="1.0" encoding="UTF-8"?>` +
+      `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetData}</sheetData></worksheet>`,
+  );
+  return zip.generateAsync({ type: "blob", mimeType: XLSX_MIME });
+}
+
+/** @deprecated BUG-15: HTML masquerading as .xls — use xlsxBlobFromRows. Kept for compatibility. */
 export function excelBlobFromRows(rows: string[][], sheetName = "Sheet1"): Blob {
   const safeSheetName = escapeHtml(sheetName.slice(0, 31) || "Sheet1");
   const tableRows = rows
@@ -55,12 +134,12 @@ export function excelBlobFromRows(rows: string[][], sheetName = "Sheet1"): Blob 
   return new Blob(["\uFEFF", html], { type: "application/vnd.ms-excel;charset=utf-8;" });
 }
 
-export function exportExcelRows(
+export async function exportExcelRows(
   rows: string[][],
-  filename = "export.xls",
+  filename = "export.xlsx",
   sheetName = "Sheet1",
-): void {
-  triggerDownload(excelBlobFromRows(rows, sheetName), normalizeExcelFilename(filename));
+): Promise<void> {
+  triggerDownload(await xlsxBlobFromRows(rows, sheetName), normalizeExcelFilename(filename));
 }
 
 /* ── CSV ─────────────────────────────────────────────── */
@@ -87,15 +166,15 @@ export function exportCSV<T extends Record<string, unknown>>(
   triggerDownload(blob, filename);
 }
 
-/* ── Excel-compatible HTML ───────────────────────────── */
+/* ── Excel (genuine XLSX) ────────────────────────────── */
 
 export async function exportExcel<T extends Record<string, unknown>>(
   data: T[],
   columns: ExportColumn<T>[],
-  filename = "export.xls",
+  filename = "export.xlsx",
   sheetName = "Sheet1",
 ): Promise<void> {
-  exportExcelRows(
+  await exportExcelRows(
     [columns.map((column) => column.header), ...data.map((row) => columns.map((column) => resolveValue(row, column)))],
     filename,
     sheetName,

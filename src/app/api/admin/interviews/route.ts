@@ -19,7 +19,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const page = Math.max(1, parseInt(url.searchParams.get("page") ?? "1"));
   const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") ?? "20")));
   const status = url.searchParams.get("status") ?? "";
-  const search = url.searchParams.get("search") ?? "";
+  const search = url.searchParams.get("search")?.trim() ?? "";
   const employerId = url.searchParams.get("employerId") ?? "";
   const agentId = url.searchParams.get("agentId") ?? "";
   const superAgentId = url.searchParams.get("superAgentId") ?? "";

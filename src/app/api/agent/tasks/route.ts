@@ -24,7 +24,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
 
   const url = new URL(req.url);
   const status = url.searchParams.get("status") ?? "";
-  const search = url.searchParams.get("search") ?? "";
+  const search = url.searchParams.get("search")?.trim() ?? "";
   const page = Math.max(parseInt(url.searchParams.get("page") ?? "1", 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") ?? "100", 10) || 100, 1), 100);
 

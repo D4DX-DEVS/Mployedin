@@ -103,7 +103,7 @@ export default function SuperAgentJobSeekersPage() {
     setLoadFailed(false);
     try {
       const params = pagination.paginationParams();
-      if (filters.search) params.set("search", filters.search);
+      if (filters.search.trim()) params.set("search", filters.search.trim());
       if (filters.country !== "all") params.set("country", filters.country);
       if (filters.experienceMin !== "all") params.set("experienceMin", filters.experienceMin);
       if (filters.availability !== "all") params.set("availability", filters.availability);

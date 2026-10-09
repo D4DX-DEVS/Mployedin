@@ -18,7 +18,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "10");
   const status = searchParams.get("status");
-  const search = searchParams.get("search");
+  const search = searchParams.get("search")?.trim() || undefined;
   const exhibitionId = searchParams.get("exhibitionId");
   // "due" = the follow-up date has passed and the lead is still live. The
   // dashboard queue, the nav badge and the ⌘K action all address this view by

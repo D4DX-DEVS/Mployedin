@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { getSuperAgentScope, getSuperAgentBook } from "@/lib/auth/agentRestrictions";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
 import Job from "@/models/Job";
@@ -43,25 +43,35 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
   const uniqueEmployerIds = [...new Set(allEmployerIds.map(String))];
   const totalEmployers = uniqueEmployerIds.length;
 
+  // BUG-03: single source of truth with the homepage (loadSuperAgentDashboard),
+  // the jobs tab and territory — the book's ownershipMatch plus deletedAt:null.
+  // The old team-only filter missed book employers and counted soft-deleted jobs.
+  const book = await getSuperAgentBook(ctx.userId);
+  const bookEmployerIds = (book?.employerIds ?? []).map(String);
   // Total jobs posted by agents or their employers
   const jobFilter: Record<string, unknown> = {
-    $or: [
-      { agentId: { $in: agentDocIds } },
-      ...(uniqueEmployerIds.length > 0
-        ? [{ employerId: { $in: uniqueEmployerIds } }]
-        : []),
-    ],
+    deletedAt: null,
+    ...(book?.ownershipMatch ?? { _id: { $in: [] } }),
   };
   const [totalJobs, activeJobs] = await Promise.all([
     Job.countDocuments(jobFilter),
     Job.countDocuments({ ...jobFilter, status: "active" }),
   ]);
 
-  // Applications (CVs received)
+  // Applications (CVs received) — same scope as /api/super-agent/applications:
+  // agent-stamped rows, book-employer rows and rows on team-posted jobs.
+  const teamJobIds = agentDocIds.length > 0
+    ? (await Job.find({ agentId: { $in: agentDocIds } }).select("_id").lean()).map((j) => j._id)
+    : [];
   const jobIds = await Job.find(jobFilter).select("_id").lean();
   const jobIdList = jobIds.map((j) => j._id);
-  const totalApplications = jobIdList.length > 0
-    ? await Application.countDocuments({ jobId: { $in: jobIdList } })
+  const applicationScopeOr: Record<string, unknown>[] = [];
+  if (agentDocIds.length > 0) applicationScopeOr.push({ agentId: { $in: agentDocIds } });
+  if (bookEmployerIds.length > 0) applicationScopeOr.push({ employerId: { $in: bookEmployerIds } });
+  if (teamJobIds.length > 0) applicationScopeOr.push({ jobId: { $in: teamJobIds } });
+  if (jobIdList.length > 0) applicationScopeOr.push({ jobId: { $in: jobIdList } });
+  const totalApplications = applicationScopeOr.length > 0
+    ? await Application.countDocuments({ $or: applicationScopeOr })
     : 0;
 
   // Application status breakdown

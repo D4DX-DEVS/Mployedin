@@ -315,6 +315,10 @@ export function calculateOverallTargetProgress(
     return 0;
   }
 
+  // BUG-10 note: `progress` here is already the capped per-category pct
+  // (27/2 → 999, not 1350), so the overall is the mean of capped values —
+  // e.g. (999+0+0)/3 = 333. That differs by design from a single category's
+  // 999%; callers must label one "average" and the other per-category.
   const totalProgress = activeCategories.reduce((sum, category) => sum + category.progress, 0);
   return Math.min(Math.round(totalProgress / activeCategories.length), 999);
 }

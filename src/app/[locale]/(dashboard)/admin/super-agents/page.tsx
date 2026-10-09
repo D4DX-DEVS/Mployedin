@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Inbox } from "lucide-react";
 import { formatListDate } from "@/lib/ui/intlFormat";
@@ -161,7 +162,7 @@ export default function AdminSuperAgentsPage() {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (search) params.set("search", search);
+    if (search.trim()) params.set("search", search.trim());
     if (statusFilter !== "all") params.set("status", statusFilter);
     params.set("sortBy", sortBy);
     params.set("sortOrder", sortOrder);
@@ -203,11 +204,27 @@ export default function AdminSuperAgentsPage() {
     { header: t("exportHeaderStatus"), key: "isActive", formatter: (v) => v !== false ? t("exportStatusActive") : t("exportStatusInactive") },
     { header: t("exportHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : t("exportDashCharacter") },
   ];
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllSuperAgents = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (search.trim()) base.set("search", search.trim());
+    if (statusFilter !== "all") base.set("status", statusFilter);
+    base.set("sortBy", sortBy);
+    base.set("sortOrder", sortOrder);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/admin/super-agents?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.superAgents ?? []) as Record<string, unknown>[]),
+        total: Number((json.pagination as { total?: number } | undefined)?.total ?? 0),
+      }),
+    );
+  }, [search, statusFilter, sortBy, sortOrder]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: superAgents as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "super-agents",
     title: t("exportTitle"),
+    fetchAll: fetchAllSuperAgents,
   });
 
   // Name / email / password are checked by the Account step before the dialog

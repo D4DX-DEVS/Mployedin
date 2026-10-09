@@ -35,6 +35,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useConfirm } from "@/hooks/useConfirm";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { adminCanMove } from "@/lib/exhibitions/transitions";
 import type { ExportColumn } from "@/lib/export";
@@ -315,11 +316,33 @@ export default function AdminExhibitionsPage() {
   ], [locale, t]);
   // Selected rows when there is a selection, otherwise the page on screen.
   const exportRows = selectedItems.length > 0 ? selectedItems : items;
+  // BUG-004: with no selection, export the full filtered result set, not just
+  // the visible page. An explicit selection still exports exactly that selection.
+  const fetchAllExhibitions = useCallback(async () => {
+    if (selectedItems.length > 0) return exportRows as unknown as Record<string, unknown>[];
+    const base = new URLSearchParams();
+    if (statusFilter !== "all") base.set("status", statusFilter);
+    if (priorityFilter !== "all") base.set("priority", priorityFilter);
+    if (stageFilter !== "all") base.set("stage", stageFilter);
+    if (dateRange !== "all") base.set("dateRange", dateRange);
+    if (countryFilter !== "all") base.set("country", countryFilter);
+    if (budgetRange !== "all") base.set("budgetRange", budgetRange);
+    if (reviewerFilter !== "all") base.set("reviewer", reviewerFilter);
+    if (debouncedSearch) base.set("search", debouncedSearch);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/exhibitions?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.items ?? []) as Record<string, unknown>[]),
+        total: Number(json.total ?? 0),
+      }),
+    );
+  }, [selectedItems, exportRows, statusFilter, priorityFilter, stageFilter, dateRange, countryFilter, budgetRange, reviewerFilter, debouncedSearch]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: exportRows as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "exhibition-requests",
     title: t("exhibitionOperationsCenter"),
+    fetchAll: fetchAllExhibitions,
   });
 
   const advancedFilterCount = [dateRange, countryFilter, budgetRange, reviewerFilter].filter((value) => value !== "all").length;

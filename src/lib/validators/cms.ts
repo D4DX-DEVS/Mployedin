@@ -21,9 +21,42 @@ const sortActive = {
 };
 
 // ── Videos ──────────────────────────────────────────────────────────
+// BUG-005: the admin form labels this field YouTube/Vimeo, but the schema
+// accepted any URL — including javascript: and arbitrary .mp4 hosts. Only
+// http(s) YouTube/Vimeo embeds are stored now.
+const VIDEO_HOSTS = new Set([
+  "youtube.com",
+  "www.youtube.com",
+  "m.youtube.com",
+  "youtu.be",
+  "youtube-nocookie.com",
+  "www.youtube-nocookie.com",
+  "vimeo.com",
+  "www.vimeo.com",
+  "player.vimeo.com",
+]);
+
+const videoUrl = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(
+    (v) => {
+      let parsed: URL;
+      try {
+        parsed = new URL(v);
+      } catch {
+        return false;
+      }
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+      return VIDEO_HOSTS.has(parsed.hostname.toLowerCase());
+    },
+    { message: "Must be a YouTube or Vimeo URL (https://…)" },
+  );
+
 export const videoCreateSchema = z.object({
   title: z.string().min(1).max(200).trim(),
-  url: z.string().url().max(2048),
+  url: videoUrl,
   titleAr: bilingualText(200),
   description: z.string().max(2000).trim().optional().or(z.literal("")),
   descriptionAr: bilingualText(2000),

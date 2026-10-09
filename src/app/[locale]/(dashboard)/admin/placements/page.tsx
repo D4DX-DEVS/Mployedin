@@ -29,6 +29,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import type { ExportColumn } from "@/lib/export";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
@@ -303,11 +304,33 @@ export default function AdminPlacementsPage() {
     { header: t("exportHeaderCommissionPaid"), key: "commissionPaid", formatter: (v) => v ? t("exportYes") : t("exportNo") },
     { header: t("exportHeaderStartDate"), key: "startDate", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllPlacements = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (search) base.set("search", search);
+    if (visaFilter) base.set("visaStatus", visaFilter);
+    if (commissionFilter) base.set("commissionPaid", commissionFilter);
+    if (currencyFilter) base.set("currency", currencyFilter);
+    if (dateFrom) base.set("dateFrom", dateFrom);
+    if (dateTo) base.set("dateTo", dateTo);
+    if (salaryMin) base.set("salaryMin", salaryMin);
+    if (salaryMax) base.set("salaryMax", salaryMax);
+    base.set("sortBy", sortBy);
+    base.set("sortOrder", sortOrder);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/placements?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.placements ?? []) as Record<string, unknown>[]),
+        total: Number(json.total ?? 0),
+      }),
+    );
+  }, [search, visaFilter, commissionFilter, currencyFilter, dateFrom, dateTo, salaryMin, salaryMax, sortBy, sortOrder]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: placements as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "placements",
     title: t("exportTitle"),
+    fetchAll: fetchAllPlacements,
   });
 
   return (

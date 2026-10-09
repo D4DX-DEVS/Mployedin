@@ -97,11 +97,19 @@ export default function AgentTasksPage() {
   // of dropping the agent on the list beside the button that starts it.
   const [showForm, setShowForm] = useState(() => readQuery().get("new") === "1");
 
+  const emptyTaskForm = { title: "", description: "", priority: "medium", category: "follow_up", dueDate: "" };
+
   /* New task form */
   const [newTask, setNewTask] = useState({
     title: "", description: "", priority: "medium", category: "follow_up",
     dueDate: "",
   });
+
+  const closeTaskForm = () => {
+    // BUG-13: reset so a cancelled draft does not reappear on reopen.
+    setNewTask({ ...emptyTaskForm });
+    setShowForm(false);
+  };
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -109,7 +117,7 @@ export default function AgentTasksPage() {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (dueFilter !== "all") params.set("due", dueFilter);
-      if (search) params.set("search", search);
+      if (search.trim()) params.set("search", search.trim());
 
       const res = await fetch(`/api/agent/tasks?${params}`);
       if (res.ok) {
@@ -133,6 +141,11 @@ export default function AgentTasksPage() {
       toast.error(t("taskTitleRequired"));
       return;
     }
+    // BUG-12: name the field failure instead of a generic "Validation failed".
+    if (newTask.title.trim().length > 200) {
+      toast.error(t("taskTitleMax"));
+      return;
+    }
 
     try {
       const payload = {
@@ -147,12 +160,14 @@ export default function AgentTasksPage() {
 
       if (res.ok) {
         toast.success(t("taskCreatedSuccess"));
-        setNewTask({ title: "", description: "", priority: "medium", category: "follow_up", dueDate: "" });
+        setNewTask({ ...emptyTaskForm });
         setShowForm(false);
         fetchTasks();
       } else {
         const err = await res.json().catch(() => null);
-        toast.error(err?.error ?? t("createTaskFailed"));
+        // Prefer the field-level detail when the API provides it.
+        const detail = Array.isArray(err?.details) ? err.details[0]?.message : undefined;
+        toast.error(detail ?? err?.error ?? t("createTaskFailed"));
       }
     } catch {
       toast.error(t("createTaskFailed"));
@@ -200,6 +215,10 @@ export default function AgentTasksPage() {
     }
   };
 
+  // BUG-11: filtered-to-zero must not show first-use copy.
+  const hasActiveFilters =
+    search.trim().length > 0 || statusFilter !== "all" || dueFilter !== "all";
+
   return (
     <>
     {ConfirmDialogNode}
@@ -245,7 +264,13 @@ export default function AgentTasksPage() {
         <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
           <h2 className="heading-section font-semibold text-foreground">{t("createTaskHeading")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input placeholder={t("taskTitlePlaceholder")} value={newTask.title} onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))} className="sm:col-span-2" />
+            <Input
+              placeholder={t("taskTitlePlaceholder")}
+              value={newTask.title}
+              maxLength={200}
+              onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))}
+              className="sm:col-span-2"
+            />
             <Input placeholder={t("taskDescriptionPlaceholder")} value={newTask.description} onChange={(e) => setNewTask((p) => ({ ...p, description: e.target.value }))} className="sm:col-span-2" />
             <SearchableSelect options={getCategoryOptions(t)} value={newTask.category} onValueChange={(v) => setNewTask((p) => ({ ...p, category: v }))} placeholder={t("categoryPlaceholder")} />
             <SearchableSelect options={getPriorityOptions(t)} value={newTask.priority} onValueChange={(v) => setNewTask((p) => ({ ...p, priority: v }))} placeholder={t("priorityPlaceholder")} />
@@ -253,7 +278,7 @@ export default function AgentTasksPage() {
           </div>
           <div className="flex gap-2">
             <Button onClick={createTask}><Plus className="mr-1 h-4 w-4" /> {tc("create")}</Button>
-            <Button variant="ghost" onClick={() => setShowForm(false)}>{tc("cancel")}</Button>
+            <Button variant="ghost" onClick={closeTaskForm}>{tc("cancel")}</Button>
           </div>
         </section>
       )}
@@ -297,9 +322,10 @@ export default function AgentTasksPage() {
               ) : tasks.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={4} className="py-12">
+                    {/* BUG-11: filtered-to-zero must not show first-use copy. */}
                     <EmptyState
-                      title={t("emptyStateTitle")}
-                      description={t("emptyStateDescription")}
+                      title={hasActiveFilters ? t("noResultsTitle") : t("emptyStateTitle")}
+                      description={hasActiveFilters ? t("noResultsDescription") : t("emptyStateDescription")}
                       icon={Calendar}
                     />
                   </TableCell>

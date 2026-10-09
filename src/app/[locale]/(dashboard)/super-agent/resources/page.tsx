@@ -63,7 +63,7 @@ export default function ResourceDownloadsPage() {
         limit: String(pagination.limit),
       });
       if (categoryFilter !== "all") params.set("category", categoryFilter);
-      if (search) params.set("search", search);
+      if (search.trim()) params.set("search", search.trim());
       const res = await fetch(`/api/resources?${params}`);
       if (res.ok) {
         const data = await res.json();

@@ -78,7 +78,13 @@ jest.mock("@/models/Placement", () => ({ __esModule: true, default: { aggregate:
 jest.mock("@/models/ExhibitionRequest", () => ({
   __esModule: true,
   default: {
-    find: (filter: unknown) => { exhibitionFind(filter); return chain([]); },
+    // BUG-01: the route casts the scope through the query for aggregates.
+    find: (filter: unknown) => {
+      exhibitionFind(filter);
+      const q = chain([]);
+      (q as { cast: (m: unknown) => unknown }).cast = () => filter;
+      return q;
+    },
     countDocuments: jest.fn(async () => 0),
     aggregate: jest.fn(async () => []),
     distinct: jest.fn(async () => []),
@@ -139,18 +145,23 @@ describe("agents roster: account status filter", () => {
 });
 
 describe("exhibitions: status=pending_review", () => {
+  // BUG-01: the route also runs find().cast() for the summary aggregates, so
+  // the list query is the find call carrying the status filter, not calls[0].
+  const listQuery = () =>
+    exhibitionFind.mock.calls.map(([f]) => f).find((f) => f && typeof f === "object" && "status" in (f as object));
+
   it("matches the summary's pendingReview bucket — submitted and under review", async () => {
     await call(getExhibitions, "/api/exhibitions?status=pending_review");
-    expect(exhibitionFind.mock.calls[0][0]).toMatchObject({ status: { $in: ["submitted", "under_review"] } });
+    expect(listQuery()).toMatchObject({ status: { $in: ["submitted", "under_review"] } });
   });
 
   it("still takes a single real status as before", async () => {
     await call(getExhibitions, "/api/exhibitions?status=submitted");
-    expect(exhibitionFind.mock.calls[0][0]).toMatchObject({ status: "submitted" });
+    expect(listQuery()).toMatchObject({ status: "submitted" });
   });
 
   it("ignores an unknown status rather than matching nothing", async () => {
     await call(getExhibitions, "/api/exhibitions?status=bogus");
-    expect(exhibitionFind.mock.calls[0][0]).not.toHaveProperty("status");
+    expect(listQuery()).toBeUndefined();
   });
 });

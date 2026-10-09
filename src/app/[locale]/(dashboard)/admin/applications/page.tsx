@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { AiSearchField, AiSearchResultLine } from "@/components/shared/AiSearchField";
 import { AI_SCORE_BANDS, useAiFilterSearch, type AiApplicationFilters } from "@/hooks/useAiFilterSearch";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import type { ExportColumn } from "@/lib/export";
@@ -266,11 +267,39 @@ export default function AdminApplicationsPage() {
     { header: t("exportHeaderAIScore"), key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "—" },
     { header: t("exportHeaderApplied"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllApplications = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (jobIdFilter) base.set("jobId", jobIdFilter);
+    if (search) base.set("search", search);
+    if (status) base.set("status", status);
+    if (employerId) base.set("employerId", employerId);
+    if (source) base.set("source", source);
+    if (dateFrom) base.set("dateFrom", dateFrom);
+    if (dateTo) base.set("dateTo", dateTo);
+    if (skills) base.set("skills", skills);
+    if (sortBy) base.set("sortBy", sortBy);
+    if (sortOrder) base.set("sortOrder", sortOrder);
+    if (stale === "true") base.set("stale", "true");
+    if (scoreRange) {
+      const [min, max] = scoreRange.split("-");
+      if (min) base.set("scoreMin", min);
+      if (max) base.set("scoreMax", max);
+    }
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/applications?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: (((json.items ?? json.applications ?? []) as Record<string, unknown>[])),
+        total: Number(json.total ?? json.totalCount ?? (json.pagination as { total?: number } | undefined)?.total ?? 0),
+      }),
+    );
+  }, [jobIdFilter, search, status, employerId, source, dateFrom, dateTo, skills, sortBy, sortOrder, stale, scoreRange]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: applications as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "applications",
     title: t("applications"),
+    fetchAll: fetchAllApplications,
   });
 
   /* ---- Fetch applications ---- */

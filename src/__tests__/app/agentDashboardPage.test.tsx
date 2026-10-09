@@ -32,6 +32,19 @@ jest.mock("@/models/Agent", () => ({
   },
 }));
 
+// BUG-03: the Active Accounts tile resolves Employer.userId -> User.isActive.
+// Both mocked (same bson-ESM reason as the other models): 2 visible, both active.
+jest.mock("@/models/Employer", () => ({
+  __esModule: true,
+  default: {
+    find: () => ({ select: () => ({ lean: async () => [{ userId: "u-e1" }, { userId: "u-e2" }] }) }),
+  },
+}));
+jest.mock("@/models/User", () => ({
+  __esModule: true,
+  default: { countDocuments: async () => 2 },
+}));
+
 jest.mock("@/models/Job", () => ({
   __esModule: true,
   default: {

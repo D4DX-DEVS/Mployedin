@@ -111,7 +111,7 @@ export default function AgentInvoicesPage() {
     setErrorMessage(null);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (search) params.set("search", search);
+      if (search.trim()) params.set("search", search.trim());
       if (statusFilter) params.set("status", statusFilter);
       if (dateFrom) params.set("dateFrom", dateFrom);
       if (dateTo) params.set("dateTo", dateTo);
@@ -133,7 +133,7 @@ export default function AgentInvoicesPage() {
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
   useEffect(() => { document.title = `${t("pageTitle")} · MPLOYEDIN`; }, [t]);
 
-  const hasActiveFilters = Boolean(statusFilter || dateFrom || dateTo);
+  const hasActiveFilters = Boolean(statusFilter || dateFrom || dateTo || search.trim());
 
   const exportColumns: ExportColumn<Invoice>[] = [
     { header: t("exportHeaderInvoiceNumber"), key: "invoiceNumber" },
@@ -249,6 +249,7 @@ export default function AgentInvoicesPage() {
                   loading={loading}
                   role="agent"
                   onSelect={setSelectedInvoiceId}
+                  hasActiveFilters={hasActiveFilters}
                 />
               </section>
 

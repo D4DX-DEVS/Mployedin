@@ -16,6 +16,7 @@ interface PasswordInputProps {
   autoComplete?: string;
   className?: string;
   "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
 }
 
 export function PasswordInput({
@@ -27,6 +28,7 @@ export function PasswordInput({
   autoComplete = "new-password",
   className,
   "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
 }: PasswordInputProps) {
   const tc = useTranslations("common");
   const [revealed, setRevealed] = useState(false);
@@ -48,6 +50,7 @@ export function PasswordInput({
         autoComplete={autoComplete}
         className={cn("pe-20", className)}
         aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
       />
       <div className="absolute inset-y-0 end-1 flex items-center gap-0.5">
         <button

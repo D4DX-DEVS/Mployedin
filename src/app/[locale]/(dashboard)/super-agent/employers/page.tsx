@@ -196,7 +196,7 @@ export default function SuperAgentEmployersPage() {
     setError(false);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit), distinct: "true" });
-      if (filters.search) params.set("search", filters.search);
+      if (filters.search.trim()) params.set("search", filters.search.trim());
       if (filters.industry) params.set("industry", filters.industry);
       if (filters.location) params.set("location", filters.location);
       if (filters.status) params.set("status", filters.status);

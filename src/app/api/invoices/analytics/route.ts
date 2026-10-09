@@ -13,7 +13,7 @@ import Invoice from "@/models/Invoice";
 import Commission from "@/models/Commission";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
-import { NON_REVENUE_INVOICE_STATUSES, PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
+import { NON_REVENUE_INVOICE_STATUSES, PENDING_BALANCE_INVOICE_STATUSES } from "@/lib/invoices/status";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -26,8 +26,8 @@ interface AuthCtx { userId: string; role: UserRole; locale: string }
  */
 const NON_REVENUE_STATUSES = NON_REVENUE_INVOICE_STATUSES;
 
-/** Statuses whose outstanding balance counts as money still owed. */
-const PENDING_STATUSES: string[] = [...PAYABLE_INVOICE_STATUSES];
+/** Statuses whose outstanding balance counts as money still owed (incl. pending_approval — BUG-02). */
+const PENDING_STATUSES: string[] = [...PENDING_BALANCE_INVOICE_STATUSES];
 
 async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();

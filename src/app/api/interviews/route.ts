@@ -46,7 +46,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
   const jobIdParam = searchParams.get("jobId") ?? "";
   const typeParam = searchParams.get("type") ?? "";
   const outcomeParam = searchParams.get("outcome") ?? "";
-  const search = searchParams.get("search") ?? "";
+  const search = searchParams.get("search")?.trim() ?? "";
   const dateFrom = searchParams.get("dateFrom") ?? "";
   const dateTo = searchParams.get("dateTo") ?? "";
   const sortBy = searchParams.get("sortBy") ?? "scheduledAt";

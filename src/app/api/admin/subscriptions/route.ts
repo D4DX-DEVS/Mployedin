@@ -9,15 +9,13 @@
  *   autoRenew (true|false), dateFrom, dateTo,
  *   expiring (7d|30d) — active subscriptions whose period ends in that window
  *
- * Admin / super_agent / agent only.
+ * Admin only.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import Subscription from "@/models/Subscription";
-import { Employer } from "@/models/Employer";
-import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import type { UserRole } from "@/types/user";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { SUBSCRIPTION_EXPIRING_WINDOWS, subscriptionsEndingFilter } from "@/lib/admin/queueFilters";
@@ -25,7 +23,10 @@ import { SUBSCRIPTION_EXPIRING_WINDOWS, subscriptionsEndingFilter } from "@/lib/
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
 async function handler(req: NextRequest, ctx: AuthCtx) {
-  if (!["admin", "super_agent", "agent"].includes(ctx.role)) {
+  // BUG-001: this is an admin directory — agents/super-agents have their own
+  // scoped subscription endpoints (/api/subscriptions/*). A previous version
+  // let any agent list every subscriber (names, emails, roles).
+  if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -46,18 +47,6 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   // Build filter
   const filter: Record<string, unknown> = {};
-
-  // Scope non-admins to the employers they manage. getScopedEmployerIds returns
-  // an explicit id list for agent / super_agent ([] = see nothing), so the list
-  // can never fall through to the platform-wide read it previously performed
-  // (every customer's name, email, plan and status was visible to any agent).
-  if (ctx.role !== "admin") {
-    const employerIds = (await getScopedEmployerIds(ctx)) ?? [];
-    const employerUserIds = employerIds.length
-      ? (await Employer.find({ _id: { $in: employerIds } }).select("userId").lean()).map((e) => e.userId)
-      : [];
-    filter.userId = { $in: employerUserIds };
-  }
 
   if (status && ["active", "expired", "cancelled", "suspended"].includes(status)) {
     filter.status = status;

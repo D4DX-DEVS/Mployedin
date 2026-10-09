@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -38,6 +38,7 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { usePathname } from "next/navigation";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatListDate } from "@/lib/ui/intlFormat";
@@ -95,27 +96,34 @@ export default function AgentCandidatesPage() {
   const [jobIdFilter, setJobIdFilter] = useUrlFilter("jobId", "");
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  // BUG-07: rapid filter changes let a stale response overwrite the table.
+  // Only the latest request may update state (same pattern as leads page).
+  const listRequestRef = useRef(0);
 
   const loadApplications = useCallback(async () => {
+    const requestId = ++listRequestRef.current;
     setLoading(true);
     setError(false);
     try {
       const params = pagination.paginationParams();
       if (statusFilter) params.set("status", statusFilter);
       if (jobIdFilter) params.set("jobId", jobIdFilter);
-      if (search) params.set("search", search);
+      if (search.trim()) params.set("search", search.trim());
       const res = await fetch(`/api/applications?${params}`);
+      if (requestId !== listRequestRef.current) return;
       if (!res.ok) {
         setError(true);
         return;
       }
       const data = await res.json();
+      if (requestId !== listRequestRef.current) return;
       setApplications(data.applications ?? []);
       pagination.updateTotal(data.pagination?.total ?? 0);
     } catch {
+      if (requestId !== listRequestRef.current) return;
       setError(true);
     } finally {
-      setLoading(false);
+      if (requestId === listRequestRef.current) setLoading(false);
     }
   }, [statusFilter, jobIdFilter, search, pagination.page, pagination.limit]);
 
@@ -309,11 +317,27 @@ export default function AgentCandidatesPage() {
     { header: t("tableHeaderApplied"), key: "createdAt", formatter: (v) => v ? formatListDate(String(v)) : "" },
   ];
 
+  // BUG-06: export the full filtered result set, not just the visible page.
+  const fetchAllApplications = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (statusFilter) base.set("status", statusFilter);
+    if (jobIdFilter) base.set("jobId", jobIdFilter);
+    if (search.trim()) base.set("search", search.trim());
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/applications?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.applications ?? []) as Record<string, unknown>[]),
+        total: Number((json.pagination as { total?: number } | undefined)?.total ?? 0),
+      }),
+    );
+  }, [statusFilter, jobIdFilter, search]);
+
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: applications as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agent-candidates",
     title: t("candidatesPipeline"),
+    fetchAll: fetchAllApplications,
   });
 
   return (

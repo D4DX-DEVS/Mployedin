@@ -405,6 +405,7 @@
     "sortDescending": "ترتيب تنازلي",
     "export": "تصدير",
     "exportData": "تصدير البيانات",
+    "exportFullFailed": "تعذّر تصدير سوى الصفحة الحالية. يرجى المحاولة مرة أخرى لتصدير القائمة الكاملة.",
     "searchEllipsis": "بحث…",
     "loading": "جاري التحميل...",
     "confirm": "تأكيد",
@@ -10439,7 +10440,11 @@
     "maritalStatusesTitle": "الحالة الاجتماعية",
     "maritalStatusesDescription": "إدارة خيارات الحالة الاجتماعية",
     "jobCategoriesTitle": "فئات الوظائف",
-    "jobCategoriesDescription": "الفئات التي تعرضها جميع نماذج الوظائف. إعادة تسمية فئة تحدّث أيضًا الوظائف وقواعد سير العمل التي تستخدمها؛ أوقف أي فئة لإخفائها من الوظائف الجديدة."
+    "jobCategoriesDescription": "الفئات التي تعرضها جميع نماذج الوظائف. إعادة تسمية فئة تحدّث أيضًا الوظائف وقواعد سير العمل التي تستخدمها؛ أوقف أي فئة لإخفائها من الوظائف الجديدة.",
+    "createSuccess": "تم الإنشاء بنجاح.",
+    "updateSuccess": "تم الحفظ بنجاح.",
+    "deleteSuccess": "تم الحذف بنجاح.",
+    "deleteFailed": "تعذّر حذف هذا العنصر. يرجى المحاولة مرة أخرى."
   },
   "adminLocationData": {
     "filter": "تصفية",
@@ -10509,7 +10514,11 @@
     "adjustFiltersCity": "عدّل عوامل التصفية أو أضف مدينة جديدة.",
     "addCityTitle": "إضافة مدينة جديدة",
     "editCityTitle": "تعديل مدينة",
-    "confirmDeleteCity": "هل أنت متأكد أنك تريد حذف هذه المدينة؟"
+    "confirmDeleteCity": "هل أنت متأكد أنك تريد حذف هذه المدينة؟",
+    "createSuccess": "تم الإنشاء بنجاح.",
+    "updateSuccess": "تم الحفظ بنجاح.",
+    "deleteSuccess": "تم الحذف بنجاح.",
+    "deleteFailed": "تعذّر حذف هذا العنصر. يرجى المحاولة مرة أخرى."
   },
   "adminApplications": {
     "recruitmentControl": "التحكم بالتوظيف",
@@ -13743,7 +13752,7 @@
     "selectCountry": "اختر دولة",
     "countryAutoFill": "سيؤدي اختيار دولة إلى ملء العملة المستخدمة في تلك المنطقة تلقائياً.",
     "displayCurrency": "العملة المعروضة",
-    "currencyDesc": "ستُستخدم هذه العملة لعرض العمولات والإيرادات وجميع القيم المالية.",
+    "currencyDesc": "العملة الافتراضية للفواتير والأهداف وإجماليات التقارير الجديدة. تحتفظ السجلات الحالية بعملتها الأصلية — لا يتم تحويل المبالغ تلقائيًا.",
     "saveRegionSettings": "حفظ إعدادات المنطقة",
     "currencyPreview": "معاينة عرض العملة",
     "currencyPreviewDesc": "كيف ستظهر القيم المالية في مساحة عملك",
@@ -14308,7 +14317,7 @@
     "emptyStateFiltered": "لا توجد توظيفات تطابق المرشحات الحالية. حاول تعديل معاييرك.",
     "emptyStateDefault": "ستظهر التوظيفات هنا بمجرد إتمام فريقك التوظيفات الناجحة.",
     "kpiPlacements": "التوظيفات",
-    "kpiPlacementsHelper": "إجمالي سجلات التوظيف المطابقة للمرشحات الحالية.",
+    "kpiPlacementsHelper": "سجلات التوظيف للمرشحين الذين بدأوا العمل. «تم التوظيف» في الطلبات يعني قبول العرض؛ ويُسجَّل التوظيف بشكل منفصل عند بدء المرشح.",
     "kpiUpcomingStarts": "البدايات القادمة",
     "kpiUpcomingStartsHelper": "المرشحون المقررون للبدء في غضون أسبوعين القادمين.",
     "kpiCommissionPaid": "تم دفع العمولة",
@@ -15013,6 +15022,8 @@
     "allExhibitions": "جميع المعارض",
     "emptyPipelineTitle": "لا توجد فرص في خط الأنابيب حالياً",
     "emptyPipelineDescription": "أنشئ فرصتك الأولى للبدء",
+    "noResultsTitle": "لا توجد فرص مطابقة لبحثك",
+    "noResultsDescription": "جرّب مصطلح بحث مختلف أو امسح المرشحات لرؤية المزيد من الفرص.",
     "tableHeaderCompany": "الشركة",
     "tableHeaderContact": "جهة الاتصال",
     "tableHeaderLocation": "الموقع",
@@ -15463,6 +15474,8 @@
     "searchEmployersPlaceholder": "البحث عن أصحاب العمل",
     "emptyStateTitle": "لا توجد حسابات صاحب عمل حتى الآن",
     "emptyStateDescription": "ستظهر الشركات المسندة هنا بمجرد أن تصبح متاحة لمساحة العمل الخاصة بك.",
+    "noResultsTitle": "لا توجد حسابات مطابقة لبحثك",
+    "noResultsDescription": "جرّب مصطلح بحث مختلف لرؤية المزيد من حسابات أصحاب العمل.",
     "cardFieldIndustry": "الصناعة",
     "cardFieldLocation": "الموقع",
     "cardPostJobButton": "نشر وظيفة",
@@ -15562,7 +15575,7 @@
     "stageContacted": "تم التواصل معه",
     "stageInterested": "مهتم",
     "stageNegotiating": "قيد التفاوض",
-    "stageConverted": "تم تحويله",
+    "stageConverted": "تم التحويل",
     "stageLost": "خسر",
     "commissionSummary": "ملخص العمولات",
     "commissionPending": "قيد الانتظار",
@@ -15636,7 +15649,9 @@
     "dueDate": "تاريخ الاستحقاق",
     "emptyTitle": "لا توجد فواتير حتى الآن",
     "emptyDescriptionAgent": "أنشئ فاتورتك الأولى لبدء تتبع العمولات.",
-    "emptyDescriptionSuperAgent": "ستظهر فواتير الفريق هنا عندما ينشئها الوكلاء."
+    "emptyDescriptionSuperAgent": "ستظهر فواتير الفريق هنا عندما ينشئها الوكلاء.",
+    "noResultsTitle": "لا توجد فواتير مطابقة لبحثك",
+    "noResultsDescription": "جرّب مصطلح بحث مختلف أو امسح المرشحات لرؤية المزيد من الفواتير."
   },
   "agentInvoices": {
     "title": "فواتيري والعمولات الخاصة بي",
@@ -15776,8 +15791,11 @@
     "resetButton": "إعادة تعيين",
     "emptyStateTitle": "لا توجد مهام حتى الآن",
     "emptyStateDescription": "أنشئ مهمتك الأولى لبدء تتبع المتابعات",
+    "noResultsTitle": "لا توجد مهام مطابقة لبحثك",
+    "noResultsDescription": "جرّب مصطلح بحث مختلف أو امسح المرشحات لرؤية المزيد من المهام.",
     "loadTasksFailed": "تعذر تحميل المهام",
     "taskTitleRequired": "عنوان المهمة مطلوب",
+    "taskTitleMax": "يجب ألا يتجاوز العنوان 200 حرف",
     "taskCreatedSuccess": "تم إنشاء المهمة",
     "createTaskFailed": "تعذر إنشاء المهمة",
     "taskUpdatedSuccess": "تم تحديث المهمة",
@@ -15816,6 +15834,8 @@
     "searchPlaceholder": "البحث حسب الكود أو العنوان...",
     "emptyStateTitle": "لا توجد روابط إحالة بعد",
     "emptyStateDescription": "أنشئ رابط الإحالة الأول لديك لبدء ضم أصحاب العمل.",
+    "noResultsTitle": "لا توجد روابط إحالة مطابقة لبحثك",
+    "noResultsDescription": "جرّب مصطلح بحث مختلف لرؤية المزيد من روابط الإحالة.",
     "tableHeaderCode": "الكود",
     "tableHeaderLabel": "العنوان",
     "tableHeaderUsed": "المستخدم",
@@ -17013,7 +17033,10 @@
     "deleteFailed": "لم نتمكن من حذف هذا العنصر. يرجى المحاولة مرة أخرى.",
     "searchFallback": "ابحث في {title}…",
     "deleteConfirmTitle": "حذف هذا العنصر؟",
-    "deleteConfirmMessage": "ستتم إزالته من الموقع. لا يمكن التراجع عن ذلك."
+    "deleteConfirmMessage": "ستتم إزالته من الموقع. لا يمكن التراجع عن ذلك.",
+    "createSuccess": "تم الإنشاء بنجاح.",
+    "updateSuccess": "تم الحفظ بنجاح.",
+    "deleteSuccess": "تم الحذف بنجاح."
   },
   "exhibitionHeroFilters": {
     "hideFilters": "إخفاء المرشحات",

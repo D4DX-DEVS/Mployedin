@@ -2,14 +2,13 @@
  * @jest-environment node
  *
  * INV-01: the invoice list's "Pending" strip and the Analytics tab on the same
- * page must mean the same thing. Analytics counts only invoices someone can pay
- * (issued / sent / partially paid / overdue); the list used to add the balance
- * of every non-void invoice, so an agent's unapproved invoice showed as
- * "Pending AED 322" in the header and "Pending 0" one tab over.
+ * page must mean the same thing. BUG-02: an invoice awaiting approval carries
+ * a real balance due, so pending_approval counts as Pending (only drafts are
+ * not yet receivables).
  */
 
 import { NextRequest } from "next/server";
-import { PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
+import { PENDING_BALANCE_INVOICE_STATUSES } from "@/lib/invoices/status";
 
 const aggregateMock = jest.fn();
 
@@ -79,10 +78,10 @@ async function listSummary() {
 }
 
 describe("GET /api/invoices summary", () => {
-  it("counts only payable invoices as pending, like the Analytics tab", async () => {
+  it("counts payable + pending_approval invoices as pending, like the Analytics tab", async () => {
     const summary = await listSummary();
 
-    expect(summary.totalBalance).toBe(600);
+    expect(summary.totalBalance).toBe(922);
   });
 
   it("keeps void out of the money totals and every status in the counts", async () => {
@@ -93,7 +92,7 @@ describe("GET /api/invoices summary", () => {
     expect(summary.counts.void).toBe(1);
   });
 
-  it("sums the per-currency pending balance over payable invoices only", async () => {
+  it("sums the per-currency pending balance over pending-balance invoices", async () => {
     await listSummary();
 
     const currencyPipeline = aggregateMock.mock.calls
@@ -102,7 +101,7 @@ describe("GET /api/invoices summary", () => {
     const balance = currencyPipeline?.find((s) => s.$group)?.$group?.balanceTotal;
 
     expect(balance).toEqual({
-      $sum: { $cond: [{ $in: ["$status", [...PAYABLE_INVOICE_STATUSES]] }, "$balanceDue", 0] },
+      $sum: { $cond: [{ $in: ["$status", [...PENDING_BALANCE_INVOICE_STATUSES]] }, "$balanceDue", 0] },
     });
   });
 });

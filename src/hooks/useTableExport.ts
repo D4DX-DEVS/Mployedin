@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
 
 interface UseTableExportOptions<T extends Record<string, unknown>> {
@@ -10,12 +12,22 @@ interface UseTableExportOptions<T extends Record<string, unknown>> {
   title?: string;
   /** Optional narrower column set for PDF — wide tables become unreadable in A4 */
   pdfColumns?: ExportColumn<T>[];
+  /**
+   * BUG-004: when supplied, exports resolve the FULL filtered result set
+   * through this fetcher instead of just the rows on screen. Pages pass a
+   * closure over their current filters that pages through the list API.
+   */
+  fetchAll?: () => Promise<T[]>;
+  /** Called when a full export fails, so the page can toast instead of silently exporting a partial page. */
+  onExportError?: (err: unknown) => void;
 }
 
 interface UseTableExportReturn {
   handleExportCsv: () => void;
   handleExportExcel: () => void;
   handleExportPdf: () => void;
+  /** True while a full-result export is being fetched. */
+  exporting: boolean;
 }
 
 export function useTableExport<T extends Record<string, unknown>>({
@@ -24,24 +36,51 @@ export function useTableExport<T extends Record<string, unknown>>({
   filename = "export",
   title = "Export",
   pdfColumns,
+  fetchAll,
+  onExportError,
 }: UseTableExportOptions<T>): UseTableExportReturn {
+  const [exporting, setExporting] = useState(false);
+  const tc = useTranslations("common");
+
+  const resolveRows = useCallback(async (): Promise<T[]> => {
+    if (!fetchAll) return data;
+    setExporting(true);
+    try {
+      return await fetchAll();
+    } catch (err) {
+      if (onExportError) onExportError(err);
+      else toast.error(tc("exportFullFailed"));
+      // Fall back to the visible page rather than exporting nothing — the
+      // error toast tells the user it is partial.
+      return data;
+    } finally {
+      setExporting(false);
+    }
+  }, [data, fetchAll, onExportError, tc]);
+
   const handleExportCsv = useCallback(() => {
-    import("@/lib/export").then(({ exportCSV }) =>
-      exportCSV(data, columns, `${filename}.csv`),
+    void resolveRows().then((rows) =>
+      import("@/lib/export").then(({ exportCSV }) =>
+        exportCSV(rows, columns, `${filename}.csv`),
+      ),
     );
-  }, [data, columns, filename]);
+  }, [resolveRows, columns, filename]);
 
   const handleExportExcel = useCallback(() => {
-    import("@/lib/export").then(({ exportExcel }) =>
-      exportExcel(data, columns, `${filename}.xls`, title),
+    void resolveRows().then((rows) =>
+      import("@/lib/export").then(({ exportExcel }) =>
+        exportExcel(rows, columns, `${filename}.xlsx`, title),
+      ),
     );
-  }, [data, columns, filename, title]);
+  }, [resolveRows, columns, filename, title]);
 
   const handleExportPdf = useCallback(() => {
-    import("@/lib/export").then(({ exportPdf }) =>
-      exportPdf(data, pdfColumns ?? columns, `${filename}.pdf`, title),
+    void resolveRows().then((rows) =>
+      import("@/lib/export").then(({ exportPdf }) =>
+        exportPdf(rows, pdfColumns ?? columns, `${filename}.pdf`, title),
+      ),
     );
-  }, [data, columns, pdfColumns, filename, title]);
+  }, [resolveRows, columns, pdfColumns, filename, title]);
 
-  return { handleExportCsv, handleExportExcel, handleExportPdf };
+  return { handleExportCsv, handleExportExcel, handleExportPdf, exporting };
 }

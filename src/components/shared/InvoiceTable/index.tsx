@@ -32,6 +32,9 @@ interface InvoiceTableProps {
   loading: boolean;
   role: "agent" | "super_agent";
   onSelect: (id: string) => void;
+  /** True when a search query or any filter is active — shows the "no results"
+   *  copy (BUG-06) instead of the first-run "no invoices yet" copy. */
+  hasActiveFilters?: boolean;
 }
 
 interface Column {
@@ -42,7 +45,7 @@ interface Column {
   cell: (inv: InvoiceTableInvoice) => React.ReactNode;
 }
 
-export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTableProps) {
+export function InvoiceTable({ invoices, loading, role, onSelect, hasActiveFilters = false }: InvoiceTableProps) {
   const t = useTranslations("invoiceTable");
   const tc = useTranslations("common");
 
@@ -167,8 +170,12 @@ export function InvoiceTable({ invoices, loading, role, onSelect }: InvoiceTable
               <TableCell colSpan={columns.length} className="p-0">
                 <EmptyState
                   icon={Inbox}
-                  title={t("emptyTitle")}
-                  description={role === "agent" ? t("emptyDescriptionAgent") : t("emptyDescriptionSuperAgent")}
+                  title={hasActiveFilters ? t("noResultsTitle") : t("emptyTitle")}
+                  description={
+                    hasActiveFilters
+                      ? t("noResultsDescription")
+                      : role === "agent" ? t("emptyDescriptionAgent") : t("emptyDescriptionSuperAgent")
+                  }
                   className="rounded-none border-none"
                 />
               </TableCell>

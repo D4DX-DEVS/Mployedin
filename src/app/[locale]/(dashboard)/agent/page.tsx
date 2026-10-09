@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
 import { connectDB } from "@/lib/db/mongoose";
 import Agent from "@/models/Agent";
+import Employer from "@/models/Employer";
+import User from "@/models/User";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
 import Lead from "@/models/Lead";
@@ -62,7 +64,16 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   const agentId = agentDoc?._id;
   // Employers the agent sees — assigned, or registered in their region.
   const visibleEmployerIds = agentId ? await getAgentEmployerIds(String(session.user.id)) : [];
-  const employerCount = visibleEmployerIds.length;
+  // BUG-03: the tile says "Active Accounts", so count only active ones.
+  // isActive lives on User, not Employer — resolve via Employer.userId.
+  let employerCount = visibleEmployerIds.length;
+  if (visibleEmployerIds.length > 0) {
+    const employerUsers = await Employer.find({ _id: { $in: visibleEmployerIds } })
+      .select("userId")
+      .lean<{ userId?: unknown }[]>();
+    const userIds = employerUsers.map((e) => e.userId).filter(Boolean);
+    employerCount = userIds.length > 0 ? await User.countDocuments({ _id: { $in: userIds }, isActive: true }) : 0;
+  }
 
   // Every figure on this page is counted live. The funnel used to read the
   // `performance.*` counters on the Agent document — fire-and-forget

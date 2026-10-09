@@ -22,7 +22,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "25"));
   const status = searchParams.get("status") ?? "";
-  const search = searchParams.get("search") ?? "";
+  const search = searchParams.get("search")?.trim() ?? "";
   const employerId = searchParams.get("employerId") ?? "";
   const agentId = searchParams.get("agentId") ?? "";
   const superAgentId = searchParams.get("superAgentId") ?? "";

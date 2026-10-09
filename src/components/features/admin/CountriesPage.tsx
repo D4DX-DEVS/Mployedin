@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { PlatformDataTabs } from "@/components/features/admin/PlatformDataTabs";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
@@ -127,6 +128,7 @@ export default function CountriesPage() {
     if (!res.ok) {
       throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: CREATE_FIELDS });
     }
+    toast.success(t("createSuccess"));
     fetchItems();
   };
 
@@ -153,6 +155,7 @@ export default function CountriesPage() {
     if (!res.ok) {
       throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: CREATE_FIELDS });
     }
+    toast.success(t("updateSuccess"));
     setEditItem(null);
     fetchItems();
   };
@@ -160,7 +163,12 @@ export default function CountriesPage() {
   const handleDelete = async (id: string) => {
     const ok = await confirmDialog(t("confirmDeleteCountry"));
     if (!ok) return;
-    await fetch(`/api/admin/location-data/countries/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/location-data/countries/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error(t("deleteFailed"));
+      return;
+    }
+    toast.success(t("deleteSuccess"));
     fetchItems();
   };
 

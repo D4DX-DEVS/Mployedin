@@ -151,7 +151,23 @@ export async function loadSuperAgentDashboard(saUserId: string, now: Date = new 
   ]);
 
   const jobIds = jobDocs.map((j) => j._id);
-  const totalApplications = jobIds.length ? await Application.countDocuments({ jobId: { $in: jobIds } }) : 0;
+  // BUG-03: single source of truth with /api/super-agent/applications — the
+  // list counts agent-stamped rows, book-employer rows AND rows on team-posted
+  // jobs (outside the book). Counting only jobId-in-book undercounted by the
+  // rows the list shows.
+  const teamJobDocs = agentDocIds.length
+    ? await Job.find({ agentId: { $in: agentDocIds } }).select("_id").lean()
+    : [];
+  const teamJobIds = teamJobDocs.map((j) => j._id);
+  const applicationScopeOr: Record<string, unknown>[] = [];
+  if (agentDocIds.length > 0) applicationScopeOr.push({ agentId: { $in: agentDocIds } });
+  if ((book?.employerIds ?? []).length > 0) applicationScopeOr.push({ employerId: { $in: book!.employerIds } });
+  if (teamJobIds.length > 0) applicationScopeOr.push({ jobId: { $in: teamJobIds } });
+  if (jobIds.length > 0) applicationScopeOr.push({ jobId: { $in: jobIds } });
+  const applicationFilter = applicationScopeOr.length > 0 ? { $or: applicationScopeOr } : { _id: { $in: [] } };
+  const totalApplications = applicationScopeOr.length
+    ? await Application.countDocuments(applicationFilter)
+    : 0;
 
   // ── Work actually waiting on this super-agent ──────────────────────────
   // ExhibitionRequest.agentId stores the Agent's User._id; Commission
@@ -197,8 +213,8 @@ export async function loadSuperAgentDashboard(saUserId: string, now: Date = new 
   const [leadsByMonth, jobsByMonth, appsByMonth] = await Promise.all([
     countByMonth(Lead as never, leadFilter, activitySince, timeZone),
     countByMonth(Job as never, jobFilter, activitySince, timeZone),
-    jobIds.length
-      ? countByMonth(Application as never, { jobId: { $in: jobIds } }, activitySince, timeZone)
+    applicationScopeOr.length
+      ? countByMonth(Application as never, applicationFilter, activitySince, timeZone)
       : Promise.resolve(new Map<string, number>()),
   ]);
   const activity: ActivityMonth[] = recentMonthKeys(timeZone, now, ACTIVITY_MONTHS).map((month) => ({

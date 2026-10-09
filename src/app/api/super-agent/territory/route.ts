@@ -83,10 +83,17 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   }
 
   /* One pass each for jobs and applicants, keyed by employer. */
-  const [jobRows, applicantRows] = await Promise.all([
+  // BUG-03: single source of truth with dashboard (/lib/superAgent/dashboardData)
+  // and jobs list (/api/super-agent/jobs): hide soft-deleted jobs everywhere.
+  const jobOwnershipMatch = book?.ownershipMatch as Record<string, unknown> | undefined;
+  const canonicalJobFilter: Record<string, unknown> = {
+    deletedAt: null,
+    ...(jobOwnershipMatch ?? { _id: { $in: [] } }),
+  };
+  const [jobRows, applicantRows, canonicalActiveJobs] = await Promise.all([
     employerIds.length
       ? Job.aggregate<{ _id: mongoose.Types.ObjectId; count: number }>([
-          { $match: { employerId: { $in: employerIds }, status: "active" } },
+          { $match: { employerId: { $in: employerIds }, status: "active", deletedAt: null } },
           { $group: { _id: "$employerId", count: { $sum: 1 } } },
         ])
       : Promise.resolve([]),
@@ -96,6 +103,11 @@ async function handler(req: NextRequest, ctx: AuthContext) {
           { $group: { _id: "$employerId", seekers: { $addToSet: "$jobSeekerId" } } },
         ])
       : Promise.resolve([]),
+    // Canonical active-job count — same filter as dashboard KPI and jobs tab,
+    // so Territory, Dashboard and Jobs cannot disagree. Includes agent-posted
+    // jobs at employers outside the book, which the per-employer breakdown
+    // below (by design) does not attribute to any region.
+    Job.countDocuments({ ...canonicalJobFilter, status: "active" }),
   ]);
 
   const jobsByEmployer = new Map<string, number>();
@@ -179,7 +191,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       totalRegions: regions.length,
       totalAgents: agentIds.length,
       totalEmployers: employers.length,
-      totalJobs: [...jobsByEmployer.values()].reduce((sum, n) => sum + n, 0),
+      // Single source of truth: dashboard KPI + jobs tab count.
+      totalJobs: canonicalActiveJobs,
       totalSeekers: allSeekers.size,
     },
   });

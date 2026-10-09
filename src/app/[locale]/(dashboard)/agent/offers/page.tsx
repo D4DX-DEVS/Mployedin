@@ -165,7 +165,7 @@ export default function AgentOffersPage() {
     setLoading(true);
     try {
       const params = paginationParams();
-      if (filters.search) params.set("search", filters.search);
+      if (filters.search.trim()) params.set("search", filters.search.trim());
       if (filters.status !== "all") params.set("status", filters.status);
       params.set("scope", "agent");
 

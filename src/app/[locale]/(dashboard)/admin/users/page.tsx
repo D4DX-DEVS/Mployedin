@@ -37,6 +37,7 @@ import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { assignmentHref } from "@/lib/admin/assignmentLinks";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
@@ -141,11 +142,28 @@ export default function AdminUsersPage() {
     { header: t("exportHeaderLastLogin"), key: "lastLogin", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
     { header: t("joinedTableHeader"), key: "createdAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "—" },
   ];
+  // BUG-004: export the full filtered result set, not just the visible page.
+  const fetchAllUsers = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (search.trim()) base.set("search", search.trim());
+    if (roleFilter && roleFilter !== "all") base.set("role", roleFilter);
+    if (activeFilter && activeFilter !== "all") base.set("isActive", activeFilter);
+    base.set("sortBy", sortBy);
+    base.set("sortOrder", sortOrder);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/admin/users?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.users ?? []) as Record<string, unknown>[]),
+        total: ((json.pagination as { total?: number } | undefined)?.total ?? 0),
+      }),
+    );
+  }, [search, roleFilter, activeFilter, sortBy, sortOrder]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: users as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "users",
     title: t("exportTitle"),
+    fetchAll: fetchAllUsers,
   });
 
   const fetchUsers = useCallback(async () => {
@@ -153,7 +171,7 @@ export default function AdminUsersPage() {
     setError(null);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (search) params.set("search", search);
+      if (search.trim()) params.set("search", search.trim());
       if (roleFilter && roleFilter !== "all") params.set("role", roleFilter);
       if (activeFilter && activeFilter !== "all") params.set("isActive", activeFilter);
       params.set("sortBy", sortBy);
@@ -844,7 +862,7 @@ export default function AdminUsersPage() {
 
           <div className={`space-y-4 ${SCROLL_BODY}`}>
             {createError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
+              <div role="alert" id="create-user-error" className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {createError}
               </div>
@@ -862,6 +880,8 @@ export default function AdminUsersPage() {
                       value={createForm.name}
                       onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
                       placeholder={t("johnDoe")}
+                      aria-invalid={!!createError}
+                      aria-describedby={createError ? "create-user-error" : undefined}
                     />
                   </div>
                   <div className="field">
@@ -872,6 +892,8 @@ export default function AdminUsersPage() {
                       value={createForm.email}
                       onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
                       placeholder={t("johnAtExample")}
+                      aria-invalid={!!createError}
+                      aria-describedby={createError ? "create-user-error" : undefined}
                     />
                   </div>
                   <div className="field">
@@ -881,7 +903,8 @@ export default function AdminUsersPage() {
                       value={createForm.password}
                       onChange={(password) => setCreateForm((f) => ({ ...f, password }))}
                       placeholder={tf("passwordPlaceholder", { min: PASSWORD_MIN_LENGTH })}
-                      aria-describedby="create-password-hint"
+                      aria-describedby={createError ? "create-password-hint create-user-error" : "create-password-hint"}
+                      aria-invalid={!!createError}
                     />
                     <p id="create-password-hint" className="text-xs text-muted-foreground">{tf("passwordHint", { min: PASSWORD_MIN_LENGTH })}</p>
                   </div>
@@ -946,7 +969,7 @@ export default function AdminUsersPage() {
 
           <div className={`space-y-4 ${SCROLL_BODY}`}>
             {editError && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
+              <div role="alert" id="edit-user-error" className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {editError}
               </div>
@@ -959,6 +982,8 @@ export default function AdminUsersPage() {
                 value={editForm.name}
                 onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder={t("johnDoe")}
+                aria-invalid={!!editError}
+                aria-describedby={editError ? "edit-user-error" : undefined}
               />
             </div>
             <div className="field">
@@ -969,6 +994,8 @@ export default function AdminUsersPage() {
                 value={editForm.email}
                 onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
                 placeholder={t("johnAtExample")}
+                aria-invalid={!!editError}
+                aria-describedby={editError ? "edit-user-error" : undefined}
               />
             </div>
           </div>

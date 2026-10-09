@@ -171,7 +171,7 @@ export default function AgentCommissionsReportPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}K`} />
-                <ReTooltip formatter={(v) => fmt(v as number)} />
+                <ReTooltip formatter={(v) => fmt(v as number, ytd?.currency ?? "AED")} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="Pending" fill="#fbbf24" radius={[3, 3, 0, 0]} />
                 <Bar dataKey="Approved" fill="#6366f1" radius={[3, 3, 0, 0]} />
@@ -193,7 +193,7 @@ export default function AgentCommissionsReportPage() {
                     <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>
-                <ReTooltip formatter={(v) => fmt(v as number)} />
+                <ReTooltip formatter={(v) => fmt(v as number, ytd?.currency ?? "AED")} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>

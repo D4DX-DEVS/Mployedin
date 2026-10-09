@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { ArrowRight, BriefcaseBusiness, Handshake, Edit2, Inbox, MapPin, UserRoundSearch, Users } from "lucide-react";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
@@ -156,7 +157,7 @@ export default function AgentJobSeekersPage() {
   const fetchSeekers = useCallback(async () => {
     setLoading(true);
     const params = pagination.paginationParams();
-    if (search) params.set("search", search);
+    if (search.trim()) params.set("search", search.trim());
     if (availability) params.set("availability", availability);
     if (minProfile > 0) params.set("minProfile", String(minProfile));
     if (maxProfile < 100) params.set("maxProfile", String(maxProfile));
@@ -210,11 +211,35 @@ export default function AgentJobSeekersPage() {
     { header: t("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(String(v), locale) : "" },
   ];
 
+  // BUG-06: export the full filtered result set, not just the visible page.
+  const fetchAllSeekers = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (search.trim()) base.set("search", search.trim());
+    if (availability) base.set("availability", availability);
+    if (minProfile > 0) base.set("minProfile", String(minProfile));
+    if (maxProfile < 100) base.set("maxProfile", String(maxProfile));
+    if (skillsFilter.trim()) base.set("skills", skillsFilter.trim());
+    if (locationFilter.trim()) base.set("location", locationFilter.trim());
+    if (hasCV) base.set("hasCV", "1");
+    if (view === "referred") base.set("referred", "mine");
+    if (view === "area") base.set("view", "area");
+    if (jobType) base.set("jobType", jobType);
+    if (sortBy !== "newest") base.set("sort", sortBy);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/job-seekers?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.items ?? []) as Record<string, unknown>[]),
+        total: Number(json.total ?? 0),
+      }),
+    );
+  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, view, jobType, sortBy]);
+
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: seekers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "agent-job-seekers",
     title: t("exportTitle"),
+    fetchAll: fetchAllSeekers,
   });
 
   const completenessColor = (_pct: number) => "bg-primary";

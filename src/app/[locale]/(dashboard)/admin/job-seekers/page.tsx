@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
@@ -196,12 +197,37 @@ export default function AdminJobSeekersPage() {
     return exportColumns.filter((c) => keepKeys.includes(c.key));
   }, [exportColumns]);
 
+  // BUG-004: export the full filtered result set, not just the visible page.
+  // Ranked vector-search results have no paginated full set — export the page.
+  const fetchAllJobSeekers = useCallback(async () => {
+    if (closestTo) return jobSeekers as unknown as Record<string, unknown>[];
+    const base = new URLSearchParams();
+    if (search) base.set("search", search);
+    if (filters.skills) base.set("skills", filters.skills);
+    if (filters.location) base.set("location", filters.location);
+    if (filters.availability) base.set("availability", filters.availability);
+    if (filters.jobType) base.set("jobType", filters.jobType);
+    if (filters.sort && filters.sort !== "newest") base.set("sort", filters.sort);
+    if (filters.hasCV) base.set("hasCV", "1");
+    if (filters.referred) base.set("referred", filters.referred);
+    if (filters.education) base.set("education", filters.education);
+    if (filters.nationality) base.set("nationality", filters.nationality);
+    if (filters.experienceYears > 0) base.set("experienceYears", String(filters.experienceYears));
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/job-seekers?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: (((json.items ?? json.jobSeekers ?? []) as Record<string, unknown>[])),
+        total: Number(json.total ?? json.totalCount ?? (json.pagination as { total?: number } | undefined)?.total ?? 0),
+      }),
+    );
+  }, [closestTo, jobSeekers, search, filters]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobSeekers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     pdfColumns: pdfColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "job-seekers-search-results",
     title: tr("exportTitle"),
+    fetchAll: fetchAllJobSeekers,
   });
 
   // ── Fetch job seekers ───────────────────────────────────
@@ -352,7 +378,7 @@ export default function AdminJobSeekersPage() {
         return;
       }
 
-      const [{ default: JSZip }, { excelBlobFromRows }] = await Promise.all([
+      const [{ default: JSZip }, { xlsxBlobFromRows }] = await Promise.all([
         import("jszip"),
         import("@/lib/export"),
       ]);
@@ -388,7 +414,7 @@ export default function AdminJobSeekersPage() {
         toast.error(tr("cvsDownloadFailed"));
         return;
       }
-      zip.file("candidates.xls", excelBlobFromRows(rows, "Candidates"));
+      zip.file("candidates.xlsx", await xlsxBlobFromRows(rows, "Candidates"));
       const blob = await zip.generateAsync({ type: "blob" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);

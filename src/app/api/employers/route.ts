@@ -34,7 +34,7 @@ interface AuthCtx { userId: string; role: string; locale: string; }
 async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
   const { searchParams } = new URL(req.url);
-  const search = searchParams.get("search") ?? "";
+  const search = searchParams.get("search")?.trim() ?? "";
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = parseInt(searchParams.get("limit") ?? "10");
   const skip = (page - 1) * limit;
@@ -385,17 +385,45 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // and preserve their order after fetching user records.
   const profileSort = sortBy === "companyName" || sortBy === "industry";
   let orderedProfileUserIds: string[] | null = null;
+  // BUG-002: the profile-ordered path used to slice the ordered ids AND then
+  // .skip() the User query again — page 2+ came back empty while the counter
+  // still read "11–20 of N". It also ignored the Active/Inactive filter when
+  // ordering (isActive lives on User, not Employer), so filtered pages showed
+  // fewer rows than their counters. Both are fixed here: the status filter is
+  // translated into the profile query, and the User fetch does no second skip.
+  let profilePaginated = false;
+  let profileSortTotal: number | null = null;
   const countQuery: Record<string, unknown> = { ...query };
   if (profileSort && !search) {
     const profileQuery: Record<string, unknown> = { ...empFilter };
-    if (query._id) profileQuery.userId = query._id;
+    // Translate the User-side constraints into a userId constraint so the
+    // ordering, the page slice and the total all see the same filtered set.
+    const existingIdConstraint = query._id as { $in?: unknown[] } | string | undefined;
+    if (query.isActive !== undefined || existingIdConstraint !== undefined) {
+      const userMatch: Record<string, unknown> = { role: "employer" };
+      if (query.isActive !== undefined) userMatch.isActive = query.isActive;
+      if (
+        existingIdConstraint !== undefined &&
+        typeof existingIdConstraint === "object" &&
+        existingIdConstraint !== null &&
+        "$in" in existingIdConstraint
+      ) {
+        userMatch._id = existingIdConstraint;
+      } else if (existingIdConstraint !== undefined) {
+        userMatch._id = existingIdConstraint;
+      }
+      const matchedUsers = await User.find(userMatch).select("_id").lean();
+      profileQuery.userId = { $in: matchedUsers.map((u) => u._id) };
+    }
     const orderedProfiles = await Employer.find(profileQuery)
       .select("userId")
       .sort({ [sortBy]: sortOrder === "desc" ? -1 : 1, _id: 1 })
       .lean();
     orderedProfileUserIds = orderedProfiles.map((profile) => String(profile.userId));
+    profileSortTotal = orderedProfileUserIds.length;
     const pageUserIds = orderedProfileUserIds.slice(skip, skip + limit);
     query._id = { $in: pageUserIds };
+    profilePaginated = true;
   }
   const VALID_SORT = new Set(["name", "email", "createdAt"]);
   const sortField = VALID_SORT.has(sortBy) ? sortBy : "name";
@@ -405,10 +433,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     User.find(query)
       .select("name email isActive createdAt")
       .sort(profileSort ? { _id: 1 } : { [sortField]: sortDir })
-      .skip(skip)
+      .skip(profilePaginated ? 0 : skip)
       .limit(limit)
       .lean(),
-    User.countDocuments(countQuery),
+    profileSortTotal !== null ? Promise.resolve(profileSortTotal) : User.countDocuments(countQuery),
   ]);
 
   // Attach verificationDocs and domainVerified from Employer model

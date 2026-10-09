@@ -30,6 +30,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { useAiFilterSearch } from "@/hooks/useAiFilterSearch";
 import type { ExportColumn } from "@/lib/export";
 import { disambiguateEmployerLabels } from "@/lib/employers/optionLabels";
@@ -144,7 +145,7 @@ export default function AgentJobsPage() {
     setLoadFailed(false);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
       if (status !== "all") params.set("status", status);
       if (employer !== "all") params.set("employerId", employer);
       if (workMode !== "all") params.set("workMode", workMode);
@@ -249,11 +250,31 @@ export default function AgentJobsPage() {
     { header: t("table.applicants"), key: "applicationCount", formatter: (_v, row) => String(applicantsOf(row as unknown as JobItem)) },
     { header: t("table.posted"), key: "createdAt", formatter: (v) => (v ? formatListDate(String(v), locale) : "") },
   ];
+  // BUG-06: export the full filtered result set, not just the visible page.
+  const fetchAllJobs = useCallback(async () => {
+    const base = new URLSearchParams();
+    if (debouncedSearch.trim()) base.set("search", debouncedSearch.trim());
+    if (status !== "all") base.set("status", status);
+    if (employer !== "all") base.set("employerId", employer);
+    if (workMode !== "all") base.set("workMode", workMode);
+    if (debouncedLocation.trim()) base.set("location", debouncedLocation.trim());
+    if (debouncedSkills.trim()) base.set("skills", debouncedSkills.trim());
+    if (sortBy) base.set("sortBy", sortBy);
+    return fetchAllPaginated<Record<string, unknown>>(
+      (page, limit) => `/api/jobs?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
+      (json) => ({
+        rows: ((json.jobs ?? []) as Record<string, unknown>[]),
+        total: Number((json.pagination as { total?: number } | undefined)?.total ?? 0),
+      }),
+    );
+  }, [debouncedSearch, status, employer, workMode, debouncedLocation, debouncedSkills, sortBy]);
+
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobs as unknown as Record<string, unknown>[],
     columns: exportColumns,
     filename: "agent-jobs",
     title: t("exportTitle"),
+    fetchAll: fetchAllJobs,
   });
 
   const filterByStatus = (value: string) => { setStatus(status === value ? "all" : value); resetPage(); };

@@ -88,7 +88,7 @@ export default function SuperAgentApplicationsPage() {
     setLoadFailed(false);
     try {
       const params = pagination.paginationParams();
-      if (filters.search) params.set("search", filters.search);
+      if (filters.search.trim()) params.set("search", filters.search.trim());
       if (filters.status !== "all") params.set("status", filters.status);
       if (filters.agent !== "all") params.set("agent", filters.agent);
 
