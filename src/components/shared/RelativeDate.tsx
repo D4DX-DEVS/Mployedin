@@ -19,6 +19,9 @@ interface RelativeDateProps {
 function timeAgo(date: string | Date, locale: string): string {
   const now = new Date();
   const posted = new Date(date);
+  // A record with no readable date shows nothing; Intl throws on NaN and would
+  // take the whole page (e.g. the public job search) down with it.
+  if (!date || Number.isNaN(posted.getTime())) return "";
   const language = locale === "ar" ? "ar" : "en";
   const formatter = new Intl.RelativeTimeFormat(language, { numeric: "auto" });
 
@@ -45,6 +48,7 @@ function timeAgo(date: string | Date, locale: string): string {
 export default function RelativeDate({ date, prefix }: RelativeDateProps) {
   const locale = useLocale();
   const label = timeAgo(date, locale);
+  if (!label) return null;
   return (
     <span suppressHydrationWarning>
       {prefix ? `${prefix} ${label}` : label}
