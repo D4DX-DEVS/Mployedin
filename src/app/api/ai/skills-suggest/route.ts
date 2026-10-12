@@ -27,7 +27,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
   const seeker = await JobSeeker.findOne({ userId: ctx.userId }).lean();
   if (!seeker) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-  const prompt = `You are a career development AI specialized in Gulf region (UAE, Saudi Arabia, Qatar, Kuwait, Bahrain, Oman) job markets.
+  const prompt = `You are a career development AI with knowledge of job markets worldwide, including the Gulf, South Asia, Europe, and North America.
 
 CANDIDATE PROFILE:
 Current Title: ${seeker.currentJobTitle ?? "N/A"}
@@ -35,7 +35,7 @@ Existing Skills: ${(seeker.skills ?? []).join(", ") || "Not specified"}
 Years of Experience: ${seeker.yearsOfExperience ?? "N/A"}
 Education: ${seeker.education?.[0]?.degree ?? "N/A"} in ${seeker.education?.[0]?.field ?? "N/A"}
 
-Based on this profile, suggest 8-12 additional skills the candidate should acquire to be more competitive in the Gulf job market.
+Based on this profile, suggest 8-12 additional skills the candidate should acquire to be more competitive in the job markets that fit their profile.
 
 Return ONLY a JSON array of objects (no markdown):
 [

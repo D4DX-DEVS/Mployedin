@@ -57,7 +57,14 @@ jest.mock("@/models/Agent", () => ({ __esModule: true, default: { findOne: jest.
 jest.mock("@/models/JobSeeker", () => ({ __esModule: true, default: { findById: jest.fn(() => chain({ userId: "64b000000000000000000041" })) } }));
 
 const interviewFindOne = jest.fn(() => chain(null as unknown));
-jest.mock("@/models/Interview", () => ({ __esModule: true, default: { findOne: (...a: unknown[]) => interviewFindOne(...(a as [])) } }));
+jest.mock("@/models/Interview", () => ({
+  __esModule: true,
+  default: {
+    findOne: (...a: unknown[]) => interviewFindOne(...(a as [])),
+    updateMany: jest.fn(async () => ({ modifiedCount: 0 })),
+    find: jest.fn(() => chain([])),
+  },
+}));
 
 async function patch(payload: Record<string, unknown>) {
   const { PATCH } = await import("@/app/api/applications/[id]/route");

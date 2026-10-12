@@ -11,6 +11,8 @@ import { resolveMeetingLink } from "@/lib/interviews/meetingLink";
 import { isInsideReminderWindow } from "@/lib/interviews/reminderWindow";
 import { notifyStatusChange, notifyInterviewSelected, notifyRejected, notifyInterviewScheduled } from "@/lib/notifications/trigger";
 import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
+import { closesOpenInterviews, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
+import { OFFER_REQUIRED_MESSAGE, withAcceptedOffer } from "@/lib/hiring/hiredRequiresOffer";
 import type { CopilotTool, CopilotToolPreview } from "../types";
 
 async function getEmployer(userId: string) {
@@ -267,6 +269,9 @@ export const updateApplicationStatusTool: CopilotTool<{ applicationId: string; s
     if (error || !application) return { ok: false, message: error ?? "Application not found." };
 
     const prevStatus = application.status;
+    if (args.status === "hired" && prevStatus !== "hired" && !(await withAcceptedOffer([application._id])).has(String(application._id))) {
+      return { ok: false, message: OFFER_REQUIRED_MESSAGE };
+    }
     application.status = args.status as typeof application.status;
     application.statusHistory.push({ status: args.status as typeof application.status, changedAt: new Date() });
     if (args.status === "rejected") application.rejectionReason = sanitizeAIInput(args.rejectionReason!, 500);
@@ -276,6 +281,11 @@ export const updateApplicationStatusTool: CopilotTool<{ applicationId: string; s
         : sanitizeAIInput(args.note, 2000);
     }
     await application.save();
+    // Same rule as the applications PATCH route: past interviewing, rejected
+    // or withdrawn leaves no slot to attend, so any still open is settled.
+    if (prevStatus !== args.status && closesOpenInterviews(args.status)) {
+      await closeOpenInterviewsForAdvance(application._id, { locale: ctx.locale });
+    }
 
     const job = application.jobId as unknown as WorkflowSettingsCarrier & { title?: string };
     const jobTitle = job?.title ?? "the role";

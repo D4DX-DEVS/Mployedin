@@ -14,10 +14,10 @@ export async function generateMetadata({
   return {
     title: isAr
       ? "مستكشف الرواتب"
-      : "Salary Explorer – GCC & International Salary Benchmarks",
+      : "Salary Explorer – International Salary Benchmarks",
     description: isAr
-      ? "استكشف متوسطات الرواتب حسب المسمى الوظيفي والمنطقة في دول الخليج والعالم."
-      : "Explore salary benchmarks by job title and region across the GCC and worldwide. Make informed career decisions.",
+      ? "استكشف متوسطات الرواتب حسب المسمى الوظيفي والدولة حول العالم."
+      : "Explore salary benchmarks by job title and country worldwide. Make informed career decisions.",
     alternates: {
       canonical: canonicalUrl,
       languages: {
@@ -29,8 +29,8 @@ export async function generateMetadata({
     openGraph: {
       title: isAr ? "مستكشف الرواتب | MPLOYEDIN" : "Salary Explorer | MPLOYEDIN",
       description: isAr
-        ? "استكشف متوسطات الرواتب في الخليج."
-        : "Explore salary benchmarks across the GCC and worldwide.",
+        ? "استكشف متوسطات الرواتب حول العالم."
+        : "Explore salary benchmarks worldwide.",
       type: "website",
       url: canonicalUrl,
     },

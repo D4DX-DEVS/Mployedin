@@ -50,7 +50,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     portfolioJobIds.length
       ? Application.countDocuments({ jobId: { $in: portfolioJobIds } })
       : Promise.resolve(0),
-    Interview.countDocuments({ agentId, status: "scheduled" }),
+    // Confirmed ones are still upcoming — they used to drop out of the count.
+    Interview.countDocuments({ agentId, status: { $in: ["scheduled", "confirmed"] } }),
     Placement.countDocuments({ agentId }),
     Lead.countDocuments({ agentId }),
     Commission.countDocuments({ agentId, status: "pending" }),

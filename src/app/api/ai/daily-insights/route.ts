@@ -96,7 +96,7 @@ New applications today: ${newApps}`;
     contextData = `Role: ${ctx.role}`;
   }
 
-  const prompt = `You are an AI assistant for MPLOYEDIN, a Gulf recruitment platform.
+  const prompt = `You are an AI assistant for MPLOYEDIN, an international recruitment platform.
 
 USER CONTEXT:
 ${contextData}
@@ -120,7 +120,7 @@ Return ONLY a JSON array (no markdown):
     {
       type: "tip",
       title: "حدّث ملفك المهني",
-      message: "راجع الملخص والمهارات والتفضيلات حتى تظهر لك فرص أكثر دقة في أسواق الخليج.",
+      message: "راجع الملخص والمهارات والتفضيلات حتى تظهر لك فرص أكثر دقة تناسبك.",
       action: "تحديث الملف الشخصي",
     },
     {
@@ -141,7 +141,7 @@ Return ONLY a JSON array (no markdown):
     {
       type: "tip",
       title: "Update your profile",
-      message: "Review your summary, skills and preferences so we can match you with more relevant Gulf roles.",
+      message: "Review your summary, skills and preferences so we can match you with more relevant roles.",
       action: "Update profile",
     },
     {

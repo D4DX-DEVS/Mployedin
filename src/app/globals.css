@@ -362,6 +362,17 @@ body {
   outline: none;
 }
 
+/* Landing hero search: the label is the visible field, so focus rings the
+   whole field instead of drawing a second box around the bare input. */
+.hero-search-field input:focus-visible {
+  outline: none;
+}
+
+.hero-search-field:focus-within {
+  border-color: hsl(var(--focus-ring));
+  box-shadow: 0 0 0 3px hsl(var(--focus-ring) / 0.18);
+}
+
 .font-arabic {
   font-family: var(--font-arabic), var(--font-sans), system-ui, sans-serif;
 }

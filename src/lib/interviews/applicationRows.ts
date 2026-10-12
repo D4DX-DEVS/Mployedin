@@ -1,5 +1,6 @@
 import mongoose, { type PipelineStage } from "mongoose";
 import Interview from "@/models/Interview";
+import { STATUSES_WITHOUT_INTERVIEWS } from "@/lib/hiring/closeOpenInterviews";
 
 /**
  * The employer interview list shows ONE row per application — its latest
@@ -10,8 +11,11 @@ import Interview from "@/models/Interview";
  *
  * Buckets are judged on the latest round, against the clock:
  *   upcoming  — scheduled/confirmed, still ahead
- *   attention — cancelled, or scheduled/confirmed but already past with no
- *               outcome recorded (these used to sit under "Scheduled" forever)
+ *   attention — cancelled while the candidate is still in the process, or
+ *               scheduled/confirmed but already past with no outcome recorded
+ *               (these used to sit under "Scheduled" forever). A round
+ *               cancelled because the candidate was rejected, withdrew or moved
+ *               on needs nothing from the employer, so it is in no bucket.
  *   completed / confirmed — that status
  * Superseded "rescheduled" records are never rows.
  */
@@ -21,6 +25,7 @@ export type RowBucket = (typeof ROW_BUCKETS)[number];
 export const ROW_SORT_FIELDS = ["scheduledAt", "createdAt"] as const;
 
 const ACTIVE = ["scheduled", "confirmed"];
+const LEFT_PROCESS = [...STATUSES_WITHOUT_INTERVIEWS];
 
 export interface RowCounts {
   upcoming: number;
@@ -46,7 +51,7 @@ function bucketMatch(bucket: string, now: Date): Record<string, unknown> {
     case "attention":
       return {
         $or: [
-          { "latest.status": "cancelled" },
+          { "latest.status": "cancelled", applicationStatus: { $nin: LEFT_PROCESS } },
           { "latest.status": { $in: ACTIVE }, "latest.scheduledAt": { $lt: now } },
         ],
       };
@@ -83,6 +88,18 @@ export async function listApplicationRows(opts: {
         ids: { $push: "$_id" },
       },
     },
+    // The application's status decides whether a cancelled round still needs
+    // the employer (see "attention" above). Rows keyed by an interview id find
+    // no application and keep the plain rule.
+    {
+      $lookup: {
+        from: "applications",
+        let: { applicationId: "$_id" },
+        pipeline: [{ $match: { $expr: { $eq: ["$_id", "$$applicationId"] } } }, { $project: { status: 1 } }],
+        as: "application",
+      },
+    },
+    { $set: { applicationStatus: { $arrayElemAt: ["$application.status", 0] } } },
     {
       $facet: {
         rows: [
@@ -103,7 +120,12 @@ export async function listApplicationRows(opts: {
                   $cond: [
                     {
                       $or: [
-                        { $eq: ["$latest.status", "cancelled"] },
+                        {
+                          $and: [
+                            { $eq: ["$latest.status", "cancelled"] },
+                            { $not: [{ $in: [{ $ifNull: ["$applicationStatus", null] }, LEFT_PROCESS] }] },
+                          ],
+                        },
                         { $and: [isActive, { $lt: ["$latest.scheduledAt", now] }] },
                       ],
                     },

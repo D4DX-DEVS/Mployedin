@@ -102,7 +102,11 @@ export const bulkActionSchema = z.object({
       notifyCandidate: z.boolean().optional(),
     })
     .optional(),
-});
+}).refine(
+  // Same as a single rejection: the reason is recorded on every candidate.
+  (data) => data.action !== "reject" || !!data.params?.rejectionReason?.trim(),
+  { message: "Rejection reason is required when rejecting applications", path: ["params", "rejectionReason"] },
+);
 
 export const npsCreateSchema = z.object({
   rating: z.number().int().min(1).max(5),

@@ -1,5 +1,8 @@
 export interface Employer {
+  /** The company profile id. */
   _id: string;
+  /** The account holder's user id — what /api/employers/[id] takes. */
+  userId?: string;
   name: string;
   email: string;
   companyName?: string;

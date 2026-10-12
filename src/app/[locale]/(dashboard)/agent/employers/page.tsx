@@ -131,7 +131,8 @@ export default function AgentEmployersPage() {
 
   const handleSave = async (values: Record<string, string>) => {
     if (editEmployer) {
-      const res = await fetch(`/api/employers/${editEmployer._id}`, {
+      // The row id is the company profile; the edit route is keyed by user id.
+      const res = await fetch(`/api/employers/${editEmployer.userId ?? editEmployer._id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
       });
       if (!res.ok) throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: employerFields });

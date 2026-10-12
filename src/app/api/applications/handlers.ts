@@ -25,6 +25,7 @@ import { ALL_APPLICATION_STATUSES, isPipelineStage, stagesFrom } from "@/lib/hir
 import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWorkflow";
 import { stageQueryFilter } from "@/lib/hiring/workflowStages";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { isPastClosingDate } from "@/lib/jobs/expiry";
 import { SEEKER_APPLICATION_PROJECTION, stripSeekerHiddenFields } from "@/lib/applications/seekerView";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -727,8 +728,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const { jobId, coverLetter, screeningAnswers, documentIds, includeProfileCv, portfolioUrl } = body;
 
   const job = await Job.findById(jobId).lean();
-  if (!job || job.status !== "active") {
-    return NextResponse.json({ error: "Job not found or inactive" }, { status: 404 });
+  if (!job) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+  if (job.status !== "active" || isPastClosingDate(job.expiresAt)) {
+    return NextResponse.json({ error: "This job is no longer taking applications.", code: "JOB_CLOSED" }, { status: 422 });
   }
 
   const seeker = await JobSeeker.findOne({ userId: ctx.userId }).lean();

@@ -93,6 +93,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       const user = p.userId as { _id?: unknown; name?: string; email?: string; isActive?: boolean; createdAt?: Date } | null;
       return {
         _id: p._id,
+        // The row is the company profile; /api/employers/[id] takes the user id.
+        userId: user?._id,
         name: user?.name,
         email: user?.email,
         companyName: p.companyName,

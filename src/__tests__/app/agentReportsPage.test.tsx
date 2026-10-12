@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import AgentReportsPage from "@/app/[locale]/(dashboard)/agent/reports/page";
 
@@ -29,5 +29,35 @@ describe("AgentReportsPage", () => {
     expect(view.container.innerHTML).not.toContain("bg-white/95");
     expect(view.container.innerHTML).not.toContain("text-slate-950");
     expect(view.container.innerHTML).not.toContain("text-slate-600");
+  });
+
+  // A failed analytics load used to make the KPIs, funnel and commissions
+  // vanish without a word, so the agent read it as "nothing to show".
+  it("says the performance figures could not load and offers a retry", async () => {
+    const fetchMock = jest.fn((url: string) =>
+      Promise.resolve(url === "/api/agent/analytics"
+        ? { ok: false, status: 500, json: async () => ({ error: "boom" }) }
+        : { ok: true, json: async () => ({}) }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<AgentReportsPage />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't load your performance figures");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([u]) => u === "/api/agent/analytics")).toHaveLength(2));
+  });
+
+  it("never shows the browser's own error text when a report request cannot reach the server", async () => {
+    global.fetch = jest.fn((url: string) =>
+      url === "/api/ai/report"
+        ? Promise.reject(new TypeError("Failed to fetch"))
+        : Promise.resolve({ ok: false, status: 500, json: async () => ({}) })) as unknown as typeof fetch;
+
+    render(<AgentReportsPage />);
+    fireEvent.click(await screen.findByText("This week's activity summary"));
+
+    expect(await screen.findByText("We couldn't generate that report. Please try again.")).toBeInTheDocument();
+    expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument();
   });
 });

@@ -16,6 +16,7 @@ import { checkRateLimitDual } from "@/lib/security/rateLimit";
 import { inngest } from "@/lib/inngest/client";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
+import { isPastClosingDate } from "@/lib/jobs/expiry";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 
@@ -52,7 +53,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   await connectDB();
 
   const [job, seeker, seekerUser] = await Promise.all([
-    Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status screeningQuestions maxApplicants applicantIds").lean(),
+    Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status expiresAt screeningQuestions maxApplicants applicantIds").lean(),
     JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt documents cv.originalUrl isAgentReferred").lean(),
     User.findById(ctx.userId).select("name").lean(),
   ]);
@@ -60,8 +61,9 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
-  if (job.status !== "active") {
-    return NextResponse.json({ error: "Job is not active" }, { status: 422 });
+  // Past its closing date counts as closed even before the expiry cron runs.
+  if (job.status !== "active" || isPastClosingDate((job as { expiresAt?: Date }).expiresAt)) {
+    return NextResponse.json({ error: "This job is no longer taking applications.", code: "JOB_CLOSED" }, { status: 422 });
   }
   if (!seeker) {
     return NextResponse.json({ error: "Job seeker profile not found" }, { status: 404 });

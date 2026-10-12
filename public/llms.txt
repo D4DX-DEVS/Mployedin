@@ -3,7 +3,7 @@
 
 MPLOYEDIN is a dual-sided recruitment marketplace connecting employers worldwide
 with top talent using AI-powered candidate matching and data-driven hiring tools.
-The platform supports Arabic (RTL) and English, serving the GCC region (UAE, Saudi Arabia, Qatar, Kuwait, Bahrain, Oman) and beyond.
+The platform supports Arabic (RTL) and English, serving job seekers and employers across the Gulf, South Asia, and worldwide.
 
 ## What MPLOYEDIN Does
 

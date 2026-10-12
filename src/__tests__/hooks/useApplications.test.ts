@@ -422,3 +422,43 @@ describe("useInfiniteApplications", () => {
     expect(key.slice(0, 2)).toEqual(applicationKeys.lists());
   });
 });
+
+// ── Stage changes refresh what they closed server-side ───────────────
+
+describe("stage changes refresh the candidate's interviews", () => {
+  // Rejecting or advancing a candidate cancels or completes the interviews they
+  // still hold. The drawer's journey card kept showing "Scheduled" until a
+  // reload, because only the application lists were refreshed.
+  function spiedWrapper() {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const invalidate = jest.spyOn(qc, "invalidateQueries");
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: qc }, children);
+    const keys = () => invalidate.mock.calls.map(([f]) => (f as { queryKey?: unknown[] })?.queryKey);
+    return { wrapper, keys };
+  }
+
+  it("a single stage change refreshes that candidate's journey and the interview lists", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
+    const { wrapper, keys } = spiedWrapper();
+    const { result } = renderHook(() => useUpdateApplicationStatus(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ id: "a1", status: "rejected", rejectionReason: "No" });
+    });
+
+    expect(keys()).toEqual(expect.arrayContaining([["candidate-journey", "a1"], ["interviews"]]));
+  });
+
+  it("a bulk stage change refreshes every journey and the interview lists", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ updated: 2 }) });
+    const { wrapper, keys } = spiedWrapper();
+    const { result } = renderHook(() => useBulkAction(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ applicationIds: ["a1", "a2"], action: "reject", params: { rejectionReason: "No" } });
+    });
+
+    expect(keys()).toEqual(expect.arrayContaining([["candidate-journey"], ["interviews"]]));
+  });
+});

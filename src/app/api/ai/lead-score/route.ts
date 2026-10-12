@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
       : false;
     const activityCount = typedLead.activityLog?.length ?? 0;
 
-    const prompt = `You are a recruitment agency lead scoring expert for the Gulf/MENA recruitment market.
+    const prompt = `You are a recruitment agency lead scoring expert for the international recruitment market.
 
 Analyze this employer lead and provide scoring and next-step recommendations.
 

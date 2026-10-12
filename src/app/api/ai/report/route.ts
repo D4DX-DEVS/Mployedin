@@ -108,7 +108,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
   const { query, scope, context } = await validateBody(req, aiReportSchema);
   const safeQuery = sanitizeAIInput(String(query), 500);
-  const safeContext = context ? sanitizeAIInput(String(context), 300) : "Gulf region — UAE, KSA, Qatar, Oman, Kuwait, Bahrain";
+  const safeContext = context ? sanitizeAIInput(String(context), 300) : "All markets on the platform";
 
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -427,7 +427,7 @@ Use this exact shape:
 - Include 2–5 insight objects relevant to the query.
 - Include 2–4 recommendation strings.
 - Start the output with { and end with } — nothing else.`
-    : `You are an analytics AI for MPLOYEDIN, a Gulf-region recruitment platform. You have been given the exact figures pulled live from the platform database right now.
+    : `You are an analytics AI for MPLOYEDIN, an international recruitment platform. You have been given the exact figures pulled live from the platform database right now.
 
 CRITICAL RULES:
 - Only use the numbers shown in the LIVE DATA block above.

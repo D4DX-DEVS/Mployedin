@@ -510,8 +510,8 @@ const COMPLETION_COPY: Record<
     ar: { label: "أضف مؤهلاتك الدراسية", desc: "تعتمد وظائف كثيرة على المؤهلات" },
   },
   languages: {
-    en: { label: "Add languages you speak", desc: "Essential for Gulf and multilingual roles" },
-    ar: { label: "أضف اللغات التي تتحدثها", desc: "أساسية لوظائف الخليج والوظائف متعددة اللغات" },
+    en: { label: "Add languages you speak", desc: "Essential for international and multilingual roles" },
+    ar: { label: "أضف اللغات التي تتحدثها", desc: "أساسية للوظائف الدولية والوظائف متعددة اللغات" },
   },
   linkedin: {
     en: { label: "Link your LinkedIn profile", desc: "Adds credibility to your application" },

@@ -1414,7 +1414,7 @@ export default function JobSeekerOnboardingPage() {
                       <label className="cursor-pointer">
                         <input
                           type="file"
-                          accept=".doc,.docx,.pdf,.rtf"
+                          accept=".pdf,.docx"
                           className="sr-only"
                           onChange={(e) => {
                             const file = e.target.files?.[0] ?? null;

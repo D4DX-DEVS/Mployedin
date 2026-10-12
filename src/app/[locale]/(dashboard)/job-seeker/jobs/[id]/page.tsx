@@ -17,7 +17,7 @@ import RelativeDate from "@/components/shared/RelativeDate";
 import { ShareJob } from "@/components/shared/ShareJob";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
 import { formatCount } from "@/lib/ui/intlFormat";
-import { closesInDays } from "@/lib/jobs/expiry";
+import { closesInDays, isPastClosingDate } from "@/lib/jobs/expiry";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -125,9 +125,10 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
   if (!job) notFound();
 
-  if (job.status !== "active") {
+  if (job.status !== "active" || isPastClosingDate(job.expiresAt as Date | null)) {
     // Job exists but is a draft, paused, closed or expired — show a friendly
-    // page instead of a raw 404 (metadata above already resolves).
+    // page instead of a raw 404 (metadata above already resolves). Past its
+    // closing date counts as closed even before the expiry cron runs.
     return (
       <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 py-24 text-center">
         <h1 className="text-2xl font-semibold">{job.title}</h1>

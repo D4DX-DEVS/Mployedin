@@ -196,7 +196,7 @@
     "employerWorkspace": "For employers",
     "employerWorkspaceDescription": "Find matched talent and hire with confidence.",
     "proofOne": "One profile. More relevant opportunities.",
-    "proofTwo": "AI matching built for Gulf careers.",
+    "proofTwo": "AI matching built for your career, wherever it takes you.",
     "proofThree": "Your data stays protected.",
     "copyright": "© {year} MPLOYEDIN. All rights reserved."
   },
@@ -214,7 +214,7 @@
   },
   "employerRegister": {
     "title": "Register Your Company",
-    "subtitle": "Join MPLOYEDIN — Gulf's AI-powered recruitment platform",
+    "subtitle": "Join MPLOYEDIN — the AI-powered recruitment platform",
     "stepProgress": "Step {current} of {total}: {label}",
     "referral": "Referral: {code}",
     "steps": {
@@ -836,6 +836,7 @@
         "uploadFailed": "Upload failed. Please try again.",
         "applyFailed": "We couldn't apply. Please try again.",
         "planLimitReached": "You've reached your plan's application limit. Upgrade your plan to continue applying.",
+        "jobClosed": "This job is no longer taking applications.",
         "selectCv": "Please select or upload a CV first.",
         "requiredQuestion": "Please answer: {label}"
       }
@@ -1899,7 +1900,7 @@
         "showSalary": "Show Salary Expectations",
         "showSalaryDescription": "Display your salary range on your profile and applications.",
         "openToRelocation": "Open to Relocation",
-        "openToRelocationDescription": "Signal to employers you're willing to relocate within the GCC.",
+        "openToRelocationDescription": "Signal to employers you're willing to relocate for the right role.",
         "detailsTitle": "Visibility Details",
         "detailsDescription": "Fine-tune the information shown on your public profile.",
         "salaryRange": "Displayed Salary Range",
@@ -2544,7 +2545,7 @@
       },
       "languages": {
         "title": "Add your languages",
-        "body": "Language skills matter in the Gulf market. Tell AI your languages and proficiency levels.",
+        "body": "Language skills matter to employers everywhere. Tell AI your languages and proficiency levels.",
         "cta": "Add manually",
         "placeholder": "e.g. English fluent, Arabic intermediate, Hindi native..."
       }
@@ -2790,12 +2791,12 @@
   },
   "landing": {
     "hero": "AI-Powered Recruitment",
-    "heroSub": "Connect top talent with leading employers across the Gulf region.",
+    "heroSub": "Connect top talent with leading employers around the world.",
     "getStarted": "Get Started",
     "contactUs": "Contact Us",
     "whyChoose": "Why Choose MPLOYEDIN?",
     "aiMatching": "AI Matching",
-    "gulfFocus": "Gulf Region Focus",
+    "gulfFocus": "Global Reach",
     "agentNetwork": "Agent Network",
     "topEmployers": "Top Employers",
     "howItWorks": "See How It Works",
@@ -2854,7 +2855,7 @@
     "getStartedBtn": "Get Started",
     "privacyTitle": "Privacy Policy",
     "cookiesTitle": "Cookie Policy",
-    "blogTitle": "Blog – Gulf Recruitment Insights",
+    "blogTitle": "Blog – Recruitment & Career Insights",
     "faqPageTitle": "FAQ – Frequently Asked Questions",
     "contactPageTitle": "Contact Us",
     "contentLoading": "Loading...",
@@ -2904,8 +2905,8 @@
     "gdprHeading": "GDPR & Data Protection",
     "gdprSubheading": "Learn how we protect your personal data and your rights under GDPR.",
     "gdprPreparing": "GDPR policy content is being prepared.",
-    "heroTitle": "Find your next role in the Gulf.",
-    "heroDescription": "Search thousands of live jobs, get AI-matched recommendations, and apply directly to top employers across the region.",
+    "heroTitle": "Find your next job, anywhere.",
+    "heroDescription": "Search live jobs across countries and industries, get AI-matched recommendations, and apply directly to verified employers.",
     "heroEyebrow": "Smarter careers. Stronger teams.",
     "audienceLabel": "Choose how you want to use MPLOYEDIN",
     "jobSeeker": "Find a job",
@@ -2949,8 +2950,8 @@
     "exploreOpportunities": "Explore opportunities",
     "jobSearchLabel": "What role are you looking for?",
     "locationSearchLabel": "Where do you want to work?",
-    "searchPlaceholder": "Job title, skill, or company",
-    "locationPlaceholder": "Country or city",
+    "searchPlaceholder": "Job title, skill, or company name",
+    "locationPlaceholder": "City, country, or Remote",
     "findJobs2": "Find jobs",
     "popularSearches": "Popular searches",
     "activeJobs": "Active jobs",
@@ -2968,8 +2969,8 @@
     "retry": "Try again",
     "jobsByFunctionalArea": "Jobs by functional area",
     "jobsByIndustry": "Jobs by industry",
-    "hireFaster": "Hire faster across the Gulf.",
-    "hireFasterDesc": "Post jobs, review matched candidates, and manage your hiring pipeline from one dashboard. Reach job seekers across the GCC.",
+    "hireFaster": "Hire faster, wherever your team is.",
+    "hireFasterDesc": "Post jobs, review matched candidates, and manage your hiring pipeline from one dashboard. Reach job seekers in every market you hire in.",
     "startHiring": "Start hiring",
     "learnWorkflow": "Learn the workflow in minutes.",
     "learnWorkflowDesc": "Short explainer videos give job seekers and employers a quicker sense of how to get value from the platform.",
@@ -4084,10 +4085,10 @@
   },
   "footer": {
     "digitalPlatform": "Digital hiring platform",
-    "description": "MPLOYEDIN brings job discovery, AI matching, and employer workflows into one cleaner hiring experience for Gulf markets.",
+    "description": "MPLOYEDIN brings job discovery, AI matching, and employer workflows into one cleaner hiring experience for every market you work in.",
     "aiMatching": "AI-powered matching",
     "fasterScreening": "Faster candidate screening",
-    "smarterHiring": "Smarter Gulf hiring",
+    "smarterHiring": "Smarter hiring, everywhere",
     "browseJobs": "Browse jobs",
     "forEmployers": "For employers",
     "followUs": "Follow us",
@@ -5165,7 +5166,13 @@
     "fitFair": "Fair",
     "fitWeak": "Weak",
     "clearJob": "Clear job",
-    "experienceRange": "{min}–{max} yrs exp"
+    "experienceRange": "{min}–{max} yrs exp",
+    "bulkUpdated": "{processed} of {total} applications updated",
+    "bulkPartlyFailed": "{processed} of {total} updated, {failed} couldn't be: {details}",
+    "bulkFailed": "We couldn't update these applications: {details}",
+    "bulkSkippedOpenInterview": "{count, plural, one {# candidate wasn't moved — they have an interview booked. Cancel or complete it first.} other {# candidates weren't moved — they have interviews booked. Cancel or complete them first.}}",
+    "hiredNeedsOffer": "Send this candidate an offer first. They move to Hired when they accept it.",
+    "bulkSkippedNoOffer": "{count, plural, one {# candidate wasn't moved to Hired — they haven't accepted an offer.} other {# candidates weren't moved to Hired — they haven't accepted an offer.}}"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
@@ -7601,8 +7608,8 @@
     "heading": "Find your next opportunity",
     "activeJobs": "{total} active jobs",
     "browseOpenPositions": "Browse open positions",
-    "searchPlaceholder": "Job title, skills, or keyword",
-    "locationPlaceholder": "City or country",
+    "searchPlaceholder": "Job title, skill, or company name",
+    "locationPlaceholder": "City, country, or Remote",
     "search": "Search",
     "verified": "Verified",
     "closesInDays": "Closes in {days}d",
@@ -9236,13 +9243,13 @@
   },
   "publicPages": {
     "jobsTitle": "Find Jobs",
-    "jobsDescription": "Browse thousands of opportunities across the Gulf region",
+    "jobsDescription": "Browse thousands of opportunities across countries and industries",
     "companiesTitle": "Companies",
-    "companiesDescription": "Explore top employers hiring in the region",
+    "companiesDescription": "Explore top employers hiring now",
     "salaryExplorerTitle": "Salary Explorer",
-    "salaryExplorerDescription": "Research salary ranges across industries and roles in the Gulf",
+    "salaryExplorerDescription": "Research salary ranges across industries, roles, and countries",
     "salaryExplorerHeading": "Salary Explorer",
-    "salaryExplorerSubheading": "Research and compare salaries across the Gulf region"
+    "salaryExplorerSubheading": "Research and compare salaries across countries"
   },
   "hiringPanel": {
     "title": "Hiring Panel Review",
@@ -10634,7 +10641,11 @@
     "openCv": "Open CV",
     "viewJob": "View job",
     "viewCandidateProfile": "Open candidate in Job Seekers",
-    "staleFilterLabel": "Needs review (48h+)"
+    "staleFilterLabel": "Needs review (48h+)",
+    "bulkRejectReason": "Reason for rejecting",
+    "bulkSkippedOpenInterview": "{count, plural, one {# candidate wasn't moved — they have an interview booked. Cancel or complete it first.} other {# candidates weren't moved — they have interviews booked. Cancel or complete them first.}}",
+    "hiredNeedsOffer": "Send this candidate an offer first. They move to Hired when they accept it.",
+    "bulkSkippedNoOffer": "{count, plural, one {# candidate wasn't moved to Hired — they haven't accepted an offer.} other {# candidates weren't moved to Hired — they haven't accepted an offer.}}"
   },
   "adminCmsFaqs": {
     "title": "FAQs",
@@ -11707,7 +11718,7 @@
     "employerActivityReportQuery": "Which employers posted the most jobs and have the highest candidate conversion rates?",
     "geographicDistribution": "Geographic Distribution",
     "geographicDistributionDesc": "Users and jobs by region",
-    "geographicDistributionQuery": "Show user and job distribution by country/emirate across the Gulf region",
+    "geographicDistributionQuery": "Show user and job distribution by country and city",
     "customAnalyticsQuery": "Ask Analytics",
     "customAnalyticsDescription": "Ask a question about your platform data.",
     "customQuestionTitle": "Custom Question",
@@ -14959,8 +14970,8 @@
     "query2": "What is the average salary range for software engineers in India?",
     "query3": "Which nationalities are most sought-after for hospitality roles in Qatar?",
     "query4": "What is the current visa processing time trend for employment visas in KSA?",
-    "query5": "Which sectors are showing the highest growth in Gulf recruitment?",
-    "query6": "What skills have the highest demand-supply gap in GCC?",
+    "query5": "Which sectors are showing the highest growth in recruitment?",
+    "query6": "What skills have the highest demand-supply gap in my markets?",
     "query7": "What are the top hiring industries in India right now?",
     "query8": "What is the average salary for a project manager in the Philippines?",
     "query9": "Which countries supply the most construction workers to UAE?",
@@ -15300,7 +15311,8 @@
     "offerErrorStartDateInFuture": "Start date must be in the future.",
     "offerErrorGeneric": "Could not send the offer.",
     "yearsExperience": "{years, plural, one {# yr experience} other {# yrs experience}}",
-    "filterAllStatuses": "All statuses"
+    "filterAllStatuses": "All statuses",
+    "hiredNeedsOffer": "Send this candidate an offer first. They move to Hired when they accept it."
   },
   "agentInterviews": {
     "badgeAgentWorkspace": "Agent workspace",
@@ -15630,7 +15642,8 @@
     "exportForHandoff": "Use Export if you need a saved copy for handoff.",
     "aiNotAvailable": "AI reports aren't available on your current plan. Please contact your administrator to enable them.",
     "aiUsageLimit": "You've reached the AI usage limit for now. Please try again in a little while.",
-    "reportGenError": "We couldn't generate that report. Please try again."
+    "reportGenError": "We couldn't generate that report. Please try again.",
+    "analyticsLoadFailed": "We couldn't load your performance figures"
   },
   "agentLeadDetail": {
     "backToPipeline": "Back to Pipeline",
@@ -16009,7 +16022,7 @@
     "retryAutoFill": "Retry auto-fill from LinkedIn",
     "aiImportedSuccessfully": "Your profile has been auto-filled from LinkedIn! Please verify the details below and edit if needed.",
     "accountCreatedSuccess": "Your account is created successfully. Let's get started!",
-    "jobSiteTagline": "Search & apply to jobs from the Gulf's No.1 Job Site",
+    "jobSiteTagline": "Search & apply to jobs worldwide on MPLOYEDIN",
     "fullName": "Full name",
     "fullNamePlaceholder": "Your full name",
     "email": "Email",
@@ -16026,7 +16039,7 @@
     "resume": "Resume",
     "parsing": "Parsing…",
     "uploadResume": "Upload Resume",
-    "resumeFormats": "DOC, DOCx, PDF, RTF | Max: 10 MB",
+    "resumeFormats": "PDF, DOCX | Max: 10 MB",
     "resumeParsedSuccess": "Resume parsed! Fields auto-filled below.",
     "uploadResumeToAutoFill": "Upload your resume to auto-fill your profile using AI",
     "marketingConsent": "Send me important updates & promotions via SMS, email, and WhatsApp",
@@ -17591,6 +17604,7 @@
     "errors": {
       "applyFailed": "We couldn't apply. Please try again.",
       "planLimitReached": "You've reached your plan's application limit. Upgrade your plan to continue applying.",
+      "jobClosed": "This job is no longer taking applications.",
       "networkError": "Network error. Please try again.",
       "couldNotExtract": "We couldn't read your CV automatically. You can still apply — add your details below.",
       "invalidEmail": "Please enter a valid email address.",

@@ -327,7 +327,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // The interview that led to this offer is over. Left open it kept the
   // Interviews tab counting it and the Overview inbox promising an "upcoming
   // interview" that would never be held.
-  await closeOpenInterviewsForAdvance(applicationId);
+  await closeOpenInterviewsForAdvance(applicationId, { locale: ctx.locale });
 
   // Notify job seeker
   const jobSeeker = await JobSeeker.findById(application.jobSeekerId).select("userId").lean();

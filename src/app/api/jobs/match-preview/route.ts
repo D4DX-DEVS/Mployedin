@@ -76,4 +76,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     .map(([skill]) => skill);
 
   return NextResponse.json({ count, topSkills });
-});
+// Only the job-posting form calls this; a job seeker has no business sizing
+// the candidate pool.
+}, { resource: "jobs", action: "create" });

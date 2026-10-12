@@ -4,16 +4,16 @@ import { withAuth } from "@/lib/auth/withAuth";
 import type { AuthContext } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import { Employer } from "@/models/Employer";
-import Agent from "@/models/Agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { applicationUpdateSchema } from "@/lib/validators/applications";
 import { notify, notifyInterviewSelected, notifyOfferMade, notifyRejected, notifyStatusChange } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
-import { agentCanSeeEmployer, getSuperAgentBook } from "@/lib/auth/agentRestrictions";
+import { verifyAgentScopeForApplication } from "@/lib/applications/staffScope";
 import { memberMayAccessJob } from "@/lib/permissions/team";
 import { isBackwardsStageMove } from "@/lib/hiring/pipeline";
-import { advancesPastInterviewing, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
+import { closesOpenInterviews, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
+import { OFFER_REQUIRED, OFFER_REQUIRED_MESSAGE, withAcceptedOffer } from "@/lib/hiring/hiredRequiresOffer";
 import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
 import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWorkflow";
 import { stageForApplication, type WorkflowStageDef } from "@/lib/hiring/workflowStages";
@@ -22,42 +22,6 @@ import logger from "@/lib/logger";
 import { SEEKER_HIDDEN_APPLICATION_FIELDS } from "@/lib/applications/seekerView";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
-
-/**
- * Scope guard for agent / super_agent access to a single application, mirroring
- * the applications LIST routes. Agents are limited to applications for jobs they
- * own or whose employer they see (assigned, or registered in their region);
- * super_agents to their book — a job one of their agents posted, or one at an
- * employer in it. Returns 403 when out of scope, else null.
- * Admin / employer / job_seeker are authorized by their own branches.
- */
-async function verifyAgentScopeForApplication(
-  jobEmployerId: unknown,
-  jobAgentId: unknown,
-  ctx: AuthCtx
-): Promise<NextResponse | null> {
-  if (ctx.role === "agent") {
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
-    const ok = Boolean(
-      agent && (
-        String(jobAgentId) === String(agent._id) ||
-        (await agentCanSeeEmployer(ctx.userId, jobEmployerId))
-      )
-    );
-    return ok ? null : NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  if (ctx.role === "super_agent") {
-    const book = await getSuperAgentBook(ctx.userId);
-    const ok = Boolean(
-      book && (
-        (jobAgentId && book.agentIds.some((id) => String(id) === String(jobAgentId))) ||
-        book.employerIds.some((id) => String(id) === String(jobEmployerId))
-      )
-    );
-    return ok ? null : NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  return null;
-}
 
 interface EmpLean extends WorkflowSettingsCarrier {
   _id: unknown;
@@ -160,6 +124,15 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const prevStatus = application.status;
 
+  // Hired needs an accepted offer — accepting one moves the candidate there by
+  // itself. Checked before any write (audit FUNC-006).
+  if (status === "hired" && status !== application.status) {
+    const ok = await withAcceptedOffer([application._id]);
+    if (!ok.has(String(application._id))) {
+      return NextResponse.json({ error: OFFER_REQUIRED_MESSAGE, code: OFFER_REQUIRED }, { status: 409 });
+    }
+  }
+
   // A backwards stage move over a live interview is how the funnel silently
   // desyncs from the Interviews tab: the candidate lands back at, say,
   // shortlisted while a scheduled interview stays open, so Overview reads
@@ -194,6 +167,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // History records the stage entered under the name it had at the time.
   const currentStage = stageForApplication(jobStages, application.status, application.stageId);
   let stageOnlyMove = false;
+  // Moving past interviewing, or out of the process, settles any slot still on
+  // the books — the mirror of the backwards guard above. Without it the
+  // Interviews tab and the Overview inbox keep counting an interview nobody
+  // will attend. Done after the save below, so a failed change leaves it open.
+  const settleInterviews = !!status && status !== application.status && closesOpenInterviews(status);
   if (status && status !== application.status) {
     application.status = status;
     // Unnamed → the first stage of the new status.
@@ -206,12 +184,6 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       changedBy: ctx.userId,
       note: note ?? `Status updated to ${status}`,
     });
-    // Moving forward past interviewing settles any slot still on the books —
-    // the mirror of the backwards guard above. Without it the Interviews tab
-    // and the Overview inbox keep counting an interview nobody will attend.
-    if (advancesPastInterviewing(status)) {
-      await closeOpenInterviewsForAdvance(application._id);
-    }
   } else if (targetStage && currentStage?.id !== targetStage.id) {
     application.stageId = targetStage.id;
     application.statusHistory.push({
@@ -236,6 +208,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (withdrawalNote !== undefined) application.withdrawalNote = withdrawalNote;
 
   await application.save();
+  if (settleInterviews) await closeOpenInterviewsForAdvance(application._id, { locale: ctx.locale });
 
   const effectiveStatus = application.status;
   const statusChanged = effectiveStatus !== prevStatus;

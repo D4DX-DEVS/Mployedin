@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/shared/PhoneInput";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { applyErrorKey } from "@/lib/applications/applyErrors";
 
 export interface EasyApplyScreeningQuestion {
   id: string;
@@ -1115,12 +1116,13 @@ function EasyApplyFlow({
         return;
       }
       if (!res.ok) {
-        // Map plan-quota errors to friendly messages like in EasyApplyFlowDialog
-        if (data?.error === "LIMIT_EXCEEDED" || data?.error === "SUBSCRIPTION_REQUIRED") {
-          setError(t("errors.planLimitReached"));
-        } else {
-          setError(data?.error ?? t("errors.applyFailed"));
-        }
+        // Plan quotas and a closed job get the dialog's own copy, as in EasyApplyFlowDialog.
+        const known = applyErrorKey(data);
+        setError(
+          known === "planLimitReached" ? t("errors.planLimitReached")
+            : known === "jobClosed" ? t("errors.jobClosed")
+              : data?.error ?? t("errors.applyFailed"),
+        );
         return;
       }
       setApplied(true);

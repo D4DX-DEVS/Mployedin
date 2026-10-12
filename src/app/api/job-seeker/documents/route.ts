@@ -11,9 +11,10 @@ import { limitCvUpload } from "@/lib/cv/uploadLimit";
 import logger from "@/lib/logger";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+// uploadFile() re-checks every file against ALLOWED_FILE_TYPES.cv, magic bytes
+// included; legacy .doc was listed here but never got past that check.
 const ALLOWED_TYPES = [
   "application/pdf",
-  "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "image/jpeg",
   "image/png",
@@ -75,7 +76,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   }
   if (!ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json(
-      { error: "Invalid file type. Allowed: PDF, DOC, DOCX, JPG, PNG, WEBP." },
+      { error: "Invalid file type. Allowed: PDF, DOCX, JPG, PNG, WEBP." },
       { status: 400 }
     );
   }

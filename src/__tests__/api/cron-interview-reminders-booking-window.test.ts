@@ -33,6 +33,7 @@ interface Doc {
   status: string;
   reminderSent: boolean;
   metadata: Record<string, unknown>;
+  applicationId?: { status: string };
 }
 let docs: Doc[] = [];
 
@@ -107,6 +108,29 @@ const sweep = () => GET(new NextRequest("http://localhost/api/cron/interview-rem
 beforeEach(() => {
   jest.clearAllMocks();
   docs = [];
+});
+
+/**
+ * Rejecting or withdrawing now cancels the slot (audit FUNC-009), but slots
+ * left open before that fix — or by any path that misses it — must not keep
+ * reminding a candidate who is out of the process.
+ */
+describe("interview reminder cron and the candidate's application", () => {
+  it.each(["rejected", "withdrawn"])("sends neither reminder when the application is %s", async (status) => {
+    docs = [
+      { ...booking("a", 48, 50, false), applicationId: { status } }, // 2 h away, no reminder yet
+      { ...booking("b", 48, 48.5, false), reminderSent: true, applicationId: { status } }, // 30 min away
+    ];
+    await sweep();
+    expect(notifyInterviewScheduled).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("still reminds a candidate who is in the process", async () => {
+    docs = [{ ...booking("a", 48, 50, false), applicationId: { status: "interview_scheduled" } }];
+    await sweep();
+    expect(notifyInterviewScheduled).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("interview reminder cron and the booking-time flag", () => {

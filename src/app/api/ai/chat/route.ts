@@ -920,7 +920,7 @@ ${interviewLines ? `\n### Upcoming Interviews\n${interviewLines}` : ""}`;
 
 function getSystemPrompt(context: string, profileContext: string, jobsContext: string, roleStatsContext: string): string {
   const base =
-    "You are an AI assistant for MPLOYEDIN, an AI-powered international recruitment platform for the Gulf region. Be helpful, professional, and concise." + SCOPE_GUARD;
+    "You are an AI assistant for MPLOYEDIN, an AI-powered international recruitment platform. Be helpful, professional, and concise." + SCOPE_GUARD;
 
   // Role-specific assistant contexts — use dedicated prompts with stats injection
   const assistantContexts: AssistantContext[] = [

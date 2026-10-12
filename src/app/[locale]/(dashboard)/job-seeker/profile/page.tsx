@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { getCsrfToken } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
+import { toast } from "sonner";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -255,6 +256,8 @@ export default function JobSeekerProfilePage() {
       if (res.ok) {
         setAvatarUrl(null);
         await updateSession({ image: null });
+      } else {
+        setAvatarError(t("errors.removePhoto"));
       }
     } catch {
       setAvatarError(t("errors.removePhoto"));
@@ -284,7 +287,7 @@ export default function JobSeekerProfilePage() {
       await patchProfile({ name: editName.trim() });
       await updateSession({ name: editName.trim() });
       setShowNameModal(false);
-    } catch { /* toast */ }
+    } catch { toast.error(t("errors.saveFailed")); }
     finally { setSavingName(false); }
   }
 
@@ -295,7 +298,7 @@ export default function JobSeekerProfilePage() {
     try {
       await patchProfile({ headline: editHeadline.trim() });
       setShowHeadlineModal(false);
-    } catch { /* toast */ }
+    } catch { toast.error(t("errors.saveFailed")); }
     finally { setSavingHeadline(false); }
   }
 
@@ -304,7 +307,7 @@ export default function JobSeekerProfilePage() {
     try {
       await patchProfile({ summary: editSummary.trim() });
       setShowSummaryModal(false);
-    } catch { /* toast */ }
+    } catch { toast.error(t("errors.saveFailed")); }
     finally { setSavingSummary(false); }
   }
 
@@ -313,7 +316,7 @@ export default function JobSeekerProfilePage() {
     try {
       await patchProfile({ profileVisibility: editVisibility });
       setShowVisibilityModal(false);
-    } catch { /* toast */ }
+    } catch { toast.error(t("errors.saveFailed")); }
     finally { setSavingVisibility(false); }
   }
 
@@ -325,6 +328,7 @@ export default function JobSeekerProfilePage() {
       await patchProfile({ sectionVisibility: updated });
     } catch {
       setProfile((p) => p ? { ...p, sectionVisibility: prev } : p);
+      toast.error(t("errors.saveFailed"));
     }
   }
 

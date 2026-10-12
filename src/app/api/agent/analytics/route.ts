@@ -86,7 +86,8 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
     visibleEmployerIds.length > 0
       ? Offer.countDocuments({ employerId: { $in: visibleEmployerIds } })
       : Promise.resolve(0),
-    Interview.countDocuments({ agentId, status: "scheduled" }),
+    // Confirmed ones are still upcoming — they used to drop out of the count.
+    Interview.countDocuments({ agentId, status: { $in: ["scheduled", "confirmed"] } }),
   ]);
 
   function buildTrend(current: number, previous: number) {
