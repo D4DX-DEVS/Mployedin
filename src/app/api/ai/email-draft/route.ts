@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
 
     const customNote = customInstructions?.slice(0, 300) ?? "";
 
-    const prompt = `You are a professional recruitment email writer for the Gulf/MENA market.
+    const prompt = `You are a professional recruitment email writer for international hiring.
 
 Generate a follow-up email draft for this context:
 
@@ -156,7 +156,7 @@ Generate a JSON response with:
 - suggestedSendTime: "immediately" | "next_morning" | "end_of_day"
 
 IMPORTANT: Use the ACTUAL values provided above. Do NOT output bracketed placeholders such as [Candidate Name], [Company Name], [Your Name], or [Position] — always substitute the real candidate first name, job title, and "${companyName}". Sign off as the ${companyName} recruitment team.
-Keep the email concise (100-200 words), professional, and culturally appropriate for the Gulf region.
+Keep the email concise (100-200 words), professional, and culturally appropriate for the recipient's country and industry.
 Output ONLY valid JSON, no markdown code blocks.`;
 
     const rawText = await routeGenerate(prompt, "chat");

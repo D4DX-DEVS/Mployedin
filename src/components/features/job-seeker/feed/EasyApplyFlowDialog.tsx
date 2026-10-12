@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { applyErrorKey } from "@/lib/applications/applyErrors";
 import {
   Dialog,
   DialogContent,
@@ -316,13 +317,14 @@ export function EasyApplyFlowDialog({
         return;
       }
       if (!res.ok) {
-        // Plan-quota errors get a friendly upgrade prompt instead of the raw
-        // server code ("LIMIT_EXCEEDED" / "SUBSCRIPTION_REQUIRED").
-        if (data?.error === "LIMIT_EXCEEDED" || data?.error === "SUBSCRIPTION_REQUIRED") {
-          setError(t("errors.planLimitReached"));
-        } else {
-          setError(data?.error ?? t("errors.applyFailed"));
-        }
+        // Plan quotas and a closed job get the dialog's own copy instead of
+        // the server's code or English text.
+        const known = applyErrorKey(data);
+        setError(
+          known === "planLimitReached" ? t("errors.planLimitReached")
+            : known === "jobClosed" ? t("errors.jobClosed")
+              : data?.error ?? t("errors.applyFailed"),
+        );
         return;
       }
       onApplied(jobId);

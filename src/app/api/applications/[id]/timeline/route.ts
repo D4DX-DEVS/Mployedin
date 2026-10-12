@@ -3,8 +3,8 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import AuditLog from "@/models/AuditLog";
-import { Employer } from "@/models/Employer";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { verifyApplicationReadAccess } from "@/lib/applications/staffScope";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -15,37 +15,12 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
 
-  const application = await Application.findById(params?.id).select("employerId jobSeekerId").lean();
+  const application = await Application.findById(params?.id).select("jobId jobSeekerId").lean();
   if (!application) return NextResponse.json({ error: "Application not found" }, { status: 404 });
 
-  // Access control
-  if (ctx.role === "employer") {
-    const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!emp || String(application.employerId) !== String(emp._id)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  } else if (ctx.role === "job_seeker") {
-    const JobSeeker = (await import("@/models/JobSeeker")).default;
-    const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!seeker || String(application.jobSeekerId) !== String(seeker._id)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  } else if (["agent", "super_agent"].includes(ctx.role)) {
-    const Job = (await import("@/models/Job")).default;
-    const Agent = (await import("@/models/Agent")).default;
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
-    const job = await Job.findById(application.jobId).select("agentId employerId").lean();
-    if (!agent || !job) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    const hasAccess = String(job.agentId) === String(agent._id) ||
-      (agent.assignedEmployerIds ?? []).some((id: unknown) => String(id) === String(job.employerId));
-    if (!hasAccess) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  } else if (ctx.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  // Same readers as the application itself.
+  const forbidden = await verifyApplicationReadAccess(application, ctx);
+  if (forbidden) return forbidden;
 
   const entries = await AuditLog.find({
     resource: "applications",

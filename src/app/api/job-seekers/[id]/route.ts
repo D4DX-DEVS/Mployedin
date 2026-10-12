@@ -32,7 +32,12 @@ async function verifySeekerStaffAccess(seeker: SeekerOwnership, ctx: AuthCtx, ac
 async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<string, string>) {
   if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   await connectDB();
-  const seeker = await JobSeeker.findById(params?.id).populate("userId", "name email").lean();
+  // The text extracted from the CV and the ATS report are pipeline inputs, not
+  // something a viewer of the profile needs; no screen reads them from here.
+  const seeker = await JobSeeker.findById(params?.id)
+    .select("-cv.rawText -cv.atsReport")
+    .populate("userId", "name email")
+    .lean();
   if (!seeker) return NextResponse.json({ error: "Job seeker not found" }, { status: 404 });
 
   const accessError = await verifySeekerStaffAccess(seeker as SeekerOwnership, _ctx, "view");

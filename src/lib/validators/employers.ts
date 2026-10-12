@@ -93,6 +93,18 @@ export const employerAdminUpdateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+/**
+ * What an assigned agent may change on an employer: the company details their
+ * form edits. Login email and contact name stay with the account holder — an
+ * agent able to repoint the login email could take the account over.
+ */
+export const employerAgentUpdateSchema = employerAdminUpdateSchema.pick({
+  companyName: true,
+  industry: true,
+  location: true,
+  phone: true,
+});
+
 /** Communication template creation */
 export const commTemplateCreateSchema = z.object({
   name: z.string().min(1).max(100).trim(),

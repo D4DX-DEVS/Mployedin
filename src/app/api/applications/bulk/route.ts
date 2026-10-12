@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
-import { advancesPastInterviewing, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
+import { closesOpenInterviews, closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
+import { isBackwardsStageMove } from "@/lib/hiring/pipeline";
+import Interview from "@/models/Interview";
+import { withAcceptedOffer } from "@/lib/hiring/hiredRequiresOffer";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
@@ -150,6 +153,29 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     ).notifyOnStageChange;
   };
 
+  // A move back to an earlier stage over a booked interview is what the single
+  // PATCH answers with 409, so the person sees the interview first. Bulk can't
+  // ask per candidate: those are skipped and reported, the rest move (FUNC-010).
+  const movingBack = newStatus
+    ? applications.filter((a) => a.status !== newStatus && isBackwardsStageMove(a.status, newStatus!))
+    : [];
+  const heldInterview = new Set<string>();
+  if (movingBack.length) {
+    const open = await Interview.find({
+      applicationId: { $in: movingBack.map((a) => a._id) },
+      status: { $in: ["scheduled", "confirmed"] },
+    }).select("applicationId").lean();
+    for (const row of open) heldInterview.add(String(row.applicationId));
+  }
+  const skippedOpenInterview: string[] = [];
+
+  // Hired needs an accepted offer (FUNC-006): those without one are skipped and
+  // reported, like the open-interview case above.
+  const hiredReady = newStatus === "hired"
+    ? await withAcceptedOffer(applications.filter((a) => a.status !== "hired").map((a) => a._id))
+    : null;
+  const skippedNoOffer: string[] = [];
+
   // Update each and push status history
   let successCount = 0;
   const errors: string[] = [];
@@ -169,6 +195,14 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   }> = [];
 
   for (const app of applications) {
+    if (heldInterview.has(String(app._id))) {
+      skippedOpenInterview.push(String(app._id));
+      continue;
+    }
+    if (hiredReady && app.status !== "hired" && !hiredReady.has(String(app._id))) {
+      skippedNoOffer.push(String(app._id));
+      continue;
+    }
     try {
       const jobSeeker = app.jobSeekerId as unknown as {
         _id?: unknown; userId?: { _id?: unknown; email?: string; name?: string } | string;
@@ -201,10 +235,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         await app.save();
 
         // Same rule the single-application PATCH applies: once a candidate is
-        // past interviewing, a slot still on the books is settled rather than
-        // left to inflate the Interviews tab and fire reminders.
-        if (advancesPastInterviewing(newStatus)) {
-          await closeOpenInterviewsForAdvance(app._id, { now });
+        // past interviewing, rejected or withdrawn, a slot still on the books is
+        // settled rather than left to inflate the Interviews tab and fire reminders.
+        if (closesOpenInterviews(newStatus)) {
+          await closeOpenInterviewsForAdvance(app._id, { now, locale: ctx.locale });
         }
 
         // Send notification + email based on new status (both follow the notify rule).
@@ -357,6 +391,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     total: applications.length,
     emailsSent: emailsSent.length,
     errors: errors.length ? errors : undefined,
+    skippedOpenInterview: skippedOpenInterview.length ? skippedOpenInterview : undefined,
+    skippedNoOffer: skippedNoOffer.length ? skippedNoOffer : undefined,
   });
 }
 

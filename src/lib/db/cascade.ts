@@ -39,6 +39,50 @@ import Notification from "@/models/Notification";
 
 export type CascadeSummary = Record<string, number>;
 
+type Deletable = { deleteMany: (filter: Record<string, unknown>) => PromiseLike<DeleteResult> };
+type ModelModule = Record<string, unknown> & { default?: unknown };
+
+/**
+ * Records an employer owns that mean nothing once the company is gone. A
+ * permanent delete used to leave all of them: live on 2026-10-12 a deleted
+ * company's career page was still served publicly and its talent pool stayed
+ * (audit FUNC-015). Several hold candidate data (background checks, diversity
+ * answers, feedback, surveys) and API keys would still authenticate. Each is
+ * keyed by the Employer profile id. Invoices are deliberately not here: they
+ * are the accounting record.
+ *
+ * Loaded on demand — the cascade runs rarely and these models are otherwise
+ * unrelated to the routes that import this file.
+ */
+const EMPLOYER_OWNED: ReadonlyArray<[label: string, load: () => Promise<ModelModule>, exportName?: string]> = [
+  ["apiKeys", () => import("@/models/ApiKey")],
+  ["applicationFeedback", () => import("@/models/ApplicationFeedback"), "ApplicationFeedback"],
+  ["applicationForms", () => import("@/models/ApplicationForm")],
+  ["approvalWorkflows", () => import("@/models/ApprovalWorkflow")],
+  ["backgroundChecks", () => import("@/models/BackgroundCheck"), "BackgroundCheck"],
+  ["surveyTemplates", () => import("@/models/CandidateSurvey"), "SurveyTemplate"],
+  ["surveyResponses", () => import("@/models/CandidateSurvey"), "SurveyResponse"],
+  ["careerPages", () => import("@/models/CareerPage")],
+  ["commTemplates", () => import("@/models/CommTemplate"), "CommTemplate"],
+  ["companyProfileViews", () => import("@/models/CompanyProfileView"), "CompanyProfileView"],
+  ["companyReviews", () => import("@/models/CompanyReview"), "CompanyReview"],
+  ["diversityResponses", () => import("@/models/DiversityResponse")],
+  ["emailSequences", () => import("@/models/EmailSequence")],
+  ["employeeReferrals", () => import("@/models/EmployeeReferral")],
+  ["extractionDrafts", () => import("@/models/ExtractionDraft"), "ExtractionDraft"],
+  ["hiringDecisions", () => import("@/models/HiringDecision"), "HiringDecision"],
+  ["matchingWeightTemplates", () => import("@/models/MatchingWeightTemplate"), "MatchingWeightTemplate"],
+  ["onboardingChecklists", () => import("@/models/OnboardingChecklist"), "OnboardingChecklist"],
+  ["posterGenerations", () => import("@/models/PosterGeneration")],
+  ["referralLinks", () => import("@/models/ReferralLink"), "ReferralLink"],
+  ["requisitions", () => import("@/models/Requisition")],
+  ["scorecards", () => import("@/models/Scorecard"), "Scorecard"],
+  ["skillAssessments", () => import("@/models/SkillAssessment"), "SkillAssessment"],
+  ["talentPools", () => import("@/models/TalentPool")],
+  ["tenantViewSessions", () => import("@/models/TenantViewSession")],
+  ["workflowTemplates", () => import("@/models/WorkflowTemplate"), "WorkflowTemplate"],
+];
+
 type DeleteResult = { deletedCount?: number };
 type UpdateResult = { modifiedCount?: number };
 
@@ -97,6 +141,16 @@ export async function cascadeDeleteEmployer(
     await track(summary, "jobTemplates", JobTemplate.deleteMany({ employerId: empId }));
     await track(summary, "jobs", Job.deleteMany({ employerId: empId }));
 
+    for (const [label, load, exportName] of EMPLOYER_OWNED) {
+      try {
+        const mod = await load();
+        const model = (exportName ? mod[exportName] : mod.default) as Deletable;
+        await track(summary, label, Promise.resolve(model.deleteMany({ employerId: empId })));
+      } catch (err) {
+        logger.error({ err, operation: label }, "[cascade] operation failed");
+      }
+    }
+
     // Detach from agent assignments and converted-lead links.
     await track(
       summary,
@@ -115,6 +169,8 @@ export async function cascadeDeleteEmployer(
       ),
     );
   }
+
+  await track(summary, "notifications", Notification.deleteMany({ userId: employerUserId }));
 
   return summary;
 }

@@ -15,7 +15,7 @@ import RelativeDate from "@/components/shared/RelativeDate";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
 import { formatCount } from "@/lib/ui/intlFormat";
-import { closesInDays } from "@/lib/jobs/expiry";
+import { closesInDays, isPastClosingDate } from "@/lib/jobs/expiry";
 
 interface PageProps {
   params: Promise<{ locale: string; id: string }>;
@@ -98,7 +98,8 @@ export default async function JobDetailPage({ params }: PageProps) {
     .lean()
     .catch(() => null);
 
-  if (!job || job.status !== "active") notFound();
+  // Past its closing date is closed even before the expiry cron flips the status.
+  if (!job || job.status !== "active" || isPastClosingDate(job.expiresAt as Date | null)) notFound();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const employer = job.employerId as any;

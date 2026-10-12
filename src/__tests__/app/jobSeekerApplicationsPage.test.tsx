@@ -350,6 +350,29 @@ describe("ApplicationsPage", () => {
     expect(screen.getByPlaceholderText(/search by job title or company/i)).toHaveValue("");
   });
 
+  // A failed load used to fall through to "You have not applied to any roles
+  // yet" — under a header that still said "34 applications".
+  it("says the list could not load, not that the seeker never applied, and offers a retry", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue({ ok: false, status: 500, json: async () => ({ error: "boom" }) });
+
+    render(<ApplicationsPage />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't load applications");
+    expect(screen.queryByText(/you have not applied to any roles yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /browse jobs/i })).not.toBeInTheDocument();
+
+    fetchMock.mockClear();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ applications: [], statusCounts: { all: 0 }, pagination: { total: 0 } }),
+    });
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&fetchCounts=true");
+    });
+  });
+
   it("keeps the context line when counts are present but a background refetch failed", async () => {
     countsQueryMock.mockReturnValue({
       data: { pendingOffers: 1, interviewsAwaitingResponse: 2, upcomingInterviews: 0, totalApplications: 27, activeApplications: 8 },

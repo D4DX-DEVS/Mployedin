@@ -6,6 +6,8 @@ import User from "@/models/User";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
+import { closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
+import { isPastClosingDate } from "@/lib/jobs/expiry";
 import type { CopilotTool, CopilotToolContext } from "../types";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
@@ -278,8 +280,8 @@ export const applyToJobTool: CopilotTool<{ jobId: string; coverLetter?: string }
     const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!seeker) return { ok: false, message: "No job seeker profile found for this account." };
 
-    const job = await Job.findById(args.jobId).select("_id title status employerId agentId").lean();
-    if (!job || job.status !== "active") return { ok: false, message: "That job is not currently accepting applications." };
+    const job = await Job.findById(args.jobId).select("_id title status expiresAt employerId agentId").lean();
+    if (!job || job.status !== "active" || isPastClosingDate(job.expiresAt)) return { ok: false, message: "That job is not currently accepting applications." };
     const { Employer } = await import("@/models/Employer");
     const empRecord = await Employer.findById(job.employerId).select("companyName").lean();
 
@@ -364,6 +366,8 @@ export const withdrawApplicationTool: CopilotTool<{ applicationId: string; withd
     if (args.withdrawalReason) application.withdrawalReason = args.withdrawalReason;
     if (args.withdrawalNote) application.withdrawalNote = sanitizeAIInput(args.withdrawalNote, 500);
     await application.save();
+    // Same as withdrawing from the Applications page: the slot they held is off.
+    await closeOpenInterviewsForAdvance(application._id, { locale: ctx.locale });
 
     const jobTitle = (application.jobId as unknown as { title?: string })?.title ?? "the role";
     return { ok: true, message: `Withdrew your application for "${jobTitle}".` };

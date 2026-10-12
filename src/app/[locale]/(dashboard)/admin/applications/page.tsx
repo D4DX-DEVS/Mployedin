@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AiSearchField, AiSearchResultLine } from "@/components/shared/AiSearchField";
 import { AI_SCORE_BANDS, useAiFilterSearch, type AiApplicationFilters } from "@/hooks/useAiFilterSearch";
@@ -217,6 +218,9 @@ export default function AdminApplicationsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [bulkStatus, setBulkStatus] = useState("");
+  // Every rejection records why — the bulk endpoint refuses one without a reason.
+  const [bulkRejectReason, setBulkRejectReason] = useState("");
+  const bulkNeedsReason = bulkStatus === "rejected" && !bulkRejectReason.trim();
   const [bulkRunning, setBulkRunning] = useState(false);
 
   // AI Insights
@@ -433,7 +437,7 @@ export default function AdminApplicationsPage() {
         setApplications((prev) => prev.map((a) => (a._id === id ? { ...a, status: newStatus } : a)));
       } else {
         const e = await res.json().catch(() => ({}));
-        toast.error(e.error ?? t("failedToUpdateStatus"));
+        toast.error(e.code === "OFFER_REQUIRED" ? t("hiredNeedsOffer") : e.error ?? t("failedToUpdateStatus"));
       }
     } catch {
       toast.error(t("failedToUpdateStatus"));
@@ -455,7 +459,7 @@ export default function AdminApplicationsPage() {
   };
 
   const runBulkStatus = async () => {
-    if (!bulkStatus || selectedIds.length === 0) return;
+    if (!bulkStatus || selectedIds.length === 0 || bulkNeedsReason) return;
     setBulkRunning(true);
     try {
       const res = await fetch("/api/applications/bulk", {
@@ -464,7 +468,7 @@ export default function AdminApplicationsPage() {
         body: JSON.stringify({
           applicationIds: selectedIds,
           action: bulkStatus === "rejected" ? "reject" : "move_stage",
-          params: bulkStatus === "rejected" ? {} : { targetStage: bulkStatus },
+          params: bulkStatus === "rejected" ? { rejectionReason: bulkRejectReason.trim() } : { targetStage: bulkStatus },
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -472,9 +476,17 @@ export default function AdminApplicationsPage() {
         toast.error(data.error ?? t("failedToUpdateStatus"));
         return;
       }
-      toast.success(t("bulkStatusUpdated", { count: data.processed ?? selectedIds.length }));
+      // Candidates who would move back over a booked interview are skipped by
+      // the server and listed; say so instead of counting them as updated.
+      const heldInterview = Array.isArray(data.skippedOpenInterview) ? data.skippedOpenInterview.length : 0;
+      const noOffer = Array.isArray(data.skippedNoOffer) ? data.skippedNoOffer.length : 0;
+      const processed = data.processed ?? selectedIds.length;
+      if (processed > 0 || heldInterview + noOffer === 0) toast.success(t("bulkStatusUpdated", { count: processed }));
+      if (heldInterview > 0) toast.warning(t("bulkSkippedOpenInterview", { count: heldInterview }));
+      if (noOffer > 0) toast.warning(t("bulkSkippedNoOffer", { count: noOffer }));
       setSelectedIds([]);
       setBulkStatus("");
+      setBulkRejectReason("");
       fetchApplications();
     } catch {
       toast.error(t("failedToUpdateStatus"));
@@ -790,10 +802,20 @@ export default function AdminApplicationsPage() {
                 onValueChange={(value) => setBulkStatus(value ?? "")}
                 placeholder={t("bulkChangeStatus")}
               />
+              {bulkStatus === "rejected" && (
+                <Input
+                  className="h-9 w-56 rounded-lg bg-card text-xs max-sm:min-h-11"
+                  value={bulkRejectReason}
+                  onChange={(e) => setBulkRejectReason(e.target.value)}
+                  maxLength={500}
+                  placeholder={t("bulkRejectReason")}
+                  aria-label={t("bulkRejectReason")}
+                />
+              )}
               <Button
                 size="sm"
                 className="max-sm:min-h-11"
-                disabled={!bulkStatus || bulkRunning}
+                disabled={!bulkStatus || bulkNeedsReason || bulkRunning}
                 onClick={() => void runBulkStatus()}
               >
                 {bulkRunning ? <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}

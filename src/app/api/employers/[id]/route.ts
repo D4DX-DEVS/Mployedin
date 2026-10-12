@@ -4,7 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
-import { employerAdminUpdateSchema } from "@/lib/validators/employers";
+import { employerAdminUpdateSchema, employerAgentUpdateSchema } from "@/lib/validators/employers";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import type { UserRole } from "@/models/User";
 import { buildEmployerAdminUpdatePayload } from "@/lib/employers/admin";
@@ -50,18 +50,24 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const user = await User.findById(params?.id);
   if (!user) return NextResponse.json({ error: "Employer not found" }, { status: 404 });
 
-  // IDOR: agents can only update employers assigned to them
+  // IDOR: agents can only update employers assigned to them. `params.id` is
+  // the employer's USER id; `assignedEmployerIds` holds Employer PROFILE ids.
   if (ctx.role === "agent") {
     const { Agent } = await import("@/models/Agent");
-    const agent = await Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean();
-    if (!agent?.assignedEmployerIds?.map(String).includes(params!.id)) {
+    const { Employer } = await import("@/models/Employer");
+    const [agent, empProfile] = await Promise.all([
+      Agent.findOne({ userId: ctx.userId }).select("assignedEmployerIds").lean(),
+      Employer.findOne({ userId: params?.id }).select("_id").lean(),
+    ]);
+    const assigned = (agent?.assignedEmployerIds ?? []).map(String);
+    if (!empProfile || !assigned.includes(String(empProfile._id))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   } else if (ctx.role === "employer" && ctx.userId !== params?.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await validateBody(req, employerAdminUpdateSchema);
+  const body = await validateBody(req, ctx.role === "agent" ? employerAgentUpdateSchema : employerAdminUpdateSchema);
   const payload = buildEmployerAdminUpdatePayload(body);
 
   const userUpdate = payload.userUpdate;

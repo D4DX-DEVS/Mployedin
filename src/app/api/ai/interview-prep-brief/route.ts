@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
     const candidateName = [iv.jobSeekerId?.firstName, iv.jobSeekerId?.lastName].filter(Boolean).join(" ") || "Unknown";
     const jobTitle = iv.jobId?.title ?? "Unknown role";
 
-    const prompt = `You are a recruitment agency interview preparation expert for Gulf/MENA market.
+    const prompt = `You are a recruitment agency interview preparation expert for international hiring.
 
 Generate a comprehensive interview prep brief for the following scheduled interview.
 

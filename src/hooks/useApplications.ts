@@ -1,5 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { interviewKeys } from "@/hooks/useInterviews";
+import { candidateJourneyKeys } from "@/hooks/useCandidateJourney";
 import { jobHiringSummaryKeys } from "@/hooks/useJobHiringSummary";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations, useLocale } from "next-intl";
@@ -201,6 +202,14 @@ export class OpenInterviewError extends Error {
   }
 }
 
+/** Hired was refused: the candidate hasn't accepted an offer (FUNC-006). */
+export class OfferRequiredError extends Error {
+  constructor() {
+    super("The candidate hasn't accepted an offer.");
+    this.name = "OfferRequiredError";
+  }
+}
+
 /** Update a single application's status */
 export function useUpdateApplicationStatus() {
   const qc = useQueryClient();
@@ -234,13 +243,17 @@ export function useUpdateApplicationStatus() {
         if (body?.code === "OPEN_INTERVIEW" && body.interview) {
           throw new OpenInterviewError(body.interview as OpenInterviewConflict);
         }
+        if (body?.code === "OFFER_REQUIRED") throw new OfferRequiredError();
       }
       if (!res.ok) throw new Error("Application status was not updated");
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: applicationKeys.lists() });
       qc.invalidateQueries({ queryKey: jobHiringSummaryKeys.all });
+      // Leaving interviewing closes the candidate's open interviews server-side.
+      qc.invalidateQueries({ queryKey: candidateJourneyKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: interviewKeys.all });
     },
   });
 }
@@ -265,6 +278,9 @@ export function useBulkAction() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: applicationKeys.lists() });
       qc.invalidateQueries({ queryKey: jobHiringSummaryKeys.all });
+      // Leaving interviewing closes the candidates' open interviews server-side.
+      qc.invalidateQueries({ queryKey: candidateJourneyKeys.all });
+      qc.invalidateQueries({ queryKey: interviewKeys.all });
     },
   });
 }

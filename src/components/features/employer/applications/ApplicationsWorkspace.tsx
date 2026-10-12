@@ -93,6 +93,7 @@ import {
   useUpdateApplicationStatus,
   fetchShortlistPool,
   OpenInterviewError,
+  OfferRequiredError,
   type OpenInterviewConflict,
 } from "@/hooks/useApplications";
 import {
@@ -800,17 +801,24 @@ export function ApplicationsWorkspace({
   }, [isLoading, applications]);
 
   /** Surface the itemized processed/total/errors result from a bulk action as a toast. */
-  function reportBulkActionResult(result: { processed?: number; total?: number; errors?: string[] }) {
+  function reportBulkActionResult(result: { processed?: number; total?: number; errors?: string[]; skippedOpenInterview?: string[]; skippedNoOffer?: string[] }) {
     const processed = result.processed ?? 0;
     const total = result.total ?? processed;
     const errors = result.errors ?? [];
+    // Candidates who would move back over a booked interview are left where
+    // they are (the single move asks first); say so rather than count them done.
+    const heldInterview = result.skippedOpenInterview?.length ?? 0;
+    const noOffer = result.skippedNoOffer?.length ?? 0;
+    const skipped = heldInterview + noOffer;
     if (errors.length === 0) {
-      toast.success(`${processed}/${total} application(s) updated`);
+      if (processed > 0 || skipped === 0) toast.success(t("bulkUpdated", { processed, total }));
     } else if (processed > 0) {
-      toast(`${processed}/${total} updated, ${errors.length} failed: ${errors.slice(0, 3).join("; ")}`);
+      toast(t("bulkPartlyFailed", { processed, total, failed: errors.length, details: errors.slice(0, 3).join("; ") }));
     } else {
-      toast.error(`Bulk action failed: ${errors[0] ?? "unknown error"}`);
+      toast.error(t("bulkFailed", { details: errors[0] ?? "" }));
     }
+    if (heldInterview > 0) toast.warning(t("bulkSkippedOpenInterview", { count: heldInterview }));
+    if (noOffer > 0) toast.warning(t("bulkSkippedNoOffer", { count: noOffer }));
   }
 
   /** Show confirmation before auto-shortlisting top candidates.
@@ -1315,7 +1323,7 @@ export function ApplicationsWorkspace({
         setOpenInterviewWarning({ app, nextStatus, reason, stageId, interview: err.interview });
         return;
       }
-      toast.error(t("stageUpdateFailed"));
+      toast.error(err instanceof OfferRequiredError ? t("hiredNeedsOffer") : t("stageUpdateFailed"));
     }
   }
 

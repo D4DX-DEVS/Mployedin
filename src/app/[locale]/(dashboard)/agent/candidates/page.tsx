@@ -168,8 +168,12 @@ export default function AgentCandidatesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus, ...extra }),
       });
-      if (res.ok) await loadApplications();
-      return res.ok;
+      if (res.ok) {
+        await loadApplications();
+        return { ok: true };
+      }
+      const body = await res.json().catch(() => null);
+      return { ok: false, code: (body as { code?: string } | null)?.code };
     } finally {
       setUpdatingId(null);
     }
@@ -182,8 +186,8 @@ export default function AgentCandidatesPage() {
    * Without this the row simply did not change and said nothing about why.
    */
   const advanceStage = async (appId: string, newStatus: string) => {
-    const ok = await handleStatusUpdate(appId, newStatus);
-    if (!ok) toast.error(t("advanceErrorGeneric"));
+    const { ok, code } = await handleStatusUpdate(appId, newStatus);
+    if (!ok) toast.error(code === "OFFER_REQUIRED" ? t("hiredNeedsOffer") : t("advanceErrorGeneric"));
   };
 
   const openSchedule = (app: ApplicationItem) => {
@@ -235,7 +239,7 @@ export default function AgentCandidatesPage() {
     if (!rejectReason.trim()) { setRejectError(t("rejectErrorReasonRequired")); return; }
     setRejecting(true);
     try {
-      const ok = await handleStatusUpdate(rejectApp._id, "rejected", { rejectionReason: rejectReason.trim() });
+      const { ok } = await handleStatusUpdate(rejectApp._id, "rejected", { rejectionReason: rejectReason.trim() });
       if (ok) { setRejectApp(null); setRejectReason(""); }
       else setRejectError(t("rejectErrorGeneric"));
     } finally {

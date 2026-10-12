@@ -1,6 +1,7 @@
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
-import "@/models/Employer"; // register schema for .populate("employerId")
+import Employer from "@/models/Employer";
+import { buildJobLocationClauses, clampSearchText, companyNameRegex } from "@/lib/jobs/publicSearch";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
@@ -27,10 +28,10 @@ export async function generateMetadata({
   return {
     title: isAr
       ? "تصفح الوظائف"
-      : "Browse Jobs in UAE, GCC & Worldwide",
+      : "Browse Jobs Worldwide",
     description: isAr
-      ? "اكتشف آلاف الوظائف في الإمارات والسعودية وقطر ودول الخليج. ابحث حسب المهارات والموقع والراتب."
-      : "Discover thousands of jobs in the UAE, Saudi Arabia, Qatar and across the GCC. Search by skills, location, and salary.",
+      ? "اكتشف آلاف الوظائف حول العالم عبر الدول والقطاعات. ابحث حسب المهارات والموقع والراتب."
+      : "Discover thousands of jobs across countries and industries. Search by skills, location, and salary.",
     alternates: {
       canonical: canonicalUrl,
       languages: {
@@ -42,10 +43,10 @@ export async function generateMetadata({
     openGraph: {
       title: isAr
         ? "تصفح الوظائف | MPLOYEDIN"
-        : "Browse Jobs in UAE, GCC & Worldwide | MPLOYEDIN",
+        : "Browse Jobs Worldwide | MPLOYEDIN",
       description: isAr
-        ? "ابحث عن فرصتك المهنية القادمة في دول الخليج والعالم."
-        : "Find your next career opportunity across the GCC region and worldwide.",
+        ? "ابحث عن فرصتك المهنية القادمة في أي مكان حول العالم."
+        : "Find your next career opportunity, wherever you want to work.",
       type: "website",
       url: canonicalUrl,
     },
@@ -95,8 +96,8 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
   const PreviousIcon = locale === "ar" ? ChevronRight : ChevronLeft;
   const NextIcon = locale === "ar" ? ChevronLeft : ChevronRight;
 
-  const search = getStr(sp.search);
-  const location = getStr(sp.location);
+  const search = clampSearchText(getStr(sp.search));
+  const location = clampSearchText(getStr(sp.location));
   const skills = getStr(sp.skills);
   const currency = getStr(sp.currency);
   const page = Math.max(1, parseInt(getStr(sp.page) || "1"));
@@ -113,15 +114,21 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
     ],
   };
 
-  if (search) query.$text = { $search: search };
-  if (location) {
-    query.$and.push({
-      $or: [
-        { "location.city": new RegExp(location, "i") },
-        { "location.country": new RegExp(location, "i") },
-      ],
-    });
+  if (search) {
+    // Company names live on Employer, outside the jobs text index, so a
+    // company search also matches jobs posted by employers with that name.
+    const employers = await Employer.find({ companyName: companyNameRegex(search) })
+      .select("_id")
+      .limit(50)
+      .lean();
+    const textMatch = { $text: { $search: search } };
+    if (employers.length > 0) {
+      query.$or = [textMatch, { employerId: { $in: employers.map((e) => e._id) } }];
+    } else {
+      Object.assign(query, textMatch);
+    }
   }
+  query.$and.push(...buildJobLocationClauses(location));
   if (skills) query["requirements.skills"] = { $in: skills.split(",").map((s) => s.trim()) };
   if (currency) query["salary.currency"] = currency;
 

@@ -43,7 +43,7 @@ jest.mock("@/lib/notifications/trigger", () => ({
   notifyStatusChange: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock("@/lib/hiring/closeOpenInterviews", () => ({
-  advancesPastInterviewing: jest.fn(() => false),
+  closesOpenInterviews: jest.fn(() => false),
   closeOpenInterviewsForAdvance: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock("@/lib/auth/agentRestrictions", () => ({ getSuperAgentScope: jest.fn() }));

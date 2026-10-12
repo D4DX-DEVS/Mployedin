@@ -43,44 +43,63 @@ async function postHandler(
     return NextResponse.json({ error: `Cannot issue credit note for ${invoice.status} invoice` }, { status: 400 });
   }
 
-  const maxRefundable = invoice.totalAmount - (invoice.refundedAmount || 0);
-  if (body.amount > maxRefundable) {
+  // Reserve the amount in one conditional update. Reading the refunded total
+  // and saving it back let two credit notes issued at once both pass the check
+  // and together refund more than the invoice (audit FUNC-011).
+  const reserved = await Invoice.findOneAndUpdate(
+    {
+      _id: invoice._id,
+      status: { $nin: ["void", "cancelled"] },
+      $expr: { $lte: [{ $add: [{ $ifNull: ["$refundedAmount", 0] }, body.amount] }, "$totalAmount"] },
+    },
+    { $inc: { refundedAmount: body.amount } },
+    { new: true },
+  );
+  if (!reserved) {
+    const fresh = (await Invoice.findById(invoice._id)) ?? invoice;
+    const maxRefundable = fresh.totalAmount - (fresh.refundedAmount || 0);
     return NextResponse.json({
       error: `Refund amount exceeds maximum refundable amount of ${maxRefundable}`,
     }, { status: 400 });
   }
 
-  // Create credit note invoice
+  // Create credit note invoice; if that fails, give the reservation back.
   const creditNoteNumber = await generateInvoiceNumber();
-  const creditNote = await Invoice.create({
-    invoiceNumber: creditNoteNumber,
-    category: invoice.category,
-    userId: invoice.userId,
-    jobId: invoice.jobId,
-    employerId: invoice.employerId,
-    agentId: invoice.agentId,
-    type: invoice.type,
-    description: `Credit note for ${invoice.invoiceNumber}: ${body.reason}`,
-    lineItems: [{ description: `Credit note — ${body.reason}`, quantity: 1, unitPrice: body.amount, amount: body.amount }],
-    subtotal: body.amount,
-    totalAmount: body.amount,
-    amount: body.amount,
-    currency: invoice.currency,
-    billingDetails: invoice.billingDetails,
-    status: "credit_note",
-    issuedAt: new Date(),
-    notes: body.notes,
-    creditNoteNumber,
-    parentInvoiceId: invoice._id,
-    createdBy: ctx.userId,
-  });
-
-  // Update original invoice
-  invoice.refundedAmount = (invoice.refundedAmount || 0) + body.amount;
-  if (invoice.refundedAmount >= invoice.totalAmount) {
-    invoice.status = "refunded";
+  let creditNote;
+  try {
+    creditNote = await Invoice.create({
+      invoiceNumber: creditNoteNumber,
+      category: invoice.category,
+      userId: invoice.userId,
+      jobId: invoice.jobId,
+      employerId: invoice.employerId,
+      agentId: invoice.agentId,
+      type: invoice.type,
+      description: `Credit note for ${invoice.invoiceNumber}: ${body.reason}`,
+      lineItems: [{ description: `Credit note — ${body.reason}`, quantity: 1, unitPrice: body.amount, amount: body.amount }],
+      subtotal: body.amount,
+      totalAmount: body.amount,
+      amount: body.amount,
+      currency: invoice.currency,
+      billingDetails: invoice.billingDetails,
+      status: "credit_note",
+      issuedAt: new Date(),
+      notes: body.notes,
+      creditNoteNumber,
+      parentInvoiceId: invoice._id,
+      createdBy: ctx.userId,
+    });
+  } catch (err) {
+    await Invoice.updateOne({ _id: invoice._id }, { $inc: { refundedAmount: -body.amount } });
+    throw err;
   }
-  await invoice.save();
+
+  // Fully refunded once the reserved total reaches the invoice total.
+  let status = reserved.status;
+  if (reserved.refundedAmount >= reserved.totalAmount && status !== "refunded") {
+    await Invoice.updateOne({ _id: invoice._id, status: { $nin: ["void", "cancelled"] } }, { $set: { status: "refunded" } });
+    status = "refunded";
+  }
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -109,8 +128,8 @@ async function postHandler(
     updatedInvoice: {
       _id: invoice._id,
       invoiceNumber: invoice.invoiceNumber,
-      refundedAmount: invoice.refundedAmount,
-      status: invoice.status,
+      refundedAmount: reserved.refundedAmount,
+      status,
     },
     message: `Credit note ${creditNoteNumber} issued for ${invoice.currency} ${body.amount}`,
   }, { status: 201 });

@@ -96,9 +96,9 @@ export function SkillsChips({
           messages: [{
             role: "user",
             content: [
-              `I am a Gulf job seeker${profileContext ? ` — ${profileContext}` : ""}.`,
+              `I am a job seeker${profileContext ? ` — ${profileContext}` : ""}.`,
               `My current skills: ${existingSkills || "none yet"}.`,
-              `Suggest 8 additional skills that would make me more competitive in the Gulf market.`,
+              `Suggest 8 additional skills that would make me more competitive in the job markets that fit my profile.`,
               `Return ONLY a comma-separated list of skill names, nothing else.`,
             ].join(" "),
           }],

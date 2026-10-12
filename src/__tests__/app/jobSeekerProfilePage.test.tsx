@@ -2,7 +2,10 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+
+const toastError = jest.fn();
+jest.mock("sonner", () => ({ toast: { error: (...a: unknown[]) => toastError(...a), success: jest.fn() } }));
 
 import JobSeekerProfilePage from "@/app/[locale]/(dashboard)/job-seeker/profile/page";
 
@@ -147,5 +150,25 @@ describe("JobSeekerProfilePage", () => {
     await waitFor(() => {
       expect(screen.getByText("Jahfar Sadik")).toBeInTheDocument();
     });
+  });
+
+  // A failed save used to be swallowed by `catch { /* toast */ }`: the dialog
+  // just sat there and the seeker had no idea the edit was lost.
+  it("tells the seeker when a save fails", async () => {
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) =>
+      init?.method === "PATCH"
+        ? Promise.resolve({ ok: false, status: 500, json: async () => ({ error: "boom" }) })
+        : Promise.resolve({ ok: true, json: async () => ({ headline: "Web developer", fullName: "Jahfar Sadik", skills: [], experience: [], education: [] }) }));
+    toastError.mockReset();
+
+    render(<JobSeekerProfilePage />);
+    await waitFor(() => expect(screen.getByText("Jahfar Sadik")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit headline" }));
+    fireEvent.change(document.getElementById("editHeadline")!, { target: { value: "Senior web developer" } });
+    // Every edit dialog renders (Dialog is mocked open); Enter in the headline field saves it.
+    fireEvent.submit(document.getElementById("editHeadline")!.closest("form")!);
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith("We couldn't save your changes. Please try again."));
   });
 });

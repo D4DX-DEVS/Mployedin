@@ -67,10 +67,10 @@ jest.mock("@/models/Employer", () => {
   };
   return { __esModule: true, default: model, Employer: model };
 });
-jest.mock("@/models/Agent", () => ({
-  __esModule: true,
-  default: { findOne: (...a: unknown[]) => agentFindOne(...a) },
-}));
+jest.mock("@/models/Agent", () => {
+  const model = { findOne: (...a: unknown[]) => agentFindOne(...a) };
+  return { __esModule: true, default: model, Agent: model };
+});
 jest.mock("@/models/User", () => ({
   __esModule: true,
   default: { find: (...a: unknown[]) => userFind(...a), findById: (...a: unknown[]) => userFindById(...a) },
@@ -78,7 +78,7 @@ jest.mock("@/models/User", () => ({
 jest.mock("@/models/CompanyUser", () => ({ CompanyUser: {}, getDefaultPermissions: jest.fn() }));
 
 import { GET as LIST_ROUTE } from "@/app/api/employers/route";
-import { GET as DETAIL } from "@/app/api/employers/[id]/route";
+import { GET as DETAIL, PATCH as DETAIL_PATCH } from "@/app/api/employers/[id]/route";
 
 const LIST = LIST_ROUTE as unknown as (r: NextRequest) => Promise<Response>;
 
@@ -116,6 +116,9 @@ describe("GET /api/employers — who may act on each row", () => {
       [EMP_ASSIGNED, true],
       [EMP_REGION, false],
     ]);
+    // Rows are keyed by the Employer profile id; editing and opening an account
+    // go through /api/employers/[userId], so each row also carries the user id.
+    expect(body.employers.map((e: { userId: string }) => e.userId)).toEqual([`user-${EMP_ASSIGNED}`, `user-${EMP_REGION}`]);
   });
 
   it("agent: assigned employers come first, then region ones, across pages", async () => {
@@ -198,5 +201,78 @@ describe("GET /api/employers/[id] — reads what the list shows", () => {
     expect((await call("agent")).status).toBe(403);
     expect((await call("super_agent")).status).toBe(403);
     expect(userFindById).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * `params.id` is the employer's USER id; `assignedEmployerIds` holds Employer
+ * PROFILE ids. Comparing the two directly 403'd every agent edit.
+ */
+describe("PATCH /api/employers/[id] — agents edit only employers assigned to them", () => {
+  const EMP_USER = "64b00000000000000000001f";
+  const userSave = jest.fn();
+  const employerSave = jest.fn();
+
+  const patch = (role: string) => {
+    const r = new NextRequest(`http://t/api/employers/${EMP_USER}`, {
+      method: "PATCH",
+      body: JSON.stringify({ companyName: "Renamed Co" }),
+      headers: { "content-type": "application/json" },
+    });
+    (r as unknown as { __ctx: unknown }).__ctx = { userId: `${role}-user`, role, locale: "en" };
+    return (DETAIL_PATCH as unknown as (r: NextRequest, p: Record<string, string>) => Promise<Response>)(r, { id: EMP_USER });
+  };
+
+  beforeEach(() => {
+    userFindById.mockResolvedValue({ _id: EMP_USER, save: userSave });
+    // Lean profile lookup (ownership check) and the document fetched for the write.
+    employerFindOne.mockImplementation(() => {
+      const doc = { _id: EMP_ASSIGNED, userId: EMP_USER, save: employerSave };
+      return Object.assign(Promise.resolve(doc), chain(doc));
+    });
+  });
+
+  it("an agent assigned to the employer can edit it", async () => {
+    agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [EMP_ASSIGNED] }));
+    const res = await patch("agent");
+    expect(res.status).toBe(200);
+    expect(employerSave).toHaveBeenCalled();
+  });
+
+  it("an agent who only sees the employer through the region gets 403", async () => {
+    agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [EMP_REGION] }));
+    expect((await patch("agent")).status).toBe(403);
+    expect(employerSave).not.toHaveBeenCalled();
+  });
+
+  // The agent form edits company name, industry and location. The login email
+  // (and contact name) belong to the account holder: an agent able to repoint
+  // the login email could take the account over through password reset.
+  it("an assigned agent cannot change the login email or contact name", async () => {
+    agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [EMP_ASSIGNED] }));
+    const user: Record<string, unknown> = { _id: EMP_USER, email: "owner@co.test", name: "Owner", save: userSave };
+    userFindById.mockResolvedValue(user);
+    const employerDoc: Record<string, unknown> = { _id: EMP_ASSIGNED, userId: EMP_USER, companyEmail: "owner@co.test", save: employerSave };
+    employerFindOne.mockImplementation(() => Object.assign(Promise.resolve(employerDoc), chain(employerDoc)));
+
+    const r = new NextRequest(`http://t/api/employers/${EMP_USER}`, {
+      method: "PATCH",
+      body: JSON.stringify({ email: "agent@evil.test", name: "Someone Else", companyName: "Renamed Co" }),
+      headers: { "content-type": "application/json" },
+    });
+    (r as unknown as { __ctx: unknown }).__ctx = { userId: "agent-user", role: "agent", locale: "en" };
+    const res = await (DETAIL_PATCH as unknown as (r: NextRequest, p: Record<string, string>) => Promise<Response>)(r, { id: EMP_USER });
+
+    expect(res.status).toBe(200);
+    expect(user.email).toBe("owner@co.test");
+    expect(user.name).toBe("Owner");
+    expect(employerDoc.companyEmail).toBe("owner@co.test");
+    expect(employerDoc.companyName).toBe("Renamed Co");
+  });
+
+  it("an agent is refused when the user has no employer profile", async () => {
+    employerFindOne.mockImplementation(() => Object.assign(Promise.resolve(null), chain(null)));
+    agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [EMP_ASSIGNED] }));
+    expect((await patch("agent")).status).toBe(403);
   });
 });

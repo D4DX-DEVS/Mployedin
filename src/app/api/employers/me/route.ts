@@ -114,4 +114,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 }
 
 export const GET = withAuth(getHandler);
-export const PATCH = withAuth(patchHandler);
+// The guard is what makes tenant view check the ACTOR as well as the account:
+// without it a super agent inside an employer's account could rewrite the
+// company profile, which PATCH /api/employers/[id] refuses them.
+export const PATCH = withAuth(patchHandler, { resource: "employers", action: "update" });

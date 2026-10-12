@@ -274,29 +274,37 @@ export default function LandingPage() {
               {audience === "jobSeeker" ? (
               <form onSubmit={handleSearch} className="mx-auto mt-8 max-w-2xl rounded-2xl border border-border/70 bg-card shadow-[0_20px_60px_-30px_rgba(15,23,42,0.35)] lg:mx-0 chip-pad">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="flex min-h-12 flex-col items-start justify-center rounded-xl border border-border/70 px-4 text-start">
+                  <label className="hero-search-field flex min-h-14 cursor-text flex-col items-start justify-center gap-1 rounded-xl border border-border/70 bg-background px-4 py-2 text-start transition-[border-color,box-shadow]">
                     <span className="text-[11px] font-semibold text-muted-foreground">{t("jobSearchLabel")}</span>
                     <span className="flex w-full items-center gap-2">
-                    <Search className="h-4 w-4 shrink-0 text-primary" />
-                    <input
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                      placeholder={t("searchPlaceholder")}
-                      className="h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                    />
+                      <Search className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                      <input
+                        name="search"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        placeholder={t("searchPlaceholder")}
+                        maxLength={100}
+                        autoComplete="off"
+                        enterKeyHint="search"
+                        className="h-6 w-full min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/80"
+                      />
                     </span>
                   </label>
 
-                  <label className="flex min-h-12 flex-col items-start justify-center rounded-xl border border-border/70 px-4 text-start">
+                  <label className="hero-search-field flex min-h-14 cursor-text flex-col items-start justify-center gap-1 rounded-xl border border-border/70 bg-background px-4 py-2 text-start transition-[border-color,box-shadow]">
                     <span className="text-[11px] font-semibold text-muted-foreground">{t("locationSearchLabel")}</span>
                     <span className="flex w-full items-center gap-2">
-                    <MapPin className="h-4 w-4 shrink-0 text-primary" />
-                    <input
-                      value={locationTerm}
-                      onChange={(event) => setLocationTerm(event.target.value)}
-                      placeholder={t("locationPlaceholder")}
-                      className="h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                    />
+                      <MapPin className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+                      <input
+                        name="location"
+                        value={locationTerm}
+                        onChange={(event) => setLocationTerm(event.target.value)}
+                        placeholder={t("locationPlaceholder")}
+                        maxLength={100}
+                        autoComplete="off"
+                        enterKeyHint="search"
+                        className="h-6 w-full min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/80"
+                      />
                     </span>
                   </label>
 

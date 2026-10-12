@@ -196,7 +196,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return true;
   });
 
-  let targetDesc = safeTargetRole ?? "general Gulf job market";
+  let targetDesc = safeTargetRole ?? "general job market";
   if (targetJobId) {
     const job = await Job.findById(targetJobId).lean();
     if (job) {
@@ -285,9 +285,9 @@ SKILLS THE CANDIDATE IS MISSING (from real employer demand):
 ${topMissingFromPlatform.length > 0 ? topMissingFromPlatform.map((s) => `- ${s}`).join("\n") : "- None — candidate has all top demanded skills"}
 
 IMPORTANT: Base your overallScore primarily on how well the candidate's skills match what employers on this platform actually require. The skill percentages in "skillLevels" should reflect what percentage of matching jobs require that skill. Critical gaps should prioritize skills that employers on this platform actually demand. You may add 1-2 general market insights but prioritize platform data.`
-    : `\n\nNOTE: No active jobs matching "${safeTargetRole ?? "the role"}" were found on the platform. Base your analysis on general Gulf job market knowledge.`;
+    : `\n\nNOTE: No active jobs matching "${safeTargetRole ?? "the role"}" were found on the platform. Base your analysis on general job market knowledge for the candidate's likely markets.`;
 
-  const prompt = `You are a career development AI for the Gulf region job market.
+  const prompt = `You are a career development AI with knowledge of job markets worldwide.
 
 CANDIDATE CURRENT SKILLS: ${dedupedCurrentSkills.join(", ") || "Not specified"}
 CANDIDATE CURRENT TITLE: ${seeker.currentJobTitle ?? "N/A"}

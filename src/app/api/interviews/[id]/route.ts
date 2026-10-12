@@ -15,6 +15,7 @@ import { generateMeetingLink } from "@/lib/interviews/meetingLink";
 import { isMaterialChange } from "@/lib/interviews/materialChange";
 import { sendInterviewInvite } from "@/lib/interviews/sendInvite";
 import { isInsideReminderWindow } from "@/lib/interviews/reminderWindow";
+import { closeOpenInterviewsForAdvance } from "@/lib/hiring/closeOpenInterviews";
 import { notify } from "@/lib/notifications/trigger";
 import type { UserRole } from "@/models/User";
 
@@ -164,15 +165,23 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     const jobTitle = (job as { title?: string } | null)?.title ?? "a position";
 
     if (body.outcome === "failed" && application) {
-      // Rejection: update application status and notify
+      // Rejection: update application status and notify. Every other rejection
+      // path requires a reason, so record which round the candidate didn't pass.
+      // Any reason already stored is from an earlier rejection (reinstating a
+      // candidate does not clear it), so it is replaced.
+      const reason = `Did not pass the round ${interview.interviewRound ?? 1} interview`;
       application.status = "rejected";
+      application.rejectionReason = reason;
       application.statusHistory = application.statusHistory || [];
       application.statusHistory.push({
         status: "rejected",
         changedAt: new Date(),
         changedBy: ctx.userId,
+        note: reason,
       });
       await application.save();
+      // A later round already booked won't take place now.
+      await closeOpenInterviewsForAdvance(application._id, { locale: ctx.locale });
 
       if (jobSeeker) {
         await notify({

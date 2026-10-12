@@ -5,11 +5,22 @@ import { notifyInterviewScheduled } from "@/lib/notifications/trigger";
 import { notify } from "@/lib/notifications/trigger";
 import { verifyCronRequest } from "@/lib/security/cron-auth";
 import { forEachBounded } from "@/lib/cron/scale";
+import { STATUSES_WITHOUT_INTERVIEWS } from "@/lib/hiring/closeOpenInterviews";
 
 // This route is meant to be called by a cron job (e.g. Vercel Cron, external scheduler)
 // Secured with a shared CRON_SECRET header
 
 export const maxDuration = 300;
+
+/**
+ * A slot whose candidate was rejected, withdrew or moved on is moot. Those
+ * moves cancel open slots now (audit FUNC-009), but rows left open before
+ * that fix would otherwise keep reminding someone who is out of the process.
+ */
+function candidateHasLeft(interview: { applicationId?: unknown }): boolean {
+  const status = (interview.applicationId as { status?: string } | null | undefined)?.status;
+  return !!status && STATUSES_WITHOUT_INTERVIEWS.includes(status);
+}
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronRequest(req);
@@ -34,13 +45,15 @@ export async function GET(req: NextRequest) {
       populate: { path: "userId", select: "_id" },
     })
     .populate("jobId", "title")
-    .select("_id jobSeekerId jobId scheduledAt location reminderSent")
+    .populate("applicationId", "status")
+    .select("_id jobSeekerId jobId applicationId scheduledAt location reminderSent")
     .lean();
 
   let remindedCount = 0;
   const errors: string[] = [];
 
   const result24h = await forEachBounded(upcomingInterviews, 10, async (interview) => {
+    if (candidateHasLeft(interview)) return;
     const candidate = interview.jobSeekerId as { userId?: { _id?: string } };
     const job = interview.jobId as { title: string };
     const scheduledAt = new Date(interview.scheduledAt as string);
@@ -87,10 +100,12 @@ export async function GET(req: NextRequest) {
       populate: { path: "userId", select: "_id" },
     })
     .populate("jobId", "title")
-    .select("_id jobSeekerId jobId scheduledAt meetLink metadata")
+    .populate("applicationId", "status")
+    .select("_id jobSeekerId jobId applicationId scheduledAt meetLink metadata")
     .lean();
 
   const result1h = await forEachBounded(soonInterviews, 10, async (interview) => {
+    if (candidateHasLeft(interview)) return;
     const candidate = interview.jobSeekerId as { userId?: { _id?: string } };
     const job = interview.jobId as { title?: string };
     const scheduledAt = new Date(interview.scheduledAt as string);

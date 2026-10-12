@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { ListSkeleton } from "@/components/shared/ListSkeleton";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { scoreTier } from "@/lib/ui/statusColors";
@@ -142,7 +143,7 @@ export default function ApplicationsPage() {
 
   // Cached: Back from an application shows this list at once instead of
   // refetching it behind a skeleton (client report 2026-10-06).
-  const { data: listData, isPending: loading, isError: listFailed } = useSeekerApplicationList<{
+  const { data: listData, isPending: loading, isError: listFailed, refetch: retryList } = useSeekerApplicationList<{
     applications: Application[];
     statusCounts?: Record<string, number>;
     pagination?: { total?: number };
@@ -157,10 +158,12 @@ export default function ApplicationsPage() {
     if (listData) updateTotal(listData.pagination?.total ?? 0);
   }, [listData, updateTotal]);
 
+  // Nothing loaded at all: say so in place of the list (below). A refetch that
+  // fails behind rows already on screen keeps them and raises a toast instead.
+  const listUnavailable = listFailed && !listData;
   useEffect(() => {
-    // A failed load used to leave a stale list with no feedback.
-    if (listFailed) toast.error(t("loadFailed"));
-  }, [listFailed, t]);
+    if (listFailed && listData) toast.error(t("loadFailed"));
+  }, [listFailed, listData, t]);
 
   function handleTabChange(val: StatusTab) {
     setActiveTabRaw(val);
@@ -289,6 +292,8 @@ export default function ApplicationsPage() {
         >
           {loading ? (
             <ListSkeleton count={5} layout="list" itemClassName="h-20" className="space-y-2.5" />
+          ) : listUnavailable ? (
+            <ErrorState title={t("loadFailed")} onRetry={() => void retryList()} />
           ) : applications.length === 0 && hasActiveFilters ? (
             // A search or date range with no hits is not "you never applied".
             <EmptyState

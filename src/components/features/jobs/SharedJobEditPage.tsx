@@ -28,6 +28,7 @@ import { useCountrySearch } from "@/hooks/useCountrySearch";
 import type { CountryOption } from "@/hooks/useCountrySearch";
 import { useTranslations } from "next-intl";
 import { containsMarkup } from "@/lib/validators/plainText";
+import { changedFields } from "@/lib/jobs/changedFields";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { useFieldHighlight } from "@/hooks/useFieldHighlight";
 import { KnockoutEditor, hasKnockoutProblem } from "@/components/features/employer/job-form/KnockoutEditor";
@@ -264,6 +265,77 @@ function EditListSection({
 }
 
 // ─── Main page ────────────────────────────────────────────────────
+/**
+ * The PATCH body for the form as it stands. Built the same way for the form as
+ * loaded and as saved, so `changedFields` can send only what this person
+ * changed — a colleague's save from an older page no longer reverts their
+ * edits (audit FUNC-017).
+ */
+function buildJobPayload(form: FormData): Record<string, unknown> {
+  const normalizedQuestions = form.screeningQuestions.reduce<Array<ScreeningQuestion & { order: number }>>((acc, question) => {
+    const label = question.label.trim();
+    const placeholder = question.placeholder.trim();
+    const options = question.options.map((option) => option.trim()).filter(Boolean);
+
+    if (!label) return acc;
+    if (NEEDS_OPTIONS.has(question.type) && options.length === 0) return acc;
+
+    acc.push({
+      ...question,
+      label,
+      placeholder,
+      options,
+      order: acc.length,
+    });
+    return acc;
+  }, []);
+
+  const payload: Record<string, unknown> = {
+    title: form.title.trim(),
+    description: form.description.trim(),
+    category: form.category || undefined,
+    requirements: form.requirements,
+    salary: {
+      min: form.salary.min,
+      max: form.salary.max,
+      currency: form.salary.currency,
+      period: form.salary.period,
+      isNegotiable: form.salary.isNegotiable,
+    },
+    tags: form.tags,
+    vacancies: form.vacancies,
+    expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+    employmentType: form.employmentType || undefined,
+    workMode: form.workMode || undefined,
+    duration: form.duration || undefined,
+    responsibilities: form.responsibilities.length > 0 ? form.responsibilities : undefined,
+    qualifications: form.qualifications.length > 0 ? form.qualifications : undefined,
+    benefits: form.benefits.length > 0 ? form.benefits : undefined,
+    learningOutcomes: form.learningOutcomes.length > 0 ? form.learningOutcomes : undefined,
+    screeningQuestions: normalizedQuestions,
+  };
+
+  if (form.location.country.trim() && form.location.city.trim()) {
+    const remote = form.workMode === "remote";
+    payload.location = {
+      country: form.location.country.trim(),
+      city: form.location.city.trim(),
+      isRemote: remote,
+      // A scope on a non-remote job is data the API refuses and the matcher
+      // would ignore, so switching away from remote clears it.
+      ...(remote && form.location.remoteScope
+        ? {
+            remoteScope: form.location.remoteScope,
+            remoteCountries:
+              form.location.remoteScope === "countries" ? (form.location.remoteCountries ?? []) : [],
+          }
+        : {}),
+    };
+  }
+
+  return payload;
+}
+
 export function SharedJobEditPage({
   id,
   backHref,
@@ -322,6 +394,8 @@ export function SharedJobEditPage({
   // The admin-managed list; a value the list no longer holds stays selectable.
   const categoryOptions = useJobCategoryOptions(form.category);
   const { data: jobData, isLoading: jobLoading, isError: jobError, refetch: refetchJob } = useJobDetail(id);
+  /** The PATCH body of the form as loaded — saves send only what differs from it. */
+  const loadedPayloadRef = useRef<Record<string, unknown> | null>(null);
   const updateJob = useUpdateJob();
 
   // null = the job doesn't exist or isn't the caller's (see useJobDetail).
@@ -354,7 +428,7 @@ export function SharedJobEditPage({
       };
     }
 
-    setForm({
+    const loaded: FormData = {
       title: job.title ?? "",
       description: (job as unknown as { description?: string }).description ?? "",
       category: (job as unknown as { category?: string }).category ?? "",
@@ -395,7 +469,9 @@ export function SharedJobEditPage({
         acceptedAnswers: q.acceptedAnswers ?? [],
         ...(typeof q.minValue === "number" ? { minValue: q.minValue } : {}),
       })),
-    });
+    };
+    setForm(loaded);
+    loadedPayloadRef.current = buildJobPayload(loaded);
 
     if (loc.country) setCountryQuery(loc.country);
     document.title = `Edit: ${job.title} · MPLOYEDIN`;
@@ -509,71 +585,13 @@ export function SharedJobEditPage({
     setSubmitState(publish ? "publishing" : "saving");
     setGlobalError("");
 
-    const normalizedQuestions = form.screeningQuestions.reduce<Array<ScreeningQuestion & { order: number }>>((acc, question) => {
-      const label = question.label.trim();
-      const placeholder = question.placeholder.trim();
-      const options = question.options.map((option) => option.trim()).filter(Boolean);
-
-      if (!label) return acc;
-      if (NEEDS_OPTIONS.has(question.type) && options.length === 0) return acc;
-
-      acc.push({
-        ...question,
-        label,
-        placeholder,
-        options,
-        order: acc.length,
-      });
-      return acc;
-    }, []);
-
-    const payload: Record<string, unknown> = {
-      title: form.title.trim(),
-      description: form.description.trim(),
-      category: form.category || undefined,
-      requirements: form.requirements,
-      salary: {
-        min: form.salary.min,
-        max: form.salary.max,
-        currency: form.salary.currency,
-        period: form.salary.period,
-        isNegotiable: form.salary.isNegotiable,
-      },
-      tags: form.tags,
-      vacancies: form.vacancies,
-      expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
-      employmentType: form.employmentType || undefined,
-      workMode: form.workMode || undefined,
-      duration: form.duration || undefined,
-      responsibilities: form.responsibilities.length > 0 ? form.responsibilities : undefined,
-      qualifications: form.qualifications.length > 0 ? form.qualifications : undefined,
-      benefits: form.benefits.length > 0 ? form.benefits : undefined,
-      learningOutcomes: form.learningOutcomes.length > 0 ? form.learningOutcomes : undefined,
-      screeningQuestions: normalizedQuestions,
-    };
-
-    if (form.location.country.trim() && form.location.city.trim()) {
-      const remote = form.workMode === "remote";
-      payload.location = {
-        country: form.location.country.trim(),
-        city: form.location.city.trim(),
-        isRemote: remote,
-        // A scope on a non-remote job is data the API refuses and the matcher
-        // would ignore, so switching away from remote clears it.
-        ...(remote && form.location.remoteScope
-          ? {
-              remoteScope: form.location.remoteScope,
-              remoteCountries:
-                form.location.remoteScope === "countries" ? (form.location.remoteCountries ?? []) : [],
-            }
-          : {}),
-      };
-    }
+    const payload = changedFields(buildJobPayload(form), loadedPayloadRef.current);
 
     if (publish) payload.status = "active";
 
     try {
       await updateJob.mutateAsync({ jobId: id, updates: payload });
+      loadedPayloadRef.current = buildJobPayload(form);
       setSubmitState("saved");
       if (publish) toast.success(t("publishedTitle"));
       setTimeout(() => router.push(afterSaveHref), 900);
@@ -592,7 +610,7 @@ export function SharedJobEditPage({
     setAiState("generating");
     setAiSuggestion("");
     try {
-      const locationLabel = [form.location.city, form.location.country].filter(Boolean).join(", ") || "the Gulf region";
+      const locationLabel = [form.location.city, form.location.country].filter(Boolean).join(", ") || "the job's target market";
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

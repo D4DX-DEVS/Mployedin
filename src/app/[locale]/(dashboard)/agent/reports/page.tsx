@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { AgentSectionTabs, AGENT_PERFORMANCE_TABS } from "@/components/features/agent/AgentSectionTabs";
 import { ArrowRight, ArrowUpRight, ArrowDownRight, BarChart3, Briefcase, Building2, CalendarCheck2, CircleDollarSign, Download, Flame, Loader2, Sparkles, Target, TrendingUp, Users } from "lucide-react";
@@ -9,6 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { formatCount, formatTime } from "@/lib/ui/intlFormat";
 import { formatCurrency } from "@/lib/currency";
 
@@ -73,13 +74,19 @@ export default function AgentReportsPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
+  // A failed load used to make the KPIs, funnel and commissions vanish without
+  // a word; it now says so and offers a retry.
+  const [analyticsFailed, setAnalyticsFailed] = useState(false);
+  const loadAnalytics = useCallback(() => {
+    setAnalyticsLoading(true);
+    setAnalyticsFailed(false);
     fetch("/api/agent/analytics")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data) setAnalytics(data); })
-      .catch(() => {})
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((data) => setAnalytics(data))
+      .catch(() => setAnalyticsFailed(true))
       .finally(() => setAnalyticsLoading(false));
   }, []);
+  useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
 
   const generateReport = async (reportQuery?: string) => {
     const q = reportQuery ?? query;
@@ -94,19 +101,16 @@ export default function AgentReportsPage() {
         body: JSON.stringify({ query: q, scope: "platform" }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        if (res.status === 403) {
-          throw new Error(t("aiNotAvailable"));
-        }
-        if (res.status === 429) {
-          throw new Error(t("aiUsageLimit"));
-        }
-        throw new Error(data?.message || data?.error || t("reportGenError"));
+        // Translated copy only — the server's own message is English and raw.
+        setError(t(res.status === 403 ? "aiNotAvailable" : res.status === 429 ? "aiUsageLimit" : "reportGenError"));
+        return;
       }
       const data = await res.json();
       setResult({ content: data.report ?? data.content ?? JSON.stringify(data), generatedAt: formatTime(new Date()) });
-    } catch (e) {
-      setError("We couldn't generate this report. No report was saved. Try again.");
+    } catch {
+      // Offline ("Failed to fetch") or an unreadable body: the browser's own
+      // message is English and technical, so never show it.
+      setError(t("reportGenError"));
     } finally {
       setLoading(false);
     }
@@ -143,6 +147,8 @@ export default function AgentReportsPage() {
         <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <div key={i} className="min-w-0 h-32 animate-pulse rounded-3xl border border-border/70 bg-card/90" />)}
         </div>
+      ) : analyticsFailed ? (
+        <ErrorState title={t("analyticsLoadFailed")} onRetry={loadAnalytics} />
       ) : analytics && (
         <>
           <section className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">

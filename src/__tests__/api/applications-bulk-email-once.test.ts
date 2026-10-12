@@ -27,9 +27,11 @@ jest.mock("@/lib/audit/log", () => ({
   actorFromCtx: jest.fn(() => ({})),
 }));
 jest.mock("@/lib/logger", () => ({ __esModule: true, default: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
+// The real rule for which moves settle open interviews; the settling itself is a spy.
+const closeOpenInterviewsForAdvance = jest.fn().mockResolvedValue({ completed: 0, cancelled: 0 });
 jest.mock("@/lib/hiring/closeOpenInterviews", () => ({
-  advancesPastInterviewing: () => false,
-  closeOpenInterviewsForAdvance: jest.fn(),
+  closesOpenInterviews: jest.requireActual("@/lib/hiring/closeOpenInterviews").closesOpenInterviews,
+  closeOpenInterviewsForAdvance: (...a: unknown[]) => closeOpenInterviewsForAdvance(...a),
 }));
 
 const notifyRejected = jest.fn().mockResolvedValue(undefined);
@@ -111,6 +113,21 @@ describe("bulk stage moves email each candidate once", () => {
     await bulk({ action: "reject", params: { notifyCandidate: false } });
     expect(sendEmail).not.toHaveBeenCalled();
     expect(notifyRejected).not.toHaveBeenCalled();
+  });
+});
+
+/** Audit FUNC-009: a bulk rejection settles the slot the candidate still holds, after the save. */
+describe("bulk moves and open interviews", () => {
+  it("a bulk rejection settles open interviews once the application has saved", async () => {
+    await bulk({ action: "reject", params: { notifyCandidate: false } });
+    expect(closeOpenInterviewsForAdvance).toHaveBeenCalledWith("app_1", expect.anything());
+    const save = app.save as jest.Mock;
+    expect(closeOpenInterviewsForAdvance.mock.invocationCallOrder[0]).toBeGreaterThan(save.mock.invocationCallOrder[0]);
+  });
+
+  it("a bulk shortlist leaves them alone", async () => {
+    await bulk({ action: "move_stage", params: { targetStage: "shortlisted", notifyCandidate: false } });
+    expect(closeOpenInterviewsForAdvance).not.toHaveBeenCalled();
   });
 });
 
