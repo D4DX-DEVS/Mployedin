@@ -12,20 +12,20 @@ import type { CompanyRole, PermissionFlag } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import { User } from "@/models/User";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { notify } from "@/lib/notifications/trigger";
 import { sendEmail } from "@/lib/communications/email";
 import { getTeamActorRole } from "@/lib/permissions/team";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { generateShareablePassword } from "@/lib/security/tempPassword";
 import logger from "@/lib/logger";
 import { escapeHtml, sanitizeEmailSubject } from "@/lib/security/html-escape";
-
-/**
- * Deliberately says nothing about whose account it is — an owner elsewhere, a
- * job seeker, an agent. The employer only needs to know to use another address.
- */
-const emailInUse = () =>
-  NextResponse.json({ error: "This email is already in use.", code: "email_in_use" }, { status: 409 });
+import {
+  emailInUse,
+  inviteExpiry,
+  isInviteExpired,
+  ownsCompany,
+  roleNames,
+  sendTeamInvite,
+} from "@/lib/employers/teamInvite";
 
 const isDuplicateKey = (err: unknown) => (err as { code?: number } | null)?.code === 11000;
 
@@ -72,6 +72,9 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string;
     ];
   }
 
+  // A pending invite past its expiry is counted on its own: it no longer lets
+  // anyone in, so it is neither a live invite nor a team member.
+  const now = new Date();
   const [members, total, statusRows] = await Promise.all([
     CompanyUser.find(query)
       .sort({ status: 1, companyRole: 1, createdAt: -1 })
@@ -81,7 +84,24 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string;
     CompanyUser.countDocuments(query),
     CompanyUser.aggregate<{ _id: string; count: number }>([
       { $match: { companyId: employer._id } },
-      { $group: { _id: "$status", count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ["$status", "pending"] },
+                  { $eq: [{ $type: "$inviteExpiresAt" }, "date"] },
+                  { $lt: ["$inviteExpiresAt", now] },
+                ],
+              },
+              "expired",
+              "$status",
+            ],
+          },
+          count: { $sum: 1 },
+        },
+      },
     ]),
   ]);
 
@@ -95,10 +115,12 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string;
   const enriched = members.map((m) => ({
     ...m,
     user: m.userId ? userMap.get(String(m.userId)) ?? null : null,
+    inviteExpired: isInviteExpired(m),
   }));
 
   const statusCounts = Object.fromEntries(statusRows.map((row) => [row._id, row.count]));
-  const teamTotal = statusRows.reduce((sum, row) => sum + row.count, 0);
+  const active = statusCounts.active ?? 0;
+  const pending = statusCounts.pending ?? 0;
 
   return NextResponse.json({
     members: enriched,
@@ -106,9 +128,13 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string;
     page,
     totalPages: Math.max(1, Math.ceil(total / limit)),
     stats: {
-      active: statusCounts.active ?? 0,
-      pending: statusCounts.pending ?? 0,
-      total: teamTotal,
+      active,
+      pending,
+      expired: statusCounts.expired ?? 0,
+      deactivated: statusCounts.deactivated ?? 0,
+      // People on the team plus invites that can still be accepted. Cancelled
+      // and expired invites are history, not members.
+      total: active + pending,
     },
   });
 }
@@ -176,54 +202,22 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
   // Locale for invite links: derive from the inviting page's URL, fallback en
   const locale = req.headers.get("referer")?.match(/\/(en|ar)(\/|$)/)?.[1] ?? "en";
-  const roleName = resolvedRoles.map((r) => r.replace("_", " ")).join(", ");
   const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-  const sendInviteComms = async (inviteToken: string) => {
-    // Points at the public join page, not the dashboard accept page. A
-    // colleague who has never used mployedin has no session, and the dashboard
-    // would bounce them to login and drop the token. The join page decides:
-    // set a password and join, or sign in first if they already have an account.
-    const acceptPath = `/${locale}/join-team?token=${inviteToken}`;
-    const acceptUrl = `${baseUrl}${acceptPath}`;
-    const safeCompanyName = escapeHtml(employer.companyName);
-    const safeRoleName = escapeHtml(roleName);
-    const safeAcceptUrl = escapeHtml(acceptUrl);
-    const invitedUser = await User.findOne({ email }).select("_id").lean();
-    if (invitedUser) {
-      await notify({
-        actorId: ctx.userId,
-        userId: String(invitedUser._id),
-        type: "system",
-        title: "Team Invitation",
-        message: `You've been invited to join ${employer.companyName} as ${roleName}`,
-        link: acceptPath,
-        sendEmail: true,
-      });
-    } else {
-      try {
-        await sendEmail({
-          to: email,
-          subject: sanitizeEmailSubject(`You're invited to join ${employer.companyName} on MPLOYEDIN`),
-          html: `
-            <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
-              <h2>Team Invitation</h2>
-              <p>You've been invited to join <strong>${safeCompanyName}</strong> as a <strong>${safeRoleName}</strong> on MPLOYEDIN.</p>
-              <p>This invitation expires in 48 hours.</p>
-              <a href="${safeAcceptUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Accept Invitation</a> <!-- nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- safeAcceptUrl is HTML attribute-escaped above -->
-              <p style="color: #6b7280; font-size: 13px; margin-top: 24px;">If you didn't expect this invitation, you can safely ignore this email.</p>
-            </div>
-          `,
-        });
-      } catch (err) {
-        logger.error({ err }, "[team.invite] Email send failed");
-      }
-    }
-  };
+  const sendInviteComms = (inviteToken: string) =>
+    sendTeamInvite({
+      email,
+      inviteToken,
+      companyName: employer.companyName,
+      roleName: roleNames(resolvedRoles),
+      locale,
+      actorId: ctx.userId,
+    });
 
-  // Check if already a member
+  // An expired invite is reissued below like a cancelled one; refusing it as
+  // "already a member" left the employer no way to send a fresh link.
   const existing = await CompanyUser.findOne({ companyId: employer._id, email });
-  if (existing && existing.status !== "deactivated") {
+  if (existing && existing.status !== "deactivated" && !isInviteExpired(existing)) {
     return NextResponse.json({ error: "User is already a team member", code: "already_member" }, { status: 409 });
   }
 
@@ -231,28 +225,30 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   // company's owner, a job seeker, an agent. Inviting it used to answer "sent"
   // for an invitation they could never use — accepting needs an employer
   // account, and an owner's own company shadows any membership. The one
-  // exception is a deactivated member of THIS company whose account came from
-  // joining it; an invite link brings them back. A temporary password never
-  // overwrites an account that already exists.
+  // exception is a former member of THIS company whose account came from
+  // joining it; an invite link brings them back. An account that owns its own
+  // company is never one: that company always loads at sign-in. A temporary
+  // password never overwrites an account that already exists.
   const existingUser = await User.findOne({ email }).select("_id").lean();
   const isReturningMember = Boolean(
     existing && existingUser && existing.userId && String(existing.userId) === String(existingUser._id),
-  );
+  ) && !(await ownsCompany(existingUser?._id));
   if (existingUser && !(isReturningMember && mode === "invite")) {
     return emailInUse();
   }
 
   if (existing && mode === "invite") {
-    // Reactivate a deactivated member (anything else returned above)
+    // Reissue a cancelled or expired invite (anything else returned above)
     existing.status = "pending";
     existing.companyRole = primaryRole;
     existing.companyRoles = resolvedRoles;
+    existing.jobAccess = (jobAccess ?? []) as unknown as typeof existing.jobAccess;
     // Roles can differ from last time, and permissions now decide what this
     // person can reach, so they are recomputed rather than carried over.
     existing.permissionOverrides = permissionOverrides;
     existing.permissions = computeEffectivePermissions(resolvedRoles, permissionOverrides);
     existing.inviteToken = randomBytes(32).toString("hex");
-    existing.inviteExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    existing.inviteExpiresAt = inviteExpiry();
     existing.invitedBy = ctx.userId as unknown as typeof existing.invitedBy;
     existing.invitedAt = new Date();
     await existing.save();
@@ -312,7 +308,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     let member;
     try {
       if (existing) {
-        // A deactivated row that never had an account: reuse it, since the
+        // A cancelled or expired row that never had an account: reuse it, since the
         // company/email pair is unique.
         existing.userId = user._id as typeof existing.userId;
         existing.status = "active";
@@ -404,7 +400,7 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     permissionOverrides,
     invitedBy: ctx.userId,
     inviteToken,
-    inviteExpiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 hours
+    inviteExpiresAt: inviteExpiry(),
     invitedAt: new Date(),
     status: "pending",
   });

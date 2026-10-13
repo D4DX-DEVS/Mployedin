@@ -13,6 +13,8 @@ export type AgentTaskPriority = "high" | "medium" | "low";
 export type AgentTaskStatus = "pending" | "in_progress" | "completed";
 export type AgentTaskCategory = "follow_up" | "call" | "meeting" | "document" | "other";
 
+export type AgentTaskReviewStatus = "none" | "awaiting_review" | "approved" | "returned";
+
 export interface IAgentTask {
   userId: mongoose.Types.ObjectId;
   title: string;
@@ -22,6 +24,17 @@ export interface IAgentTask {
   dueDate?: Date;
   category: AgentTaskCategory;
   relatedTo?: string;
+  /* Assignment & review fields — personal tasks have null/defaults */
+  assignedBy?: {
+    userId: mongoose.Types.ObjectId;
+    role: "super_agent" | "admin";
+    assignedAt: Date;
+  };
+  reviewStatus: AgentTaskReviewStatus;
+  completionNote?: string;
+  reviewedBy?: mongoose.Types.ObjectId;
+  reviewedAt?: Date;
+  reviewComment?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +53,20 @@ const AgentTaskSchema = new Schema<IAgentTask>(
       default: "follow_up",
     },
     relatedTo: String,
+    assignedBy: {
+      userId: { type: Schema.Types.ObjectId, ref: "User" },
+      role: { type: String, enum: ["super_agent", "admin"] },
+      assignedAt: Date,
+    },
+    reviewStatus: {
+      type: String,
+      enum: ["none", "awaiting_review", "approved", "returned"],
+      default: "none",
+    },
+    completionNote: String,
+    reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    reviewedAt: Date,
+    reviewComment: String,
   },
   { timestamps: true },
 );

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import ReferralLink from "@/models/ReferralLink";
 import JobSeeker from "@/models/JobSeeker";
+import Application from "@/models/Application";
 import User from "@/models/User";
 import { logActivity } from "@/lib/audit/log";
 import { notifyReferrerJobSeekerRegistered } from "@/lib/notifications/trigger";
@@ -117,9 +118,13 @@ export async function attachJobSeekerReferral(input: {
     referredAt: new Date(),
   };
 
+  // A seeker who joins through a referral link joins as Premium (client
+  // decision 2026-10-12): the same `premium` badge staff grant by hand, which
+  // marks their applications as priority. Same write as the referral, so a
+  // seeker is never credited without it or the other way round.
   const write = await JobSeeker.updateOne(
     { _id: seeker._id, referral: { $exists: false } },
-    { $set: { referral, isAgentReferred: true } },
+    { $set: { referral, isAgentReferred: true }, $addToSet: { badges: "premium" } },
   );
   if (write.matchedCount === 0) {
     // A concurrent claim stamped the seeker first. Give the link its use back.
@@ -129,6 +134,10 @@ export async function attachJobSeekerReferral(input: {
     );
     return { attached: false, reason: "already_referred" };
   }
+
+  // The email-OTP quick apply makes the application before the referral
+  // attaches: it turns priority with the seeker.
+  await Application.updateMany({ jobSeekerId: seeker._id }, { $set: { isPriority: true } });
 
   await logActivity({
     actorId: input.userId,

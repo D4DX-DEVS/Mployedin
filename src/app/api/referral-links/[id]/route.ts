@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import ReferralLink from "@/models/ReferralLink";
-import Agent from "@/models/Agent";
-import SuperAgent from "@/models/SuperAgent";
+import { getSuperAgentTeamAgentUserIds } from "@/lib/auth/agentRestrictions";
 import { validateBody } from "@/lib/validators";
 import { referralLinkUpdateSchema } from "@/lib/validators/referral-links";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -18,10 +17,9 @@ interface AuthCtx {
 /** Check if the super-agent owns a link (direct or via their agents) */
 async function canSuperAgentAccess(userId: string, linkCreatorId: string): Promise<boolean> {
   if (linkCreatorId === userId) return true;
-  const sa = await SuperAgent.findOne({ userId }).select("agentIds").lean();
-  if (!sa?.agentIds?.length) return false;
-  const agents = await Agent.find({ _id: { $in: sa.agentIds } }).select("userId").lean();
-  return agents.some((a) => a.userId.toString() === linkCreatorId);
+  // Same team the list shows (getSuperAgentScope), incl. territory agents.
+  const teamIds = await getSuperAgentTeamAgentUserIds(userId);
+  return teamIds.some((id) => id.toString() === linkCreatorId);
 }
 
 /**
@@ -112,14 +110,10 @@ async function handleDelete(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const link = await ReferralLink.findById(id);
   if (!link) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Only creator, owning super-agent, or admin can delete
-  if (ctx.role === "admin") {
-    // Admin can delete any link
-  } else if (ctx.role === "super_agent") {
-    if (!(await canSuperAgentAccess(ctx.userId, link.createdBy.toString()))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-  } else if (link.createdBy.toString() !== ctx.userId) {
+  // Only the creator or an admin can delete. A super agent may pause a team
+  // agent's link (PATCH) but not remove it: the agent may already have
+  // shared it, and an unused link is hard-deleted below.
+  if (ctx.role !== "admin" && link.createdBy.toString() !== ctx.userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

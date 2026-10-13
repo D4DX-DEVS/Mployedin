@@ -21,6 +21,7 @@ import {
   getSuperAgentOwnRegion,
   hasRegionAssigned,
 } from "@/lib/auth/agentRestrictions";
+import { employerInRegion, employerRegionMatch } from "@/lib/auth/regionMatch";
 import {
   employerCoverageFilter,
   resolveEmployerRegion,
@@ -28,6 +29,7 @@ import {
   territoryHoldsCity,
 } from "@/lib/agents/territoryCoverage";
 import { resolveEmployerAgents, unassignedEmployerFilter } from "@/lib/agents/employerAssignment";
+import { countAccountActivity, NO_ACTIVITY } from "@/lib/agents/assignedAccounts";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -44,11 +46,16 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role === "agent") {
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
     if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
-    const empIds = await getAgentEmployerIds(ctx.userId);
+    let empIds = await getAgentEmployerIds(ctx.userId);
     // Seeing is not owning: posting jobs and entering the account need the
     // explicit assignment (jobs POST, tenant switch), so the page offers those
     // actions only on these rows.
     const assignedToMe = new Set(((agentDoc.assignedEmployerIds as unknown[]) ?? []).map(String));
+    // ?view=assigned: only the accounts assigned to this agent — the
+    // dashboard's "Your accounts" card links here.
+    if (searchParams.get("view") === "assigned") {
+      empIds = empIds.filter((id) => assignedToMe.has(String(id)));
+    }
     if (empIds.length === 0) {
       return NextResponse.json({ employers: [], pagination: { page, limit, total: 0, pages: 0 } });
     }
@@ -82,12 +89,19 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       Employer.countDocuments(empQuery),
     ]);
     const position = new Map(pageRows.map((row, i) => [String(row._id), i]));
-    const profiles = pageRows.length === 0
-      ? []
-      : (await Employer.find({ _id: { $in: pageRows.map((row) => row._id) } })
-          .populate("userId", "name email isActive createdAt")
-          .lean())
-          .sort((a, b) => (position.get(String(a._id)) ?? 0) - (position.get(String(b._id)) ?? 0));
+    const pageIds = pageRows.map((row) => row._id);
+    // Each account's open jobs, new applicants, interviews and hires, counted
+    // for this page only — the same numbers as the dashboard's accounts card.
+    const [pageProfiles, activity] = pageRows.length === 0
+      ? [[], new Map()]
+      : await Promise.all([
+          Employer.find({ _id: { $in: pageIds } })
+            .populate("userId", "name email isActive createdAt")
+            .lean(),
+          countAccountActivity(pageIds),
+        ]);
+    const profiles = pageProfiles
+      .sort((a, b) => (position.get(String(a._id)) ?? 0) - (position.get(String(b._id)) ?? 0));
 
     const employers = profiles.map((p) => {
       const user = p.userId as { _id?: unknown; name?: string; email?: string; isActive?: boolean; createdAt?: Date } | null;
@@ -112,6 +126,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         verificationLevel: p.verificationLevel,
         isAgentVerified: p.isAgentVerified ?? false,
         assignedToMe: assignedToMe.has(String(p._id)),
+        activity: activity.get(String(p._id)) ?? NO_ACTIVITY,
       };
     });
 
@@ -132,6 +147,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // See the note on the super-agent query above: archived conversions are
     // kept but must not appear in an employer list.
     const empQuery: Record<string, unknown> = { _id: { $in: book.employerIds }, roleArchivedAt: null };
+
+    // ?view=region: only employers registered in the territory, like the
+    // agents' region view. No territory → nothing, never everyone.
+    const regionMatch = employerRegionMatch(book.territory);
+    if (searchParams.get("view") === "region") {
+      empQuery.$and = [regionMatch ?? { _id: { $in: [] } }];
+    }
 
     // Optional agentId filter: narrow to one of the SA's agents' employers.
     // An id outside the book narrows to nothing rather than widening.
@@ -215,6 +237,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
           isAgentVerified: p.isAgentVerified ?? false,
           assignedAgent: agentUserId ? { name: agentNameMap.get(agentUserId) ?? "Unknown" } : undefined,
           canEnterAccount: Boolean(agentProfile?._id && team.has(String(agentProfile._id))),
+          // Registered in the SA's territory (vs. only linked through an agent).
+          inRegion: employerInRegion(p as { regionCityId?: unknown; regionStateId?: unknown }, book.territory),
           jobCount: 0,
           totalPaid: p.totalPaid ?? 0,
         };
@@ -250,6 +274,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       totalCount: total,
       stats,
+      regionAssigned: Boolean(regionMatch),
       ...(facets ? { facets } : {}),
     });
   }

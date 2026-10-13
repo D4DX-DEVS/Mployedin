@@ -18,6 +18,8 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
+      // Lets phone card tables keep it a centred block (globals.css).
+      data-empty-state=""
       className={cn(
         "rounded-2xl border border-dashed border-border/70 bg-muted/10 px-4 py-8 text-center sm:px-6 sm:py-12",
         className

@@ -25,6 +25,70 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
 import { validateBody } from "@/lib/validators";
 import { jobCreateSchema } from "@/lib/validators/jobs";
 import { stripPrivateJobFields } from "@/lib/jobs/visibility";
+
+/** Live, public, unexpired jobs: what an agent may browse and share portal-wide. */
+const PORTAL_JOB_FILTER = () => ({
+  deletedAt: null,
+  status: "active",
+  visibility: { $nin: ["private", "invite_only"] },
+  $or: [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }],
+});
+
+/** "Posted this week" on the agent's Browse jobs view. */
+const NEW_JOB_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Spelling-insensitive industry key: "Human Resources" = "human_resources". */
+const industryKey = (value: string) => value.trim().toLowerCase().replace(/[_\s]+/g, " ");
+
+/** Matches every spelling of an industry that shares its key. */
+const industryPattern = (value: string) =>
+  new RegExp(`^${value.trim().split(/[_\s]+/).map(escapeRegex).join("[_\\s]+")}$`, "i");
+
+async function portalJobFacets(country: string) {
+  const base = PORTAL_JOB_FILTER();
+  const clean = (values: unknown[]) =>
+    [...new Set(values.filter((v): v is string => typeof v === "string" && v.trim() !== "").map((v) => v.trim()))]
+      .sort((a, b) => a.localeCompare(b));
+  const [countries, cities, professions, jobsPerEmployer, newThisWeek, totalActive] = await Promise.all([
+    Job.distinct("location.country", base),
+    Job.distinct("location.city", country ? { ...base, "location.country": new RegExp(`^${escapeRegex(country)}$`, "i") } : base),
+    Job.distinct("category", base),
+    Job.aggregate<{ _id: unknown; count: number }>([
+      { $match: base },
+      { $group: { _id: "$employerId", count: { $sum: 1 } } },
+    ]),
+    Job.countDocuments({ ...base, createdAt: { $gte: new Date(Date.now() - NEW_JOB_WINDOW_MS) } }),
+    Job.countDocuments(base),
+  ]);
+  const employers = await Employer.find({ _id: { $in: jobsPerEmployer.map((row) => row._id) } })
+    .select("industry")
+    .lean<Array<{ _id: { toString(): string }; industry?: string }>>();
+  const industryOf = new Map(employers.map((e) => [e._id.toString(), e.industry]));
+  // Employers typed industries freely ("technology", "Technology",
+  // "human_resources"): one choice per spelling-insensitive value, with the
+  // number of live jobs across every spelling. The filter matches the same way.
+  const industryChoices = new Map<string, { value: string; label: string; count: number }>();
+  for (const row of jobsPerEmployer) {
+    const value = industryOf.get(String(row._id));
+    if (typeof value !== "string" || !value.trim()) continue;
+    const key = industryKey(value);
+    const existing = industryChoices.get(key);
+    if (existing) {
+      existing.count += row.count;
+      continue;
+    }
+    const words = value.replace(/_/g, " ").trim();
+    industryChoices.set(key, { value: value.trim(), label: words.charAt(0).toUpperCase() + words.slice(1), count: row.count });
+  }
+  return {
+    countries: clean(countries),
+    cities: clean(cities),
+    professions: clean(professions),
+    industries: [...industryChoices.values()].sort((a, b) => a.label.localeCompare(b.label)),
+    newThisWeek,
+    totalActive,
+  };
+}
 import { splitScreeningQuestions } from "@/lib/matching/knockouts";
 import type { AuthContext } from "@/lib/auth/withAuth";
 
@@ -72,6 +136,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
      full jobs list and has to find them by eye. */
   const withoutApplications = searchParams.get("applications") === "none";
   const employerId = searchParams.get("employerId") ?? "";
+  // scope=portal: an agent's "All active jobs" tab — every live public job on
+  // the portal, to browse and share, not just the ones they manage.
+  const portalScope = searchParams.get("scope") === "portal";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { deletedAt: null };
@@ -84,7 +151,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Agent-scoped: their own jobs + jobs from employers they see (assigned, or
   // registered in their region — getAgentEmployerIds)
-  if (ctx.role === "agent") {
+  if (ctx.role === "agent" && portalScope) {
+    // What a job seeker can browse, minus private / invite-only postings an
+    // agent must not broadcast. Not ownership-scoped: read-only, stripped.
+    Object.assign(query, PORTAL_JOB_FILTER());
+  } else if (ctx.role === "agent") {
     const agentDoc = await Agent.findOne({ userId: ctx.userId })
       .select("_id")
       .lean();
@@ -175,6 +246,23 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     };
     query.$and = [...(query.$and ?? []), locationCondition];
   }
+  // Portal filters (agent "All active jobs"): values come from the facet lists
+  // below, so they match whole values, case-insensitively.
+  const country = (searchParams.get("country") ?? "").trim();
+  const city = (searchParams.get("city") ?? "").trim();
+  const profession = (searchParams.get("profession") ?? "").trim();
+  const industry = (searchParams.get("industry") ?? "").trim();
+  const postedWeek = searchParams.get("posted") === "week";
+  const exact = (v: string) => new RegExp(`^${escapeRegex(v)}$`, "i");
+  if (country) query["location.country"] = exact(country);
+  if (city) query["location.city"] = exact(city);
+  if (profession) query.category = exact(profession);
+  if (industry) {
+    // Industry lives on the employer, not the job.
+    const employers = await Employer.find({ industry: industryPattern(industry) }).select("_id").limit(5000).lean();
+    query.$and = [...(query.$and ?? []), { employerId: { $in: employers.map((e) => e._id) } }];
+  }
+  if (postedWeek) query.createdAt = { $gte: new Date(Date.now() - NEW_JOB_WINDOW_MS) };
   if (remote) query["location.isRemote"] = true;
   if (currency) query["salary.currency"] = currency;
   if (showSalary === "true" || showSalary === "false") query.showSalary = showSalary === "true";
@@ -352,8 +440,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     for (const job of jobs) stripPrivateJobFields(job as Record<string, unknown>);
   }
 
+  // The portal tab's filter choices: only values live jobs actually have.
+  const facets = portalScope && searchParams.get("facets") === "1" ? await portalJobFacets(country) : undefined;
+
   return NextResponse.json({
     jobs,
+    ...(facets && { facets }),
     pagination: { page, limit, total, pages: Math.ceil(total / limit), totalPages: Math.ceil(total / limit) },
     ...(statusAgg && { statusCounts: statusAgg }),
     ...(portfolioStats && { portfolioStats }),

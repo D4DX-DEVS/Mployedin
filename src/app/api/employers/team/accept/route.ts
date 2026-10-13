@@ -7,6 +7,7 @@ import { CompanyUser } from "@/models/CompanyUser";
 import { Employer } from "@/models/Employer";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { ownsCompany } from "@/lib/employers/teamInvite";
 
 /**
  * POST /api/employers/team/accept — accept a team invitation
@@ -45,6 +46,19 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     return NextResponse.json(
       { error: "This invitation was sent to a different email address" },
       { status: 403 }
+    );
+  }
+
+  // An account that runs its own company always lands in that company at
+  // sign-in, so this membership would be marked accepted and then ignored.
+  if (await ownsCompany(ctx.userId)) {
+    return NextResponse.json(
+      {
+        error:
+          "This account already has its own company on MPLOYEDIN, so it can't join another team. Ask for an invite to a different email address.",
+        code: "owns_company",
+      },
+      { status: 409 }
     );
   }
 

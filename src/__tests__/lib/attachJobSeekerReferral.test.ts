@@ -34,6 +34,12 @@ jest.mock("@/models/JobSeeker", () => ({
   },
 }));
 
+const applicationUpdateMany = jest.fn(async (..._args: unknown[]) => ({ modifiedCount: 0 }));
+jest.mock("@/models/Application", () => ({
+  __esModule: true,
+  default: { updateMany: (...a: unknown[]) => applicationUpdateMany(...a) },
+}));
+
 jest.mock("@/models/User", () => ({
   __esModule: true,
   default: {
@@ -91,6 +97,12 @@ describe("attachJobSeekerReferral", () => {
       referrerUserId: LINK.createdBy, referrerRole: "agent",
     });
     expect(sUpdate.$set.referral.superAgentId).toBeUndefined();
+    // Client decision 2026-10-12: a job seeker who joins through a referral
+    // link joins as Premium, in the same write that credits the referrer.
+    expect(sUpdate.$addToSet).toEqual({ badges: "premium" });
+    // The email-OTP quick apply creates the application before the referral
+    // attaches; it turns priority with the seeker.
+    expect(applicationUpdateMany).toHaveBeenCalledWith({ jobSeekerId: SEEKER._id }, { $set: { isPriority: true } });
 
     expect(logActivity).toHaveBeenCalledWith(
       expect.objectContaining({ action: "referral.job_seeker_attached", resourceId: LINK._id }),
@@ -155,6 +167,7 @@ describe("attachJobSeekerReferral", () => {
       { $inc: { usedCount: -1 }, $pull: { registrations: { jobSeekerId: SEEKER._id } } },
     );
     expect(notify).not.toHaveBeenCalled();
+    expect(applicationUpdateMany).not.toHaveBeenCalled();
   });
 
   it("attributes a super-agent link to the super-agent, not an agent", async () => {

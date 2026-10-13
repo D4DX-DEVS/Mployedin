@@ -9,7 +9,10 @@ import Placement from "@/models/Placement";
 import Commission from "@/models/Commission";
 import Interview from "@/models/Interview";
 import Offer from "@/models/Offer";
-import { getAgentEmployerIds } from "@/lib/auth/agentRestrictions";
+import JobSeeker from "@/models/JobSeeker";
+import { getAgentEmployerIds, getAgentSeekerArea, seekerRegionMatch } from "@/lib/auth/agentRestrictions";
+import { buildBroughtInFilter } from "@/lib/jobseekers/onboarded";
+import { professionBreakdown, type JobSeekerWithProfession } from "@/lib/jobseekers/profession";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -31,7 +34,7 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
   await connectDB();
 
   const agent = await Agent.findOne({ userId: ctx.userId })
-    .select("_id assignedEmployerIds performance commissionRate")
+    .select("_id assignedEmployerIds performance commissionRate assignedJobSeekerIds assignedCityIds assignedStateIds superAgentId")
     .lean();
   if (!agent) {
     return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
@@ -61,6 +64,26 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
     portfolioJobIds.length > 0 ? { jobId: { $in: portfolioJobIds } } : { _id: { $in: [] } };
   const jobFilter = { ...portfolioFilter, deletedAt: null };
 
+  // ── Job Seeker Scope ──
+  const agentDocId = agent._id;
+  const assignedSeekerIds = ((agent as { assignedJobSeekerIds?: unknown[] }).assignedJobSeekerIds ?? []) as import("mongoose").Types.ObjectId[];
+  const broughtIn = buildBroughtInFilter(agentDocId, assignedSeekerIds);
+  const seekerArea = await getAgentSeekerArea({
+    assignedCityIds: ((agent as { assignedCityIds?: unknown[] }).assignedCityIds ?? []) as import("mongoose").Types.ObjectId[],
+    assignedStateIds: ((agent as { assignedStateIds?: unknown[] }).assignedStateIds ?? []) as import("mongoose").Types.ObjectId[],
+    superAgentId: (agent as { superAgentId?: unknown } | null)?.superAgentId,
+  });
+  const seekerAreaMatch = seekerRegionMatch(seekerArea);
+  const seekerScope = {
+    roleArchivedAt: null,
+    $or: [
+      ...(broughtIn.$or as Record<string, unknown>[]),
+      ...(seekerAreaMatch ? [seekerAreaMatch] : []),
+    ],
+  };
+  // "In my area" = exactly what the Job Seekers "In my area" tab lists; no region, nobody.
+  const inArea = seekerAreaMatch ? { roleArchivedAt: null, ...seekerAreaMatch } : null;
+
   // ── KPIs with trend comparisons ──
   const [
     currentLeads, previousLeads,
@@ -69,6 +92,7 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
     currentInterviews, previousInterviews,
     totalLeads, totalPlacements, totalApps,
     activeJobs, totalOffers, scheduledInterviews,
+    onboardedCount, onboardedPremiumCount, inAreaCount, premiumInAreaCount, referredCount, referredLastMonthCount, allSeekerDocs,
   ] = await Promise.all([
     Lead.countDocuments({ agentId, createdAt: { $gte: thirtyDaysAgo } }),
     Lead.countDocuments({ agentId, createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo } }),
@@ -88,6 +112,16 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
       : Promise.resolve(0),
     // Confirmed ones are still upcoming — they used to drop out of the count.
     Interview.countDocuments({ agentId, status: { $in: ["scheduled", "confirmed"] } }),
+    JobSeeker.countDocuments(broughtIn),
+    JobSeeker.countDocuments({ ...broughtIn, badges: "premium" }),
+    inArea ? JobSeeker.countDocuments(inArea) : Promise.resolve(0),
+    inArea ? JobSeeker.countDocuments({ ...inArea, badges: "premium" }) : Promise.resolve(0),
+    JobSeeker.countDocuments({ roleArchivedAt: null, "referral.agentId": agentDocId }),
+    JobSeeker.countDocuments({ roleArchivedAt: null, "referral.agentId": agentDocId, createdAt: { $gte: thirtyDaysAgo } }),
+    // Only the profession fields: this list can run to a few thousand in a big region.
+    JobSeeker.find(seekerScope)
+      .select("careerProfile.jobRole careerProfile.roleCategory preferredRoles experience.jobTitle experience.isCurrent")
+      .lean(),
   ]);
 
   function buildTrend(current: number, previous: number) {
@@ -178,6 +212,9 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
     followUpAt: { $lt: now },
   });
 
+  // ── Job seekers by profession (onboarded + in area: the agent's whole book) ──
+  const seekerProfessions = professionBreakdown(allSeekerDocs as JobSeekerWithProfession[]);
+
   return NextResponse.json({
     kpis: {
       totalLeads,
@@ -208,6 +245,17 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
       pending: commByStatus["pending"] ?? { total: 0, count: 0 },
       approved: commByStatus["approved"] ?? { total: 0, count: 0 },
       paid: commByStatus["paid"] ?? { total: 0, count: 0 },
+    },
+    jobSeekers: {
+      onboarded: onboardedCount,
+      onboardedPremium: onboardedPremiumCount,
+      inArea: inAreaCount,
+      premiumInArea: premiumInAreaCount,
+      areaAssigned: inArea !== null,
+      referred: referredCount,
+      referredLastMonth: referredLastMonthCount,
+      professionTotal: allSeekerDocs.length,
+      professionBreakdown: seekerProfessions,
     },
     performance: agent.performance,
     commissionRate: agent.commissionRate ?? 0,

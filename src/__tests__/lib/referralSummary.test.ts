@@ -6,8 +6,14 @@ const saFind = jest.fn();
 jest.mock("@/models/Agent", () => ({ __esModule: true, default: { find: (...a: unknown[]) => agentFind(...a) } }));
 jest.mock("@/models/SuperAgent", () => ({ __esModule: true, default: { find: (...a: unknown[]) => saFind(...a) } }));
 jest.mock("@/models/User", () => ({ __esModule: true, default: {} }));
+const seekerFind = jest.fn();
+jest.mock("@/models/JobSeeker", () => ({ __esModule: true, default: { find: (...a: unknown[]) => seekerFind(...a) } }));
 
-const populateLean = (v: unknown) => ({ select: () => ({ populate: () => ({ lean: async () => v }) }) });
+// populate() chains: admins add a second populate for the agent's super agent.
+const populateLean = (v: unknown) => {
+  const q = { populate: () => q, lean: async () => v };
+  return { select: () => q };
+};
 
 const A1 = "650000000000000000000001";
 const S1 = "650000000000000000000002";
@@ -37,6 +43,16 @@ describe("decorateReferralSummaries", () => {
     expect(agentFind).toHaveBeenCalledWith({ _id: { $in: [A1] } });
   });
 
+  it("names the referring agent's super agent for admins only", async () => {
+    agentFind.mockReturnValue(populateLean([{ _id: A1, userId: { name: "Agent Ann" }, superAgentId: { _id: S1, userId: { name: "Super Sam" } } }]));
+    const { decorateReferralSummaries } = await import("@/lib/referrals/summary");
+    const admin = await decorateReferralSummaries(items(), { role: "admin" });
+    expect(admin[0].referralSummary?.superAgentName).toBe("Super Sam");
+    expect(admin[1].referralSummary?.superAgentName).toBeUndefined();
+    const sa = await decorateReferralSummaries(items(), { role: "super_agent", selfSuperAgentId: S1 });
+    expect(sa[0].referralSummary?.superAgentName).toBeUndefined();
+  });
+
   it("gives an agent only role, date and isMine — no names, no code", async () => {
     const { decorateReferralSummaries } = await import("@/lib/referrals/summary");
     const out = await decorateReferralSummaries(items(), { role: "agent", selfAgentId: A1 });
@@ -50,6 +66,14 @@ describe("decorateReferralSummaries", () => {
     const out = await decorateReferralSummaries(items(), { role: "super_agent", selfSuperAgentId: S1 });
     expect(out[0].referralSummary).toEqual({ role: "agent", name: "Agent Ann", referredAt: "2026-09-01T00:00:00.000Z", isMine: false });
     expect(out[1].referralSummary).toEqual({ role: "super_agent", name: "Super Sam", referredAt: "2026-09-02T00:00:00.000Z", isMine: true });
+  });
+
+  it("a team agent's referral is 'via the agent' for the super agent, even though the link records them", async () => {
+    // Agent links carry the agent's super agent too (attachJobSeeker stamps link.superAgentId).
+    const withSa = [{ _id: "js1", referral: { agentId: A1, superAgentId: S1, referrerRole: "agent", referredAt: "2026-09-01T00:00:00.000Z" } }];
+    const { decorateReferralSummaries } = await import("@/lib/referrals/summary");
+    const out = await decorateReferralSummaries(withSa, { role: "super_agent", selfSuperAgentId: S1 });
+    expect(out[0].referralSummary).toMatchObject({ role: "agent", name: "Agent Ann", isMine: false });
   });
 
   it("never hands a code to anyone but an admin", async () => {
@@ -66,5 +90,15 @@ describe("decorateReferralSummaries", () => {
     await decorateReferralSummaries(unreferred, { role: "admin" });
     expect(agentFind).not.toHaveBeenCalled();
     expect(saFind).not.toHaveBeenCalled();
+  });
+
+  it("loads admin summaries keyed by seeker id, skipping seekers without a referral", async () => {
+    seekerFind.mockReturnValue({ select: () => ({ lean: async () => [{ _id: "js1", referral: items()[0].referral }] }) });
+    const { loadAdminReferralSummaries } = await import("@/lib/referrals/summary");
+    const map = await loadAdminReferralSummaries(["js1", "js3"]);
+    expect(seekerFind).toHaveBeenCalledWith({ _id: { $in: ["js1", "js3"] }, referral: { $exists: true } });
+    expect(map.get("js1")).toMatchObject({ role: "agent", name: "Agent Ann", code: "MPL-A" });
+    expect(map.has("js3")).toBe(false);
+    expect((await loadAdminReferralSummaries([])).size).toBe(0);
   });
 });

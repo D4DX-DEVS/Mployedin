@@ -5,6 +5,8 @@ import { WorkspaceHeader, type WorkspaceMetric } from "@/components/shared/Works
 import type { AgentActionCounts } from "@/lib/agents/workQueue";
 import type { AssignedRegion } from "@/lib/agents/assignedRegion";
 import { AssignedRegionBadge } from "@/components/shared/AssignedRegionBadge";
+import type { SuperAgentContact } from "@/lib/agents/superAgentContact";
+import { SuperAgentBadge } from "./SuperAgentBadge";
 
 interface AgentSmartHeaderProps {
   /** "Good morning, Sam" — resolved by the page from the agent's own clock. */
@@ -13,6 +15,8 @@ interface AgentSmartHeaderProps {
   activeJobs: number;
   /** The region(s) an admin assigned, shown as a pill leading the context line. */
   regions: readonly AssignedRegion[];
+  /** The super agent the agent reports to; no pill when there is none. */
+  superAgent?: SuperAgentContact | null;
   /** The four at-a-glance figures, on the header's own metric strip. */
   metrics: readonly WorkspaceMetric[];
   locale: string;
@@ -30,7 +34,7 @@ interface AgentSmartHeaderProps {
  * than a section of their own: the home had five stacked panels and needed
  * two screens to reach the roles list.
  */
-export function AgentSmartHeader({ greeting, counts, activeJobs, regions, metrics, locale }: AgentSmartHeaderProps) {
+export function AgentSmartHeader({ greeting, counts, activeJobs, regions, superAgent = null, metrics, locale }: AgentSmartHeaderProps) {
   const t = useTranslations("agentDashboard.smartHeader");
 
   // Same order the queue ranks its kinds: a cooling lead outranks an unlogged
@@ -65,10 +69,14 @@ export function AgentSmartHeader({ greeting, counts, activeJobs, regions, metric
 
   return (
     <WorkspaceHeader
+      // Phones: the context line wraps (region + super agent + the queue line
+      // were clamped to one line, which hid the super agent behind "…").
+      className="agent-smart-header"
       title={greeting}
       context={
         <>
           <AssignedRegionBadge regions={regions} className="me-2" />
+          <SuperAgentBadge contact={superAgent} locale={locale} />
           {t(subtitleKey, { count: subtitleCount })}
         </>
       }
@@ -77,12 +85,10 @@ export function AgentSmartHeader({ greeting, counts, activeJobs, regions, metric
         <>
           <Link href={`/${locale}/agent/jobs/new`} aria-label={t("postJob")} className={buttonClass}>
             <BriefcaseBusiness className="h-4 w-4" aria-hidden="true" />
-            <span className="sm:hidden">{t("postJobShort")}</span>
             <span className="hidden sm:inline">{t("postJob")}</span>
           </Link>
           <Link href={`/${locale}/agent/leads?new=1`} aria-label={t("addLead")} className={buttonClass}>
             <Target className="h-4 w-4" aria-hidden="true" />
-            <span className="sm:hidden">{t("addLeadShort")}</span>
             <span className="hidden sm:inline">{t("addLead")}</span>
           </Link>
         </>

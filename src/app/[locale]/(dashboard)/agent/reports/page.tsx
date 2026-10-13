@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import Link from "next/link";
 import { AgentSectionTabs, AGENT_PERFORMANCE_TABS } from "@/components/features/agent/AgentSectionTabs";
 import { ArrowRight, ArrowUpRight, ArrowDownRight, BarChart3, Briefcase, Building2, CalendarCheck2, CircleDollarSign, Download, Flame, Loader2, Sparkles, Target, TrendingUp, Users } from "lucide-react";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
@@ -36,6 +37,17 @@ interface Analytics {
   leadFunnel: Record<string, number>;
   applicationBreakdown: Record<string, number>;
   commissions: Record<string, { total: number; count: number }>;
+  jobSeekers?: {
+    onboarded: number;
+    onboardedPremium: number;
+    inArea: number;
+    premiumInArea: number;
+    areaAssigned: boolean;
+    referred: number;
+    referredLastMonth: number;
+    professionTotal: number;
+    professionBreakdown: Array<{ profession: string; count: number }>;
+  };
   monthlyTrends: { month: string; leads: number; placements: number; applications: number; trend: number }[];
   commissionRate: number;
 }
@@ -56,6 +68,7 @@ const FUNNEL_COLORS: Record<string, string> = { new: "bg-blue-500/60", contacted
 export default function AgentReportsPage() {
   const t = useTranslations("agentReports");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -193,6 +206,65 @@ export default function AgentReportsPage() {
               })}
             </div>
           </section>
+
+          {/* ─── Job seekers: who the agent brought in, who is in their area, by profession ─── */}
+          {analytics.jobSeekers && (() => {
+            const js = analytics.jobSeekers;
+            const base = `/${locale}/agent/job-seekers`;
+            const tiles = [
+              { key: "onboarded", label: t("seekersOnboarded"), value: js.onboarded, hint: t("seekersPremiumAmong", { count: js.onboardedPremium }), href: `${base}?onboarded=1` },
+              { key: "onboardedPremium", label: t("seekersOnboardedPremium"), value: js.onboardedPremium, hint: t("seekersOnboardedPremiumHint"), href: `${base}?onboarded=1&premium=1` },
+              { key: "inArea", label: t("seekersInArea"), value: js.areaAssigned ? js.inArea : "—", hint: js.areaAssigned ? t("seekersInAreaHint") : t("seekersNoRegion"), href: `${base}?view=area` },
+              { key: "premiumInArea", label: t("seekersPremiumInArea"), value: js.areaAssigned ? js.premiumInArea : "—", hint: t("seekersPremiumInAreaHint"), href: `${base}?view=area&premium=1` },
+              { key: "referred", label: t("seekersReferred"), value: js.referred, hint: t("seekersReferredRecent", { count: js.referredLastMonth }), href: `${base}?view=referred` },
+            ];
+            const max = Math.max(1, ...js.professionBreakdown.map((p) => p.count));
+            const professionLabel = (p: string) =>
+              p === "__other__" ? t("professionOther") : p === "__not_specified__" ? t("professionNotSpecified") : p;
+            return (
+              <section className="workspace-panel-surface rounded-3xl panel-body" aria-labelledby="report-seekers-heading">
+                <div className="mb-4 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" aria-hidden="true" />
+                  <h2 id="report-seekers-heading" className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("seekersHeading")}</h2>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5">
+                  {tiles.map((tile) => (
+                    <Link
+                      key={tile.key}
+                      href={tile.href}
+                      className="min-w-0 workspace-glass-panel card-pad rounded-2xl transition-colors hover:border-primary/25 hover:bg-card"
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{tile.label}</p>
+                      <p className="mt-2 text-xl font-semibold tabular-nums text-foreground sm:text-2xl">{tile.value}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{tile.hint}</p>
+                    </Link>
+                  ))}
+                </div>
+
+                <div className="mt-6 border-t border-border/30 pt-6">
+                  <h3 className="heading-section font-semibold tracking-tight text-foreground">{t("seekersByProfession")}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("seekersByProfessionScope", { count: js.professionTotal })}</p>
+                  {js.professionBreakdown.length === 0 ? (
+                    <p className="mt-4 text-sm text-muted-foreground">{t("seekersByProfessionEmpty")}</p>
+                  ) : (
+                    <ul className="mt-4 space-y-2">
+                      {js.professionBreakdown.map((row) => (
+                        <li key={row.profession} className="flex items-center gap-3">
+                          <span className="w-36 shrink-0 truncate text-xs font-medium text-foreground/80 sm:w-56" title={professionLabel(row.profession)}>
+                            {professionLabel(row.profession)}
+                          </span>
+                          <span className="h-4 flex-1 overflow-hidden rounded-full bg-secondary/60" aria-hidden="true">
+                            <span className="block h-full rounded-full bg-primary/60" style={{ width: `${Math.max(2, Math.round((row.count / max) * 100))}%` }} />
+                          </span>
+                          <span className="w-10 shrink-0 text-end text-xs font-semibold tabular-nums text-foreground">{row.count}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
 
           {/* ─── Commission Summary ─── */}
           <section className="workspace-panel-surface rounded-3xl panel-body">

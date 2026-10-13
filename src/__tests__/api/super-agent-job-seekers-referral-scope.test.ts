@@ -26,7 +26,7 @@ jest.mock("@/models/SuperAgent", () => ({
 jest.mock("@/models/Agent", () => ({
   __esModule: true,
   default: {
-    find: jest.fn(() => ({ select: () => ({ lean: async () => [{ assignedJobSeekerIds: [ASSIGNED_SEEKER] }] }) })),
+    find: jest.fn(() => ({ select: () => ({ populate: () => ({ lean: async () => [{ assignedJobSeekerIds: [ASSIGNED_SEEKER] }] }) }) })),
   },
 }));
 jest.mock("@/models/User", () => ({

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { FormError, formErrorFromResponse } from "@/lib/errors/form-error";
 import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
@@ -12,7 +12,7 @@ import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePermissions } from "@/hooks/usePermissions";
 import Link from "next/link";
-import { Check, Copy, ExternalLink, Link2, Loader2, Power, PowerOff, UserPlus } from "lucide-react";
+import { Building2, Check, Copy, ExternalLink, Link2, Loader2, Power, PowerOff, UserCheck, UserPlus } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
@@ -20,6 +20,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { WorkspaceTabs, type WorkspaceTab } from "@/components/shared/WorkspaceTabs";
 import { EmployerTable } from "./_components/EmployerTable";
 import type { Employer, EmployerListProps } from "./_components/types";
 
@@ -37,6 +38,9 @@ const getOnboardFields = (t: ReturnType<typeof useTranslations>, tf: ReturnType<
   { name: "industry", label: t("fieldIndustry"), type: "text", placeholder: t("placeholderIndustry") },
   { name: "phone", label: t("fieldPhone"), type: "phone", placeholder: t("placeholderPhone") },
 ];
+
+/** Which accounts the list shows (`?view=`). */
+const VIEWS = ["all", "assigned"] as const;
 
 export default function AgentEmployersPage() {
   const { can } = usePermissions();
@@ -56,6 +60,23 @@ export default function AgentEmployersPage() {
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  // Everything the agent can see (assigned first, then their region) | only
+  // the accounts assigned to them — the dashboard's accounts card opens the
+  // second (client feedback 2026-10-12).
+  const [view] = useUrlFilter("view", "all", { allow: VIEWS });
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const viewHref = (next: string) => {
+    const query = new URLSearchParams(searchParams.toString());
+    query.delete("page");
+    if (next === "all") query.delete("view"); else query.set("view", next);
+    const qs = query.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  };
+  const viewTabs: WorkspaceTab[] = [
+    { key: "all", label: t("viewAll"), href: viewHref("all"), icon: Building2 },
+    { key: "assigned", label: t("viewAssigned"), href: viewHref("assigned"), icon: UserCheck },
+  ];
   const [loadError, setLoadError] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editEmployer, setEditEmployer] = useState<Employer | null>(null);
@@ -106,6 +127,7 @@ export default function AgentEmployersPage() {
     try {
       const params = pagination.paginationParams();
       if (search.trim()) params.set("search", search.trim());
+      if (view === "assigned") params.set("view", "assigned");
       const res = await fetch(`/api/employers?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -120,14 +142,14 @@ export default function AgentEmployersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, pagination.page, pagination.limit]);
+  }, [search, view, pagination.page, pagination.limit]);
 
   useEffect(() => {
     const t = setTimeout(loadEmployers, 300);
     return () => clearTimeout(t);
   }, [loadEmployers]);
 
-  useEffect(() => { pagination.resetPage(); }, [search]);
+  useEffect(() => { pagination.resetPage(); }, [search, view]);
 
   const handleSave = async (values: Record<string, string>) => {
     if (editEmployer) {
@@ -253,6 +275,7 @@ export default function AgentEmployersPage() {
   const fetchAllEmployers = useCallback(async () => {
     const base = new URLSearchParams();
     if (search.trim()) base.set("search", search.trim());
+    if (view === "assigned") base.set("view", "assigned");
     return fetchAllPaginated<Record<string, unknown>>(
       (page, limit) => `/api/employers?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
       (json) => ({
@@ -260,7 +283,7 @@ export default function AgentEmployersPage() {
         total: Number((json.pagination as { total?: number } | undefined)?.total ?? json.total ?? 0),
       }),
     );
-  }, [search]);
+  }, [search, view]);
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: employers as unknown as Record<string, unknown>[],
@@ -365,6 +388,8 @@ export default function AgentEmployersPage() {
       {/* One table, like admin's (owner, 2026-10-02): the card grid it could
           switch to carried an inline Delete, and two layouts had to be kept
           in step for every action. */}
+      <WorkspaceTabs tabs={viewTabs} ariaLabel={t("viewLabel")} activeKey={view} />
+
       <InlineFilterBar
         className="workspace-panel-surface rounded-2xl border-b-0"
         onClear={search ? () => setSearch("") : undefined}

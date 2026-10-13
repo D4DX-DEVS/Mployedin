@@ -38,8 +38,12 @@ jest.mock("@/lib/communications/email", () => ({ sendEmail: jest.fn().mockResolv
 jest.mock("@/lib/employers/company-membership", () => ({
   ensureEmployerOwnerMembership: jest.fn(async () => ({ companyRole: "owner", companyRoles: ["owner"] })),
 }));
+/** Accounts that run a company of their own (Employer.exists by userId). */
+const mockCompanyOwners = new Set<string>();
 jest.mock("@/models/Employer", () => ({
   Employer: {
+    exists: (filter: { userId?: unknown }) =>
+      Promise.resolve(mockCompanyOwners.has(String(filter.userId)) ? { _id: "x" } : null),
     findOne: () => ({
       select: () => ({ lean: () => Promise.resolve({ _id: COMPANY, companyEmail: "o@co.test", companyName: "Acme" }) }),
     }),
@@ -107,6 +111,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   existingUser = null;
   existingRow = null;
+  mockCompanyOwners.clear();
   userCreate.mockImplementation(async (doc: Record<string, unknown>) => ({ _id: NEW_USER, ...doc }));
   companyUserCreate.mockImplementation(async (doc: Record<string, unknown>) => ({ _id: "row", ...doc }));
 });
@@ -147,6 +152,28 @@ describe("an address that already has an account", () => {
     expect((await res.json()).reactivated).toBe(true);
     expect(save).toHaveBeenCalled();
   });
+
+  it("refuses a former member who has since started a company of their own", async () => {
+    // Their own company always loads at sign-in, so the invite could never work.
+    mockCompanyOwners.add(EXISTING_USER);
+    const save = jest.fn();
+    existingRow = { status: "pending", userId: EXISTING_USER, email: "owner@co.test", inviteExpiresAt: new Date(0), save };
+    const res = await post({ email: "owner@co.test", companyRoles: ["viewer"] });
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe("email_in_use");
+    expect(save).not.toHaveBeenCalled();
+  });
+});
+
+it("reissues an expired invite instead of calling it already a member", async () => {
+  const save = jest.fn().mockResolvedValue(undefined);
+  existingRow = { status: "pending", email: "late@co.test", inviteExpiresAt: new Date(Date.now() - 1000), inviteToken: "old", save };
+  const res = await post({ email: "late@co.test", companyRoles: ["viewer"] });
+  expect(res.status).toBe(200);
+  expect(save).toHaveBeenCalled();
+  expect(existingRow.inviteToken).not.toBe("old");
+  expect((existingRow.inviteExpiresAt as Date).getTime()).toBeGreaterThan(Date.now());
+  expect(sendEmail).toHaveBeenCalledTimes(1);
 });
 
 it("tells the employer when the address is already on their team", async () => {

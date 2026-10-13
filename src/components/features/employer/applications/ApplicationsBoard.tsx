@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Dot, FolderOpen, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReferredBadge } from "@/components/shared/ReferredBadge";
+import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { useInfiniteApplications, type ApplicationsFilters } from "@/hooks/useApplications";
 import { OFF_PATH_STATUSES, STAGE_LABEL_KEYS, STAGE_DOT_CLASS } from "@/lib/hiring/pipeline";
 import {
@@ -190,9 +191,10 @@ function BoardCard({
           {candidateName || "—"}
         </button>
       </div>
-      {app.isAgentReferred && (
-        <div className="mb-1.5">
-          <ReferredBadge size="xs" />
+      {(app.isPriority || app.isAgentReferred) && (
+        <div className="mb-1.5 flex flex-wrap gap-1">
+          {app.isPriority && <PriorityBadge size="xs" />}
+          {app.isAgentReferred && <ReferredBadge size="xs" />}
         </div>
       )}
       {isNew && (

@@ -5,7 +5,10 @@ import React from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import AgentJobsPage from "@/app/[locale]/(dashboard)/agent/jobs/page";
+import { AgentJobsWorkspace } from "@/app/[locale]/(dashboard)/agent/jobs/_components/AgentJobsWorkspace";
+
+// /agent/jobs is a server wrapper around the "my" mode.
+const AgentJobsPage = () => <AgentJobsWorkspace mode="my" />;
 
 /* Agent Jobs follows the admin list standard (TABLE-CONSISTENCY-AUDIT.md §3):
    one InlineFilterBar, one table panel, status in column 2, ErrorState on a
@@ -215,5 +218,49 @@ describe("AgentJobsPage", () => {
 
     const candidatesLink = within(row).getByRole("link", { name: /candidates/i });
     expect(candidatesLink).toHaveAttribute("href", "/en/agent/candidates?jobId=j1");
+  });
+
+  describe("browse mode (/agent/browse-jobs)", () => {
+    const FACETS = {
+      countries: ["UAE"], cities: ["Dubai"], professions: ["Engineering"],
+      industries: [
+        { value: "Construction", label: "Construction", count: 3 },
+        { value: "technology", label: "Technology", count: 9 },
+      ],
+      newThisWeek: 2,
+      totalActive: 12,
+    };
+
+    beforeEach(() => {
+      window.history.replaceState({}, "", "/en/agent/browse-jobs");
+      jobsResponse = { ok: true, body: { jobs: [JOB], pagination: { total: 12 }, facets: FACETS } };
+    });
+
+    it("asks for the portal scope with facets and shows the portal totals", async () => {
+      render(<AgentJobsWorkspace mode="browse" />);
+      expect(await screen.findByRole("heading", { name: "Browse jobs" })).toBeInTheDocument();
+      await waitFor(() => expect(jobsCalls().length).toBeGreaterThan(0));
+      const params = jobsCalls()[0];
+      expect(params.get("scope")).toBe("portal");
+      expect(params.get("facets")).toBe("1");
+      expect(params.get("posted")).toBeNull();
+      expect(await screen.findByRole("button", { name: /New this week/ })).toHaveTextContent("2");
+      expect(screen.getByRole("button", { name: /All active/ })).toHaveTextContent("12");
+    });
+
+    it("narrows to jobs posted this week from the New this week tile", async () => {
+      render(<AgentJobsWorkspace mode="browse" />);
+      await userEvent.click(await screen.findByRole("button", { name: /New this week/ }));
+      await waitFor(() => expect(jobsCalls().at(-1)?.get("posted")).toBe("week"));
+    });
+
+    it("lists industries busiest first with counts and filters by one", async () => {
+      render(<AgentJobsWorkspace mode="browse" />);
+      const nav = await screen.findByRole("navigation", { name: "Jobs by industry" });
+      const chips = within(nav).getAllByRole("button").map((b) => b.textContent);
+      expect(chips).toEqual(["All industries", "Technology9", "Construction3"]);
+      await userEvent.click(within(nav).getByRole("button", { name: /Technology/ }));
+      await waitFor(() => expect(jobsCalls().at(-1)?.get("industry")).toBe("technology"));
+    });
   });
 });

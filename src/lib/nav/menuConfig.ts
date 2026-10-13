@@ -196,6 +196,16 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 groupAr: "القوى العاملة",
               },
               {
+                title: "Agent Tasks",
+                titleAr: "مهام الوكلاء",
+                href: p("/admin/agent-tasks"),
+                icon: "CheckSquare",
+                description: "Assign & review agent tasks",
+                descriptionAr: "تعيين ومراجعة مهام الوكلاء",
+                group: "Workforce",
+                groupAr: "القوى العاملة",
+              },
+              {
                 title: "Referral Links",
                 titleAr: "روابط الإحالة",
                 href: p("/admin/referral-links"),
@@ -765,6 +775,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             ],
           },
           {
+            title: "Agent Tasks",
+            titleAr: "مهام الوكلاء",
+            href: p("/super-agent/tasks"),
+            icon: "CheckSquare",
+            description: "Assign & review team tasks",
+            descriptionAr: "تعيين ومراجعة مهام الفريق",
+          },
+          {
             title: "Exhibition Requests",
             titleAr: "طلبات المعارض",
             href: p("/super-agent/exhibitions"),
@@ -883,6 +901,26 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             icon: "Briefcase",
             description: "Vacancies you are filling",
             descriptionAr: "الوظائف التي تعمل على شغلها",
+            children: [
+              {
+                title: "My jobs",
+                titleAr: "وظائفي",
+                href: p("/agent/jobs"),
+                icon: "Briefcase",
+                description: "Jobs at the employers you manage",
+                descriptionAr: "وظائف أصحاب العمل الذين تديرهم",
+              },
+              {
+                // Every live job on the portal, to share with seekers — the
+                // agent's counterpart of the job seeker's job feed.
+                title: "Browse jobs",
+                titleAr: "تصفّح الوظائف",
+                href: p("/agent/browse-jobs"),
+                icon: "Search",
+                description: "New and open jobs across the portal, by industry",
+                descriptionAr: "الوظائف الجديدة والمتاحة في المنصة حسب القطاع",
+              },
+            ],
           },
           {
             // Same four stages, same order, as the employer's Hiring group.

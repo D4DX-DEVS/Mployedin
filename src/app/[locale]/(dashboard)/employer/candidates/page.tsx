@@ -65,6 +65,7 @@ import {
 } from "lucide-react";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { ReferredBadge } from "@/components/shared/ReferredBadge";
+import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { cn } from "@/lib/utils";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { useContainerWide } from "@/hooks/useContainerWide";
@@ -393,6 +394,7 @@ function CandidateMatchCard({
               {candidate.availabilityStatus === "immediately" ? <Zap className="h-3 w-3" /> : null}
               {availabilityLabel}
             </span>
+            {candidate.isPriority ? <PriorityBadge size="xs" /> : null}
             {candidate.isAgentReferred ? <ReferredBadge size="xs" /> : null}
             {/* The band in words rides the meta line. It used to be crammed into
                 the score ring's hole at 6.6px, overlapping the arc; here it is

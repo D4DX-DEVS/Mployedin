@@ -284,7 +284,7 @@ describe.skip("SuperAgent dark-mode page surfaces", () => {
       name: "leads",
       page: <SuperAgentLeadsPage />,
       endpoint: "/api/super-agent/leads?page=1&limit=10",
-      heading: /lead pipeline/i,
+      heading: /employer leads/i,
       content: "Northstar Foods",
     },
     {

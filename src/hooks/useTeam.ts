@@ -4,6 +4,8 @@ import type { ICompanyUserPermissions, PermissionFlag } from "@/lib/permissions/
 // ── Types ──────────────────────────────────────────────────────────
 export type CompanyRole = "owner" | "admin" | "hiring_manager" | "accounting" | "finance_viewer" | "viewer";
 export type MemberStatus = "pending" | "active" | "deactivated";
+/** What the team page shows: a pending invite past its expiry reads "expired". */
+export type DisplayStatus = MemberStatus | "expired";
 
 export interface TeamMember {
   _id: string;
@@ -20,14 +22,31 @@ export interface TeamMember {
   invitedAt: string;
   acceptedAt?: string;
   user?: { name: string; email: string; avatar?: string } | null;
+  /** Pending invite whose link has run out; it can be resent, not accepted. */
+  inviteExpired?: boolean;
 }
+
+export const displayStatus = (member: Pick<TeamMember, "status" | "inviteExpired">): DisplayStatus =>
+  member.status === "pending" && member.inviteExpired ? "expired" : member.status;
+
+export interface TeamStats {
+  active: number;
+  /** Invites that can still be accepted. */
+  pending: number;
+  expired: number;
+  deactivated: number;
+  /** Active members plus live invites. */
+  total: number;
+}
+
+const EMPTY_STATS: TeamStats = { active: 0, pending: 0, expired: 0, deactivated: 0, total: 0 };
 
 interface TeamResponse {
   members: TeamMember[];
   total: number;
   page: number;
   totalPages: number;
-  stats: { active: number; pending: number; total: number };
+  stats: TeamStats;
 }
 
 // ── Query Keys ─────────────────────────────────────────────────────
@@ -48,7 +67,7 @@ async function fetchTeam(params: { page: number; limit: number; search: string }
     total: data.total ?? 0,
     page: data.page ?? params.page,
     totalPages: data.totalPages ?? 1,
-    stats: data.stats ?? { active: 0, pending: 0, total: 0 },
+    stats: { ...EMPTY_STATS, ...data.stats },
   };
 }
 
@@ -149,6 +168,24 @@ export function useRemoveTeamMember() {
     mutationFn: async (memberId: string) => {
       const res = await fetch(`/api/employers/team/${memberId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to remove team member");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: teamKeys.all });
+    },
+  });
+}
+
+/** Send a fresh invite link to a pending, expired or cancelled row. */
+export function useResendTeamInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (memberId: string) => {
+      const res = await fetch(`/api/employers/team/${memberId}/resend`, { method: "POST" });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+        throw new TeamInviteError(data.error ?? "We couldn't resend the invite", data.code);
+      }
+      return res.json() as Promise<{ member: { _id: string; email: string; status: MemberStatus } }>;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: teamKeys.all });

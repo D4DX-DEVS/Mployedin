@@ -4,7 +4,8 @@ import { useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Plus, UserX, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock, Pencil, Activity, Calculator, FileBarChart, Inbox } from "lucide-react";
+import { toast } from "sonner";
+import { Plus, UserX, Send, XCircle, RotateCcw, Shield, Eye, Briefcase, Crown, Mail, Users, CheckCircle2, Clock, Pencil, Activity, Calculator, FileBarChart, Inbox } from "lucide-react";
 import Link from "next/link";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
@@ -29,11 +30,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { useTeam, useUpdateTeamMember, useRemoveTeamMember } from "@/hooks/useTeam";
+import { useTeam, useUpdateTeamMember, useRemoveTeamMember, useResendTeamInvite, displayStatus } from "@/hooks/useTeam";
 import { TEAM_INVITE_ENABLED } from "@/lib/features/teamFeature";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
-import type { CompanyRole, MemberStatus, TeamMember } from "@/hooks/useTeam";
+import type { CompanyRole, DisplayStatus, TeamMember } from "@/hooks/useTeam";
 import type { ExportColumn } from "@/lib/export";
 import { useJobs } from "@/hooks/useJobs";
 import { FormMultiSelect } from "@/components/shared/AppForm";
@@ -50,9 +51,10 @@ const ROLE_COLORS: Record<CompanyRole, string> = {
   viewer: "bg-secondary/75 text-muted-foreground border-border",
 };
 
-const STATUS_COLORS: Record<MemberStatus, string> = {
+const STATUS_COLORS: Record<DisplayStatus, string> = {
   active: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
   pending: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20",
+  expired: "bg-secondary/75 text-muted-foreground border-border",
   deactivated: "bg-status-rejected-bg text-status-rejected border-status-rejected/20",
 };
 
@@ -77,9 +79,10 @@ export default function TeamManagementPage() {
   const [search, setSearch] = useState("");
   const { data: teamData, isLoading: loading } = useTeam({ page, limit, search });
   const members = teamData?.members ?? [];
-  const teamStats = teamData?.stats ?? { active: 0, pending: 0, total: 0 };
+  const teamStats = teamData?.stats ?? { active: 0, pending: 0, expired: 0, deactivated: 0, total: 0 };
   const updateMutation = useUpdateTeamMember();
   const removeMutation = useRemoveTeamMember();
+  const resendMutation = useResendTeamInvite();
   const [showInviteModal, setShowInviteModal] = useState(false);
 
   // Job access edit modal
@@ -123,11 +126,53 @@ export default function TeamManagementPage() {
     document.title = t("pageTitle");
   }, [t]);
 
-  async function handleDeactivate(memberId: string) {
-    const ok = await confirmDialog(t("deactivateConfirm"));
+  async function handleDeactivate(member: TeamMember) {
+    const isInvite = member.status === "pending";
+    const ok = await confirmDialog(isInvite ? t("cancelInviteConfirm") : t("deactivateConfirm"));
     if (!ok) return;
-    await removeMutation.mutateAsync(memberId);
+    try {
+      await removeMutation.mutateAsync(member._id);
+      toast.success(isInvite ? t("inviteCancelled") : t("memberDeactivated"));
+    } catch {
+      toast.error(t("actionError"));
+    }
   }
+
+  async function handleResend(member: TeamMember) {
+    try {
+      await resendMutation.mutateAsync(member._id);
+      toast.success(t("inviteResent", { email: member.email }));
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      toast.error(code === "email_in_use" ? t("resendEmailInUse") : t("actionError"));
+    }
+  }
+
+  /** Row menu by state: invites resend or cancel, members deactivate, cancelled rows invite again. */
+  function rowMenu(member: TeamMember) {
+    if (member.companyRole === "owner") return [];
+    if (member.status === "pending") {
+      return [
+        { key: "resend", label: t("resendInvite"), icon: Send, onSelect: () => { void handleResend(member); } },
+        { key: "cancel", label: t("cancelInvite"), icon: XCircle, destructive: true, onSelect: () => { void handleDeactivate(member); } },
+      ];
+    }
+    if (member.status === "deactivated") {
+      return [{ key: "reinvite", label: t("inviteAgain"), icon: RotateCcw, onSelect: () => { void handleResend(member); } }];
+    }
+    return [{ key: "deactivate", label: t("deactivateMember"), icon: UserX, destructive: true, onSelect: () => { void handleDeactivate(member); } }];
+  }
+
+  /** A row with no account yet is named by what happened to its invite. */
+  function memberName(member: TeamMember) {
+    if (member.user?.name) return member.user.name;
+    const status = displayStatus(member);
+    const label = status === "expired" ? t("expiredInvite") : status === "deactivated" ? t("cancelledInvite") : t("pendingInvite");
+    return <span className="italic text-muted-foreground">{label}</span>;
+  }
+
+  /** The person's sign-in address; the owner's own row stores the company contact email. */
+  const memberEmail = (member: TeamMember) => member.user?.email ?? member.email;
 
   async function handleRoleChange(memberId: string, newRole: CompanyRole) {
     await updateMutation.mutateAsync({ memberId, companyRole: newRole });
@@ -172,10 +217,11 @@ export default function TeamManagementPage() {
     return t("jobCount", { count: member.jobAccess.length });
   }
 
-  function statusLabel(status: MemberStatus): string {
-    const map: Record<MemberStatus, string> = {
+  function statusLabel(status: DisplayStatus): string {
+    const map: Record<DisplayStatus, string> = {
       active: t("active"),
       pending: t("pending"),
+      expired: t("expired"),
       deactivated: t("deactivated"),
     };
     return map[status] ?? status;
@@ -189,11 +235,11 @@ export default function TeamManagementPage() {
   useEffect(() => { setPage(1); }, [search, setPage]);
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: t("name"), key: "user", formatter: (_v, r) => (r as Record<string, any>).user?.name ?? t("pendingInvite") },
-    { header: t("email"), key: "email", formatter: (v) => String(v ?? "—") },
+    { header: t("name"), key: "user", formatter: (_v, r) => (r as unknown as TeamMember).user?.name ?? "—" },
+    { header: t("email"), key: "email", formatter: (v, r) => String((r as unknown as TeamMember).user?.email ?? v ?? "—") },
     { header: t("role"), key: "companyRole", formatter: (v) => roleLabel(String(v) as CompanyRole) },
-    { header: t("status"), key: "status", formatter: (v) => v ? statusLabel(String(v) as MemberStatus) : "—" },
-    { header: t("joined"), key: "acceptedAt", formatter: (v, r) => v ? formatDate(String(v), { day: "2-digit", month: "short", year: "numeric" }, locale) : (r as Record<string, any>).invitedAt ? t("invited", { date: formatDate(String((r as Record<string, any>).invitedAt), { day: "2-digit", month: "short", year: "numeric" }, locale) }) : "—" },
+    { header: t("status"), key: "status", formatter: (_v, r) => statusLabel(displayStatus(r as unknown as TeamMember)) },
+    { header: t("joined"), key: "acceptedAt", formatter: (v, r) => v ? formatDate(String(v), { day: "2-digit", month: "short", year: "numeric" }, locale) : (r as unknown as TeamMember).invitedAt ? t("invited", { date: formatDate(String((r as unknown as TeamMember).invitedAt), { day: "2-digit", month: "short", year: "numeric" }, locale) }) : "—" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: members as unknown as Record<string, unknown>[],
@@ -336,16 +382,12 @@ export default function TeamManagementPage() {
                   <TableRow key={member._id} className="group">
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <UserAvatar name={member.user?.name} email={member.email} className="h-9 w-9" colorful />
+                        <UserAvatar name={member.user?.name} email={memberEmail(member)} className="h-9 w-9" colorful />
                         <div className="min-w-0">
-                          <div className="truncate font-medium text-sm">
-                            {member.user?.name ?? (
-                              <span className="italic text-muted-foreground">{t("pendingInvite")}</span>
-                            )}
-                          </div>
+                          <div className="truncate font-medium text-sm">{memberName(member)}</div>
                           <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                             <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
-                            <span className="truncate">{member.email}</span>
+                            <span className="truncate">{memberEmail(member)}</span>
                           </div>
                         </div>
                       </div>
@@ -373,9 +415,9 @@ export default function TeamManagementPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`gap-1 ${STATUS_COLORS[member.status]}`}>
-                        {member.status === "pending" && <Mail className="h-3 w-3" />}
-                        {statusLabel(member.status)}
+                      <Badge variant="outline" className={`gap-1 ${STATUS_COLORS[displayStatus(member)]}`}>
+                        {displayStatus(member) === "pending" && <Mail className="h-3 w-3" />}
+                        {statusLabel(displayStatus(member))}
                       </Badge>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
@@ -387,11 +429,9 @@ export default function TeamManagementPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <RowActions
-                        name={member.user?.name ?? member.email}
+                        name={member.user?.name ?? memberEmail(member)}
                         quick={editAction(member)}
-                        menu={member.companyRole !== "owner" && member.status !== "deactivated"
-                          ? [{ key: "deactivate", label: t("deactivateMember"), icon: UserX, destructive: true, onSelect: () => { void handleDeactivate(member._id); } }]
-                          : []}
+                        menu={rowMenu(member)}
                       />
                     </TableCell>
                   </TableRow>
@@ -412,35 +452,29 @@ export default function TeamManagementPage() {
                 {/* Member info row */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <UserAvatar name={member.user?.name} email={member.email} className="h-10 w-10 shrink-0" colorful />
+                    <UserAvatar name={member.user?.name} email={memberEmail(member)} className="h-10 w-10 shrink-0" colorful />
                     <div className="min-w-0">
-                      <div className="font-medium text-sm truncate">
-                        {member.user?.name ?? (
-                          <span className="text-muted-foreground italic">{t("pendingInvite")}</span>
-                        )}
-                      </div>
+                      <div className="font-medium text-sm truncate">{memberName(member)}</div>
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
-                        <span className="truncate">{member.email}</span>
+                        <span className="truncate">{memberEmail(member)}</span>
                       </div>
                     </div>
                   </div>
                   <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                     <RowActions
-                      name={member.user?.name ?? member.email}
+                      name={member.user?.name ?? memberEmail(member)}
                       quick={editAction(member)}
-                      menu={member.companyRole !== "owner" && member.status !== "deactivated"
-                        ? [{ key: "deactivate", label: t("deactivateMember"), icon: UserX, destructive: true, onSelect: () => { void handleDeactivate(member._id); } }]
-                        : []}
+                      menu={rowMenu(member)}
                     />
                   </div>
                 </div>
 
                 {/* Badges row */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className={`gap-1 ${STATUS_COLORS[member.status]}`}>
-                    {member.status === "pending" && <Mail className="h-3 w-3" />}
-                    {statusLabel(member.status)}
+                  <Badge variant="outline" className={`gap-1 ${STATUS_COLORS[displayStatus(member)]}`}>
+                    {displayStatus(member) === "pending" && <Mail className="h-3 w-3" />}
+                    {statusLabel(displayStatus(member))}
                   </Badge>
                   {member.companyRole === "owner" ? (
                     <Badge variant="outline" className={`gap-1 ${ROLE_COLORS[member.companyRole]}`}>

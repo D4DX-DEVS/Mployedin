@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -19,7 +19,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { useConversations, conversationKeys } from "@/hooks/useConversations";
+import { useConversations, useDmUnreadTotal, conversationKeys } from "@/hooks/useConversations";
+import { useDebounce } from "@/hooks/useDebounce";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Conversation } from "@/hooks/useConversations";
 
 const ROLE_ICONS: Record<string, React.ReactNode> = {
@@ -51,6 +53,8 @@ interface UnifiedMessagesPageProps {
   showCustomerCare?: boolean;
   /** Support-only mode: hides DM tab, defaults to support */
   supportOnly?: boolean;
+  /** Extra header actions on the direct-messages tab (e.g. "Message agents"). */
+  dmActions?: ReactNode;
   /** Label for the "New Chat" button */
   newChatLabel?: string;
   /** Placeholder for the search input */
@@ -93,6 +97,7 @@ export function UnifiedMessagesPage({
   showNewChat = true,
   showCustomerCare = false,
   supportOnly = false,
+  dmActions,
   newChatLabel,
   searchPlaceholder,
   emptyStateText,
@@ -108,7 +113,16 @@ export function UnifiedMessagesPage({
   const isRtl = locale === "ar";
   const queryClient = useQueryClient();
 
-  const { data: conversations = [], isLoading: loading } = useConversations({ enabled: !supportOnly });
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const {
+    conversations,
+    isLoading: loading,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useConversations({ enabled: !supportOnly, search: debouncedSearch });
+  const dmUnreadTotal = useDmUnreadTotal({ enabled: !supportOnly });
   const { data: customerCareConvs = [], isLoading: customerCareLoading } = useQuery({
     queryKey: ["customerCareConversations"],
     queryFn: async () => {
@@ -121,7 +135,6 @@ export function UnifiedMessagesPage({
     staleTime: 15 * 1000,
     refetchInterval: (showCustomerCare || supportOnly) ? 15_000 : false,
   });
-  const [search, setSearch] = useState("");
   const [activeConvId, setActiveConvId] = useState<string | null>(
     searchParams.get("conv")
   );
@@ -311,19 +324,45 @@ export function UnifiedMessagesPage({
     });
   }
 
-  const displayConversations = (activeTab === "support" || supportOnly) ? customerCareConvs : conversations;
-  const filtered = filterConversations(displayConversations);
-  const isLoadingConvs = (activeTab === "support" || supportOnly) ? customerCareLoading : loading;
+  const showingSupport = activeTab === "support" || supportOnly;
+  // The DM list is searched on the server (it is paged); support tickets are
+  // one short list and filter here.
+  const filtered = showingSupport ? filterConversations(customerCareConvs) : conversations;
+  const isLoadingConvs = showingSupport ? customerCareLoading : loading;
 
-  // Find active conversation across both lists
-  const activeConversation = pendingConversation
-    ?? conversations.find((c) => c._id === activeConvId)
+  const loadedConversation = conversations.find((c) => c._id === activeConvId)
     ?? customerCareConvs.find((c) => c._id === activeConvId);
 
-  const dmUnreadTotal = conversations.reduce(
-    (sum, c) => sum + (c.unreadCounts?.[currentUserId] ?? 0),
-    0
-  );
+  // A conversation opened by link (?conv=) may sit on a page not loaded yet,
+  // or be hidden by the search box; fetch it on its own.
+  const { data: fetchedConversation } = useQuery({
+    queryKey: ["conversation", activeConvId],
+    queryFn: async () => {
+      const res = await fetch(`/api/dm/conversation?id=${activeConvId}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return (data.conversation ?? null) as Conversation | null;
+    },
+    enabled: !!activeConvId && !loadedConversation && !isLoadingConvs,
+    staleTime: 30 * 1000,
+  });
+
+  const activeConversation = pendingConversation ?? loadedConversation ?? fetchedConversation ?? undefined;
+
+  // Load the next page when the end of the list scrolls into view.
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el || showingSupport || !hasNextPage) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !isFetchingNextPage) void fetchNextPage();
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [showingSupport, hasNextPage, isFetchingNextPage, fetchNextPage]);
   const ccUnreadTotal = customerCareConvs.reduce(
     (sum, c) => sum + (c.unreadCounts?.[currentUserId] ?? 0),
     0
@@ -384,16 +423,21 @@ export function UnifiedMessagesPage({
               </DialogContent>
             </Dialog>
           ) : showNewChat && activeTab === "dm" ? (
-            <NewChatSearch dashboardPrefix={dashboardPrefix as "employer" | "job-seeker"} newChatLabel={newChatLabel} />
+            <div className="flex flex-wrap items-center gap-2">
+              {dmActions}
+              <NewChatSearch dashboardPrefix={dashboardPrefix as "employer" | "job-seeker"} newChatLabel={newChatLabel} />
+            </div>
           ) : undefined
         }
       />
 
-      <div className="flex gap-0 rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm min-h-[600px] max-sm:min-h-[50vh]">
+      {/* Fixed height from md up so the list and the chat each scroll inside
+          the panel; on a phone one pane shows at a time and the page scrolls. */}
+      <div className="flex gap-0 rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm max-sm:min-h-[50vh] md:h-[calc(100dvh-15rem)] md:min-h-[480px]">
         {/* Conversation list — responsive sidebar */}
         <div
           className={cn(
-            "w-full md:w-80 shrink-0 flex flex-col",
+            "w-full md:w-80 shrink-0 flex flex-col min-h-0",
             isRtl ? "border-l" : "border-r",
             (activeConvId || pendingRecipientId) ? "hidden md:flex" : "flex"
           )}
@@ -451,10 +495,19 @@ export function UnifiedMessagesPage({
             </div>
           </div>
 
-          <div className="overflow-y-auto flex-1 max-sm:flex-none">
+          <div className="overflow-y-auto flex-1 min-h-0 max-sm:flex-none" aria-busy={isLoadingConvs || isFetchingNextPage}>
             {isLoadingConvs ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <div className="divide-y divide-border/40">
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-3 px-3 py-3">
+                    <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-3.5 w-2/3" />
+                      <Skeleton className="h-3 w-1/2" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-12 text-center px-4">
@@ -520,15 +573,15 @@ export function UnifiedMessagesPage({
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex min-w-0 items-center gap-1.5">
                         {other?.role && (
-                          <span className="text-[11px] text-muted-foreground/60 capitalize">
+                          <span className="shrink-0 whitespace-nowrap text-[11px] text-muted-foreground/60 capitalize">
                             {hasKey(ROLE_LABEL_KEYS, other.role) ? t(`roles.${other.role}`) : other.role.replace("_", " ")}
                           </span>
                         )}
                         {subtitle && (
                           <>
-                            <span className="text-[11px] text-muted-foreground/30">·</span>
+                            <span className="shrink-0 text-[11px] text-muted-foreground/30">·</span>
                             <span className="text-[11px] text-muted-foreground/60 truncate">
                               {subtitle}
                             </span>
@@ -575,13 +628,24 @@ export function UnifiedMessagesPage({
                 );
               })
             )}
+            {!showingSupport && hasNextPage && (
+              <div ref={loadMoreRef} className="flex justify-center py-3">
+                {isFetchingNextPage ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label={t("loadingMore")} />
+                ) : (
+                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => void fetchNextPage()}>
+                    {t("loadMore")}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Chat window */}
         <div
           className={cn(
-            "flex-1 flex flex-col",
+            "flex-1 flex flex-col min-w-0 min-h-0",
             !activeConvId && !pendingRecipientId ? "hidden md:flex" : "flex"
           )}
         >

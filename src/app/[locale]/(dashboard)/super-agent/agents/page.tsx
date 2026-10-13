@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/table";
 import {
   Activity, BriefcaseBusiness,
-  Mail, Target, Users2,
+  Mail, MessageSquare, Target, Users2,
   Plus,
 } from "lucide-react";
+import { MessageAgentsDialog } from "@/components/features/super-agent/MessageAgentsDialog";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { PasswordInput } from "@/components/shared/PasswordInput";
@@ -144,6 +145,7 @@ export default function SuperAgentAgentsPage() {
   const t = useTranslations("superAgentAgents");
   const tf = useTranslations("formErrors");
   const tc = useTranslations("common");
+  const tm = useTranslations("superAgentTeamMessage");
   const tt = useTranslations("table");
   const tconf = useTranslations("confirm");
   const [agents, setAgents] = useState<AgentRow[]>([]);
@@ -152,6 +154,7 @@ export default function SuperAgentAgentsPage() {
   const [totals, setTotals] = useState({ agents: 0, leads: 0, conversions: 0, placements: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [messageOpen, setMessageOpen] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   const { filters, setFilter, resetFilters } = useUrlFilters(
@@ -353,6 +356,11 @@ export default function SuperAgentAgentsPage() {
         {/* Insights live here as one button that opens a dialog. As four cards
             they sat between the heading and the table on every visit. */}
         <SuperAgentInsightsPanel asDialog />
+        {/* One message to every agent in the team, or to the ones ticked. */}
+        <Button variant="outline" onClick={() => setMessageOpen(true)} className="gap-2" aria-label={tm("openButton")}>
+          <MessageSquare className="h-4 w-4" aria-hidden="true" />
+          <span className="max-sm:sr-only">{tm("openButton")}</span>
+        </Button>
         <Button
           onClick={() => { setCreateError(""); setShowCreate(true); }}
           className="gap-2"
@@ -361,6 +369,8 @@ export default function SuperAgentAgentsPage() {
           {t("addAgent")}
         </Button>
       </SuperAgentPageIntro>
+
+      <MessageAgentsDialog open={messageOpen} onOpenChange={setMessageOpen} />
 
       <SuperAgentSection title={t("teamReviewTitle")} className="[&>div:first-child]:sr-only">
         {/* ---- Error State ---- */}

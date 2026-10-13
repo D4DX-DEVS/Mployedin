@@ -82,6 +82,7 @@ const EMPLOYERS = [
     location: "Dubai",
     isActive: true,
     assignedToMe: true,
+    activity: { openJobs: 4, newApplicants: 1, upcomingInterviews: 2, hires: 0 },
   },
   {
     _id: "emp-region",
@@ -143,7 +144,9 @@ describe("AgentEmployersPage table", () => {
     expect(within(region).queryByRole("button", { name: /^Edit/ })).not.toBeInTheDocument();
     expect(within(region).getByRole("link", { name: "View Jobs" })).toHaveAttribute(
       "href",
-      "/en/agent/jobs?employer=emp-region",
+      // The jobs page filters by `employerId`; `?employer=` was ignored and
+      // opened every job in the agent's portfolio.
+      "/en/agent/jobs?employerId=emp-region",
     );
     // Missing fields read as a dash, not an empty cell.
     expect(within(region).getByText("—")).toBeInTheDocument();
@@ -200,5 +203,41 @@ describe("AgentEmployersPage table", () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("We couldn't delete this employer. Please try again."));
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(1);
     expect(screen.getAllByText("Region Co")).not.toHaveLength(0);
+  });
+
+  it("splits the list into all accounts and the ones assigned to the agent", async () => {
+    await renderPage();
+
+    const tabs = screen.getByRole("navigation", { name: "Which accounts" });
+    expect(within(tabs).getByRole("link", { name: /All accounts/ })).toHaveAttribute("href", PATHNAME);
+    expect(within(tabs).getByRole("link", { name: /Assigned to me/ })).toHaveAttribute("href", `${PATHNAME}?view=assigned`);
+    // The default view asks for everything the agent can see.
+    const urls = (global.fetch as jest.Mock).mock.calls.map(([url]) => String(url));
+    expect(urls.some((url) => url.startsWith("/api/employers?") && !url.includes("view="))).toBe(true);
+  });
+
+  it("asks the API for assigned accounts only on ?view=assigned", async () => {
+    searchParamsState = new URLSearchParams("view=assigned");
+    window.history.replaceState({}, "", `${PATHNAME}?view=assigned`);
+    await renderPage();
+
+    const urls = (global.fetch as jest.Mock).mock.calls.map(([url]) => String(url));
+    expect(urls.filter((url) => url.startsWith("/api/employers?")).every((url) => url.includes("view=assigned"))).toBe(true);
+    expect(screen.getByRole("link", { name: /Assigned to me/ })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("prints each account's numbers in an Activity column", async () => {
+    await renderPage();
+
+    const table = screen.getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "Activity" })).toBeInTheDocument();
+    const rows = within(table).getAllByRole("row");
+    const assigned = rows.find((row) => within(row).queryByText("Acme Assigned"))!;
+    for (const text of ["4 open jobs", "1 new applicant", "2 interviews ahead", "0 hires"]) {
+      expect(within(assigned).getByText(text)).toBeInTheDocument();
+    }
+    // A row the API sent without numbers reads as zeros, not blanks.
+    const region = rows.find((row) => within(row).queryByText("Region Co"))!;
+    expect(within(region).getByText("0 open jobs")).toBeInTheDocument();
   });
 });

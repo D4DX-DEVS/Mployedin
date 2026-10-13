@@ -268,7 +268,7 @@ describe("GET /api/super-agent/job-seekers — header figures", () => {
   it("reports zeroes rather than NaN when the scope is empty", async () => {
     statsRow = undefined;
     const data = await get();
-    expect(data.stats).toEqual({ total: 181, active: 0, avgCompletion: 0, withExperience: 0 });
+    expect(data.stats).toEqual({ total: 181, active: 0, avgCompletion: 0, withExperience: 0, premium: 0 });
   });
 });
 
@@ -288,5 +288,105 @@ describe("GET /api/super-agent/job-seekers — area (client report 2026-09-30, #
     expect(restrictions.seekerRegionMatch).toHaveBeenCalledWith(territory);
     const and = (seen.filters[0] as { $and: Array<{ $or?: unknown[] }> }).$and;
     expect(and.find((c) => c.$or)?.$or).toContainEqual(areaClause);
+  });
+  // "In your area" chip + "In my area" tab, as agents have (2026-10-13).
+  describe("marking and the area tab", () => {
+    type Restrictions = { getSuperAgentTerritory: jest.Mock; seekerRegionMatch: jest.Mock };
+    const territory = { assignedCityIds: ["city_1"], assignedStateIds: [] };
+    const areaClause = { $or: [{ regionCityId: { $in: ["city_1"] } }], profileVisibility: { $ne: "hidden" } };
+    const withTerritory = async () => {
+      const r = (await import("@/lib/auth/agentRestrictions")) as unknown as Restrictions;
+      r.getSuperAgentTerritory.mockResolvedValueOnce(territory);
+      r.seekerRegionMatch.mockReturnValueOnce(areaClause);
+    };
+    const findOnce = async (rows: unknown[]) => {
+      const JobSeeker = (await import("@/models/JobSeeker")).default as unknown as { find: jest.Mock };
+      JobSeeker.find.mockImplementationOnce((filter: unknown) => { seen.filters.push(filter); return chain(rows); });
+    };
+    const and = () => (seen.filters[0] as { $and: unknown[] }).$and;
+
+    it("flags a visible seeker whose area is in the territory, not a hidden one or one elsewhere", async () => {
+      await withTerritory();
+      await findOnce([
+        { ...SEEKER, _id: "in", regionCityId: "city_1" },
+        { ...SEEKER, _id: "hidden", regionCityId: "city_1", profileVisibility: "hidden" },
+        { ...SEEKER, _id: "elsewhere", regionCityId: "city_9" },
+      ]);
+      const data = (await get()) as unknown as { items: Array<{ _id: string; inArea: boolean }>; areaAssigned: boolean };
+      expect(data.items.map((i) => [i._id, i.inArea])).toEqual([["in", true], ["hidden", false], ["elsewhere", false]]);
+      expect(data.areaAssigned).toBe(true);
+    });
+
+    it("?view=area keeps only the territory's seekers", async () => {
+      await withTerritory();
+      await get("?view=area");
+      expect(and()).toContainEqual(areaClause);
+    });
+
+    it("?view=area with no territory matches nobody and says so", async () => {
+      const data = (await get("?view=area")) as unknown as { areaAssigned: boolean };
+      expect(and()).toContainEqual({ _id: { $in: [] } });
+      expect(data.areaAssigned).toBe(false);
+    });
+  });
+});
+
+// Premium and which team agent each seeker came in through (2026-10-13).
+describe("GET /api/super-agent/job-seekers — premium and agent", () => {
+  const AGENT_A = "64b0000000000000000000a1";
+  const AGENT_B = "64b0000000000000000000a2";
+  const teamOnce = async () => {
+    const Agent = (await import("@/models/Agent")).default as unknown as { find: jest.Mock };
+    Agent.find.mockImplementationOnce(() => chain([
+      { _id: AGENT_A, userId: { name: "Asha Agent" }, assignedJobSeekerIds: ["64b00000000000000000005a"] },
+      { _id: AGENT_B, userId: { name: "Bilal Agent" }, assignedJobSeekerIds: [] },
+    ]));
+  };
+  const findOnce = async (rows: unknown[]) => {
+    const JobSeeker = (await import("@/models/JobSeeker")).default as unknown as { find: jest.Mock };
+    JobSeeker.find.mockImplementationOnce((filter: unknown) => { seen.filters.push(filter); return chain(rows); });
+  };
+  type Row = { _id: string; premium: boolean; agent?: { name: string; via: string } };
+
+  it("marks Premium and names the team agent who added or was assigned the seeker", async () => {
+    await teamOnce();
+    await findOnce([
+      { ...SEEKER, _id: "added_1", agentId: AGENT_B, badges: ["premium"] },
+      { ...SEEKER, _id: "64b00000000000000000005a" },
+      { ...SEEKER, _id: "referred_1", referral: { agentId: AGENT_A }, badges: ["premium"] },
+      { ...SEEKER, _id: "area_1" },
+    ]);
+    const data = (await get()) as unknown as { items: Row[]; agents: Array<{ id: string; name: string }> };
+    expect(data.items.map((i) => [i._id, i.premium, i.agent])).toEqual([
+      ["added_1", true, { name: "Bilal Agent", via: "added" }],
+      ["64b00000000000000000005a", false, { name: "Asha Agent", via: "assigned" }],
+      // A referral is named by the referral chip instead.
+      ["referred_1", true, undefined],
+      ["area_1", false, undefined],
+    ]);
+    expect(data.agents).toEqual([{ id: AGENT_A, name: "Asha Agent" }, { id: AGENT_B, name: "Bilal Agent" }]);
+  });
+
+  it("the scope includes seekers a team agent added", async () => {
+    await get();
+    const scope = (seen.filters[0] as { $and: Array<{ $or?: unknown[] }> }).$and[0].$or;
+    expect(scope).toContainEqual({ agentId: { $in: ["agent_1"] } });
+  });
+
+  it("?premium=1 keeps Premium seekers only", async () => {
+    await get("?premium=1");
+    expect((seen.filters[0] as { $and: unknown[] }).$and).toContainEqual({ badges: "premium" });
+  });
+
+  it("?agent= narrows to that agent's seekers; an agent outside the team narrows to nobody", async () => {
+    await teamOnce();
+    await get(`?agent=${AGENT_A}`);
+    const clause = JSON.parse(JSON.stringify((seen.filters[0] as { $and: unknown[] }).$and.at(-1)));
+    expect(clause).toEqual({ $or: [{ agentId: AGENT_A }, { "referral.agentId": AGENT_A }, { _id: { $in: ["64b00000000000000000005a"] } }] });
+
+    seen.filters = [];
+    await teamOnce();
+    await get("?agent=64b0000000000000000000ff");
+    expect((seen.filters[0] as { $and: unknown[] }).$and.at(-1)).toEqual({ _id: { $in: [] } });
   });
 });

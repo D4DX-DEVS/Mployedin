@@ -14,6 +14,8 @@ export interface Candidate {
   totalExperienceYears?: number;
   /** The candidate joined through a partner referral link. Never says which partner. */
   isAgentReferred?: boolean;
+  /** Applied as a Premium job seeker: reviewed first, badged "Priority". */
+  isPriority?: boolean;
   matchScore?: number;
   matchBreakdown?: {
     skills: number;
@@ -98,6 +100,7 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
           cv?: { originalUrl?: string };
         };
         isAgentReferred?: boolean;
+        isPriority?: boolean;
         aiMatchScore?: number;
         matchBreakdown?: { skills: number; experience: number; location: number; language: number };
         strengths?: string[];
@@ -119,6 +122,7 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
         availabilityStatus: app.jobSeekerId?.availabilityStatus,
         profileCompleteness: app.jobSeekerId?.profileCompleteness,
         isAgentReferred: app.isAgentReferred,
+        isPriority: app.isPriority,
         cv: app.jobSeekerId?.cv,
         matchScore: app.aiMatchScore,
         matchBreakdown: app.matchBreakdown,

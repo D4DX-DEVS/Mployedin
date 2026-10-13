@@ -8,6 +8,8 @@ import type { LucideIcon } from "lucide-react";
 export interface WorkspaceTab {
   key: string;
   label: string;
+  /** Shorter label for phones, where three full labels overflow the row. */
+  shortLabel?: string;
   href: string;
   count?: number;
   icon?: LucideIcon;
@@ -80,7 +82,14 @@ export function WorkspaceTabs({
                 aria-label={tabCountLabel}
               >
                 {Icon && <Icon className="h-4 w-4" aria-hidden="true" />}
-                <span>{tab.label}</span>
+                {tab.shortLabel ? (
+                  <>
+                    <span className="sm:hidden">{tab.shortLabel}</span>
+                    <span className="max-sm:hidden">{tab.label}</span>
+                  </>
+                ) : (
+                  <span>{tab.label}</span>
+                )}
                 {tab.count !== undefined && (
                   <span className="workspace-tab-count">{tab.count}</span>
                 )}

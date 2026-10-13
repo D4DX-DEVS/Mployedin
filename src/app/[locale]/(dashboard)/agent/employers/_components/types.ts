@@ -1,3 +1,5 @@
+import type { AccountActivity } from "@/lib/agents/accountActivity";
+
 export interface Employer {
   /** The company profile id. */
   _id: string;
@@ -12,6 +14,8 @@ export interface Employer {
   isAgentVerified?: boolean;
   /** Assigned to me (not only in my region) — posting jobs and entering the account need it. */
   assignedToMe?: boolean;
+  /** Open jobs, the week's new applicants, interviews ahead and hires. */
+  activity?: AccountActivity;
 }
 
 /** What the table does with a row; the page owns the handlers. */

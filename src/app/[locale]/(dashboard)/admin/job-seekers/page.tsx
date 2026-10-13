@@ -18,7 +18,7 @@ import { usePagination } from "@/hooks/usePagination";
 import {
   Pencil, Trash2, Ban, Briefcase,
   GraduationCap, Globe, Award, Inbox, Download, Contact, CalendarDays, AlignLeft, BadgeCheck, FileText,
-  FileDown, Loader2, Eye, RotateCcw, X,
+  FileDown, Loader2, Eye, RotateCcw, X, Crown,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
@@ -66,6 +66,7 @@ interface JobSeeker {
   preferredLocations?: string[];
   cv?: { originalUrl?: string };
   referralSummary?: ReferralSummary;
+  badges?: string[];
   createdAt: string;
 }
 
@@ -510,14 +511,52 @@ export default function AdminJobSeekersPage() {
   const canDelete = can("job_seekers", "delete");
   const columnCount = 8;
 
+  // Premium = the `premium` entry in badges[]; the route also re-stamps the
+  // seeker's applications as priority (or takes it back).
+  const [premiumPendingId, setPremiumPendingId] = useState<string | null>(null);
+  const togglePremium = async (js: JobSeeker) => {
+    const next = !(js.badges ?? []).includes("premium");
+    const name = js.fullName || js.userId?.name || "";
+    setPremiumPendingId(js._id);
+    try {
+      const res = await fetch(`/api/job-seekers/${js._id}/premium`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ premium: next }),
+      });
+      if (!res.ok) {
+        toast.error(tr("premiumUpdateError"));
+        return;
+      }
+      setJobSeekers((rows) => rows.map((r) => r._id !== js._id ? r : {
+        ...r, badges: next ? [...(r.badges ?? []), "premium"] : (r.badges ?? []).filter((b) => b !== "premium"),
+      }));
+      toast.success(next ? tr("premiumGranted", { name }) : tr("premiumRevoked", { name }));
+    } catch {
+      toast.error(tr("premiumUpdateError"));
+    } finally {
+      setPremiumPendingId(null);
+    }
+  };
+
   const rowActionsFor = (js: JobSeeker): { quick: RowAction[]; menu: RowAction[] } => {
     const inactive = js.userId?.isActive === false;
+    const isPremium = (js.badges ?? []).includes("premium");
     return {
       quick: js.cv?.originalUrl
         ? [{ key: "cv", label: tr("viewCvTitle"), icon: Eye, onSelect: () => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" }) }]
         : [],
       menu: [
-        ...(canUpdate ? [{ key: "edit", label: tr("actionEditTitle"), icon: Pencil, onSelect: () => setEditItem(js) }] : []),
+        ...(canUpdate ? [
+          { key: "edit", label: tr("actionEditTitle"), icon: Pencil, onSelect: () => setEditItem(js) },
+          {
+            key: "premium",
+            label: isPremium ? tr("removePremium") : tr("makePremium"),
+            icon: Crown,
+            iconClassName: "text-amber-600",
+            pending: premiumPendingId === js._id,
+            disabled: premiumPendingId === js._id,
+            onSelect: () => { void togglePremium(js); },
+          },
+        ] : []),
         ...(canDelete ? [
           inactive
             ? { key: "reactivate", label: tr("actionReactivateTitle"), icon: RotateCcw, onSelect: () => void handleReactivate(js._id) }
@@ -649,7 +688,15 @@ export default function AdminJobSeekersPage() {
                     <div className="flex min-w-0 flex-col items-start gap-1">
                       <span className="font-medium">{js.fullName || js.userId?.name || "—"}</span>
                       <span className="max-w-[10rem] truncate text-xs text-muted-foreground">{js.email ?? js.userId?.email ?? "—"}</span>
-                      <StatusBadge status={js.userId?.isActive === false ? "inactive" : (js.status ?? "active")} />
+                      <span className="flex flex-wrap items-center gap-1">
+                        <StatusBadge status={js.userId?.isActive === false ? "inactive" : (js.status ?? "active")} />
+                        {js.badges?.includes("premium") && (
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                            <Crown className="h-3 w-3" aria-hidden="true" />
+                            {tr("premiumChip")}
+                          </span>
+                        )}
+                      </span>
                     </div>
                   </div>
                 </TableCell>

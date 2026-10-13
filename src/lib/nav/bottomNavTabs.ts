@@ -71,11 +71,13 @@ export const WORKSPACE_BOTTOM_NAV_TABS: Partial<Record<UserRole, BottomNavTabCon
     { key: "applications", href: "/job-seeker/applications", icon: "FileText", labelKey: "applications" },
     { key: "profile", href: "/job-seeker/profile", icon: "UserCircle", labelKey: "profile" },
   ],
+  // Three tabs, as employer (owner, 2026-10-13): four made six slots and put
+  // the raised Create control off centre. Commissions is a report, not a
+  // daily destination, so it moved behind "More".
   super_agent: [
     { key: "dashboard", href: "/super-agent", icon: "LayoutDashboard", labelKey: "dashboard", exact: true },
     { key: "agents", href: "/super-agent/agents", icon: "Users", labelKey: "agents" },
     { key: "leads", href: "/super-agent/leads", icon: "Target", labelKey: "leads" },
-    { key: "commissions", href: "/super-agent/commissions", icon: "DollarSign", labelKey: "commissions" },
   ],
 };
 

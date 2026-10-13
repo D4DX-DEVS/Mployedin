@@ -32,6 +32,9 @@ export function ReferralSourceChip({
           {isSA ? t("referredByRoleSuperAgent") : t("referredByRoleAgent")}
         </span>
         {summary.name ? <span className="text-xs text-muted-foreground">{summary.name}</span> : null}
+        {summary.superAgentName ? (
+          <span className="text-[11px] text-muted-foreground">{t("referredUnderSuperAgent", { name: summary.superAgentName })}</span>
+        ) : null}
       </span>
     );
   }

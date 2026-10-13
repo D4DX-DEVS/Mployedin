@@ -24,17 +24,22 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import {
+  Briefcase,
+  Building2,
+  Calendar,
   CalendarPlus,
   Check,
   ChevronRight,
   Gift,
   Inbox,
   Loader2,
+  MapPin,
   Star,
   X,
 } from "lucide-react";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { usePathname } from "next/navigation";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -42,10 +47,13 @@ import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatListDate } from "@/lib/ui/intlFormat";
+import { totalExperience, type DatedJob } from "@/lib/jobseekers/experience";
 
 interface ApplicationItem {
   _id: string;
   status: string;
+  /** A Premium job seeker's application: listed first, badged "Priority". */
+  isPriority?: boolean;
   aiMatchScore?: number;
   appliedAt?: string;
   createdAt: string;
@@ -53,12 +61,15 @@ interface ApplicationItem {
     _id: string;
     title: string;
     location?: { city?: string; country?: string };
+    employerId?: { companyName?: string } | null;
   };
   jobSeekerId?: {
     _id: string;
     userId?: { name?: string };
+    currentLocation?: string;
     skills?: string[];
     totalExperienceYears?: number;
+    experience?: DatedJob[];
   };
   otherApplicationsCount?: number;
 }
@@ -83,6 +94,15 @@ const SCHEDULABLE_STATUSES = new Set(["applied", "shortlisted", "interview_sched
 export default function AgentCandidatesPage() {
   const t = useTranslations("agentCandidates");
   const tc = useTranslations("common");
+  // The stated total, else the dated jobs added up; null when neither says.
+  const experienceLabel = (seeker: ApplicationItem["jobSeekerId"]): string | null => {
+    const total = seeker ? totalExperience(seeker.totalExperienceYears, seeker.experience ?? []) : null;
+    if (!total) return null;
+    return [
+      total.years > 0 ? t("experienceYears", { count: total.years }) : null,
+      total.months > 0 ? t("experienceMonths", { count: total.months }) : null,
+    ].filter(Boolean).join(" ");
+  };
   const pathname = usePathname();
   const locale = pathname?.split("/")[1] ?? "en";
   const pagination = usePagination();
@@ -317,6 +337,7 @@ export default function AgentCandidatesPage() {
     { header: t("tableHeaderCandidate"), key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { userId?: { name?: string } })?.userId?.name ?? "" },
     { header: t("tableHeaderJob"), key: "jobId", formatter: (_v, row) => (row.jobId as { title?: string })?.title ?? "" },
     { header: tc("status"), key: "status" },
+    { header: t("tableHeaderExperience"), key: "jobSeekerId", formatter: (_v, row) => experienceLabel(row.jobSeekerId as ApplicationItem["jobSeekerId"]) ?? "" },
     { header: t("tableHeaderAIMatch"), key: "aiMatchScore", formatter: (v) => v != null ? `${v}%` : "" },
     { header: t("tableHeaderApplied"), key: "createdAt", formatter: (v) => v ? formatListDate(String(v)) : "" },
   ];
@@ -389,6 +410,7 @@ export default function AgentCandidatesPage() {
                 <TableHead>{t("tableHeaderCandidate")}</TableHead>
                 <TableHead>{tc("status")}</TableHead>
                 <TableHead>{t("tableHeaderJob")}</TableHead>
+                <TableHead>{t("tableHeaderExperience")}</TableHead>
                 <TableHead>{t("tableHeaderAIMatch")}</TableHead>
                 <TableHead className="hidden md:table-cell">{t("tableHeaderApplied")}</TableHead>
                 <TableHead className="text-right">{tc("actions")}</TableHead>
@@ -396,10 +418,10 @@ export default function AgentCandidatesPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableBodySkeleton rows={5} cols={6} />
+                <TableBodySkeleton rows={5} cols={7} />
               ) : applications.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={6} className="py-12">
+                  <TableCell colSpan={7} className="py-12">
                     <EmptyState title={t("noCandidatesFound")} description={t("noCandidatesHint")} icon={Inbox} />
                   </TableCell>
                 </TableRow>
@@ -430,6 +452,10 @@ export default function AgentCandidatesPage() {
                     key: "reject",
                     label: t("rejectCandidateTooltip"),
                     icon: X,
+                    // A lone menu item becomes a button; labelled, it pushed the
+                    // seven-column table out of the panel. The ✕ keeps its name
+                    // as tooltip and accessible label.
+                    iconOnly: true,
                     destructive: true,
                     disabled: busy,
                     onSelect: () => { setRejectError(""); setRejectReason(""); setRejectApp(app); },
@@ -437,30 +463,59 @@ export default function AgentCandidatesPage() {
                 }
                 return (
                   <TableRow key={app._id} className="group">
-                    <TableCell>
+                    <TableCell className="max-w-[200px]">
                       <div className="flex min-w-0 items-center gap-3">
                         <UserAvatar name={app.jobSeekerId?.userId?.name} className="h-9 w-9 shrink-0" colorful />
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">{name}</p>
-                          {app.jobSeekerId?.totalExperienceYears != null && (
-                            <p className="whitespace-nowrap text-xs text-muted-foreground">{t("yearsExperience", { years: app.jobSeekerId.totalExperienceYears })}</p>
-                          )}
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <p className="truncate text-sm font-medium text-foreground">{name}</p>
+                            {app.isPriority ? <PriorityBadge size="xs" /> : null}
+                          </div>
+                          {app.jobSeekerId?.currentLocation ? (
+                            <span className="mt-0.5 inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground">
+                              <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                              <span className="truncate">{app.jobSeekerId.currentLocation}</span>
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                     </TableCell>
                     {/* Status second: a collapsed phone card shows cells 1–2. */}
                     <TableCell><StatusBadge status={app.status} /></TableCell>
-                    <TableCell className="max-w-[220px] truncate text-sm text-muted-foreground" title={app.jobId?.title}>{app.jobId?.title ?? "—"}</TableCell>
+                    <TableCell className="max-w-[200px]">
+                      <p className="truncate text-sm text-foreground/80" title={app.jobId?.title}>{app.jobId?.title ?? "—"}</p>
+                      {app.jobId?.employerId?.companyName ? (
+                        <span className="mt-0.5 inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground">
+                          <Building2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{app.jobId.employerId.companyName}</span>
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-foreground">
+                      {experienceLabel(app.jobSeekerId) ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Briefcase className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                          <span>{experienceLabel(app.jobSeekerId)}</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground" title={t("experienceNotStated")}>—</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className={`flex items-center gap-1 text-sm font-medium ${matchScoreColor(app.aiMatchScore)}`}>
                         <Star className="h-3.5 w-3.5" aria-hidden="true" />
                         {app.aiMatchScore != null ? `${app.aiMatchScore}%` : "—"}
                       </div>
                     </TableCell>
-                    <TableCell className="hidden text-sm text-muted-foreground md:table-cell">{formatListDate(app.appliedAt ?? app.createdAt, locale)}</TableCell>
+                    <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                        <Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span>{formatListDate(app.appliedAt ?? app.createdAt, locale)}</span>
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right">
                       {quick.length + menu.length > 0 ? (
-                        <RowActions name={name} quick={quick} menu={menu} />
+                        <RowActions labelsFrom="wide" name={name} quick={quick} menu={menu} />
                       ) : null}
                     </TableCell>
                   </TableRow>

@@ -13,6 +13,7 @@ import {
   useReferralLinks,
   useCreateReferralLink,
   useUpdateReferralLink,
+  useDeleteReferralLink,
   ReferralLinkItem,
   ReferralLinkStatus,
   ReferralCreatorRole,
@@ -38,6 +39,7 @@ import {
   X,
   Mail,
   MapPin,
+  Trash2,
 } from "lucide-react";
 
 import {
@@ -145,6 +147,7 @@ export default function SuperAgentReferralLinksPage() {
   const { data, isLoading, isError, refetch } = useReferralLinks(filters);
   const createMutation = useCreateReferralLink();
   const updateMutation = useUpdateReferralLink();
+  const deleteMutation = useDeleteReferralLink();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const newLabelId = useId();
   const newMaxUsesId = useId();
@@ -172,6 +175,17 @@ export default function SuperAgentReferralLinksPage() {
     }
     updateMutation.mutate({ id: link._id, isActive: !link.isActive });
   }, [confirm, t, updateMutation]);
+
+  const handleDeleteLink = useCallback(async (link: ReferralLinkItem) => {
+    const ok = await confirm({
+      title: t("deleteConfirmTitle"),
+      message: t("deleteConfirmMessage", { code: link.code }),
+      confirmLabel: t("deleteButton"),
+      variant: "destructive",
+    });
+    if (!ok) return;
+    deleteMutation.mutate(link._id);
+  }, [confirm, t, deleteMutation]);
 
   const links = data?.links ?? [];
   const total = data?.total ?? 0;
@@ -593,6 +607,17 @@ export default function SuperAgentReferralLinksPage() {
                                 disabled: updateMutation.isPending,
                                 onSelect: () => { void handleToggleActive(link); },
                               },
+                              // Own unused links only, as on the agent's page: an agent's
+                              // link may already be posted in their groups.
+                              ...(link.usedCount === 0 && link.creatorRole === "super_agent" ? [{
+                                key: "delete",
+                                label: t("deleteButton"),
+                                icon: Trash2,
+                                destructive: true,
+                                pending: deleteMutation.isPending,
+                                disabled: deleteMutation.isPending,
+                                onSelect: () => { void handleDeleteLink(link); },
+                              }] : []),
                             ]}
                           />
                           <RowExpandToggle

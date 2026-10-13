@@ -4496,3 +4496,244 @@ table.workspace-list-table tbody tr:focus-visible {
     var(--workspace-copilot-gap)
   );
 }
+
+/* Compact phone cards (agent Jobs + Job Seekers, 2026-10-13). The default card
+   stacks every cell as a label/value row and gives the actions a row of their
+   own, so a job was ~210px tall. Here the identity cell (which carries its own
+   phone summary line) sits on the left, the actions sit beside it as icons,
+   and cells with `data-mobile-hidden` fold into that summary. Opt in with
+   `className="compact-phone-cards"` on the <Table>. */
+@media (max-width: 639px) {
+  table.responsive-card-table.compact-phone-cards > tbody > tr:not([data-mobile-spanning-row]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.5rem;
+    align-items: center;
+    padding: 0.625rem 0.75rem;
+  }
+
+  /* Expanded detail rows (skills, profile) span the full card under it. */
+  table.responsive-card-table.compact-phone-cards > tbody > tr > td:not([data-mobile-primary]):not([data-mobile-actions]) {
+    grid-column: 1 / -1;
+  }
+
+  table.responsive-card-table.compact-phone-cards > tbody > tr > td[data-mobile-primary] {
+    grid-column: 1;
+    grid-row: 1;
+    display: block !important;
+    min-height: 0;
+    padding: 0 !important;
+    border-bottom: 0;
+  }
+
+  /* A stacked title / meta / summary block stays a column: the generic primary
+     rule makes it a nowrap flex row, which spread the lines apart. */
+  table.responsive-card-table.compact-phone-cards > tbody > tr > td[data-mobile-primary] > div[class*="space-y"] {
+    display: block !important;
+  }
+
+  table.responsive-card-table.compact-phone-cards > tbody > tr > td[data-mobile-actions] {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    display: flex !important;
+    min-height: 0;
+    margin: 0;
+    padding: 0 !important;
+    border: 0;
+  }
+
+  table.responsive-card-table.compact-phone-cards > tbody > tr > td[data-mobile-actions]::before {
+    content: none;
+  }
+
+  /* No nowrap needed: the actions column is sized to its icons. */
+  table.responsive-card-table.compact-phone-cards > tbody > tr > td[data-mobile-actions] > :where(div, span) {
+    gap: 0.375rem;
+    overflow: visible;
+    background: none;
+  }
+
+  /* Icon-only on the card; the label stays as aria-label + title. */
+  table.responsive-card-table.compact-phone-cards > tbody > tr > td[data-mobile-actions] :where(button, a) {
+    width: 2.5rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    height: 2.5rem;
+    padding: 0 !important;
+    justify-content: center;
+  }
+
+  table.responsive-card-table.compact-phone-cards > tbody > tr > td[data-mobile-actions] :where(button, a)::after {
+    content: none !important;
+  }
+
+  table.responsive-card-table.compact-phone-cards > tbody > tr > td[data-mobile-actions] :where(button, a) > span:not(.sr-only) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  /* A card with nothing left to expand draws no chevron. */
+  table.responsive-card-table.compact-phone-cards > tbody > tr:not(:has(> td:not([data-mobile-hidden]):not([data-mobile-primary]):not([data-mobile-actions])))::after {
+    content: none;
+  }
+
+  table.responsive-card-table.compact-phone-cards > tbody > tr:not(:has(> td:not([data-mobile-hidden]):not([data-mobile-primary]):not([data-mobile-actions]))) {
+    cursor: default;
+  }
+
+  /* With the chevron gone the identity block can use the full width. */
+  table.responsive-card-table.compact-phone-cards > tbody > tr:not(:has(> td:not([data-mobile-hidden]):not([data-mobile-primary]):not([data-mobile-actions]))) > td:nth-child(1) {
+    padding-inline-end: 0 !important;
+  }
+}
+
+/* Pagination as the last thing on a phone page (2026-10-13). The workspace
+   scroller reserves tab bar + Copilot button + two gaps (136px) so the last
+   card clears the button, but under a pagination row that left ~100px of
+   blank space above a 50px tab bar. The row is start-aligned on phones
+   (PaginationControls) and the button sits at inline-end, so they can share a
+   line: reserve the tab bar only. From `sm` the row keeps the button's width
+   free at its inline end (sm:pe-16), so the same holds on tablets; desktop
+   has no tab bar, so 1rem. Pages that do not end in pagination keep the
+   full Copilot reserve (QA EMP-018). */
+@media (max-width: 1023px) {
+  .dashboard-shell-workspace .dashboard-main-workspace:has(.page-container > [data-pagination-footer]:last-child) {
+    padding-bottom: calc(var(--workspace-mobile-nav-height) + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(var(--workspace-mobile-nav-height) + env(safe-area-inset-bottom));
+  }
+}
+@media (min-width: 1024px) {
+  .dashboard-shell-workspace .dashboard-main-workspace:has(.page-container > [data-pagination-footer]:last-child) {
+    padding-bottom: 1rem;
+    scroll-padding-bottom: 1rem;
+  }
+}
+
+/* Staff workspaces on phones (agent / super-agent / admin; employer is the
+   frozen reference and keeps its own cards), 2026-10-13.
+   1. A collapsed card was name / "Status" row / actions row. The cell after
+      the identity (status, priority, the job) now sits on the left of the
+      actions row, label-less, so the card is two rows instead of three.
+      Rows led by a selection checkbox keep their own layout, and tables that
+      opted into `compact-phone-cards` already put the actions beside the name.
+   2. Header: the identity block took its full one-line width as its basis, so
+      a long subtitle pushed the "+" button onto a row of its own. Let it
+      shrink (the subtitle is line-clamped anyway). */
+@media (max-width: 639px) {
+  .dashboard-shell-admin table.responsive-card-table:not(.compact-phone-cards):has(> tbody > tr > td[data-mobile-actions]) > tbody > tr:not([data-mobile-spanning-row]):not(:has(> td:first-child [role="checkbox"])) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.5rem;
+    align-items: center;
+  }
+
+  .dashboard-shell-admin table.responsive-card-table:not(.compact-phone-cards):has(> tbody > tr > td[data-mobile-actions]) > tbody > tr:not([data-mobile-spanning-row]):not(:has(> td:first-child [role="checkbox"])) > td {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-shell-admin table.responsive-card-table:not(.compact-phone-cards):has(> tbody > tr > td[data-mobile-actions]) > tbody > tr:not([data-mobile-spanning-row]):not(:has(> td:first-child [role="checkbox"])) > td[data-mobile-primary] {
+    grid-row: 1;
+  }
+
+  .dashboard-shell-admin table.responsive-card-table:not(.compact-phone-cards):has(> tbody > tr > td[data-mobile-actions]) > tbody > tr:not([data-mobile-spanning-row]):not(:has(> td:first-child [role="checkbox"])) > td[data-mobile-primary] + td:not([data-mobile-actions]):not([data-mobile-hidden]) {
+    grid-column: 1;
+    grid-row: 2;
+    justify-content: flex-start !important;
+    min-height: 0;
+    padding-block: 0.375rem 0 !important;
+    border-bottom: 0;
+    text-align: start;
+  }
+
+  .dashboard-shell-admin table.responsive-card-table:not(.compact-phone-cards):has(> tbody > tr > td[data-mobile-actions]) > tbody > tr:not([data-mobile-spanning-row]):not(:has(> td:first-child [role="checkbox"])) > td[data-mobile-primary] + td:not([data-mobile-actions]):not([data-mobile-hidden])::before {
+    content: none;
+  }
+
+  .dashboard-shell-admin table.responsive-card-table:not(.compact-phone-cards):has(> tbody > tr > td[data-mobile-actions]) > tbody > tr:not([data-mobile-spanning-row]):not(:has(> td:first-child [role="checkbox"])) > td[data-mobile-primary] + td:not([data-mobile-actions]):not([data-mobile-hidden]) :is(div, span) {
+    justify-content: flex-start !important;
+    text-align: start;
+  }
+
+  .dashboard-shell-admin table.responsive-card-table:not(.compact-phone-cards):has(> tbody > tr > td[data-mobile-actions]) > tbody > tr:not([data-mobile-spanning-row]):not(:has(> td:first-child [role="checkbox"])) > td[data-mobile-actions] {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 0;
+    padding-top: 0.375rem !important;
+    border-top: 0;
+  }
+
+  /* The identity row no longer has a divider under it once the status moved
+     up; keep one line between the card face and the expanded details. */
+  .dashboard-shell-admin table.responsive-card-table:not(.compact-phone-cards):has(> tbody > tr > td[data-mobile-actions]) > tbody > tr:not([data-mobile-spanning-row]):not(:has(> td:first-child [role="checkbox"])) > td[data-mobile-primary] {
+    border-bottom: 0;
+  }
+
+  .dashboard-shell-admin .workspace-header-identity {
+    flex: 1 1 0;
+    min-width: 11rem;
+  }
+}
+
+/* …but three or more actions need the card's full width: beside the status
+   they squeezed it until the badges slid under the buttons (agent Employers,
+   Offers). Those rows keep the status on its own line, label-less, and the
+   actions on the line below. */
+@media (max-width: 639px) {
+  .dashboard-shell-admin table.responsive-card-table:not(.compact-phone-cards) > tbody > tr:not([data-mobile-spanning-row]):not(:has(> td:first-child [role="checkbox"])):has(> td[data-mobile-actions] > :where(div, span) > :nth-child(3)) > td[data-mobile-primary] + td:not([data-mobile-actions]):not([data-mobile-hidden]) {
+    grid-column: 1 / -1;
+  }
+
+  .dashboard-shell-admin table.responsive-card-table:not(.compact-phone-cards) > tbody > tr:not([data-mobile-spanning-row]):not(:has(> td:first-child [role="checkbox"])):has(> td[data-mobile-actions] > :where(div, span) > :nth-child(3)) > td[data-mobile-actions] {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+}
+
+/* Agent home header on phones: the context line carries the region pill, the
+   super-agent pill and the queue line; let it wrap instead of clamping to one
+   line, which cut the super agent off as "…". */
+@media (max-width: 639px) {
+  .agent-smart-header .workspace-header-context > span:first-child {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+  }
+}
+
+/* An EmptyState inside a full-width table row on phones: the generic "plain
+   div in a cell becomes a flex row" rule laid its icon, title, text and button
+   side by side ("No / tasks / assign / ed yet"). Keep it a centred block. */
+@media (max-width: 639px) {
+  table.responsive-card-table > tbody > tr > td[colspan] > [data-empty-state] {
+    display: block !important;
+    text-align: center !important;
+  }
+}
+
+/* rebuild nudge 2026-10-13 mobile r1 */
+
+/* rebuild nudge 2026-10-13 pagination desktop */
+
+/* Staff pagination on phones (owner 2026-10-13): centred. "1–10 / 189" already
+   says where you are, so the "1 / 19" counter goes; that leaves the row narrow
+   enough to centre without the Copilot button (inline-end, above the tab bar)
+   covering "next" at 390px and up. Employer keeps its own footer. */
+@media (max-width: 639px) {
+  .dashboard-shell-admin [data-pagination-footer] {
+    justify-content: center;
+    padding-inline-end: 0.25rem;
+  }
+  .dashboard-shell-admin [data-pagination-footer] [data-page-indicator] {
+    display: none;
+  }
+}
+
+/* rebuild nudge 2026-10-13 pagination phone centre */

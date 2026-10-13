@@ -6,6 +6,7 @@ import { validateBody } from "@/lib/validators";
 import { agentTaskCreateSchema } from "@/lib/validators/agent-tasks";
 import mongoose from "mongoose";
 import AgentTask from "@/models/AgentTask";
+import User from "@/models/User";
 
 
 
@@ -36,11 +37,15 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   // The calendar asks for one month of due dates at a time.
   const dueFrom = url.searchParams.get("dueFrom") ?? "";
   const dueTo = url.searchParams.get("dueTo") ?? "";
+  // assigned = given by a super agent / admin; personal = the agent's own to-dos.
+  const kind = url.searchParams.get("kind") ?? "";
 
   const filter: Record<string, unknown> = { userId: ctx.userId };
   if (status && status !== "all") filter.status = status;
   if (priority && priority !== "all") filter.priority = priority;
   if (search) filter.title = { $regex: escapeRegex(search), $options: "i" };
+  if (kind === "assigned") filter["assignedBy.userId"] = { $exists: true };
+  else if (kind === "personal") filter["assignedBy.userId"] = { $exists: false };
   if (due === "overdue") {
     filter.dueDate = { $ne: null, $lt: new Date() };
     if (!filter.status) filter.status = { $ne: "completed" };
@@ -71,6 +76,12 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   ]);
   const statusCounts = Object.fromEntries(statusRows.map((row) => [row._id, row.count]));
 
+  const assignerIds = [...new Set(items.map((t) => String(t.assignedBy?.userId ?? "")).filter(Boolean))];
+  const assigners = assignerIds.length
+    ? await User.find({ _id: { $in: assignerIds } }).select("_id name").lean<Array<{ _id: unknown; name?: string }>>()
+    : [];
+  const assignerNames = new Map(assigners.map((u) => [String(u._id), u.name ?? ""]));
+
   return NextResponse.json({
     total,
     page,
@@ -93,6 +104,14 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
       category: t.category,
       relatedTo: t.relatedTo,
       createdAt: t.createdAt,
+      ...(t.assignedBy?.userId
+        ? {
+            assignedBy: { name: assignerNames.get(String(t.assignedBy.userId)) ?? "", role: t.assignedBy.role },
+            reviewStatus: t.reviewStatus ?? "none",
+            completionNote: t.completionNote,
+            reviewComment: t.reviewComment,
+          }
+        : {}),
     })),
   });
 }

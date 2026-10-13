@@ -1,8 +1,8 @@
 "use client";
 import { useQueryFlag } from "@/hooks/useQueryFlag";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { FormError, formErrorFromResponse } from "@/lib/errors/form-error";
 import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/passwordPolicy";
@@ -13,13 +13,14 @@ import {
 } from "@/components/ui/table";
 import {
   Building2, DollarSign,
-  Link2, LogIn, Mail, ShieldCheck, UserPlus, Users,
+  Link2, LogIn, Mail, MapPin, ShieldCheck, UserPlus, Users,
 } from "lucide-react";
+import { WorkspaceTabs, type WorkspaceTab } from "@/components/shared/WorkspaceTabs";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
-import { useUrlFilters } from "@/hooks/useUrlFilter";
+import { useUrlFilter, useUrlFilters } from "@/hooks/useUrlFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   SuperAgentPageIntro,
@@ -51,7 +52,12 @@ interface Employer {
   jobCount?: number;
   totalPaid?: number;
   isAgentVerified?: boolean;
+  /** Registered in a city of the super agent's region. */
+  inRegion?: boolean;
 }
+
+/** Which employers the list shows (`?view=`), as on the agent's page. */
+const VIEWS = ["all", "region"] as const;
 
 /* ── Filter types ── */
 interface Filters extends Record<string, string> {
@@ -122,6 +128,31 @@ export default function SuperAgentEmployersPage() {
   const [facets, setFacets] = useState<Facets>({ industries: [], locations: [] });
   const [serverStats, setServerStats] = useState<{ total: number; active: number; assigned: number } | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
+
+  // All employers | In my region — the agent's region view, over the super
+  // agent's territory. Kept apart from the filters so Clear keeps the tab.
+  const [view] = useUrlFilter("view", "all", { allow: VIEWS });
+  const [regionAssigned, setRegionAssigned] = useState(true);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const viewHref = (next: string) => {
+    const query = new URLSearchParams(searchParams.toString());
+    query.delete("page");
+    if (next === "all") query.delete("view"); else query.set("view", next);
+    const qs = query.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  };
+  const viewTabs: WorkspaceTab[] = [
+    { key: "all", label: t("area.viewAll"), href: viewHref("all"), icon: Building2 },
+    { key: "region", label: t("area.viewRegion"), href: viewHref("region"), icon: MapPin },
+  ];
+  // A tab switch starts at page 1; not on mount, so a shared ?page= link works.
+  const lastView = useRef(view);
+  useEffect(() => {
+    if (lastView.current === view) return;
+    lastView.current = view;
+    resetPage();
+  }, [view, resetPage]);
   // Addressable as ?new=1: the global Create menu links straight to the
   // onboarding modal, which previously opened only from this page's own button.
   const [onboardOpen, setOnboardOpen] = useQueryFlag("new");
@@ -203,6 +234,7 @@ export default function SuperAgentEmployersPage() {
       if (filters.verified) params.set("verified", filters.verified);
       if (filters.sortBy) params.set("sortBy", filters.sortBy);
       if (filters.sortOrder) params.set("sortOrder", filters.sortOrder);
+      if (view === "region") params.set("view", "region");
 
       const res = await fetch(`/api/employers?${params}`);
       if (res.ok) {
@@ -211,6 +243,7 @@ export default function SuperAgentEmployersPage() {
         updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? data.employers?.length ?? 0);
         if (data.stats) setServerStats(data.stats);
         if (data.facets) setFacets(data.facets);
+        setRegionAssigned(data.regionAssigned !== false);
       } else {
         setError(true);
       }
@@ -219,7 +252,7 @@ export default function SuperAgentEmployersPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, page, limit, updateTotal]);
+  }, [filters, view, page, limit, updateTotal]);
 
   useEffect(() => {
     const t = setTimeout(loadEmployers, 300);
@@ -316,6 +349,8 @@ export default function SuperAgentEmployersPage() {
       <SuperAgentSection title={t("sectionTitle")} className="[&>div:first-child]:sr-only">
         {/* ---- Error State ---- */}
         {error && <ErrorState onRetry={() => loadEmployers()} />}
+
+        <WorkspaceTabs tabs={viewTabs} ariaLabel={t("area.viewLabel")} activeKey={view} className="mb-3" />
 
         {/* ── Search + everyday filters in plain sight, the rest behind More ── */}
         <InlineFilterBar
@@ -442,7 +477,15 @@ export default function SuperAgentEmployersPage() {
               ) : employers.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={5} className="py-12">
-                    <EmptyState title={t("noEmployersFound")} description={t("noEmployersHint")} icon={Building2} />
+                    {view === "region" && activeFilterCount === 0 && !filters.search ? (
+                      <EmptyState
+                        title={regionAssigned ? t("area.emptyTitle") : t("area.noRegionTitle")}
+                        description={regionAssigned ? t("area.emptyDescription") : t("area.noRegionDescription")}
+                        icon={MapPin}
+                      />
+                    ) : (
+                      <EmptyState title={t("noEmployersFound")} description={t("noEmployersHint")} icon={Building2} />
+                    )}
                   </TableCell>
                 </TableRow>
               ) : employers.map((em) => (
@@ -457,6 +500,15 @@ export default function SuperAgentEmployersPage() {
                             <span className="text-[11px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">{t("verified")}</span>
                           )}
                           <StatusBadge status={em.isActive ? "active" : "inactive"} />
+                          {em.inRegion && (
+                            <span
+                              className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                              title={t("area.chipHint")}
+                            >
+                              <MapPin className="h-3 w-3" aria-hidden="true" />
+                              {t("area.chip")}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
