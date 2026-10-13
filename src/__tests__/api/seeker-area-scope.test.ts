@@ -17,6 +17,9 @@ jest.mock("@/lib/auth/withAuth", () => ({
       handler(req, { userId: "staff_1", role: ctxRole, locale: "en" }),
 }));
 jest.mock("@/lib/referrals/summary", () => ({ decorateReferralSummaries: jest.fn(async (items: unknown[]) => items) }));
+// The list adds each seeker's hiring status from their applications.
+const applicationAggregate = jest.fn(async (_pipeline?: unknown) => [] as unknown[]);
+jest.mock("@/models/Application", () => ({ __esModule: true, default: { aggregate: (p: unknown) => applicationAggregate(p) } }));
 jest.mock("@/models/User", () => ({ __esModule: true, default: { collection: { name: "users" } } }));
 
 const AGENT_DOC = "660000000000000000000001";

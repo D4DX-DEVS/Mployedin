@@ -207,7 +207,7 @@ function buildFollowUpReminderEmail(
     </div>` : ""}
 
     <div style="text-align:center;margin:24px 0">
-      <a href="${baseUrl}/en/agent/leads" style="background:#0D6FD8;color:#fff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block">Open Lead Pipeline</a>
+      <a href="${baseUrl}/en/agent/leads" style="background:#0D6FD8;color:#fff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block">Open your leads</a>
     </div>
 
     <p style="color:#9ca3af;font-size:12px;margin:20px 0 0;text-align:center">

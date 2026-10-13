@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { useCandidateDetail, type Candidate, type CandidateJob } from "@/hooks/useCandidates";
 import { ScoreRing, matchBandLabel } from "./ScoreRing";
 import { ReferredBadge } from "@/components/shared/ReferredBadge";
+import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { formatCount } from "@/lib/ui/intlFormat";
 
@@ -284,7 +285,12 @@ export function CandidateDetailPanel({
           </Avatar>
           <div className="min-w-0 flex-1">
             <h2 className="heading-section line-clamp-2 font-bold text-foreground">{name}</h2>
-            {(detail?.isAgentReferred ?? candidate.isAgentReferred) ? <ReferredBadge className="mt-1" /> : null}
+            {candidate.isPriority || (detail?.isAgentReferred ?? candidate.isAgentReferred) ? (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {candidate.isPriority ? <PriorityBadge /> : null}
+                {(detail?.isAgentReferred ?? candidate.isAgentReferred) ? <ReferredBadge /> : null}
+              </div>
+            ) : null}
             <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
               <Briefcase className="h-3.5 w-3.5 shrink-0" />
               <span className="line-clamp-1">{currentRole}</span>

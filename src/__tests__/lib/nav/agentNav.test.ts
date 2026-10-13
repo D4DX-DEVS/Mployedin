@@ -92,6 +92,14 @@ describe("agent navigation", () => {
     ]);
   });
 
+  it("splits Jobs into the agent's own jobs and the portal-wide browse", () => {
+    const jobs = topLevel.find((item) => item.title === "Jobs");
+    expect(jobs?.children?.map((child) => [child.title, child.href])).toEqual([
+      ["My jobs", "/en/agent/jobs"],
+      ["Browse jobs", "/en/agent/browse-jobs"],
+    ]);
+  });
+
   it("has no sales-course group headings", () => {
     const groups = flatten(topLevel).map((item) => item.group).filter(Boolean);
     expect(groups).toEqual([]);

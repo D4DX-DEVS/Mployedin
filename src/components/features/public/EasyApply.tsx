@@ -20,6 +20,7 @@ import { PhoneInput } from "@/components/shared/PhoneInput";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { applyErrorKey } from "@/lib/applications/applyErrors";
+import { useJobShareReferral } from "@/lib/referrals/useJobShareReferral";
 
 export interface EasyApplyScreeningQuestion {
   id: string;
@@ -105,6 +106,9 @@ function EasyApplyFlow({
   const t = useTranslations("easyApply");
   const { data: session, status, update } = useSession();
   const router = useRouter();
+  // A job an agent shared carries ?ref=: applying here as a new seeker
+  // credits that agent, like a /register?ref= sign-up.
+  const referralCredentials = useJobShareReferral();
 
   // ── Anonymous CV-first flow (shared-link visitors) ──────────────────────────
   const [anonCvFile, setAnonCvFile] = useState<File | null>(null);
@@ -384,14 +388,14 @@ function EasyApplyFlow({
     try {
       const result = await signInWithPopup(firebaseAuth, googleProvider);
       const idToken = await result.user.getIdToken();
-      let res = await signIn("firebase", { idToken, redirect: false });
+      let res = await signIn("firebase", { idToken, ...referralCredentials(), redirect: false });
       if ((res as { code?: string } | undefined)?.code === CONSENT_REQUIRED_CODE) {
         if (!(await askSignupConsent())) {
           setAnonError(t("signupConsentNeeded"));
           setAnonPhase("idle");
           return;
         }
-        res = await signIn("firebase", { idToken, ...signupConsentCredentials(), redirect: false });
+        res = await signIn("firebase", { idToken, ...referralCredentials(), ...signupConsentCredentials(), redirect: false });
       }
       if (res?.error) {
         if ((res as { code?: string }).code === "account_inactive") {
@@ -483,6 +487,7 @@ function EasyApplyFlow({
       let res = await signIn("email-otp", {
         email: anonEmail,
         otp: anonOtpCode,
+        ...referralCredentials(),
         redirect: false,
       });
       // A code that would make a new account waits for the Terms & Privacy
@@ -493,7 +498,7 @@ function EasyApplyFlow({
           setAnonPhase("idle");
           return;
         }
-        res = await signIn("email-otp", { email: anonEmail, otp: anonOtpCode, ...signupConsentCredentials(), redirect: false });
+        res = await signIn("email-otp", { email: anonEmail, otp: anonOtpCode, ...referralCredentials(), ...signupConsentCredentials(), redirect: false });
       }
 
       if (res?.error) {

@@ -2,21 +2,20 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Search, Inbox, FileText, Image, Video,
+  Inbox, FileText, Image, Video,
   Download, Eye, Tag, History,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations } from "next-intl";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { formatFileSize } from "@/lib/ui/fileSize";
 
@@ -42,7 +41,6 @@ const SORT_OPTIONS = [
 
 export default function ResourceDownloadsPage() {
   const t = useTranslations("resources");
-  const tc = useTranslations("common");
   const [items, setItems] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -89,24 +87,18 @@ export default function ResourceDownloadsPage() {
         context={t("downloadsSubtitle")}
       />
 
-      {/* Search and filters sit with the list, not in the header (Pattern A). */}
-      <div className="flex w-full flex-col gap-2" data-table-toolbar="simple">
-        <div className="relative toolbar-search-field">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full pl-9 text-sm" />
-        </div>
-        <div className="flex min-w-0 gap-2 sm:items-center">
-          <div className="flex-1 min-w-0">
-            <SearchableSelect options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <SearchableSelect options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} />
-          </div>
-          {categoryFilter !== "all" && (
-            <button onClick={() => setCategoryFilter("all")} className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">{t("clear")}</button>
-          )}
-        </div>
-      </div>
+      {/* Search and filters sit with the list, not in the header (Pattern A).
+          The shared bar: the hand-built one dropped its search icon under the
+          input and stranded the selects on phones. */}
+      <InlineFilterBar
+        className="workspace-panel-surface rounded-2xl border-b-0"
+        onClear={categoryFilter !== "all" || search ? () => { setCategoryFilter("all"); setSearch(""); } : undefined}
+        clearLabel={t("clear")}
+      >
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
+        <SearchableSelect id="resources-category" className={INLINE_FILTER_CONTROL} options={CATEGORY_OPTIONS} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("filterCategory")} ariaLabel={t("filterCategory")} />
+        <SearchableSelect id="resources-sort" className={INLINE_FILTER_CONTROL} options={SORT_OPTIONS} value={sortBy} onValueChange={setSortBy} placeholder={t("sortLabel")} ariaLabel={t("sortLabel")} />
+      </InlineFilterBar>
 
       {/* Resource Grid */}
       {loading ? (

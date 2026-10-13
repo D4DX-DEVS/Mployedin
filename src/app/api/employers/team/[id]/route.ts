@@ -175,12 +175,17 @@ async function deleteHandler(
     return NextResponse.json({ error: "Cannot deactivate this member" }, { status: 403 });
   }
 
+  // A pending row is an invite being cancelled: kill its link too, so the
+  // emailed token can never be replayed if the row is ever reissued.
+  const wasInvite = target.status === "pending";
   target.status = "deactivated";
+  target.inviteToken = undefined;
+  target.inviteExpiresAt = undefined;
   await target.save();
 
   await logActivity({
     ...actorFromCtx(ctx),
-    action: "team.deactivate_member",
+    action: wasInvite ? "team.cancel_invite" : "team.deactivate_member",
     resource: "employers",
     resourceId: String(employer._id),
     changes: { after: { email: target.email, status: "deactivated" } },

@@ -2,8 +2,6 @@ import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
 import { connectDB } from "@/lib/db/mongoose";
 import Agent from "@/models/Agent";
-import Employer from "@/models/Employer";
-import User from "@/models/User";
 import Job from "@/models/Job";
 import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
@@ -16,6 +14,7 @@ import { BriefcaseBusiness, Building2, Goal, Wallet } from "lucide-react";
 import type { WorkspaceMetric } from "@/components/shared/WorkspaceHeader";
 import { AgentTodayQueue, type AgentTodayQueueLabels } from "@/components/features/agent/AgentTodayQueue";
 import {
+  AgentAccounts,
   AgentSmartHeader,
   AgentPipeline,
   AgentRolePerformance,
@@ -25,7 +24,10 @@ import {
 } from "@/components/features/agent/dashboard";
 import { getAgentActionCounts, getAgentQueueItems, resolveAgentScope, EMPTY_AGENT_COUNTS } from "@/lib/agents/workQueue";
 import { resolveAssignedRegions } from "@/lib/agents/assignedRegion";
+import { loadSuperAgentContact } from "@/lib/agents/superAgentContact";
+import { loadAssignedAccounts } from "@/lib/agents/assignedAccounts";
 import { getAgentEmployerIds, getAgentSeekerArea, seekerRegionMatch } from "@/lib/auth/agentRestrictions";
+import { buildBroughtInFilter } from "@/lib/jobseekers/onboarded";
 import { calculateMonthlyAchievements } from "@/lib/targets/profileAchievementCalculator";
 import { formatCurrency } from "@/lib/currency";
 import { isValidTimeZone } from "@/lib/datetime/zone";
@@ -84,22 +86,20 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     { userName },
   );
 
-  // The region an admin assigned, named for the header pill.
-  const assignedRegions = await resolveAssignedRegions(agentDoc, locale);
+  // The region an admin assigned and the super agent they report to, named
+  // for the header pills; and the accounts assigned to the agent, with their
+  // numbers. The accounts tile used to count every active employer in the
+  // agent's region (client feedback 2026-10-12): it counts the assigned ones
+  // now, archived profiles and deactivated logins left out (BUG-03).
+  const [assignedRegions, superAgent, accounts] = await Promise.all([
+    resolveAssignedRegions(agentDoc, locale),
+    loadSuperAgentContact((agentDoc as { superAgentId?: unknown } | null)?.superAgentId),
+    loadAssignedAccounts(((agentDoc?.assignedEmployerIds as unknown[] | undefined) ?? []), now, 5),
+  ]);
 
   const agentId = agentDoc?._id;
   // Employers the agent sees — assigned, or registered in their region.
   const visibleEmployerIds = agentId ? await getAgentEmployerIds(String(session.user.id)) : [];
-  // BUG-03: the tile says "Active Accounts", so count only active ones.
-  // isActive lives on User, not Employer — resolve via Employer.userId.
-  let employerCount = visibleEmployerIds.length;
-  if (visibleEmployerIds.length > 0) {
-    const employerUsers = await Employer.find({ _id: { $in: visibleEmployerIds } })
-      .select("userId")
-      .lean<{ userId?: unknown }[]>();
-    const userIds = employerUsers.map((e) => e.userId).filter(Boolean);
-    employerCount = userIds.length > 0 ? await User.countDocuments({ _id: { $in: userIds }, isActive: true }) : 0;
-  }
 
   // Every figure on this page is counted live. The funnel used to read the
   // `performance.*` counters on the Agent document — fire-and-forget
@@ -144,14 +144,18 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       superAgentId: (agentDoc as { superAgentId?: unknown } | null)?.superAgentId,
     });
     const seekerAreaMatch = seekerRegionMatch(seekerArea);
-    const assignedSeekerIds = ((agentDoc as { assignedJobSeekerIds?: unknown[] } | null)?.assignedJobSeekerIds ?? []) as unknown[];
-    const seekerOr: Record<string, unknown>[] = [{ agentId }, { "referral.agentId": agentId }];
-    if (assignedSeekerIds.length > 0) seekerOr.push({ _id: { $in: assignedSeekerIds } });
+    const assignedSeekerIds = ((agentDoc as { assignedJobSeekerIds?: unknown[] } | null)?.assignedJobSeekerIds ?? []) as import("mongoose").Types.ObjectId[];
+    // "Onboarded" = the seekers this agent brought in: created by them, joined
+    // through their referral link, or assigned to them. Counted from sign-up,
+    // not from the seeker finishing their own profile (`isOnboarded`), so a
+    // link sign-up shows at once. Area-only seekers are not theirs.
+    const broughtIn = buildBroughtInFilter(agentId, assignedSeekerIds);
+    const seekerOr: Record<string, unknown>[] = [...((broughtIn.$or as Record<string, unknown>[]) ?? [])];
     if (seekerAreaMatch) seekerOr.push(seekerAreaMatch);
     const seekerScope = { roleArchivedAt: null, $or: seekerOr };
     // The three newest of each, for the spotlight's "latest" rows.
-    const recentSeekers = (filter: Record<string, unknown>) =>
-      JobSeeker.find({ ...seekerScope, ...filter })
+    const recentSeekers = (scope: Record<string, unknown>, filter: Record<string, unknown> = {}) =>
+      JobSeeker.find({ ...scope, ...filter })
         .sort({ createdAt: -1 })
         .limit(3)
         .select("userId currentLocation experience badges referral createdAt")
@@ -165,11 +169,11 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       Lead.countDocuments({ agentId }),
       Lead.countDocuments({ agentId, status: "converted" }),
       Placement.countDocuments(portfolioFilter),
-      JobSeeker.countDocuments({ ...seekerScope, isOnboarded: true }),
+      JobSeeker.countDocuments(broughtIn),
       JobSeeker.countDocuments({ ...seekerScope, badges: "premium" }),
-      JobSeeker.countDocuments({ ...seekerScope, isOnboarded: true, badges: "premium" }),
-      recentSeekers({ isOnboarded: true }),
-      recentSeekers({ badges: "premium" }),
+      JobSeeker.countDocuments({ ...broughtIn, badges: "premium" }),
+      recentSeekers(broughtIn),
+      recentSeekers(seekerScope, { badges: "premium" }),
     ]);
     recentOnboarded = onboardedDocs.map(toSpotlightSeeker);
     recentPremium = premiumDocs.map(toSpotlightSeeker);
@@ -346,11 +350,11 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     {
       label: t("overview.activeAccounts"),
       shortLabel: t("overview.activeAccountsShort"),
-      value: employerCount,
-      href: `/${locale}/agent/employers`,
+      value: accounts.total,
+      href: `/${locale}/agent/employers?view=assigned`,
       icon: Building2,
       tone: "success",
-      ariaLabel: `${t("overview.activeAccounts")}: ${employerCount}`,
+      ariaLabel: `${t("overview.activeAccounts")}: ${accounts.total}`,
     },
     {
       label: t("overview.liveRoles"),
@@ -390,11 +394,14 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         counts={queueCounts}
         activeJobs={activeJobs}
         regions={assignedRegions}
+        superAgent={superAgent}
         metrics={metrics}
         locale={locale}
       />
 
       <AgentTodayQueue items={queueItems} counts={queueCounts} locale={locale} labels={queueLabels} />
+
+      <AgentAccounts rows={accounts.rows} locale={locale} />
 
       <AgentTalentSpotlight
         onboarded={onboardedSeekers}

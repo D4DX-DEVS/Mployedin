@@ -172,10 +172,17 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
 
 export function SuperAgentSection({ eyebrow, title, description, actions, children, className }: SuperAgentSectionProps) {
   const hasHeader = Boolean(title || eyebrow || description || actions);
+  // Phones hide the eyebrow and description, so a section with only those
+  // drew an empty header row plus its margin: ~40px of blank space between
+  // the page header and the filters on most super-agent pages.
+  // Pages that keep the heading for screen readers only pass
+  // `[&>div:first-child]:sr-only`; the body then needs no gap under it either.
+  const headerVisuallyHidden = Boolean(className?.includes("[&>div:first-child]:sr-only"));
+  const hasPhoneHeader = Boolean(title || actions) && !headerVisuallyHidden;
   return (
     <section className={cn("max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none workspace-panel-surface rounded-3xl p-3 sm:p-4 lg:p-5", className)}>
       {hasHeader ? (
-        <div className="flex flex-col gap-2 sm:gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className={cn("flex flex-col gap-2 sm:gap-4 xl:flex-row xl:items-center xl:justify-between", !hasPhoneHeader && !headerVisuallyHidden && "max-sm:hidden")}>
           <div>
             {/* The eyebrow is the disposable half, so it is what drops on a phone.
                 This was inverted: the <h2> carried `eyebrow && "hidden sm:block"`,
@@ -192,7 +199,7 @@ export function SuperAgentSection({ eyebrow, title, description, actions, childr
           {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
         </div>
       ) : null}
-      <div className={cn(hasHeader && "mt-3 sm:mt-5")}>{children}</div>
+      <div className={cn(hasHeader && !headerVisuallyHidden && (hasPhoneHeader ? "mt-3 sm:mt-5" : "sm:mt-5"))}>{children}</div>
     </section>
   );
 }

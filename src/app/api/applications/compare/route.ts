@@ -115,6 +115,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       appliedAt: app.appliedAt,
       aiMatchScore: app.aiMatchScore ?? null,
       isAgentReferred: app.isAgentReferred === true,
+      isPriority: app.isPriority === true,
       matchBreakdown: app.matchBreakdown ?? null,
       requirementsStatus: app.requirementsStatus ?? null,
       // False when the job set no must-haves: "met" then means nothing, so no badge.

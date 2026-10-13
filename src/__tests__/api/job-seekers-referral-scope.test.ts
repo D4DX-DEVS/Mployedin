@@ -12,6 +12,9 @@ jest.mock("@/lib/auth/withAuth", () => ({
       handler(req, { userId: "staff_1", role: ctxRole, locale: "en" }),
 }));
 jest.mock("@/lib/referrals/summary", () => ({ decorateReferralSummaries: jest.fn(async (items: unknown[]) => items) }));
+// The list adds each seeker's hiring status from their applications.
+const applicationAggregate = jest.fn(async (_pipeline?: unknown) => [] as unknown[]);
+jest.mock("@/models/Application", () => ({ __esModule: true, default: { aggregate: (p: unknown) => applicationAggregate(p) } }));
 jest.mock("@/models/User", () => ({ __esModule: true, default: { collection: { name: "users" } } }));
 
 const AGENT_DOC = "660000000000000000000001";
@@ -85,6 +88,23 @@ describe("GET /api/job-seekers — referral scoping", () => {
     Agent.findOne.mockImplementationOnce(() => ({ select: () => ({ lean: async () => null }) }));
     await list();
     expect(cond()).toContain(`"_id":{"$in":[]}`);
+  });
+
+  // The dashboard's "Onboarded job seekers" links here with ?onboarded=1 and
+  // counts the seekers the agent brought in — a link sign-up counts at once,
+  // before the seeker finishes their profile, and area-only seekers don't.
+  it("agent onboarded=1 lists the seekers they brought in, not the isOnboarded flag", async () => {
+    ctxRole = "agent";
+    await list("onboarded=1");
+    const c = cond();
+    expect(c).not.toContain("isOnboarded");
+    expect(c.split(`"referral.agentId":"${AGENT_DOC}"`).length - 1).toBe(2); // scope + onboarded filter
+  });
+
+  it("admin onboarded=1 still means the seeker finished onboarding", async () => {
+    ctxRole = "admin";
+    await list("onboarded=1");
+    expect(cond()).toContain(`"isOnboarded":true`);
   });
 
   it("agent referred=mine narrows to their own referrals", async () => {

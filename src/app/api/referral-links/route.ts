@@ -26,11 +26,12 @@ function generateCode(): string {
 /**
  * GET /api/referral-links
  * List referral links based on role:
- * - agent: own links
- * - super_agent: own links + agents under them
+ * - agent: own links (or all if requesting team's)
+ * - super_agent: own links + agents under them (or just own if mine=1)
  * - admin: all links
  *
- * Query params: page, limit, search, status, creatorRole, dateFrom, dateTo, sortBy, sortOrder
+ * Query params: page, limit, search, status, creatorRole, dateFrom, dateTo, sortBy, sortOrder, mine
+ * mine=1: restrict to caller's own links only (ignores team scope)
  */
 async function handleGet(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
@@ -44,6 +45,7 @@ async function handleGet(req: NextRequest, ctx: AuthCtx) {
   const dateTo = url.searchParams.get("dateTo")?.trim();
   const sortBy = url.searchParams.get("sortBy")?.trim() || "createdAt";
   const sortOrder = url.searchParams.get("sortOrder")?.trim() === "asc" ? 1 : -1;
+  const mineOnly = url.searchParams.get("mine") === "1";
   const skip = (page - 1) * limit;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,15 +60,20 @@ async function handleGet(req: NextRequest, ctx: AuthCtx) {
       await SuperAgent.create({ userId: ctx.userId });
     }
 
-    // Canonical SA scope: getSuperAgentScope(). Do not read sa.agentIds directly.
-    const scope = await getSuperAgentScope(ctx.userId); // ctx.userId — NOT sa._id
-    const teamAgentDocIds = scope?.effectiveAgentIds ?? [];
-    const agentUserIds: string[] = [];
-    if (teamAgentDocIds.length > 0) {
-      const agents = await Agent.find({ _id: { $in: teamAgentDocIds } }).select("userId").lean();
-      agentUserIds.push(...agents.map((a) => a.userId.toString()));
+    // If mine=1, only the caller's own links; otherwise, include team agents' links
+    if (mineOnly) {
+      ownerFilter.createdBy = new mongoose.Types.ObjectId(ctx.userId);
+    } else {
+      // Canonical SA scope: getSuperAgentScope(). Do not read sa.agentIds directly.
+      const scope = await getSuperAgentScope(ctx.userId); // ctx.userId — NOT sa._id
+      const teamAgentDocIds = scope?.effectiveAgentIds ?? [];
+      const agentUserIds: string[] = [];
+      if (teamAgentDocIds.length > 0) {
+        const agents = await Agent.find({ _id: { $in: teamAgentDocIds } }).select("userId").lean();
+        agentUserIds.push(...agents.map((a) => a.userId.toString()));
+      }
+      ownerFilter.createdBy = { $in: [new mongoose.Types.ObjectId(ctx.userId), ...agentUserIds.map((id) => new mongoose.Types.ObjectId(id))] };
     }
-    ownerFilter.createdBy = { $in: [new mongoose.Types.ObjectId(ctx.userId), ...agentUserIds.map((id) => new mongoose.Types.ObjectId(id))] };
   } else if (ctx.role === "admin") {
     // Admin sees all
   } else {

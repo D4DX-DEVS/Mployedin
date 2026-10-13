@@ -14,6 +14,8 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import logger from "@/lib/logger";
 import { canEmployerStartConversation } from "@/lib/dm/employerContacts";
 import { applyLiveAvatars } from "@/lib/dm/liveAvatars";
+import { escapeRegex } from "@/lib/security/sanitize";
+import { getSuperAgentTeamAgentUserIds } from "@/lib/auth/agentRestrictions";
 
 interface AuthCtx { userId: string; role: UserRole; }
 
@@ -42,22 +44,87 @@ function canRolesMessage(from: UserRole, to: UserRole): "yes" | "no" {
 /** Max new conversations a job seeker can create per day */
 const JOB_SEEKER_DAILY_CONV_LIMIT = 10;
 
+/** Conversations per page in the Messages list. */
+const DM_PAGE_DEFAULT = 30;
+const DM_PAGE_MAX = 50;
+
+interface DmCursor { at: Date | null; id: mongoose.Types.ObjectId }
+
+/** Cursor = `<lastMessageAt ms | "none">_<conversation id>` of the last row sent. */
+function parseCursor(raw: string | null): DmCursor | null {
+  if (!raw) return null;
+  const [at, id] = raw.split("_");
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+  if (at === "none") return { at: null, id: new mongoose.Types.ObjectId(id) };
+  const ms = Number(at);
+  if (!Number.isFinite(ms)) return null;
+  return { at: new Date(ms), id: new mongoose.Types.ObjectId(id) };
+}
+
 /**
- * GET /api/dm — list all DM conversations for the current user (excludes customer care)
+ * GET /api/dm — the current user's DM conversations (customer care excluded),
+ * newest message first, one page at a time.
+ *
+ * Query: `limit` (max 50, default 30), `cursor` (the previous page's
+ * `nextCursor`), `search` (the other participant's name, headline or company).
+ * Keyset paging rather than skip: a new message moves a conversation to the
+ * top, and an offset would then repeat or drop rows on the next page.
+ * Conversations with no message yet sort last, newest first.
  */
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
-  const conversations = await Conversation.find({
-    participants: new mongoose.Types.ObjectId(ctx.userId),
-    type: { $ne: "customer_care" },
-  })
-    .sort({ lastMessageAt: -1, updatedAt: -1 })
+  const params = new URL(req.url).searchParams;
+  const limitRaw = parseInt(params.get("limit") ?? "", 10);
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, DM_PAGE_MAX) : DM_PAGE_DEFAULT;
+  const cursor = parseCursor(params.get("cursor"));
+  const search = (params.get("search") ?? "").trim().slice(0, 100);
+  const me = new mongoose.Types.ObjectId(ctx.userId);
+
+  const and: Record<string, unknown>[] = [
+    { participants: me },
+    { type: { $ne: "customer_care" } },
+  ];
+  if (search) {
+    const rx = new RegExp(escapeRegex(search), "i");
+    and.push({
+      participantDetails: {
+        $elemMatch: {
+          userId: { $ne: me },
+          $or: [{ name: rx }, { headline: rx }, { companyName: rx }],
+        },
+      },
+    });
+  }
+  if (cursor) {
+    and.push(
+      cursor.at
+        ? {
+            $or: [
+              { lastMessageAt: { $lt: cursor.at } },
+              { lastMessageAt: cursor.at, _id: { $lt: cursor.id } },
+              { lastMessageAt: null },
+            ],
+          }
+        : { lastMessageAt: null, _id: { $lt: cursor.id } }
+    );
+  }
+
+  const rows = await Conversation.find({ $and: and })
+    .sort({ lastMessageAt: -1, _id: -1 })
+    .limit(limit + 1)
     .lean();
+
+  const hasMore = rows.length > limit;
+  const conversations = hasMore ? rows.slice(0, limit) : rows;
+  const last = conversations[conversations.length - 1] as { _id: unknown; lastMessageAt?: Date | null } | undefined;
+  const nextCursor = hasMore && last
+    ? `${last.lastMessageAt ? new Date(last.lastMessageAt).getTime() : "none"}_${String(last._id)}`
+    : null;
 
   await applyLiveAvatars(conversations);
 
-  return NextResponse.json({ conversations });
+  return NextResponse.json({ conversations, nextCursor });
 }
 
 /**
@@ -119,6 +186,18 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         { error: "Messaging between these roles is not allowed." },
         { status: 403 }
       );
+    }
+
+    // Owner decision 2026-10-13: a super agent starts chats only with agents
+    // in their own team. Existing chats are untouched.
+    if (roleA === "super_agent" && roleB === "agent") {
+      const teamIds = await getSuperAgentTeamAgentUserIds(ctx.userId);
+      if (!teamIds.some((id) => String(id) === String(userB._id))) {
+        return NextResponse.json(
+          { error: "You can message agents in your own team.", code: "not_in_team" },
+          { status: 403 }
+        );
+      }
     }
 
     // Owner decision 2026-10-06 (QA EMP-001): an employer opens conversations

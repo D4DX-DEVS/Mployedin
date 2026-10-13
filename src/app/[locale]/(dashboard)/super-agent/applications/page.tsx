@@ -21,6 +21,7 @@ import {
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -42,6 +43,8 @@ interface ApplicationItem {
   matchScore?: number;
   appliedAt: string;
   source?: string;
+  /** A Premium job seeker's application: listed first, badged "Priority". */
+  isPriority?: boolean;
 }
 
 interface Filters extends Record<string, string> {
@@ -214,7 +217,10 @@ export default function SuperAgentApplicationsPage() {
                     <div className="flex min-w-0 items-center gap-3">
                       <UserAvatar name={a.candidateName} email={a.candidateEmail} className="h-9 w-9 shrink-0" colorful />
                       <div className="min-w-0 space-y-1">
-                        <p className="truncate font-medium text-foreground">{a.candidateName}</p>
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <p className="truncate font-medium text-foreground">{a.candidateName}</p>
+                          {a.isPriority ? <PriorityBadge size="xs" /> : null}
+                        </div>
                         {a.candidateEmail && (
                           <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
                             <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />

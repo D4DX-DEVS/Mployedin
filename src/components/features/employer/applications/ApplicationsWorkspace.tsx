@@ -60,6 +60,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReferredBadge } from "@/components/shared/ReferredBadge";
+import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { AiSearchField, AiSearchResultLine } from "@/components/shared/AiSearchField";
 import { AI_SCORE_BANDS, useAiFilterSearch, type AiApplicationFilters } from "@/hooks/useAiFilterSearch";
@@ -204,6 +205,8 @@ export interface Applicant {
   viewedByEmployerAt?: string;
   /** Snapshot at apply time: the candidate joined through a partner referral. Employers never see who. */
   isAgentReferred?: boolean;
+  /** The candidate is a Premium job seeker: reviewed first, badged "Priority". */
+  isPriority?: boolean;
   appliedAt: string;
   coverLetter?: string;
   matchBreakdown?: { skills?: number; role?: number; experience?: number; education?: number; industry?: number; location?: number; salary?: number; overall?: number };
@@ -2415,6 +2418,7 @@ function TableView({
                         {t("yearsExp", { count: experienceYears })}
                       </span>
                     ) : null}
+                    {app.isPriority ? <PriorityBadge size="xs" /> : null}
                     {app.isAgentReferred ? <ReferredBadge size="xs" /> : null}
                   </div>
                 </div>
@@ -2854,6 +2858,7 @@ function ApplicationDetailsPanel({
                     {candidateName}
                   </a>
                   <BadgeCheck className="h-4 w-4 shrink-0 text-sky-500" />
+                  {app.isPriority ? <PriorityBadge /> : null}
                   {app.isAgentReferred ? <ReferredBadge /> : null}
                   {/* Only worth screen space when the candidate is in play for
                       more than this one job. */}

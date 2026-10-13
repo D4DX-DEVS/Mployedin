@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowRight, BriefcaseBusiness, Building2, Check, Edit2, LogIn, MapPin, Trash2 } from "lucide-react";
+import { ArrowRight, Award, BriefcaseBusiness, Building2, CalendarClock, Check, Edit2, LogIn, MapPin, Trash2, UserPlus, type LucideIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
@@ -9,9 +9,10 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { NO_ACTIVITY } from "@/lib/agents/accountActivity";
 import type { Employer, EmployerListProps } from "./types";
 
-const COLUMN_COUNT = 4;
+const COLUMN_COUNT = 5;
 
 export function EmployerTable({
   employers,
@@ -36,7 +37,7 @@ export function EmployerTable({
       key: "jobs",
       label: t("cardViewJobsTooltip"),
       icon: ArrowRight,
-      href: `/${locale}/agent/jobs?employer=${em._id}`,
+      href: `/${locale}/agent/jobs?employerId=${em._id}`,
     };
     const remove: RowAction[] = canDelete
       ? [{ key: "delete", label: tc("delete"), icon: Trash2, iconOnly: true, destructive: true, onSelect: () => onDelete(em._id) }]
@@ -65,6 +66,33 @@ export function EmployerTable({
     };
   };
 
+  // The account's numbers, one per line: two-by-two, the grid's tracks shrank
+  // below the text at 1366px and each pair ran into the next column. Four
+  // xs lines are the height the row already has. A zero stays printed but
+  // recedes; a row without numbers reads as zeros.
+  const activityCell = (em: Employer) => {
+    const activity = em.activity ?? NO_ACTIVITY;
+    const items: { key: string; icon: LucideIcon; count: number; label: string }[] = [
+      { key: "jobs", icon: BriefcaseBusiness, count: activity.openJobs, label: t("activityOpenJobs", { count: activity.openJobs }) },
+      { key: "new", icon: UserPlus, count: activity.newApplicants, label: t("activityNewApplicants", { count: activity.newApplicants }) },
+      { key: "interviews", icon: CalendarClock, count: activity.upcomingInterviews, label: t("activityInterviews", { count: activity.upcomingInterviews }) },
+      { key: "hires", icon: Award, count: activity.hires, label: t("activityHires", { count: activity.hires }) },
+    ];
+    return (
+      <div className="flex flex-col gap-0.5 text-xs leading-4">
+        {items.map(({ key, icon: Icon, count, label }) => (
+          <span
+            key={key}
+            className={`inline-flex items-center gap-1 whitespace-nowrap ${count > 0 ? "font-medium text-foreground" : "text-muted-foreground"}`}
+          >
+            <Icon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+            {label}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <section className="workspace-panel-surface overflow-hidden rounded-2xl">
       <div className="overflow-x-auto">
@@ -74,6 +102,9 @@ export function EmployerTable({
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[200px]">{t("exportColumnCompany")}</TableHead>
                 <TableHead>{tc("status")}</TableHead>
+                <TableHead>
+                  <span title={t("activityHint")}>{t("columnActivity")}</span>
+                </TableHead>
                 {/* Secondary: below 1280px the row keeps company, status and
                     actions; the export carries both fields. */}
                 <TableHead className="hidden xl:table-cell">{`${t("exportColumnIndustry")} / ${t("exportColumnLocation")}`}</TableHead>
@@ -135,6 +166,7 @@ export function EmployerTable({
                           )}
                         </div>
                       </TableCell>
+                      <TableCell>{activityCell(em)}</TableCell>
                       <TableCell className="hidden text-muted-foreground xl:table-cell">
                         {/* One wrapper: the phone card lays a cell out as a
                             label/value grid, and two loose spans split across it. */}

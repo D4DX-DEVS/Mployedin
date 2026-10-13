@@ -19,6 +19,7 @@ import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import { isPastClosingDate } from "@/lib/jobs/expiry";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
+import { applicationSnapshotFlags } from "@/lib/applications/referralSnapshot";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -54,7 +55,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const [job, seeker, seekerUser] = await Promise.all([
     Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status expiresAt screeningQuestions maxApplicants applicantIds").lean(),
-    JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt documents cv.originalUrl isAgentReferred").lean(),
+    JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt documents cv.originalUrl isAgentReferred badges").lean(),
     User.findById(ctx.userId).select("name").lean(),
   ]);
 
@@ -138,8 +139,8 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     behaviorSignals: signals,
     behaviorScore: bScore,
     // Explicit so the pre-save hook skips its lookup, and so the re-apply
-    // ($set) path below carries the value too.
-    isAgentReferred: (seeker as { isAgentReferred?: boolean }).isAgentReferred === true,
+    // ($set) path below carries the values too.
+    ...applicationSnapshotFlags(seeker as { isAgentReferred?: boolean; badges?: string[] }),
   };
 
   let application;

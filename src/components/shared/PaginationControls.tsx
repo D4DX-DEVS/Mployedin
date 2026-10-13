@@ -77,18 +77,20 @@ export function PaginationControls({
 
   return (
     <div
+      // A page that ends in this row reserves only the tab bar below it on
+      // phones (globals.css), not the Copilot button's full height as well.
+      data-pagination-footer=""
       className={cn(
-        // Phones centre the row: it keeps the next-page button away from the
-        // floating Copilot FAB (fixed, bottom-right) without the old pb-20,
-        // which stacked on the scroll container's own nav reserve and left
-        // ~160px of dead space under the last page of every list.
-        // BUG-008: on desktop the shell reserves no bottom padding (lg:pb-0)
-        // while the FAB docks at bottom:1rem — scrolled to the end, the last
-        // page button and the last row's actions slid underneath it. This
-        // margin only extends the scroll region past the final footer, so it
-        // is invisible until scrolled to the very bottom, where it lifts the
-        // footer exactly clear of the 3rem FAB + 1rem dock offset.
-        "flex flex-row items-center justify-center gap-3 px-1 text-xs sm:justify-between sm:gap-3 sm:px-0 sm:text-[13px] lg:mb-16",
+        // Phones start-align the row: it keeps the next-page button on the
+        // opposite side from the floating Copilot FAB (fixed, inline-end), so
+        // the row can sit level with the button instead of ~100px above it.
+        // BUG-008: from `sm` the row spreads to justify-between and its
+        // last-page button sat under the Copilot FAB (inline-end 1rem, 3rem
+        // wide). It used to be cleared with lg:mb-16 plus the scroller's FAB
+        // reserve, a ~100px blank band under every list (owner, 10-13).
+        // Reserving the FAB's width at the row's inline end clears the button
+        // without the band (globals.css drops the reserve under this row).
+        "flex flex-row items-center justify-start gap-2 px-1 text-xs max-sm:pe-14 sm:justify-between sm:gap-3 sm:ps-0 sm:pe-16 sm:text-[13px]",
         className
       )}
     >
@@ -103,7 +105,9 @@ export function PaginationControls({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {PAGE_SIZE_OPTIONS.map((size) => (
+            {/* A page whose own size is not in the list (Resources uses 20) still
+                shows it: otherwise the trigger rendered empty. */}
+            {(PAGE_SIZE_OPTIONS.includes(limit) ? PAGE_SIZE_OPTIONS : [...PAGE_SIZE_OPTIONS, limit].sort((a, b) => a - b)).map((size) => (
               <SelectItem key={size} value={String(size)}>
                 {formatNumber(size, locale)}
               </SelectItem>
@@ -171,7 +175,7 @@ export function PaginationControls({
             )
           )}
         </div>
-        <span className="px-1 text-muted-foreground whitespace-nowrap tabular-nums lg:hidden">
+        <span data-page-indicator="" className="px-1 text-muted-foreground whitespace-nowrap tabular-nums lg:hidden">
           {formatNumber(page, locale)} / {formatNumber(totalPages, locale)}
         </span>
         <Button

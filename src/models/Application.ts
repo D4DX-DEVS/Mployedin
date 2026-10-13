@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
-import { resolveApplicationReferralFlag } from "@/lib/applications/referralSnapshot";
+import { resolveApplicationPriorityFlag, resolveApplicationReferralFlag } from "@/lib/applications/referralSnapshot";
+import { isPremiumSeeker } from "@/lib/jobseekers/premium";
 
 export type ApplicationStatus =
   | "applied"
@@ -123,6 +124,8 @@ export interface IApplication extends Document {
   autoApplied: boolean;
   /** Snapshot of `JobSeeker.isAgentReferred` when this application was created. Drives referred-first ordering. */
   isAgentReferred: boolean;
+  /** The seeker is Premium: reviewed first and badged "Priority". Set at apply, re-stamped when Premium changes. */
+  isPriority: boolean;
   /** What the candidate wrote when applying (validator caps it at 5,000). */
   coverLetter?: string;
   screeningAnswers?: IScreeningAnswer[];
@@ -244,6 +247,7 @@ const ApplicationSchema = new Schema<IApplication>(
     },
     autoApplied: { type: Boolean, default: false },
     isAgentReferred: { type: Boolean, default: false },
+    isPriority: { type: Boolean, default: false },
     // The apply handler always passed this, but with no path here strict mode
     // dropped it: 0 of 85 applications held a letter while 6 were scored as
     // having a customised one (2026-10-06). Employers never saw any of them.
@@ -281,17 +285,25 @@ const ApplicationSchema = new Schema<IApplication>(
   { timestamps: true }
 );
 
-// Snapshot the seeker's referral state onto every NEW application. Creation
-// sites that already hold the seeker pass `isAgentReferred` explicitly and skip
-// the lookup; every other site (and any future one) gets it from here.
+// Snapshot the seeker's referral and Premium state onto every NEW application.
+// Creation sites that already hold the seeker pass `isAgentReferred` and
+// `isPriority` explicitly and skip the lookup; every other site (and any
+// future one) gets them from here, with one seeker read between them.
 ApplicationSchema.pre("save", async function () {
-  const flag = await resolveApplicationReferralFlag(this, async (jobSeekerId) => {
-    const JobSeekerModel = mongoose.models.JobSeeker;
-    if (!JobSeekerModel) return false;
-    const seeker = await JobSeekerModel.findById(jobSeekerId).select("isAgentReferred").lean();
-    return (seeker as { isAgentReferred?: boolean } | null)?.isAgentReferred === true;
-  });
-  if (flag !== undefined) this.isAgentReferred = flag;
+  let seeker: { isAgentReferred?: boolean; badges?: string[] } | null | undefined;
+  const readSeeker = async (jobSeekerId: unknown) => {
+    if (seeker === undefined) {
+      const JobSeekerModel = mongoose.models.JobSeeker;
+      seeker = JobSeekerModel
+        ? ((await JobSeekerModel.findById(jobSeekerId).select("isAgentReferred badges").lean()) as typeof seeker) ?? null
+        : null;
+    }
+    return seeker;
+  };
+  const referred = await resolveApplicationReferralFlag(this, async (id) => (await readSeeker(id))?.isAgentReferred === true);
+  if (referred !== undefined) this.isAgentReferred = referred;
+  const priority = await resolveApplicationPriorityFlag(this, async (id) => isPremiumSeeker(await readSeeker(id)));
+  if (priority !== undefined) this.isPriority = priority;
 });
 
 ApplicationSchema.index({ jobSeekerId: 1 });

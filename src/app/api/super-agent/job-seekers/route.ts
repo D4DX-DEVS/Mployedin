@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { getSuperAgentScope, getSuperAgentTerritory, seekerRegionMatch } from "@/lib/auth/agentRestrictions";
+import { seekerInRegion, type RegionInfo } from "@/lib/auth/regionMatch";
 import Agent from "@/models/Agent";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
@@ -52,6 +54,13 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const country = url.searchParams.get("country") ?? "";
   const experienceMin = url.searchParams.get("experienceMin") ?? "";
   const availability = url.searchParams.get("availability") ?? "";
+  // ?view=area: only seekers whose own area is in the territory, the same tab
+  // agents have ("In my area").
+  const areaOnly = url.searchParams.get("view") === "area";
+  // ?premium=1: only Premium seekers (badges[] — what referral sign-ups get).
+  const premiumOnly = url.searchParams.get("premium") === "1";
+  // ?agent=<Agent id>: only the seekers that team agent brought in.
+  const agentFilter = url.searchParams.get("agent") ?? "";
 
   /* Dual-scoping: team agents + region-based agents. Admin reads unscoped;
      a super_agent with an empty scope must see nothing. The previous
@@ -64,6 +73,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const conditions: Record<string, unknown>[] = [];
   let scopeCondition: Record<string, unknown> = {};
   let selfSuperAgentId: string | undefined;
+  let territory: RegionInfo | null = null;
+  let areaAssigned = false;
+  /** Team agents by Agent id: name + the seekers assigned to them. */
+  let teamAgents: Array<{ id: string; name: string; assigned: Set<string> }> = [];
 
   if (ctx.role !== "admin") {
     const scope = await getSuperAgentScope(ctx.userId);
@@ -73,25 +86,54 @@ async function handler(req: NextRequest, ctx: AuthContext) {
        seekers this super-agent referred through their own link. A referral is
        provenance, not an assignment, so it never writes `agentId` and has to
        be unioned in here. An empty team and no own link matches nothing. */
-    const agents = await Agent.find({ _id: { $in: agentIds } }).select("assignedJobSeekerIds").lean();
+    const agents = await Agent.find({ _id: { $in: agentIds } })
+      .select("assignedJobSeekerIds userId")
+      .populate("userId", "name email")
+      .lean();
     const seekerIds = agents.flatMap((a: Record<string, unknown>) => (a.assignedJobSeekerIds as string[]) ?? []);
+    teamAgents = agents.map((a: Record<string, unknown>) => {
+      const user = a.userId as { name?: string; email?: string } | null;
+      return {
+        id: String(a._id),
+        name: user?.name || user?.email || "",
+        assigned: new Set(((a.assignedJobSeekerIds as unknown[]) ?? []).map(String)),
+      };
+    });
     const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (sa?._id) selfSuperAgentId = String(sa._id);
     // Plus visible seekers whose area is in the territory (client report
     // 2026-09-30, #5) — hidden profiles never match.
-    const territory = await getSuperAgentTerritory(ctx.userId, scope);
+    territory = await getSuperAgentTerritory(ctx.userId, scope);
     const areaMatch = territory ? seekerRegionMatch(territory) : null;
+    areaAssigned = Boolean(areaMatch);
 
     scopeCondition = {
       $or: [
         { _id: { $in: seekerIds } },
+        // Seekers a team agent added themselves (as /api/job-seekers counts them).
+        { agentId: { $in: agentIds } },
         { "referral.agentId": { $in: agentIds } },
         ...(sa?._id ? [{ "referral.superAgentId": sa._id }] : []),
         ...(areaMatch ? [areaMatch] : []),
       ],
     };
     conditions.push(scopeCondition);
+    // No territory: the area tab is empty, never everyone.
+    if (areaOnly) conditions.push(areaMatch ?? { _id: { $in: [] } });
+    // One team agent's seekers; an id outside the team narrows to nothing.
+    if (agentFilter) {
+      const agent = teamAgents.find((a) => a.id === agentFilter);
+      conditions.push(agent
+        // ObjectIds, not strings: the stats aggregate does not cast.
+        ? (() => {
+            const id = new mongoose.Types.ObjectId(agent.id);
+            const assigned = [...agent.assigned].map((x) => new mongoose.Types.ObjectId(x));
+            return { $or: [{ agentId: id }, { "referral.agentId": id }, { _id: { $in: assigned } }] };
+          })()
+        : { _id: { $in: [] } });
+    }
   }
+  if (premiumOnly) conditions.push({ badges: "premium" });
 
   if (search) {
     const safe = escapeRegex(search);
@@ -147,7 +189,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .select("country currentLocation headline experience totalExperienceYears profileCompleteness skills referral userId createdAt")
+      .select("country currentLocation headline experience totalExperienceYears profileCompleteness skills referral userId createdAt regionCityId regionStateId profileVisibility badges agentId")
       .populate("userId", "name email isActive")
       .lean(),
     JobSeeker.countDocuments(filter),
@@ -173,6 +215,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
           total: { $sum: 1 },
           active: { $sum: { $cond: [{ $eq: [{ $arrayElemAt: ["$account.isActive", 0] }, true] }, 1, 0] } },
           completionSum: { $sum: { $ifNull: ["$profileCompleteness", 0] } },
+          premium: { $sum: { $cond: [{ $in: ["premium", { $ifNull: ["$badges", []] }] }, 1, 0] } },
           experienced: {
             $sum: { $cond: [{ $gte: [{ $ifNull: ["$totalExperienceYears", 0] }, EXPERIENCED_MIN_YEARS] }, 1, 0] },
           },
@@ -220,6 +263,18 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       createdAt: s.createdAt,
       isActive: user?.isActive ?? false,
       referralSummary: s.referralSummary,
+      // Lives in the super agent's territory (their own area is set there).
+      inArea: seekerInRegion(s as { regionCityId?: unknown; regionStateId?: unknown; profileVisibility?: string }, territory),
+      premium: ((s.badges as string[] | undefined) ?? []).includes("premium"),
+      // The team agent the seeker came in through when it was not a referral
+      // (the referral chip names that one): added by them, or assigned to them.
+      agent: (() => {
+        if (s.referral) return undefined;
+        const added = teamAgents.find((a) => a.id === String(s.agentId ?? ""));
+        if (added) return { name: added.name, via: "added" as const };
+        const assigned = teamAgents.find((a) => a.assigned.has(String(s._id)));
+        return assigned ? { name: assigned.name, via: "assigned" as const } : undefined;
+      })(),
     };
   });
 
@@ -230,7 +285,11 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     items: mapped,
     total,
     countries,
+    areaAssigned,
+    // The super agent's team, for the "Agent" filter.
+    agents: teamAgents.map((a) => ({ id: a.id, name: a.name })).sort((x, y) => x.name.localeCompare(y.name)),
     stats: {
+      premium: scopeStats?.premium ?? 0,
       total,
       active: scopeStats?.active ?? 0,
       avgCompletion: scopeTotal > 0 ? Math.round((scopeStats.completionSum ?? 0) / scopeTotal) : 0,

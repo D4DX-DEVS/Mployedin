@@ -7,6 +7,8 @@ import User from "@/models/User";
 import SuperAgent from "@/models/SuperAgent";
 import { getAgentSeekerArea, getSuperAgentScope, getSuperAgentTerritory, seekerRegionMatch } from "@/lib/auth/agentRestrictions";
 import { decorateReferralSummaries, type ReferralViewer } from "@/lib/referrals/summary";
+import { computeHiringStatus, HIRING_STATUSES } from "@/lib/jobseekers/hiringStatus";
+import { applicationStatusesBySeeker } from "@/lib/jobseekers/hiringStatus.server";
 import mongoose from "mongoose";
 import { escapeRegex } from "@/lib/security/sanitize";
 
@@ -39,8 +41,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const experienceYears = parseInt(searchParams.get("experienceYears") ?? "0"); // minimum experience years
   const referred = searchParams.get("referred")?.trim();                // any | agent | super_agent | none | mine
   const view = searchParams.get("view")?.trim();                        // area: only seekers in the caller's area
-  const onboarded = searchParams.get("onboarded")?.trim();              // "1": only isOnboarded seekers (dashboard deep-link)
+  const onboarded = searchParams.get("onboarded")?.trim();              // "1": agent = seekers they brought in; others = isOnboarded (dashboard deep-link)
   const premium = searchParams.get("premium")?.trim();                  // "1": only badges[] = premium (dashboard deep-link)
+  const hiringStatusParam = searchParams.get("hiringStatus")?.trim();   // placed|offer|interviewing|shortlisted|applied|notProgressed|waiting
 
   // ── Agent scoping — an agent sees only their own job seekers ───
   let agentScopeFilter: Record<string, unknown> = {};
@@ -51,6 +54,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // tells the rows they own (and may edit) from the ones they can only view.
   let areaMatch: Record<string, unknown> | null = null;
   let ownsRow: ((row: Record<string, unknown>) => boolean) | null = null;
+  // An agent's own seekers (created, referred, assigned): what "Onboarded" on
+  // their dashboard counts, so ?onboarded=1 lists exactly those.
+  let agentBroughtIn: Record<string, unknown> | null = null;
   if (ctx.role === "agent") {
     const agent = await Agent.findOne({ userId: ctx.userId })
       .select("assignedJobSeekerIds assignedCityIds assignedStateIds superAgentId")
@@ -71,6 +77,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         { "referral.agentId": agentDocId },
       ];
       if (assignedIds.length > 0) orConds.push({ _id: { $in: assignedIds } });
+      agentBroughtIn = { $or: orConds };
       areaMatch = seekerRegionMatch(await getAgentSeekerArea({
         assignedCityIds: (agent?.assignedCityIds as mongoose.Types.ObjectId[]) ?? [],
         assignedStateIds: (agent?.assignedStateIds as mongoose.Types.ObjectId[]) ?? [],
@@ -150,7 +157,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     filterConditions.push({ skills: { $in: skills.map(s => new RegExp(escapeRegex(s), "i")) } });
   }
   if (hasCV === "1") filterConditions.push({ "cv.originalUrl": { $exists: true, $ne: "" } });
-  if (onboarded === "1") filterConditions.push({ isOnboarded: true });
+  if (onboarded === "1") {
+    if (ctx.role === "agent") filterConditions.push(agentBroughtIn ?? { _id: { $in: [] } });
+    else filterConditions.push({ isOnboarded: true });
+  }
   if (premium === "1") filterConditions.push({ badges: "premium" });
   if (jobType) filterConditions.push({ preferredJobType: jobType });
   if (education) {
@@ -234,6 +244,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
   if (experienceYears > 0) {
     filterConditions.push({ totalExperienceYears: { $gte: experienceYears } });
+  }
+
+  // ── Hiring status ("placed", "interviewing", "waiting"…) ──
+  // Derived from applications, so it can't be a plain field match. Worked out
+  // last, over only the seekers every other filter (scope included) already
+  // allows — never over the whole platform.
+  if (hiringStatusParam && (HIRING_STATUSES as readonly string[]).includes(hiringStatusParam)) {
+    const candidates = await JobSeeker.find({ $and: filterConditions }).select("_id").lean<Array<{ _id: mongoose.Types.ObjectId }>>();
+    const statuses = await applicationStatusesBySeeker(candidates.map((c) => c._id));
+    const matching = candidates
+      .filter((c) => computeHiringStatus(statuses.get(String(c._id)) ?? []) === hiringStatusParam)
+      .map((c) => c._id);
+    filterConditions.push({ _id: { $in: matching } });
   }
 
   // ── Sort option ───────────────────────────────────────────
@@ -336,9 +359,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
    */
   async function respond(rows: Array<Record<string, unknown>>, total: number) {
     const owned = ownsRow;
-    const marked = owned ? rows.map((row) => ({ ...row, staffAccess: owned(row) ? "own" : "area" })) : rows;
+    const marked: Array<Record<string, unknown>> = owned ? rows.map((row) => ({ ...row, staffAccess: owned(row) ? "own" : "area" })) : rows;
+
+    // Where each seeker on this page stands across their applications.
+    const statuses = await applicationStatusesBySeeker(rows.map((row) => row._id));
+    const withHiringStatus: Array<Record<string, unknown>> = marked.map((row) => ({
+      ...row,
+      hiringStatus: computeHiringStatus(statuses.get(String(row._id)) ?? []),
+    }));
+
     return NextResponse.json({
-      items: await decorateReferralSummaries(marked, viewer),
+      items: await decorateReferralSummaries(withHiringStatus, viewer),
       total,
       page,
       totalPages: Math.ceil(total / limit),

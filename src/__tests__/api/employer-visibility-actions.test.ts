@@ -33,6 +33,11 @@ jest.mock("@/lib/auth/agentRestrictions", () => ({
   getSuperAgentOwnRegion: jest.fn(),
   hasRegionAssigned: jest.fn(),
 }));
+const countAccountActivity = jest.fn();
+jest.mock("@/lib/agents/assignedAccounts", () => ({
+  countAccountActivity: (...a: unknown[]) => countAccountActivity(...a),
+  NO_ACTIVITY: { openJobs: 0, newApplicants: 0, upcomingInterviews: 0, hires: 0 },
+}));
 jest.mock("@/lib/agents/employerAssignment", () => ({
   unassignedEmployerFilter: jest.fn(),
   resolveEmployerAgents: jest.fn(),
@@ -100,6 +105,7 @@ beforeEach(() => {
   employerCount.mockResolvedValue(2);
   employerAggregate.mockResolvedValue([]);
   userFind.mockReturnValue(chain([]));
+  countAccountActivity.mockResolvedValue(new Map());
 });
 
 describe("GET /api/employers — who may act on each row", () => {
@@ -146,11 +152,60 @@ describe("GET /api/employers — who may act on each row", () => {
     expect(body.pagination).toEqual({ page: 2, limit: 5, total: 2, pages: 1 });
   });
 
+  it("agent: ?view=assigned lists only the accounts assigned to them", async () => {
+    // The dashboard's assigned-accounts card links here (client feedback 2026-10-12).
+    agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [EMP_ASSIGNED] }));
+    getAgentEmployerIds.mockResolvedValue([EMP_REGION, EMP_ASSIGNED]);
+    employerCount.mockResolvedValue(1);
+    employerAggregate.mockResolvedValue([{ _id: EMP_ASSIGNED }]);
+    employerFind.mockReturnValue(chain([profile(EMP_ASSIGNED)]));
+
+    const res = await LIST(req("http://t/api/employers?view=assigned", { userId: "agent-user", role: "agent" }));
+    const body = await res.json();
+
+    const [pipeline] = employerAggregate.mock.calls[0] as [Record<string, unknown>[]];
+    expect(pipeline[0]).toEqual({ $match: { _id: { $in: [EMP_ASSIGNED] }, roleArchivedAt: null } });
+    expect(employerCount).toHaveBeenCalledWith({ _id: { $in: [EMP_ASSIGNED] }, roleArchivedAt: null });
+    expect(body.employers.map((e: { _id: string }) => e._id)).toEqual([EMP_ASSIGNED]);
+    expect(body.pagination.total).toBe(1);
+  });
+
+  it("agent: each row carries the account's numbers, counted for that page only", async () => {
+    agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [EMP_ASSIGNED] }));
+    getAgentEmployerIds.mockResolvedValue([EMP_ASSIGNED, EMP_REGION]);
+    employerAggregate.mockResolvedValue([{ _id: EMP_ASSIGNED }, { _id: EMP_REGION }]);
+    employerFind.mockReturnValue(chain([profile(EMP_ASSIGNED), profile(EMP_REGION)]));
+    const numbers = { openJobs: 4, newApplicants: 3, upcomingInterviews: 2, hires: 1 };
+    countAccountActivity.mockResolvedValue(new Map([[EMP_ASSIGNED, numbers]]));
+
+    const res = await LIST(req("http://t/api/employers", { userId: "agent-user", role: "agent" }));
+    const body = await res.json();
+
+    expect(countAccountActivity).toHaveBeenCalledWith([EMP_ASSIGNED, EMP_REGION]);
+    expect(body.employers.map((e: { activity: unknown }) => e.activity)).toEqual([
+      numbers,
+      { openJobs: 0, newApplicants: 0, upcomingInterviews: 0, hires: 0 },
+    ]);
+  });
+
+  it("agent: ?view=assigned with nothing assigned is an empty list, not the region", async () => {
+    agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [] }));
+    getAgentEmployerIds.mockResolvedValue([EMP_REGION]);
+
+    const res = await LIST(req("http://t/api/employers?view=assigned", { userId: "agent-user", role: "agent" }));
+    const body = await res.json();
+
+    expect(body.employers).toEqual([]);
+    expect(body.pagination.total).toBe(0);
+    expect(employerAggregate).not.toHaveBeenCalled();
+  });
+
   it("super-agent: only rows whose agent is on the SA's team can be entered", async () => {
     getSuperAgentBook.mockResolvedValue({
       agentIds: [TEAM_AGENT, OTHER_AGENT],
       teamAgentIds: [TEAM_AGENT],
       employerIds: [EMP_ASSIGNED, EMP_REGION],
+      territory: { assignedCityIds: [], assignedStateIds: [] },
     });
     employerFind.mockReturnValue(chain([profile(EMP_ASSIGNED, TEAM_AGENT), profile(EMP_REGION)]));
 
@@ -161,6 +216,42 @@ describe("GET /api/employers — who may act on each row", () => {
       [EMP_ASSIGNED, true],
       [EMP_REGION, false],
     ]);
+  });
+
+  // Like the agent's "In your region" (2026-10-13): each row says whether the
+  // employer is registered in the SA's territory, and ?view=region keeps only those.
+  describe("super-agent region marking", () => {
+    const CITY = "64b0000000000000000000c1";
+    const STATE = "64b0000000000000000000d1";
+    const book = (territory: { assignedCityIds: string[]; assignedStateIds: string[] }) =>
+      getSuperAgentBook.mockResolvedValue({ agentIds: [TEAM_AGENT], teamAgentIds: [TEAM_AGENT], employerIds: [EMP_ASSIGNED, EMP_REGION], territory });
+
+    it("flags rows registered in a territory city or state", async () => {
+      book({ assignedCityIds: [CITY], assignedStateIds: [STATE] });
+      employerFind.mockReturnValue(chain([
+        { ...profile(EMP_ASSIGNED, TEAM_AGENT) },
+        { ...profile(EMP_REGION), regionCityId: CITY },
+        { ...profile("64b0000000000000000000e3"), regionStateId: STATE },
+      ]));
+      const body = await (await LIST(req("http://t/api/employers", { userId: "sa-user", role: "super_agent" }))).json();
+      expect(body.employers.map((e: { inRegion: boolean }) => e.inRegion)).toEqual([false, true, true]);
+      expect(body.regionAssigned).toBe(true);
+    });
+
+    it("?view=region narrows the query to the territory", async () => {
+      book({ assignedCityIds: [CITY], assignedStateIds: [] });
+      employerFind.mockReturnValue(chain([]));
+      await LIST(req("http://t/api/employers?view=region", { userId: "sa-user", role: "super_agent" }));
+      expect(employerFind.mock.calls[0][0].$and).toEqual([{ $or: [{ regionCityId: { $in: [CITY] } }] }]);
+    });
+
+    it("?view=region with no territory matches nothing, never everyone", async () => {
+      book({ assignedCityIds: [], assignedStateIds: [] });
+      employerFind.mockReturnValue(chain([]));
+      const body = await (await LIST(req("http://t/api/employers?view=region", { userId: "sa-user", role: "super_agent" }))).json();
+      expect(employerFind.mock.calls[0][0].$and).toEqual([{ _id: { $in: [] } }]);
+      expect(body.regionAssigned).toBe(false);
+    });
   });
 });
 

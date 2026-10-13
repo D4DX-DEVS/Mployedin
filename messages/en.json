@@ -4697,6 +4697,8 @@
     "requiredLabel": "{label}, required"
   },
   "messagesPage": {
+    "loadMore": "Load more",
+    "loadingMore": "Loading more conversations",
     "defaultTitle": "Messages",
     "defaultDescription": "Direct messages & conversations",
     "newTicket": "New Ticket",
@@ -6062,7 +6064,7 @@
     "focus": {
       "teamCoordination": {
         "title": "Team coordination",
-        "description": "Keep agents, employers, and pipeline follow-ups moving from one compact control surface."
+        "description": "Keep agents, employers, and lead follow-ups moving from one compact control surface."
       },
       "regionalGrowth": {
         "title": "Regional growth",
@@ -6073,7 +6075,7 @@
       "quickActions": {
         "eyebrow": "Quick actions",
         "title": "Jump into the work that moves your region forward",
-        "description": "Jump straight into your pipeline and reporting — everything your region needs in one place."
+        "description": "Jump straight into your leads and reports — everything your region needs in one place."
       },
       "oversight": {
         "eyebrow": "Oversight focus",
@@ -6243,7 +6245,7 @@
       "description": "Post a role or start receiving applications to unlock per-job conversion metrics here."
     },
     "overview": {
-      "activeAccounts": "Active Accounts",
+      "activeAccounts": "Assigned accounts",
       "activeAccountsShort": "Accounts",
       "liveRoles": "Live Roles",
       "liveRolesShort": "Roles",
@@ -6319,6 +6321,23 @@
       "premiumEmpty": "No premium candidates yet. Mark one from Job Seekers.",
       "premiumBadge": "Premium",
       "viaReferral": "Via referral"
+    },
+    "superAgent": {
+      "pill": "Super agent: {name}",
+      "title": "Your super agent",
+      "message": "Send a message"
+    },
+    "accounts": {
+      "title": "Your accounts",
+      "description": "Employers assigned to you, busiest first. New applicants are from the last 7 days.",
+      "viewAll": "View all",
+      "account": "Account",
+      "openJobs": "Open jobs",
+      "newApplicants": "New applicants",
+      "interviews": "Interviews ahead",
+      "hires": "Hires",
+      "emptyTitle": "No accounts assigned to you yet",
+      "emptyDescription": "When an admin assigns an employer to you, it shows here with its jobs and applicants."
     }
   },
   "agentCommon": {
@@ -6432,6 +6451,44 @@
       "oldest": "Oldest first",
       "applicationsDesc": "Most applicants",
       "applicationsAsc": "Fewest applicants"
+    },
+    "viewTabs": {
+      "my": "My jobs",
+      "all": "All active jobs"
+    },
+    "portal": {
+      "country": "Country",
+      "allCountries": "All countries",
+      "city": "City",
+      "allCities": "All cities",
+      "industry": "Industry",
+      "allIndustries": "All industries",
+      "profession": "Profession",
+      "allProfessions": "All professions",
+      "context": "{count, plural, one {# active job on the portal} other {# active jobs on the portal}}"
+    },
+    "share": {
+      "title": "Share job",
+      "description": "Send this job to your groups. Anyone who signs up from the link joins as your referral.",
+      "preparing": "Preparing your link…",
+      "noCode": "Couldn't add your referral code, so sign-ups from this link won't be credited to you. Try again later.",
+      "linkLabel": "Job link",
+      "copyLink": "Copy link",
+      "copied": "Copied",
+      "messageLabel": "Message",
+      "copyMessage": "Copy message",
+      "whatsapp": "Share on WhatsApp",
+      "more": "More options",
+      "remote": "Remote",
+      "companyFallback": "A Mployedin employer",
+      "message": "Job opening: {title}\nCompany: {company}\nLocation: {location}\n\nApply here: {url}"
+    },
+    "browse": {
+      "title": "Browse jobs",
+      "allActive": "All active",
+      "newThisWeek": "New this week",
+      "industriesLabel": "Jobs by industry",
+      "allIndustries": "All industries"
     }
   },
   "agentJobNew": {
@@ -6863,14 +6920,26 @@
       "genericError": "We couldn't complete this action. Please try again."
     },
     "pageTitle": "Team Management · MPLOYEDIN",
-    "descriptionActiveOnly": "{activeCount} active members",
-    "descriptionWithPending": "{activeCount} active members · {pendingCount} pending invites",
+    "descriptionActiveOnly": "{activeCount, plural, one {# active member} other {# active members}}",
+    "descriptionWithPending": "{activeCount, plural, one {# active member} other {# active members}} · {pendingCount, plural, one {# pending invite} other {# pending invites}}",
     "pending": "Pending",
     "selectAtLeastOneRole": "Please select at least one role",
     "jobCount": "{count} job(s)",
     "searchPlaceholder": "Search by name, email, or role...",
     "editJobAccess": "Edit job access",
     "deactivateMember": "Deactivate member",
+    "expired": "Expired",
+    "expiredInvite": "Invite expired",
+    "cancelledInvite": "Invite cancelled",
+    "resendInvite": "Resend invite",
+    "inviteAgain": "Invite again",
+    "cancelInvite": "Cancel invite",
+    "cancelInviteConfirm": "Cancel this invite? The link we emailed will stop working.",
+    "inviteCancelled": "Invite cancelled.",
+    "memberDeactivated": "Team member deactivated.",
+    "inviteResent": "A new invite link was sent to {email}.",
+    "resendEmailInUse": "This email already belongs to another account, so it can't join your team. Cancel this invite and use a different email.",
+    "actionError": "We couldn't complete that. Please try again.",
     "cancel": "Cancel",
     "saving": "Saving...",
     "saveChanges": "Save Changes",
@@ -8111,7 +8180,9 @@
     "status": "Status",
     "outcome": "Outcome",
     "referredBadge": "Partner referred",
-    "referredBadgeHint": "Referred to Mployedin by one of our recruitment partners"
+    "referredBadgeHint": "Referred to Mployedin by one of our recruitment partners",
+    "priorityBadge": "Priority",
+    "priorityBadgeHint": "Premium job seeker: review this application first"
   },
   "employerCalendar": {
     "title": "Interview Calendar",
@@ -9239,7 +9310,17 @@
     "backgroundCheckRequestedBody": "{companyName} requested a background check for \"{jobTitle}\".",
     "interviewStartingSoonTitle": "Interview Starting Soon",
     "interviewStartingSoonBody": "Your interview for \"{jobTitle}\" starts in {minutes, plural, one {{minutes} minute} other {{minutes} minutes}}.",
-    "interviewStartingSoonWithLinkBody": "Your interview for \"{jobTitle}\" starts in {minutes, plural, one {{minutes} minute} other {{minutes} minutes}}. Join: {meetLink}"
+    "interviewStartingSoonWithLinkBody": "Your interview for \"{jobTitle}\" starts in {minutes, plural, one {{minutes} minute} other {{minutes} minutes}}. Join: {meetLink}",
+    "taskAssignedTitle": "New task assigned",
+    "taskAssignedBody": "{name} assigned you: {title}",
+    "taskSubmittedTitle": "Task ready for review",
+    "taskSubmittedBody": "{name} finished: {title}",
+    "taskApprovedTitle": "Task approved",
+    "taskApprovedBody": "{name} approved: {title}",
+    "taskReturnedTitle": "Task sent back",
+    "taskReturnedBody": "{name} sent back “{title}”: {comment}",
+    "teamMessageTitle": "New message from {name}",
+    "teamMessageBody": "{preview}"
   },
   "publicPages": {
     "jobsTitle": "Find Jobs",
@@ -10547,6 +10628,9 @@
     "deleteFailed": "We couldn't delete that item. Please try again."
   },
   "adminApplications": {
+    "referredByAgent": "Referred by agent {name}",
+    "referredBySuperAgent": "Referred by super agent {name}",
+    "referredUnderSuperAgent": "Under {name}",
     "recruitmentControl": "Recruitment Control",
     "applications": "Applications",
     "applicationsDescription": "View and manage all job applications across the platform — track pipeline health, AI match scores, and candidate sources.",
@@ -13242,6 +13326,13 @@
     "filterLabelMinExperience": "Min. exp. (yrs)",
     "referredByRoleAgent": "Agent",
     "referredByRoleSuperAgent": "Super-agent",
+    "referredUnderSuperAgent": "Under {name}",
+    "premiumChip": "Premium",
+    "makePremium": "Make premium",
+    "removePremium": "Remove premium",
+    "premiumGranted": "{name} is now premium",
+    "premiumRevoked": "{name} is no longer premium",
+    "premiumUpdateError": "Couldn't update premium. Try again.",
     "exportHeaderReferredBy": "Referred by"
   },
   "adminReports": {
@@ -14056,7 +14147,8 @@
     "removeExperienceFilter": "Remove experience filter",
     "removeDateFilter": "Remove date filter",
     "removeSearchFilter": "Remove search filter",
-    "loadJobsError": "We couldn't load jobs. Please try again."
+    "loadJobsError": "We couldn't load jobs. Please try again.",
+    "shareJobButton": "Share job"
   },
   "superAgentLeads": {
     "columnActions": "Actions",
@@ -14065,9 +14157,9 @@
     "stageUpdated": "Stage updated to {stage}.",
     "stageUpdateError": "We couldn't update the stage. Please try again.",
     "viewAgent": "Open the agent handling this lead",
-    "loadError": "We couldn't load the lead pipeline. Please try again.",
+    "loadError": "We couldn't load employer leads. Please try again.",
     "retry": "Try again",
-    "pageTitle": "Lead Pipeline",
+    "pageTitle": "Employer Leads",
     "pageDescription": "Every employer lead across your team, by stage, with regional follow-up work.",
     "sectionTitle": "Filter and review employer leads",
     "columnCompany": "Company",
@@ -14145,7 +14237,7 @@
     "filterLabelHasFollowUp": "Has follow-up",
     "filterLabelSort": "Sort: {sortBy} ({order})",
     "noLeadsFoundTitle": "No leads found",
-    "noLeadsFoundMessage": "Try another search, adjust filters, or use AI search to explore your pipeline.",
+    "noLeadsFoundMessage": "Try another search, adjust filters, or use AI search to find leads.",
     "badgeRouted": "Routed",
     "labelOverdue": "overdue",
     "dismissAiSummary": "Dismiss AI summary",
@@ -14288,7 +14380,18 @@
     "loadEmployersError": "We couldn't load employers. Please try again.",
     "cityLabel": "City",
     "cityPlaceholder": "Select a city in your territory",
-    "cityHint": "The company is placed in this city, so you and the agents covering it see it."
+    "cityHint": "The company is placed in this city, so you and the agents covering it see it.",
+    "area": {
+      "viewLabel": "Which employers",
+      "viewAll": "All employers",
+      "viewRegion": "In my region",
+      "chip": "In your region",
+      "chipHint": "Registered in a city in your region.",
+      "emptyTitle": "No employers registered in your region yet",
+      "emptyDescription": "Employers appear here when they sign up in a city your region covers.",
+      "noRegionTitle": "You don't have a region yet",
+      "noRegionDescription": "An admin sets the cities your region covers. Once they do, employers registered there appear here."
+    }
   },
   "superAgentPlacements": {
     "pageTitle": "Placements",
@@ -14419,8 +14522,8 @@
     "perfInterviews": "Interviews",
     "perfPlacements": "Placements",
     "avgResponseTimeLabel": "Avg. Response Time",
-    "pipelineEyebrow": "Pipeline",
-    "pipelineTitle": "Lead Pipeline",
+    "pipelineEyebrow": "Leads",
+    "pipelineTitle": "Employer leads",
     "pipelineDescription": "{total} leads across all stages",
     "tableColumnCompany": "Company",
     "tableColumnContact": "Contact",
@@ -14546,7 +14649,10 @@
     "audienceChipEmployer": "Employer link",
     "audienceChipJobSeeker": "Job-seeker link",
     "registrationSeeker": "Job seeker",
-    "filterAudienceAll": "All audiences"
+    "filterAudienceAll": "All audiences",
+    "deleteConfirmTitle": "Delete referral link",
+    "deleteConfirmMessage": "Permanently delete link {code}? This cannot be undone.",
+    "deleteButton": "Delete"
   },
   "superAgentInvoices": {
     "failedToLoad": "We couldn't load invoices",
@@ -14624,7 +14730,7 @@
     "approvedBarLabel": "Approved",
     "completedBarLabel": "Completed",
     "rejectedBarLabel": "Rejected",
-    "requestPipelineTitle": "Request pipeline",
+    "requestPipelineTitle": "Requests by stage",
     "requestPipelineDescription": "Current distribution across the decision flow.",
     "statusSubmitted": "Submitted",
     "statusUnderReview": "Under review",
@@ -14700,14 +14806,14 @@
   },
   "superAgentApplications": {
     "pageTitle": "Applications",
-    "pageDescription": "The application pipeline across your team, from first apply through to hire.",
+    "pageDescription": "Every application across your team, from first apply through to hire.",
     "toolbarTitle": "Application tracking",
     "toolbarDescription": "Filter by status or agent to narrow down the application list.",
     "searchPlaceholder": "Search candidate, job title, or company...",
     "resetButton": "Reset",
     "statusPlaceholder": "All statuses",
     "allAgentsPlaceholder": "All agents",
-    "sectionEyebrow": "Pipeline",
+    "sectionEyebrow": "Hiring progress",
     "sectionTitle": "Applications",
     "tableHeaders": {
       "candidate": "Candidate",
@@ -14823,17 +14929,43 @@
     "yearsAbbr": "yrs",
     "failedToLoadJobSeekers": "We couldn't load job seekers",
     "referredByYouChip": "Referred by you",
-    "referredViaChip": "Referred via {name}"
+    "referredViaChip": "Referred via {name}",
+    "refer": {
+      "button": "Refer a job seeker"
+    },
+    "area": {
+      "viewLabel": "Show",
+      "viewAll": "All job seekers",
+      "viewArea": "In my area",
+      "chip": "In your area",
+      "chipHint": "Lives in a city in your region.",
+      "emptyTitle": "No job seekers in your area yet",
+      "emptyDescription": "Job seekers appear here once they pick a city in your region. Hidden profiles never appear.",
+      "noRegionTitle": "You don't have a region yet",
+      "noRegionDescription": "An admin sets the cities your region covers. Once they do, job seekers who live there appear here."
+    },
+    "premium": {
+      "chip": "Premium",
+      "filterAny": "Any membership",
+      "filterOnly": "Premium only ({count})",
+      "filterLabel": "Membership"
+    },
+    "byAgent": {
+      "filterAll": "All agents",
+      "filterLabel": "Agent",
+      "added": "Added by {name}",
+      "assigned": "Assigned to {name}"
+    }
   },
   "superAgentReports": {
     "teamPerformanceSummary": "Team performance summary",
     "teamPerformanceQuery": "Summarize overall team performance this month: total leads, placements, commissions, and highlight top performers",
     "agentComparisonAnalysis": "Agent comparison analysis",
     "agentComparisonQuery": "Compare all my agents side by side on leads generated, placement rate, and commission earned. Who needs coaching?",
-    "leadPipelineHealth": "Lead pipeline health",
-    "leadPipelineQuery": "Analyze the health of my team's lead pipeline: conversion rates by stage, stale leads, and bottlenecks",
+    "leadPipelineHealth": "How the team's leads are moving",
+    "leadPipelineQuery": "How are my team's employer leads moving? Show how many move from each stage to the next, which leads have gone quiet, and where they get stuck",
     "commissionForecast": "Commission forecast",
-    "commissionForecastQuery": "Project next month's commissions based on current pipeline and historical conversion rates",
+    "commissionForecastQuery": "Project next month's commissions based on current open leads and past conversion rates",
     "agentsManaged": "Agents Managed",
     "agentsManagedHelper": "Total team members currently falling under your direct reporting view.",
     "totalLeads": "Total Leads",
@@ -15039,8 +15171,8 @@
     "leadConvertedSuccess": "\"{company}\" converted to employer successfully",
     "leadConversionFailed": "Lead conversion failed",
     "confirmDeleteLead": "Delete this lead?",
-    "heroBadge": "Lead Pipeline",
-    "heroDescription": "Visual pipeline to track employer leads from first contact through conversion. Click a card to view details and manage the lead.",
+    "heroBadge": "Employer leads",
+    "heroDescription": "Track each employer lead from first contact until they sign up. Click a card to view details and manage the lead.",
     "kpiOpen": "Open",
     "kpiWon": "Won",
     "kpiTotal": "Total",
@@ -15050,7 +15182,7 @@
     "searchPlaceholder": "Search...",
     "allStages": "All stages",
     "allExhibitions": "All exhibitions",
-    "emptyPipelineTitle": "No leads in your pipeline yet",
+    "emptyPipelineTitle": "No employer leads yet",
     "emptyPipelineDescription": "Create your first lead to get started",
     "noResultsTitle": "No leads match your search",
     "noResultsDescription": "Try a different search term or clear the filters to see more leads.",
@@ -15312,7 +15444,11 @@
     "offerErrorGeneric": "Could not send the offer.",
     "yearsExperience": "{years, plural, one {# yr experience} other {# yrs experience}}",
     "filterAllStatuses": "All statuses",
-    "hiredNeedsOffer": "Send this candidate an offer first. They move to Hired when they accept it."
+    "hiredNeedsOffer": "Send this candidate an offer first. They move to Hired when they accept it.",
+    "tableHeaderExperience": "Experience",
+    "experienceYears": "{count, plural, one {# yr} other {# yrs}}",
+    "experienceMonths": "{count, plural, one {# mo} other {# mos}}",
+    "experienceNotStated": "Not stated"
   },
   "agentInterviews": {
     "badgeAgentWorkspace": "Agent workspace",
@@ -15474,7 +15610,34 @@
     "areaNoRegionDescription": "An admin sets the cities you cover. Once they do, job seekers who live there appear here.",
     "areaEmptyTitle": "No job seekers in your area yet",
     "areaEmptyDescription": "Job seekers appear here once they pick a city you cover. Hidden profiles never appear.",
-    "viewOnly": "View only"
+    "viewOnly": "View only",
+    "refer": {
+      "button": "Refer a job seeker",
+      "title": "Refer a job seeker",
+      "description": "Share your link. Job seekers who sign up through it join as Premium and are credited to you, and their applications are marked Priority.",
+      "linkLabel": "Your job seeker link",
+      "copy": "Copy link",
+      "copied": "Copied",
+      "whatsapp": "Share on WhatsApp",
+      "whatsappText": "Join Mployedin as a Premium job seeker: {url}",
+      "joined": "{count, plural, =0 {No one has joined through this link yet} one {# job seeker joined through this link} other {# job seekers joined through this link}}",
+      "manage": "Manage your links",
+      "loadError": "We couldn't load your referral link.",
+      "defaultLabel": "Job Seekers page"
+    },
+    "hiringStatus": {
+      "placed": "Placed",
+      "offer": "Offer made",
+      "interviewing": "Interviewing",
+      "shortlisted": "Shortlisted",
+      "applied": "Applied",
+      "notProgressed": "Not progressed",
+      "waiting": "Not applied yet"
+    },
+    "filterHiringStatus": "Hiring status",
+    "hiringStatusLabel": "Hiring status",
+    "hiringStatusAny": "Any hiring status",
+    "viewAllShort": "All"
   },
   "agentEmployers": {
     "heroWorkspace": "Agent workspace",
@@ -15550,7 +15713,16 @@
     "viewCards": "Cards",
     "viewTable": "Table",
     "inYourRegion": "In your region",
-    "deleteEmployerFailed": "We couldn't delete this employer. Please try again."
+    "deleteEmployerFailed": "We couldn't delete this employer. Please try again.",
+    "viewLabel": "Which accounts",
+    "viewAll": "All accounts",
+    "viewAssigned": "Assigned to me",
+    "columnActivity": "Activity",
+    "activityOpenJobs": "{count, plural, one {# open job} other {# open jobs}}",
+    "activityNewApplicants": "{count, plural, one {# new applicant} other {# new applicants}}",
+    "activityInterviews": "{count, plural, one {# interview ahead} other {# interviews ahead}}",
+    "activityHires": "{count, plural, one {# hire} other {# hires}}",
+    "activityHint": "New applicants are from the last 7 days; interviews are the ones still to come."
   },
   "agentPlacements": {
     "pageTitle": "Placements",
@@ -15643,7 +15815,24 @@
     "aiNotAvailable": "AI reports aren't available on your current plan. Please contact your administrator to enable them.",
     "aiUsageLimit": "You've reached the AI usage limit for now. Please try again in a little while.",
     "reportGenError": "We couldn't generate that report. Please try again.",
-    "analyticsLoadFailed": "We couldn't load your performance figures"
+    "analyticsLoadFailed": "We couldn't load your performance figures",
+    "seekersHeading": "Job seekers",
+    "seekersOnboarded": "Onboarded",
+    "seekersPremiumAmong": "{count, plural, one {# premium among them} other {# premium among them}}",
+    "seekersOnboardedPremium": "Premium onboarded",
+    "seekersOnboardedPremiumHint": "Premium among your own",
+    "seekersInArea": "In my area",
+    "seekersInAreaHint": "Job seekers in your region",
+    "seekersNoRegion": "No region assigned yet",
+    "seekersPremiumInArea": "Premium in my area",
+    "seekersPremiumInAreaHint": "Premium job seekers in your region",
+    "seekersReferred": "Joined via my link",
+    "seekersReferredRecent": "{count, plural, one {# in the last 30 days} other {# in the last 30 days}}",
+    "seekersByProfession": "Job seekers by profession",
+    "seekersByProfessionScope": "{count, plural, one {# job seeker you onboarded or in your area} other {# job seekers you onboarded or in your area}}",
+    "seekersByProfessionEmpty": "No job seekers yet.",
+    "professionOther": "Other professions",
+    "professionNotSpecified": "Not specified"
   },
   "agentLeadDetail": {
     "backToPipeline": "Back to Pipeline",
@@ -15847,7 +16036,25 @@
     "markInProgress": "Mark task as in progress",
     "columnTask": "Task",
     "columnDueDate": "Due date",
-    "filterAllStatuses": "All statuses"
+    "filterAllStatuses": "All statuses",
+    "kindLabel": "Task type",
+    "kindAll": "All tasks",
+    "kindAssigned": "Assigned to me",
+    "kindPersonal": "My to-dos",
+    "assignedBySuperAgent": "From {name} (super agent)",
+    "assignedByAdmin": "From {name} (admin)",
+    "reviewAwaiting": "Awaiting review",
+    "reviewApproved": "Approved",
+    "reviewReturned": "Sent back",
+    "returnedReasonLabel": "Sent back:",
+    "submitTitle": "Mark task done",
+    "submitDescription": "“{title}” goes to {name} for review.",
+    "submitNoteLabel": "What did you do?",
+    "submitNotePlaceholder": "A short note for your reviewer",
+    "submitNoteRequired": "Add a short note on what you did",
+    "submitAction": "Send for review",
+    "submitSuccess": "Sent for review",
+    "submitError": "Couldn't send the task for review. Try again."
   },
   "agentReferralLinks": {
     "pageTitle": "Referral Links",
@@ -15975,7 +16182,7 @@
     "channelsLabel": "Channels",
     "generalDescription": "General team discussion",
     "employersDescription": "Employer coordination",
-    "leadsDescription": "New lead pipeline",
+    "leadsDescription": "New employer leads",
     "agentsDescription": "Agent-only channel",
     "noMessagesEmpty": "No messages yet. Start the conversation!",
     "messageInputPlaceholder": "Message #{channel}...",
@@ -17437,7 +17644,7 @@
     "postJobAgent": "Post a job",
     "postJobAgentDesc": "Create a listing for an assigned employer",
     "openLeads": "Open leads",
-    "openLeadsDesc": "Your pipeline of employer leads",
+    "openLeadsDesc": "Your employer leads",
     "openTeam": "Open your team",
     "openTeamDesc": "Agents you manage",
     "create": "Create",
@@ -19197,5 +19404,92 @@
     "confirmMessage": "{clientName} will lose access to your Mployedin data right away. You can connect it again later.",
     "disconnected": "{clientName} is disconnected.",
     "disconnectError": "We couldn't disconnect this app. Try again."
+  },
+  "assignedTasks": {
+    "superAgentTitle": "Team tasks",
+    "adminTitle": "Agent tasks",
+    "superAgentContext": "Give your agents tasks and review what they hand back.",
+    "adminContext": "Tasks given to agents by super agents and admins, and their review.",
+    "assignButton": "Assign task",
+    "assignTitle": "Assign a task",
+    "assignDescription": "The agent is notified and sees it in their Tasks. When they mark it done, it comes back to you for review.",
+    "fieldAgent": "Agent",
+    "chooseAgent": "Choose an agent",
+    "noAgents": "No agents to assign to",
+    "fieldTitle": "Task",
+    "titlePlaceholder": "What needs doing?",
+    "titleRequired": "Give the task a title",
+    "fieldDescription": "Details",
+    "descriptionPlaceholder": "Anything the agent needs to know (optional)",
+    "fieldPriority": "Priority",
+    "priorityHigh": "High",
+    "priorityMedium": "Medium",
+    "priorityLow": "Low",
+    "fieldDue": "Due date",
+    "assignSubmit": "Assign task",
+    "assignSuccess": "Task assigned",
+    "assignError": "Couldn't assign the task. Try again.",
+    "loadError": "Couldn't load tasks. Try again.",
+    "metricOpen": "Open",
+    "metricAwaiting": "Awaiting review",
+    "metricReturned": "Sent back",
+    "metricApproved": "Approved",
+    "searchPlaceholder": "Search tasks",
+    "filterAllAgents": "All agents",
+    "filterAllReview": "Any review state",
+    "columnTask": "Task",
+    "columnAgent": "Agent",
+    "columnAssignedBy": "Assigned by",
+    "columnState": "Status",
+    "columnDue": "Due",
+    "roleAdmin": "Admin",
+    "roleSuperAgent": "Super agent",
+    "statePending": "Not started",
+    "stateInProgress": "In progress",
+    "stateAwaitingReview": "Awaiting review",
+    "stateApproved": "Approved",
+    "stateReturned": "Sent back",
+    "stateCompleted": "Done",
+    "agentNoteLabel": "Agent's note",
+    "reviewCommentLabel": "Review comment",
+    "emptyTitle": "No tasks assigned yet",
+    "emptyDescription": "Assign a task and it shows here until it is reviewed.",
+    "noResultsTitle": "No tasks match these filters",
+    "noResultsDescription": "Change or clear the filters to see more.",
+    "approveTitle": "Approve task",
+    "returnTitle": "Send task back",
+    "reviewDescription": "“{title}” by {name}",
+    "approveCommentLabel": "Comment (optional)",
+    "returnCommentLabel": "What needs to change?",
+    "approveCommentPlaceholder": "Anything to add for the agent",
+    "returnCommentPlaceholder": "Tell the agent what to fix or finish",
+    "returnCommentRequired": "Say what needs to change",
+    "approveAction": "Approve",
+    "returnAction": "Send back",
+    "approvedToast": "Task approved",
+    "returnedToast": "Task sent back to the agent",
+    "reviewError": "Couldn't save the review. Try again."
+  },
+  "superAgentTeamMessage": {
+    "openButton": "Message agents",
+    "messageOne": "Message",
+    "title": "Message your agents",
+    "description": "Send one message to every agent in your team, or only to the agents you choose.",
+    "sendTo": "Send to",
+    "allAgents": "All my agents ({count})",
+    "chooseAgents": "Choose agents",
+    "searchAgents": "Search agents",
+    "loadError": "We couldn't load your agents. Close this and try again.",
+    "noAgents": "No agents found.",
+    "selectedCount": "{count, plural, =0 {No agents chosen} one {# agent chosen} other {# agents chosen}}",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Write your message…",
+    "replyNote": "Each agent gets it in their own chat with you and can reply privately.",
+    "sendButton": "{count, plural, =0 {Send} one {Send to # agent} other {Send to # agents}}",
+    "sendSuccess": "{count, plural, one {Message sent to # agent} other {Message sent to # agents}}",
+    "sendPartial": "{count, plural, one {# agent couldn't be reached. Try again later.} other {# agents couldn't be reached. Try again later.}}",
+    "sendError": "We couldn't send your message. Please try again.",
+    "sendTooMany": "You've sent a lot of messages in the last few minutes. Wait a little and try again.",
+    "retry": "Try again"
   }
 }

@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import type { UserRole } from "@/models/User";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { getEmployerContactUserIds } from "@/lib/dm/employerContacts";
+import { getSuperAgentTeamAgentUserIds } from "@/lib/auth/agentRestrictions";
 
 interface AuthCtx {
   userId: string;
@@ -90,6 +91,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // Role kept on the contacts too: someone whose account changed role since
     // they applied would show here and then be refused by POST /api/dm.
     scopeMatch = { $or: [{ role: "admin" }, { _id: { $in: contactIds }, role: { $in: ["job_seeker", "agent"] } }] };
+  } else if (ctx.role === "super_agent") {
+    // Agents only from their own team (owner decision 2026-10-13); admins and
+    // employers as before.
+    const teamIds = await getSuperAgentTeamAgentUserIds(ctx.userId);
+    scopeMatch = { $or: [{ role: { $in: ["admin", "employer"] } }, { role: "agent", _id: { $in: teamIds } }] };
   }
 
   const pipeline: mongoose.PipelineStage[] = [

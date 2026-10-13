@@ -19,7 +19,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, BriefcaseBusiness, Handshake, Edit2, Inbox, MapPin, UserRoundSearch, Users, X, Crown } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Handshake, Edit2, Inbox, MapPin, UserPlus, UserRoundSearch, Users, X, Crown } from "lucide-react";
 import { useTableExport } from "@/hooks/useTableExport";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
@@ -30,9 +30,12 @@ import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { ReferSeekerDialog } from "@/components/features/agent/ReferSeekerDialog";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { hiringStatusLabelKeyMap, hiringStatusClassMap } from "@/lib/jobseekers/hiringStatus";
 import type { ReferralSummary } from "@/lib/referrals/summary";
 
 interface JobSeeker {
@@ -51,6 +54,8 @@ interface JobSeeker {
   referralSummary?: ReferralSummary;
   /** "area": lives in the agent's area — view only; "own": the agent's to edit. */
   staffAccess?: "own" | "area";
+  /** Hiring status derived from applications: placed|offer|interviewing|shortlisted|applied|notProgressed|waiting */
+  hiringStatus?: string;
   createdAt: string;
 }
 
@@ -76,6 +81,8 @@ export default function AgentJobSeekersPage() {
   // address the dashboard, a badge or the palette can link to.
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [modalOpen, setModalOpen] = useState(false);
+  // Client point #5: share a job-seeker referral link from here.
+  const [referOpen, setReferOpen] = useState(false);
   const [editSeeker, setEditSeeker] = useState<JobSeeker | null>(null);
 
   // Build options with translations
@@ -91,6 +98,17 @@ export default function AgentJobSeekersPage() {
     { value: "hybrid", label: t("jobTypeHybrid") },
     { value: "onsite", label: t("jobTypeOnsite") },
     { value: "any", label: t("jobTypeAny") },
+  ];
+
+  const HIRING_STATUS_OPTIONS = [
+    { value: "", label: t("hiringStatusAny") },
+    { value: "placed", label: t("hiringStatus.placed") },
+    { value: "offer", label: t("hiringStatus.offer") },
+    { value: "interviewing", label: t("hiringStatus.interviewing") },
+    { value: "shortlisted", label: t("hiringStatus.shortlisted") },
+    { value: "applied", label: t("hiringStatus.applied") },
+    { value: "notProgressed", label: t("hiringStatus.notProgressed") },
+    { value: "waiting", label: t("hiringStatus.waiting") },
   ];
 
   const SORT_OPTIONS = [
@@ -116,6 +134,7 @@ export default function AgentJobSeekersPage() {
   const [skillsFilter, setSkillsFilter] = useUrlFilter("skills", "", { debounceMs: 400 });
   const [hasCV, setHasCV] = useState(false);
   const [jobType, setJobType] = useUrlFilter("jobType", "");
+  const [hiringStatus, setHiringStatus] = useUrlFilter("hiringStatus", "");
   const [sortBy, setSortBy] = useState("newest");
   // Dashboard deep-links: ?onboarded=1 (isOnboarded) and ?premium=1 (badges).
   // Both round-trip in the URL so the dashboard metric and this list agree.
@@ -135,7 +154,7 @@ export default function AgentJobSeekersPage() {
     return qs ? `${pathname}?${qs}` : pathname;
   };
   const viewTabs: WorkspaceTab[] = [
-    { key: "all", label: t("viewAll"), href: viewHref("all"), icon: Users },
+    { key: "all", label: t("viewAll"), shortLabel: t("viewAllShort"), href: viewHref("all"), icon: Users },
     { key: "area", label: t("viewArea"), href: viewHref("area"), icon: MapPin },
     { key: "referred", label: t("filterReferredMine"), href: viewHref("referred"), icon: Handshake },
   ];
@@ -146,6 +165,7 @@ export default function AgentJobSeekersPage() {
     skillsFilter,
     hasCV,
     jobType,
+    hiringStatus,
     onboardedOnly === "1",
     premiumOnly === "1",
     minProfile > 0 || maxProfile < 100,
@@ -159,6 +179,7 @@ export default function AgentJobSeekersPage() {
     setSkillsFilter("");
     setHasCV(false);
     setJobType("");
+    setHiringStatus("");
     setOnboardedOnly("");
     setPremiumOnly("");
     setSortBy("newest");
@@ -174,6 +195,7 @@ export default function AgentJobSeekersPage() {
     if (skillsFilter) params.set("skills", skillsFilter);
     if (locationFilter) params.set("location", locationFilter);
     if (hasCV) params.set("hasCV", "1");
+    if (hiringStatus) params.set("hiringStatus", hiringStatus);
     if (onboardedOnly === "1") params.set("onboarded", "1");
     if (premiumOnly === "1") params.set("premium", "1");
     if (view === "referred") params.set("referred", "mine");
@@ -189,11 +211,11 @@ export default function AgentJobSeekersPage() {
     }
     setLoading(false);
 
-  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, onboardedOnly, premiumOnly, view, jobType, sortBy, pagination.page, pagination.limit]);
+  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy, pagination.page, pagination.limit]);
 
   useEffect(() => { fetchSeekers(); }, [fetchSeekers]);
 
-  useEffect(() => { pagination.resetPage(); }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, onboardedOnly, premiumOnly, view, jobType, sortBy]);
+  useEffect(() => { pagination.resetPage(); }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy]);
 
   // Premium is the `premium` entry in badges[] — what the dashboard's
   // Premium card and ?premium=1 count. Only seekers the agent manages.
@@ -243,6 +265,7 @@ export default function AgentJobSeekersPage() {
     { header: tc("email"), key: "userId", formatter: (_v, row) => (row.userId as { email?: string })?.email ?? "" },
     { header: tc("country"), key: "currentLocation" },
     { header: t("tableHeaderTopSkills"), key: "skills", formatter: (v) => Array.isArray(v) ? (v as string[]).join(", ") : "" },
+    { header: t("hiringStatusLabel"), key: "hiringStatus", formatter: (v) => v ? t(hiringStatusLabelKeyMap[v as keyof typeof hiringStatusLabelKeyMap] || "hiringStatus.waiting") : "" },
     { header: t("tableHeaderAvailability"), key: "availabilityStatus" },
     { header: t("tableHeaderProfile"), key: "profileCompleteness" },
     { header: t("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(String(v), locale) : "" },
@@ -258,6 +281,7 @@ export default function AgentJobSeekersPage() {
     if (skillsFilter.trim()) base.set("skills", skillsFilter.trim());
     if (locationFilter.trim()) base.set("location", locationFilter.trim());
     if (hasCV) base.set("hasCV", "1");
+    if (hiringStatus) base.set("hiringStatus", hiringStatus);
     if (onboardedOnly === "1") base.set("onboarded", "1");
     if (premiumOnly === "1") base.set("premium", "1");
     if (view === "referred") base.set("referred", "mine");
@@ -271,7 +295,7 @@ export default function AgentJobSeekersPage() {
         total: Number(json.total ?? 0),
       }),
     );
-  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, onboardedOnly, premiumOnly, view, jobType, sortBy]);
+  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy]);
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: seekers as unknown as Record<string, unknown>[],
@@ -297,12 +321,25 @@ export default function AgentJobSeekersPage() {
       <WorkspaceHeader
         title={t("heroTitle")}
         context={`${pagination.total} ${t("talentPoolProfiles")}`}
+        actions={
+          <button
+            type="button"
+            onClick={() => setReferOpen(true)}
+            aria-label={t("refer.button")}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
+          >
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">{t("refer.button")}</span>
+          </button>
+        }
         metrics={[
           { label: t("cardCompleteLabel"), value: completeProfiles, icon: UserRoundSearch, tone: "primary" },
           { label: t("cardAvgProfileLabel"), value: `${averageCompleteness}%`, icon: ArrowRight, tone: "info" },
           { label: t("cardWithTitlesLabel"), value: withTitles, icon: BriefcaseBusiness, tone: "success" },
         ]}
       />
+
+      <ReferSeekerDialog open={referOpen} onOpenChange={setReferOpen} locale={locale} />
 
       <WorkspaceTabs tabs={viewTabs} ariaLabel={t("viewLabel")} activeKey={view} />
 
@@ -325,6 +362,14 @@ export default function AgentJobSeekersPage() {
               value={jobType}
               onValueChange={(v) => { setJobType(v); pagination.resetPage(); }}
               placeholder={t("filterJobTypePlaceholder")}
+            />
+            <SearchableSelect
+              id="agent-seekers-hiringStatus"
+              className={INLINE_FILTER_CONTROL}
+              options={HIRING_STATUS_OPTIONS}
+              value={hiringStatus}
+              onValueChange={(v) => { setHiringStatus(v); pagination.resetPage(); }}
+              placeholder={t("filterHiringStatus")}
             />
             <Input
               aria-label={t("filterLocationPlaceholder")}
@@ -366,6 +411,8 @@ export default function AgentJobSeekersPage() {
           value={search}
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          // Phones: narrow enough that Filter and the data notice share its line.
+          className="max-sm:flex-[1_1_7rem]"
         />
         {/* Dashboard deep-link chips: the metric links here with ?onboarded=1 /
             ?premium=1, so the active filter must be visible and removable. */}
@@ -387,22 +434,23 @@ export default function AgentJobSeekersPage() {
       </InlineFilterBar>
 
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        <Table>
+        <Table className="compact-phone-cards">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>{tc("name")}</TableHead>
               <TableHead>{t("tableHeaderTitle")}</TableHead>
               <TableHead>{t("tableHeaderTopSkills")}</TableHead>
+              <TableHead>{t("hiringStatusLabel")}</TableHead>
               <TableHead>{t("tableHeaderProfile")}</TableHead>
               {can("job_seekers", "update") && <TableHead className="text-right">{tc("actions")}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableBodySkeleton rows={5} cols={can("job_seekers", "update") ? 5 : 4} />
+              <TableBodySkeleton rows={5} cols={can("job_seekers", "update") ? 6 : 5} />
             ) : seekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={can("job_seekers", "update") ? 5 : 4} className="py-12">
+                <TableCell colSpan={can("job_seekers", "update") ? 6 : 5} className="py-12">
                   {view === "area" && activeFilterCount === 0 && !search ? (
                     <EmptyState
                       icon={MapPin}
@@ -455,6 +503,12 @@ export default function AgentJobSeekersPage() {
                       <div className="min-w-0">
                         <span className="block truncate font-medium text-foreground">{s.userId?.name ?? "\u2014"}</span>
                         <span className="block truncate text-xs text-muted-foreground">{s.userId?.email ?? "\u2014"}</span>
+                        {/* Phone card: title and location fold in here instead of a labelled row. */}
+                        {(getCurrentTitle(s) || s.currentLocation) && (
+                          <span dir="auto" className="block truncate text-xs text-muted-foreground sm:hidden">
+                            {[getCurrentTitle(s), s.currentLocation].filter(Boolean).join(" · ")}
+                          </span>
+                        )}
                         <div className="mt-1 flex flex-wrap items-center gap-1">
                           {/* No pill when the seeker never said: an amber "—" read as a status. */}
                           {s.availabilityStatus ? (
@@ -473,6 +527,15 @@ export default function AgentJobSeekersPage() {
                             </span>
                           )}
                           <ReferralSourceChip namespace="agentJobSeekers" summary={s.referralSummary} />
+                          {/* Phones show rows as cards with the other columns folded
+                              away; where the seeker stands has to be on the card face. */}
+                          {s.hiringStatus && (
+                            <StatusBadge
+                              status={s.hiringStatus}
+                              label={t(hiringStatusLabelKeyMap[s.hiringStatus as keyof typeof hiringStatusLabelKeyMap] || "hiringStatus.waiting")}
+                              className={`whitespace-nowrap sm:hidden ${hiringStatusClassMap[s.hiringStatus as keyof typeof hiringStatusClassMap] || "status-pending"}`}
+                            />
+                          )}
                           {s.staffAccess === "area" && (
                             <span
                               className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium leading-none text-primary"
@@ -486,7 +549,7 @@ export default function AgentJobSeekersPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell data-mobile-hidden className="text-muted-foreground">
                     <div className="grid w-full min-w-0 gap-1 text-start">
                       <span className="font-medium text-foreground/80">{getCurrentTitle(s) ?? "\u2014"}</span>
                       <span className="inline-flex items-center gap-1.5">
@@ -504,6 +567,18 @@ export default function AgentJobSeekersPage() {
                         <span className="text-xs text-muted-foreground">+{s.skills.length - 3}</span>
                       )}
                     </div>
+                  </TableCell>
+                  {/* On phones the badge is on the card face (name cell). */}
+                  <TableCell data-mobile-hidden>
+                    {s.hiringStatus ? (
+                      <StatusBadge
+                        status={s.hiringStatus}
+                        label={t(hiringStatusLabelKeyMap[s.hiringStatus as keyof typeof hiringStatusLabelKeyMap] || "hiringStatus.waiting")}
+                        className={`whitespace-nowrap ${hiringStatusClassMap[s.hiringStatus as keyof typeof hiringStatusClassMap] || "status-pending"}`}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

@@ -19,6 +19,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { InvoiceTable } from "@/components/shared/InvoiceTable";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { useMediaQuery, PHONE_QUERY } from "@/hooks/useMediaQuery";
 import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 
@@ -55,6 +56,9 @@ export default function AgentInvoicesPage() {
   const t = useTranslations("agentInvoices");
   const tc = useTranslations("common");
   const locale = useLocale();
+  // Phones: the status select joins the dates behind Filter, and the view
+  // switch drops its labels, so the toolbar is two lines instead of four.
+  const isPhone = useMediaQuery(PHONE_QUERY);
 
   const STATUS_OPTIONS = [
     { value: "all", label: t("statusAll") },
@@ -103,8 +107,18 @@ export default function AgentInvoicesPage() {
   const currencyTotals: CurrencyTotals[] = summary.byCurrency?.length
     ? summary.byCurrency
     : [{ currency: displayCurrency, totalAmount: summary.totalAmount, totalPaid: summary.totalPaid, totalBalance: summary.totalBalance, count: 0 }];
-  const moneyStrip = (pick: (row: CurrencyTotals) => number) =>
-    currencyTotals.map((row) => `${row.currency} ${formatCount(pick(row), { maximumFractionDigits: 0 })}`).join(" · ");
+  // One line per currency on phones: "AED 322 · INR 79" did not fit a
+  // quarter-width tile and ran into the next one.
+  const moneyStrip = (pick: (row: CurrencyTotals) => number) => (
+    <span className={currencyTotals.length > 1 ? "flex flex-col text-sm leading-tight sm:block sm:text-[length:inherit]" : undefined}>
+      {currencyTotals.map((row, i) => (
+        <span key={row.currency} className="whitespace-nowrap">
+          {i > 0 && <span className="max-sm:hidden"> · </span>}
+          {`${row.currency} ${formatCount(pick(row), { maximumFractionDigits: 0 })}`}
+        </span>
+      ))}
+    </span>
+  );
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -158,6 +172,17 @@ export default function AgentInvoicesPage() {
     title: t("exportTitle"),
   });
 
+  const statusSelect = (
+    <SearchableSelect
+      id="ag-inv-status"
+      className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+      options={STATUS_OPTIONS}
+      value={statusFilter || "all"}
+      onValueChange={(v) => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
+      placeholder={t("statusAll")}
+    />
+  );
+
   return (
     <div className="page-container">
       {/* One header for the page: title, scope line and the four money totals
@@ -182,15 +207,16 @@ export default function AgentInvoicesPage() {
       <InlineFilterBar
         className="workspace-panel-surface rounded-2xl border-b-0"
         more={(
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {isPhone && statusSelect}
             <DateTimePicker mode="date" className="h-11 rounded-lg text-sm" value={dateFrom} onChange={(v) => { setDateFrom(v); resetPage(); }} placeholder="From" />
             <span className="text-xs text-muted-foreground">{t("filterDateTo")}</span>
             <DateTimePicker mode="date" className="h-11 rounded-lg text-sm" value={dateTo} onChange={(v) => { setDateTo(v); resetPage(); }} placeholder="To" />
           </div>
         )}
-        moreOpen={false}
+        moreActiveCount={[dateFrom, dateTo, isPhone && statusFilter].filter(Boolean).length}
         onClear={hasActiveFilters ? () => { setStatusFilter(""); setDateFrom(""); setDateTo(""); resetPage(); } : undefined}
-        clearLabel={tc("filter")}
+        clearLabel={tc("clear")}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -200,21 +226,14 @@ export default function AgentInvoicesPage() {
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
         />
-        <SearchableSelect
-          id="ag-inv-status"
-          className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
-          options={STATUS_OPTIONS}
-          value={statusFilter || "all"}
-          onValueChange={(v) => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
-          placeholder={t("statusAll")}
-        />
+        {!isPhone && statusSelect}
         <div className="flex items-center gap-2">
           <div className="inline-flex rounded-lg border border-border/70 bg-card">
-            <button onClick={() => setActiveView("table")} className={`rounded-l-lg px-3 py-2.5 min-h-10 text-xs font-medium transition-colors ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              <FileText className="mr-1 inline-block h-3.5 w-3.5" /> {t("tabButtonInvoices")}
+            <button type="button" aria-label={t("tabButtonInvoices")} aria-pressed={activeView === "table"} onClick={() => setActiveView("table")} className={`inline-flex min-h-11 items-center gap-1 rounded-s-lg px-3 text-xs font-medium transition-colors sm:min-h-9 ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <FileText className="h-3.5 w-3.5" aria-hidden="true" /> <span className="max-sm:hidden">{t("tabButtonInvoices")}</span>
             </button>
-            <button onClick={() => setActiveView("analytics")} className={`rounded-r-lg px-3 py-2.5 min-h-10 text-xs font-medium transition-colors ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              <BarChart3 className="mr-1 inline-block h-3.5 w-3.5" /> {t("tabButtonAnalytics")}
+            <button type="button" aria-label={t("tabButtonAnalytics")} aria-pressed={activeView === "analytics"} onClick={() => setActiveView("analytics")} className={`inline-flex min-h-11 items-center gap-1 rounded-e-lg px-3 text-xs font-medium transition-colors sm:min-h-9 ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+              <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" /> <span className="max-sm:hidden">{t("tabButtonAnalytics")}</span>
             </button>
           </div>
         </div>

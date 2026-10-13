@@ -3,6 +3,7 @@ import { z } from "zod";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
+import Application from "@/models/Application";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { canStaffAccessSeeker, type SeekerOwnership } from "@/lib/jobSeeker/staffAccess";
 import type { UserRole } from "@/models/User";
@@ -38,6 +39,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
       { _id: seeker._id },
       premium ? { $addToSet: { badges: "premium" } } : { $pull: { badges: "premium" } },
     );
+    // A Premium seeker's applications are priority: reviewed first and
+    // badged for the employer. They follow the seeker both ways.
+    await Application.updateMany({ jobSeekerId: seeker._id }, { $set: { isPriority: premium } });
     await logActivity({
       ...actorFromCtx(ctx),
       action: premium ? "job_seeker.premium_grant" : "job_seeker.premium_revoke",

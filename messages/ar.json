@@ -4697,6 +4697,8 @@
     "requiredLabel": "{label}، مطلوب"
   },
   "messagesPage": {
+    "loadMore": "تحميل المزيد",
+    "loadingMore": "جارٍ تحميل المزيد من المحادثات",
     "defaultTitle": "الرسائل",
     "defaultDescription": "رسائل مباشرة ومحادثات",
     "newTicket": "تذكرة جديدة",
@@ -6062,7 +6064,7 @@
     "focus": {
       "teamCoordination": {
         "title": "تنسيق الفريق",
-        "description": "حافظ على حركة الوكلاء وأصحاب العمل والمتابعات من سطح تحكم واحد."
+        "description": "حافظ على حركة الوكلاء وأصحاب العمل ومتابعات العملاء المحتملين من مكان واحد."
       },
       "regionalGrowth": {
         "title": "النمو الإقليمي",
@@ -6073,7 +6075,7 @@
       "quickActions": {
         "eyebrow": "إجراءات سريعة",
         "title": "انتقل إلى العمل الذي يدفع منطقتك للأمام",
-        "description": "انتقل مباشرةً إلى خط العمل والتقارير — كل ما تحتاجه منطقتك في مكان واحد."
+        "description": "انتقل مباشرةً إلى العملاء المحتملين والتقارير — كل ما تحتاجه منطقتك في مكان واحد."
       },
       "oversight": {
         "eyebrow": "محور الإشراف",
@@ -6243,7 +6245,7 @@
       "description": "انشر وظيفة أو ابدأ باستقبال الطلبات لعرض مؤشرات التحويل لكل وظيفة هنا."
     },
     "overview": {
-      "activeAccounts": "الحسابات النشطة",
+      "activeAccounts": "الحسابات المسندة",
       "activeAccountsShort": "الحسابات",
       "liveRoles": "الوظائف النشطة",
       "liveRolesShort": "الوظائف",
@@ -6319,6 +6321,23 @@
       "premiumEmpty": "لا يوجد مرشحون مميزون بعد. يمكنك تمييز أحدهم من قائمة الباحثين عن عمل.",
       "premiumBadge": "مميز",
       "viaReferral": "عبر رابط إحالة"
+    },
+    "superAgent": {
+      "pill": "الوكيل الرئيسي: {name}",
+      "title": "الوكيل الرئيسي المسؤول عنك",
+      "message": "إرسال رسالة"
+    },
+    "accounts": {
+      "title": "حساباتك",
+      "description": "جهات العمل المسندة إليك، الأكثر نشاطًا أولًا. المتقدمون الجدد من آخر 7 أيام.",
+      "viewAll": "عرض الكل",
+      "account": "الحساب",
+      "openJobs": "وظائف مفتوحة",
+      "newApplicants": "متقدمون جدد",
+      "interviews": "مقابلات قادمة",
+      "hires": "التعيينات",
+      "emptyTitle": "لم تُسند إليك أي حسابات بعد",
+      "emptyDescription": "عندما يُسند إليك المسؤول جهة عمل، ستظهر هنا مع وظائفها والمتقدمين إليها."
     }
   },
   "agentCommon": {
@@ -6432,6 +6451,44 @@
       "oldest": "الأقدم أولاً",
       "applicationsDesc": "الأكثر متقدمين",
       "applicationsAsc": "الأقل متقدمين"
+    },
+    "viewTabs": {
+      "my": "وظائفي",
+      "all": "كل الوظائف النشطة"
+    },
+    "portal": {
+      "country": "الدولة",
+      "allCountries": "كل الدول",
+      "city": "المدينة",
+      "allCities": "كل المدن",
+      "industry": "القطاع",
+      "allIndustries": "كل القطاعات",
+      "profession": "المهنة",
+      "allProfessions": "كل المهن",
+      "context": "{count, plural, zero {لا توجد وظائف نشطة على المنصة} one {وظيفة نشطة واحدة على المنصة} two {وظيفتان نشطتان على المنصة} few {# وظائف نشطة على المنصة} many {# وظيفة نشطة على المنصة} other {# وظيفة نشطة على المنصة}}"
+    },
+    "share": {
+      "title": "مشاركة الوظيفة",
+      "description": "أرسل هذه الوظيفة إلى مجموعاتك. كل من يسجّل من الرابط يُحتسب ضمن إحالاتك.",
+      "preparing": "جارٍ تجهيز رابطك…",
+      "noCode": "تعذّر إضافة رمز الإحالة الخاص بك، لذا لن تُحتسب التسجيلات من هذا الرابط لك. حاول لاحقًا.",
+      "linkLabel": "رابط الوظيفة",
+      "copyLink": "نسخ الرابط",
+      "copied": "تم النسخ",
+      "messageLabel": "الرسالة",
+      "copyMessage": "نسخ الرسالة",
+      "whatsapp": "مشاركة عبر واتساب",
+      "more": "خيارات أخرى",
+      "remote": "عن بُعد",
+      "companyFallback": "صاحب عمل على Mployedin",
+      "message": "وظيفة شاغرة: {title}\nالشركة: {company}\nالموقع: {location}\n\nقدّم من هنا: {url}"
+    },
+    "browse": {
+      "title": "تصفّح الوظائف",
+      "allActive": "كل الوظائف النشطة",
+      "newThisWeek": "جديد هذا الأسبوع",
+      "industriesLabel": "الوظائف حسب القطاع",
+      "allIndustries": "كل القطاعات"
     }
   },
   "agentJobNew": {
@@ -6863,14 +6920,26 @@
       "genericError": "تعذر إكمال هذا الإجراء. يرجى المحاولة مرة أخرى."
     },
     "pageTitle": "إدارة الفريق · MPLOYEDIN",
-    "descriptionActiveOnly": "{activeCount} أعضاء نشطون",
-    "descriptionWithPending": "{activeCount} أعضاء نشطون · {pendingCount} دعوات معلقة",
+    "descriptionActiveOnly": "{activeCount, plural, zero {لا يوجد أعضاء نشطون} one {عضو نشط واحد} two {عضوان نشطان} few {# أعضاء نشطين} many {# عضوًا نشطًا} other {# عضو نشط}}",
+    "descriptionWithPending": "{activeCount, plural, zero {لا يوجد أعضاء نشطون} one {عضو نشط واحد} two {عضوان نشطان} few {# أعضاء نشطين} many {# عضوًا نشطًا} other {# عضو نشط}} · {pendingCount, plural, zero {لا توجد دعوات معلقة} one {دعوة معلقة واحدة} two {دعوتان معلقتان} few {# دعوات معلقة} many {# دعوة معلقة} other {# دعوة معلقة}}",
     "pending": "معلق",
     "selectAtLeastOneRole": "يرجى اختيار دور واحد على الأقل",
     "jobCount": "{count} وظيفة",
     "searchPlaceholder": "ابحث بالاسم أو البريد الإلكتروني أو الدور...",
     "editJobAccess": "تعديل صلاحية الوظائف",
     "deactivateMember": "تعطيل العضو",
+    "expired": "منتهية",
+    "expiredInvite": "انتهت صلاحية الدعوة",
+    "cancelledInvite": "أُلغيت الدعوة",
+    "resendInvite": "إعادة إرسال الدعوة",
+    "inviteAgain": "دعوة مرة أخرى",
+    "cancelInvite": "إلغاء الدعوة",
+    "cancelInviteConfirm": "هل تريد إلغاء هذه الدعوة؟ سيتوقف الرابط الذي أرسلناه بالبريد عن العمل.",
+    "inviteCancelled": "تم إلغاء الدعوة.",
+    "memberDeactivated": "تم تعطيل عضو الفريق.",
+    "inviteResent": "تم إرسال رابط دعوة جديد إلى {email}.",
+    "resendEmailInUse": "هذا البريد الإلكتروني مرتبط بحساب آخر، لذا لا يمكنه الانضمام إلى فريقك. ألغِ هذه الدعوة واستخدم بريدًا إلكترونيًا مختلفًا.",
+    "actionError": "تعذّر إكمال ذلك. يرجى المحاولة مرة أخرى.",
     "cancel": "إلغاء",
     "saving": "جارٍ الحفظ...",
     "saveChanges": "حفظ التغييرات",
@@ -8111,7 +8180,9 @@
     "status": "الحالة",
     "outcome": "النتيجة",
     "referredBadge": "مُحال من شريك",
-    "referredBadgeHint": "تمت إحالته إلى Mployedin من قِبل أحد شركاء التوظيف لدينا"
+    "referredBadgeHint": "تمت إحالته إلى Mployedin من قِبل أحد شركاء التوظيف لدينا",
+    "priorityBadge": "أولوية",
+    "priorityBadgeHint": "باحث عن عمل مميز: راجع هذا الطلب أولًا"
   },
   "employerCalendar": {
     "title": "تقويم المقابلات",
@@ -9239,7 +9310,17 @@
     "backgroundCheckRequestedBody": "طلبت {companyName} التحقق من الخلفية لوظيفة \"{jobTitle}\".",
     "interviewStartingSoonTitle": "مقابلتك تبدأ قريبًا",
     "interviewStartingSoonBody": "تبدأ مقابلتك لوظيفة \"{jobTitle}\" خلال {minutes, plural, zero {{minutes} دقيقة} one {دقيقة واحدة} two {دقيقتين} few {{minutes} دقائق} many {{minutes} دقيقة} other {{minutes} دقيقة}}.",
-    "interviewStartingSoonWithLinkBody": "تبدأ مقابلتك لوظيفة \"{jobTitle}\" خلال {minutes, plural, zero {{minutes} دقيقة} one {دقيقة واحدة} two {دقيقتين} few {{minutes} دقائق} many {{minutes} دقيقة} other {{minutes} دقيقة}}. رابط الانضمام: {meetLink}"
+    "interviewStartingSoonWithLinkBody": "تبدأ مقابلتك لوظيفة \"{jobTitle}\" خلال {minutes, plural, zero {{minutes} دقيقة} one {دقيقة واحدة} two {دقيقتين} few {{minutes} دقائق} many {{minutes} دقيقة} other {{minutes} دقيقة}}. رابط الانضمام: {meetLink}",
+    "taskAssignedTitle": "مهمة جديدة",
+    "taskAssignedBody": "كلّفك {name} بـ: {title}",
+    "taskSubmittedTitle": "مهمة جاهزة للمراجعة",
+    "taskSubmittedBody": "أنجز {name}: {title}",
+    "taskApprovedTitle": "تم اعتماد المهمة",
+    "taskApprovedBody": "اعتمد {name}: {title}",
+    "taskReturnedTitle": "أُعيدت المهمة",
+    "taskReturnedBody": "أعاد {name} «{title}»: {comment}",
+    "teamMessageTitle": "رسالة جديدة من {name}",
+    "teamMessageBody": "{preview}"
   },
   "publicPages": {
     "jobsTitle": "البحث عن وظائف",
@@ -10547,6 +10628,9 @@
     "deleteFailed": "تعذّر حذف هذا العنصر. يرجى المحاولة مرة أخرى."
   },
   "adminApplications": {
+    "referredByAgent": "بإحالة من الوكيل {name}",
+    "referredBySuperAgent": "بإحالة من الوكيل الرئيسي {name}",
+    "referredUnderSuperAgent": "ضمن {name}",
     "recruitmentControl": "التحكم بالتوظيف",
     "applications": "الطلبات",
     "applicationsDescription": "عرض وإدارة جميع طلبات الوظائف على المنصة — تتبع صحة خط الأنابيب ودرجات تطابق الذكاء الاصطناعي ومصادر المرشحين.",
@@ -13242,6 +13326,13 @@
     "filterLabelMinExperience": "أدنى خبرة (سنوات)",
     "referredByRoleAgent": "وكيل",
     "referredByRoleSuperAgent": "وكيل رئيسي",
+    "referredUnderSuperAgent": "ضمن {name}",
+    "premiumChip": "مميز",
+    "makePremium": "جعله مميزًا",
+    "removePremium": "إزالة التمييز",
+    "premiumGranted": "أصبح {name} مميزًا",
+    "premiumRevoked": "لم يعد {name} مميزًا",
+    "premiumUpdateError": "تعذّر تحديث التمييز. حاول مرة أخرى.",
     "exportHeaderReferredBy": "أُحيل بواسطة"
   },
   "adminReports": {
@@ -14056,7 +14147,8 @@
     "removeExperienceFilter": "إزالة عامل تصفية الخبرة",
     "removeDateFilter": "إزالة عامل تصفية التاريخ",
     "removeSearchFilter": "إزالة عامل تصفية البحث",
-    "loadJobsError": "تعذّر تحميل الوظائف. يرجى المحاولة مرة أخرى."
+    "loadJobsError": "تعذّر تحميل الوظائف. يرجى المحاولة مرة أخرى.",
+    "shareJobButton": "مشاركة الوظيفة"
   },
   "superAgentLeads": {
     "columnActions": "الإجراءات",
@@ -14065,9 +14157,9 @@
     "stageUpdated": "تم تحديث المرحلة إلى {stage}.",
     "stageUpdateError": "تعذّر تحديث المرحلة. يرجى المحاولة مرة أخرى.",
     "viewAgent": "فتح الوكيل المسؤول عن هذا العميل",
-    "loadError": "تعذّر تحميل خط العملاء المحتملين. يرجى المحاولة مرة أخرى.",
+    "loadError": "تعذّر تحميل العملاء المحتملين. يرجى المحاولة مرة أخرى.",
     "retry": "إعادة المحاولة",
-    "pageTitle": "خط أنابيب العملاء المحتملين",
+    "pageTitle": "العملاء المحتملون من أصحاب العمل",
     "pageDescription": "كل عميل محتمل عبر فريقك، حسب المرحلة، مع أعمال المتابعة الإقليمية.",
     "sectionTitle": "تصفية ومراجعة عملاء صاحب العمل المحتملين",
     "columnCompany": "الشركة",
@@ -14145,7 +14237,7 @@
     "filterLabelHasFollowUp": "لديها متابعة",
     "filterLabelSort": "الترتيب: {sortBy} ({order})",
     "noLeadsFoundTitle": "لم يتم العثور على عملاء محتملين",
-    "noLeadsFoundMessage": "جرب بحثاً آخر أو اضبط المرشحات أو استخدم البحث المدعوم بالذكاء الاصطناعي لاستكشاف خط أنابيبك.",
+    "noLeadsFoundMessage": "جرّب بحثاً آخر أو غيّر عوامل التصفية أو استخدم البحث بالذكاء الاصطناعي للعثور على العملاء المحتملين.",
     "badgeRouted": "موجه",
     "labelOverdue": "متأخر",
     "dismissAiSummary": "إغلاق ملخص الذكاء الاصطناعي",
@@ -14288,7 +14380,18 @@
     "loadEmployersError": "تعذّر تحميل أصحاب العمل. يرجى المحاولة مرة أخرى.",
     "cityLabel": "المدينة",
     "cityPlaceholder": "اختر مدينة ضمن منطقتك",
-    "cityHint": "توضع الشركة في هذه المدينة، فتراها أنت والوكلاء الذين يغطونها."
+    "cityHint": "توضع الشركة في هذه المدينة، فتراها أنت والوكلاء الذين يغطونها.",
+    "area": {
+      "viewLabel": "أي أصحاب العمل",
+      "viewAll": "كل أصحاب العمل",
+      "viewRegion": "ضمن منطقتي",
+      "chip": "ضمن منطقتك",
+      "chipHint": "مسجّل في مدينة ضمن منطقتك.",
+      "emptyTitle": "لا يوجد أصحاب عمل مسجّلون في منطقتك بعد",
+      "emptyDescription": "يظهر أصحاب العمل هنا عند تسجيلهم في مدينة تغطيها منطقتك.",
+      "noRegionTitle": "ليست لديك منطقة بعد",
+      "noRegionDescription": "يحدد المسؤول المدن التي تغطيها منطقتك. بعد ذلك يظهر هنا أصحاب العمل المسجّلون فيها."
+    }
   },
   "superAgentPlacements": {
     "pageTitle": "التوظيفات",
@@ -14419,8 +14522,8 @@
     "perfInterviews": "المقابلات",
     "perfPlacements": "التوظيفات",
     "avgResponseTimeLabel": "متوسط وقت الرد",
-    "pipelineEyebrow": "خط الأنابيب",
-    "pipelineTitle": "خط أنابيب العملاء المتوقعين",
+    "pipelineEyebrow": "العملاء المحتملون",
+    "pipelineTitle": "العملاء المحتملون من أصحاب العمل",
     "pipelineDescription": "{total} عملاء متوقعين في جميع المراحل",
     "tableColumnCompany": "الشركة",
     "tableColumnContact": "جهة الاتصال",
@@ -14546,7 +14649,10 @@
     "audienceChipEmployer": "رابط أصحاب العمل",
     "audienceChipJobSeeker": "رابط الباحثين عن عمل",
     "registrationSeeker": "باحث عن عمل",
-    "filterAudienceAll": "كل الفئات"
+    "filterAudienceAll": "كل الفئات",
+    "deleteConfirmTitle": "حذف رابط الإحالة",
+    "deleteConfirmMessage": "هل تريد حذف رابط الإحالة {code} بشكل دائم؟ لا يمكن التراجع عن هذا الإجراء.",
+    "deleteButton": "حذف"
   },
   "superAgentInvoices": {
     "failedToLoad": "تعذر تحميل الفواتير",
@@ -14624,7 +14730,7 @@
     "approvedBarLabel": "موافق عليه",
     "completedBarLabel": "مكتمل",
     "rejectedBarLabel": "مرفوض",
-    "requestPipelineTitle": "خط أنابيب الطلبات",
+    "requestPipelineTitle": "الطلبات حسب المرحلة",
     "requestPipelineDescription": "التوزيع الحالي عبر مسار القرار.",
     "statusSubmitted": "مُقدم",
     "statusUnderReview": "قيد المراجعة",
@@ -14700,14 +14806,14 @@
   },
   "superAgentApplications": {
     "pageTitle": "الطلبات",
-    "pageDescription": "مسار الطلبات عبر فريقك، من أول تقديم حتى التوظيف.",
+    "pageDescription": "جميع الطلبات عبر فريقك، من أول تقديم حتى التوظيف.",
     "toolbarTitle": "تتبع الطلبات",
     "toolbarDescription": "قم بالتصفية حسب الحالة أو الوكيل لتضييق قائمة الطلبات.",
     "searchPlaceholder": "ابحث عن المرشح أو المسمى الوظيفي أو الشركة...",
     "resetButton": "إعادة تعيين",
     "statusPlaceholder": "جميع الحالات",
     "allAgentsPlaceholder": "جميع الوكلاء",
-    "sectionEyebrow": "خط الأنابيب",
+    "sectionEyebrow": "تقدّم التوظيف",
     "sectionTitle": "الطلبات",
     "tableHeaders": {
       "candidate": "المرشح",
@@ -14823,17 +14929,43 @@
     "yearsAbbr": "سنة",
     "failedToLoadJobSeekers": "تعذر تحميل طالبي الوظائف",
     "referredByYouChip": "أحلته أنت",
-    "referredViaChip": "مُحال عبر {name}"
+    "referredViaChip": "مُحال عبر {name}",
+    "refer": {
+      "button": "إحالة باحث عن عمل"
+    },
+    "area": {
+      "viewLabel": "عرض",
+      "viewAll": "كل الباحثين عن عمل",
+      "viewArea": "في منطقتي",
+      "chip": "في منطقتك",
+      "chipHint": "يعيش في مدينة ضمن منطقتك.",
+      "emptyTitle": "لا يوجد باحثون عن عمل في منطقتك بعد",
+      "emptyDescription": "يظهر الباحثون عن عمل هنا بعد اختيارهم مدينة ضمن منطقتك. لا تظهر الملفات المخفية أبدًا.",
+      "noRegionTitle": "ليست لديك منطقة بعد",
+      "noRegionDescription": "يحدد المسؤول المدن التي تغطيها منطقتك. بعد ذلك يظهر هنا الباحثون عن عمل الذين يعيشون فيها."
+    },
+    "premium": {
+      "chip": "مميز",
+      "filterAny": "كل العضويات",
+      "filterOnly": "المميزون فقط ({count})",
+      "filterLabel": "العضوية"
+    },
+    "byAgent": {
+      "filterAll": "كل الوكلاء",
+      "filterLabel": "الوكيل",
+      "added": "أضافه {name}",
+      "assigned": "مُسند إلى {name}"
+    }
   },
   "superAgentReports": {
     "teamPerformanceSummary": "ملخص أداء الفريق",
     "teamPerformanceQuery": "قدم ملخصاً شاملاً لأداء الفريق هذا الشهر: إجمالي العملاء المتوقعين والتوظيفات الناجحة والعمولات وسلط الضوء على الأداء المتفوق",
     "agentComparisonAnalysis": "تحليل مقارنة الوكيل",
     "agentComparisonQuery": "قارن جميع وكلائي جنباً إلى جنب بناءً على عدد العملاء المتوقعين الذين تم إنشاؤهم ومعدل التوظيف والعمولات المحققة. من يحتاج إلى تدريب؟",
-    "leadPipelineHealth": "صحة خط أنابيب العملاء المتوقعين",
-    "leadPipelineQuery": "قيّم صحة خط أنابيب العملاء المتوقعين لفريقي: معدلات التحويل حسب المرحلة والعملاء المتوقعين المتأخرين والاختناقات",
+    "leadPipelineHealth": "تقدّم العملاء المحتملين لدى الفريق",
+    "leadPipelineQuery": "كيف يتقدّم العملاء المحتملون من أصحاب العمل لدى فريقي؟ اعرض عدد من ينتقل من كل مرحلة إلى التالية، والعملاء الذين توقّف التواصل معهم، وأين يتعثّرون",
     "commissionForecast": "توقعات العمولات",
-    "commissionForecastQuery": "توقع العمولات للشهر القادم بناءً على خط الأنابيب الحالي ومعدلات التحويل التاريخية",
+    "commissionForecastQuery": "توقّع عمولات الشهر القادم بناءً على العملاء المحتملين الحاليين ومعدلات التحويل السابقة",
     "agentsManaged": "الوكلاء المدارين",
     "agentsManagedHelper": "إجمالي أعضاء الفريق الذين يقعون حالياً ضمن نطاق تقريرك المباشر",
     "totalLeads": "إجمالي العملاء المتوقعين",
@@ -15039,8 +15171,8 @@
     "leadConvertedSuccess": "تم تحويل \"{company}\" إلى جهة توظيف بنجاح",
     "leadConversionFailed": "تعذر تحويل الفرصة",
     "confirmDeleteLead": "هل تريد حذف هذه الفرصة؟",
-    "heroBadge": "خط أنابيب الفرص",
-    "heroDescription": "خط أنابيب مرئي لتتبع فرص جهات التوظيف من الاتصال الأول حتى التحويل. انقر على البطاقة لعرض التفاصيل وإدارة الفرصة.",
+    "heroBadge": "العملاء المحتملون",
+    "heroDescription": "تابع كل عميل محتمل من أصحاب العمل منذ أول تواصل حتى التسجيل. انقر على البطاقة لعرض التفاصيل وإدارة العميل.",
     "kpiOpen": "مفتوحة",
     "kpiWon": "محققة",
     "kpiTotal": "الإجمالي",
@@ -15050,7 +15182,7 @@
     "searchPlaceholder": "ابحث...",
     "allStages": "جميع المراحل",
     "allExhibitions": "جميع المعارض",
-    "emptyPipelineTitle": "لا توجد فرص في خط الأنابيب حالياً",
+    "emptyPipelineTitle": "لا يوجد عملاء محتملون بعد",
     "emptyPipelineDescription": "أنشئ فرصتك الأولى للبدء",
     "noResultsTitle": "لا توجد فرص مطابقة لبحثك",
     "noResultsDescription": "جرّب مصطلح بحث مختلف أو امسح المرشحات لرؤية المزيد من الفرص.",
@@ -15312,7 +15444,11 @@
     "offerErrorGeneric": "لا يمكن إرسال العرض.",
     "yearsExperience": "{years, plural, zero {# سنة خبرة} one {سنة خبرة واحدة} two {سنتا خبرة} few {# سنوات خبرة} many {# سنة خبرة} other {# سنة خبرة}}",
     "filterAllStatuses": "جميع الحالات",
-    "hiredNeedsOffer": "أرسل عرض عمل لهذا المرشح أولاً. ينتقل إلى «تم التوظيف» عند قبوله العرض."
+    "hiredNeedsOffer": "أرسل عرض عمل لهذا المرشح أولاً. ينتقل إلى «تم التوظيف» عند قبوله العرض.",
+    "tableHeaderExperience": "الخبرة",
+    "experienceYears": "{count, plural, one {سنة} two {سنتان} few {# سنوات} other {# سنة}}",
+    "experienceMonths": "{count, plural, one {شهر} two {شهران} few {# أشهر} other {# شهرًا}}",
+    "experienceNotStated": "غير محددة"
   },
   "agentInterviews": {
     "badgeAgentWorkspace": "مساحة العمل الخاصة بالوكيل",
@@ -15474,7 +15610,34 @@
     "areaNoRegionDescription": "يحدد المسؤول المدن التي تغطيها. بعد ذلك يظهر هنا الباحثون عن عمل الذين يعيشون فيها.",
     "areaEmptyTitle": "لا يوجد باحثون عن عمل في منطقتك بعد",
     "areaEmptyDescription": "يظهر الباحثون عن عمل هنا بعد اختيارهم مدينة تغطيها. لا تظهر الملفات المخفية أبدًا.",
-    "viewOnly": "عرض فقط"
+    "viewOnly": "عرض فقط",
+    "refer": {
+      "button": "إحالة باحث عن عمل",
+      "title": "إحالة باحث عن عمل",
+      "description": "شارك رابطك. الباحثون عن عمل الذين يسجلون من خلاله ينضمون كأعضاء مميزين ويُنسبون إليك، وتظهر طلباتهم كأولوية.",
+      "linkLabel": "رابطك للباحثين عن عمل",
+      "copy": "نسخ الرابط",
+      "copied": "تم النسخ",
+      "whatsapp": "مشاركة عبر واتساب",
+      "whatsappText": "انضم إلى Mployedin كباحث عن عمل مميز: {url}",
+      "joined": "{count, plural, =0 {لم ينضم أحد من خلال هذا الرابط بعد} one {انضم باحث واحد عن عمل من خلال هذا الرابط} two {انضم باحثان عن عمل من خلال هذا الرابط} few {انضم # باحثين عن عمل من خلال هذا الرابط} many {انضم # باحثًا عن عمل من خلال هذا الرابط} other {انضم # باحث عن عمل من خلال هذا الرابط}}",
+      "manage": "إدارة روابطك",
+      "loadError": "تعذر تحميل رابط الإحالة الخاص بك.",
+      "defaultLabel": "صفحة الباحثين عن عمل"
+    },
+    "hiringStatus": {
+      "placed": "تم توظيفه",
+      "offer": "عُرض عليه عمل",
+      "interviewing": "في مرحلة المقابلات",
+      "shortlisted": "في القائمة المختصرة",
+      "applied": "قدّم طلبًا",
+      "notProgressed": "لم يتقدّم",
+      "waiting": "لم يقدّم بعد"
+    },
+    "filterHiringStatus": "حالة التوظيف",
+    "hiringStatusLabel": "حالة التوظيف",
+    "hiringStatusAny": "أي حالة توظيف",
+    "viewAllShort": "الكل"
   },
   "agentEmployers": {
     "heroWorkspace": "مساحة عمل الوكيل",
@@ -15550,7 +15713,16 @@
     "viewCards": "بطاقات",
     "viewTable": "جدول",
     "inYourRegion": "ضمن منطقتك",
-    "deleteEmployerFailed": "تعذّر حذف صاحب العمل هذا. يرجى المحاولة مرة أخرى."
+    "deleteEmployerFailed": "تعذّر حذف صاحب العمل هذا. يرجى المحاولة مرة أخرى.",
+    "viewLabel": "أي الحسابات",
+    "viewAll": "كل الحسابات",
+    "viewAssigned": "المسندة إليّ",
+    "columnActivity": "النشاط",
+    "activityOpenJobs": "{count, plural, zero {لا وظائف مفتوحة} one {وظيفة مفتوحة واحدة} two {وظيفتان مفتوحتان} few {# وظائف مفتوحة} many {# وظيفة مفتوحة} other {# وظيفة مفتوحة}}",
+    "activityNewApplicants": "{count, plural, zero {لا متقدمين جدد} one {متقدم جديد واحد} two {متقدمان جديدان} few {# متقدمين جدد} many {# متقدمًا جديدًا} other {# متقدم جديد}}",
+    "activityInterviews": "{count, plural, zero {لا مقابلات قادمة} one {مقابلة قادمة واحدة} two {مقابلتان قادمتان} few {# مقابلات قادمة} many {# مقابلة قادمة} other {# مقابلة قادمة}}",
+    "activityHires": "{count, plural, zero {لا تعيينات} one {تعيين واحد} two {تعيينان} few {# تعيينات} many {# تعيينًا} other {# تعيين}}",
+    "activityHint": "المتقدمون الجدد من آخر 7 أيام، والمقابلات هي التي لم تُعقد بعد."
   },
   "agentPlacements": {
     "pageTitle": "التوظيفات",
@@ -15643,7 +15815,24 @@
     "aiNotAvailable": "التقارير المدعومة بالذكاء الاصطناعي غير متاحة في خطتك الحالية. يرجى التواصل مع المسؤول لديك لتفعيلها.",
     "aiUsageLimit": "لقد وصلت إلى حد استخدام الذكاء الاصطناعي الآن. يرجى المحاولة مرة أخرى بعد قليل.",
     "reportGenError": "لم نتمكن من إنشاء هذا التقرير. يرجى المحاولة مرة أخرى.",
-    "analyticsLoadFailed": "تعذر تحميل أرقام أدائك"
+    "analyticsLoadFailed": "تعذر تحميل أرقام أدائك",
+    "seekersHeading": "الباحثون عن عمل",
+    "seekersOnboarded": "المُسجَّلون عن طريقك",
+    "seekersPremiumAmong": "{count, plural, zero {لا يوجد مميزون بينهم} one {مميز واحد بينهم} two {مميزان بينهم} few {# مميزين بينهم} many {# مميزًا بينهم} other {# مميز بينهم}}",
+    "seekersOnboardedPremium": "المميزون المُسجَّلون",
+    "seekersOnboardedPremiumHint": "المميزون من بين المسجَّلين عن طريقك",
+    "seekersInArea": "في منطقتي",
+    "seekersInAreaHint": "الباحثون عن عمل في منطقتك",
+    "seekersNoRegion": "لم تُخصَّص لك منطقة بعد",
+    "seekersPremiumInArea": "المميزون في منطقتي",
+    "seekersPremiumInAreaHint": "الباحثون المميزون في منطقتك",
+    "seekersReferred": "انضموا عبر رابطي",
+    "seekersReferredRecent": "{count, plural, zero {لا أحد خلال آخر 30 يومًا} one {واحد خلال آخر 30 يومًا} two {اثنان خلال آخر 30 يومًا} few {# خلال آخر 30 يومًا} many {# خلال آخر 30 يومًا} other {# خلال آخر 30 يومًا}}",
+    "seekersByProfession": "الباحثون عن عمل حسب المهنة",
+    "seekersByProfessionScope": "{count, plural, zero {لا يوجد باحثون مسجَّلون عن طريقك أو في منطقتك} one {باحث واحد مسجَّل عن طريقك أو في منطقتك} two {باحثان مسجَّلان عن طريقك أو في منطقتك} few {# باحثين مسجَّلين عن طريقك أو في منطقتك} many {# باحثًا مسجَّلًا عن طريقك أو في منطقتك} other {# باحث مسجَّل عن طريقك أو في منطقتك}}",
+    "seekersByProfessionEmpty": "لا يوجد باحثون عن عمل بعد.",
+    "professionOther": "مهن أخرى",
+    "professionNotSpecified": "غير محدد"
   },
   "agentLeadDetail": {
     "backToPipeline": "العودة إلى خط الأنابيب",
@@ -15847,7 +16036,25 @@
     "markInProgress": "تحديد المهمة قيد التنفيذ",
     "columnTask": "المهمة",
     "columnDueDate": "تاريخ الاستحقاق",
-    "filterAllStatuses": "جميع الحالات"
+    "filterAllStatuses": "جميع الحالات",
+    "kindLabel": "نوع المهمة",
+    "kindAll": "كل المهام",
+    "kindAssigned": "مكلّف بها",
+    "kindPersonal": "مهامي الخاصة",
+    "assignedBySuperAgent": "من {name} (وكيل رئيسي)",
+    "assignedByAdmin": "من {name} (مشرف)",
+    "reviewAwaiting": "بانتظار المراجعة",
+    "reviewApproved": "معتمدة",
+    "reviewReturned": "أُعيدت",
+    "returnedReasonLabel": "أُعيدت:",
+    "submitTitle": "تحديد المهمة كمنجزة",
+    "submitDescription": "ستُرسل «{title}» إلى {name} للمراجعة.",
+    "submitNoteLabel": "ماذا أنجزت؟",
+    "submitNotePlaceholder": "ملاحظة قصيرة للمراجِع",
+    "submitNoteRequired": "أضف ملاحظة قصيرة عمّا أنجزته",
+    "submitAction": "إرسال للمراجعة",
+    "submitSuccess": "أُرسلت للمراجعة",
+    "submitError": "تعذّر إرسال المهمة للمراجعة. حاول مرة أخرى."
   },
   "agentReferralLinks": {
     "pageTitle": "روابط الإحالة",
@@ -15975,7 +16182,7 @@
     "channelsLabel": "القنوات",
     "generalDescription": "نقاش عام للفريق",
     "employersDescription": "تنسيق أصحاب العمل",
-    "leadsDescription": "خط أنابيب العملاء المحتملين الجديد",
+    "leadsDescription": "عملاء محتملون جدد",
     "agentsDescription": "قناة خاصة بالوكلاء فقط",
     "noMessagesEmpty": "لا توجد رسائل حتى الآن. ابدأ المحادثة!",
     "messageInputPlaceholder": "رسالة #{channel}...",
@@ -17437,7 +17644,7 @@
     "postJobAgent": "نشر وظيفة",
     "postJobAgentDesc": "إنشاء وظيفة لصاحب عمل مُسند إليك",
     "openLeads": "العملاء المحتملون",
-    "openLeadsDesc": "قائمة العملاء المحتملين لديك",
+    "openLeadsDesc": "العملاء المحتملون لديك",
     "openTeam": "فريقك",
     "openTeamDesc": "الوكلاء الذين تديرهم",
     "create": "إنشاء",
@@ -19197,5 +19404,92 @@
     "confirmMessage": "سيفقد {clientName} الوصول إلى بياناتك في Mployedin فورًا. يمكنك ربطه مرة أخرى لاحقًا.",
     "disconnected": "تم فصل {clientName}.",
     "disconnectError": "تعذر فصل هذا التطبيق. حاول مرة أخرى."
+  },
+  "assignedTasks": {
+    "superAgentTitle": "مهام الفريق",
+    "adminTitle": "مهام الوكلاء",
+    "superAgentContext": "كلّف وكلاءك بالمهام وراجع ما يسلّمونه.",
+    "adminContext": "المهام التي يكلّف بها الوكلاء الرئيسيون والمشرفون الوكلاءَ، ومراجعتها.",
+    "assignButton": "تكليف بمهمة",
+    "assignTitle": "تكليف بمهمة",
+    "assignDescription": "يُبلَّغ الوكيل ويراها في مهامه. عندما يحدّدها كمنجزة تعود إليك للمراجعة.",
+    "fieldAgent": "الوكيل",
+    "chooseAgent": "اختر وكيلًا",
+    "noAgents": "لا يوجد وكلاء للتكليف",
+    "fieldTitle": "المهمة",
+    "titlePlaceholder": "ما المطلوب إنجازه؟",
+    "titleRequired": "أدخل عنوانًا للمهمة",
+    "fieldDescription": "التفاصيل",
+    "descriptionPlaceholder": "أي معلومات يحتاجها الوكيل (اختياري)",
+    "fieldPriority": "الأولوية",
+    "priorityHigh": "عالية",
+    "priorityMedium": "متوسطة",
+    "priorityLow": "منخفضة",
+    "fieldDue": "تاريخ الاستحقاق",
+    "assignSubmit": "تكليف بالمهمة",
+    "assignSuccess": "تم التكليف بالمهمة",
+    "assignError": "تعذّر التكليف بالمهمة. حاول مرة أخرى.",
+    "loadError": "تعذّر تحميل المهام. حاول مرة أخرى.",
+    "metricOpen": "مفتوحة",
+    "metricAwaiting": "بانتظار المراجعة",
+    "metricReturned": "أُعيدت",
+    "metricApproved": "معتمدة",
+    "searchPlaceholder": "ابحث في المهام",
+    "filterAllAgents": "كل الوكلاء",
+    "filterAllReview": "أي حالة مراجعة",
+    "columnTask": "المهمة",
+    "columnAgent": "الوكيل",
+    "columnAssignedBy": "كلّف بها",
+    "columnState": "الحالة",
+    "columnDue": "الاستحقاق",
+    "roleAdmin": "مشرف",
+    "roleSuperAgent": "وكيل رئيسي",
+    "statePending": "لم تبدأ",
+    "stateInProgress": "قيد التنفيذ",
+    "stateAwaitingReview": "بانتظار المراجعة",
+    "stateApproved": "معتمدة",
+    "stateReturned": "أُعيدت",
+    "stateCompleted": "منجزة",
+    "agentNoteLabel": "ملاحظة الوكيل",
+    "reviewCommentLabel": "تعليق المراجعة",
+    "emptyTitle": "لا توجد مهام مكلّف بها بعد",
+    "emptyDescription": "كلّف بمهمة وستظهر هنا حتى تتم مراجعتها.",
+    "noResultsTitle": "لا توجد مهام تطابق هذه الفلاتر",
+    "noResultsDescription": "غيّر الفلاتر أو امسحها لعرض المزيد.",
+    "approveTitle": "اعتماد المهمة",
+    "returnTitle": "إعادة المهمة",
+    "reviewDescription": "«{title}» من {name}",
+    "approveCommentLabel": "تعليق (اختياري)",
+    "returnCommentLabel": "ما الذي يجب تغييره؟",
+    "approveCommentPlaceholder": "أي إضافة للوكيل",
+    "returnCommentPlaceholder": "أخبر الوكيل بما يجب إصلاحه أو إكماله",
+    "returnCommentRequired": "اذكر ما يجب تغييره",
+    "approveAction": "اعتماد",
+    "returnAction": "إعادة",
+    "approvedToast": "تم اعتماد المهمة",
+    "returnedToast": "أُعيدت المهمة إلى الوكيل",
+    "reviewError": "تعذّر حفظ المراجعة. حاول مرة أخرى."
+  },
+  "superAgentTeamMessage": {
+    "openButton": "مراسلة الوكلاء",
+    "messageOne": "مراسلة",
+    "title": "راسل وكلاءك",
+    "description": "أرسل رسالة واحدة إلى كل الوكلاء في فريقك، أو إلى الوكلاء الذين تختارهم فقط.",
+    "sendTo": "إرسال إلى",
+    "allAgents": "كل وكلائي ({count})",
+    "chooseAgents": "اختيار الوكلاء",
+    "searchAgents": "ابحث عن وكيل",
+    "loadError": "تعذّر تحميل الوكلاء. أغلق النافذة وحاول مرة أخرى.",
+    "noAgents": "لا يوجد وكلاء.",
+    "selectedCount": "{count, plural, =0 {لم يتم اختيار أي وكيل} one {تم اختيار وكيل واحد} two {تم اختيار وكيلين} few {تم اختيار # وكلاء} many {تم اختيار # وكيلاً} other {تم اختيار # وكيل}}",
+    "messageLabel": "الرسالة",
+    "messagePlaceholder": "اكتب رسالتك…",
+    "replyNote": "تصل الرسالة إلى كل وكيل في محادثته الخاصة معك ويمكنه الرد عليك مباشرة.",
+    "sendButton": "{count, plural, =0 {إرسال} one {إرسال إلى وكيل واحد} two {إرسال إلى وكيلين} few {إرسال إلى # وكلاء} many {إرسال إلى # وكيلاً} other {إرسال إلى # وكيل}}",
+    "sendSuccess": "{count, plural, one {أُرسلت الرسالة إلى وكيل واحد} two {أُرسلت الرسالة إلى وكيلين} few {أُرسلت الرسالة إلى # وكلاء} many {أُرسلت الرسالة إلى # وكيلاً} other {أُرسلت الرسالة إلى # وكيل}}",
+    "sendPartial": "{count, plural, one {تعذّر الوصول إلى وكيل واحد. حاول لاحقاً.} two {تعذّر الوصول إلى وكيلين. حاول لاحقاً.} few {تعذّر الوصول إلى # وكلاء. حاول لاحقاً.} many {تعذّر الوصول إلى # وكيلاً. حاول لاحقاً.} other {تعذّر الوصول إلى # وكيل. حاول لاحقاً.}}",
+    "sendError": "تعذّر إرسال رسالتك. يرجى المحاولة مرة أخرى.",
+    "sendTooMany": "لقد أرسلت رسائل كثيرة في الدقائق الأخيرة. انتظر قليلًا ثم حاول مرة أخرى.",
+    "retry": "حاول مرة أخرى"
   }
 }

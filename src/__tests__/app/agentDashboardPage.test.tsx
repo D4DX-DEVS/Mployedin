@@ -53,6 +53,18 @@ jest.mock("@/models/Job", () => ({
   },
 }));
 
+// The header names the agent's super agent (client feedback 2026-10-12).
+jest.mock("@/lib/agents/superAgentContact", () => ({
+  loadSuperAgentContact: async () => ({ userId: "u-sa", name: "Sara Khan", email: "sara@example.com", phone: "" }),
+}));
+
+// Client feedback 2026-10-12: the accounts tile and card are the accounts
+// assigned to the agent, not every employer in their region.
+const loadAssignedAccountsMock = jest.fn();
+jest.mock("@/lib/agents/assignedAccounts", () => ({
+  loadAssignedAccounts: (...args: unknown[]) => loadAssignedAccountsMock(...args),
+}));
+
 // The dashboard reads its queue through the shared work-queue module. Mocked
 // here so this stays a render test: importing it for real pulls in mongoose
 // models, and jest cannot transform bson's ESM build.
@@ -99,10 +111,11 @@ const recentSeekersChain = {
   populate: () => recentSeekersChain,
   lean: async () => [],
 };
+const seekerCountMock = jest.fn(async (_filter?: unknown) => 0);
 jest.mock("@/models/JobSeeker", () => ({
   __esModule: true,
   default: {
-    countDocuments: async () => 0,
+    countDocuments: (filter: unknown) => seekerCountMock(filter),
     find: () => recentSeekersChain,
   },
 }));
@@ -242,6 +255,15 @@ describe("AgentDashboard", () => {
       { _id: { jobId: "job-1", status: "interview_scheduled" }, count: 1 },
       { _id: { jobId: "job-1", status: "offer" }, count: 1 },
     ]);
+
+    loadAssignedAccountsMock.mockReset();
+    loadAssignedAccountsMock.mockResolvedValue({
+      total: 7,
+      rows: [
+        { employerId: "employer-1", companyName: "Gulf Metals", isActive: true, openJobs: 4, newApplicants: 3, upcomingInterviews: 2, hires: 1 },
+        { employerId: "employer-2", companyName: "Acme Foods", isActive: true, openJobs: 1, newApplicants: 0, upcomingInterviews: 0, hires: 0 },
+      ],
+    });
   });
 
   it("renders the employer-shaped home: header, queue, signals, pipeline, roles — every number a link", async () => {
@@ -288,8 +310,21 @@ describe("AgentDashboard", () => {
     // own): book size, live roles, this month's target and commission —
     // nothing the queue or the pipeline already prints. Each is a link.
     expect(screen.queryByRole("heading", { name: /at a glance/i })).toBeNull();
-    expect(screen.getByRole("link", { name: "Active Accounts: 2" }).closest("section")).toHaveClass("workspace-header");
-    expect(screen.getByRole("link", { name: "Active Accounts: 2" })).toHaveAttribute("href", "/en/agent/employers");
+    // Assigned accounts only, and the tile opens that same list.
+    expect(screen.getByRole("link", { name: "Assigned accounts: 7" }).closest("section")).toHaveClass("workspace-header");
+    expect(screen.getByRole("link", { name: "Assigned accounts: 7" })).toHaveAttribute("href", "/en/agent/employers?view=assigned");
+    expect(loadAssignedAccountsMock).toHaveBeenCalledWith(["employer-1", "employer-2"], expect.any(Date), 5);
+
+    // Your accounts: each assigned employer with its numbers; the row opens
+    // that employer's jobs, "View all" the assigned list.
+    const accounts = screen.getByRole("heading", { name: "Your accounts" }).closest("section")!;
+    const gulf = within(accounts).getByRole("link", { name: /Gulf Metals/ });
+    expect(gulf).toHaveAttribute("href", "/en/agent/jobs?employerId=employer-1");
+    expect(gulf).toHaveTextContent("Open jobs4");
+    expect(gulf).toHaveTextContent("New applicants3");
+    expect(gulf).toHaveTextContent("Interviews ahead2");
+    expect(gulf).toHaveTextContent("Hires1");
+    expect(within(accounts).getByRole("link", { name: /view all/i })).toHaveAttribute("href", "/en/agent/employers?view=assigned");
     expect(screen.getByRole("link", { name: "Live Roles: 1" })).toHaveAttribute("href", "/en/agent/jobs?status=active");
     expect(screen.getByRole("link", { name: "Target this month: 42%" })).toHaveAttribute("href", "/en/agent/target-report");
     expect(targetFindOneMock).toHaveBeenCalledWith(expect.objectContaining({ assigneeId: "user-1", assigneeRole: "agent", status: "active" }));
@@ -339,7 +374,7 @@ describe("AgentDashboard", () => {
     expect(roleRow).toHaveTextContent("Applications2");
 
     // Nothing on the page repeats: each figure's label appears once.
-    for (const label of ["Active Accounts", "Live Roles", "Target this month", "Commission this month", "Follow-ups due"]) {
+    for (const label of ["Assigned accounts", "Live Roles", "Target this month", "Commission this month", "Follow-ups due"]) {
       expect(screen.getAllByText(label)).toHaveLength(1);
     }
 
@@ -349,6 +384,17 @@ describe("AgentDashboard", () => {
     expect(view.container.innerHTML).not.toContain("bg-white/95");
     expect(view.container.innerHTML).not.toContain("text-slate-950");
     expect(view.container.innerHTML).not.toMatch(/(^|[\s"])bg-(amber|sky|indigo|emerald|violet|rose)-50(?=[\s"])/);
+  });
+
+  // A seeker who joins through the agent's link counts as onboarded at once,
+  // before they finish their own profile; area-only seekers are not theirs.
+  it("counts Onboarded as the seekers the agent brought in, not the isOnboarded flag", async () => {
+    seekerCountMock.mockClear();
+    await AgentDashboard({ params: Promise.resolve({ locale: "en" }) });
+    const filters = seekerCountMock.mock.calls.map(([f]) => JSON.stringify(f));
+    expect(filters.some((f) => f.includes("isOnboarded"))).toBe(false);
+    const onboarded = filters.find((f) => f.includes("referral.agentId") && !f.includes("premium"));
+    expect(onboarded).toBeDefined();
   });
 
   it("shows a dash, not 0%, when the super-agent has set no target this month", async () => {

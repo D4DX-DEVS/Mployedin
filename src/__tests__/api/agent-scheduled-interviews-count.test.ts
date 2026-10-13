@@ -26,7 +26,7 @@ const model = (name: string) => {
     }),
     aggregate: jest.fn(async () => []),
     find: jest.fn(() => chain([])),
-    findOne: jest.fn(() => chain(name === "Agent" ? { _id: AGENT_ID, performance: {}, commissionRate: 0 } : null)),
+    findOne: jest.fn(() => chain(name === "Agent" ? { _id: AGENT_ID, performance: {}, commissionRate: 0, assignedEmployerIds: [], assignedJobSeekerIds: [], assignedCityIds: [], assignedStateIds: [] } : null)),
   };
 };
 
@@ -35,7 +35,11 @@ jest.mock("@/lib/auth/withAuth", () => ({
   withAuth: (handler: (req: NextRequest, ctx: unknown) => Promise<Response>) =>
     async (req: NextRequest) => handler(req, { userId: USER_ID, role: "agent", locale: "en" }),
 }));
-jest.mock("@/lib/auth/agentRestrictions", () => ({ getAgentEmployerIds: jest.fn(async () => []) }));
+jest.mock("@/lib/auth/agentRestrictions", () => ({
+  getAgentEmployerIds: jest.fn(async () => []),
+  getAgentSeekerArea: jest.fn(async () => ({ assignedCityIds: [], assignedStateIds: [] })),
+  seekerRegionMatch: jest.fn(() => null),
+}));
 jest.mock("@/models/Agent", () => ({ __esModule: true, default: model("Agent") }));
 jest.mock("@/models/Job", () => ({ __esModule: true, default: model("Job") }));
 jest.mock("@/models/Application", () => ({ __esModule: true, default: model("Application") }));
@@ -44,6 +48,7 @@ jest.mock("@/models/Placement", () => ({ __esModule: true, default: model("Place
 jest.mock("@/models/Commission", () => ({ __esModule: true, default: model("Commission") }));
 jest.mock("@/models/Interview", () => ({ __esModule: true, default: model("Interview") }));
 jest.mock("@/models/Offer", () => ({ __esModule: true, default: model("Offer") }));
+jest.mock("@/models/JobSeeker", () => ({ __esModule: true, default: model("JobSeeker") }));
 
 const statusCount = () => interviewCounts.find((f) => "status" in f);
 

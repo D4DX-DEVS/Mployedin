@@ -334,7 +334,7 @@ export function ReferralLinkDialog({ open, onClose }: ReferralLinkDialogProps) {
           {/* ── Manage link to full page ──────────────────────── */}
           <div className="mx-6 mb-6 mt-5">
             <a
-              href="/en/super-agent/referral-links"
+              href={`/${locale || "en"}/super-agent/referral-links`}
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700"
             >
               <ExternalLink className="h-3 w-3" />

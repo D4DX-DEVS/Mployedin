@@ -503,6 +503,8 @@ export interface CompareCandidate {
   aiMatchScore: number | null;
   /** Snapshot at apply time: the candidate joined through a partner referral. */
   isAgentReferred?: boolean;
+  /** The candidate is a Premium job seeker: reviewed first, badged "Priority". */
+  isPriority?: boolean;
   matchBreakdown: { skills?: number; role?: number; experience?: number; education?: number; location?: number; salary?: number } | null;
   /** Requirements checklist roll-up; null before the ATS scoring has run. */
   requirementsStatus?: "met" | "not_met" | "unverified" | null;

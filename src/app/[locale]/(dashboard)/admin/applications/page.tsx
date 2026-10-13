@@ -9,6 +9,7 @@ import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { RowExpandToggle, isRowToggleClick } from "@/components/shared/RowExpandToggle";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -18,8 +19,9 @@ import { usePagination } from "@/hooks/usePagination";
 import {
   Inbox, Sparkles, Building2,
   TrendingUp, Users, FileText, Brain, Zap, AlertTriangle, CheckCircle, Info, Target,
-  RefreshCw, User, Briefcase,
+  RefreshCw, User, Briefcase, Handshake,
 } from "lucide-react";
+import type { ReferralSummary } from "@/lib/referrals/summary";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -67,6 +69,10 @@ interface Application {
   jobSeekerId?: ApplicationSeeker;
   employerId?: string;
   status: string;
+  /** A Premium job seeker's application: listed first, badged "Priority". */
+  isPriority?: boolean;
+  /** Admin only: the agent / super agent the candidate joined through. */
+  referralSummary?: ReferralSummary;
   source?: string;
   autoApplied?: boolean;
   aiMatchScore?: number;
@@ -828,7 +834,7 @@ export default function AdminApplicationsPage() {
           )}
 
           {/* Column headers */}
-          <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_15rem]">
+          <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_15rem]">
             <span className="flex items-center gap-3">
               <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center sm:min-h-0 sm:min-w-0">
                 <Checkbox
@@ -877,7 +883,7 @@ export default function AdminApplicationsPage() {
                 <article
                   key={app._id}
                   onClick={(e) => { if (isRowToggleClick(e)) toggleExpanded(); }}
-                  className="grid cursor-pointer gap-1 bg-transparent px-3 py-2 transition-all duration-200 hover:bg-background/70 sm:gap-3 sm:px-5 sm:py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_15rem] sm:items-center"
+                  className="grid cursor-pointer gap-1 bg-transparent px-3 py-2 transition-all duration-200 hover:bg-background/70 sm:gap-3 sm:px-5 sm:py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_15rem] sm:items-center"
                 >
                   {/* Candidate */}
                   <div className="flex min-w-0 items-center gap-2 sm:gap-4">
@@ -894,17 +900,34 @@ export default function AdminApplicationsPage() {
                     </label>
                     <RowExpandToggle expanded={isExpanded} onToggle={toggleExpanded} />
                     <UserAvatar name={candidateName} email={seeker?.email ?? seeker?.userId?.email} className="h-8 w-8 sm:h-10 sm:w-10" colorful />
-                    {/* flex-1 only on phones: it lets the name column use the
-                        width freed by the smaller avatar. On desktop the column
-                        must stay content-sized, exactly as it was. */}
-                    <div className="min-w-0 flex-1 sm:flex-initial">
+                    {/* flex-1 at every width: the name, company and referrer
+                        wrap, so a content-sized block shrank to its longest
+                        word and stacked them in a sliver of the column. */}
+                    <div className="min-w-0 flex-1">
+                      {/* The name wraps instead of truncating: the candidate
+                          column is the narrow one, and "QA Audit Re…" hid who
+                          the row was about. */}
                       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                        <span className="truncate text-[13px] font-semibold tracking-tight text-foreground sm:text-base">{candidateName}</span>
+                        <span className="min-w-0 break-words text-[13px] font-semibold leading-snug tracking-tight text-foreground sm:text-base">{candidateName}</span>
+                        {app.isPriority ? <PriorityBadge size="xs" /> : null}
                       </div>
                       {employer?.companyName && (
-                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground sm:mt-1 sm:gap-1.5 sm:text-xs">
-                          <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                          {employer.companyName}
+                        <p className="mt-0.5 flex items-start gap-1 text-[11px] text-muted-foreground sm:mt-1 sm:gap-1.5 sm:text-xs">
+                          <Building2 className="mt-px h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" />
+                          <span className="min-w-0 break-words">{employer.companyName}</span>
+                        </p>
+                      )}
+                      {app.referralSummary && (
+                        <p className="mt-0.5 flex items-start gap-1 text-[11px] text-violet-700 sm:mt-1 sm:gap-1.5 sm:text-xs">
+                          <Handshake className="mt-px h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
+                          <span className="min-w-0 break-words">
+                            {app.referralSummary.role === "super_agent"
+                              ? t("referredBySuperAgent", { name: app.referralSummary.name || "—" })
+                              : t("referredByAgent", { name: app.referralSummary.name || "—" })}
+                            {app.referralSummary.superAgentName
+                              ? <span className="text-muted-foreground"> · {t("referredUnderSuperAgent", { name: app.referralSummary.superAgentName })}</span>
+                              : null}
+                          </span>
                         </p>
                       )}
                     </div>

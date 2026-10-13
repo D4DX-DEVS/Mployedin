@@ -263,7 +263,7 @@ describe.skip("Agent dark-mode workspace pages", () => {
       name: "leads",
       page: <AgentLeadsPage />,
       endpoint: "/api/leads?page=1&limit=10",
-      heroHeading: /^lead pipeline$/i,
+      heroHeading: /^employer leads$/i,
       panelHeading: /search the funnel and switch the way you review it/i,
       content: "Northstar Foods",
     },

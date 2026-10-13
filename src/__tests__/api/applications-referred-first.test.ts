@@ -72,14 +72,14 @@ async function list(qs: string) {
 describe("GET /api/applications — referred candidates first", () => {
   beforeEach(() => { sorts.length = 0; queries.length = 0; });
 
-  it("prefixes the default (newest) sort with isAgentReferred", async () => {
+  it("prefixes the default (newest) sort with priority (Premium), then referred", async () => {
     await list(`jobId=${JOB_ID}`);
-    expect(sorts[0]).toEqual({ isAgentReferred: -1, appliedAt: -1, _id: -1 });
+    expect(sorts[0]).toEqual({ isPriority: -1, isAgentReferred: -1, appliedAt: -1, _id: -1 });
   });
 
   it("keeps oldest-first but still referred-first", async () => {
     await list(`jobId=${JOB_ID}&sortBy=appliedAt&sortOrder=asc`);
-    expect(sorts[0]).toEqual({ isAgentReferred: -1, appliedAt: 1, _id: 1 });
+    expect(sorts[0]).toEqual({ isPriority: -1, isAgentReferred: -1, appliedAt: 1, _id: 1 });
   });
 
   it("leaves the best-match order untouched", async () => {

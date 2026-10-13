@@ -93,7 +93,9 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   const [items, total, shortlisted, hired] = await Promise.all([
     Application.find(filter)
-      .sort({ createdAt: -1 })
+      // Priority (Premium) applications first, then referred ones, as on
+      // every other applications list.
+      .sort({ isPriority: -1, isAgentReferred: -1, createdAt: -1, _id: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .populate("jobSeekerId", "fullName email")
@@ -120,6 +122,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       matchScore: a.matchScore ?? a.aiMatchScore,
       appliedAt: a.appliedAt ?? a.createdAt,
       source: a.source ?? "direct",
+      isPriority: a.isPriority === true,
     };
   });
 

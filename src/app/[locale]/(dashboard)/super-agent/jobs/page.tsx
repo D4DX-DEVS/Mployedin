@@ -51,6 +51,7 @@ import {
   Pause,
   CheckCircle2,
   ArrowRight,
+  Share2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -69,6 +70,7 @@ import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { ShareJobDialog } from "@/components/features/agent/ShareJobDialog";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 import { formatCurrency } from "@/lib/currency";
@@ -230,6 +232,9 @@ export default function SuperAgentJobsPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+
+  /* ── Share job dialog ── */
+  const [shareJob, setShareJob] = useState<RegionalJob | null>(null);
 
   /* A notification or a ⌘K hit lands here as ?job=<id>. There is no
      jobs/[id] route in this workspace — the record opens in this dialog — so
@@ -916,6 +921,7 @@ export default function SuperAgentJobsPage() {
                         name={job.title}
                         quick={[
                           { key: "view", label: t("viewJobDetailsButton"), icon: Eye, iconOnly: true, onSelect: () => openDetail(job._id) },
+                          ...(job.status === "active" ? [{ key: "share", label: t("shareJobButton"), icon: Share2, iconOnly: true, onSelect: () => setShareJob(job) }] : []),
                         ]}
                       />
                     </TableCell>
@@ -1155,6 +1161,17 @@ export default function SuperAgentJobsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ShareJobDialog
+        job={shareJob ? {
+          _id: shareJob._id,
+          title: shareJob.title,
+          location: typeof shareJob.location === "string" ? undefined : shareJob.location,
+          employerId: shareJob.employerId,
+        } : null}
+        onClose={() => setShareJob(null)}
+        locale={locale}
+      />
     </div>
   );
 }

@@ -8,7 +8,10 @@ import {
   ArrowLeft, Briefcase, Calendar, Clock, Copy, ExternalLink,
   Globe, Link2, Loader2, Mail, MapPin, Pencil, Phone, Target, TrendingUp,
   User, Users2, Activity, CheckCircle2, XCircle, AlertCircle, Save,
+  ClipboardList, MessageSquare,
 } from "lucide-react";
+import { MessageAgentsDialog } from "@/components/features/super-agent/MessageAgentsDialog";
+import { AssignTaskDialog } from "@/components/features/tasks/AssignTaskDialogs";
 import {
   SuperAgentMetricsGrid,
   SuperAgentPageIntro,
@@ -151,6 +154,11 @@ export default function AgentDetailPage() {
   const t = useTranslations("superAgentAgentDetail");
   const tc = useTranslations("common");
   const tf = useTranslations("formErrors");
+  const tm = useTranslations("superAgentTeamMessage");
+  const ta = useTranslations("assignedTasks");
+  // This agent's profile: message them, or give them a follow-up task.
+  const [messageOpen, setMessageOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   const locale = useLocale();
 
   const [data, setData] = useState<AgentDetail | null>(null);
@@ -385,7 +393,15 @@ export default function AgentDetailPage() {
           <span className="text-sm font-semibold text-foreground">{user.isActive ? tc("active") : tc("inactive")}</span>
           <span className="text-xs text-muted-foreground">· {t("commissionLabel")}: {agent.commissionRate ?? 0}%</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={() => setAssignOpen(true)} className="gap-2">
+            <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
+            {ta("assignButton")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setMessageOpen(true)} className="gap-2">
+            <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
+            {tm("messageOne")}
+          </Button>
           <Button variant="outline" size="sm" onClick={openEditDialog} className="gap-2">
             <Pencil className="h-3.5 w-3.5" />
             {t("editAgentButton")}
@@ -396,6 +412,16 @@ export default function AgentDetailPage() {
           </Button>
         </div>
       </SuperAgentPageIntro>
+
+      <MessageAgentsDialog open={messageOpen} onOpenChange={setMessageOpen} presetAgentUserId={user._id} />
+      <AssignTaskDialog
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        apiBase="/api/super-agent/tasks"
+        agents={[{ userId: user._id, name: user.name, email: user.email }]}
+        presetAgentUserId={user._id}
+        onAssigned={() => {}}
+      />
 
       {/* KPIs */}
       <SuperAgentMetricsGrid items={kpis} />

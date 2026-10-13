@@ -27,6 +27,8 @@ import { stageQueryFilter } from "@/lib/hiring/workflowStages";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { isPastClosingDate } from "@/lib/jobs/expiry";
 import { SEEKER_APPLICATION_PROJECTION, stripSeekerHiddenFields } from "@/lib/applications/seekerView";
+import { applicationSnapshotFlags } from "@/lib/applications/referralSnapshot";
+import { loadAdminReferralSummaries, type ReferralSummary } from "@/lib/referrals/summary";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AuthCtx = any;
@@ -523,14 +525,14 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     createdAt: "createdAt",
   };
   const sortField = allowedSortFields[sortBy] ?? "appliedAt";
-  // Referred candidates ride above the rest on every ordering that is not a
-  // judgement. "Best match" stays a pure score order; there the badge alone
-  // carries the signal.
+  // Priority (Premium) candidates, then referred ones, ride above the rest on
+  // every ordering that is not a judgement. "Best match" stays a pure score
+  // order; there the badges alone carry the signal.
   // Ties break on who applied first, then _id, so a page boundary never
   // splits or repeats equal scores and "top N" is the same N on every read.
   const sortSpec: Record<string, 1 | -1> = sortField === "aiMatchScore"
     ? { [sortField]: sortOrder, appliedAt: 1, _id: 1 }
-    : { isAgentReferred: -1, [sortField]: sortOrder, _id: sortOrder };
+    : { isPriority: -1, isAgentReferred: -1, [sortField]: sortOrder, _id: sortOrder };
 
   // The job picker's options and the employer's pipeline counts do not depend
   // on the page of rows, so they load beside it instead of queueing behind it:
@@ -577,6 +579,13 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       ? latestCheckByApplication(applications.map((a) => a._id))
       : Promise.resolve({} as Record<string, unknown>),
   ]);
+
+  // Admin only: who referred each candidate (agent or super agent, and the
+  // agent's super agent). Loaded on the side — never on the populate above —
+  // so the raw referral can't reach an employer through this route.
+  const referralBySeeker = hasRows && ctx.role === "admin"
+    ? await loadAdminReferralSummaries([...new Set(applications.map((a) => String(a.jobSeekerId?._id ?? "")).filter(Boolean))])
+    : new Map<string, ReferralSummary>();
 
   // For job_seeker: enrich applications with latest interview, offer, and placement data
   let interviewMap: Record<string, unknown> = {};
@@ -694,6 +703,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         ? { aiMatchScore: app.seekerMatchScore }
         : {}),
       otherApplicationsCount: Math.max(0, (crossAppCounts[String(app.jobSeekerId?._id)] ?? 1) - 1),
+      ...(referralBySeeker.has(String(app.jobSeekerId?._id))
+        ? { referralSummary: referralBySeeker.get(String(app.jobSeekerId?._id)) }
+        : {}),
       ...(interviewMap[String(app._id)] ? { latestInterview: interviewMap[String(app._id)] } : {}),
       ...(offerMap[String(app._id)] ? { latestOffer: offerMap[String(app._id)] } : {}),
       ...(placementMap[String(app._id)] ? { placement: placementMap[String(app._id)] } : {}),
@@ -853,8 +865,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     behaviorScore: bScore,
     screeningAnswers: screeningAnswers ?? [],
     // Explicit so the pre-save hook skips its lookup, and so a re-apply after
-    // withdrawal ($set path, no hook) carries the value too.
-    isAgentReferred: (seeker as { isAgentReferred?: boolean }).isAgentReferred === true,
+    // withdrawal ($set path, no hook) carries the values too.
+    ...applicationSnapshotFlags(seeker as { isAgentReferred?: boolean; badges?: string[] }),
   };
 
   let application;

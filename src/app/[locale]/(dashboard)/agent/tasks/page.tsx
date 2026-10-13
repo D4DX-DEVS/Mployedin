@@ -13,8 +13,9 @@ import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { readQuery } from "@/lib/ui/urlQuery";
 import {
   Plus, Clock, AlertCircle, CheckCircle2,
-  Trash2, Calendar, Star,
+  Trash2, Calendar, Star, UserCheck, Undo2,
 } from "lucide-react";
+import { SubmitTaskDialog } from "@/components/features/tasks/SubmitTaskDialog";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatListDate } from "@/lib/ui/intlFormat";
@@ -39,6 +40,11 @@ interface Task {
   category: "follow_up" | "call" | "meeting" | "document" | "other";
   relatedTo?: string;
   createdAt: string;
+  /** Present only on tasks a super agent or an admin gave this agent. */
+  assignedBy?: { name: string; role: "super_agent" | "admin" };
+  reviewStatus?: "none" | "awaiting_review" | "approved" | "returned";
+  completionNote?: string;
+  reviewComment?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -93,6 +99,9 @@ export default function AgentTasksPage() {
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
   const [dueFilter, setDueFilter] = useUrlFilter("due", "all");
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  // assigned = from a super agent / admin (notifications link here); personal = own to-dos.
+  const [kindFilter, setKindFilter] = useUrlFilter("kind", "all");
+  const [submitting, setSubmitting] = useState<{ id: string; title: string; assignerName: string } | null>(null);
   // The Create menu and ⌘K link `?new=1` so "New task" starts the task instead
   // of dropping the agent on the list beside the button that starts it.
   const [showForm, setShowForm] = useState(() => readQuery().get("new") === "1");
@@ -118,6 +127,7 @@ export default function AgentTasksPage() {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (dueFilter !== "all") params.set("due", dueFilter);
       if (search.trim()) params.set("search", search.trim());
+      if (kindFilter !== "all") params.set("kind", kindFilter);
 
       const res = await fetch(`/api/agent/tasks?${params}`);
       if (res.ok) {
@@ -131,10 +141,10 @@ export default function AgentTasksPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, dueFilter, search, page, limit, updateTotal, t]);
+  }, [statusFilter, dueFilter, search, kindFilter, page, limit, updateTotal, t]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
-  useEffect(() => { resetPage(); }, [statusFilter, dueFilter, search, resetPage]);
+  useEffect(() => { resetPage(); }, [statusFilter, dueFilter, search, kindFilter, resetPage]);
 
   const createTask = async () => {
     if (!newTask.title.trim()) {
@@ -217,7 +227,7 @@ export default function AgentTasksPage() {
 
   // BUG-11: filtered-to-zero must not show first-use copy.
   const hasActiveFilters =
-    search.trim().length > 0 || statusFilter !== "all" || dueFilter !== "all";
+    search.trim().length > 0 || statusFilter !== "all" || dueFilter !== "all" || kindFilter !== "all";
 
   return (
     <>
@@ -286,7 +296,7 @@ export default function AgentTasksPage() {
       {/* Filters */}
       <InlineFilterBar
         className="workspace-panel-surface rounded-2xl border-b-0"
-        onClear={(search || statusFilter !== "all" || dueFilter !== "all") ? () => { setSearch(""); setStatusFilter("all"); setDueFilter("all"); resetPage(); } : undefined}
+        onClear={hasActiveFilters ? () => { setSearch(""); setStatusFilter("all"); setDueFilter("all"); setKindFilter("all"); resetPage(); } : undefined}
       >
         <InlineFilterSearch
           value={search}
@@ -299,6 +309,17 @@ export default function AgentTasksPage() {
           onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
           placeholder={tc("status")}
           ariaLabel={tc("status")}
+          className={INLINE_FILTER_CONTROL}
+        />
+        <SearchableSelect
+          options={[
+            { value: "all", label: t("kindAll") },
+            { value: "assigned", label: t("kindAssigned") },
+            { value: "personal", label: t("kindPersonal") },
+          ]}
+          value={kindFilter}
+          onValueChange={(v) => { setKindFilter(v); resetPage(); }}
+          ariaLabel={t("kindLabel")}
           className={INLINE_FILTER_CONTROL}
         />
       </InlineFilterBar>
@@ -331,13 +352,23 @@ export default function AgentTasksPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                tasks.map((task) => (
+                tasks.map((task) => {
+                  const assigned = Boolean(task.assignedBy);
+                  // With the reviewer (or accepted): the agent can't reopen or edit it.
+                  const locked = task.reviewStatus === "awaiting_review" || task.reviewStatus === "approved";
+                  const assignerName = task.assignedBy?.name ?? "";
+                  const toggleDone = () => {
+                    if (assigned && task.status !== "completed") setSubmitting({ id: task._id, title: task.title, assignerName });
+                    else void updateTaskStatus(task._id, task.status === "completed" ? "pending" : "completed");
+                  };
+                  return (
                   <TableRow key={task._id} className={`group ${task.status === "completed" ? "opacity-60" : ""}`}>
                     <TableCell>
                       <div className="flex min-w-0 items-start gap-3">
                         <button
                           type="button"
-                          onClick={() => updateTaskStatus(task._id, task.status === "completed" ? "pending" : "completed")}
+                          onClick={toggleDone}
+                          disabled={locked}
                           aria-pressed={task.status === "completed"}
                           aria-label={task.status === "completed" ? t("markPending") : t("markComplete")}
                           // `!min-*-0`: the phone 44px button floor exempts only
@@ -357,6 +388,31 @@ export default function AgentTasksPage() {
                           </p>
                           {task.description && (
                             <p className="mt-0.5 text-xs text-muted-foreground truncate">{task.description}</p>
+                          )}
+                          {assigned && (
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                                <UserCheck className="h-3 w-3" aria-hidden="true" />
+                                {task.assignedBy?.role === "admin"
+                                  ? t("assignedByAdmin", { name: assignerName })
+                                  : t("assignedBySuperAgent", { name: assignerName })}
+                              </span>
+                              {task.reviewStatus === "awaiting_review" && (
+                                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">{t("reviewAwaiting")}</span>
+                              )}
+                              {task.reviewStatus === "approved" && (
+                                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">{t("reviewApproved")}</span>
+                              )}
+                              {task.reviewStatus === "returned" && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">{t("reviewReturned")}</span>
+                              )}
+                            </div>
+                          )}
+                          {task.reviewStatus === "returned" && task.reviewComment && (
+                            <p className="mt-1 flex items-start gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">
+                              <Undo2 className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                              <span className="break-words"><span className="font-semibold">{t("returnedReasonLabel")}</span> {task.reviewComment}</span>
+                            </p>
                           )}
                         </div>
                       </div>
@@ -383,14 +439,15 @@ export default function AgentTasksPage() {
                     <TableCell className="text-right">
                       <RowActions
                         name={task.title}
-                        quick={task.status !== "completed" && task.status !== "in_progress" ? [{
+                        quick={!locked && task.status !== "completed" && task.status !== "in_progress" ? [{
                           key: "star",
                           label: t("markInProgress"),
                           icon: Star,
                           iconOnly: true,
                           onSelect: () => { void updateTaskStatus(task._id, "in_progress"); },
                         }] : []}
-                        menu={[
+                        // An assigned task belongs to whoever gave it: no delete.
+                        menu={assigned ? [] : [
                           {
                             key: "delete",
                             label: tc("delete"),
@@ -402,7 +459,8 @@ export default function AgentTasksPage() {
                       />
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -420,6 +478,7 @@ export default function AgentTasksPage() {
         />
       )}
     </div>
+    <SubmitTaskDialog task={submitting} onClose={() => setSubmitting(null)} onSubmitted={() => void fetchTasks()} />
     </>
   );
 }
