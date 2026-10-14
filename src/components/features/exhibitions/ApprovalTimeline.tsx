@@ -1,4 +1,6 @@
+import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
+import { formatDateTime } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -17,18 +19,19 @@ export interface TimelineEntry {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Draft",
-  submitted: "Submitted",
-  under_review: "Under Review",
-  approved: "Operationally Approved",
-  revision_requested: "Revision Requested",
-  rejected: "Rejected",
-  budget_approved: "Financially Approved",
-  resources_assigned: "Resources Assigned",
-  active: "Active",
-  completed: "Completed",
-  archived: "Archived",
+// Keys in the `exhibitions` namespace — the timeline printed English in Arabic.
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  draft: "statusDraft",
+  submitted: "statusSubmitted",
+  under_review: "statusUnderReview",
+  approved: "statusApproved",
+  revision_requested: "statusRevisionRequested",
+  rejected: "statusRejected",
+  budget_approved: "statusBudgetApproved",
+  resources_assigned: "statusResourcesAssigned",
+  active: "statusActive",
+  completed: "statusCompleted",
+  archived: "statusArchived",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -59,11 +62,11 @@ const STATUS_DOTS: Record<string, string> = {
   archived: "bg-slate-400",
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  agent: "Agent",
-  super_agent: "Super Agent",
-  admin: "Admin",
-  system: "System",
+const ROLE_LABEL_KEYS: Record<string, string> = {
+  agent: "roleAgent",
+  super_agent: "roleSuperAgent",
+  admin: "roleAdmin",
+  system: "roleSystem",
 };
 
 const ROLE_COLORS: Record<string, string> = {
@@ -82,9 +85,11 @@ interface ApprovalTimelineProps {
 }
 
 export function ApprovalTimeline({ entries }: ApprovalTimelineProps) {
+  const t = useTranslations("exhibitions");
+  const locale = useLocale();
   if (!entries?.length) {
     return (
-      <p className="text-xs text-muted-foreground italic">No approval history yet.</p>
+      <p className="text-xs text-muted-foreground italic">{t("noApprovalHistory")}</p>
     );
   }
 
@@ -120,28 +125,28 @@ export function ApprovalTimeline({ entries }: ApprovalTimelineProps) {
                 <Badge
                   className={`${STATUS_COLORS[entry.status] ?? ""} rounded-md px-2 py-0.5 text-[11px] font-semibold`}
                 >
-                  {STATUS_LABELS[entry.status] ?? entry.status}
+                  {STATUS_LABEL_KEYS[entry.status] ? t(STATUS_LABEL_KEYS[entry.status]) : entry.status}
                 </Badge>
                 {entry.approverRole && (
                   <span
                     className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${ROLE_COLORS[role] ?? ROLE_COLORS.system}`}
                   >
-                    {ROLE_LABELS[role] ?? role}
+                    {ROLE_LABEL_KEYS[role] ? t(ROLE_LABEL_KEYS[role]) : role}
                   </span>
                 )}
               </div>
 
               <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
                 {actorName && <span className="font-medium text-foreground">{actorName}</span>}
-                <span>
-                  {new Date(entry.changedAt).toLocaleString("en-GB", {
+                <time dateTime={entry.changedAt}>
+                  {formatDateTime(entry.changedAt, {
                     day: "2-digit",
                     month: "short",
                     year: "numeric",
                     hour: "2-digit",
                     minute: "2-digit",
-                  })}
-                </span>
+                  }, locale)}
+                </time>
               </div>
 
               {reason && (

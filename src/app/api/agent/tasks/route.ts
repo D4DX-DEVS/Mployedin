@@ -5,7 +5,7 @@ import { escapeRegex } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
 import { agentTaskCreateSchema } from "@/lib/validators/agent-tasks";
 import mongoose from "mongoose";
-import AgentTask from "@/models/AgentTask";
+import AgentTask, { CLOSED_TASK_STATUSES } from "@/models/AgentTask";
 import User from "@/models/User";
 
 
@@ -48,12 +48,12 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   else if (kind === "personal") filter["assignedBy.userId"] = { $exists: false };
   if (due === "overdue") {
     filter.dueDate = { $ne: null, $lt: new Date() };
-    if (!filter.status) filter.status = { $ne: "completed" };
+    if (!filter.status) filter.status = { $nin: CLOSED_TASK_STATUSES };
   } else if (due === "today") {
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
     filter.dueDate = { $ne: null, $lte: endOfToday };
-    if (!filter.status) filter.status = { $ne: "completed" };
+    if (!filter.status) filter.status = { $nin: CLOSED_TASK_STATUSES };
   } else if (dueFrom || dueTo) {
     const range: Record<string, Date> = {};
     if (dueFrom) range.$gte = new Date(dueFrom);
@@ -71,7 +71,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     AgentTask.countDocuments({
       userId: ctx.userId,
       dueDate: { $lt: new Date() },
-      status: { $ne: "completed" },
+      status: { $nin: CLOSED_TASK_STATUSES },
     }),
   ]);
   const statusCounts = Object.fromEntries(statusRows.map((row) => [row._id, row.count]));
@@ -90,6 +90,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
       pending: statusCounts.pending ?? 0,
       inProgress: statusCounts.in_progress ?? 0,
       completed: statusCounts.completed ?? 0,
+      failed: statusCounts.failed ?? 0,
       overdue,
     },
     // The row type comes from the model now, so the old Record<string, unknown>
@@ -104,11 +105,11 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
       category: t.category,
       relatedTo: t.relatedTo,
       createdAt: t.createdAt,
+      completionNote: t.completionNote,
       ...(t.assignedBy?.userId
         ? {
             assignedBy: { name: assignerNames.get(String(t.assignedBy.userId)) ?? "", role: t.assignedBy.role },
             reviewStatus: t.reviewStatus ?? "none",
-            completionNote: t.completionNote,
             reviewComment: t.reviewComment,
           }
         : {}),
@@ -131,6 +132,7 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     priority: body.priority,
     category: body.category,
     dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+    history: [{ action: "created", to: "pending", by: ctx.userId, at: new Date() }],
   });
 
   return NextResponse.json({ success: true, task });

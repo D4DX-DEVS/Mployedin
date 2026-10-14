@@ -12,7 +12,7 @@
  */
 import fs from "fs";
 import path from "path";
-import { backgroundCheckUpdateSchema } from "@/lib/validators/backgroundChecks";
+import { backgroundCheckActionSchema, staffBackgroundCheckActionSchema } from "@/lib/validators/backgroundChecks";
 
 const read = (...segments: string[]) =>
   fs.readFileSync(path.join(process.cwd(), ...segments), "utf8");
@@ -39,61 +39,85 @@ describe("background check model", () => {
   });
 });
 
-describe("background check update validator", () => {
-  it("accepts an assignment", () => {
-    const parsed = backgroundCheckUpdateSchema.safeParse({
-      assignedTo: "507f1f77bcf86cd799439011",
-    });
-    expect(parsed.success).toBe(true);
+const WORKFLOW = read("src", "lib", "backgroundChecks", "workflow.ts");
+const STAFF_DETAIL_ROUTE = read("src", "app", "api", "background-checks", "[id]", "route.ts");
+
+describe("background check action validator", () => {
+  it("accepts handing a check to someone", () => {
+    expect(backgroundCheckActionSchema.safeParse({ action: "assign", assignedTo: "507f1f77bcf86cd799439011" }).success).toBe(true);
   });
 
-  it("accepts clearing an assignment with null", () => {
-    expect(backgroundCheckUpdateSchema.safeParse({ assignedTo: null }).success).toBe(true);
+  it("accepts leaving a check for whoever starts it", () => {
+    expect(backgroundCheckActionSchema.safeParse({ action: "assign", assignedTo: null }).success).toBe(true);
   });
 
   it("rejects an assignee that is not an id", () => {
-    expect(backgroundCheckUpdateSchema.safeParse({ assignedTo: "nobody" }).success).toBe(false);
+    expect(backgroundCheckActionSchema.safeParse({ action: "assign", assignedTo: "nobody" }).success).toBe(false);
   });
 
-  it("accepts the verify flag and the new outcome", () => {
-    const parsed = backgroundCheckUpdateSchema.safeParse({
-      verify: true,
-      outcome: "unable_to_verify",
-    });
-    expect(parsed.success).toBe(true);
+  it("completes only with a real verdict", () => {
+    expect(backgroundCheckActionSchema.safeParse({ action: "complete", outcome: "unable_to_verify" }).success).toBe(true);
+    expect(backgroundCheckActionSchema.safeParse({ action: "complete", outcome: "pending" }).success).toBe(false);
+    expect(backgroundCheckActionSchema.safeParse({ action: "complete" }).success).toBe(false);
   });
 
   it("still rejects an outcome it has never heard of", () => {
-    expect(backgroundCheckUpdateSchema.safeParse({ outcome: "probably_fine" }).success).toBe(false);
+    expect(backgroundCheckActionSchema.safeParse({ action: "complete", outcome: "probably_fine" }).success).toBe(false);
+  });
+
+  it("rejects a bare field update with no action — every write names its step", () => {
+    expect(backgroundCheckActionSchema.safeParse({ status: "completed" }).success).toBe(false);
+    expect(backgroundCheckActionSchema.safeParse({ verify: true, outcome: "clear" }).success).toBe(false);
+  });
+
+  it("lets agents start, record progress and complete, but not assign, cancel or annotate", () => {
+    for (const body of [{ action: "start" }, { action: "progress", backgroundResults: "x" }, { action: "complete", outcome: "clear" }]) {
+      expect({ body, ok: staffBackgroundCheckActionSchema.safeParse(body).success }).toEqual({ body, ok: true });
+    }
+    for (const body of [{ action: "assign", assignedTo: null }, { action: "cancel" }, { action: "notes", backgroundNotes: "x" }]) {
+      expect({ body, ok: staffBackgroundCheckActionSchema.safeParse(body).success }).toEqual({ body, ok: false });
+    }
   });
 });
 
 describe("background check routes", () => {
-  it("credits the colleague, not the owner whose id was swapped in", () => {
-    expect(DETAIL_ROUTE).toContain("ctx.member?.actorId ?? ctx.userId");
-    expect(LIST_ROUTE).toContain("ctx.member?.actorId ?? ctx.userId");
+  it("credits the real person, not the owner whose id a colleague's session borrows", () => {
+    expect(DETAIL_ROUTE).toContain("ctx.tenantView?.actorId ?? ctx.member?.actorId ?? ctx.userId");
+    expect(LIST_ROUTE).toContain("ctx.tenantView?.actorId ?? ctx.member?.actorId ?? ctx.userId");
   });
 
-  it("only lets a manager assign a check", () => {
+  it("records the real requester on a new check", () => {
+    expect(LIST_ROUTE).toMatch(/createdBy:\s*ctx\.tenantView\?\.actorId \?\? ctx\.member\?\.actorId \?\? ctx\.userId/);
+  });
+
+  it("only lets a manager assign or cancel a check", () => {
     expect(DETAIL_ROUTE).toContain("canManageTeam");
+    expect(WORKFLOW).toContain("Only the account owner or a team manager can assign a check.");
   });
 
-  it("refuses a verdict on a check assigned to somebody else", () => {
-    expect(DETAIL_ROUTE).toContain("assigned to somebody else");
+  it("claims a check with one conditional update, so two people can't both take it", () => {
+    expect(WORKFLOW).toMatch(/status: \{ \$in: OPEN_STATUSES \}, assignedTo: null \}/);
+  });
+
+  it("only the holder records progress or the verdict", () => {
+    expect(WORKFLOW).toMatch(/status: "in_progress", assignedTo: me/);
   });
 
   it("records who verified and when", () => {
-    expect(DETAIL_ROUTE).toMatch(/check\.verifiedBy\s*=/);
-    expect(DETAIL_ROUTE).toMatch(/check\.verifiedAt\s*=/);
+    expect(WORKFLOW).toMatch(/verifiedBy: me/);
+    expect(WORKFLOW).toMatch(/verifiedAt: now/);
   });
 
-  it("writes a distinct audit action for assigning and for verifying", () => {
-    expect(DETAIL_ROUTE).toContain("background_check.assign");
-    expect(DETAIL_ROUTE).toContain("background_check.verify");
+  it("refuses a second open check of the same kind for one application", () => {
+    expect(LIST_ROUTE).toContain("duplicate_open_check");
   });
 
   it("offers the assigned-to-me queue on the list endpoint", () => {
     expect(LIST_ROUTE).toContain("assignedToMe");
+  });
+
+  it("never sends the employer's notes to staff", () => {
+    expect(STAFF_DETAIL_ROUTE).toContain("includeNotes: false");
   });
 });
 
@@ -127,10 +151,8 @@ describe("background check page copy", () => {
         "assignedTo",
         "assignedToMe",
         "allChecks",
-        "unassigned",
-        "assignTo",
-        "recordVerdict",
         "verifiedBy",
+        "agentLabel",
       ]) {
         expect({ locale, key, present: typeof section[key] === "string" }).toEqual({
           locale,

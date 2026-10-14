@@ -98,12 +98,31 @@ export async function GET(req: NextRequest) {
           ? City.find({ _id: { $in: cityIds } }).select("_id name").lean()
           : [],
         stateIds.length > 0
-          ? State.find({ _id: { $in: stateIds } }).select("_id name").lean()
+          ? State.find({ _id: { $in: stateIds } }).select("_id name countryId").lean()
           : [],
       ]);
+      // Countries every active state of which is in the list — a
+      // country-level grant (Qatar, Oman) is stored as all of its states, and
+      // the picker shows it as the one country.
+      const candidateCountries = [...new Set(resolvedStates.map((s) => String(s.countryId ?? "")).filter(Boolean))];
+      const wholeCountries: { _id: unknown; name: string; stateIds: string[] }[] = [];
+      if (candidateCountries.length > 0) {
+        const picked = new Set(stateIds);
+        const [allStates, countryDocs] = await Promise.all([
+          State.find({ countryId: { $in: candidateCountries }, isActive: true }).select("_id countryId").lean(),
+          Country.find({ _id: { $in: candidateCountries } }).select("_id name").lean(),
+        ]);
+        for (const country of countryDocs) {
+          const ids = allStates.filter((s) => String(s.countryId) === String(country._id)).map((s) => String(s._id));
+          if (ids.length > 0 && ids.every((id) => picked.has(id))) {
+            wholeCountries.push({ _id: country._id, name: country.name, stateIds: ids });
+          }
+        }
+      }
       return NextResponse.json({
         cities: resolvedCities.map((c) => ({ _id: c._id, name: c.name })),
         states: resolvedStates.map((s) => ({ _id: s._id, name: s.name })),
+        wholeCountries,
       });
     }
 

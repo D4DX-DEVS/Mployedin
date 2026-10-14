@@ -15,7 +15,8 @@ import Link from "next/link";
 import { Building2, Check, Copy, ExternalLink, Link2, Loader2, Power, PowerOff, UserCheck, UserPlus } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
-import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
@@ -40,7 +41,8 @@ const getOnboardFields = (t: ReturnType<typeof useTranslations>, tf: ReturnType<
 ];
 
 /** Which accounts the list shows (`?view=`). */
-const VIEWS = ["all", "assigned"] as const;
+const VIEWS = ["assigned", "area"] as const;
+const STATUSES = ["all", "active", "inactive"] as const;
 
 export default function AgentEmployersPage() {
   const { can } = usePermissions();
@@ -60,22 +62,25 @@ export default function AgentEmployersPage() {
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
-  // Everything the agent can see (assigned first, then their region) | only
-  // the accounts assigned to them — the dashboard's accounts card opens the
-  // second (client feedback 2026-10-12).
-  const [view] = useUrlFilter("view", "all", { allow: VIEWS });
+  // The accounts assigned to the agent (default — the nav item and the
+  // dashboard's accounts card open it) | the other employers registered in
+  // their area, view-only (client feedback 2026-10-14).
+  const [view] = useUrlFilter("view", "assigned", { allow: VIEWS });
+  // Login status — the dashboard's "Active employers" tile opens
+  // ?view=assigned&status=active, so the list matches the count it shows.
+  const [status, setStatus] = useUrlFilter("status", "all", { allow: STATUSES });
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const viewHref = (next: string) => {
     const query = new URLSearchParams(searchParams.toString());
     query.delete("page");
-    if (next === "all") query.delete("view"); else query.set("view", next);
+    if (next === "assigned") query.delete("view"); else query.set("view", next);
     const qs = query.toString();
     return qs ? `${pathname}?${qs}` : pathname;
   };
   const viewTabs: WorkspaceTab[] = [
-    { key: "all", label: t("viewAll"), href: viewHref("all"), icon: Building2 },
     { key: "assigned", label: t("viewAssigned"), href: viewHref("assigned"), icon: UserCheck },
+    { key: "area", label: t("viewArea"), href: viewHref("area"), icon: Building2 },
   ];
   const [loadError, setLoadError] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -127,7 +132,8 @@ export default function AgentEmployersPage() {
     try {
       const params = pagination.paginationParams();
       if (search.trim()) params.set("search", search.trim());
-      if (view === "assigned") params.set("view", "assigned");
+      params.set("view", view);
+      if (status !== "all") params.set("status", status);
       const res = await fetch(`/api/employers?${params}`);
       if (res.ok) {
         const data = await res.json();
@@ -142,14 +148,14 @@ export default function AgentEmployersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, view, pagination.page, pagination.limit]);
+  }, [search, view, status, pagination.page, pagination.limit]);
 
   useEffect(() => {
     const t = setTimeout(loadEmployers, 300);
     return () => clearTimeout(t);
   }, [loadEmployers]);
 
-  useEffect(() => { pagination.resetPage(); }, [search, view]);
+  useEffect(() => { pagination.resetPage(); }, [search, view, status]);
 
   const handleSave = async (values: Record<string, string>) => {
     if (editEmployer) {
@@ -275,7 +281,8 @@ export default function AgentEmployersPage() {
   const fetchAllEmployers = useCallback(async () => {
     const base = new URLSearchParams();
     if (search.trim()) base.set("search", search.trim());
-    if (view === "assigned") base.set("view", "assigned");
+    base.set("view", view);
+    if (status !== "all") base.set("status", status);
     return fetchAllPaginated<Record<string, unknown>>(
       (page, limit) => `/api/employers?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
       (json) => ({
@@ -283,7 +290,7 @@ export default function AgentEmployersPage() {
         total: Number((json.pagination as { total?: number } | undefined)?.total ?? json.total ?? 0),
       }),
     );
-  }, [search, view]);
+  }, [search, view, status]);
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: employers as unknown as Record<string, unknown>[],
@@ -392,12 +399,24 @@ export default function AgentEmployersPage() {
 
       <InlineFilterBar
         className="workspace-panel-surface rounded-2xl border-b-0"
-        onClear={search ? () => setSearch("") : undefined}
+        onClear={search || status !== "all" ? () => { setSearch(""); setStatus("all"); } : undefined}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
         <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchEmployersPlaceholder")} />
+        <SearchableSelect
+          className={INLINE_FILTER_CONTROL}
+          ariaLabel={t("statusFilterLabel")}
+          options={[
+            { value: "all", label: t("statusAll") },
+            { value: "active", label: tc("active") },
+            { value: "inactive", label: tc("inactive") },
+          ]}
+          value={status}
+          onValueChange={setStatus}
+          placeholder={t("statusAll")}
+        />
       </InlineFilterBar>
 
       {loadError ? (

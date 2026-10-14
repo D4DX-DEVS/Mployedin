@@ -81,6 +81,11 @@ export function CascadingLocationPicker({
   /* A scoped source may hand back a state the caller only partly owns; then
      "select the entire state" must not be offered or the save is rejected. */
   const [stateFullyAssigned, setStateFullyAssigned] = useState(true);
+  /* Same for the country: "Entire country" only when every state of it is
+     assignable (always, from the public catalogue). */
+  const [countryFullyAssigned, setCountryFullyAssigned] = useState(true);
+  /* Countries granted whole — stored as all of their states, shown as one chip. */
+  const [countryGroups, setCountryGroups] = useState<Map<string, { name: string; stateIds: string[] }>>(new Map());
 
   const [nameCache, setNameCache] = useState<Map<string, { name: string; type: "city" | "state" }>>(
     new Map()
@@ -89,7 +94,13 @@ export function CascadingLocationPicker({
   useEffect(() => {
     fetch(`${locationsEndpoint}?level=countries`)
       .then((r) => r.json())
-      .then((data) => setCountries(data.countries ?? []))
+      .then((data) => {
+        const list: LocationItem[] = data.countries ?? [];
+        setCountries(list);
+        /* One country to offer (a super agent's territory) — fill it in
+           rather than make the admin re-pick the only option. */
+        if (list.length === 1) setSelectedCountry((prev) => prev || list[0]._id);
+      })
       .catch(console.error)
       .finally(() => setCountriesLoaded(true));
   }, [locationsEndpoint]);
@@ -112,6 +123,14 @@ export function CascadingLocationPicker({
           for (const s of data.states ?? []) next.set(s._id, { name: s.name, type: "state" });
           return next;
         });
+        const whole = (data.wholeCountries ?? []) as { _id: string; name: string; stateIds: string[] }[];
+        if (whole.length > 0) {
+          setCountryGroups((prev) => {
+            const next = new Map(prev);
+            for (const c of whole) next.set(c._id, { name: c.name, stateIds: c.stateIds });
+            return next;
+          });
+        }
       })
       .catch(console.error);
   }, [selectedCityIds, selectedStateIds]);
@@ -121,7 +140,13 @@ export function CascadingLocationPicker({
     setLoadingStates(true);
     fetch(`${locationsEndpoint}?level=states&countryId=${selectedCountry}`)
       .then((r) => r.json())
-      .then((data) => setStates(data.states ?? []))
+      .then((data) => {
+        const list: LocationItem[] = data.states ?? [];
+        setStates(list);
+        setCountryFullyAssigned(data.countryFullyAssigned !== false);
+        // Likewise a single state: open straight onto its cities.
+        if (list.length === 1) setSelectedState((prev) => prev || list[0]._id);
+      })
       .catch(console.error)
       .finally(() => setLoadingStates(false));
   }, [selectedCountry, locationsEndpoint]);
@@ -151,6 +176,7 @@ export function CascadingLocationPicker({
   }, [cities, selectedCityIds]);
 
   const isEntireStateSelected = selectedStateIds.includes(selectedState);
+  const isEntireCountrySelected = states.length > 0 && states.every((st) => selectedStateIds.includes(st._id));
   const allCitiesInStateSelected = !isEntireStateSelected && cities.length > 0 && cities.every((c) => selectedCityIds.includes(c._id));
 
   const toggleCity = useCallback(
@@ -184,6 +210,25 @@ export function CascadingLocationPicker({
     [readOnly, selectedCityIds, selectedStateIds, cities, onChange]
   );
 
+  /* A whole country (Qatar, Oman) = every one of its states. */
+  const toggleCountry = useCallback(() => {
+    if (readOnly || !selectedCountry || states.length === 0) return;
+    const ids = states.map((st) => st._id);
+    if (isEntireCountrySelected) {
+      const drop = new Set(ids);
+      onChange(selectedCityIds, selectedStateIds.filter((id) => !drop.has(id)));
+      return;
+    }
+    const country = countries.find((c) => c._id === selectedCountry);
+    setNameCache((prev) => {
+      const next = new Map(prev);
+      for (const st of states) next.set(st._id, { name: st.name, type: "state" });
+      return next;
+    });
+    if (country) setCountryGroups((prev) => new Map(prev).set(country._id, { name: country.name, stateIds: ids }));
+    onChange(selectedCityIds, Array.from(new Set([...selectedStateIds, ...ids])));
+  }, [readOnly, selectedCountry, states, countries, isEntireCountrySelected, selectedCityIds, selectedStateIds, onChange]);
+
   const selectAllFilteredCities = useCallback(() => {
     if (readOnly) return;
     const newIds = new Set(selectedCityIds);
@@ -212,7 +257,27 @@ export function CascadingLocationPicker({
     [readOnly, selectedCityIds, selectedStateIds, onChange]
   );
 
-  const totalSelections = selectedCityIds.length + selectedStateIds.length;
+  /* Whole countries, shown once; their states are not listed again. */
+  const wholeCountryChips = useMemo(() => {
+    const picked = new Set(selectedStateIds);
+    return Array.from(countryGroups.entries())
+      .filter(([, g]) => g.stateIds.length > 0 && g.stateIds.every((id) => picked.has(id)))
+      .map(([id, g]) => ({ id, ...g }));
+  }, [countryGroups, selectedStateIds]);
+  const statesInWholeCountries = useMemo(
+    () => new Set(wholeCountryChips.flatMap((c) => c.stateIds)),
+    [wholeCountryChips],
+  );
+  const removeCountry = useCallback(
+    (stateIds: string[]) => {
+      if (readOnly) return;
+      const drop = new Set(stateIds);
+      onChange(selectedCityIds, selectedStateIds.filter((id) => !drop.has(id)));
+    },
+    [readOnly, selectedCityIds, selectedStateIds, onChange]
+  );
+
+  const totalSelections = selectedCityIds.length + selectedStateIds.length - statesInWholeCountries.size + wholeCountryChips.length;
 
   return (
     <div className="space-y-2">
@@ -228,7 +293,18 @@ export function CascadingLocationPicker({
       {/* Selected items chips */}
       {totalSelections > 0 && (
         <div className="flex flex-wrap gap-1.5 p-2 rounded-md border border-border/50 bg-muted/10 min-h-[36px]">
-          {selectedStateIds.map((id) => {
+          {wholeCountryChips.map((c) => (
+            <Badge key={`country-${c.id}`} variant="default" className="text-xs gap-1 bg-primary/10 text-primary border-primary/20">
+              <Globe className="h-3 w-3" />
+              {tc("countryAllStates", { name: c.name })}
+              {!readOnly && (
+                <button type="button" onClick={() => removeCountry(c.stateIds)} aria-label={tc("removeLocation", { name: c.name })} className="ms-0.5 hover:text-destructive">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </Badge>
+          ))}
+          {selectedStateIds.filter((id) => !statesInWholeCountries.has(id)).map((id) => {
             const name = nameCache.get(id)?.name ?? tc("stateFallbackName", { id: id.slice(-4) });
             return (
               <Badge key={`state-${id}`} variant="default" className="text-xs gap-1 bg-primary/10 text-primary border-primary/20">
@@ -287,7 +363,26 @@ export function CascadingLocationPicker({
           ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs text-muted-foreground mb-1">{tc("country")}</Label>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <Label className="text-xs text-muted-foreground">{tc("country")}</Label>
+                {/* Select entire country — Qatar, Oman: every state of it */}
+                {selectedCountry && !loadingStates && states.length > 0 && countryFullyAssigned && (
+                  <Button
+                    type="button"
+                    variant={isEntireCountrySelected ? "default" : "ghost"}
+                    size="sm"
+                    className="h-6 px-2 text-[11px] rounded-md"
+                    aria-pressed={isEntireCountrySelected}
+                    onClick={toggleCountry}
+                  >
+                    {isEntireCountrySelected ? (
+                      <><CheckSquare className="h-3 w-3" /> {tc("entireCountry")}</>
+                    ) : (
+                      <><Globe className="h-3 w-3" /> {tc("allCountry")}</>
+                    )}
+                  </Button>
+                )}
+              </div>
               <InlineSearchSelect
                 value={selectedCountry}
                 onValueChange={(v) => { setSelectedCountry(v); setSelectedState(""); }}

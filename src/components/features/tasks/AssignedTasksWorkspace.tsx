@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Calendar, CheckCircle2, ClipboardList, Clock, Plus, Undo2, ListChecks } from "lucide-react";
+import { Calendar, CheckCircle2, ClipboardList, Clock, Eye, Plus, Undo2, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,22 +18,9 @@ import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { AssignTaskDialog, ReviewTaskDialog, type AssignableAgentOption, type ReviewTarget } from "./AssignTaskDialogs";
 import { TASK_STATE_CLASS, taskState, taskStateKey } from "./taskState";
+import { TaskDetailsPanel, type TaskDetails } from "./TaskDetailsPanel";
 
-interface AssignedTaskRow {
-  _id: string;
-  title: string;
-  description?: string;
-  priority: "high" | "medium" | "low";
-  status: string;
-  reviewStatus: string;
-  dueDate?: string;
-  completionNote?: string;
-  reviewComment?: string;
-  agentName: string;
-  assignedByName: string;
-  assignedByRole?: "super_agent" | "admin";
-  canReview: boolean;
-}
+type AssignedTaskRow = TaskDetails;
 
 const PRIORITY_CLASS: Record<string, string> = {
   high: "text-red-600 bg-red-50",
@@ -54,9 +41,11 @@ export function AssignedTasksWorkspace({ audience }: { audience: "super_agent" |
   const [rows, setRows] = useState<AssignedTaskRow[]>([]);
   const [stats, setStats] = useState({ open: 0, awaitingReview: 0, returned: 0, approved: 0 });
   const [agents, setAgents] = useState<AssignableAgentOption[]>([]);
+  const [superAgents, setSuperAgents] = useState<AssignableAgentOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [assignOpen, setAssignOpen] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
+  const [detailsTask, setDetailsTask] = useState<AssignedTaskRow | null>(null);
   // `review` is what notifications link to (?review=awaiting_review).
   const [review, setReview] = useUrlFilter("review", "all");
   const [status, setStatus] = useUrlFilter("status", "all");
@@ -92,7 +81,11 @@ export function AssignedTasksWorkspace({ audience }: { audience: "super_agent" |
     let alive = true;
     fetch(`${apiBase}?withAgents=1&limit=1`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (alive && d?.agents) setAgents(d.agents); })
+      .then((d) => {
+        if (!alive) return;
+        if (d?.agents) setAgents(d.agents);
+        if (d?.superAgents) setSuperAgents(d.superAgents);
+      })
       .catch(() => {});
     return () => { alive = false; };
   }, [apiBase]);
@@ -176,7 +169,7 @@ export function AssignedTasksWorkspace({ audience }: { audience: "super_agent" |
                 </TableRow>
               ) : rows.map((task) => {
                 const state = taskState(task);
-                const overdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "completed";
+                const overdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "completed" && task.status !== "failed";
                 return (
                   <TableRow key={task._id}>
                     <TableCell>
@@ -186,12 +179,12 @@ export function AssignedTasksWorkspace({ audience }: { audience: "super_agent" |
                         <span className={`inline-flex w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold ${PRIORITY_CLASS[task.priority]}`}>
                           {task.priority === "high" ? t("priorityHigh") : task.priority === "low" ? t("priorityLow") : t("priorityMedium")}
                         </span>
-                        {task.completionNote && (state === "awaiting_review" || state === "approved") && (
+                        {task.completionNote && (state === "awaiting_review" || state === "approved" || state === "failed") && (
                           <p className="rounded-lg bg-muted/40 px-2 py-1 text-xs text-foreground/80">
                             <span className="font-semibold">{t("agentNoteLabel")}:</span> {task.completionNote}
                           </p>
                         )}
-                        {task.reviewComment && (state === "returned" || state === "approved") && (
+                        {task.reviewComment && (state === "returned" || state === "approved" || state === "failed") && (
                           <p className="rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">
                             <span className="font-semibold">{t("reviewCommentLabel")}:</span> {task.reviewComment}
                           </p>
@@ -203,12 +196,21 @@ export function AssignedTasksWorkspace({ audience }: { audience: "super_agent" |
                       <TableCell className="text-sm">
                         <span className="block whitespace-nowrap">{task.assignedByName || "—"}</span>
                         <span className="text-xs text-muted-foreground">{task.assignedByRole === "admin" ? t("roleAdmin") : t("roleSuperAgent")}</span>
+                        {task.managedByName && (
+                          <span className="block text-xs text-muted-foreground">{t("viaName", { name: task.managedByName })}</span>
+                        )}
                       </TableCell>
                     )}
                     <TableCell>
                       <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${TASK_STATE_CLASS[state]}`}>
                         {t(taskStateKey(state))}
                       </span>
+                      {/* The agent reported it failed: the reviewer is accepting a failure, not a finish. */}
+                      {state === "awaiting_review" && task.status === "failed" && (
+                        <span className="ms-1 inline-flex whitespace-nowrap rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+                          {t("stateFailed")}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {task.dueDate ? (
@@ -219,16 +221,17 @@ export function AssignedTasksWorkspace({ audience }: { audience: "super_agent" |
                       ) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      {task.canReview ? (
-                        <RowActions
-                          name={task.title}
-                          labelsFrom="wide"
-                          quick={[
+                      <RowActions
+                        name={task.title}
+                        labelsFrom="wide"
+                        quick={[
+                          ...(!task.canReview ? [] : [
                             { key: "approve", label: t("approveAction"), icon: CheckCircle2, iconClassName: "text-emerald-600", onSelect: () => setReviewTarget({ id: task._id, title: task.title, agentName: task.agentName, completionNote: task.completionNote, action: "approve" }) },
                             { key: "return", label: t("returnAction"), icon: Undo2, iconClassName: "text-amber-600", onSelect: () => setReviewTarget({ id: task._id, title: task.title, agentName: task.agentName, completionNote: task.completionNote, action: "return" }) },
-                          ]}
-                        />
-                      ) : <span className="text-muted-foreground">—</span>}
+                          ]),
+                          { key: "details", label: t("detailsAction"), icon: Eye, onSelect: () => setDetailsTask(task) },
+                        ]}
+                      />
                     </TableCell>
                   </TableRow>
                 );
@@ -242,8 +245,9 @@ export function AssignedTasksWorkspace({ audience }: { audience: "super_agent" |
         <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
       )}
 
-      <AssignTaskDialog open={assignOpen} onOpenChange={setAssignOpen} apiBase={apiBase} agents={agents} onAssigned={() => void load()} />
+      <AssignTaskDialog open={assignOpen} onOpenChange={setAssignOpen} apiBase={apiBase} agents={agents} superAgents={audience === "admin" ? superAgents : undefined} onAssigned={() => void load()} />
       <ReviewTaskDialog target={reviewTarget} onClose={() => setReviewTarget(null)} apiBase={apiBase} onReviewed={() => void load()} />
+      <TaskDetailsPanel task={detailsTask} apiBase={apiBase} onClose={() => setDetailsTask(null)} onReviewed={() => void load()} />
     </div>
   );
 }

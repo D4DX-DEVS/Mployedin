@@ -43,7 +43,10 @@ jest.mock("@/models/AgentTask", () => ({
   __esModule: true,
   default: {
     create: (d: Record<string, unknown>) => taskCreate(d),
-    findById: (...a: unknown[]) => ({ lean: async () => taskFindById(...a) }),
+    findById: (...a: unknown[]) => {
+      const q = { lean: async () => taskFindById(...a), select: () => q };
+      return q;
+    },
     findOne: (...a: unknown[]) => ({ lean: async () => taskFindOne(...a) }),
     findOneAndUpdate: (...a: unknown[]) => ({ lean: async () => taskUpdate(...a) }),
   },
@@ -116,6 +119,28 @@ describe("assignTask", () => {
     await assignTask(admin, { agentUserId: OTHER_AGENT_USER, title: "x", priority: "low" });
     expect((taskCreate.mock.calls[0][0] as { assignedBy: { role: string } }).assignedBy.role).toBe("admin");
   });
+
+  it("lets an admin give a task through a super agent, to one of their agents only", async () => {
+    teamOf([TEAM_AGENT_USER]);
+    const { assignTask } = await import("@/lib/agentTasks/assigned");
+    await expect(assignTask(admin, { agentUserId: OTHER_AGENT_USER, title: "x", priority: "low", superAgentUserId: SA_USER }))
+      .rejects.toMatchObject({ status: 400 });
+    expect(taskCreate).not.toHaveBeenCalled();
+
+    await assignTask(admin, { agentUserId: TEAM_AGENT_USER, title: "Visit the employer", priority: "high", superAgentUserId: SA_USER });
+    const doc = taskCreate.mock.calls[0][0] as { managedBy: unknown; assignedBy: { userId: unknown } };
+    expect(String(doc.managedBy)).toBe(SA_USER);
+    expect(String(doc.assignedBy.userId)).toBe(ADMIN_USER);
+    // The super agent hears about the task for their team.
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ userId: SA_USER, titleKey: "taskViaSuperAgentTitle" }));
+  });
+
+  it("ignores a super agent's own superAgentUserId", async () => {
+    teamOf([TEAM_AGENT_USER]);
+    const { assignTask } = await import("@/lib/agentTasks/assigned");
+    await assignTask(sa, { agentUserId: TEAM_AGENT_USER, title: "x", priority: "low", superAgentUserId: "650000000000000000000099" });
+    expect((taskCreate.mock.calls[0][0] as { managedBy?: unknown }).managedBy).toBeUndefined();
+  });
 });
 
 describe("reviewTask", () => {
@@ -136,6 +161,15 @@ describe("reviewTask", () => {
     expect(update.$set).toMatchObject({ reviewStatus: "approved", status: "completed" });
   });
 
+  it("approving a failed report keeps it failed", async () => {
+    taskFindById.mockResolvedValue({ ...awaiting(SA_USER), status: "failed" });
+    taskUpdate.mockResolvedValue({ _id: TASK_ID });
+    const { reviewTask } = await import("@/lib/agentTasks/assigned");
+    await reviewTask(admin, TASK_ID, "approve");
+    const [, update] = taskUpdate.mock.calls[0] as [unknown, { $set: Record<string, unknown> }];
+    expect(update.$set).toMatchObject({ reviewStatus: "approved", status: "failed" });
+  });
+
   it("sends back only with a comment, reopening the task for the agent", async () => {
     teamOf([TEAM_AGENT_USER]);
     taskFindById.mockResolvedValue(awaiting(SA_USER));
@@ -143,8 +177,10 @@ describe("reviewTask", () => {
     const { reviewTask } = await import("@/lib/agentTasks/assigned");
     await expect(reviewTask(sa, TASK_ID, "return", "  ")).rejects.toMatchObject({ status: 400 });
     await reviewTask(sa, TASK_ID, "return", "Add the contract");
-    const [, update] = taskUpdate.mock.calls[0] as [unknown, { $set: Record<string, unknown> }];
-    expect(update.$set).toMatchObject({ reviewStatus: "returned", status: "pending", reviewComment: "Add the contract" });
+    const [, update] = taskUpdate.mock.calls[0] as [unknown, { $set: Record<string, unknown>; $push: { history: { $each: unknown[] } } }];
+    // Sent back = straight back to work, not to the start.
+    expect(update.$set).toMatchObject({ reviewStatus: "returned", status: "in_progress", reviewComment: "Add the contract" });
+    expect(update.$push.history.$each[0]).toMatchObject({ action: "returned", from: "completed", to: "in_progress", note: "Add the contract" });
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ userId: TEAM_AGENT_USER, titleKey: "taskReturnedTitle" }));
   });
 
@@ -155,23 +191,68 @@ describe("reviewTask", () => {
   });
 });
 
+describe("reviewTask — managed through a super agent", () => {
+  it("lets the managing super agent review an admin's task", async () => {
+    teamOf([TEAM_AGENT_USER]);
+    taskFindById.mockResolvedValue({ ...awaiting(ADMIN_USER, "admin"), managedBy: oid(SA_USER) });
+    taskUpdate.mockResolvedValue({ _id: TASK_ID });
+    const { reviewTask } = await import("@/lib/agentTasks/assigned");
+    await reviewTask(sa, TASK_ID, "approve");
+    expect(taskUpdate).toHaveBeenCalled();
+  });
+
+  it("still refuses a super agent on an admin task they don't manage", async () => {
+    teamOf([TEAM_AGENT_USER]);
+    taskFindById.mockResolvedValue(awaiting(ADMIN_USER, "admin"));
+    const { reviewTask } = await import("@/lib/agentTasks/assigned");
+    await expect(reviewTask(sa, TASK_ID, "approve")).rejects.toMatchObject({ status: 403 });
+  });
+});
+
 describe("submitAssignedTask", () => {
   it("sends an assigned task to review and tells the assigner", async () => {
     taskFindOne.mockResolvedValue({ ...awaiting(SA_USER), status: "pending", reviewStatus: "none" });
     taskUpdate.mockResolvedValue({ _id: TASK_ID });
     const { submitAssignedTask } = await import("@/lib/agentTasks/assigned");
-    await submitAssignedTask(TEAM_AGENT_USER, TASK_ID, "Called them, contract sent");
+    await submitAssignedTask(TEAM_AGENT_USER, TASK_ID, "completed", "Called them, contract sent");
     const [, update] = taskUpdate.mock.calls[0] as [unknown, { $set: Record<string, unknown> }];
     expect(update.$set).toMatchObject({ status: "completed", reviewStatus: "awaiting_review", completionNote: "Called them, contract sent" });
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ userId: SA_USER, titleKey: "taskSubmittedTitle" }));
   });
 
+  it("reports a failed task to review, with no note", async () => {
+    taskFindOne.mockResolvedValue({ ...awaiting(SA_USER), status: "in_progress", reviewStatus: "none" });
+    taskUpdate.mockResolvedValue({ _id: TASK_ID });
+    const { submitAssignedTask } = await import("@/lib/agentTasks/assigned");
+    await submitAssignedTask(TEAM_AGENT_USER, TASK_ID, "failed");
+    const [, update] = taskUpdate.mock.calls[0] as [unknown, { $set: Record<string, unknown> }];
+    expect(update.$set).toMatchObject({ status: "failed", reviewStatus: "awaiting_review" });
+    expect(update.$set.completionNote).toBeUndefined();
+  });
+
   it("refuses a personal to-do and a task already with the reviewer", async () => {
     const { submitAssignedTask } = await import("@/lib/agentTasks/assigned");
     taskFindOne.mockResolvedValue({ _id: TASK_ID, userId: oid(TEAM_AGENT_USER), status: "pending" });
-    await expect(submitAssignedTask(TEAM_AGENT_USER, TASK_ID, "x")).rejects.toMatchObject({ status: 400 });
+    await expect(submitAssignedTask(TEAM_AGENT_USER, TASK_ID, "completed", "x")).rejects.toMatchObject({ status: 400 });
     taskFindOne.mockResolvedValue(awaiting(SA_USER));
-    await expect(submitAssignedTask(TEAM_AGENT_USER, TASK_ID, "x")).rejects.toMatchObject({ status: 409 });
+    await expect(submitAssignedTask(TEAM_AGENT_USER, TASK_ID, "completed", "x")).rejects.toMatchObject({ status: 409 });
+  });
+});
+
+describe("assignedTaskHistory", () => {
+  it("hides a task outside the super agent's team", async () => {
+    teamOf([OTHER_AGENT_USER]);
+    taskFindById.mockResolvedValue(awaiting(SA_USER));
+    const { assignedTaskHistory } = await import("@/lib/agentTasks/assigned");
+    await expect(assignedTaskHistory(sa, TASK_ID)).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("returns the history of a team task, the assignment line first in time", async () => {
+    teamOf([TEAM_AGENT_USER]);
+    taskFindById.mockResolvedValue({ ...awaiting(SA_USER), createdAt: new Date("2026-10-18T09:00:00Z") });
+    const { assignedTaskHistory } = await import("@/lib/agentTasks/assigned");
+    const history = await assignedTaskHistory(sa, TASK_ID);
+    expect(history).toEqual([expect.objectContaining({ action: "assigned" })]);
   });
 });
 

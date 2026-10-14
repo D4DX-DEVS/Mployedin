@@ -14,6 +14,7 @@ import User from "@/models/User";
 import { sendEmail } from "@/lib/communications/email";
 import logger from "@/lib/logger";
 import { VALID_TRANSITIONS } from "@/lib/exhibitions/transitions";
+import { validateSupportItems } from "@/lib/exhibitions/supportItems";
 
 /** Statuses that require a non-empty statusReason — enforced backend-side */
 const REASON_REQUIRED: ExhibitionRequestStatus[] = ["rejected", "revision_requested"];
@@ -44,7 +45,10 @@ async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<s
       ? (await Agent.find({ _id: { $in: teamProfileIds } }).select("userId").lean())
           .map((a) => String(a.userId))
       : [];
-    if (!teamUserIds.includes(item.agentId.toString())) {
+    // `agentId` is populated here, so `item.agentId.toString()` was
+    // "[object Object]" and every super agent got 403 on their own team's request.
+    const ownerId = String((item.agentId as { _id?: unknown } | null)?._id ?? item.agentId);
+    if (!teamUserIds.includes(ownerId)) {
       return NextResponse.json(
         { error: "Forbidden — this request is not from your team" },
         { status: 403 },
@@ -86,6 +90,8 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       estimatedBudget, budgetBreakdown, budgetCurrency,
       description, executionPlan, expectedOutcome, expectedLeads,
       requiredResources, priority, venueNotes,
+      supportItems: rawSupportItems,
+      additionalRequirements,
       status: newStatus,
     } = body;
 
@@ -111,6 +117,25 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     if (requiredResources !== undefined) item.requiredResources = requiredResources;
     if (priority !== undefined && EXHIBITION_PRIORITIES.includes(priority)) item.priority = priority;
     if (venueNotes !== undefined) item.venueNotes = venueNotes?.trim();
+
+    // Validate support items if provided
+    if (rawSupportItems !== undefined) {
+      const validation = validateSupportItems(rawSupportItems);
+      if (!validation.ok) {
+        return NextResponse.json({ error: validation.error }, { status: 400 });
+      }
+      item.supportItems = validation.items;
+    }
+
+    // Validate additionalRequirements if provided
+    if (additionalRequirements !== undefined) {
+      if (typeof additionalRequirements === "string") {
+        if (additionalRequirements.length > 2000) {
+          return NextResponse.json({ error: "additionalRequirements must be ≤ 2000 characters" }, { status: 400 });
+        }
+        item.additionalRequirements = additionalRequirements?.trim();
+      }
+    }
 
     const becameSubmitted =
       newStatus === "submitted" && ["draft", "revision_requested"].includes(item.status);
@@ -200,9 +225,15 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     if (status) {
       const allowed = VALID_TRANSITIONS[ctx.role]?.[item.status as ExhibitionRequestStatus] ?? [];
       if (!allowed.includes(status)) {
+        // Usually a stale screen: someone else already moved the request on.
         return NextResponse.json(
-          { error: `Cannot transition from '${item.status}' to '${status}'` },
-          { status: 400 },
+          {
+            error: "This request has already moved to another stage, so that action no longer applies. Reload to see where it stands.",
+            code: "INVALID_TRANSITION",
+            from: item.status,
+            to: status,
+          },
+          { status: 409 },
         );
       }
 
@@ -211,7 +242,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
         const reason = (statusReason ?? reviewNote ?? "").trim();
         if (!reason) {
           return NextResponse.json(
-            { error: `A reason is required when setting status to '${status}'` },
+            { error: status === "rejected" ? "Give the agent a reason for rejecting this request." : "Tell the agent what needs to change." },
             { status: 422 },
           );
         }

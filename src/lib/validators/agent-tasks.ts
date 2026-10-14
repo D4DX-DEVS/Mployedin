@@ -18,23 +18,28 @@ export const agentTaskUpdateSchema = z.object({
   title: z.string().min(1).max(200).trim().optional(),
   description: z.string().max(2000).trim().optional(),
   priority: z.enum(["high", "medium", "low"]).optional(),
-  status: z.enum(["pending", "in_progress", "completed"]).optional(),
+  status: z.enum(["pending", "in_progress", "completed", "failed"]).optional(),
   category: z.enum(["follow_up", "call", "meeting", "document", "other"]).optional(),
   dueDate: dueDateField.nullable().optional(),
 });
 
-/** Agent submits an assigned task as done; the note is what the reviewer reads. */
+/** Optional note left with a Completed / Failed change; on an assigned task, what the reviewer reads. */
 export const agentTaskCompleteSchema = z.object({
-  completionNote: z.string().trim().min(1, "Add a short note on what you did").max(2000),
+  completionNote: z.string().trim().max(2000).optional(),
 });
 
 /** A super agent or admin gives an agent a task. `agentUserId` is the agent's user id. */
 export const assignedTaskCreateSchema = z.object({
   agentUserId: z.string().min(1, "Choose an agent"),
+  /** Admin only: give the task through this super agent (the agent must be on their team). */
+  superAgentUserId: z.string().trim().optional(),
   title: z.string().min(1, "Title is required").max(200).trim(),
   description: z.string().max(2000).trim().optional(),
   priority: z.enum(["high", "medium", "low"]).default("medium"),
-  dueDate: dueDateField.optional(),
+  // Picker sends the assigner's local midnight, which is never more than 24h behind "now".
+  dueDate: dueDateField
+    .refine((d) => d.getTime() >= Date.now() - 24 * 60 * 60 * 1000, "Due date can't be in the past")
+    .optional(),
 });
 
 /** Approve, or send back with a comment saying what needs to change. */

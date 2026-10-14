@@ -15,6 +15,7 @@ import bcrypt from "bcryptjs";
 import { validateBody } from "@/lib/validators";
 import { superAgentCreateSchema, superAgentUpdateSchema } from "@/lib/validators/admin";
 import logger from "@/lib/logger";
+import { regionLocale, resolveAssignedRegions } from "@/lib/agents/assignedRegion";
 import { findRegionOverlaps, trimAgentsToRegion, type RegionConflict } from "@/lib/superAgent/regions";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -118,6 +119,20 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     : [];
   const agentNameMap = new Map(agentUsers.map((u) => [u._id.toString(), u.name]));
 
+  // Territory as places: a country granted whole reads "Qatar", not its states.
+  const idOf = (x: unknown) => String((x as { _id?: unknown })?._id ?? x);
+  const regionsByProfile = new Map(
+    await Promise.all(
+      saProfiles.map(async (p) => [
+        p.userId.toString(),
+        await resolveAssignedRegions(
+          { assignedCityIds: (p.assignedCityIds ?? []).map(idOf), assignedStateIds: (p.assignedStateIds ?? []).map(idOf) },
+          regionLocale(searchParams.get("locale"), "en"),
+        ),
+      ] as const),
+    ),
+  );
+
   const enriched = users.map((user) => {
     const profile = profileMap.get(user._id.toString());
     const agents = (profile?.agentIds ?? []).map((a: { _id: unknown; userId?: unknown }) => {
@@ -137,6 +152,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
             defaultAgentCommissionRate: profile.defaultAgentCommissionRate ?? 0,
             assignedCityIds: profile.assignedCityIds,
             assignedStateIds: profile.assignedStateIds,
+            regions: regionsByProfile.get(user._id.toString()) ?? [],
             agents,
             agentCount: agents.length,
           }

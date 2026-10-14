@@ -1,5 +1,6 @@
 import { connectDB } from "@/lib/db/mongoose";
 import AgentTask, {
+  CLOSED_TASK_STATUSES,
   type AgentTaskCategory,
   type AgentTaskPriority,
   type AgentTaskStatus,
@@ -86,12 +87,12 @@ export const myTasksTool: CopilotTool<{ status?: AgentTaskStatus; due?: "overdue
     if (args.status) filter.status = args.status;
     if (args.due === "overdue") {
       filter.dueDate = { $ne: null, $lt: new Date() };
-      if (!args.status) filter.status = { $ne: "completed" };
+      if (!args.status) filter.status = { $nin: CLOSED_TASK_STATUSES };
     } else if (args.due === "today") {
       const endOfToday = new Date();
       endOfToday.setHours(23, 59, 59, 999);
       filter.dueDate = { $ne: null, $lte: endOfToday };
-      if (!args.status) filter.status = { $ne: "completed" };
+      if (!args.status) filter.status = { $nin: CLOSED_TASK_STATUSES };
     }
 
     const tasks = await AgentTask.find(filter)
@@ -107,7 +108,7 @@ export const myTasksTool: CopilotTool<{ status?: AgentTaskStatus; due?: "overdue
       status: task.status,
       dueDate: task.dueDate,
       category: task.category,
-      overdue: Boolean(task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "completed"),
+      overdue: Boolean(task.dueDate && new Date(task.dueDate) < new Date() && !CLOSED_TASK_STATUSES.includes(task.status)),
     }));
     return { ok: true, message: `Found ${rows.length} task(s).`, data: rows };
   },

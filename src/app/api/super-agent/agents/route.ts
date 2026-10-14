@@ -15,6 +15,7 @@ import { getSuperAgentOwnRegion, getSuperAgentScope, isRegionSubset } from "@/li
 import { commonSchemas } from "@/lib/validators";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { regionLocale, resolveAssignedRegions, type AssignedRegion } from "@/lib/agents/assignedRegion";
 import logger from "@/lib/logger";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
@@ -30,6 +31,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const sortBy = searchParams.get("sortBy") || "name"; // name | leadsCount | conversions | placements | conversionRate | avgResponseHours
   const sortOrder = searchParams.get("sortOrder") || "asc";
   const distinct = searchParams.get("distinct"); // return facets when "true"
+  const regionFilter = searchParams.get("region"); // a city / state / country id from facets.regions
+  const locale = regionLocale(searchParams.get("locale"), "en");
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "20")));
 
@@ -42,15 +45,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // Map from userId → Agent doc _id for lead lookups
   const userToAgentMap = new Map<string, string>();
   // Map from userId → Agent profile data (country, currencyCode)
-  const userToAgentProfileMap = new Map<string, { country?: string; currencyCode?: string }>();
+  const userToAgentProfileMap = new Map<string, { country?: string; currencyCode?: string; assignedCityIds?: unknown[]; assignedStateIds?: unknown[] }>();
   if (assignedAgentDocIds.length > 0) {
-    const agentDocs = await Agent.find({ _id: { $in: assignedAgentDocIds } }).select("userId country currencyCode").lean();
+    const agentDocs = await Agent.find({ _id: { $in: assignedAgentDocIds } }).select("userId country currencyCode assignedCityIds assignedStateIds").lean();
     agentUserIds = agentDocs.map((a) => a.userId.toString());
     agentDocs.forEach((a) => {
       userToAgentMap.set(a.userId.toString(), a._id.toString());
       userToAgentProfileMap.set(a.userId.toString(), {
         country: a.country,
         currencyCode: a.currencyCode,
+        assignedCityIds: a.assignedCityIds ?? [],
+        assignedStateIds: a.assignedStateIds ?? [],
       });
     });
   }
@@ -86,6 +91,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     placementStats.map((stat: { _id: unknown; count: number }) => [String(stat._id), stat.count])
   );
 
+  // The region each agent works — from the admin/super-agent assignment
+  // (assignedCityIds/StateIds), not the free-text `country`. Several agents
+  // may share one region.
+  const regionsByUser = new Map<string, AssignedRegion[]>(
+    await Promise.all(
+      users.map(async (u) => {
+        const p = userToAgentProfileMap.get(u._id.toString());
+        return [u._id.toString(), await resolveAssignedRegions(p as Parameters<typeof resolveAssignedRegions>[0], locale)] as const;
+      }),
+    ),
+  );
+
   let items = users.map((u) => {
     const agentDocId = userToAgentMap.get(u._id.toString());
     const agentProfile = userToAgentProfileMap.get(u._id.toString());
@@ -112,6 +129,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       isActive: u.isActive === true,
       country: agentProfile?.country ?? "",
       currencyCode: agentProfile?.currencyCode ?? "AED",
+      regions: regionsByUser.get(u._id.toString()) ?? [],
       leadsCount: agentLeads.length,
       conversions: converted,
       placements: placementsByAgentId.get(agentDocId ?? "") ?? 0,
@@ -132,6 +150,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       }
     });
   }
+
+  // ── Region filter ── (an agent covering it, at any level it was assigned)
+  if (regionFilter) items = items.filter((a) => a.regions.some((r) => r.id === regionFilter));
 
   // ── Leads range filter ──
   if (leadsMin) items = items.filter((a) => a.leadsCount >= parseInt(leadsMin));
@@ -155,6 +176,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // ── Facets (for filter dropdowns) ──
   const facets = distinct === "true" ? {
     performanceLevels: ["high_performer", "needs_attention", "slow_response", "no_activity"],
+    // Every region an agent in scope covers, for the region filter.
+    regions: Array.from(
+      new Map(
+        Array.from(regionsByUser.values()).flat().map((r) => [r.id, { id: r.id, type: r.type, name: r.name, parent: r.parent }]),
+      ).values(),
+    ).sort((a, b) => a.name.localeCompare(b.name)),
   } : undefined;
 
   const total = items.length;
@@ -186,7 +213,7 @@ const saAgentCreateSchema = z.object({
   email: commonSchemas.email,
   password: strongPasswordSchema,
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
-  assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
+  assignedStateIds: z.array(commonSchemas.objectId).max(400).optional(),
   commissionRate: z.number().min(0).max(100).optional(),
 });
 

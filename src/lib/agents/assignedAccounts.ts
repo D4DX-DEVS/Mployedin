@@ -25,6 +25,8 @@ export interface AssignedAccount extends AccountActivity {
 export interface AssignedAccounts {
   /** Every assigned account, not just the rows returned. */
   total: number;
+  /** Assigned accounts whose login is active — the dashboard's "Active employers". */
+  active: number;
   rows: AssignedAccount[];
 }
 
@@ -87,12 +89,12 @@ export async function loadAssignedAccounts(
   now: Date = new Date(),
   limit = 5,
 ): Promise<AssignedAccounts> {
-  if (assignedEmployerIds.length === 0) return { total: 0, rows: [] };
+  if (assignedEmployerIds.length === 0) return { total: 0, active: 0, rows: [] };
 
   const profiles = await Employer.find({ _id: { $in: assignedEmployerIds }, roleArchivedAt: null })
     .select("_id companyName userId")
     .lean<{ _id: unknown; companyName?: string; userId?: unknown }[]>();
-  if (profiles.length === 0) return { total: 0, rows: [] };
+  if (profiles.length === 0) return { total: 0, active: 0, rows: [] };
   const activeUsers = await User.find({ _id: { $in: profiles.map((p) => p.userId).filter(Boolean) }, isActive: true })
     .select("_id")
     .lean<{ _id: unknown }[]>();
@@ -110,5 +112,5 @@ export async function loadAssignedAccounts(
       b.newApplicants - a.newApplicants || b.openJobs - a.openJobs || a.companyName.localeCompare(b.companyName),
     );
 
-  return { total: rows.length, rows: rows.slice(0, limit) };
+  return { total: rows.length, active: rows.filter((r) => r.isActive).length, rows: rows.slice(0, limit) };
 }

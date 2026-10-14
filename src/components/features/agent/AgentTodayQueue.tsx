@@ -112,20 +112,22 @@ export function AgentTodayQueue({ items, counts, locale, labels }: AgentTodayQue
 
       {/* Counts first, as one row of chips that each open the list they
           total. They were five stacked tiles (90px); the chips take one line
-          on desktop and two on a phone. Only counts that need action: a row
-          of faded "0" chips was noise (owner, 2026-09-24). */}
+          on desktop; on a phone an even two-column grid, so two chips that
+          did not fit one line no longer wrap into a ragged stack (client
+          feedback 2026-10-14). Only counts that need action: a row of faded
+          "0" chips was noise (owner, 2026-09-24). */}
       {AGENT_QUEUE_COUNT_ORDER.some((key) => counts[key] > 0) && (
-      <ul className="mt-3 flex flex-wrap gap-2">
+      <ul className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {AGENT_QUEUE_COUNT_ORDER.filter((key) => counts[key] > 0).map((key) => (
-          <li key={key}>
+          <li key={key} className="min-w-0">
             <Link
               href={`/${locale}${AGENT_QUEUE_COUNT_HREFS[key]}`}
-              className="inline-flex min-h-9 items-center gap-2 rounded-full border border-border/70 bg-background/70 py-1 pe-3 ps-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              className="flex h-full min-h-11 w-full min-w-0 !flex-nowrap items-center rounded-2xl border sm:inline-flex sm:min-h-9 sm:w-auto sm:rounded-full border-border/70 bg-background/70 gap-1.5 py-1 pe-2.5 ps-1.5 text-[11px] font-medium text-muted-foreground sm:gap-2 sm:pe-3 sm:ps-2 sm:text-xs transition-colors hover:border-primary/30 hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
             >
-              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-semibold tabular-nums text-primary">
+              <span className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-semibold tabular-nums text-primary">
                 {counts[key]}
               </span>
-              {labels.summary[key]}
+              <span className="min-w-0 !whitespace-normal text-start leading-tight">{labels.summary[key]}</span>
             </Link>
           </li>
         ))}

@@ -13,6 +13,10 @@ import Agent from "@/models/Agent";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { notifySuperAgentOfExhibition } from "@/lib/notifications/exhibitionNotify";
+import { validateSupportItems, type SupportItem } from "@/lib/exhibitions/supportItems";
+
+/** Every stage past operational approval and not yet finished. */
+const APPROVED_STAGE_STATUSES = ["approved", "budget_approved", "resources_assigned", "active"];
 
 async function getHandler(req: NextRequest, ctx: AuthContext) {
   await connectDB();
@@ -33,7 +37,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   const SORTABLE = ["createdAt", "eventStartDate", "estimatedBudget", "eventName"] as const;
   const sortParam = searchParams.get("sortBy") ?? "";
   const sortBy = (SORTABLE as readonly string[]).includes(sortParam) ? sortParam : "createdAt";
-  const sortDir = searchParams.get("sortOrder") === "asc" ? 1 : -1;
+  const sortDir: 1 | -1 = searchParams.get("sortOrder") === "asc" ? 1 : -1;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = { isDeleted: { $ne: true } };
@@ -59,6 +63,9 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   // on the super-agent home and the list it opens are the same records.
   if (status === "pending_review") {
     query.status = { $in: ["submitted", "under_review"] };
+  } else if (status === "approved_stage") {
+    // The summary's "approved" bucket, so the Approved figure opens the same records.
+    query.status = { $in: APPROVED_STAGE_STATUSES };
   } else if (status && EXHIBITION_STATUSES.includes(status as never)) {
     query.status = status;
   }
@@ -127,13 +134,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   ) as Record<string, unknown>;
 
   const [items, total, summaryRows, countries, budgetRows] = await Promise.all([
-    ExhibitionRequest.find(query)
-      .populate("agentId", "name email")
-      .populate("reviewedBy", "name")
-      .sort({ [sortBy]: sortDir, _id: sortDir })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean(),
+    listPage(query, sortBy, sortDir, page, limit),
     ExhibitionRequest.countDocuments(query),
     ExhibitionRequest.aggregate<{
       _id: null;
@@ -161,7 +162,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
           // BUG-01: the "Approved" card must count every approved-stage request,
           // including literal "approved" (labelled "Operationally Approved" in
           // the list). financeReview/awaitingApproval stay as admin sub-detail.
-          approved: { $sum: { $cond: [{ $in: ["$status", ["approved", "budget_approved", "resources_assigned", "active"]] }, 1, 0] } },
+          approved: { $sum: { $cond: [{ $in: ["$status", APPROVED_STAGE_STATUSES] }, 1, 0] } },
           rejected: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
           revisionRequested: { $sum: { $cond: [{ $eq: ["$status", "revision_requested"] }, 1, 0] } },
           budgetRequested: { $sum: { $ifNull: ["$estimatedBudget", 0] } },
@@ -232,6 +233,8 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     description, executionPlan, expectedOutcome, expectedLeads,
     requiredResources,
     priority, venueNotes,
+    supportItems: rawSupportItems,
+    additionalRequirements,
     status: requestedStatus,
   } = body;
 
@@ -268,6 +271,23 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     }
   }
 
+  // Validate support items if provided
+  const supportItemsData: SupportItem[] = [];
+  if (rawSupportItems) {
+    const validation = validateSupportItems(rawSupportItems);
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+    supportItemsData.push(...validation.items);
+  }
+
+  // Validate additionalRequirements
+  if (additionalRequirements && typeof additionalRequirements === "string") {
+    if (additionalRequirements.length > 2000) {
+      return NextResponse.json({ error: "additionalRequirements must be ≤ 2000 characters" }, { status: 400 });
+    }
+  }
+
   const agentProfile = await Agent.findOne({ userId: ctx.userId }).select("superAgentId").lean();
 
   const initialStatus = requestedStatus === "draft" ? "draft" : "submitted";
@@ -297,6 +317,8 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     requiredResources: requiredResources ?? [],
     priority: priority && EXHIBITION_PRIORITIES.includes(priority) ? priority : "medium",
     venueNotes: venueNotes?.trim(),
+    supportItems: supportItemsData,
+    additionalRequirements: additionalRequirements?.trim(),
     status: initialStatus,
     statusHistory: [{ status: initialStatus, changedAt: new Date(), changedBy: ctx.userId }],
   });
@@ -318,3 +340,42 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
 
 export const GET = withAuth(getHandler, { resource: "exhibitions", action: "read" });
 export const POST = withAuth(postHandler, { resource: "exhibitions", action: "create" });
+
+/**
+ * One page of the list. By exhibition date, requests without a date go last
+ * in both directions (Mongo's own sort puts nulls first ascending — "upcoming
+ * first" would open on undated drafts); otherwise a plain sort.
+ */
+async function listPage(
+  query: Record<string, unknown>,
+  sortBy: string,
+  sortDir: 1 | -1,
+  page: number,
+  limit: number,
+) {
+  if (sortBy !== "eventStartDate") {
+    return ExhibitionRequest.find(query)
+      .populate("agentId", "name email")
+      .populate("reviewedBy", "name")
+      .sort({ [sortBy]: sortDir, _id: sortDir })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+  }
+  const match = ExhibitionRequest.find(query).cast(ExhibitionRequest) as Record<string, unknown>;
+  const rows = await ExhibitionRequest.aggregate<{ _id: unknown }>([
+    { $match: match },
+    { $addFields: { undated: { $cond: [{ $ifNull: ["$eventStartDate", false] }, 0, 1] } } },
+    { $sort: { undated: 1, eventStartDate: sortDir, _id: sortDir } },
+    { $skip: (page - 1) * limit },
+    { $limit: limit },
+    { $project: { _id: 1 } },
+  ]);
+  const ids = rows.map((row) => row._id);
+  const docs = await ExhibitionRequest.find({ _id: { $in: ids } })
+    .populate("agentId", "name email")
+    .populate("reviewedBy", "name")
+    .lean();
+  const position = new Map(ids.map((id, i) => [String(id), i]));
+  return docs.sort((a, b) => (position.get(String(a._id)) ?? 0) - (position.get(String(b._id)) ?? 0));
+}

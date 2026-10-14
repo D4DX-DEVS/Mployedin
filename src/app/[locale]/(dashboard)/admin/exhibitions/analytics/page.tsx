@@ -1,20 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { toast } from "sonner";
 import {
   Activity,
-  BarChart3,
-  CalendarDays,
-  CheckCircle2,
-  DollarSign,
   Percent,
   Target,
   TrendingUp,
   Trophy,
-  Users,
 } from "lucide-react";
 import {
   Bar,
@@ -260,11 +255,6 @@ export default function AdminExhibitionAnalyticsPage() {
         eyebrow={t("yearBadge", { year: data.year })}
         title={t("pageTitle")}
         description={t("pageDescription")}
-        summary={{
-          label: t("approvedBudgetLabel"),
-          value: formatCurrency(kpis.totalApprovedBudget, currencyCode),
-          note: t("actualSpendLabel", { amount: formatCurrency(kpis.totalActualSpend, currencyCode) }),
-        }}
         actions={(
           <div className="min-w-[10rem]">
             <SearchableSelect
@@ -291,7 +281,12 @@ export default function AdminExhibitionAnalyticsPage() {
       <section className="workspace-panel-surface rounded-2xl panel-body panel-stack">
         <div className="panel-stack">
           <p className="heading-label">{t("budgetDeliveryGroupLabel")}</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <MiniMetric
+              label={t("approvedBudgetLabel")}
+              value={formatCurrency(kpis.totalApprovedBudget, currencyCode)}
+              sub={t("actualSpendLabel", { amount: formatCurrency(kpis.totalActualSpend, currencyCode) })}
+            />
             <MiniMetric
               label={t("avgBudgetLabel")}
               value={formatCurrency(kpis.avgBudget, currencyCode)}
@@ -312,11 +307,13 @@ export default function AdminExhibitionAnalyticsPage() {
 
         <div className="panel-stack">
           <p className="heading-label">{t("outcomesGroupLabel")}</p>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
             <MiniMetric label={t("leadsGeneratedLabel")} value={performance.totalLeads} />
             <MiniMetric label={t("employersEngagedLabel")} value={performance.totalEmployers} />
             <MiniMetric label={t("candidatesSourchedLabel")} value={performance.totalCandidates} />
             <MiniMetric label={t("hiresGeneratedLabel")} value={performance.totalHires} />
+            <MiniMetric label={t("revenueLabel")} value={formatCurrency(performance.totalRevenue, currencyCode)} />
+            <MiniMetric label={t("costLabel")} value={formatCurrency(performance.totalCost, currencyCode)} />
           </div>
         </div>
       </section>
@@ -358,9 +355,9 @@ export default function AdminExhibitionAnalyticsPage() {
             </div>
             <Activity className="h-5 w-5 text-primary" />
           </div>
-          <div className="space-y-4">
+          <div className="divide-y divide-border/60">
             {statusBreakdown.map((item) => (
-              <div key={item.key} className="space-y-2 rounded-2xl border bg-muted/25 card-pad">
+              <div key={item.key} className="space-y-2 py-3 first:pt-0 last:pb-0">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${item.color}`} />
@@ -375,7 +372,7 @@ export default function AdminExhibitionAnalyticsPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <section className="grid grid-cols-1 gap-3 sm:gap-6 xl:grid-cols-[0.95fr_1.05fr] xl:items-start">
         <div className="workspace-panel-surface min-w-0 rounded-2xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
@@ -385,16 +382,16 @@ export default function AdminExhibitionAnalyticsPage() {
             <Target className="h-5 w-5 text-primary" />
           </div>
           {participation.length > 0 ? (
-            <>
-              <div className="h-56">
+            <div className="grid items-center gap-4 sm:grid-cols-[12rem_1fr]">
+              <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
                     <Pie
                       data={participation.map((item) => ({ name: item.type.replace(/_/g, " "), value: item.count }))}
                       dataKey="value"
                       nameKey="name"
-                      innerRadius={58}
-                      outerRadius={86}
+                      innerRadius={52}
+                      outerRadius={80}
                       paddingAngle={3}
                     >
                       {participation.map((item, index) => (
@@ -405,9 +402,9 @@ export default function AdminExhibitionAnalyticsPage() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="mt-4 space-y-3">
+              <div className="min-w-0 divide-y divide-border/60">
                 {participation.map((item, index) => (
-                  <div key={item.type} className="rounded-2xl border bg-muted/20 chip-pad">
+                  <div key={item.type} className="py-2.5 first:pt-0 last:pb-0">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <span
@@ -427,7 +424,7 @@ export default function AdminExhibitionAnalyticsPage() {
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           ) : (
             <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
               {t("participationNoData")}
@@ -485,53 +482,12 @@ export default function AdminExhibitionAnalyticsPage() {
             </TableBody>
           </Table>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <MiniSummaryCard
-              label={t("revenueLabel")}
-              value={formatCurrency(performance.totalRevenue, currencyCode)}
-              icon={<DollarSign className="h-4 w-4" />}
-            />
-            <MiniSummaryCard
-              label={t("costLabel")}
-              value={formatCurrency(performance.totalCost, currencyCode)}
-              icon={<Percent className="h-4 w-4" />}
-            />
-            <MiniSummaryCard
-              label={t("teamReachLabel")}
-              value={performance.totalEmployers + performance.totalCandidates}
-              icon={<Users className="h-4 w-4" />}
-            />
-          </div>
         </div>
       </section>
     </div>
   );
 }
 
-function MetricCard({
-  label,
-  value,
-  icon,
-  sub,
-}: {
-  label: string;
-  value: string | number;
-  icon: ReactNode;
-  sub: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-border/80 bg-card shadow-sm panel-body">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-          <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{sub}</p>
-        </div>
-        <div className="rounded-2xl bg-primary/10 p-3 text-primary">{icon}</div>
-      </div>
-    </div>
-  );
-}
 
 function MiniMetric({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
@@ -539,28 +495,6 @@ function MiniMetric({ label, value, sub }: { label: string; value: string | numb
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
       {sub ? <p className="mt-1 text-xs text-muted-foreground">{sub}</p> : null}
-    </div>
-  );
-}
-
-function MiniSummaryCard({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string | number;
-  icon: ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border bg-muted/20 card-pad">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-          <p className="mt-2 text-lg font-semibold">{value}</p>
-        </div>
-        <div className="rounded-xl bg-primary/10 p-2 text-primary">{icon}</div>
-      </div>
     </div>
   );
 }

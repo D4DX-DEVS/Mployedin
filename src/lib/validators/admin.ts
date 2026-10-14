@@ -20,7 +20,7 @@ export const adminUserCreateSchema = z.object({
   commissionRate: z.number().min(0).max(100).optional(),
   overrideRate: z.number().min(0).max(100).optional(),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
-  assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
+  assignedStateIds: z.array(commonSchemas.objectId).max(400).optional(),
   agentIds: z.array(commonSchemas.objectId).max(200).optional(),
 });
 
@@ -50,7 +50,7 @@ export const superAgentCreateSchema = z.object({
   overrideCommissionRate: z.number().min(0).max(100).optional(),
   defaultAgentCommissionRate: z.number().min(0).max(100).optional(),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
-  assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
+  assignedStateIds: z.array(commonSchemas.objectId).max(400).optional(),
   agentIds: z.array(commonSchemas.objectId).max(200).optional(),
 });
 
@@ -63,7 +63,7 @@ export const superAgentUpdateSchema = z.object({
   overrideCommissionRate: z.number().min(0).max(100).optional(),
   defaultAgentCommissionRate: z.number().min(0).max(100).optional(),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
-  assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
+  assignedStateIds: z.array(commonSchemas.objectId).max(400).optional(),
   agentIds: z.array(commonSchemas.objectId).max(200).optional(),
 });
 
@@ -75,7 +75,7 @@ export const agentCreateSchema = z.object({
   superAgentId: commonSchemas.objectId.optional(),
   commissionRate: z.number().min(0).max(100).optional(),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
-  assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
+  assignedStateIds: z.array(commonSchemas.objectId).max(400).optional(),
 });
 
 /** PATCH /api/admin/agents */
@@ -88,7 +88,7 @@ export const agentUpdateSchema = z.object({
   superAgentId: commonSchemas.objectId.nullable().optional(),
   commissionRate: z.number().min(0).max(100).optional(),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
-  assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
+  assignedStateIds: z.array(commonSchemas.objectId).max(400).optional(),
 });
 
 /** POST /api/admin/impersonate */

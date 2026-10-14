@@ -35,6 +35,8 @@ import {
   type MatchedResource,
 } from "../_lib/exhibitions";
 import { adminWorkflowActions } from "../_lib/workflowActions";
+import { SupportInventoryPanel } from "./SupportInventoryPanel";
+import type { SupportDialogMode } from "./SupportManageDialog";
 
 interface ExhibitionDetailDrawerProps {
   item: ExhibitionRequest | null;
@@ -47,6 +49,8 @@ interface ExhibitionDetailDrawerProps {
   nextItem: ExhibitionRequest | null;
   onPrevious: () => void;
   onNext: () => void;
+  /** Open the allocation or delivery dialog for the requested support. */
+  onManageSupport: (item: ExhibitionRequest, mode: SupportDialogMode) => void;
 }
 
 /**
@@ -67,6 +71,7 @@ export function ExhibitionDetailDrawer({
   nextItem,
   onPrevious,
   onNext,
+  onManageSupport,
 }: ExhibitionDetailDrawerProps) {
   const t = useTranslations("adminExhibitions");
   const locale = useLocale();
@@ -176,6 +181,12 @@ export function ExhibitionDetailDrawer({
           )}
           {item.budgetNotes && <p className="mt-2 text-xs text-muted-foreground">{item.budgetNotes}</p>}
         </Section>
+
+        {((item.supportItems?.length ?? 0) > 0 || item.additionalRequirements) && (
+          <Section title={t("supportSectionTitle")}>
+            <SupportInventoryPanel item={item} onManage={(mode) => onManageSupport(item, mode)} />
+          </Section>
+        )}
 
         <Section title={t("workflow")}>
           <WorkflowTimeline item={item} />

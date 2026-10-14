@@ -90,7 +90,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   // for the header pills; and the accounts assigned to the agent, with their
   // numbers. The accounts tile used to count every active employer in the
   // agent's region (client feedback 2026-10-12): it counts the assigned ones
-  // now, archived profiles and deactivated logins left out (BUG-03).
+  // now, archived profiles left out; the tile counts active logins only.
   const [assignedRegions, superAgent, accounts] = await Promise.all([
     resolveAssignedRegions(agentDoc, locale),
     loadSuperAgentContact((agentDoc as { superAgentId?: unknown } | null)?.superAgentId),
@@ -350,11 +350,13 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     {
       label: t("overview.activeAccounts"),
       shortLabel: t("overview.activeAccountsShort"),
-      value: accounts.total,
-      href: `/${locale}/agent/employers?view=assigned`,
+      // Distinct assigned employers whose login is active (client feedback
+      // 2026-10-14: "Active employers", the assigned number).
+      value: accounts.active,
+      href: `/${locale}/agent/employers?view=assigned&status=active`,
       icon: Building2,
       tone: "success",
-      ariaLabel: `${t("overview.activeAccounts")}: ${accounts.total}`,
+      ariaLabel: `${t("overview.activeAccounts")}: ${accounts.active}`,
     },
     {
       label: t("overview.liveRoles"),

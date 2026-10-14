@@ -44,6 +44,7 @@ import { readQuery, writeQuery } from "@/lib/ui/urlQuery";
 import { cn } from "@/lib/utils";
 import { ExhibitionActionDialog } from "./_components/ExhibitionActionDialog";
 import { ExhibitionDetailDrawer } from "./_components/ExhibitionDetailDrawer";
+import { SupportManageDialog, type SupportDialogMode } from "./_components/SupportManageDialog";
 import {
   CATEGORY_LABEL_KEYS,
   EXHIBITION_STATUS_FILTER_VALUES,
@@ -151,6 +152,7 @@ export default function AdminExhibitionsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkRunning, setBulkRunning] = useState(false);
   const [action, setAction] = useState<{ item: ExhibitionRequest; status: string } | null>(null);
+  const [support, setSupport] = useState<{ item: ExhibitionRequest; mode: SupportDialogMode } | null>(null);
   const [detailItem, setDetailItem] = useState<ExhibitionRequest | null>(null);
   const [matchedResources, setMatchedResources] = useState<MatchedResource[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
@@ -761,6 +763,23 @@ export default function AdminExhibitionsPage() {
         nextItem={nextDetailItem}
         onPrevious={() => previousDetailItem && openDetail(previousDetailItem)}
         onNext={() => nextDetailItem && openDetail(nextDetailItem)}
+        onManageSupport={(item, mode) => setSupport({ item, mode })}
+      />
+
+      <SupportManageDialog
+        mode={support?.mode ?? null}
+        item={support?.item ?? null}
+        onClose={() => setSupport(null)}
+        onSaved={(updated) => {
+          // The route returns the raw document (agent not populated): keep the
+          // inspector's populated copy and take only what changed.
+          setDetailItem((current) =>
+            current && current._id === updated._id
+              ? { ...current, supportItems: updated.supportItems, statusHistory: updated.statusHistory }
+              : current,
+          );
+          void fetchItems();
+        }}
       />
 
       <ExhibitionActionDialog

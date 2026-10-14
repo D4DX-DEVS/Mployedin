@@ -10,6 +10,7 @@ import { backgroundCheckCreateSchema } from "@/lib/validators/backgroundChecks";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import logger from "@/lib/logger";
+import { checkTypesOverlap, OPEN_STATUSES } from "@/lib/backgroundChecks/workflow";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx {
@@ -18,6 +19,8 @@ interface AuthCtx {
   locale: string;
   /** Present when the caller is a colleague borrowing the owner's workspace. */
   member?: AuthContext["member"];
+  /** Present when staff act inside the employer's workspace (tenant view). */
+  tenantView?: AuthContext["tenantView"];
 }
 
 /**
@@ -43,7 +46,7 @@ async function listHandler(req: NextRequest, ctx: AuthCtx) {
   // A colleague opens their own queue. ctx.userId is the company owner once the
   // workspace has been resolved, so the real person is ctx.member.actorId.
   if (url.searchParams.get("assignedToMe") === "true") {
-    filter.assignedTo = ctx.member?.actorId ?? ctx.userId;
+    filter.assignedTo = ctx.tenantView?.actorId ?? ctx.member?.actorId ?? ctx.userId;
   }
 
   const [items, total] = await Promise.all([
@@ -58,8 +61,9 @@ async function listHandler(req: NextRequest, ctx: AuthCtx) {
       // The job worklist shows where each candidate sits, so a check that has
       // overtaken its candidate (or been left behind) is visible at a glance.
       .populate({ path: "applicationId", select: "status" })
-      .populate({ path: "assignedTo", select: "name email" })
-      .populate({ path: "verifiedBy", select: "name email" })
+      .populate({ path: "assignedTo", select: "name email role" })
+      .populate({ path: "verifiedBy", select: "name email role" })
+      .select("-backgroundNotes")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -117,6 +121,21 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Forbidden: application not owned by employer" }, { status: 403 });
   }
 
+  // One open check per kind of verification per application. Opening a second
+  // "references" check while one is under way (or a "both" that covers it)
+  // would split the referees' answers across two records.
+  const open = (await BackgroundCheck.find({
+    applicationId: body.applicationId,
+    status: { $in: OPEN_STATUSES },
+  }).select("checkType").lean()) as Array<{ _id: unknown; checkType: string }>;
+  const clash = open.find((c) => checkTypesOverlap(c.checkType, body.checkType));
+  if (clash) {
+    return NextResponse.json(
+      { error: "This candidate already has an open check of this kind.", code: "duplicate_open_check", checkId: String(clash._id) },
+      { status: 409 }
+    );
+  }
+
   const references = (body.references ?? []).map((r) => ({
     name: r.name,
     relationship: r.relationship,
@@ -134,8 +153,10 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     checkType: body.checkType,
     references,
     backgroundNotes: body.backgroundNotes,
-    status: references.length > 0 ? "in_progress" : "pending",
-    createdBy: ctx.userId,
+    // Nobody holds a new check yet, so it waits for whoever starts it.
+    status: "pending",
+    // The real requester: a colleague's session carries the owner's id.
+    createdBy: ctx.tenantView?.actorId ?? ctx.member?.actorId ?? ctx.userId,
   });
 
   await logActivity({
@@ -143,8 +164,9 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     action: "background_check.create",
     resource: "applications",
     resourceId: String(check._id),
+    meta: { checkType: body.checkType },
     req,
-  }).catch(() => { /* non-blocking */ });
+  });
 
   notifyAgentOfCheck(emp as EmployerForNotice, (application as { jobId: unknown }).jobId, ctx.member?.actorId ?? ctx.userId)
     .catch((err) => { logger.error({ err, checkId: String(check._id) }, "[background-checks] failed to notify the agent"); });
@@ -158,8 +180,8 @@ interface EmployerForNotice { _id: unknown; agentId?: unknown; companyName?: str
  * The agents who work with this employer hear that a check was requested
  * (client report 2026-09-30): the job's own agent and the employer's account
  * agent, once each when they are the same person (QA EMP-002, 2026-10-06).
- * They follow it on their Background checks page; the employer's team still
- * runs it.
+ * Either side may run it (owner decision 2026-10-14); the agent starts it from
+ * their Background checks page.
  */
 async function notifyAgentOfCheck(emp: EmployerForNotice, jobId: unknown, actorId: string): Promise<void> {
   const [{ default: Agent }, { default: Job }] = await Promise.all([import("@/models/Agent"), import("@/models/Job")]);

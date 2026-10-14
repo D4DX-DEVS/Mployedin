@@ -6,6 +6,9 @@ import { PageNavIcon } from "@/components/shared/PageNavIcon";
 
 export interface DashboardHeaderMetric {
   label: string;
+  /** Phones only, with `compact`/`compactMetrics`: a shorter label so five
+   *  figures fit one row ("To review" for "Awaiting your review"). */
+  shortLabel?: string;
   value: ReactNode;
   note?: ReactNode;
   icon: LucideIcon;
@@ -222,7 +225,14 @@ export function DashboardPageHeader({
                     // 0.14em tracking that would push it past an 83px column.
                     metricCompact && "order-2 tracking-normal sm:order-none sm:tracking-[0.14em]"
                   )}>
-                    {metric.label}
+                    {metric.shortLabel && metricCompact ? (
+                      <>
+                        <span className="sm:hidden">{metric.shortLabel}</span>
+                        <span className="hidden sm:inline">{metric.label}</span>
+                      </>
+                    ) : (
+                      metric.label
+                    )}
                   </p>
                   <div data-header-metric-value="" className={cn(
                     "mt-1 flex min-w-0 items-baseline gap-2",

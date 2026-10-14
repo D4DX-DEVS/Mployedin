@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
+import { getAllocationSummary, getDeliverySummary, type SupportItem } from "@/lib/exhibitions/supportItems";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -41,6 +42,7 @@ function titleKey(from: string, to: string): string {
  */
 export function ExhibitionActionDialog({ item, status, onClose, onDone }: ExhibitionActionDialogProps) {
   const t = useTranslations("adminExhibitions");
+  const tx = useTranslations("exhibitions");
   const [note, setNote] = useState("");
   const [approvedBudget, setApprovedBudget] = useState("");
   const [budgetNotes, setBudgetNotes] = useState("");
@@ -105,6 +107,18 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
     }
   };
 
+  // Warn, don't block: moving on with support still unallocated (to
+  // Delivery) or undelivered (to Active / Completed) is the admin's call.
+  const supportLines = (item.supportItems ?? []) as SupportItem[];
+  const supportWarning =
+    supportLines.length === 0
+      ? null
+      : status === "resources_assigned" && getAllocationSummary(supportLines).status !== "full"
+        ? "warningNotAllocated"
+        : (status === "active" || status === "completed") && !getDeliverySummary(supportLines).allDelivered
+          ? "warningNotDelivered"
+          : null;
+
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
       <DialogContent className="max-w-md">
@@ -116,6 +130,12 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {supportWarning && (
+            <p role="status" className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {tx(supportWarning)}
+            </p>
+          )}
           {BUDGET_STEPS.includes(status) && (
             <div className="space-y-1.5">
               <Label htmlFor="exhibition-approved-budget">{t("approvedBudget", { currency: item.budgetCurrency })}</Label>

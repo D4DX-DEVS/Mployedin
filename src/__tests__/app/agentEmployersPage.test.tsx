@@ -205,15 +205,25 @@ describe("AgentEmployersPage table", () => {
     expect(screen.getAllByText("Region Co")).not.toHaveLength(0);
   });
 
-  it("splits the list into all accounts and the ones assigned to the agent", async () => {
+  it("opens on the agent's assigned accounts, with their area as a second tab", async () => {
     await renderPage();
 
     const tabs = screen.getByRole("navigation", { name: "Which accounts" });
-    expect(within(tabs).getByRole("link", { name: /All accounts/ })).toHaveAttribute("href", PATHNAME);
-    expect(within(tabs).getByRole("link", { name: /Assigned to me/ })).toHaveAttribute("href", `${PATHNAME}?view=assigned`);
-    // The default view asks for everything the agent can see.
+    expect(within(tabs).getByRole("link", { name: /Assigned to me/ })).toHaveAttribute("href", PATHNAME);
+    expect(within(tabs).getByRole("link", { name: /In my area/ })).toHaveAttribute("href", `${PATHNAME}?view=area`);
+    // The default view asks for the assigned accounts only.
     const urls = (global.fetch as jest.Mock).mock.calls.map(([url]) => String(url));
-    expect(urls.some((url) => url.startsWith("/api/employers?") && !url.includes("view="))).toBe(true);
+    expect(urls.filter((url) => url.startsWith("/api/employers?")).every((url) => url.includes("view=assigned"))).toBe(true);
+  });
+
+  it("asks the API for area-only accounts on ?view=area", async () => {
+    searchParamsState = new URLSearchParams("view=area");
+    window.history.replaceState({}, "", `${PATHNAME}?view=area`);
+    await renderPage();
+
+    const urls = (global.fetch as jest.Mock).mock.calls.map(([url]) => String(url));
+    expect(urls.filter((url) => url.startsWith("/api/employers?")).every((url) => url.includes("view=area"))).toBe(true);
+    expect(screen.getByRole("link", { name: /In my area/ })).toHaveAttribute("aria-current", "page");
   });
 
   it("asks the API for assigned accounts only on ?view=assigned", async () => {

@@ -51,8 +51,11 @@ export interface RowPicker {
   /** Accessible name, e.g. "Change status for Hana Youssef". */
   label: string;
   value: string;
-  options: readonly { value: string; label: string }[];
+  /** `dotClassName`: a colour dot before the option, e.g. "bg-blue-500". */
+  options: readonly { value: string; label: string; dotClassName?: string }[];
   onChange: (value: string) => void;
+  /** Menu heading; defaults to the record name. */
+  heading?: string;
   /** What the trigger shows — typically <StatusBadge status={value} />. */
   display?: ReactNode;
   disabled?: boolean;
@@ -73,7 +76,7 @@ interface RowActionsProps {
    * (1440px) for tables with so many columns that the labels push the actions
    * out of the panel at 1280px.
    */
-  labelsFrom?: "xl" | "wide";
+  labelsFrom?: "xl" | "wide" | "widest" | "always";
   className?: string;
 }
 
@@ -87,6 +90,10 @@ const LABEL_CLASS = {
   // rem, not px: Tailwind v4 orders a px breakpoint before `sm:` (rem), so
   // `sm:sr-only` won and the label never came back.
   wide: "inline sm:sr-only min-[90rem]:not-sr-only",
+  // Busiest tables (seven columns): labels only from 1536px.
+  widest: "inline sm:sr-only 2xl:not-sr-only",
+  // Cards and other roomy layouts: always labelled.
+  always: "inline",
 } as const;
 
 function ActionIcon({ icon, pending, className }: { icon: LucideIcon; pending?: boolean; className?: string }) {
@@ -132,11 +139,12 @@ export function InlinePicker({ name, picker, align = "end" }: { name: string; pi
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="w-52">
-        <DropdownMenuLabel className="truncate">{name}</DropdownMenuLabel>
+        <DropdownMenuLabel className="truncate">{picker.heading ?? name}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup value={picker.value} onValueChange={picker.onChange}>
           {picker.options.map((option) => (
             <DropdownMenuRadioItem key={option.value} value={option.value}>
+              {option.dotClassName && <span className={cn("me-2 size-2 shrink-0 rounded-full", option.dotClassName)} aria-hidden="true" />}
               {option.label}
             </DropdownMenuRadioItem>
           ))}

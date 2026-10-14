@@ -51,14 +51,22 @@ jest.mock("@/models/Agent", () => ({
   },
 }));
 jest.mock("@/models/Job", () => ({ __esModule: true, default: { findById: jest.fn(() => chain(jobDoc)) } }));
-jest.mock("@/models/BackgroundCheck", () => ({ __esModule: true, default: { create: jest.fn(async (doc: unknown) => ({ _id: "check1", ...(doc as object) })) } }));
+let mockOpenChecks: Array<{ _id: string; checkType: string }> = [];
+const mockCreate = jest.fn(async (doc: unknown) => ({ _id: "check1", ...(doc as object) }));
+jest.mock("@/models/BackgroundCheck", () => ({
+  __esModule: true,
+  default: {
+    create: (doc: unknown) => mockCreate(doc),
+    find: jest.fn(() => chain(mockOpenChecks)),
+  },
+}));
 
-async function post() {
+async function post(checkType = "background") {
   const { POST } = await import("@/app/api/employer/background-checks/route");
   return POST(new NextRequest("http://localhost/api/employer/background-checks", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ applicationId: APP_ID, checkType: "background" }),
+    body: JSON.stringify({ applicationId: APP_ID, checkType }),
   }), {} as never);
 }
 
@@ -66,6 +74,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   employerDoc = { _id: EMPLOYER_ID, agentId: AGENT_ID, companyName: "Acme" };
   jobDoc = { title: "Accountant" };
+  mockOpenChecks = [];
 });
 
 it("tells the employer's agent that a check was requested", async () => {
@@ -110,4 +119,29 @@ it("tells a shared agent only once", async () => {
   expect((await post()).status).toBe(201);
   await new Promise((r) => setImmediate(r));
   expect(mockNotify).toHaveBeenCalledTimes(1);
+});
+
+describe("one open check of a kind per candidate (owner decision 2026-10-14)", () => {
+  it("refuses a second open check of the same kind and points at the one running", async () => {
+    mockOpenChecks = [{ _id: "existing1", checkType: "background" }];
+    const res = await post("background");
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ code: "duplicate_open_check", checkId: "existing1" });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("treats \"both\" as covering background and references", async () => {
+    mockOpenChecks = [{ _id: "existing1", checkType: "both" }];
+    expect((await post("reference")).status).toBe(409);
+  });
+
+  it("allows a different kind of check for the same candidate", async () => {
+    mockOpenChecks = [{ _id: "existing1", checkType: "reference" }];
+    expect((await post("background")).status).toBe(201);
+  });
+
+  it("opens every new check unheld and not started, crediting the real requester", async () => {
+    await post("background");
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ status: "pending", createdBy: OWNER_ID }));
+  });
 });

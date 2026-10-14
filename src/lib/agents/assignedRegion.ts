@@ -12,9 +12,11 @@ import Country from "@/models/Country";
  */
 export interface AssignedRegion {
   id: string;
-  type: "city" | "state";
+  /** "country" = every active state of that country is assigned (Qatar, Oman):
+   *  shown as the country, not as a list of its states. */
+  type: "city" | "state" | "country";
   name: string;
-  /** Parent chain, nearest first: "Kerala, India" for a city, "India" for a state. */
+  /** Parent chain, nearest first: "Kerala, India" for a city, "India" for a state, "" for a country. */
   parent: string;
 }
 
@@ -79,11 +81,19 @@ export async function resolveAssignedRegions(
   const countryOf = (state: (NamedDoc & { countryId?: unknown }) | undefined) =>
     pickName(countryMap.get(String(state?.countryId ?? "")), locale);
 
+  // A country whose every active state is assigned reads as the country.
+  const wholeCountries = await fullyAssignedCountries(stateIds, states);
+
   const out: AssignedRegion[] = [];
+
+  for (const countryId of wholeCountries) {
+    out.push({ id: countryId, type: "country", name: pickName(countryMap.get(countryId), locale), parent: "" });
+  }
 
   for (const id of stateIds) {
     const state = stateMap.get(id);
     if (!state) continue;
+    if (wholeCountries.has(String(state.countryId ?? ""))) continue;
     out.push({ id, type: "state", name: pickName(state, locale), parent: countryOf(state) });
   }
 
@@ -96,4 +106,27 @@ export async function resolveAssignedRegions(
   }
 
   return out;
+}
+
+/**
+ * Countries (ids) whose every active state is in `stateIds` — a country-level
+ * grant is stored as all of its states, so the match rules (regionCityId /
+ * regionStateId) need no country field.
+ */
+async function fullyAssignedCountries(
+  stateIds: string[],
+  states: (NamedDoc & { countryId?: unknown })[],
+): Promise<Set<string>> {
+  const assigned = new Set(stateIds);
+  const candidates = [...new Set(
+    states.filter((s) => assigned.has(String(s._id))).map((s) => String(s.countryId ?? "")).filter(Boolean),
+  )];
+  if (candidates.length === 0) return new Set();
+  const all = await State.find({ countryId: { $in: candidates }, isActive: true })
+    .select("_id countryId")
+    .lean<{ _id: unknown; countryId?: unknown }[]>();
+  const missing = new Set<string>();
+  for (const s of all) if (!assigned.has(String(s._id))) missing.add(String(s.countryId ?? ""));
+  const withStates = new Set(all.map((s) => String(s.countryId ?? "")));
+  return new Set(candidates.filter((c) => withStates.has(c) && !missing.has(c)));
 }

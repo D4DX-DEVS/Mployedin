@@ -259,6 +259,7 @@ describe("AgentDashboard", () => {
     loadAssignedAccountsMock.mockReset();
     loadAssignedAccountsMock.mockResolvedValue({
       total: 7,
+      active: 6,
       rows: [
         { employerId: "employer-1", companyName: "Gulf Metals", isActive: true, openJobs: 4, newApplicants: 3, upcomingInterviews: 2, hires: 1 },
         { employerId: "employer-2", companyName: "Acme Foods", isActive: true, openJobs: 1, newApplicants: 0, upcomingInterviews: 0, hires: 0 },
@@ -310,9 +311,9 @@ describe("AgentDashboard", () => {
     // own): book size, live roles, this month's target and commission —
     // nothing the queue or the pipeline already prints. Each is a link.
     expect(screen.queryByRole("heading", { name: /at a glance/i })).toBeNull();
-    // Assigned accounts only, and the tile opens that same list.
-    expect(screen.getByRole("link", { name: "Assigned accounts: 7" }).closest("section")).toHaveClass("workspace-header");
-    expect(screen.getByRole("link", { name: "Assigned accounts: 7" })).toHaveAttribute("href", "/en/agent/employers?view=assigned");
+    // Assigned employers with an active login, and the tile opens that same list.
+    expect(screen.getByRole("link", { name: "Active employers: 6" }).closest("section")).toHaveClass("workspace-header");
+    expect(screen.getByRole("link", { name: "Active employers: 6" })).toHaveAttribute("href", "/en/agent/employers?view=assigned&status=active");
     expect(loadAssignedAccountsMock).toHaveBeenCalledWith(["employer-1", "employer-2"], expect.any(Date), 5);
 
     // Your accounts: each assigned employer with its numbers; the row opens
@@ -374,7 +375,7 @@ describe("AgentDashboard", () => {
     expect(roleRow).toHaveTextContent("Applications2");
 
     // Nothing on the page repeats: each figure's label appears once.
-    for (const label of ["Assigned accounts", "Live Roles", "Target this month", "Commission this month", "Follow-ups due"]) {
+    for (const label of ["Active employers", "Live Roles", "Target this month", "Commission this month", "Follow-ups due"]) {
       expect(screen.getAllByText(label)).toHaveLength(1);
     }
 

@@ -13,9 +13,10 @@ import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { readQuery } from "@/lib/ui/urlQuery";
 import {
   Plus, Clock, AlertCircle, CheckCircle2,
-  Trash2, Calendar, Star, UserCheck, Undo2,
+  Trash2, Calendar, PlayCircle, UserCheck, Undo2, XCircle, History,
 } from "lucide-react";
-import { SubmitTaskDialog } from "@/components/features/tasks/SubmitTaskDialog";
+import { STATUS_DOT, TaskStatusBadge, TaskStatusDialog, type AgentTaskStatus, type StatusChange } from "@/components/features/tasks/TaskStatusDialog";
+import { TaskHistoryDialog } from "@/components/features/tasks/TaskHistoryDialog";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatListDate } from "@/lib/ui/intlFormat";
@@ -35,7 +36,7 @@ interface Task {
   title: string;
   description?: string;
   priority: "high" | "medium" | "low";
-  status: "pending" | "in_progress" | "completed";
+  status: AgentTaskStatus;
   dueDate?: string;
   category: "follow_up" | "call" | "meeting" | "document" | "other";
   relatedTo?: string;
@@ -64,6 +65,7 @@ const getStatusOptions = (t: TranslationFunction) => [
   { value: "pending", label: t("statusPending") },
   { value: "in_progress", label: t("statusInProgress") },
   { value: "completed", label: t("statusCompleted") },
+  { value: "failed", label: t("statusFailed") },
 ];
 
 const getCategoryOptions = (t: TranslationFunction) => [
@@ -91,7 +93,7 @@ export default function AgentTasksPage() {
   const { confirm, ConfirmDialogNode } = useConfirm();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [stats, setStats] = useState({ pending: 0, inProgress: 0, completed: 0, overdue: 0 });
+  const [stats, setStats] = useState({ pending: 0, inProgress: 0, completed: 0, failed: 0, overdue: 0 });
   const [loading, setLoading] = useState(true);
   // Filters live in the query string so the dashboard queue and the nav badge
   // can link straight to "overdue tasks" instead of dropping the agent on an
@@ -101,7 +103,10 @@ export default function AgentTasksPage() {
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   // assigned = from a super agent / admin (notifications link here); personal = own to-dos.
   const [kindFilter, setKindFilter] = useUrlFilter("kind", "all");
-  const [submitting, setSubmitting] = useState<{ id: string; title: string; assignerName: string } | null>(null);
+  // Every status change confirms with an optional note (kept in the task's
+  // history); Completed / Failed on an assigned task goes to review.
+  const [statusChange, setStatusChange] = useState<StatusChange | null>(null);
+  const [historyTask, setHistoryTask] = useState<{ id: string; title: string } | null>(null);
   // The Create menu and ⌘K link `?new=1` so "New task" starts the task instead
   // of dropping the agent on the list beside the button that starts it.
   const [showForm, setShowForm] = useState(() => readQuery().get("new") === "1");
@@ -134,7 +139,7 @@ export default function AgentTasksPage() {
         const data = await res.json();
         setTasks(data.items ?? []);
         updateTotal(data.total ?? 0);
-        setStats(data.stats ?? { pending: 0, inProgress: 0, completed: 0, overdue: 0 });
+        setStats(data.stats ?? { pending: 0, inProgress: 0, completed: 0, failed: 0, overdue: 0 });
       }
     } catch {
       toast.error(t("loadTasksFailed"));
@@ -181,26 +186,6 @@ export default function AgentTasksPage() {
       }
     } catch {
       toast.error(t("createTaskFailed"));
-    }
-  };
-
-  const updateTaskStatus = async (id: string, status: string) => {
-    try {
-      const res = await csrfFetch(`/api/agent/tasks/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-
-      if (res.ok) {
-        toast.success(t("taskUpdatedSuccess"));
-        fetchTasks();
-      } else {
-        const err = await res.json().catch(() => null);
-        toast.error(err?.error ?? t("updateTaskFailed"));
-      }
-    } catch {
-      toast.error(t("updateTaskFailed"));
     }
   };
 
@@ -252,7 +237,7 @@ export default function AgentTasksPage() {
             active: statusFilter === "pending",
           },
           {
-            label: t("statInProgress"), value: stats.inProgress, icon: Star, tone: "primary",
+            label: t("statInProgress"), value: stats.inProgress, icon: PlayCircle, tone: "primary",
             onClick: () => setStatusFilter(statusFilter === "in_progress" ? "all" : "in_progress"),
             active: statusFilter === "in_progress",
           },
@@ -260,6 +245,11 @@ export default function AgentTasksPage() {
             label: t("statCompleted"), value: stats.completed, icon: CheckCircle2, tone: "success",
             onClick: () => setStatusFilter(statusFilter === "completed" ? "all" : "completed"),
             active: statusFilter === "completed",
+          },
+          {
+            label: t("statFailed"), value: stats.failed, icon: XCircle, tone: "danger",
+            onClick: () => setStatusFilter(statusFilter === "failed" ? "all" : "failed"),
+            active: statusFilter === "failed",
           },
           {
             label: t("statOverdue"), value: stats.overdue, icon: AlertCircle, tone: "info",
@@ -332,6 +322,7 @@ export default function AgentTasksPage() {
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[200px]">{t("columnTask")}</TableHead>
                 {/* Was headed "Status" over the priority badge and "Date" over the due date. */}
+                <TableHead className="w-[130px]">{tc("status")}</TableHead>
                 <TableHead className="w-[100px]">{t("priorityPlaceholder")}</TableHead>
                 <TableHead className="w-[120px]">{t("columnDueDate")}</TableHead>
                 <TableHead className="text-right">{tc("actions")}</TableHead>
@@ -339,10 +330,10 @@ export default function AgentTasksPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableBodySkeleton rows={5} cols={4} />
+                <TableBodySkeleton rows={5} cols={5} />
               ) : tasks.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={4} className="py-12">
+                  <TableCell colSpan={5} className="py-12">
                     {/* BUG-11: filtered-to-zero must not show first-use copy. */}
                     <EmptyState
                       title={hasActiveFilters ? t("noResultsTitle") : t("emptyStateTitle")}
@@ -357,33 +348,17 @@ export default function AgentTasksPage() {
                   // With the reviewer (or accepted): the agent can't reopen or edit it.
                   const locked = task.reviewStatus === "awaiting_review" || task.reviewStatus === "approved";
                   const assignerName = task.assignedBy?.name ?? "";
-                  const toggleDone = () => {
-                    if (assigned && task.status !== "completed") setSubmitting({ id: task._id, title: task.title, assignerName });
-                    else void updateTaskStatus(task._id, task.status === "completed" ? "pending" : "completed");
+                  const closed = task.status === "completed" || task.status === "failed";
+                  const changeStatus = (to: string) => {
+                    if (to === task.status) return;
+                    setStatusChange({ id: task._id, title: task.title, from: task.status, to: to as AgentTaskStatus, ...(assigned ? { assignerName } : {}) });
                   };
                   return (
-                  <TableRow key={task._id} className={`group ${task.status === "completed" ? "opacity-60" : ""}`}>
+                  <TableRow key={task._id} className={`group ${closed ? "opacity-60" : ""}`}>
                     <TableCell>
                       <div className="flex min-w-0 items-start gap-3">
-                        <button
-                          type="button"
-                          onClick={toggleDone}
-                          disabled={locked}
-                          aria-pressed={task.status === "completed"}
-                          aria-label={task.status === "completed" ? t("markPending") : t("markComplete")}
-                          // `!min-*-0`: the phone 44px button floor exempts only
-                          // role="checkbox", so this toggle drew as a 44px empty
-                          // box. tap-target-box keeps the 44px hit area.
-                          className={`tap-target-box mt-0.5 flex h-5 w-5 shrink-0 !min-h-0 !min-w-0 items-center justify-center rounded border-2 transition-colors ${
-                            task.status === "completed"
-                              ? "border-emerald-500 bg-emerald-500 text-white"
-                              : "border-muted-foreground/30 hover:border-primary"
-                          }`}
-                        >
-                          {task.status === "completed" && <CheckCircle2 className="h-3 w-3" />}
-                        </button>
                         <div className="min-w-0">
-                          <p className={`text-sm font-medium truncate ${task.status === "completed" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                          <p className={`text-sm font-medium truncate ${closed && task.reviewStatus !== "awaiting_review" ? "line-through text-muted-foreground" : "text-foreground"}`}>
                             {task.title}
                           </p>
                           {task.description && (
@@ -397,9 +372,6 @@ export default function AgentTasksPage() {
                                   ? t("assignedByAdmin", { name: assignerName })
                                   : t("assignedBySuperAgent", { name: assignerName })}
                               </span>
-                              {task.reviewStatus === "awaiting_review" && (
-                                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">{t("reviewAwaiting")}</span>
-                              )}
                               {task.reviewStatus === "approved" && (
                                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">{t("reviewApproved")}</span>
                               )}
@@ -418,6 +390,23 @@ export default function AgentTasksPage() {
                       </div>
                     </TableCell>
                     <TableCell>
+                      <RowActions
+                        name={task.title}
+                        picker={{
+                          label: t("changeStatusFor", { title: task.title }),
+                          heading: t("changeStatus"),
+                          value: task.status,
+                          options: getStatusOptions(t)
+                            .filter((o) => o.value !== "all")
+                            .map((o) => ({ ...o, dotClassName: STATUS_DOT[o.value as AgentTaskStatus] })),
+                          onChange: changeStatus,
+                          display: <TaskStatusBadge status={task.status} reviewStatus={task.reviewStatus} />,
+                          // With the reviewer, or accepted: the status is theirs now.
+                          disabled: locked,
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
                       <div className="flex flex-col gap-1">
                         <span className={`inline-flex w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${PRIORITY_COLORS[task.priority]}`}>
                           {t(`priorityLabel${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}`)}
@@ -427,7 +416,7 @@ export default function AgentTasksPage() {
                     <TableCell className="text-sm text-muted-foreground">
                       {task.dueDate ? (
                         <span className={`inline-flex items-center gap-1 whitespace-nowrap ${
-                          new Date(task.dueDate) < new Date() && task.status !== "completed"
+                          new Date(task.dueDate) < new Date() && !closed
                             ? "text-red-500 font-semibold"
                             : ""
                         }`}>
@@ -439,22 +428,21 @@ export default function AgentTasksPage() {
                     <TableCell className="text-right">
                       <RowActions
                         name={task.title}
-                        quick={!locked && task.status !== "completed" && task.status !== "in_progress" ? [{
-                          key: "star",
-                          label: t("markInProgress"),
-                          icon: Star,
-                          iconOnly: true,
-                          onSelect: () => { void updateTaskStatus(task._id, "in_progress"); },
-                        }] : []}
-                        // An assigned task belongs to whoever gave it: no delete.
-                        menu={assigned ? [] : [
+                        menu={[
                           {
+                            key: "history",
+                            label: t("historyAction"),
+                            icon: History,
+                            onSelect: () => setHistoryTask({ id: task._id, title: task.title }),
+                          },
+                          // An assigned task belongs to whoever gave it: no delete.
+                          ...(assigned ? [] : [{
                             key: "delete",
                             label: tc("delete"),
                             icon: Trash2,
                             destructive: true,
                             onSelect: () => { void deleteTask(task._id); },
-                          },
+                          }]),
                         ]}
                       />
                     </TableCell>
@@ -478,7 +466,13 @@ export default function AgentTasksPage() {
         />
       )}
     </div>
-    <SubmitTaskDialog task={submitting} onClose={() => setSubmitting(null)} onSubmitted={() => void fetchTasks()} />
+    <TaskStatusDialog change={statusChange} onClose={() => setStatusChange(null)} onSaved={() => void fetchTasks()} />
+    <TaskHistoryDialog
+      task={historyTask}
+      url={historyTask ? `/api/agent/tasks/${historyTask.id}` : null}
+      onClose={() => setHistoryTask(null)}
+    />
     </>
   );
 }
+
