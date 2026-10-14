@@ -1,6 +1,9 @@
 import type { useTranslations } from "next-intl";
 import type { SupportItemView } from "@/components/features/exhibitions/SupportItemsSummary";
 import type { TimelineEntry } from "@/components/features/exhibitions/ApprovalTimeline";
+import type { ExhibitionAttachmentView } from "@/components/features/exhibitions/attachmentsClient";
+import type { CompletionReport } from "@/components/features/exhibitions/CompletionReportView";
+import { superAgentOwnsCurrentDecision } from "@/lib/exhibitions/transitions";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -40,6 +43,8 @@ export interface ExhibitionRequest {
   reviewedAt?: string;
   reviewNote?: string;
   statusHistory?: TimelineEntry[];
+  attachments?: ExhibitionAttachmentView[];
+  completionReport?: CompletionReport | null;
   createdAt: string;
 }
 
@@ -163,6 +168,17 @@ export function reviewActionsFor(status: string): { primary?: ReviewAction; seco
   if (status === "submitted") return { primary: "under_review", secondary: ["rejected"] };
   if (status === "under_review") return { primary: "approved", secondary: ["revision_requested", "rejected"] };
   return { secondary: [] };
+}
+
+/** Statuses at which a super agent may still correct a request's facts (the API enforces the same). */
+export const SA_EDITABLE_STATUSES = ["submitted", "under_review", "revision_requested", "approved"];
+
+/**
+ * Whether this role can step the request back: its own approval while the
+ * admin has not acted on it, or its own rejection (the API checks the same).
+ */
+export function canSuperAgentMoveBack(item: Pick<ExhibitionRequest, "status" | "statusHistory">): boolean {
+  return superAgentOwnsCurrentDecision(item);
 }
 
 /** The stored default for "no location yet" — shown as not specified, not as a place. */

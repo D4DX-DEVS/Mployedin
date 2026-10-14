@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { AlertTriangle, Edit, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCheck, Edit, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +13,9 @@ import { ApprovalTimeline, type TimelineEntry } from "@/components/features/exhi
 import { SupportItemsTable, type SupportItemView } from "@/components/features/exhibitions/SupportItemsSummary";
 import { formatCurrency } from "@/lib/currency";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
+import { AttachmentsSection } from "@/components/features/exhibitions/ExhibitionAttachments";
+import { CompletionReportView, type CompletionReport } from "@/components/features/exhibitions/CompletionReportView";
+import type { ExhibitionAttachmentView } from "@/components/features/exhibitions/attachmentsClient";
 
 export interface AgentExhibitionDetail {
   _id: string;
@@ -39,6 +42,8 @@ export interface AgentExhibitionDetail {
   status: string;
   reviewNote?: string;
   statusHistory?: TimelineEntry[];
+  attachments?: ExhibitionAttachmentView[];
+  completionReport?: CompletionReport | null;
   createdAt: string;
 }
 
@@ -46,6 +51,8 @@ interface AgentExhibitionDetailDialogProps {
   item: AgentExhibitionDetail | null;
   onClose: () => void;
   onEdit: (item: AgentExhibitionDetail) => void;
+  /** Open the "event completed" report for a running event. */
+  onComplete: (item: AgentExhibitionDetail) => void;
   statusLabel: (status: string) => string;
   statusClassName: (status: string) => string;
   priorityClassName: (priority: string) => string;
@@ -61,6 +68,8 @@ const PRIORITY_KEYS: Record<string, string> = {
 };
 
 const EDITABLE = ["draft", "submitted", "revision_requested"];
+/** From the moment the event runs, its outcome and photos belong on the request. */
+const OUTCOME_STATUSES = ["active", "completed"];
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -95,6 +104,7 @@ export function AgentExhibitionDetailDialog({
   item,
   onClose,
   onEdit,
+  onComplete,
   statusLabel,
   statusClassName,
   priorityClassName,
@@ -139,6 +149,10 @@ export function AgentExhibitionDetailDialog({
   }
   const place = detail ? placeOf(detail) : "";
   const editable = detail ? EDITABLE.includes(detail.status) : false;
+  const showOutcome = detail ? OUTCOME_STATUSES.includes(detail.status) : false;
+  const attachments = detail?.attachments ?? [];
+  const setAttachments = (all: ExhibitionAttachmentView[]) =>
+    setFull((prev) => (prev ? { ...prev, attachments: all } : detail ? { ...detail, attachments: all } : prev));
 
   return (
     <Dialog open={!!item} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -230,6 +244,23 @@ export function AgentExhibitionDetailDialog({
                 )}
               </Section>
 
+              <Section title={t("attachmentsTitle")}>
+                <AttachmentsSection requestId={detail._id} kind="event" attachments={attachments} canManage={editable} onChange={setAttachments} />
+              </Section>
+
+              {showOutcome && (
+                <Section title={t("eventOutcomeTitle")}>
+                  <CompletionReportView
+                    requestId={detail._id}
+                    report={detail.completionReport}
+                    expectedLeads={detail.expectedLeads}
+                    attachments={attachments}
+                    canManagePhotos
+                    onAttachmentsChange={setAttachments}
+                  />
+                </Section>
+              )}
+
               {(detail.description || detail.objectives.length > 0) && (
                 <Section title={t("detailDescription")}>
                   {detail.description && <p className="whitespace-pre-line text-sm leading-6">{detail.description}</p>}
@@ -258,6 +289,12 @@ export function AgentExhibitionDetailDialog({
 
             <DialogFooter className="shrink-0 gap-2 border-t px-6 py-4 sm:gap-2">
               <Button variant="ghost" onClick={onClose}>{tc("close")}</Button>
+              {detail.status === "active" && (
+                <Button onClick={() => onComplete(detail)}>
+                  <CheckCheck className="h-4 w-4" aria-hidden="true" />
+                  {t("markEventCompleted")}
+                </Button>
+              )}
               {editable && (
                 <Button
                   variant={detail.status === "revision_requested" ? "default" : "outline"}

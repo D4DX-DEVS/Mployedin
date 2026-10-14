@@ -148,7 +148,8 @@ export function LeadWorkspace({
             </div>
           )}
         </div>
-        {lead && (
+        {/* A read-only viewer (a super agent on an agent's lead) has nothing in this menu. */}
+        {lead && (state.canUpdate || state.canDelete) && (
           <div className="absolute end-16 top-4 z-30 sm:end-14">
             <LeadActionsMenu lead={lead} actions={actions} state={state} t={t} className="h-11 w-11 sm:h-8 sm:w-8" />
           </div>

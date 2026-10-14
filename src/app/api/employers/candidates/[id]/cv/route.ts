@@ -9,6 +9,7 @@ import TalentPool from "@/models/TalentPool";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { downloadBuffer } from "@/lib/storage/spaces";
 import { guessMime, DOCX_MIME } from "@/lib/storage/mime";
+import { canStaffAccessSeeker, type SeekerOwnership } from "@/lib/jobSeeker/staffAccess";
 
 
 interface SeekerDoc {
@@ -28,7 +29,9 @@ interface SeekerDoc {
  *
  * The [id] param is the JobSeeker _id. An employer may view a candidate's CV
  * only if that candidate applied to one of the employer's jobs or sits in one
- * of the employer's talent pools; admins may view any; job seekers may view
+ * of the employer's talent pools; admins may view any; a super agent may view
+ * the CV of any seeker whose profile they may open (the same
+ * canStaffAccessSeeker rule as /api/job-seekers/[id]); job seekers may view
  * their own CV.
  */
 async function getHandler(
@@ -72,6 +75,17 @@ async function getHandler(
     seeker = (await JobSeeker.findById(id)
       .select("userId cv documents")
       .lean()) as SeekerDoc | null;
+  } else if (ctx.role === "super_agent") {
+    // Owner, 2026-10-14: a super agent sees the CV along with the profile.
+    // Same scope as the profile itself, so no seeker is newly exposed.
+    const full = await JobSeeker.findById(id)
+      .select("userId cv documents agentId referral regionCityId regionStateId profileVisibility roleArchivedAt")
+      .lean();
+    if (!full) return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+    if (!(await canStaffAccessSeeker(full as unknown as SeekerOwnership, ctx, "view"))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    seeker = full as unknown as SeekerDoc;
   } else {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

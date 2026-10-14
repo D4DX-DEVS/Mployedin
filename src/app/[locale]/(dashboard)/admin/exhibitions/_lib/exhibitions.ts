@@ -1,5 +1,7 @@
 import type { SupportItemView } from "@/components/features/exhibitions/SupportItemsSummary";
 import { formatCount } from "@/lib/ui/intlFormat";
+import type { ExhibitionAttachmentView } from "@/components/features/exhibitions/attachmentsClient";
+import type { CompletionReport } from "@/components/features/exhibitions/CompletionReportView";
 
 export interface ExhibitionRequest {
   _id: string;
@@ -12,6 +14,7 @@ export interface ExhibitionRequest {
   eventStartDate: string;
   eventEndDate: string;
   organizerName?: string;
+  organizerContact?: string;
   participationTypes: string[];
   participationDetails?: string;
   objectives: string[];
@@ -51,6 +54,8 @@ export interface ExhibitionRequest {
     approverRole?: string;
     statusReason?: string;
   }[];
+  attachments?: ExhibitionAttachmentView[];
+  completionReport?: CompletionReport | null;
   createdAt: string;
 }
 

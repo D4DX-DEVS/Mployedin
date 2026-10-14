@@ -301,7 +301,8 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     queueCounts.overdueTasks +
     queueCounts.interviewsAwaitingOutcome +
     queueCounts.offersAwaitingResponse +
-    queueCounts.newCandidates;
+    queueCounts.newCandidates +
+    (queueCounts.exhibitionRevisions ?? 0);
   // Strings are resolved here, not inside the panel: the shared dashboard
   // components in this codebase take copy as props, and it keeps the panel a
   // plain synchronous component.
@@ -315,6 +316,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       interviewsAwaitingOutcome: tQueue("summary.interviewsAwaitingOutcome"),
       offersAwaitingResponse: tQueue("summary.offersAwaitingResponse"),
       newCandidates: tQueue("summary.newCandidates"),
+      exhibitionRevisions: tQueue("summary.exhibitionRevisions"),
     },
     kind: {
       followUp: tQueue("kind.followUp"),
@@ -322,6 +324,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       interviewOutcome: tQueue("kind.interviewOutcome"),
       offerResponse: tQueue("kind.offerResponse"),
       newCandidate: tQueue("kind.newCandidate"),
+      exhibitionRevision: tQueue("kind.exhibitionRevision"),
     },
     reason: {
       followUp: tQueue("reason.followUp"),
@@ -329,11 +332,15 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       interviewOutcome: tQueue("reason.interviewOutcome"),
       offerResponse: tQueue("reason.offerResponse"),
       newCandidate: tQueue("reason.newCandidate"),
+      exhibitionRevision: tQueue("reason.exhibitionRevision"),
     },
     lateness: Object.fromEntries(
       queueItems.map((item) => [
         `${item.kind}-${item.id}`,
-        item.daysLate > 0 ? tQueue("daysLate", { days: item.daysLate }) : tQueue("dueToday"),
+        // A sent-back request is not "late"; say how long it has waited.
+        item.kind === "exhibitionRevision"
+          ? tQueue("sentBackAgo", { days: item.daysLate })
+          : item.daysLate > 0 ? tQueue("daysLate", { days: item.daysLate }) : tQueue("dueToday"),
       ]),
     ),
     emptyTitle: tQueue("empty.title"),

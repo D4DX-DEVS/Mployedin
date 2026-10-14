@@ -131,6 +131,38 @@ export interface ISupportItem {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Attachments                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * "event": files the agent attaches to the request (brochure, floor plan,
+ * organiser's invitation). "completion": photos from the finished event.
+ * Stored private; the API hands out signed URLs.
+ */
+export type ExhibitionAttachmentKind = "event" | "completion";
+
+export const EXHIBITION_ATTACHMENT_KINDS: ExhibitionAttachmentKind[] = ["event", "completion"];
+
+export interface IExhibitionAttachment {
+  _id?: mongoose.Types.ObjectId;
+  kind: ExhibitionAttachmentKind;
+  fileName: string;
+  key: string;
+  contentType: string;
+  size: number;
+  uploadedBy?: mongoose.Types.ObjectId;
+  uploadedAt: Date;
+}
+
+/** What the agent reports when they mark the event completed. */
+export interface ICompletionReport {
+  actualLeads?: number;
+  summary?: string;
+  completedAt?: Date;
+  completedBy?: mongoose.Types.ObjectId;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Priority                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -213,6 +245,10 @@ export interface IExhibitionRequest extends Document {
   supportItems?: ISupportItem[];
   additionalRequirements?: string; // max 2000 chars
 
+  /* Attachments and completion */
+  attachments?: IExhibitionAttachment[];
+  completionReport?: ICompletionReport;
+
   /* Priority */
   priority: ExhibitionPriority;
 
@@ -269,6 +305,29 @@ const SupportItemSchema = new Schema<ISupportItem>(
     updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { _id: true },
+);
+
+const AttachmentSchema = new Schema<IExhibitionAttachment>(
+  {
+    kind: { type: String, enum: EXHIBITION_ATTACHMENT_KINDS, required: true },
+    fileName: { type: String, required: true, trim: true, maxlength: 255 },
+    key: { type: String, required: true, maxlength: 500 },
+    contentType: { type: String, required: true, maxlength: 120 },
+    size: { type: Number, required: true, min: 0 },
+    uploadedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    uploadedAt: { type: Date, default: Date.now },
+  },
+  { _id: true },
+);
+
+const CompletionReportSchema = new Schema<ICompletionReport>(
+  {
+    actualLeads: { type: Number, min: 0, max: 100000 },
+    summary: { type: String, trim: true, maxlength: 2000 },
+    completedAt: { type: Date },
+    completedBy: { type: Schema.Types.ObjectId, ref: "User" },
+  },
+  { _id: false },
 );
 
 const ExhibitionRequestSchema = new Schema<IExhibitionRequest>(
@@ -337,6 +396,10 @@ const ExhibitionRequestSchema = new Schema<IExhibitionRequest>(
     /* Support items and inventory */
     supportItems: [SupportItemSchema],
     additionalRequirements: { type: String, trim: true, maxlength: 2000 },
+
+    /* Attachments and completion */
+    attachments: [AttachmentSchema],
+    completionReport: { type: CompletionReportSchema },
 
     /* Priority */
     priority: {

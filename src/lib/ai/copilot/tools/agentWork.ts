@@ -44,7 +44,8 @@ export const myWorkQueueTool: CopilotTool<Record<string, never>> = {
       counts.dueFollowUps +
       counts.interviewsAwaitingOutcome +
       counts.offersAwaitingResponse +
-      counts.newCandidates;
+      counts.newCandidates +
+      counts.exhibitionRevisions;
 
     return {
       ok: true,

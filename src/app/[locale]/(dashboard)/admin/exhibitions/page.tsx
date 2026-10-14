@@ -11,6 +11,8 @@ import {
   CircleDollarSign,
   ClipboardCheck,
   Clock,
+  Columns3,
+  List,
   Loader2,
   ShieldAlert,
   Trash2,
@@ -42,7 +44,9 @@ import type { ExportColumn } from "@/lib/export";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { readQuery, writeQuery } from "@/lib/ui/urlQuery";
 import { cn } from "@/lib/utils";
+import { EditRequestDialog, MoveBackDialog } from "@/components/features/exhibitions/ReviewerRequestDialogs";
 import { ExhibitionActionDialog } from "./_components/ExhibitionActionDialog";
+import { ExhibitionBoard } from "./_components/ExhibitionBoard";
 import { ExhibitionDetailDrawer } from "./_components/ExhibitionDetailDrawer";
 import { SupportManageDialog, type SupportDialogMode } from "./_components/SupportManageDialog";
 import {
@@ -112,6 +116,7 @@ export default function AdminExhibitionsPage() {
   const t = useTranslations("adminExhibitions");
   const tc = useTranslations("common");
   const ta = useTranslations("a11y");
+  const tx = useTranslations("exhibitions");
   const { confirm, ConfirmDialogNode } = useConfirm();
 
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
@@ -129,6 +134,9 @@ export default function AdminExhibitionsPage() {
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all", { allow: EXHIBITION_STATUS_FILTER_VALUES });
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: SORT_FIELDS });
   const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
+  // Table (the queue) or board (one column per stage).
+  const [view, setView] = useUrlFilter("view", "table", { allow: ["table", "board"] });
+  const boardView = view === "board";
   const order = sortOrder === "asc" ? "asc" : "desc";
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [stageFilter, setStageFilter] = useState("all");
@@ -154,6 +162,10 @@ export default function AdminExhibitionsPage() {
   const [action, setAction] = useState<{ item: ExhibitionRequest; status: string } | null>(null);
   const [support, setSupport] = useState<{ item: ExhibitionRequest; mode: SupportDialogMode } | null>(null);
   const [detailItem, setDetailItem] = useState<ExhibitionRequest | null>(null);
+  const [editItem, setEditItem] = useState<ExhibitionRequest | null>(null);
+  const [moveBackItem, setMoveBackItem] = useState<ExhibitionRequest | null>(null);
+  // Bumped after any change so the board's columns reload too.
+  const [boardVersion, setBoardVersion] = useState(0);
   const [matchedResources, setMatchedResources] = useState<MatchedResource[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(false);
 
@@ -224,6 +236,23 @@ export default function AdminExhibitionsPage() {
 
   useEffect(() => { void fetchItems(); }, [fetchItems]);
 
+  const refresh = useCallback(() => {
+    setBoardVersion((version) => version + 1);
+    void fetchItems();
+  }, [fetchItems]);
+
+  // The board's filters: everything but status and stage, which its columns are.
+  const boardParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (priorityFilter !== "all") params.set("priority", priorityFilter);
+    if (dateRange !== "all") params.set("dateRange", dateRange);
+    if (countryFilter !== "all") params.set("country", countryFilter);
+    if (budgetRange !== "all") params.set("budgetRange", budgetRange);
+    if (reviewerFilter !== "all") params.set("reviewer", reviewerFilter);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    return params;
+  }, [budgetRange, countryFilter, dateRange, debouncedSearch, priorityFilter, reviewerFilter]);
+
   const skipFilterResetRef = useRef(true);
   useEffect(() => {
     if (skipFilterResetRef.current) { skipFilterResetRef.current = false; return; }
@@ -253,7 +282,7 @@ export default function AdminExhibitionsPage() {
       if (!response.ok) throw new Error(String(response.status));
       toast.success(t("requestDeleted"));
       if (detailItem?._id === item._id) setDetailItem(null);
-      void fetchItems();
+      refresh();
     } catch {
       toast.error(t("failedToDeleteRequest"));
     }
@@ -300,7 +329,7 @@ export default function AdminExhibitionsPage() {
     if (skipped > 0) toast.info(t("bulkSkippedNotAtStage", { count: skipped }));
     if (failed > 0) toast.error(t("bulkActionFailedCount", { count: failed }));
     setSelectedIds(new Set());
-    void fetchItems();
+    refresh();
   };
 
   const exportColumns = useMemo<ExportColumn<ExhibitionRequest>[]>(() => [
@@ -433,12 +462,32 @@ export default function AdminExhibitionsPage() {
         // A count, said as one: "Queue health" read like a score.
         summary={{ label: t("openRequests"), value: summary.open }}
         actions={(
-          <Button asChild variant="outline" className="rounded-xl border-border/70 bg-background/90">
-            <a href="exhibitions/analytics">
-              <BarChart2 className="h-4 w-4" />
-              {t("analytics")}
-            </a>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div role="group" aria-label={tx("viewToggle")} className="inline-flex rounded-xl border border-border/70 bg-background/90 p-0.5">
+              {([
+                { key: "table", icon: List, label: tx("tableView") },
+                { key: "board", icon: Columns3, label: tx("boardView") },
+              ] as const).map((option) => (
+                <Button
+                  key={option.key}
+                  size="sm"
+                  variant={view === option.key ? "secondary" : "ghost"}
+                  className="h-8 rounded-lg px-2.5"
+                  aria-pressed={view === option.key}
+                  onClick={() => setView(option.key)}
+                >
+                  <option.icon className="h-4 w-4" aria-hidden="true" />
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            <Button asChild variant="outline" className="rounded-xl border-border/70 bg-background/90">
+              <a href="exhibitions/analytics">
+                <BarChart2 className="h-4 w-4" />
+                {t("analytics")}
+              </a>
+            </Button>
+          </div>
         )}
         // The queue, not its outcomes: where work is waiting. Approved and
         // Rejected are one Status filter away. Pending Review is what an admin
@@ -530,6 +579,7 @@ export default function AdminExhibitionsPage() {
         )}
       >
         <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchRequestsAgentsEvents")} />
+        {!boardView && (
         <SearchableSelect
           id="admin-exhibitions-status"
           className={INLINE_FILTER_CONTROL}
@@ -550,6 +600,7 @@ export default function AdminExhibitionsPage() {
           onValueChange={setStatusFilter}
           placeholder={t("allStatus")}
         />
+        )}
         <SearchableSelect
           id="admin-exhibitions-priority"
           className={INLINE_FILTER_CONTROL}
@@ -564,6 +615,7 @@ export default function AdminExhibitionsPage() {
           onValueChange={setPriorityFilter}
           placeholder={t("allPriority")}
         />
+        {!boardView && (
         <SearchableSelect
           id="admin-exhibitions-stage"
           className={INLINE_FILTER_CONTROL}
@@ -579,6 +631,8 @@ export default function AdminExhibitionsPage() {
           onValueChange={setStageFilter}
           placeholder={t("allStages")}
         />
+        )}
+        {!boardView && (
         <TableSortControl
           value={sortBy}
           onValueChange={setSortBy}
@@ -592,8 +646,24 @@ export default function AdminExhibitionsPage() {
           onOrderChange={setSortOrder}
           compact
         />
+        )}
       </InlineFilterBar>
 
+      {boardView ? (
+        <ExhibitionBoard
+          filterParams={boardParams}
+          refreshKey={boardVersion}
+          onOpen={openDetail}
+          onAction={openAction}
+          onMoveBack={setMoveBackItem}
+          onShowInTable={(statuses) => {
+            setStatusFilter(statuses.length === 1 ? statuses[0] : "all");
+            setStageFilter(statuses.length === 1 ? "all" : "team_leader");
+            setView("table");
+          }}
+        />
+      ) : (
+      <>
       {selectedItems.length > 0 && (
         <div className="flex flex-col gap-2 rounded-2xl border border-primary/15 bg-primary/5 chip-pad sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-medium text-foreground">{selectedItems.length} {t("selected")}</p>
@@ -752,6 +822,8 @@ export default function AdminExhibitionsPage() {
         onPageChange={setPage}
         onLimitChange={(next) => { setPageSize(next); setPage(1); }}
       />
+      </>
+      )}
 
       <ExhibitionDetailDrawer
         item={detailItem}
@@ -764,6 +836,24 @@ export default function AdminExhibitionsPage() {
         onPrevious={() => previousDetailItem && openDetail(previousDetailItem)}
         onNext={() => nextDetailItem && openDetail(nextDetailItem)}
         onManageSupport={(item, mode) => setSupport({ item, mode })}
+        onEdit={setEditItem}
+        onMoveBack={setMoveBackItem}
+        onItemChange={(item, change) => {
+          setDetailItem((current) => (current && current._id === item._id ? { ...current, ...change } : current));
+          refresh();
+        }}
+      />
+
+      <EditRequestDialog
+        request={editItem}
+        onClose={() => setEditItem(null)}
+        onSaved={() => { setEditItem(null); refresh(); }}
+      />
+      <MoveBackDialog
+        request={moveBackItem}
+        stageLabel={(status) => (STATUS_LABEL_KEYS[status] ? t(STATUS_LABEL_KEYS[status]) : status)}
+        onClose={() => setMoveBackItem(null)}
+        onDone={() => { setMoveBackItem(null); refresh(); }}
       />
 
       <SupportManageDialog
@@ -778,7 +868,7 @@ export default function AdminExhibitionsPage() {
               ? { ...current, supportItems: updated.supportItems, statusHistory: updated.statusHistory }
               : current,
           );
-          void fetchItems();
+          refresh();
         }}
       />
 
@@ -786,7 +876,7 @@ export default function AdminExhibitionsPage() {
         item={action?.item ?? null}
         status={action?.status ?? ""}
         onClose={() => setAction(null)}
-        onDone={() => { setAction(null); void fetchItems(); }}
+        onDone={() => { setAction(null); refresh(); }}
       />
     </div>
   );

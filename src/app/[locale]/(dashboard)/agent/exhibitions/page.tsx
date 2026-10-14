@@ -16,6 +16,7 @@ import {
 import {
   AlertTriangle,
   CalendarDays,
+  CheckCheck,
   Copy,
   Eye,
   Inbox,
@@ -52,6 +53,14 @@ import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { AgentExhibitionDetailDialog } from "./_components/AgentExhibitionDetailDialog";
 import { StepFormDialog } from "@/components/shared/StepFormDialog";
 import { formatListDate } from "@/lib/ui/intlFormat";
+import { PriorityFormField } from "@/components/features/exhibitions/PriorityFields";
+import { AttachmentList, PendingFilesField } from "@/components/features/exhibitions/ExhibitionAttachments";
+import { CompleteEventDialog } from "@/components/features/exhibitions/CompleteEventDialog";
+import {
+  removeExhibitionFile,
+  uploadExhibitionFiles,
+  type ExhibitionAttachmentView,
+} from "@/components/features/exhibitions/attachmentsClient";
 
 interface ExhibitionRequest {
   _id: string;
@@ -91,6 +100,8 @@ interface ExhibitionRequest {
   reviewedBy?: { _id: string; name: string };
   reviewedAt?: string;
   statusHistory?: TimelineEntry[];
+  attachments?: ExhibitionAttachmentView[];
+  completionReport?: { actualLeads?: number; summary?: string; completedAt?: string; completedBy?: { name?: string } | string | null } | null;
   createdAt: string;
 }
 
@@ -226,6 +237,11 @@ export default function AgentExhibitionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AgentExhibitionFormState>({ ...EMPTY_AGENT_EXHIBITION_FORM });
   const [detailItem, setDetailItem] = useState<ExhibitionRequest | null>(null);
+  const [completeItem, setCompleteItem] = useState<ExhibitionRequest | null>(null);
+  // Event files: chosen in the form, uploaded once the request has an id.
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [existingFiles, setExistingFiles] = useState<ExhibitionAttachmentView[]>([]);
+  const [removedFileIds, setRemovedFileIds] = useState<string[]>([]);
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
   const [dialogContainer, setDialogContainer] = useState<HTMLDivElement | null>(null);
   const [agentCurrency, setAgentCurrency] = useState<string>("AED");
@@ -262,6 +278,9 @@ export default function AgentExhibitionsPage() {
   const resetForm = useCallback(() => {
     setForm((prev) => ({ ...EMPTY_AGENT_EXHIBITION_FORM, budgetCurrency: prev.budgetCurrency }));
     setEditingId(null);
+    setPendingFiles([]);
+    setExistingFiles([]);
+    setRemovedFileIds([]);
   }, []);
 
   const fetchItems = useCallback(async () => {
@@ -402,6 +421,9 @@ export default function AgentExhibitionsPage() {
         // here stored an empty array and the super-agent participation-mix
         // chart had nothing to plot.
         participationTypes: form.participationTypes,
+        // The summary always showed "Expected leads", but no step asked for
+        // it (client feedback 2026-10-14), so it was empty on every request.
+        expectedLeads: form.expectedLeads === "" ? null : Number(form.expectedLeads),
         // Requested support only — allocation is the admin's, later.
         supportItems: supportItemsPayload(form.supportItems),
         additionalRequirements: form.additionalRequirements.trim(),
@@ -421,6 +443,19 @@ export default function AgentExhibitionsPage() {
         const error = await response.json().catch(() => ({}));
         setFormError(error.error ?? t("submitError"));
         return;
+      }
+
+      // Files go up after the save: a new request has no id before it. A file
+      // that fails does not undo the request — the agent is told and can add
+      // it from the request's details.
+      const saved = await response.json().catch(() => null);
+      const savedId: string | undefined = saved?._id ?? editingId ?? undefined;
+      if (savedId && (pendingFiles.length > 0 || removedFileIds.length > 0)) {
+        const removals = await Promise.all(removedFileIds.map((fileId) => removeExhibitionFile(savedId, fileId)));
+        const upload = await uploadExhibitionFiles(savedId, "event", pendingFiles);
+        if (!upload.ok || removals.some((r) => !r.ok)) {
+          toast.warning(upload.ok ? t("filesRemoveFailedAfterSave") : (upload.error ?? t("filesFailedAfterSave")));
+        }
       }
 
       toast.success(editingId ? t("updated") : asDraft ? "Saved as draft" : t("created"));
@@ -483,8 +518,35 @@ export default function AgentExhibitionsPage() {
       priority: item.priority ?? EMPTY_AGENT_EXHIBITION_FORM.priority,
     });
     setEditingId(item._id);
+    setPendingFiles([]);
+    setRemovedFileIds([]);
+    setExistingFiles((item.attachments ?? []).filter((a) => a.kind === "event"));
     setShowWizard(true);
   };
+
+  // `?edit=<id>`: the dashboard's "sent back for changes" row opens the
+  // request straight into its edit form. The param is then dropped with
+  // history.replaceState (router.replace on mount re-runs the page's effects).
+  const editParamHandled = useRef(false);
+  useEffect(() => {
+    if (editParamHandled.current) return;
+    const editId = new URLSearchParams(window.location.search).get("edit");
+    if (!editId) return;
+    editParamHandled.current = true;
+    fetch(`/api/exhibitions/${encodeURIComponent(editId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ExhibitionRequest | null) => {
+        if (data && ["draft", "submitted", "revision_requested"].includes(data.status)) startEdit(data);
+        else if (data) setDetailItem(data);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("edit");
+        window.history.replaceState(null, "", url.toString());
+      });
+    // Runs once: the deep link is read on arrival only.
+  }, []);
 
   const handleDuplicate = (item: ExhibitionRequest) => {
     const duplicatedForm = createDuplicatedExhibitionForm(item);
@@ -651,6 +713,9 @@ export default function AgentExhibitionsPage() {
                   if (["draft", "submitted", "revision_requested"].includes(item.status)) {
                     menu.push({ key: "edit", label: t("editRequest"), icon: Pencil, onSelect: () => startEdit(item) });
                   }
+                  if (item.status === "active") {
+                    menu.unshift({ key: "complete", label: t("markEventCompleted"), icon: CheckCheck, onSelect: () => setCompleteItem(item) });
+                  }
                   if (["draft", "submitted"].includes(item.status)) {
                     menu.push({ key: "delete", label: t("deleteRequest"), icon: Trash2, destructive: true, onSelect: () => handleDelete(item._id) });
                   }
@@ -712,6 +777,10 @@ export default function AgentExhibitionsPage() {
           setDetailItem(null);
           startEdit(item as ExhibitionRequest);
         }}
+        onComplete={(item) => {
+          setDetailItem(null);
+          setCompleteItem(item as ExhibitionRequest);
+        }}
         statusLabel={(status) => STATUS_LABELS[status] ?? status}
         statusClassName={(status) => STATUS_COLORS[status] ?? STATUS_COLORS.draft}
         priorityClassName={(priority) => PRIORITY_COLORS[priority] ?? PRIORITY_COLORS.medium}
@@ -721,9 +790,20 @@ export default function AgentExhibitionsPage() {
         resourceLabel={(value) => labelFor(RESOURCE_TYPES, value)}
       />
 
-      {/* Two steps instead of one long scroll (owner, 2026-10-14): what and
-          when, then budget and support. Only the fields scroll; the header,
-          step bar and buttons stay put. */}
+      <CompleteEventDialog
+        request={completeItem ? {
+          _id: completeItem._id,
+          eventName: completeItem.eventName,
+          expectedLeads: completeItem.expectedLeads,
+          completionPhotoCount: (completeItem.attachments ?? []).filter((a) => a.kind === "completion").length,
+        } : null}
+        onClose={() => setCompleteItem(null)}
+        onDone={() => { setCompleteItem(null); void fetchItems(); }}
+      />
+
+      {/* Steps instead of one long scroll (owner, 2026-10-14): what and
+          when, then budget and support, then files. Only the fields scroll;
+          the header, step bar and buttons stay put. */}
       <StepFormDialog
         open={showWizard}
         onOpenChange={(open) => {
@@ -893,12 +973,60 @@ export default function AgentExhibitionsPage() {
                   />
                 </div>
 
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="exhibition-expected-leads">
+                      {t("detailExpectedLeads")} <span className="text-muted-foreground text-xs">({t("optional")})</span>
+                    </Label>
+                    <Input
+                      id="exhibition-expected-leads"
+                      inputMode="numeric"
+                      value={form.expectedLeads}
+                      onChange={(event) => updateForm("expectedLeads", event.target.value.replace(/\D/g, "").slice(0, 6))}
+                      placeholder={t("expectedLeadsPlaceholder")}
+                    />
+                  </div>
+                  <PriorityFormField
+                    value={form.priority || "medium"}
+                    onChange={(value) => updateForm("priority", value)}
+                    eventStartDate={form.eventStartDate}
+                    expectedLeads={form.expectedLeads}
+                    container={dialogContainer}
+                  />
+                </div>
+
                 <SupportItemsFormSection
                   supportItems={form.supportItems}
                   additionalRequirements={form.additionalRequirements}
                   onSupportItemsChange={(items) => setForm((previous) => ({ ...previous, supportItems: items }))}
                   onAdditionalRequirementsChange={(value) => updateForm("additionalRequirements", value)}
                   container={dialogContainer}
+                />
+              </>
+            ),
+          },
+          {
+            // Client feedback 2026-10-14: "option to upload the attachment
+            // file or image related to event".
+            label: t("stepFiles"),
+            content: (
+              <>
+                {existingFiles.filter((a) => !removedFileIds.includes(a._id)).length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-foreground">{t("attachedFiles")}</p>
+                    <AttachmentList
+                      attachments={existingFiles.filter((a) => !removedFileIds.includes(a._id))}
+                      onRemove={(a) => setRemovedFileIds((prev) => [...prev, a._id])}
+                    />
+                  </div>
+                )}
+                <PendingFilesField
+                  kind="event"
+                  files={pendingFiles}
+                  onChange={setPendingFiles}
+                  existingCount={existingFiles.length - removedFileIds.length}
+                  label={t("attachmentsTitle")}
+                  hint={t("attachmentsHint")}
                 />
               </>
             ),

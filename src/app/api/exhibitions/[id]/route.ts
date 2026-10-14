@@ -13,11 +13,16 @@ import ExhibitionRequest, {
 import User from "@/models/User";
 import { sendEmail } from "@/lib/communications/email";
 import logger from "@/lib/logger";
-import { VALID_TRANSITIONS } from "@/lib/exhibitions/transitions";
+import { canMove, isStepBack, superAgentOwnsCurrentDecision } from "@/lib/exhibitions/transitions";
 import { validateSupportItems } from "@/lib/exhibitions/supportItems";
+import { withSignedAttachments } from "@/lib/exhibitions/attachments";
+import { parseCompletionReport, parseReviewerEdits } from "@/lib/exhibitions/reviewerEdits";
 
 /** Statuses that require a non-empty statusReason — enforced backend-side */
 const REASON_REQUIRED: ExhibitionRequestStatus[] = ["rejected", "revision_requested"];
+
+/** A super agent edits the request's facts only before it is resourced (admin: until archived). */
+const SA_EDITABLE_STATUSES = ["submitted", "under_review", "revision_requested", "approved"];
 
 async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
   await connectDB();
@@ -29,6 +34,7 @@ async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<s
     .populate("reviewedBy", "name")
     .populate("budgetApprovedBy", "name")
     .populate("statusHistory.changedBy", "name")
+    .populate("completionReport.completedBy", "name")
     .lean();
 
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -55,7 +61,7 @@ async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<s
       );
     }
   }
-  return NextResponse.json(item);
+  return NextResponse.json(await withSignedAttachments(item));
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
@@ -75,6 +81,31 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     if (item.agentId.toString() !== ctx.userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // The agent runs the event, so they report it done (client feedback
+    // 2026-10-14). Photos go up through /attachments; this records the outcome.
+    if (body.status === "completed") {
+      if (!canMove("agent", item.status, "completed")) {
+        return NextResponse.json(
+          { error: "Only a running event can be marked completed.", code: "INVALID_TRANSITION", from: item.status, to: "completed" },
+          { status: 409 },
+        );
+      }
+      const report = parseCompletionReport(body.completionReport);
+      if ("error" in report) return NextResponse.json({ error: report.error }, { status: 400 });
+      item.status = "completed";
+      item.completionReport = { ...report.value, completedAt: new Date(), completedBy: ctx.userId as unknown as typeof item.reviewedBy };
+      item.statusHistory.push({
+        status: "completed",
+        changedAt: new Date(),
+        changedBy: ctx.userId as unknown as typeof item.reviewedBy,
+        note: report.value.summary ? report.value.summary.slice(0, 500) : "Event completed",
+        approverRole: "agent",
+      });
+      await item.save();
+      return NextResponse.json(await withSignedAttachments(item));
+    }
+
     if (!["draft", "submitted", "revision_requested"].includes(item.status)) {
       return NextResponse.json(
         { error: "Can only edit draft, submitted, or revision-requested requests" },
@@ -165,7 +196,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       );
     }
 
-    return NextResponse.json(item);
+    return NextResponse.json(await withSignedAttachments(item));
   }
 
   /* ------------------------------------------------------------------ */
@@ -198,14 +229,18 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
 
     const {
       status,
-      reviewNote,
-      statusReason,
       approvedBudget,
       budgetNotes,
       assignedTeam,
       actualSpend,
       priority,
+      details,
+      completionReport,
     } = body;
+    // Free text only: a non-string used to throw on .trim() (a 500).
+    const reviewNote: string | undefined = typeof body.reviewNote === "string" ? body.reviewNote.slice(0, 2000) : undefined;
+    const statusReason: string | undefined = typeof body.statusReason === "string" ? body.statusReason.slice(0, 2000) : undefined;
+    const previousStatus = item.status;
 
     /**
      * A money figure must be a finite number that is not negative.
@@ -223,8 +258,11 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     };
 
     if (status) {
-      const allowed = VALID_TRANSITIONS[ctx.role]?.[item.status as ExhibitionRequestStatus] ?? [];
-      if (!allowed.includes(status)) {
+      // A super agent's only moves out of approved/rejected are undoing a
+      // decision, and only one they made; the admin's are the admin's.
+      const saReopeningOthers =
+        ctx.role === "super_agent" && (item.status === "rejected" || item.status === "approved") && !superAgentOwnsCurrentDecision(item);
+      if (!canMove(ctx.role, item.status, status) || saReopeningOthers) {
         // Usually a stale screen: someone else already moved the request on.
         return NextResponse.json(
           {
@@ -237,12 +275,39 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
         );
       }
 
-      // Backend enforcement: rejection and revision require a reason
-      if (REASON_REQUIRED.includes(status as ExhibitionRequestStatus)) {
-        const reason = (statusReason ?? reviewNote ?? "").trim();
+      // Backend enforcement: rejection, revision and any step back need a reason
+      const steppingBack = isStepBack(item.status, status);
+      if (REASON_REQUIRED.includes(status as ExhibitionRequestStatus) || steppingBack) {
+        const reason = (statusReason?.trim() || reviewNote?.trim()) ?? "";
         if (!reason) {
           return NextResponse.json(
-            { error: status === "rejected" ? "Give the agent a reason for rejecting this request." : "Tell the agent what needs to change." },
+            {
+              error: steppingBack
+                ? "Say why this request is moving back a stage."
+                : status === "rejected" ? "Give the agent a reason for rejecting this request." : "Tell the agent what needs to change.",
+            },
+            { status: 422 },
+          );
+        }
+      }
+
+      // Assigning resources means deciding them: who runs the event, and what
+      // each requested item gets (0 is a decision too, with a note). It used
+      // to be a bare status change (client feedback 2026-10-14: "resource
+      // assignment function has no meaning").
+      if (status === "resources_assigned" && !steppingBack) {
+        const team: string[] = Array.isArray(assignedTeam)
+          ? assignedTeam.filter((m: unknown): m is string => typeof m === "string" && m.trim().length > 0)
+          : item.assignedTeam ?? [];
+        const undecided = (item.supportItems ?? []).filter((s: { allocatedQty?: number }) => typeof s.allocatedQty !== "number");
+        if (team.length === 0 || undecided.length > 0) {
+          return NextResponse.json(
+            {
+              error: team.length === 0
+                ? "Name the team running this event before assigning resources."
+                : "Decide an allocation for every requested item first (0 is allowed, with a note).",
+              code: team.length === 0 ? "TEAM_REQUIRED" : "ALLOCATION_REQUIRED",
+            },
             { status: 422 },
           );
         }
@@ -250,6 +315,17 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
 
       const resolvedReason = (statusReason ?? "").trim() || undefined;
       const resolvedNote = (reviewNote ?? "").trim() || undefined;
+
+      // Stepping back past finance reopens the budget decision.
+      if (previousStatus === "budget_approved" && status === "approved") {
+        item.budgetApprovedBy = undefined;
+        item.budgetApprovedAt = undefined;
+      }
+      if (status === "completed" && completionReport !== undefined) {
+        const report = parseCompletionReport(completionReport);
+        if ("error" in report) return NextResponse.json({ error: report.error }, { status: 400 });
+        item.completionReport = { ...report.value, completedAt: new Date(), completedBy: ctx.userId as unknown as typeof item.reviewedBy };
+      }
 
       item.status = status;
       item.reviewedBy = ctx.userId as unknown as typeof item.reviewedBy;
@@ -309,16 +385,69 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       }
       item.approvedBudget = budgetNum;
     }
-    if (actualSpend !== undefined) {
+    // Spend, budget notes and the team are the admin's record. A super agent
+    // could write them at any stage, and an empty team undid Assign resources.
+    if (actualSpend !== undefined && ctx.role === "admin") {
       const spend = parseMoney(actualSpend, "actualSpend");
       if (typeof spend !== "number") {
         return NextResponse.json({ error: spend.error }, { status: 400 });
       }
       item.actualSpend = spend;
     }
-    if (budgetNotes !== undefined) item.budgetNotes = budgetNotes?.trim();
-    if (assignedTeam !== undefined) item.assignedTeam = assignedTeam;
-    if (priority !== undefined && EXHIBITION_PRIORITIES.includes(priority)) item.priority = priority;
+    if (budgetNotes !== undefined && ctx.role === "admin" && typeof budgetNotes === "string") item.budgetNotes = budgetNotes.trim();
+    if (assignedTeam !== undefined && ctx.role === "admin" && Array.isArray(assignedTeam)) {
+      const team = assignedTeam.filter((m: unknown): m is string => typeof m === "string" && m.trim().length > 0).map((m: string) => m.trim());
+      // Past Assign resources the team is required; it can change, not empty.
+      const needsTeam = ["resources_assigned", "active", "completed"].includes(String(status ?? item.status));
+      if (needsTeam && team.length === 0) {
+        return NextResponse.json({ error: "Name at least one person on the team.", code: "TEAM_REQUIRED" }, { status: 422 });
+      }
+      item.assignedTeam = team;
+    }
+
+    // Who set the priority, and when, is part of the record.
+    // A super agent sets priority while the request is theirs to review.
+    const mayPrioritise = ctx.role === "admin" ? item.status !== "archived" : SA_EDITABLE_STATUSES.includes(item.status);
+    if (priority !== undefined && priority !== item.priority && !mayPrioritise) {
+      return NextResponse.json({ error: "Priority can no longer be changed at this stage." }, { status: 409 });
+    }
+    if (priority !== undefined && EXHIBITION_PRIORITIES.includes(priority) && priority !== item.priority) {
+      item.statusHistory.push({
+        status: item.status,
+        changedAt: new Date(),
+        changedBy: ctx.userId as unknown as typeof item.reviewedBy,
+        note: `Priority changed from ${item.priority} to ${priority}`,
+        approverRole: ctx.role,
+      });
+      item.priority = priority;
+    }
+
+    // Reviewer edits to the request's facts (client feedback 2026-10-14: no
+    // edit option for super agent or admin), logged with the fields changed.
+    if (details !== undefined) {
+      const editable = ctx.role === "admin" ? item.status !== "archived" : SA_EDITABLE_STATUSES.includes(item.status);
+      if (!editable) {
+        return NextResponse.json({ error: "This request can no longer be edited at its current stage." }, { status: 409 });
+      }
+      const edits = parseReviewerEdits(details);
+      if ("error" in edits) return NextResponse.json({ error: edits.error }, { status: 400 });
+      const comparable = (v: unknown) => (v instanceof Date ? v.toISOString() : v ?? null);
+      const changed = Object.entries(edits.value).filter(([key, value]) => comparable(item.get(key)) !== comparable(value));
+      for (const [key, value] of changed) item.set(key, value ?? undefined);
+      // Checked on the merged dates: editing only the start could pass an end before it.
+      if (item.eventStartDate && item.eventEndDate && new Date(item.eventEndDate) < new Date(item.eventStartDate)) {
+        return NextResponse.json({ error: "The end date can't be before the start date." }, { status: 400 });
+      }
+      if (changed.length > 0) {
+        item.statusHistory.push({
+          status: item.status,
+          changedAt: new Date(),
+          changedBy: ctx.userId as unknown as typeof item.reviewedBy,
+          note: `Details edited: ${changed.map(([key]) => key).join(", ")}`,
+          approverRole: ctx.role,
+        });
+      }
+    }
 
     // A schema violation is bad input, not a server fault. Unguarded, it left
     // the handler as an unhandled rejection and the caller saw a bare 500.
@@ -339,16 +468,17 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       throw err;
     }
 
-    if (status) {
+    // A step back is not progress: the "approved"/"active" mail would say it was.
+    if (status && !isStepBack(previousStatus, status)) {
       sendExhibitionStatusEmail(
         item.agentId.toString(),
         item.eventName,
         status,
-        (statusReason ?? reviewNote ?? "").trim() || undefined,
+        statusReason?.trim() || reviewNote?.trim() || undefined,
       ).catch((err) => logger.error({ err, exhibitionId: item._id.toString() }, "Failed to send exhibition status email"));
     }
 
-    return NextResponse.json(item);
+    return NextResponse.json(await withSignedAttachments(item));
   }
 
   return NextResponse.json({ error: "Forbidden" }, { status: 403 });

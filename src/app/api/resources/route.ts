@@ -4,6 +4,8 @@ import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import Resource, { RESOURCE_CATEGORIES, RESOURCE_ACCESS_LEVELS } from "@/models/Resource";
 import { uploadBuffer, type UploadFolder } from "@/lib/storage/spaces";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { withSignedFileUrls } from "@/lib/resources/fileAccess";
+import { FILE_TYPE_PATTERNS } from "@/lib/resources/fileTypes";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_MIME_PREFIXES = [
@@ -27,6 +29,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   const category = searchParams.get("category") ?? "";
   const tag = searchParams.get("tag") ?? "";
   const sort = searchParams.get("sort") ?? "newest"; // newest, popular, a-z
+  const fileType = searchParams.get("fileType") ?? "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {};
@@ -43,6 +46,10 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
 
   if (tag) {
     query.tags = tag;
+  }
+
+  if (Object.hasOwn(FILE_TYPE_PATTERNS, fileType)) {
+    query["files.contentType"] = FILE_TYPE_PATTERNS[fileType];
   }
 
   if (search) {
@@ -68,7 +75,8 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     Resource.countDocuments(query),
   ]);
 
-  return NextResponse.json({ items, total, page, totalPages: Math.ceil(total / limit) });
+  const signed = await Promise.all(items.map(withSignedFileUrls));
+  return NextResponse.json({ items: signed, total, page, totalPages: Math.ceil(total / limit) });
 }
 
 async function postHandler(req: NextRequest, ctx: AuthContext) {
@@ -150,7 +158,7 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     }] : [],
   });
 
-  return NextResponse.json(resource, { status: 201 });
+  return NextResponse.json(await withSignedFileUrls(resource.toObject()), { status: 201 });
 }
 
 export const GET = withAuth(getHandler, { resource: "resources", action: "read" });
