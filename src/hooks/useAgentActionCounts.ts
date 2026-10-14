@@ -10,6 +10,7 @@ const EMPTY: AgentActionCounts = {
   interviewsAwaitingOutcome: 0,
   offersAwaitingResponse: 0,
   newCandidates: 0,
+  exhibitionRevisions: 0,
 };
 
 /**

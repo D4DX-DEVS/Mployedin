@@ -24,6 +24,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { formatDateTime, formatListDate } from "@/lib/ui/intlFormat";
 import { formatFileSize } from "@/lib/ui/fileSize";
+import { useResourceDownload } from "@/components/features/resources/useResourceDownload";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -186,16 +187,10 @@ export default function AdminResourcesPage() {
     } catch { toast.error(t("deleteError")); }
   };
 
-  const handleDownloadTrack = async (item: Resource, file: ResourceFile) => {
-    try {
-      await csrfFetch(`/api/resources/${item._id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileKey: file.key, fileName: file.fileName }),
-      });
-    } catch { /* ignore */ }
-    window.open(file.url, "_blank");
-  };
+  // The stored file URL is private (403); the shared hook asks the API for a
+  // signed download link and counts the download there.
+  const { download: downloadFile } = useResourceDownload(() => fetchItems());
+  const handleDownloadTrack = (item: Resource, file: ResourceFile) => downloadFile(item._id, file);
 
   const fetchDownloadLogs = async (resourceId: string) => {
     try {

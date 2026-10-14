@@ -5,6 +5,7 @@ import Interview from "@/models/Interview";
 import Offer from "@/models/Offer";
 import Application from "@/models/Application";
 import Job from "@/models/Job";
+import ExhibitionRequest from "@/models/ExhibitionRequest";
 import type mongoose from "mongoose";
 import { getAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 
@@ -32,6 +33,8 @@ export interface AgentActionCounts {
   interviewsAwaitingOutcome: number;
   offersAwaitingResponse: number;
   newCandidates: number;
+  /** Exhibition requests a reviewer sent back for changes. */
+  exhibitionRevisions: number;
 }
 
 export const EMPTY_AGENT_COUNTS: AgentActionCounts = {
@@ -40,6 +43,7 @@ export const EMPTY_AGENT_COUNTS: AgentActionCounts = {
   interviewsAwaitingOutcome: 0,
   offersAwaitingResponse: 0,
   newCandidates: 0,
+  exhibitionRevisions: 0,
 };
 
 /** The kinds of work the queue can surface, in the order they outrank each other. */
@@ -48,6 +52,7 @@ export type AgentQueueKind =
   | "task"
   | "interviewOutcome"
   | "offerResponse"
+  | "exhibitionRevision"
   | "newCandidate";
 
 export interface AgentQueueItem {
@@ -90,7 +95,7 @@ export async function getAgentActionCounts(scope: AgentScope): Promise<AgentActi
   const now = new Date();
   const { agentId, assignedEmployerIds, portfolioJobIds, userId } = scope;
 
-  const [overdueTasks, dueFollowUps, interviewsAwaitingOutcome, offersAwaitingResponse, newCandidates] =
+  const [overdueTasks, dueFollowUps, interviewsAwaitingOutcome, offersAwaitingResponse, newCandidates, exhibitionRevisions] =
     await Promise.all([
       AgentTask.countDocuments({
         userId,
@@ -117,6 +122,8 @@ export async function getAgentActionCounts(scope: AgentScope): Promise<AgentActi
       portfolioJobIds.length
         ? Application.countDocuments({ jobId: { $in: portfolioJobIds }, status: "applied" })
         : 0,
+      // ExhibitionRequest.agentId is the agent's User id, not the profile id.
+      ExhibitionRequest.countDocuments({ agentId: userId, status: "revision_requested", isDeleted: { $ne: true } }),
     ]);
 
   return {
@@ -125,6 +132,7 @@ export async function getAgentActionCounts(scope: AgentScope): Promise<AgentActi
     interviewsAwaitingOutcome,
     offersAwaitingResponse,
     newCandidates,
+    exhibitionRevisions,
   };
 }
 
@@ -142,7 +150,7 @@ export async function getAgentQueueItems(scope: AgentScope, limit = 6): Promise<
   const now = new Date();
   const { agentId, assignedEmployerIds, portfolioJobIds, userId } = scope;
 
-  const [leads, tasks, interviews, offers] = await Promise.all([
+  const [leads, tasks, interviews, offers, revisions] = await Promise.all([
     Lead.find({
       agentId,
       followUpAt: { $ne: null, $lte: now },
@@ -177,6 +185,13 @@ export async function getAgentQueueItems(scope: AgentScope, limit = 6): Promise<
           .limit(limit)
           .lean()
       : [],
+    // A request sent back for changes waits on the agent (client feedback
+    // 2026-10-14: show revised exhibition requests on the agent dashboard).
+    ExhibitionRequest.find({ agentId: userId, status: "revision_requested", isDeleted: { $ne: true } })
+      .select("_id eventName reviewedAt updatedAt")
+      .sort({ reviewedAt: 1 })
+      .limit(limit)
+      .lean(),
   ]);
 
   const items: AgentQueueItem[] = [
@@ -216,6 +231,17 @@ export async function getAgentQueueItems(scope: AgentScope, limit = 6): Promise<
         href: "/agent/offers?status=pending",
       };
     }),
+    ...revisions.map((r) => {
+      const row = r as Record<string, unknown>;
+      return {
+        kind: "exhibitionRevision" as const,
+        id: String(row._id),
+        subject: String(row.eventName ?? ""),
+        daysLate: daysBetween(new Date(String(row.reviewedAt ?? row.updatedAt)), now),
+        // Opens the request straight into its edit form.
+        href: `/agent/exhibitions?status=revision_requested&edit=${String(row._id)}`,
+      };
+    }),
   ];
 
   // Most overdue first. A tie falls back to the kind order above, which puts a
@@ -225,9 +251,13 @@ export async function getAgentQueueItems(scope: AgentScope, limit = 6): Promise<
     task: 1,
     interviewOutcome: 2,
     offerResponse: 3,
-    newCandidate: 4,
+    exhibitionRevision: 4,
+    newCandidate: 5,
   };
-  return items
-    .sort((a, b) => b.daysLate - a.daysLate || kindRank[a.kind] - kindRank[b.kind])
-    .slice(0, limit);
+  const sorted = items.sort((a, b) => b.daysLate - a.daysLate || kindRank[a.kind] - kindRank[b.kind]);
+  // A request sent back today is never "late", so months-old interview
+  // outcomes kept it off a four-row list; it blocks an upcoming event, so it
+  // goes first, taking at most half the rows.
+  const pinned = sorted.filter((item) => item.kind === "exhibitionRevision").slice(0, Math.max(1, Math.floor(limit / 2)));
+  return [...pinned, ...sorted.filter((item) => !pinned.includes(item))].slice(0, limit);
 }

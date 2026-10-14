@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { RotateCcw, ThumbsDown, ThumbsUp, Clock } from "lucide-react";
+import { RotateCcw, ThumbsDown, ThumbsUp, Clock, Pencil, Undo2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,10 +12,14 @@ import {
 import { ApprovalTimeline } from "@/components/features/exhibitions/ApprovalTimeline";
 import { SupportItemsTable } from "@/components/features/exhibitions/SupportItemsSummary";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { AttachmentsSection } from "@/components/features/exhibitions/ExhibitionAttachments";
+import { CompletionReportView } from "@/components/features/exhibitions/CompletionReportView";
+import { PriorityCriteria, PriorityPicker } from "@/components/features/exhibitions/PriorityFields";
 import {
   PRIORITY_COLORS, STATUS_COLORS,
   getCategoryLabels, getObjectiveLabels, getParticipationLabels, getPriorityLabels, getResourceLabels, getStatusLabels,
   hasBudget, locationText, reviewActionsFor,
+  SA_EDITABLE_STATUSES, canSuperAgentMoveBack,
   type ExhibitionRequest, type ReviewAction,
 } from "../_lib/exhibitions";
 
@@ -23,6 +27,14 @@ interface ExhibitionDetailDialogProps {
   item: ExhibitionRequest | null;
   onClose: () => void;
   onAction: (item: ExhibitionRequest, action: ReviewAction) => void;
+  /** Correct the request's facts. */
+  onEdit: (item: ExhibitionRequest) => void;
+  /** Step the request back a stage. */
+  onMoveBack: (item: ExhibitionRequest) => void;
+  /** Something on the request changed here (priority); the list should refresh. */
+  onChanged: () => void;
+  /** Bump to re-read the request after an edit made elsewhere. */
+  version?: number;
 }
 
 const ACTION_META: Record<ReviewAction, { labelKey: string; icon: typeof ThumbsUp }> = {
@@ -57,7 +69,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
  * what, and the review actions this status allows. The list row does not carry
  * populated history actors, so the request is re-read by id on open.
  */
-export function ExhibitionDetailDialog({ item, onClose, onAction }: ExhibitionDetailDialogProps) {
+export function ExhibitionDetailDialog({ item, onClose, onAction, onEdit, onMoveBack, onChanged, version = 0 }: ExhibitionDetailDialogProps) {
   const t = useTranslations("exhibitions");
   const tc = useTranslations("common");
   const locale = useLocale();
@@ -76,7 +88,7 @@ export function ExhibitionDetailDialog({ item, onClose, onAction }: ExhibitionDe
       .catch(() => undefined)
       .finally(() => { if (!cancelled) setLoadingFull(false); });
     return () => { cancelled = true; };
-  }, [itemId]);
+  }, [itemId, version]);
 
   const statusLabels = getStatusLabels(t);
   const priorityLabels = getPriorityLabels(t);
@@ -112,7 +124,9 @@ export function ExhibitionDetailDialog({ item, onClose, onAction }: ExhibitionDe
               <DialogTitle className="flex flex-wrap items-center gap-2">
                 <span className="min-w-0 break-words">{detail.eventName}</span>
                 <Badge className={STATUS_COLORS[detail.status]}>{statusLabels[detail.status] ?? detail.status}</Badge>
-                <Badge className={PRIORITY_COLORS[detail.priority] ?? PRIORITY_COLORS.medium}>{priorityLabels[detail.priority] ?? detail.priority}</Badge>
+                {!SA_EDITABLE_STATUSES.includes(detail.status) && (
+                  <Badge className={PRIORITY_COLORS[detail.priority] ?? PRIORITY_COLORS.medium}>{priorityLabels[detail.priority] ?? detail.priority}</Badge>
+                )}
               </DialogTitle>
               <DialogDescription>
                 {[categoryLabels[detail.eventCategory] ?? detail.eventCategory, locationText(detail)].filter(Boolean).join(" · ")}
@@ -123,6 +137,18 @@ export function ExhibitionDetailDialog({ item, onClose, onAction }: ExhibitionDe
             </DialogHeader>
 
             <div className="space-y-4">
+              {/* The super agent sets priority while the request is theirs to review. */}
+              {SA_EDITABLE_STATUSES.includes(detail.status) && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border/60 px-4 py-2.5">
+                  <span className="text-sm font-medium text-foreground">{t("priority")}</span>
+                  <PriorityPicker
+                    requestId={detail._id}
+                    value={detail.priority}
+                    onSaved={(priority) => { setFull((prev) => (prev ? { ...prev, priority } : { ...detail, priority })); onChanged(); }}
+                  />
+                  <PriorityCriteria />
+                </div>
+              )}
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
                 <Section title={t("sectionEventInformation")}>
                   <dl className="divide-y divide-border/40">
@@ -225,6 +251,23 @@ export function ExhibitionDetailDialog({ item, onClose, onAction }: ExhibitionDe
                 </Section>
               )}
 
+              <Section title={t("attachmentsTitle")}>
+                <AttachmentsSection requestId={detail._id} kind="event" attachments={detail.attachments ?? []} canManage={false} onChange={() => undefined} />
+              </Section>
+
+              {(detail.status === "active" || detail.status === "completed") && (
+                <Section title={t("eventOutcomeTitle")}>
+                  <CompletionReportView
+                    requestId={detail._id}
+                    report={detail.completionReport}
+                    expectedLeads={detail.expectedLeads}
+                    attachments={detail.attachments ?? []}
+                    canManagePhotos={false}
+                    onAttachmentsChange={() => undefined}
+                  />
+                </Section>
+              )}
+
               <Section title={t("detailApprovalHistory")}>
                 {loadingFull && !full ? (
                   <div className="space-y-2" aria-busy="true">
@@ -240,6 +283,18 @@ export function ExhibitionDetailDialog({ item, onClose, onAction }: ExhibitionDe
 
             <DialogFooter className="gap-2 sm:gap-2">
               <Button variant="ghost" onClick={onClose}>{tc("close")}</Button>
+              {canSuperAgentMoveBack(detail) && (
+                <Button variant="outline" onClick={() => onMoveBack(detail)}>
+                  <Undo2 className="h-4 w-4" aria-hidden="true" />
+                  {t("moveBackAction")}
+                </Button>
+              )}
+              {SA_EDITABLE_STATUSES.includes(detail.status) && (
+                <Button variant="outline" onClick={() => onEdit(detail)}>
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
+                  {t("editDetailsAction")}
+                </Button>
+              )}
               {actions.secondary.map((action) => {
                 const { labelKey, icon: Icon } = ACTION_META[action];
                 return (

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
-import Resource, { RESOURCE_CATEGORIES, RESOURCE_ACCESS_LEVELS } from "@/models/Resource";
+import Resource, { RESOURCE_CATEGORIES, RESOURCE_ACCESS_LEVELS, type IResource, type IResourceFile } from "@/models/Resource";
 import ResourceDownloadLog from "@/models/ResourceDownloadLog";
-import { uploadBuffer, deleteFile, type UploadFolder } from "@/lib/storage/spaces";
+import { uploadBuffer, deleteFile, fileExists, type UploadFolder } from "@/lib/storage/spaces";
+import { canViewResource, signedDownloadUrl, withSignedFileUrls } from "@/lib/resources/fileAccess";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_MIME_PREFIXES = [
@@ -32,12 +33,12 @@ async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<s
 
   if (ctx.role !== "admin") {
     if (!item.isActive) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (item.accessLevel !== "all_staff" && item.accessLevel !== ctx.role) {
+    if (!canViewResource(item, ctx.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
 
-  return NextResponse.json(item);
+  return NextResponse.json(await withSignedFileUrls(item));
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
@@ -134,33 +135,59 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
   }
 
   await item.save();
-  return NextResponse.json(item);
+  return NextResponse.json(await withSignedFileUrls(item.toObject()));
 }
 
-/** POST /api/resources/[id] — track download count + log entry */
+/**
+ * POST /api/resources/[id] — download one file.
+ * Checks the caller may see the resource, counts + logs the download, and
+ * returns a short-lived signed URL that saves the file under its own name.
+ * (The stored URL cannot be used: the object is private.)
+ */
 async function postHandler(req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
   if (!["admin", "super_agent", "agent"].includes(ctx.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const body = await req.json().catch(() => ({}));
+  const fileKey = typeof body?.fileKey === "string" ? body.fileKey : "";
+  if (!fileKey) {
+    return NextResponse.json({ error: "Choose a file to download." }, { status: 400 });
+  }
+
   await connectDB();
   const id = params?.id;
-  await Resource.findByIdAndUpdate(id, { $inc: { downloadCount: 1 } });
+  const item = await Resource.findById(id)
+    .select("isActive accessLevel files versionHistory.files")
+    .lean<Pick<IResource, "isActive" | "accessLevel" | "files" | "versionHistory">>();
+  if (!item || !canViewResource(item, ctx.role)) {
+    return NextResponse.json({ error: "This resource isn't available to you." }, { status: 404 });
+  }
 
-  // Log individual download
+  const matches = (f: IResourceFile) => f.key === fileKey;
+  const file = item.files.find(matches)
+    ?? item.versionHistory?.flatMap((v) => v.files ?? []).find(matches);
+  if (!file || !(await fileExists(file.key))) {
+    return NextResponse.json(
+      { error: "This file is no longer available. Ask an admin to upload it again." },
+      { status: 404 },
+    );
+  }
+
+  const url = await signedDownloadUrl(file);
+
+  // timestamps:false — a download is not an edit, so it must not move updatedAt.
+  await Resource.updateOne({ _id: id }, { $inc: { downloadCount: 1 } }, { timestamps: false });
   try {
-    const body = await req.json().catch(() => ({}));
-    if (body.fileKey && body.fileName) {
-      await ResourceDownloadLog.create({
-        resourceId: id,
-        userId: ctx.userId,
-        fileKey: body.fileKey,
-        fileName: body.fileName,
-      });
-    }
+    await ResourceDownloadLog.create({
+      resourceId: id,
+      userId: ctx.userId,
+      fileKey: file.key,
+      fileName: file.fileName,
+    });
   } catch { /* best-effort logging */ }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ url, fileName: file.fileName });
 }
 
 async function deleteHandler(_req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {

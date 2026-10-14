@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { ADMIN_NEXT_STEP } from "@/lib/exhibitions/transitions";
 import { STATUS_LABEL_KEYS, formatMoney, type ExhibitionRequest } from "../_lib/exhibitions";
+import { SupportRowsEditor, saveSupportRows, toSupportRow, type SupportRow, type SupportDialogMode } from "./SupportManageDialog";
 
 interface ExhibitionActionDialogProps {
   item: ExhibitionRequest | null;
@@ -37,8 +38,12 @@ function titleKey(from: string, to: string): string {
 
 /**
  * Confirms one workflow move with an audit note, and collects what that step
- * needs: the approved budget, the assigned team, or the reason for a rejection
- * or send-back (the server refuses those without one).
+ * needs: the approved budget, the reason for a rejection or send-back (the
+ * server refuses those without one), and for the two delivery steps the real
+ * decisions — Assign resources records the team and what each requested item
+ * gets; Mark active records where each delivery stands. Assign resources used
+ * to be a status flip with an optional free-text team (client feedback
+ * 2026-10-14: "resource assignment function has no meaning").
  */
 export function ExhibitionActionDialog({ item, status, onClose, onDone }: ExhibitionActionDialogProps) {
   const t = useTranslations("adminExhibitions");
@@ -48,6 +53,9 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
   const [budgetNotes, setBudgetNotes] = useState("");
   const [budgetError, setBudgetError] = useState("");
   const [assignedTeam, setAssignedTeam] = useState("");
+  const [teamError, setTeamError] = useState("");
+  const [rows, setRows] = useState<SupportRow[]>([]);
+  const [rowsError, setRowsError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -61,14 +69,37 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
     );
     setBudgetNotes(item.budgetNotes ?? "");
     setAssignedTeam(item.assignedTeam?.join(", ") ?? "");
+    setTeamError("");
+    setRows((item.supportItems ?? []).map(toSupportRow));
+    setRowsError("");
   }, [item, status]);
 
   if (!item) return null;
 
   const needsReason = REASON_REQUIRED.includes(status);
   const destructive = status === "rejected" || status === "archived";
+  // Which support record this step writes, if any.
+  const supportMode: SupportDialogMode | null =
+    (item.supportItems?.length ?? 0) === 0
+      ? null
+      : status === "resources_assigned" && item.status === "budget_approved"
+        ? "allocate"
+        : status === "active" && item.status === "resources_assigned"
+          ? "delivery"
+          : null;
+  const patchRow = (index: number, change: Partial<SupportRow>) =>
+    setRows((previous) => previous.map((row, i) => (i === index ? { ...row, ...change } : row)));
 
   const submit = async () => {
+    const team = assignedTeam.split(",").map((member) => member.trim()).filter(Boolean);
+    if (status === "resources_assigned" && team.length === 0) {
+      setTeamError(tx("teamRequired"));
+      return;
+    }
+    if (supportMode === "allocate" && rows.some((row) => row.allocatedQty === "")) {
+      setRowsError(tx("allocationRequired"));
+      return;
+    }
     const trimmedNote = note.trim() || undefined;
     const payload: Record<string, unknown> = { status, reviewNote: trimmedNote, statusReason: trimmedNote };
     if (BUDGET_STEPS.includes(status) && approvedBudget) {
@@ -82,11 +113,17 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
       payload.approvedBudget = parsed;
       payload.budgetNotes = budgetNotes;
     }
-    if (status === "resources_assigned" && assignedTeam) {
-      payload.assignedTeam = assignedTeam.split(",").map((member) => member.trim()).filter(Boolean);
-    }
+    if (status === "resources_assigned") payload.assignedTeam = team;
     setSaving(true);
     try {
+      // The support record first: if it is refused, the request stays put.
+      if (supportMode) {
+        const saved = await saveSupportRows(item._id, supportMode, rows);
+        if (!saved.ok) {
+          setRowsError(saved.error ?? tx(supportMode === "allocate" ? "allocateError" : "deliveryError"));
+          return;
+        }
+      }
       const response = await csrfFetch(`/api/exhibitions/${item._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -109,7 +146,14 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
 
   // Warn, don't block: moving on with support still unallocated (to
   // Delivery) or undelivered (to Active / Completed) is the admin's call.
-  const supportLines = (item.supportItems ?? []) as SupportItem[];
+  // Read from the rows being edited, so the warning follows what is typed.
+  const supportLines = (item.supportItems ?? []).map((line, index) => {
+    const row = rows[index];
+    if (!row || !supportMode) return line;
+    return supportMode === "allocate"
+      ? { ...line, allocatedQty: row.allocatedQty === "" ? undefined : Number(row.allocatedQty) }
+      : { ...line, deliveryStatus: row.deliveryStatus as SupportItem["deliveryStatus"] };
+  }) as SupportItem[];
   const supportWarning =
     supportLines.length === 0
       ? null
@@ -121,7 +165,7 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className={supportMode ? "flex max-h-[90vh] flex-col sm:max-w-xl" : "max-w-md"}>
         <DialogHeader>
           <DialogTitle>{t(titleKey(item.status, status))}</DialogTitle>
           <DialogDescription>
@@ -129,7 +173,7 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
             {item.agentId?.name ? ` · ${item.agentId.name}` : ""}. {t("addAnAuditNoteBeforeConfirming")}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className={supportMode ? "min-h-0 flex-1 space-y-4 overflow-y-auto pe-1" : "space-y-4"}>
           {supportWarning && (
             <p role="status" className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -159,13 +203,28 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
           )}
           {status === "resources_assigned" && (
             <div className="space-y-1.5">
-              <Label htmlFor="exhibition-assigned-team">{t("assignedTeam")}</Label>
+              <Label htmlFor="exhibition-assigned-team">{t("assignedTeam")} <span className="text-destructive">*</span></Label>
               <Input
                 id="exhibition-assigned-team"
                 value={assignedTeam}
-                onChange={(event) => setAssignedTeam(event.target.value)}
+                onChange={(event) => { setAssignedTeam(event.target.value); setTeamError(""); }}
                 placeholder={t("egJohnSarahAhmed")}
+                aria-invalid={teamError ? true : undefined}
+                aria-required
               />
+              {teamError ? (
+                <p className="text-xs font-medium text-destructive" role="alert">{teamError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">{tx("teamHint")}</p>
+              )}
+            </div>
+          )}
+          {supportMode && (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-foreground">{tx(supportMode === "allocate" ? "allocateResources" : "updateDelivery")}</p>
+              <p className="text-xs text-muted-foreground">{tx(supportMode === "allocate" ? "allocateStepHint" : "deliveryStepHint")}</p>
+              <SupportRowsEditor mode={supportMode} items={item.supportItems ?? []} rows={rows} onPatch={(index, change) => { patchRow(index, change); setRowsError(""); }} />
+              {rowsError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{rowsError}</p>}
             </div>
           )}
           <div className="space-y-1.5">

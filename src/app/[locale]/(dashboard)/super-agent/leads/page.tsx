@@ -22,7 +22,7 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { useTableExport } from "@/hooks/useTableExport";
-import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
 import { InlinePicker } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
@@ -36,6 +36,7 @@ import { knownStageDetails, missingStageFields } from "@/lib/leads/stageRules";
 // The agent board's Move dialog: a stage that needs details (a final value
 // for Won, a reason for Lost…) collects them here too, not just on the board.
 import { MoveStageDialog } from "../../agent/leads/_components/MoveStageDialog";
+import { LeadWorkspace, type WorkspaceTab } from "../../agent/leads/_components/LeadWorkspace";
 import { getStageConfig, type Lead as WorkspaceLead } from "../../agent/leads/_components/leadShared";
 
 /* ------------------------------------------------------------------ */
@@ -168,7 +169,6 @@ function countActiveFilters(f: Filters): number {
 export default function SuperAgentLeadsPage() {
   const t = useTranslations("superAgentLeads");
   const tc = useTranslations("common");
-  const tt = useTranslations("table");
   const tStage = useTranslations("statusBadge");
   const tLead = useTranslations("agentLeads");
   const tf = useTranslations("formErrors");
@@ -326,6 +326,10 @@ export default function SuperAgentLeadsPage() {
   // A move whose stage needs details the lead does not hold opens the Move
   // dialog; anything else goes straight through the stage route.
   const [moveRequest, setMoveRequest] = useState<{ lead: Lead; target: LeadStatus } | null>(null);
+
+  /* -- Lead Workspace (read-only detail panel) -- */
+  const [workspaceLeadId, setWorkspaceLeadId] = useState<string | null>(null);
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("overview");
 
   const onStageMoved = useCallback((moved: { _id: string; status: LeadStatus }) => {
     setLeads((prev) => prev.map((l) => (l._id === moved._id ? { ...l, status: moved.status } : l)));
@@ -663,7 +667,13 @@ export default function SuperAgentLeadsPage() {
                         <div className="flex min-w-0 items-center gap-3">
                           <UserAvatar name={lead.companyName} className="h-9 w-9 shrink-0" colorful />
                           <div className="min-w-0 space-y-1">
-                            <p className="truncate font-medium text-foreground">{lead.companyName}</p>
+                            <button
+                              type="button"
+                              onClick={() => setWorkspaceLeadId(lead._id)}
+                              className="truncate font-medium text-foreground text-left hover:text-primary transition-colors cursor-pointer"
+                            >
+                              {lead.companyName}
+                            </button>
                             <div className="flex flex-wrap items-center gap-1.5">
                               <StatusBadge status={lead.status} />
                               {lead.score != null && (
@@ -753,6 +763,40 @@ export default function SuperAgentLeadsPage() {
         stageConfig={stageConfig}
         t={tLead}
         tf={tf}
+        locale={locale}
+      />
+
+      {/* Read-only Lead Workspace */}
+      <LeadWorkspace
+        leadId={workspaceLeadId}
+        tab={workspaceTab}
+        onTabChange={setWorkspaceTab}
+        focusComposer={false}
+        version={0}
+        onClose={() => setWorkspaceLeadId(null)}
+        onLeadChanged={() => { void fetchLeads(); }}
+        actions={{
+          open: () => {},
+          edit: () => {},
+          move: (lead, target?) => {
+            setWorkspaceLeadId(null);
+            if (target) setMoveRequest({ lead, target });
+          },
+          followUp: () => {},
+          addNote: () => {},
+          score: () => {},
+          createAccount: () => {},
+          remove: () => {},
+        }}
+        state={{
+          canUpdate: false,
+          canDelete: false,
+          scoringId: null,
+          convertingId: null,
+        }}
+        stageConfig={stageConfig}
+        exhibitionName={() => undefined}
+        t={tLead}
         locale={locale}
       />
     </div>

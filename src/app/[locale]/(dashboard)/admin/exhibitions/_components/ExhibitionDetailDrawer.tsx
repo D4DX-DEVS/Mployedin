@@ -12,9 +12,15 @@ import {
   Hotel,
   Megaphone,
   Package,
+  Pencil,
   Plane,
+  Undo2,
   XCircle,
 } from "lucide-react";
+import { AttachmentsSection } from "@/components/features/exhibitions/ExhibitionAttachments";
+import { CompletionReportView } from "@/components/features/exhibitions/CompletionReportView";
+import { PriorityCriteria, PriorityPicker } from "@/components/features/exhibitions/PriorityFields";
+import type { ExhibitionAttachmentView } from "@/components/features/exhibitions/attachmentsClient";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -51,6 +57,12 @@ interface ExhibitionDetailDrawerProps {
   onNext: () => void;
   /** Open the allocation or delivery dialog for the requested support. */
   onManageSupport: (item: ExhibitionRequest, mode: SupportDialogMode) => void;
+  /** Correct the request's facts. */
+  onEdit: (item: ExhibitionRequest) => void;
+  /** Step the request back a stage. */
+  onMoveBack: (item: ExhibitionRequest) => void;
+  /** A field changed here (priority, files); merge it and refresh the queue. */
+  onItemChange: (item: ExhibitionRequest, change: Partial<ExhibitionRequest>) => void;
 }
 
 /**
@@ -72,14 +84,20 @@ export function ExhibitionDetailDrawer({
   onPrevious,
   onNext,
   onManageSupport,
+  onEdit,
+  onMoveBack,
+  onItemChange,
 }: ExhibitionDetailDrawerProps) {
   const t = useTranslations("adminExhibitions");
+  const tx = useTranslations("exhibitions");
   const locale = useLocale();
   if (!item) return null;
 
   const sla = getSla(item);
   const days = dayCount(item.eventStartDate, item.eventEndDate);
-  const { next, others } = adminWorkflowActions(item.status);
+  const { next, others, back } = adminWorkflowActions(item.status);
+  const editable = item.status !== "archived";
+  const setAttachments = (all: ExhibitionAttachmentView[]) => onItemChange(item, { attachments: all });
   const approved = item.approvedBudget ?? 0;
   const actual = item.actualSpend ?? 0;
   const utilization = approved ? Math.min(100, Math.round((actual / approved) * 100)) : 0;
@@ -134,9 +152,16 @@ export function ExhibitionDetailDrawer({
           <Fact label={t("location")}>{place || t("tbd")}</Fact>
           <Fact label={t("expectedLeads")}>{item.expectedLeads ?? "-"}</Fact>
           <Fact label={t("priority")}>
-            <Badge className={`${PRIORITY_BADGES[item.priority] ?? PRIORITY_BADGES.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold`}>
-              {t(PRIORITY_LABEL_KEYS[item.priority] ?? "medium")}
-            </Badge>
+            {editable ? (
+              <span className="block space-y-1 font-normal">
+                <PriorityPicker requestId={item._id} value={item.priority} onSaved={(priority) => onItemChange(item, { priority })} />
+                <PriorityCriteria />
+              </span>
+            ) : (
+              <Badge className={`${PRIORITY_BADGES[item.priority] ?? PRIORITY_BADGES.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold`}>
+                {t(PRIORITY_LABEL_KEYS[item.priority] ?? "medium")}
+              </Badge>
+            )}
           </Fact>
           <Fact label={t("sla")}>
             <span className={sla.className}>{t(sla.labelKey, { days: sla.days })}</span>
@@ -188,6 +213,23 @@ export function ExhibitionDetailDrawer({
           </Section>
         )}
 
+        <Section title={tx("attachmentsTitle")}>
+          <AttachmentsSection requestId={item._id} kind="event" attachments={item.attachments ?? []} canManage={editable} onChange={setAttachments} />
+        </Section>
+
+        {(item.status === "active" || item.status === "completed") && (
+          <Section title={tx("eventOutcomeTitle")}>
+            <CompletionReportView
+              requestId={item._id}
+              report={item.completionReport}
+              expectedLeads={item.expectedLeads}
+              attachments={item.attachments ?? []}
+              canManagePhotos={editable}
+              onAttachmentsChange={setAttachments}
+            />
+          </Section>
+        )}
+
         <Section title={t("workflow")}>
           <WorkflowTimeline item={item} />
         </Section>
@@ -229,7 +271,7 @@ export function ExhibitionDetailDrawer({
         )}
       </div>
 
-      {(next || others.length > 0) && (
+      {(next || others.length > 0 || back || editable) && (
         <footer className="border-t bg-background px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)]">
           <div className="flex flex-wrap items-center gap-2">
             {next && (
@@ -250,6 +292,18 @@ export function ExhibitionDetailDrawer({
                 {t(action.labelKey)}
               </Button>
             ))}
+            {back && (
+              <Button size="sm" variant="outline" className="rounded-lg" onClick={() => onMoveBack(item)}>
+                <Undo2 className="h-4 w-4" aria-hidden="true" />
+                {tx("moveBackAction")}
+              </Button>
+            )}
+            {editable && (
+              <Button size="sm" variant="ghost" className="rounded-lg" onClick={() => onEdit(item)}>
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                {tx("editDetailsAction")}
+              </Button>
+            )}
           </div>
           <p className="mt-2 hidden text-[11px] text-muted-foreground md:block">{t("escCloseLeftRightNavigateAApproveRReject")}</p>
         </footer>

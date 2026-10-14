@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ClipboardList,
   Gift,
+  RotateCcw,
   Target,
   Users,
   type LucideIcon,
@@ -44,6 +45,7 @@ const KIND_ICON: Record<AgentQueueKind, LucideIcon> = {
   task: ClipboardList,
   interviewOutcome: AlertCircle,
   offerResponse: Gift,
+  exhibitionRevision: RotateCcw,
   newCandidate: Users,
 };
 
@@ -54,6 +56,7 @@ export const AGENT_QUEUE_COUNT_HREFS: Record<CountKey, string> = {
   interviewsAwaitingOutcome: "/agent/interviews?outcome=pending",
   offersAwaitingResponse: "/agent/offers?status=pending",
   newCandidates: "/agent/candidates?status=applied",
+  exhibitionRevisions: "/agent/exhibitions?status=revision_requested",
 };
 
 /** Display order — most time-critical first. */
@@ -62,6 +65,7 @@ export const AGENT_QUEUE_COUNT_ORDER: readonly CountKey[] = [
   "overdueTasks",
   "interviewsAwaitingOutcome",
   "offersAwaitingResponse",
+  "exhibitionRevisions",
   "newCandidates",
 ];
 

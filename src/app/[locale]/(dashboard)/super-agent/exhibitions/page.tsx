@@ -22,6 +22,7 @@ import { SortableTableHeader } from "@/components/shared/TableSortControl";
 import { ExhibitionMobileList } from "./_components/ExhibitionMobileList";
 import { ExhibitionDetailDialog } from "./_components/ExhibitionDetailDialog";
 import { ExhibitionReviewDialog } from "./_components/ExhibitionReviewDialog";
+import { EditRequestDialog, MoveBackDialog } from "@/components/features/exhibitions/ReviewerRequestDialogs";
 import {
   PRIORITY_COLORS, STATUS_COLORS,
   getCategoryLabels, getPriorityLabels, getStatusLabels,
@@ -142,6 +143,10 @@ export default function SuperAgentExhibitionsPage() {
 
   const [review, setReview] = useState<{ item: ExhibitionRequest; action: ReviewAction } | null>(null);
   const [detailItem, setDetailItem] = useState<ExhibitionRequest | null>(null);
+  const [editItem, setEditItem] = useState<ExhibitionRequest | null>(null);
+  const [moveBackItem, setMoveBackItem] = useState<ExhibitionRequest | null>(null);
+  // Re-reads the open detail after an edit.
+  const [detailVersion, setDetailVersion] = useState(0);
   // BUG-09: sidebar badge reads /api/super-agent/action-counts (60s stale).
   // Invalidate it on approve/reject/revise so the badge drops with the queue.
   const queryClient = useQueryClient();
@@ -515,7 +520,26 @@ export default function SuperAgentExhibitionsPage() {
         onLimitChange={setLimit}
       />
 
-      <ExhibitionDetailDialog item={detailItem} onClose={() => setDetailItem(null)} onAction={openReview} />
+      <ExhibitionDetailDialog
+        item={detailItem}
+        version={detailVersion}
+        onClose={() => setDetailItem(null)}
+        onAction={openReview}
+        onEdit={setEditItem}
+        onMoveBack={setMoveBackItem}
+        onChanged={() => void fetchItems()}
+      />
+      <EditRequestDialog
+        request={editItem}
+        onClose={() => setEditItem(null)}
+        onSaved={() => { setEditItem(null); setDetailVersion((v) => v + 1); void fetchItems(); }}
+      />
+      <MoveBackDialog
+        request={moveBackItem}
+        stageLabel={(status) => statusLabels[status] ?? status}
+        onClose={() => setMoveBackItem(null)}
+        onDone={afterReview}
+      />
       <ExhibitionReviewDialog
         item={review?.item ?? null}
         action={review?.action ?? null}

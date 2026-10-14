@@ -6,7 +6,7 @@ import { Info, Sparkles } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-type NoticeVariant = "candidateList" | "candidateDetail" | "aiScore";
+type NoticeVariant = "candidateList" | "candidateDetail" | "staffDetail" | "aiScore";
 
 interface CandidateDataNoticeProps {
   /** Which point in the journey this notice sits at. */

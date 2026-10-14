@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { ExhibitionRequestStatus } from "@/models/ExhibitionRequest";
-import { ADMIN_NEXT_STEP, adminCanMove } from "@/lib/exhibitions/transitions";
+import { ADMIN_NEXT_STEP, STEP_BACK, adminCanMove } from "@/lib/exhibitions/transitions";
 
 export interface WorkflowActionSpec {
   key: string;
@@ -38,7 +38,12 @@ const NEXT_STEP_ICONS: Partial<Record<ExhibitionRequestStatus, LucideIcon>> = {
  * first, then the side moves — built from the same transition table the API
  * enforces, so nothing offered here comes back as a 400.
  */
-export function adminWorkflowActions(status: string): { next: WorkflowActionSpec | null; others: WorkflowActionSpec[] } {
+export function adminWorkflowActions(status: string): {
+  next: WorkflowActionSpec | null;
+  others: WorkflowActionSpec[];
+  /** The stage a step back returns to, when there is one (needs a reason). */
+  back: ExhibitionRequestStatus | null;
+} {
   const step = ADMIN_NEXT_STEP[status as ExhibitionRequestStatus];
   const next = step
     ? { key: "next", status: step.status, labelKey: step.labelKey, icon: NEXT_STEP_ICONS[step.status] ?? CheckCircle2 }
@@ -54,5 +59,6 @@ export function adminWorkflowActions(status: string): { next: WorkflowActionSpec
   if (adminCanMove(status, "rejected")) {
     others.push({ key: "reject", status: "rejected", labelKey: "rejectAction", icon: XCircle, destructive: true });
   }
-  return { next, others };
+  const backTo = STEP_BACK[status as ExhibitionRequestStatus];
+  return { next, others, back: backTo && adminCanMove(status, backTo) ? backTo : null };
 }

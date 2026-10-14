@@ -114,7 +114,9 @@ export async function uploadBuffer(
   const client = getClient();
   const bucket = getBucket();
 
-  const ext = options.fileName ? path.extname(options.fileName) : "";
+  // A plain short extension only: the key is stored (max 500 chars) and served.
+  const rawExt = options.fileName ? path.extname(options.fileName) : "";
+  const ext = /^\.[a-z0-9]{1,10}$/i.test(rawExt) ? rawExt.toLowerCase() : "";
   const prefix = getPrefix();
   const folder = options.folder ?? "other";
   const key = prefix ? `${prefix}/${folder}/${randomUUID()}${ext}` : `${folder}/${randomUUID()}${ext}`;
@@ -147,7 +149,8 @@ export async function uploadBuffer(
     Body: body,
     ContentType: options.contentType ?? "application/octet-stream",
     ACL: (options.private ?? PRIVATE_FOLDERS.has(folder)) ? "private" : "public-read",
-    ...(options.fileName && { ContentDisposition: `inline; filename="${options.fileName}"` }),
+    // Header values must be Latin-1: an Arabic file name used to throw here.
+    ...(options.fileName && { ContentDisposition: contentDisposition("inline", options.fileName) }),
   };
 
   await client.send(new PutObjectCommand(params));
@@ -312,18 +315,22 @@ export async function fileExists(key: string): Promise<boolean> {
  * @param opts   Optional response-header overrides. `inline: true` forces the
  *               browser to render the file in-page (e.g. inside an iframe)
  *               instead of downloading it, regardless of the object's stored
- *               Content-Disposition.
+ *               Content-Disposition. `downloadName` forces a download saved
+ *               under that file name instead (it wins over `inline`).
  */
 export async function getPresignedUrl(
   key: string,
   ttl = 600,
-  opts?: { inline?: boolean; contentType?: string },
+  opts?: { inline?: boolean; contentType?: string; downloadName?: string },
 ): Promise<string> {
   const client = getClient();
+  const disposition = opts?.downloadName
+    ? attachmentDisposition(opts.downloadName)
+    : opts?.inline ? "inline" : undefined;
   const command = new GetObjectCommand({
     Bucket: getBucket(),
     Key: key,
-    ...(opts?.inline && { ResponseContentDisposition: "inline" }),
+    ...(disposition && { ResponseContentDisposition: disposition }),
     ...(opts?.contentType && { ResponseContentType: opts.contentType }),
   });
   return getSignedUrl(client, command, { expiresIn: ttl });
@@ -347,6 +354,20 @@ export async function downloadBuffer(keyOrUrl: string): Promise<Buffer> {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * `attachment` header that survives non-ASCII names: a plain ASCII fallback
+ * plus the RFC 5987 `filename*` form browsers prefer.
+ */
+function attachmentDisposition(fileName: string): string {
+  return contentDisposition("attachment", fileName);
+}
+
+/** An ASCII fallback name plus the RFC 5987 UTF-8 one. */
+function contentDisposition(type: "inline" | "attachment", fileName: string): string {
+  const ascii = fileName.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+  return `${type}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
 
 /** Convert a Spaces URL back to its object key */
 export function urlToKey(url: string): string {

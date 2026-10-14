@@ -14,6 +14,7 @@ import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { notifySuperAgentOfExhibition } from "@/lib/notifications/exhibitionNotify";
 import { validateSupportItems, type SupportItem } from "@/lib/exhibitions/supportItems";
+import { withSignedAttachments } from "@/lib/exhibitions/attachments";
 
 /** Every stage past operational approval and not yet finished. */
 const APPROVED_STAGE_STATUSES = ["approved", "budget_approved", "resources_assigned", "active"];
@@ -26,6 +27,11 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   const limit = Math.min(100, parseInt(searchParams.get("limit") ?? "50"));
   const search = searchParams.get("search")?.trim() ?? "";
   const status = searchParams.get("status") ?? "";
+  // Several statuses at once, for one board column ("submitted,under_review").
+  const statuses = (searchParams.get("statuses") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => EXHIBITION_STATUSES.includes(value as never));
   const category = searchParams.get("category") ?? "";
   const priority = searchParams.get("priority") ?? "";
   const stage = searchParams.get("stage") ?? "";
@@ -68,6 +74,8 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     query.status = { $in: APPROVED_STAGE_STATUSES };
   } else if (status && EXHIBITION_STATUSES.includes(status as never)) {
     query.status = status;
+  } else if (statuses.length > 0) {
+    query.status = { $in: statuses };
   }
 
   if (category && EXHIBITION_CATEGORIES.includes(category as never)) {
@@ -202,7 +210,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   };
 
   return NextResponse.json({
-    items,
+    items: await Promise.all(items.map((entry) => withSignedAttachments(entry))),
     total,
     page,
     totalPages: Math.max(1, Math.ceil(total / limit)),
@@ -357,6 +365,7 @@ async function listPage(
     return ExhibitionRequest.find(query)
       .populate("agentId", "name email")
       .populate("reviewedBy", "name")
+      .populate("completionReport.completedBy", "name")
       .sort({ [sortBy]: sortDir, _id: sortDir })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -375,6 +384,8 @@ async function listPage(
   const docs = await ExhibitionRequest.find({ _id: { $in: ids } })
     .populate("agentId", "name email")
     .populate("reviewedBy", "name")
+    // The outcome card names who completed the event.
+    .populate("completionReport.completedBy", "name")
     .lean();
   const position = new Map(ids.map((id, i) => [String(id), i]));
   return docs.sort((a, b) => (position.get(String(a._id)) ?? 0) - (position.get(String(b._id)) ?? 0));

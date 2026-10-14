@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
 import { useTranslations, useLocale } from "next-intl";
 import { useMediaQuery, PHONE_QUERY } from "@/hooks/useMediaQuery";
@@ -18,9 +19,12 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import {
   Users, Briefcase, GraduationCap,
-  Star, MapPin, Mail, UserPlus, Crown, UserCheck,
+  Star, MapPin, Mail, UserPlus, Crown, UserCheck, Eye,
 } from "lucide-react";
 import { ReferSeekerDialog } from "@/components/features/agent/ReferSeekerDialog";
+import { SeekerDetailPanel } from "@/components/features/super-agent/SeekerDetailPanel";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
@@ -30,6 +34,7 @@ import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { useTableExport } from "@/hooks/useTableExport";
+import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import type { ExportColumn } from "@/lib/export";
 import type { ReferralSummary } from "@/lib/referrals/summary";
 
@@ -98,6 +103,8 @@ export default function SuperAgentJobSeekersPage() {
   // compact cards with role / profile / date folded into one line.
   const isPhone = useMediaQuery(PHONE_QUERY);
   const [referOpen, setReferOpen] = useState(false);
+  const [selectedSeekerId, setSelectedSeekerId] = useState<string | null>(null);
+  const [cvSeeker, setCvSeeker] = useState<{ id: string; name: string } | null>(null);
   const pagination = usePagination();
   // All job seekers | In my area — the agent's "In my area" view, over the
   // super agent's whole region.
@@ -147,12 +154,18 @@ export default function SuperAgentJobSeekersPage() {
     pagination.resetPage();
   };
 
+  // Typing waits a beat, and only the newest request may answer: an earlier,
+  // slower response used to land last and put the unfiltered list back.
+  const debouncedSearch = useDebounce(filters.search.trim(), 300);
+  const requestRef = useRef(0);
   const fetchSeekers = useCallback(async () => {
+    const request = ++requestRef.current;
+    const latest = () => request === requestRef.current;
     setLoading(true);
     setLoadFailed(false);
     try {
       const params = pagination.paginationParams();
-      if (filters.search.trim()) params.set("search", filters.search.trim());
+      if (debouncedSearch) params.set("search", debouncedSearch);
       if (filters.country !== "all") params.set("country", filters.country);
       if (filters.experienceMin !== "all") params.set("experienceMin", filters.experienceMin);
       if (filters.availability !== "all") params.set("availability", filters.availability);
@@ -161,8 +174,10 @@ export default function SuperAgentJobSeekersPage() {
       if (filters.agent !== "all") params.set("agent", filters.agent);
 
       const res = await fetch(`/api/super-agent/job-seekers?${params}`);
+      if (!latest()) return;
       if (res.ok) {
         const data = await res.json();
+        if (!latest()) return;
         setSeekers(data.items ?? []);
         pagination.updateTotal(data.total ?? 0);
         if (data.stats) setTotalStats(data.stats);
@@ -182,12 +197,13 @@ export default function SuperAgentJobSeekersPage() {
         toast.error(t("failedToLoadJobSeekers"));
       }
     } catch {
+      if (!latest()) return;
       setLoadFailed(true);
       toast.error(t("failedToLoadJobSeekers"));
     } finally {
-      setLoading(false);
+      if (latest()) setLoading(false);
     }
-  }, [filters, view, pagination.page, pagination.limit]);
+  }, [debouncedSearch, filters.country, filters.experienceMin, filters.availability, filters.premium, filters.agent, view, pagination.page, pagination.limit]);
 
   useEffect(() => { fetchSeekers(); }, [fetchSeekers]);
 
@@ -346,6 +362,7 @@ export default function SuperAgentJobSeekersPage() {
                 <TableHead>{t("currentRole")}</TableHead>
                 <TableHead>{t("profile")}</TableHead>
                 <TableHead>{tc("date")}</TableHead>
+                <TableHead className="text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -365,7 +382,17 @@ export default function SuperAgentJobSeekersPage() {
                     )}
                   </TableCell>
                 </TableRow>
-              ) : seekers.map((s) => (
+              ) : seekers.map((s) => {
+                const actions: RowAction[] = [
+                  {
+                    key: "view",
+                    label: t("viewProfile"),
+                    icon: Eye,
+                    iconOnly: true,
+                    onSelect: () => setSelectedSeekerId(s._id),
+                  },
+                ];
+                return (
                 <TableRow key={s._id} className="group">
                   <TableCell data-mobile-primary>
                     <div className="flex min-w-0 items-start gap-3">
@@ -468,8 +495,12 @@ export default function SuperAgentJobSeekersPage() {
                     )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-xs text-muted-foreground" data-mobile-hidden>{formatListDate(s.createdAt)}</TableCell>
+                  <TableCell className="text-right">
+                    <RowActions name={s.fullName ?? "job seeker"} quick={actions} />
+                  </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -484,6 +515,18 @@ export default function SuperAgentJobSeekersPage() {
         onPageChange={pagination.setPage}
         onLimitChange={pagination.setLimit}
       />
+
+      {/* A seeker's profile, docked beside the list (full width on phones). */}
+      <Dialog open={selectedSeekerId !== null && !cvSeeker} onOpenChange={(open) => { if (!open) setSelectedSeekerId(null); }}>
+        <DialogContent side="end" overlayClassName="!bg-black/20 backdrop-blur-0" className="flex flex-col gap-0 p-0 sm:max-w-xl" aria-describedby={undefined}>
+          <DialogTitle className="sr-only">{t("viewProfile")}</DialogTitle>
+          <SeekerDetailPanel seekerId={selectedSeekerId} context={seekers.find((row) => row._id === selectedSeekerId)} onViewCv={setCvSeeker} />
+        </DialogContent>
+      </Dialog>
+      {/* Closing the CV brings the profile back where it was. */}
+      {cvSeeker && (
+        <ResumeViewerModal url={`/api/employers/candidates/${cvSeeker.id}/cv#cv.pdf`} candidateName={cvSeeker.name} onClose={() => setCvSeeker(null)} />
+      )}
     </div>
   );
 }

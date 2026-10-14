@@ -51,13 +51,14 @@ async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<s
   }
 
   const deriveActionType = (entry: { status?: string; note?: string; statusReason?: string }, prevStatus?: string): string => {
-    if (entry.status === "budget_approved") return "BUDGET_APPROVED";
-    if (entry.status === "resources_assigned") return "RESOURCES_ASSIGNED";
-    if (entry.status === "archived") return "ARCHIVED";
-    // If status didn't change from previous entry, treat as a comment/note
+    // The status didn't change from the previous entry: a note (priority,
+    // details or support saves), not a second budget approval or archive.
     if (prevStatus && entry.status === prevStatus && (entry.note || entry.statusReason)) {
       return "COMMENT_ADDED";
     }
+    if (entry.status === "budget_approved") return "BUDGET_APPROVED";
+    if (entry.status === "resources_assigned") return "RESOURCES_ASSIGNED";
+    if (entry.status === "archived") return "ARCHIVED";
     return "STATUS_CHANGED";
   };
 
