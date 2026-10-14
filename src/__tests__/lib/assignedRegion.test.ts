@@ -22,18 +22,25 @@ const CITIES = [
 ];
 const STATES = [
   { _id: "st_kerala", name: "Kerala", nameAr: "", countryId: "co_in" },
+  { _id: "st_karnataka", name: "Karnataka", nameAr: "", countryId: "co_in" },
   { _id: "st_dubai", name: "Dubai", nameAr: "دبي", countryId: "co_ae" },
+  { _id: "st_sharjah", name: "Sharjah", nameAr: "", countryId: "co_ae" },
+  { _id: "st_doha", name: "Doha", nameAr: "", countryId: "co_qa" },
+  { _id: "st_rayyan", name: "Al Rayyan", nameAr: "", countryId: "co_qa" },
 ];
 const COUNTRIES = [
   { _id: "co_in", name: "India", nameAr: "الهند" },
   { _id: "co_ae", name: "United Arab Emirates", nameAr: "الإمارات" },
+  { _id: "co_qa", name: "Qatar", nameAr: "قطر" },
 ];
 
 const byIds = <T extends { _id: string }>(rows: T[], filter: { _id: { $in: string[] } }) =>
   rows.filter((r) => filter._id.$in.includes(r._id));
 
 const cityFind = jest.fn((filter: { _id: { $in: string[] } }) => chain(byIds(CITIES, filter)));
-const stateFind = jest.fn((filter: { _id: { $in: string[] } }) => chain(byIds(STATES, filter)));
+// By id (names), or by country (the whole-country check: every active state).
+const stateFind = jest.fn((filter: { _id?: { $in: string[] }; countryId?: { $in: string[] } }) =>
+  chain(filter.countryId ? STATES.filter((s) => filter.countryId!.$in.includes(s.countryId)) : byIds(STATES, filter as { _id: { $in: string[] } })));
 const countryFind = jest.fn((filter: { _id: { $in: string[] } }) => chain(byIds(COUNTRIES, filter)));
 
 jest.mock("@/models/City", () => ({ __esModule: true, default: { find: (f: never) => cityFind(f) } }));
@@ -41,6 +48,17 @@ jest.mock("@/models/State", () => ({ __esModule: true, default: { find: (f: neve
 jest.mock("@/models/Country", () => ({ __esModule: true, default: { find: (f: never) => countryFind(f) } }));
 
 describe("resolveAssignedRegions", () => {
+  it("names a country when every one of its states is assigned (Qatar), a state otherwise (Kerala)", async () => {
+    const regions = await resolveAssignedRegions(
+      { assignedCityIds: [], assignedStateIds: ["st_doha", "st_rayyan", "st_kerala"] },
+      "en",
+    );
+    expect(regions).toEqual([
+      { id: "co_qa", type: "country", name: "Qatar", parent: "" },
+      { id: "st_kerala", type: "state", name: "Kerala", parent: "India" },
+    ]);
+  });
+
   beforeEach(() => {
     cityFind.mockClear();
     stateFind.mockClear();

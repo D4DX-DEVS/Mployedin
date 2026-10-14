@@ -25,16 +25,18 @@ async function errorFrom(res: Response, fallback: string): Promise<string> {
   return detail ?? err?.error ?? fallback;
 }
 
-const EMPTY = { agentUserId: "", title: "", description: "", priority: "medium", dueDate: "" };
+const EMPTY = { superAgentUserId: "", agentUserId: "", title: "", description: "", priority: "medium", dueDate: "" };
 
 /** "Assign task": who, what, how urgent, by when. */
 export function AssignTaskDialog({
-  open, onOpenChange, apiBase, agents, onAssigned, presetAgentUserId,
+  open, onOpenChange, apiBase, agents, superAgents, onAssigned, presetAgentUserId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   apiBase: string;
   agents: AssignableAgentOption[];
+  /** Admin only: give the task through one of these super agents (optional). */
+  superAgents?: AssignableAgentOption[];
   onAssigned: () => void;
   /** Opened from one agent (their row or profile): start with them chosen. */
   presetAgentUserId?: string;
@@ -44,6 +46,22 @@ export function AssignTaskDialog({
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  // Through a super agent: only their team can be picked (null while loading).
+  const [teamAgents, setTeamAgents] = useState<AssignableAgentOption[] | null>(null);
+  const via = form.superAgentUserId;
+
+  useEffect(() => {
+    if (!via) { setTeamAgents(null); return; }
+    let alive = true;
+    setTeamAgents(null);
+    fetch(`${apiBase}?viaSuperAgent=${encodeURIComponent(via)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive) setTeamAgents(d?.agents ?? []); })
+      .catch(() => { if (alive) setTeamAgents([]); });
+    return () => { alive = false; };
+  }, [apiBase, via]);
+
+  const agentChoices = via ? teamAgents ?? [] : agents;
 
   useEffect(() => {
     if (open && presetAgentUserId) setForm((p) => ({ ...p, agentUserId: presetAgentUserId }));
@@ -64,6 +82,7 @@ export function AssignTaskDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          superAgentUserId: form.superAgentUserId || undefined,
           description: form.description.trim() || undefined,
           dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
         }),
@@ -87,15 +106,35 @@ export function AssignTaskDialog({
           <DialogDescription>{t("assignDescription")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {superAgents && superAgents.length > 0 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="assign-via">{t("fieldViaSuperAgent")}</Label>
+              <SearchableSelect
+                id="assign-via"
+                options={[
+                  { value: "direct", label: t("viaDirect") },
+                  ...superAgents.map((a) => ({ value: a.userId, label: a.name ? `${a.name} · ${a.email}` : a.email, triggerLabel: a.name || a.email })),
+                ]}
+                value={form.superAgentUserId || "direct"}
+                // A new super agent means a new team: the chosen agent may not be on it.
+                onValueChange={(v) => setForm((p) => ({ ...p, superAgentUserId: v === "direct" ? "" : v, agentUserId: "" }))}
+                placeholder={t("viaDirect")}
+                container={container}
+                modal
+              />
+              <p className="text-xs text-muted-foreground">{via ? t("viaHelpTeam") : t("viaHelpDirect")}</p>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="assign-agent">{t("fieldAgent")}</Label>
             <SearchableSelect
               id="assign-agent"
-              options={agents.map((a) => ({ value: a.userId, label: a.name ? `${a.name} · ${a.email}` : a.email, triggerLabel: a.name || a.email }))}
+              options={agentChoices.map((a) => ({ value: a.userId, label: a.name ? `${a.name} · ${a.email}` : a.email, triggerLabel: a.name || a.email }))}
               value={form.agentUserId}
               onValueChange={(v) => setForm((p) => ({ ...p, agentUserId: v }))}
-              placeholder={t("chooseAgent")}
-              emptyMessage={t("noAgents")}
+              placeholder={via && teamAgents === null ? t("loadingTeam") : t("chooseAgent")}
+              emptyMessage={via ? t("noTeamAgents") : t("noAgents")}
+              disabled={Boolean(via) && teamAgents === null}
               container={container}
               modal
             />
@@ -126,7 +165,7 @@ export function AssignTaskDialog({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="assign-due">{t("fieldDue")}</Label>
-              <DateTimePicker mode="date" value={form.dueDate} onChange={(v) => setForm((p) => ({ ...p, dueDate: v }))} />
+              <DateTimePicker mode="date" minDate={new Date()} value={form.dueDate} onChange={(v) => setForm((p) => ({ ...p, dueDate: v }))} />
             </div>
           </div>
         </div>

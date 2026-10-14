@@ -2,8 +2,8 @@
  * @jest-environment jsdom
  *
  * Agents and super agents follow their employers' background checks (client
- * report 2026-09-30, #16). Read-only: the page lists where each check stands
- * and never offers to run one.
+ * report 2026-09-30, #16). Since 2026-10-14 agents also run them: each row's
+ * button follows the server's `viewer` flags for that row.
  */
 import React from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -25,7 +25,15 @@ const paginationState = {
 };
 jest.mock("@/hooks/usePagination", () => ({ usePagination: () => paginationState }));
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  // The URL has to actually move, or useUrlFilter's write cache carries one
+  // test's ?checkId= into the next (see url-filter test leak).
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn((href: string) => {
+      window.history.replaceState({}, "", href);
+      searchParamsState = new URLSearchParams(href.split("?")[1] ?? "");
+    }),
+  }),
   usePathname: () => "/en/agent/background-checks",
   useSearchParams: () => searchParamsState,
   useParams: () => ({ locale: "en" }),
@@ -44,11 +52,15 @@ const check = {
   jobTitle: "Accountant",
   companyName: "Acme",
   references: { total: 2, responded: 1, declined: 0 },
+  assignee: null,
+  viewer: { canStart: true, canWork: false, canAssign: false, canCancel: false, canEditNotes: false, heldByOther: false },
 };
+const FOLLOW_ONLY = { canStart: false, canWork: false, canAssign: false, canCancel: false, canEditNotes: false, heldByOther: false };
 
 const fetchMock = jest.fn();
 
 beforeEach(() => {
+  window.history.replaceState({}, "", "/en/agent/background-checks");
   searchParamsState = new URLSearchParams();
   fetchMock.mockReset();
   fetchMock.mockResolvedValue({ ok: true, json: async () => ({ items: [check], total: 1 }) });
@@ -67,11 +79,53 @@ it("lists each check with its candidate, employer, status and replies", async ()
   expect(paginationState.updateTotal).toHaveBeenCalledWith(1);
 });
 
-it("is read-only: there is nothing to start or edit a check with", async () => {
+it("offers Start on a check nobody holds, and sends a start action", async () => {
   render(<StaffBackgroundChecks />);
-  await screen.findAllByText("Asha Menon");
-  expect(screen.getByText(/employer's team runs/i)).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /new|start|request|edit/i })).toBeNull();
+  const table = await screen.findByRole("table");
+  const start = await within(table).findByRole("button", { name: /start check/i });
+  fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+  await userEvent.click(start);
+  await waitFor(() =>
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/background-checks/c1",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ action: "start" }) })
+    )
+  );
+});
+
+it("offers only View to someone who follows but doesn't run checks", async () => {
+  fetchMock.mockResolvedValue({ ok: true, json: async () => ({ items: [{ ...check, viewer: FOLLOW_ONLY }], total: 1 }) });
+  render(<StaffBackgroundChecks />);
+  const table = await screen.findByRole("table");
+  expect(await within(table).findByRole("button", { name: /^view/i })).toBeInTheDocument();
+  expect(within(table).queryByRole("button", { name: /start check/i })).toBeNull();
+});
+
+it("says who handles a check somebody else holds", async () => {
+  fetchMock.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      items: [{ ...check, assignee: { name: "Sarah", kind: "employer", isMe: false }, viewer: { ...FOLLOW_ONLY, heldByOther: true } }],
+      total: 1,
+    }),
+  });
+  render(<StaffBackgroundChecks />);
+  const table = await screen.findByRole("table");
+  expect(await within(table).findByText("Handled by Sarah (Employer team)")).toBeInTheDocument();
+});
+
+it("offers Continue on a check the agent holds", async () => {
+  fetchMock.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      items: [{ ...check, assignee: { name: "Ahmed", kind: "agent", isMe: true }, viewer: { ...FOLLOW_ONLY, canWork: true } }],
+      total: 1,
+    }),
+  });
+  render(<StaffBackgroundChecks />);
+  const table = await screen.findByRole("table");
+  expect(await within(table).findByRole("button", { name: /continue/i })).toBeInTheDocument();
+  expect(within(table).getByText("Handled by you")).toBeInTheDocument();
 });
 
 it("sends the status filter from the URL", async () => {

@@ -14,6 +14,7 @@ import { validateBody } from "@/lib/validators";
 import { agentCreateSchema, agentUpdateSchema } from "@/lib/validators/admin";
 import { isRegionSubset } from "@/lib/auth/agentRestrictions";
 import type { RegionInfo } from "@/lib/auth/agentRestrictions";
+import { regionLocale, resolveAssignedRegions } from "@/lib/agents/assignedRegion";
 import logger from "@/lib/logger";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -87,6 +88,20 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // An agent's area is only what the admin assigned. This list used to write the
   // super agent's whole area onto every agent without one, and to show it as the
   // agent's own (client report 2026-09-30).
+  // Territory as places: a country granted whole reads "Qatar", not its states.
+  const idOf = (x: unknown) => String((x as { _id?: unknown })?._id ?? x);
+  const regionsByUser = new Map(
+    await Promise.all(
+      agentProfiles.map(async (p) => [
+        p.userId.toString(),
+        await resolveAssignedRegions(
+          { assignedCityIds: (p.assignedCityIds ?? []).map(idOf), assignedStateIds: (p.assignedStateIds ?? []).map(idOf) },
+          regionLocale(new URL(req.url).searchParams.get("locale"), "en"),
+        ),
+      ] as const),
+    ),
+  );
+
   const enriched = users.map((user) => {
     const profile = profileMap.get(user._id.toString());
     const saProfile = profile?.superAgentId as unknown as { _id: unknown; userId: unknown } | undefined;
@@ -105,6 +120,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
             commissionRate: profile.commissionRate,
             assignedCityIds: agentCities,
             assignedStateIds: agentStates,
+            regions: regionsByUser.get(user._id.toString()) ?? [],
           }
         : null,
     };

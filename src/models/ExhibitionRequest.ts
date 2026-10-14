@@ -100,6 +100,37 @@ export const EXHIBITION_RESOURCE_TYPES: ExhibitionResourceType[] = [
 ];
 
 /* ------------------------------------------------------------------ */
+/*  Support items and inventory                                       */
+/* ------------------------------------------------------------------ */
+
+export type SupportItemType = "tv" | "rollup_banner" | "visiting_cards" | "volunteers" | "other";
+
+export const SUPPORT_ITEM_TYPES: SupportItemType[] = [
+  "tv", "rollup_banner", "visiting_cards", "volunteers", "other",
+];
+
+export type DeliveryStatus = "pending" | "ready" | "dispatched" | "delivered" | "issue";
+
+export const DELIVERY_STATUSES: DeliveryStatus[] = [
+  "pending", "ready", "dispatched", "delivered", "issue",
+];
+
+export interface ISupportItem {
+  _id?: mongoose.Types.ObjectId;
+  item: SupportItemType;
+  label?: string; // Required when item = "other", max 120 chars
+  requestedQty: number; // min 1, max 100000
+  allocatedQty?: number; // min 0, max requestedQty
+  responsiblePerson?: string; // max 120 chars
+  allocationNote?: string; // max 500 chars
+  deliveryStatus: DeliveryStatus;
+  deliveredQty?: number; // min 0, max allocatedQty
+  deliveryNote?: string; // max 500 chars
+  updatedAt?: Date;
+  updatedBy?: mongoose.Types.ObjectId;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Priority                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -178,6 +209,10 @@ export interface IExhibitionRequest extends Document {
   /* Logistics */
   venueNotes?: string;
 
+  /* Support items and inventory */
+  supportItems?: ISupportItem[];
+  additionalRequirements?: string; // max 2000 chars
+
   /* Priority */
   priority: ExhibitionPriority;
 
@@ -217,6 +252,23 @@ const BudgetBreakdownSchema = new Schema<IBudgetBreakdown>(
     miscellaneous: { type: Number, default: 0, min: 0 },
   },
   { _id: false },
+);
+
+const SupportItemSchema = new Schema<ISupportItem>(
+  {
+    item: { type: String, enum: SUPPORT_ITEM_TYPES, required: true },
+    label: { type: String, trim: true, maxlength: 120 },
+    requestedQty: { type: Number, required: true, min: 1, max: 100000 },
+    allocatedQty: { type: Number, min: 0 },
+    responsiblePerson: { type: String, trim: true, maxlength: 120 },
+    allocationNote: { type: String, trim: true, maxlength: 500 },
+    deliveryStatus: { type: String, enum: DELIVERY_STATUSES, default: "pending" },
+    deliveredQty: { type: Number, min: 0 },
+    deliveryNote: { type: String, trim: true, maxlength: 500 },
+    updatedAt: { type: Date },
+    updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
+  },
+  { _id: true },
 );
 
 const ExhibitionRequestSchema = new Schema<IExhibitionRequest>(
@@ -281,6 +333,10 @@ const ExhibitionRequestSchema = new Schema<IExhibitionRequest>(
 
     /* Logistics */
     venueNotes: { type: String, trim: true, maxlength: 1000 },
+
+    /* Support items and inventory */
+    supportItems: [SupportItemSchema],
+    additionalRequirements: { type: String, trim: true, maxlength: 2000 },
 
     /* Priority */
     priority: {

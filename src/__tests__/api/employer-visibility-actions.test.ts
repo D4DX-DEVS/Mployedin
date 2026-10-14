@@ -188,6 +188,37 @@ describe("GET /api/employers — who may act on each row", () => {
     ]);
   });
 
+  it("agent: ?view=assigned&status=active drops deactivated logins — the 'Active employers' tile's list", async () => {
+    const EMP_OFF = "64b0000000000000000000ff";
+    agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [EMP_ASSIGNED, EMP_OFF] }));
+    getAgentEmployerIds.mockResolvedValue([EMP_ASSIGNED, EMP_OFF, EMP_REGION]);
+    employerFind.mockReturnValueOnce(chain([{ _id: EMP_ASSIGNED, userId: "u-on" }, { _id: EMP_OFF, userId: "u-off" }]));
+    userFind.mockReturnValueOnce(chain([{ _id: "u-on" }]));
+    employerCount.mockResolvedValue(1);
+    employerAggregate.mockResolvedValue([{ _id: EMP_ASSIGNED }]);
+    employerFind.mockReturnValue(chain([profile(EMP_ASSIGNED)]));
+
+    await LIST(req("http://t/api/employers?view=assigned&status=active", { userId: "agent-user", role: "agent" }));
+
+    expect(userFind).toHaveBeenCalledWith({ _id: { $in: ["u-on", "u-off"] }, isActive: true });
+    expect(employerCount).toHaveBeenCalledWith({ _id: { $in: [EMP_ASSIGNED] }, roleArchivedAt: null });
+  });
+
+  it("agent: ?status=inactive lists only the deactivated ones", async () => {
+    const EMP_OFF = "64b0000000000000000000ff";
+    agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [EMP_ASSIGNED, EMP_OFF] }));
+    getAgentEmployerIds.mockResolvedValue([EMP_ASSIGNED, EMP_OFF]);
+    employerFind.mockReturnValueOnce(chain([{ _id: EMP_ASSIGNED, userId: "u-on" }, { _id: EMP_OFF, userId: "u-off" }]));
+    userFind.mockReturnValueOnce(chain([{ _id: "u-on" }]));
+    employerCount.mockResolvedValue(1);
+    employerAggregate.mockResolvedValue([{ _id: EMP_OFF }]);
+    employerFind.mockReturnValue(chain([profile(EMP_OFF)]));
+
+    await LIST(req("http://t/api/employers?view=assigned&status=inactive", { userId: "agent-user", role: "agent" }));
+
+    expect(employerCount).toHaveBeenCalledWith({ _id: { $in: [EMP_OFF] }, roleArchivedAt: null });
+  });
+
   it("agent: ?view=assigned with nothing assigned is an empty list, not the region", async () => {
     agentFindOne.mockReturnValue(chain({ _id: TEAM_AGENT, assignedEmployerIds: [] }));
     getAgentEmployerIds.mockResolvedValue([EMP_REGION]);

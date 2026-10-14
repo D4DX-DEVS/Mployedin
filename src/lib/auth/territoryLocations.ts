@@ -11,7 +11,8 @@ import City from "@/models/City";
  * (isRegionSubset) will accept.
  *
  *   - level=countries              → countries containing any territory
- *   - level=states&countryId=xxx   → assigned states + parents of assigned cities
+ *   - level=states&countryId=xxx   → assigned states + parents of assigned cities;
+ *                                    `countryFullyAssigned` when every state is whole
  *   - level=cities&stateId=xxx     → every city when the whole state is assigned,
  *                                    otherwise only the assigned cities.
  *                                    `stateFullyAssigned` says which.
@@ -73,7 +74,12 @@ export async function territoryLocationsResponse(
         .sort({ sortOrder: 1, name: 1 })
         .select("_id name nameAr slug countryId")
         .lean();
-      return NextResponse.json({ states });
+      // "Entire country" may be offered only when every active state of the
+      // country is already the super agent's whole state.
+      const own = new Set(ownStateIds);
+      const allStates = await State.find({ countryId, isActive: true }).select("_id").lean();
+      const countryFullyAssigned = allStates.length > 0 && allStates.every((st) => own.has(String(st._id)));
+      return NextResponse.json({ states, countryFullyAssigned });
     }
 
     case "cities": {

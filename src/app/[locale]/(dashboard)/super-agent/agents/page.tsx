@@ -19,6 +19,7 @@ import {
   Activity, BriefcaseBusiness,
   Mail, MessageSquare, Target, Users2,
   Plus,
+  MapPin,
 } from "lucide-react";
 import { MessageAgentsDialog } from "@/components/features/super-agent/MessageAgentsDialog";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -55,6 +56,15 @@ interface AgentRow {
   placements: number;
   conversionRate: number;
   avgResponseHours: number;
+  /** Where the agent works — the assigned cities/states, a whole country as one. */
+  regions?: AgentRegion[];
+}
+
+interface AgentRegion {
+  id: string;
+  type: "city" | "state" | "country";
+  name: string;
+  parent: string;
 }
 
 function aiRowData(a: AgentRow) {
@@ -71,6 +81,7 @@ function aiRowData(a: AgentRow) {
 /* ── Filter types ── */
 interface Filters extends Record<string, string> {
   search: string;
+  region: string;
   status: string;
   performance: string;
   leadsMin: string;
@@ -82,7 +93,7 @@ interface Filters extends Record<string, string> {
 }
 
 const INITIAL_FILTERS: Filters = {
-  search: "", status: "", performance: "",
+  search: "", region: "", status: "", performance: "",
   leadsMin: "", leadsMax: "",
   convRateMin: "", convRateMax: "",
   sortBy: "name", sortOrder: "asc",
@@ -152,6 +163,7 @@ export default function SuperAgentAgentsPage() {
   // Aggregates across every agent assigned to this super agent, not just the
   // page on screen. The API computes them before slicing.
   const [totals, setTotals] = useState({ agents: 0, leads: 0, conversions: 0, placements: 0 });
+  const [regionOptions, setRegionOptions] = useState<AgentRegion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
@@ -176,8 +188,9 @@ export default function SuperAgentAgentsPage() {
   const fetchAgents = useCallback(async () => {
     setLoading(true);
     setError(false);
-    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    const params = new URLSearchParams({ page: String(page), limit: String(limit), distinct: "true", locale });
     if (filters.search.trim()) params.set("search", filters.search.trim());
+    if (filters.region) params.set("region", filters.region);
     if (filters.status) params.set("status", filters.status);
     if (filters.performance) params.set("performance", filters.performance);
     if (filters.leadsMin) params.set("leadsMin", filters.leadsMin);
@@ -194,6 +207,7 @@ export default function SuperAgentAgentsPage() {
         setAgents(data.items ?? []);
         updateTotal(data.total ?? data.items?.length ?? 0);
         setTotals(data.totals ?? { agents: data.total ?? 0, leads: 0, conversions: 0, placements: 0 });
+        setRegionOptions(data.facets?.regions ?? []);
       } else {
         setError(true);
       }
@@ -202,7 +216,7 @@ export default function SuperAgentAgentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters, page, limit, updateTotal]);
+  }, [filters, page, limit, updateTotal, locale]);
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
 
@@ -486,6 +500,19 @@ export default function SuperAgentAgentsPage() {
             placeholder={t("allAgents")}
             className={INLINE_FILTER_CONTROL}
           />
+          {(regionOptions.length > 1 || filters.region) && (
+            <SearchableSelect
+              options={[
+                { value: "", label: t("allRegions") },
+                ...regionOptions.map((r) => ({ value: r.id, label: regionLabel(r) })),
+              ]}
+              value={filters.region}
+              onValueChange={(v) => { setFilter("region", v); resetPage(); }}
+              placeholder={t("allRegions")}
+              ariaLabel={t("region")}
+              className={INLINE_FILTER_CONTROL}
+            />
+          )}
         </InlineFilterBar>
 
         <div className="overflow-x-auto">
@@ -495,6 +522,7 @@ export default function SuperAgentAgentsPage() {
                 <TableHead>
                   <SortableTableHeader label={t("agent")} active={filters.sortBy === "name"} order={sortOrder} onClick={() => toggleSort("name")} />
                 </TableHead>
+                <TableHead>{t("region")}</TableHead>
                 <TableHead>{t("progress")}</TableHead>
                 <TableHead className="text-right" title={t("convRateExplainer")}>
                   <SortableTableHeader label={t("convRateShort")} active={filters.sortBy === "conversionRate"} order={sortOrder} onClick={() => toggleSort("conversionRate")} />
@@ -504,10 +532,10 @@ export default function SuperAgentAgentsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableBodySkeleton rows={5} cols={4} />
+                <TableBodySkeleton rows={5} cols={5} />
               ) : agents.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={4} className="py-12">
+                  <TableCell colSpan={5} className="py-12">
                     <EmptyState title={t("noAgentsFound")} description={t("noAgentsFoundHelper")} icon={Users2} />
                   </TableCell>
                 </TableRow>
@@ -571,6 +599,9 @@ export default function SuperAgentAgentsPage() {
                         context={t("aiExplainContext")}
                       />
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    <AgentRegionCell regions={a.regions ?? []} noneLabel={t("noRegion")} />
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-2 text-xs">
@@ -708,6 +739,32 @@ export default function SuperAgentAgentsPage() {
           },
         ]}
       />
+    </div>
+  );
+}
+
+/** "Qatar" | "Kerala, India" | "Tirur, Kerala, India". */
+function regionLabel(r: AgentRegion): string {
+  return r.parent ? `${r.name}, ${r.parent}` : r.name;
+}
+
+/** The agent's assigned region: the first two places, then "+N" with the rest in the tooltip. */
+function AgentRegionCell({ regions, noneLabel }: { regions: AgentRegion[]; noneLabel: string }) {
+  if (regions.length === 0) return <span className="text-xs text-muted-foreground">{noneLabel}</span>;
+  const shown = regions.slice(0, 2);
+  const rest = regions.length - shown.length;
+  return (
+    <div className="grid min-w-0 max-w-56 gap-0.5 text-xs" title={regions.map(regionLabel).join(" · ")}>
+      {shown.map((r) => (
+        <span key={r.id} className="flex min-w-0 items-center gap-1">
+          <MapPin className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="truncate">
+            <span className="font-medium text-foreground">{r.name}</span>
+            {r.parent && <span className="text-muted-foreground">, {r.parent}</span>}
+          </span>
+        </span>
+      ))}
+      {rest > 0 && <span className="ps-4 text-muted-foreground">+{rest}</span>}
     </div>
   );
 }

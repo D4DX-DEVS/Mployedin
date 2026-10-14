@@ -47,6 +47,8 @@ interface AgentProfile {
   commissionRate?: number;
   assignedCityIds?: { _id: string; name: string }[];
   assignedStateIds?: { _id: string; name: string }[];
+  /** Resolved places — a whole country as one ("Qatar"). */
+  regions?: { id: string; type: "city" | "state" | "country"; name: string; parent: string }[];
 }
 
 interface Agent {
@@ -408,6 +410,12 @@ export default function AdminAgentsPage() {
     const stateCount = profile.assignedStateIds?.length ?? 0;
     const cityCount = profile.assignedCityIds?.length ?? 0;
     if (stateCount === 0 && cityCount === 0) return "—";
+    if (profile.regions && profile.regions.length > 0) {
+      const label = (r: NonNullable<AgentProfile["regions"]>[number]) =>
+        r.type === "country" ? r.name : `${r.name}${r.parent ? `, ${r.parent.split(", ")[0]}` : ""}`;
+      const shown = profile.regions.slice(0, 2).map(label).join(" · ");
+      return profile.regions.length > 2 ? `${shown} +${profile.regions.length - 2}` : shown;
+    }
     const parts: string[] = [];
     if (stateCount > 0) {
       const names = profile.assignedStateIds!.slice(0, 2).map((s) => s.name);

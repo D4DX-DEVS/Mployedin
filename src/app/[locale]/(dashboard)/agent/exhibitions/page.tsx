@@ -9,14 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { MultiSelect } from "@/components/ui/multi-select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -24,7 +17,6 @@ import {
   AlertTriangle,
   CalendarDays,
   Copy,
-  Edit,
   Eye,
   Inbox,
   MapPin,
@@ -52,9 +44,13 @@ import {
   resolveCountryCode,
   type AgentExhibitionFormState,
 } from "@/lib/exhibitions/agent-request";
+import { SupportItemsFormSection, supportItemsFormError, supportItemsPayload } from "@/components/features/exhibitions/SupportItemsFormSection";
+import type { SupportItemType } from "@/lib/exhibitions/supportItems";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { ApprovalTimeline, type TimelineEntry } from "@/components/features/exhibitions/ApprovalTimeline";
+import type { TimelineEntry } from "@/components/features/exhibitions/ApprovalTimeline";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { AgentExhibitionDetailDialog } from "./_components/AgentExhibitionDetailDialog";
+import { StepFormDialog } from "@/components/shared/StepFormDialog";
 import { formatListDate } from "@/lib/ui/intlFormat";
 
 interface ExhibitionRequest {
@@ -87,6 +83,8 @@ interface ExhibitionRequest {
   expectedOutcome?: string;
   expectedLeads?: number;
   requiredResources: string[];
+  supportItems?: { item: SupportItemType; label?: string; requestedQty: number; allocatedQty?: number; deliveryStatus?: string }[];
+  additionalRequirements?: string;
   priority: string;
   status: string;
   reviewNote?: string;
@@ -221,6 +219,10 @@ export default function AgentExhibitionsPage() {
   const [categoryFilter, setCategoryFilter] = useUrlFilter("category", "all");
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [showWizard, setShowWizard] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  // Shown in the step dialog's banner; the step is where the problem lives.
+  const [formError, setFormError] = useState("");
+  const [formErrorStep, setFormErrorStep] = useState<number | undefined>(undefined);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AgentExhibitionFormState>({ ...EMPTY_AGENT_EXHIBITION_FORM });
   const [detailItem, setDetailItem] = useState<ExhibitionRequest | null>(null);
@@ -345,38 +347,40 @@ export default function AgentExhibitionsPage() {
     updateForm("budgetCurrency", budgetCurrency);
   };
 
-  const toggleParticipationType = (value: string) => {
-    setForm((previous) => ({
-      ...previous,
-      participationTypes: previous.participationTypes.includes(value)
-        ? previous.participationTypes.filter((entry) => entry !== value)
-        : [...previous.participationTypes, value],
-    }));
-  };
-
-  const validateForm = () => {
-    if (!form.eventName.trim()) {
-      toast.error(t("enterExhibitionTitle"));
-      return false;
-    }
+  // Step 1: a title, and dates that make sense together.
+  const validateDetailsStep = (): string | null => {
+    if (!form.eventName.trim()) return t("enterExhibitionTitle");
     if (form.eventStartDate) {
       const start = new Date(form.eventStartDate);
-      if (start < today) {
-        toast.error(t("startDateInPast"));
-        return false;
-      }
-      if (form.eventEndDate && new Date(form.eventEndDate) < start) {
-        toast.error(t("endDateEarlierThanStart"));
-        return false;
-      }
+      if (start < today) return t("startDateInPast");
+      if (form.eventEndDate && new Date(form.eventEndDate) < start) return t("endDateEarlierThanStart");
     }
-    return true;
+    return null;
+  };
+
+  // Step 2: every ticked support item needs a quantity (and "Other" a name).
+  const validateSupportStep = (): string | null => {
+    const supportError = supportItemsFormError(form.supportItems);
+    return supportError ? t(supportError) : null;
   };
 
   const handleSubmit = async (asDraft: boolean) => {
-    if (!asDraft && !validateForm()) {
-      return;
+    if (submitting) return;
+    // The step dialog checks both steps before a submit. A draft skips the
+    // date rules, but the server still needs a title, and a support line it
+    // would refuse has to be fixed first.
+    if (asDraft) {
+      const titleError = form.eventName.trim() ? null : t("enterExhibitionTitle");
+      const supportError = validateSupportStep();
+      if (titleError || supportError) {
+        setFormErrorStep(titleError ? 0 : 1);
+        setFormError((titleError ?? supportError) as string);
+        return;
+      }
     }
+    setFormError("");
+    setFormErrorStep(undefined);
+    setSubmitting(true);
 
     try {
       const parsedBudget = form.estimatedBudget ? Number(form.estimatedBudget) : 0;
@@ -398,6 +402,9 @@ export default function AgentExhibitionsPage() {
         // here stored an empty array and the super-agent participation-mix
         // chart had nothing to plot.
         participationTypes: form.participationTypes,
+        // Requested support only — allocation is the admin's, later.
+        supportItems: supportItemsPayload(form.supportItems),
+        additionalRequirements: form.additionalRequirements.trim(),
         priority: form.priority || "medium",
         status: asDraft ? "draft" : "submitted",
       };
@@ -411,8 +418,8 @@ export default function AgentExhibitionsPage() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        toast.error(error.error ?? t("submitError"));
+        const error = await response.json().catch(() => ({}));
+        setFormError(error.error ?? t("submitError"));
         return;
       }
 
@@ -421,7 +428,9 @@ export default function AgentExhibitionsPage() {
       setShowWizard(false);
       fetchItems();
     } catch {
-      toast.error(t("submitError"));
+      setFormError(t("submitError"));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -469,6 +478,8 @@ export default function AgentExhibitionsPage() {
       description: item.description ?? "",
       expectedLeads: item.expectedLeads?.toString() ?? "",
       requiredResources: item.requiredResources ?? [],
+      supportItems: (item.supportItems ?? []).map((entry) => ({ item: entry.item, label: entry.label, requestedQty: entry.requestedQty })),
+      additionalRequirements: item.additionalRequirements ?? "",
       priority: item.priority ?? EMPTY_AGENT_EXHIBITION_FORM.priority,
     });
     setEditingId(item._id);
@@ -694,311 +705,206 @@ export default function AgentExhibitionsPage() {
         onLimitChange={setLimit}
       />
 
-      <Dialog open={Boolean(detailItem)} onOpenChange={() => setDetailItem(null)}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden p-0">
-          {detailItem && (
-            <>
-              <DialogHeader className="border-b bg-gradient-to-r from-primary/8 via-background to-emerald-50/60 px-6 pb-5 pr-12 pt-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <DialogTitle className="text-2xl font-semibold tracking-tight">{detailItem.eventName}</DialogTitle>
-                      <Badge className={STATUS_COLORS[detailItem.status]}>{STATUS_LABELS[detailItem.status]}</Badge>
-                      <Badge className={PRIORITY_COLORS[detailItem.priority] ?? PRIORITY_COLORS.medium}>{detailItem.priority}</Badge>
-                    </div>
-                    <DialogDescription className="text-sm">
-                      {labelFor(EVENT_CATEGORIES, detailItem.eventCategory)} in {detailItem.eventLocation}{detailItem.country ? `, ${detailItem.country}` : ""}
-                    </DialogDescription>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm sm:min-w-[20rem]">
-                    <div className="rounded-xl border bg-background/80 chip-pad">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("tableHeaderBudget")}</p>
-                      <p className="mt-1 font-semibold">{formatCurrency(detailItem.estimatedBudget, detailItem.budgetCurrency)}</p>
-                    </div>
-                    <div className="rounded-xl border bg-background/80 chip-pad">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailExpectedLeads")}</p>
-                      <p className="mt-1 font-semibold">{detailItem.expectedLeads ?? "-"}</p>
-                    </div>
-                  </div>
-                </div>
-              </DialogHeader>
-              {/* Scrolls on both axes: the dialog itself is `overflow-hidden`,
-                  so without `overflow-x-auto` anything wider than the panel is
-                  clipped with no way to scroll to it. */}
-              <div className="max-h-[68vh] space-y-6 overflow-x-auto overflow-y-auto px-6 py-5 text-sm">
-                {detailItem.status === "revision_requested" && detailItem.reviewNote && (
-                  <div className="rounded-lg border border-orange-200 bg-orange-50 chip-pad">
-                    <p className="mb-1 flex items-center gap-1 font-medium text-orange-800">
-                      <AlertTriangle className="h-4 w-4" /> {t("statusRevisionRequested")}
-                    </p>
-                    <p className="text-orange-700">{detailItem.reviewNote}</p>
-                  </div>
-                )}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {[
-                    { label: "Venue", value: detailItem.venue ?? "-" },
-                    { label: "Country", value: detailItem.country ?? "-" },
-                    { label: "Dates", value: detailItem.eventEndDate ? `${formatListDate(detailItem.eventStartDate)} – ${formatListDate(detailItem.eventEndDate)}` : formatListDate(detailItem.eventStartDate) },
-                    { label: "Duration", value: detailItem.eventEndDate ? `${dayCount(detailItem.eventStartDate, detailItem.eventEndDate)} days` : "—" },
-                    { label: "Organizer", value: detailItem.organizerName ?? "-" },
-                    { label: "Contact", value: detailItem.organizerContact ?? "-" },
-                    { label: "Category", value: labelFor(EVENT_CATEGORIES, detailItem.eventCategory) },
-                    { label: "Status", value: STATUS_LABELS[detailItem.status] ?? detailItem.status },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-xl border bg-card card-pad">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
-                      <p className="mt-2 font-medium text-foreground">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-                {detailItem.participationTypes.length > 0 && (
-                  <div className="rounded-xl border bg-card card-pad">
-                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailParticipation")}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {detailItem.participationTypes.map((participationType) => (
-                        <Badge key={participationType} variant="outline" className="capitalize">
-                          {labelFor(PARTICIPATION_TYPES, participationType)}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {detailItem.objectives.length > 0 && (
-                  <div className="rounded-xl border bg-card card-pad">
-                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailObjectives")}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {detailItem.objectives.map((objective) => (
-                        <Badge key={objective} variant="outline">{labelFor(OBJECTIVES, objective)}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {detailItem.requiredResources.length > 0 && (
-                  <div className="rounded-xl border bg-card card-pad">
-                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailRequirementTags")}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {detailItem.requiredResources.map((resource) => (
-                        <Badge key={resource} variant="outline">{labelFor(RESOURCE_TYPES, resource)}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {detailItem.budgetBreakdown && (
-                  <div className="rounded-xl border bg-card card-pad">
-                    <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailLegacyBudgetBreakdown")}</p>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {Object.entries(detailItem.budgetBreakdown).map(([key, value]) => (
-                        <div key={key} className="rounded border p-2 text-center">
-                          <p className="text-xs capitalize text-muted-foreground">{key.replace(/([A-Z])/g, " $1")}</p>
-                          <p className="font-semibold">{formatCurrency(value as number, detailItem.budgetCurrency)}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {detailItem.approvedBudget != null && (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 card-pad">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailApprovedBudget")}</p>
-                    <p className="mt-2 text-lg font-bold text-emerald-700">{formatCurrency(detailItem.approvedBudget, detailItem.budgetCurrency)}</p>
-                    {detailItem.approvedBudget !== detailItem.estimatedBudget && (
-                      <p className="mt-1 text-xs text-muted-foreground">Estimated was {formatCurrency(detailItem.estimatedBudget, detailItem.budgetCurrency)}</p>
-                    )}
-                  </div>
-                )}
-                {detailItem.description && (
-                  <div className="rounded-xl border bg-card card-pad">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailDescription")}</p>
-                    <p className="mt-2 leading-6">{detailItem.description}</p>
-                  </div>
-                )}
-                {detailItem.statusHistory && detailItem.statusHistory.length > 0 && (
-                  <div className="rounded-xl border bg-card card-pad">
-                    <p className="mb-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">{t("detailApprovalHistory")}</p>
-                    <ApprovalTimeline entries={detailItem.statusHistory} />
-                  </div>
-                )}
-              </div>
-              <DialogFooter className="border-t px-6 py-4">
-                {["draft", "submitted", "revision_requested"].includes(detailItem.status) && (
-                  <Button variant="outline" onClick={() => {
-                    setDetailItem(null);
-                    startEdit(detailItem);
-                  }}>
-                    <Edit className="mr-2 h-4 w-4" /> Edit
-                  </Button>
-                )}
-                <Button variant="ghost" onClick={() => setDetailItem(null)}>{tc("close")}</Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <AgentExhibitionDetailDialog
+        item={detailItem}
+        onClose={() => setDetailItem(null)}
+        onEdit={(item) => {
+          setDetailItem(null);
+          startEdit(item as ExhibitionRequest);
+        }}
+        statusLabel={(status) => STATUS_LABELS[status] ?? status}
+        statusClassName={(status) => STATUS_COLORS[status] ?? STATUS_COLORS.draft}
+        priorityClassName={(priority) => PRIORITY_COLORS[priority] ?? PRIORITY_COLORS.medium}
+        categoryLabel={(value) => labelFor(EVENT_CATEGORIES, value)}
+        participationLabel={(value) => labelFor(PARTICIPATION_TYPES, value)}
+        objectiveLabel={(value) => labelFor(OBJECTIVES, value)}
+        resourceLabel={(value) => labelFor(RESOURCE_TYPES, value)}
+      />
 
-      <Dialog
+      {/* Two steps instead of one long scroll (owner, 2026-10-14): what and
+          when, then budget and support. Only the fields scroll; the header,
+          step bar and buttons stay put. */}
+      <StepFormDialog
         open={showWizard}
         onOpenChange={(open) => {
-          if (!open) {
+          if (!open && !submitting) {
             resetForm();
+            setFormError("");
             setShowWizard(false);
           }
         }}
-      >
-        <DialogContent
-          ref={setDialogRef}
-          className="w-[min(96vw,36rem)] max-w-xl p-0"
-        >
-          <DialogHeader className="border-b px-6 pb-4 pt-5">
-            <DialogTitle className="text-lg">{isEditing ? "Edit Exhibition Request" : "New Exhibition Request"}</DialogTitle>
-            <DialogDescription>
-              Fill in the details below to submit your request for approval.
-            </DialogDescription>
-          </DialogHeader>
+        title={isEditing ? "Edit Exhibition Request" : "New Exhibition Request"}
+        description="Fill in the details below to submit your request for approval."
+        className="sm:max-w-xl"
+        equalStepHeights
+        contentRef={setDialogRef}
+        error={formError}
+        errorStep={formErrorStep}
+        onErrorDismiss={() => setFormError("")}
+        submitLabel={t("submitRequest")}
+        submittingLabel={t("submitting")}
+        submitting={submitting}
+        onSubmit={() => void handleSubmit(false)}
+        footerStart={
+          <Button type="button" variant="ghost" onClick={() => void handleSubmit(true)} disabled={submitting}>
+            <Save className="me-1 h-4 w-4" aria-hidden="true" /> {t("saveDraft")}
+          </Button>
+        }
+        steps={[
+          {
+            label: t("stepEventDetails"),
+            validate: validateDetailsStep,
+            content: (
+              <>
+                <div>
+                  <Label htmlFor="exhibition-title">Exhibition Title *</Label>
+                  <Input
+                    id="exhibition-title"
+                    value={form.eventName}
+                    onChange={(event) => updateForm("eventName", event.target.value)}
+                    placeholder="e.g., Dubai Career Expo 2026"
+                  />
+                </div>
 
-          <div className="space-y-4 px-6 py-5">
-            <div>
-              <Label>Exhibition Title *</Label>
-              <Input
-                value={form.eventName}
-                onChange={(event) => updateForm("eventName", event.target.value)}
-                placeholder="e.g., Dubai Career Expo 2026"
-              />
-            </div>
+                <div>
+                  <Label htmlFor="exhibition-description">{t("description")}</Label>
+                  <Textarea
+                    id="exhibition-description"
+                    value={form.description}
+                    onChange={(event) => updateForm("description", event.target.value)}
+                    placeholder={t("descriptionPlaceholder")}
+                    rows={2}
+                  />
+                </div>
 
-            <div>
-              <Label>{t("description")}</Label>
-              <Textarea
-                value={form.description}
-                onChange={(event) => updateForm("description", event.target.value)}
-                placeholder={t("descriptionPlaceholder")}
-                rows={3}
-              />
-            </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label>{t("startDate")}</Label>
+                    <DateTimePicker
+                      value={form.eventStartDate}
+                      onChange={(value) => {
+                        updateForm("eventStartDate", value);
+                        // Clear end date if it's now before start
+                        if (form.eventEndDate && new Date(form.eventEndDate) < new Date(value)) {
+                          updateForm("eventEndDate", "");
+                        }
+                      }}
+                      mode="date"
+                      placeholder={t("selectStartDate")}
+                      minDate={startDateMin}
+                      container={dialogContainer}
+                      modal
+                    />
+                  </div>
+                  <div>
+                    <Label>{t("endDate")}</Label>
+                    <DateTimePicker
+                      value={form.eventEndDate}
+                      onChange={(value) => updateForm("eventEndDate", value)}
+                      mode="date"
+                      placeholder={t("selectEndDate")}
+                      minDate={endDateMin}
+                      container={dialogContainer}
+                      modal
+                    />
+                  </div>
+                </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>{t("startDate")}</Label>
-                <DateTimePicker
-                  value={form.eventStartDate}
-                  onChange={(value) => {
-                    updateForm("eventStartDate", value);
-                    // Clear end date if it's now before start
-                    if (form.eventEndDate && new Date(form.eventEndDate) < new Date(value)) {
-                      updateForm("eventEndDate", "");
-                    }
-                  }}
-                  mode="date"
-                  placeholder={t("selectStartDate")}
-                  minDate={startDateMin}
+                <div>
+                  <Label htmlFor="exhibition-venue">{t("venue")} <span className="text-muted-foreground text-xs">({t("optional")})</span></Label>
+                  <Input
+                    id="exhibition-venue"
+                    value={form.venue}
+                    onChange={(event) => updateForm("venue", event.target.value)}
+                    placeholder="e.g., Dubai World Trade Centre"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="exhibition-organizer">{t("organizerName")} <span className="text-muted-foreground text-xs">({t("optional")})</span></Label>
+                    <Input
+                      id="exhibition-organizer"
+                      value={form.organizerName}
+                      onChange={(event) => updateForm("organizerName", event.target.value)}
+                      placeholder="e.g., DWTC Events"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="exhibition-contact">{t("organizerContactShort")} <span className="text-muted-foreground text-xs">({t("optional")})</span></Label>
+                    <Input
+                      id="exhibition-contact"
+                      value={form.organizerContact}
+                      onChange={(event) => updateForm("organizerContact", event.target.value)}
+                      placeholder={t("contactPlaceholder")}
+                    />
+                  </div>
+                </div>
+              </>
+            ),
+          },
+          {
+            label: t("stepBudgetSupport"),
+            validate: validateSupportStep,
+            content: (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="exhibition-budget">{t("estimatedBudget")}</Label>
+                    <Input
+                      id="exhibition-budget"
+                      type="text"
+                      inputMode="decimal"
+                      className={SPINNERLESS_INPUT_CLASS}
+                      value={form.estimatedBudget}
+                      onChange={(event) => handleBudgetChange(event.target.value)}
+                      placeholder="e.g., 5000"
+                    />
+                  </div>
+                  <div>
+                    <Label>{t("currency")}</Label>
+                    <SearchableSelect
+                      options={CURRENCY_OPTIONS}
+                      value={form.budgetCurrency}
+                      onValueChange={handleCurrencyChange}
+                      placeholder={t("selectCurrency")}
+                      container={dialogContainer}
+                      modal
+                    />
+                  </div>
+                </div>
+
+                {/* Participation styles. The request model has carried this field
+                    all along and the super-agent participation-mix chart reports on
+                    it. A dropdown, not a wall of chips: the step has to fit. */}
+                <div>
+                  <Label htmlFor="participation-types">
+                    Participation Style <span className="text-muted-foreground text-xs">({t("optional")})</span>
+                  </Label>
+                  <MultiSelect
+                    id="participation-types"
+                    options={PARTICIPATION_TYPES}
+                    values={form.participationTypes}
+                    onValuesChange={(values) => updateForm("participationTypes", values)}
+                    placeholder={t("participationPickPlaceholder")}
+                    ariaLabel="Participation Style"
+                    container={dialogContainer}
+                    modal
+                  />
+                </div>
+
+                <SupportItemsFormSection
+                  supportItems={form.supportItems}
+                  additionalRequirements={form.additionalRequirements}
+                  onSupportItemsChange={(items) => setForm((previous) => ({ ...previous, supportItems: items }))}
+                  onAdditionalRequirementsChange={(value) => updateForm("additionalRequirements", value)}
                   container={dialogContainer}
-                  modal
                 />
-              </div>
-              <div>
-                <Label>{t("endDate")}</Label>
-                <DateTimePicker
-                  value={form.eventEndDate}
-                  onChange={(value) => updateForm("eventEndDate", value)}
-                  mode="date"
-                  placeholder={t("selectEndDate")}
-                  minDate={endDateMin}
-                  container={dialogContainer}
-                  modal
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <Label>{t("venue")} <span className="text-muted-foreground text-xs">({t("optional")})</span></Label>
-                <Input
-                  value={form.venue}
-                  onChange={(event) => updateForm("venue", event.target.value)}
-                  placeholder="e.g., Dubai World Trade Centre"
-                />
-              </div>
-              <div>
-                <Label>{t("organizerName")} <span className="text-muted-foreground text-xs">({t("optional")})</span></Label>
-                <Input
-                  value={form.organizerName}
-                  onChange={(event) => updateForm("organizerName", event.target.value)}
-                  placeholder="e.g., DWTC Events"
-                />
-              </div>
-              <div>
-                <Label>{t("organizerContactShort")} <span className="text-muted-foreground text-xs">({t("optional")})</span></Label>
-                <Input
-                  value={form.organizerContact}
-                  onChange={(event) => updateForm("organizerContact", event.target.value)}
-                  placeholder={t("contactPlaceholder")}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>{t("estimatedBudget")}</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className={SPINNERLESS_INPUT_CLASS}
-                  value={form.estimatedBudget}
-                  onChange={(event) => handleBudgetChange(event.target.value)}
-                  placeholder="e.g., 5000"
-                />
-              </div>
-              <div>
-                <Label>{t("currency")}</Label>
-                <SearchableSelect
-                  options={CURRENCY_OPTIONS}
-                  value={form.budgetCurrency}
-                  onValueChange={handleCurrencyChange}
-                  placeholder={t("selectCurrency")}
-                  container={dialogContainer}
-                  modal
-                />
-              </div>
-            </div>
-
-            {/* Participation styles. The request model has carried this field
-                all along and the super-agent participation-mix chart reports on
-                it, but the wizard never offered a way to pick one. */}
-            <div>
-              <Label id="participation-types-label">
-                Participation Style <span className="text-muted-foreground text-xs">(optional, pick any)</span>
-              </Label>
-              <div role="group" aria-labelledby="participation-types-label" className="mt-2 flex flex-wrap gap-2">
-                {PARTICIPATION_TYPES.map((participationType) => {
-                  const selected = form.participationTypes.includes(participationType.value);
-                  return (
-                    <button
-                      key={participationType.value}
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => toggleParticipationType(participationType.value)}
-                      className={`min-h-11 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors sm:min-h-0 ${
-                        selected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {participationType.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 border-t px-6 py-4">
-            <Button variant="outline" onClick={() => handleSubmit(true)}>
-              <Save className="mr-1 h-4 w-4" /> {t("saveDraft")}
-            </Button>
-            <Button onClick={() => handleSubmit(false)}>
-              <Send className="mr-1 h-4 w-4" /> {t("submitRequest")}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+              </>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

@@ -3927,6 +3927,7 @@ table.workspace-list-table tbody tr:focus-visible {
     .workspace-header-metric[data-tone="success"] .workspace-header-metric-icon { color: hsl(var(--status-selected)); background: hsl(var(--status-selected) / 0.12); }
     .workspace-header-metric[data-tone="info"] .workspace-header-metric-icon { color: hsl(262 83% 58%); background: hsl(262 83% 58% / 0.12); }
     .workspace-header-metric[data-tone="warning"] .workspace-header-metric-icon { color: hsl(var(--status-shortlisted)); background: hsl(var(--status-shortlisted) / 0.14); }
+    .workspace-header-metric[data-tone="danger"] .workspace-header-metric-icon { color: hsl(var(--destructive)); background: hsl(var(--destructive) / 0.12); }
   }
 
   /* List toolbar: search grows, job select shares the second row on phones,

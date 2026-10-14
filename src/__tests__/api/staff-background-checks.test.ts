@@ -3,7 +3,7 @@
  *
  * GET /api/background-checks — client report 2026-09-30 (#16): agents who work
  * with an employer see that employer's background checks and their status.
- * Read-only; the employer's team still runs the checks. Scoped like every
+ * Since 2026-10-14 agents also run them (see staff-background-check-actions). Scoped like every
  * other employer resource (getScopedEmployerIds — [] means nothing), and it
  * never returns the referees' contact details, their feedback or the
  * employer's internal notes.
@@ -96,7 +96,25 @@ it("lists the checks of employers the agent works with, and nothing else", async
     jobTitle: "Accountant",
     companyName: "Acme",
     references: { total: 2, responded: 1, declined: 0 },
+    // Nobody holds it yet, so an agent may start it (owner decision 2026-10-14).
+    assignee: null,
+    viewer: { canStart: true, canWork: false, canAssign: false, canCancel: false, canEditNotes: false, heldByOther: false },
   });
+});
+
+it("offers Start only to agents; super agents follow", async () => {
+  mockCtx = { ...mockCtx, role: "super_agent" };
+  const body = await (await get()).json();
+  expect(body.items[0].viewer.canStart).toBe(false);
+});
+
+it("names who holds a check and whether it is the viewer", async () => {
+  mockFind.mockImplementation(() =>
+    query([{ ...stored, assignedTo: { _id: mockCtx.userId, name: "Ahmed", role: "agent" } }])
+  );
+  const body = await (await get()).json();
+  expect(body.items[0].assignee).toEqual({ name: "Ahmed", kind: "agent", isMe: true });
+  expect(body.items[0].viewer).toMatchObject({ canStart: false, canWork: true, heldByOther: false });
 });
 
 it("never returns referee contacts, feedback or the employer's notes", async () => {

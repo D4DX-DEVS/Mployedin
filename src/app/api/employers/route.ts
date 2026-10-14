@@ -56,6 +56,23 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     if (searchParams.get("view") === "assigned") {
       empIds = empIds.filter((id) => assignedToMe.has(String(id)));
     }
+    // ?view=area: the rest — employers visible through the agent's region only.
+    if (searchParams.get("view") === "area") {
+      empIds = empIds.filter((id) => !assignedToMe.has(String(id)));
+    }
+    // ?status=active|inactive: the login's isActive — the dashboard's
+    // "Active employers" tile links to view=assigned&status=active.
+    const statusFilter = searchParams.get("status");
+    if ((statusFilter === "active" || statusFilter === "inactive") && empIds.length > 0) {
+      const owners = await Employer.find({ _id: { $in: empIds } }).select("_id userId").lean<{ _id: unknown; userId?: unknown }[]>();
+      const activeUsers = new Set(
+        (await User.find({ _id: { $in: owners.map((o) => o.userId).filter(Boolean) }, isActive: true }).select("_id").lean<{ _id: unknown }[]>())
+          .map((u) => String(u._id)),
+      );
+      const wantActive = statusFilter === "active";
+      const keep = new Set(owners.filter((o) => activeUsers.has(String(o.userId)) === wantActive).map((o) => String(o._id)));
+      empIds = empIds.filter((id) => keep.has(String(id)));
+    }
     if (empIds.length === 0) {
       return NextResponse.json({ employers: [], pagination: { page, limit, total: 0, pages: 0 } });
     }

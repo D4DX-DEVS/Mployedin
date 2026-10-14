@@ -22,7 +22,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { CheckDetailPanel } from "@/components/features/background-checks/CheckDetailPanel";
 
 type CheckType = "background" | "reference" | "both";
 type CheckStatus = "pending" | "in_progress" | "completed" | "cancelled";
@@ -51,17 +51,11 @@ interface BackgroundCheck {
   createdAt: string;
   jobId?: { _id: string; title?: string };
   jobSeekerId?: { _id: string; fullName?: string; userId?: { name?: string } };
-  assignedTo?: { _id: string; name?: string; email?: string } | null;
-  verifiedBy?: { _id: string; name?: string; email?: string } | null;
+  assignedTo?: { _id: string; name?: string; email?: string; role?: string } | null;
+  verifiedBy?: { _id: string; name?: string; email?: string; role?: string } | null;
   verifiedAt?: string;
   /** The agent following the check: the job's agent, else the account agent. */
   agentName?: string | null;
-}
-
-/** A colleague who may be handed a check, from the team list. */
-interface Screener {
-  _id: string;
-  name: string;
 }
 
 interface ApplicationOption {
@@ -83,7 +77,9 @@ export default function BackgroundChecksPage() {
   const [checks, setChecks] = useState<BackgroundCheck[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
-  const [detail, setDetail] = useState<BackgroundCheck | null>(null);
+  // `?checkId=` is the open check: deep links from the job workspace, the
+  // candidate journey and notifications land straight on it.
+  const [openCheckId, setOpenCheckId] = useUrlFilter("checkId", "");
 
   // Create form state
   const [applications, setApplications] = useState<ApplicationOption[]>([]);
@@ -101,7 +97,6 @@ export default function BackgroundChecksPage() {
   const [dateTo, setDateTo] = useUrlFilter("to", "");
   // A colleague opens their own queue by default; the owner sees everything.
   const [assignedToMe, setAssignedToMe] = useUrlFilter("mine", "");
-  const [screeners, setScreeners] = useState<Screener[]>([]);
 
   useEffect(() => {
     document.title = `${t("title")} · MPLOYEDIN`;
@@ -127,40 +122,6 @@ export default function BackgroundChecksPage() {
   useEffect(() => {
     fetchChecks();
   }, [fetchChecks]);
-
-  // Colleagues who may be handed a check. Only those the team list says can
-  // run screening appear, so a check is never assigned to someone who would
-  // then be refused at the page.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/employers/team?limit=100");
-        if (!res.ok) return; // A member without team access simply gets no picker.
-        const data = (await res.json()) as {
-          members?: Array<{
-            _id: string;
-            email: string;
-            status: string;
-            permissions?: { canRunScreening?: boolean };
-            user?: { name?: string } | null;
-            userId?: string;
-          }>;
-        };
-        if (cancelled) return;
-        setScreeners(
-          (data.members ?? [])
-            .filter((m) => m.status === "active" && m.permissions?.canRunScreening && m.userId)
-            .map((m) => ({ _id: String(m.userId), name: m.user?.name ?? m.email }))
-        );
-      } catch {
-        // Non-blocking: the list still works without the assignment picker.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   /** `preselectId` comes from `?applicationId=` — a deep link from the
    *  candidate panel, where the employer has already picked the person. That
@@ -218,19 +179,6 @@ export default function BackgroundChecksPage() {
      
   }, [deepLinkedApplicationId, wantsNew]);
 
-  // A `checkId` param opens that one check straight into its detail dialog. The job
-  // workspace's "Manage" link lands here, so it must open that record rather
-  // than dropping the employer on a list to hunt through.
-  const deepLinkedCheckId = searchParams.get("checkId") ?? "";
-  const detailLinkHandledRef = useRef("");
-  useEffect(() => {
-    if (!deepLinkedCheckId || detailLinkHandledRef.current === deepLinkedCheckId) return;
-    const match = checks.find((c) => c._id === deepLinkedCheckId);
-    if (!match) return; // list still loading — retry once it arrives
-    detailLinkHandledRef.current = deepLinkedCheckId;
-    setDetail(match);
-  }, [deepLinkedCheckId, checks]);
-
   function updateRef(i: number, patch: Partial<NewReferenceRow>) {
     setRefs((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
@@ -266,7 +214,14 @@ export default function BackgroundChecksPage() {
         body: JSON.stringify({ applicationId, checkType, references: cleanRefs, backgroundNotes: notes.trim() || undefined }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
+        const err = (await res.json().catch(() => ({}))) as { error?: string; code?: string; checkId?: string };
+        // One open check of a kind per candidate: show the one already running.
+        if (res.status === 409 && err.code === "duplicate_open_check") {
+          toast.error(t("errors.duplicateOpen"));
+          setCreateOpen(false);
+          if (err.checkId) setOpenCheckId(err.checkId);
+          return;
+        }
         throw new Error(err.error || "failed");
       }
       toast.success(t("created"));
@@ -277,22 +232,6 @@ export default function BackgroundChecksPage() {
     } finally {
       setSubmitting(false);
     }
-  }
-
-  async function patchCheck(id: string, body: Record<string, unknown>) {
-    const res = await csrfFetch(`/api/employer/background-checks/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      toast.error(t("errors.updateFailed"));
-      return null;
-    }
-    const data = await res.json();
-    setChecks((prev) => prev.map((c) => (c._id === id ? data.check : c)));
-    setDetail(data.check);
-    return data.check as BackgroundCheck;
   }
 
   const candidateName = (c: BackgroundCheck | ApplicationOption) =>
@@ -423,7 +362,7 @@ export default function BackgroundChecksPage() {
           {filtered.map((c) => (
             <button
               key={c._id}
-              onClick={() => setDetail(c)}
+              onClick={() => setOpenCheckId(c._id)}
               className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card text-left transition hover:border-primary/40 sm:flex-row sm:items-center sm:justify-between card-pad"
             >
               <div className="flex items-center gap-3">
@@ -437,11 +376,11 @@ export default function BackgroundChecksPage() {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {c.assignedTo
-                      ? `${t("assignedTo")}: ${c.assignedTo.name ?? c.assignedTo.email ?? ""}`
+                      ? `${t("assignedTo")}: ${c.assignedTo.name ?? c.assignedTo.email ?? ""}${c.assignedTo.role === "agent" ? ` (${t("agentLabel")})` : ""}`
                       : t("noTeammate")}
                     {c.agentName ? ` · ${t("agentFollowing", { name: c.agentName })}` : ""}
                     {c.verifiedBy
-                      ? ` · ${t("verifiedBy", { name: c.verifiedBy.name ?? c.verifiedBy.email ?? "" })}`
+                      ? ` · ${t("verifiedBy", { name: `${c.verifiedBy.name ?? c.verifiedBy.email ?? ""}${c.verifiedBy.role === "agent" ? ` (${t("agentLabel")})` : ""}` })}`
                       : ""}
                   </p>
                 </div>
@@ -548,138 +487,12 @@ export default function BackgroundChecksPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Detail dialog */}
-      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-          {detail && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{candidateName(detail)}</DialogTitle>
-                <DialogDescription>
-                  {detail.jobId?.title} · {t(`type.${detail.checkType}`)}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t("fields.status")}</Label>
-                  {(["pending", "in_progress", "completed", "cancelled"] as CheckStatus[]).map((s) => (
-                    <Button key={s} size="sm" variant={detail.status === s ? "default" : "outline"} className="rounded-xl" onClick={() => patchCheck(detail._id, { status: s })}>
-                      {t(`status.${s}`)}
-                    </Button>
-                  ))}
-                </div>
-
-                {/* Hand the check to a colleague. Rendered only when there is
-                    somebody to hand it to — a disabled picker with no reason
-                    is worse than no picker. */}
-                {screeners.length > 0 && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="bc-assignee" className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {t("assignTo")}
-                    </Label>
-                    <SearchableSelect
-                      id="bc-assignee"
-                      modal
-                      ariaLabel={t("assignTo")}
-                      placeholder={t("unassigned")}
-                      value={detail.assignedTo?._id ?? ""}
-                      onValueChange={(v) => patchCheck(detail._id, { assignedTo: v || null })}
-                      options={[
-                        { value: "", label: t("unassigned") },
-                        ...screeners.map((sc) => ({ value: sc._id, label: sc.name })),
-                      ]}
-                    />
-                    <p className="text-xs text-muted-foreground">{t("assignHint")}</p>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t("fields.outcome")}</Label>
-                  {(["pending", "clear", "flagged", "failed", "unable_to_verify"] as Outcome[]).map((o) => (
-                    <Button key={o} size="sm" variant={detail.outcome === o ? "default" : "outline"} className="rounded-xl" onClick={() => patchCheck(detail._id, { outcome: o })}>
-                      {t(`outcome.${o}`)}
-                    </Button>
-                  ))}
-                </div>
-
-                {/* Recording the verdict is a separate, deliberate act: it
-                    stamps who checked and when, and closes the check. */}
-                {detail.outcome !== "pending" && !detail.verifiedBy && (
-                  <Button
-                    size="sm"
-                    className="rounded-xl"
-                    onClick={async () => {
-                      const updated = await patchCheck(detail._id, { verify: true });
-                      if (updated) toast.success(t("verdictSaved"));
-                    }}
-                  >
-                    {t("recordVerdict")}
-                  </Button>
-                )}
-                {detail.verifiedBy && (
-                  <p className="text-xs text-muted-foreground">
-                    {t("verifiedBy", { name: detail.verifiedBy.name ?? detail.verifiedBy.email ?? "" })}
-                    {detail.verifiedAt ? ` · ${formatDate(new Date(detail.verifiedAt), { day: "2-digit", month: "short", year: "numeric" }, locale)}` : ""}
-                  </p>
-                )}
-
-                {detail.references.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>{t("fields.references")}</Label>
-                    {detail.references.map((ref, i) => (
-                      <div key={i} className="rounded-xl border border-border/60 space-y-2 chip-pad">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium">{ref.name}</p>
-                            <p className="text-xs text-muted-foreground">{[ref.relationship, ref.company].filter(Boolean).join(" · ")}</p>
-                          </div>
-                          <Badge variant="outline">{t(`refStatus.${ref.status}`)}</Badge>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {(["requested", "responded", "declined"] as RefStatus[]).map((rs) => (
-                            <Button key={rs} size="sm" variant="outline" className="rounded-lg text-xs" onClick={() => patchCheck(detail._id, { reference: { index: i, status: rs } })}>
-                              {t(`refStatus.${rs}`)}
-                            </Button>
-                          ))}
-                        </div>
-                        <Textarea
-                          defaultValue={ref.feedback}
-                          placeholder={t("fields.feedbackPlaceholder")}
-                          className="min-h-16 text-sm"
-                          onBlur={(e) => {
-                            if (e.target.value !== (ref.feedback ?? "")) {
-                              patchCheck(detail._id, { reference: { index: i, feedback: e.target.value } });
-                            }
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {(detail.checkType === "background" || detail.checkType === "both") && (
-                  <div className="field">
-                    <Label>{t("fields.backgroundResults")}</Label>
-                    <Textarea
-                      defaultValue={detail.backgroundResults}
-                      placeholder={t("fields.backgroundResultsPlaceholder")}
-                      className="min-h-20"
-                      onBlur={(e) => {
-                        if (e.target.value !== (detail.backgroundResults ?? "")) {
-                          patchCheck(detail._id, { backgroundResults: e.target.value });
-                        }
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDetail(null)}>{t("close")}</Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <CheckDetailPanel
+        apiBase="/api/employer/background-checks"
+        checkId={openCheckId || null}
+        onClose={() => setOpenCheckId("")}
+        onChanged={() => void fetchChecks()}
+      />
     </div>
   );
 }

@@ -1,4 +1,11 @@
 import { currencyForCountry } from "@/lib/currency";
+import type { SupportItemType } from "@/lib/exhibitions/supportItems";
+
+export interface SupportItemFormInput {
+  item: SupportItemType;
+  label?: string; // For "other" type
+  requestedQty: string | number; // String from form, number from API
+}
 
 export interface AgentExhibitionFormState {
   eventName: string;
@@ -20,6 +27,8 @@ export interface AgentExhibitionFormState {
   expectedLeads: string;
   requiredResources: string[];
   priority: string;
+  supportItems: SupportItemFormInput[];
+  additionalRequirements: string;
 }
 
 export interface ExhibitionRequestTemplate {
@@ -48,6 +57,8 @@ export interface ExhibitionRequestLike {
   expectedLeads?: number;
   requiredResources?: string[];
   priority?: string;
+  supportItems?: SupportItemFormInput[];
+  additionalRequirements?: string;
 }
 
 export const EMPTY_AGENT_EXHIBITION_FORM: AgentExhibitionFormState = {
@@ -70,6 +81,8 @@ export const EMPTY_AGENT_EXHIBITION_FORM: AgentExhibitionFormState = {
   expectedLeads: "",
   requiredResources: [],
   priority: "medium",
+  supportItems: [],
+  additionalRequirements: "",
 };
 
 export const AGENT_EXHIBITION_TEMPLATES: ExhibitionRequestTemplate[] = [
@@ -235,5 +248,7 @@ export function createDuplicatedExhibitionForm(item: ExhibitionRequestLike): Age
     expectedLeads: item.expectedLeads?.toString() ?? "",
     requiredResources: [...(item.requiredResources ?? [])],
     priority: item.priority ?? EMPTY_AGENT_EXHIBITION_FORM.priority,
+    supportItems: [...(item.supportItems ?? [])],
+    additionalRequirements: item.additionalRequirements ?? "",
   };
 }

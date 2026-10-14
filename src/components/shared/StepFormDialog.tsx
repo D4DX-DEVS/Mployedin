@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode, type Ref } from "react";
 import { useTranslations } from "next-intl";
 import { AlertCircle, Loader2 } from "lucide-react";
 import {
@@ -41,6 +41,16 @@ interface StepFormDialogProps {
   submittingLabel: string;
   submitting: boolean;
   onSubmit: () => void;
+  /** Extra footer action on every step, before Back/Cancel — e.g. "Save as draft".
+   *  Bypasses step validation; the caller checks what it needs. */
+  footerStart?: ReactNode;
+  /** The dialog content node, for popovers that must portal inside the dialog. */
+  contentRef?: Ref<HTMLDivElement>;
+  /** Width override for the content, e.g. "sm:max-w-xl". */
+  className?: string;
+  /** One fixed dialog height for every step (from `sm`), so Next/Back and
+   *  fields that appear never resize it; a longer step scrolls its fields. */
+  equalStepHeights?: boolean;
 }
 
 /* The Add Employer dialog (CrudModal) is the reference: one column at 32rem,
@@ -60,6 +70,10 @@ export function StepFormDialog({
   submittingLabel,
   submitting,
   onSubmit,
+  footerStart,
+  contentRef,
+  className,
+  equalStepHeights = false,
 }: StepFormDialogProps) {
   const tc = useTranslations("common");
   const [step, setStep] = useState(0);
@@ -144,7 +158,7 @@ export function StepFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg flex flex-col max-h-[calc(100dvh-4rem)] p-0 overflow-hidden">
+      <DialogContent ref={contentRef} className={cn("sm:max-w-lg flex flex-col max-h-[calc(100dvh-4rem)] p-0 overflow-hidden", equalStepHeights && "sm:h-[min(45rem,calc(100dvh-4rem))]", className)}>
         <DialogHeader className="shrink-0 px-14 pt-6 pb-0 sm:ps-6 sm:pe-14">
           <DialogTitle>{title}</DialogTitle>
           {description ? (
@@ -181,7 +195,9 @@ export function StepFormDialog({
         )}
 
         <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-1 flex-col">
-          <div ref={bodyRef} className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+          {/* `relative`: Radix checkboxes' hidden inputs are absolutely positioned
+              and would otherwise stretch the dialog past this scroll box. */}
+          <div ref={bodyRef} className="relative flex-1 space-y-4 overflow-y-auto px-6 py-4">
             {banner && (
               <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -192,6 +208,7 @@ export function StepFormDialog({
           </div>
 
           <DialogFooter className="shrink-0 border-t border-border/50 px-6 py-4">
+            {footerStart && <div className="sm:me-auto">{footerStart}</div>}
             {current === 0 ? (
               <Button key="cancel" type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
                 {tc("cancel")}

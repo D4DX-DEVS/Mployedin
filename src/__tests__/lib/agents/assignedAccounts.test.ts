@@ -55,6 +55,8 @@ it("lists the assigned accounts with their numbers, busiest first", async () => 
   // The same set as the "Assigned to me" list the tile opens: a deactivated
   // login is still an assigned account, flagged rather than hidden.
   expect(result.total).toBe(3);
+  // The dashboard's "Active employers" tile: active logins only.
+  expect(result.active).toBe(2);
   expect(result.rows).toEqual([
     { employerId: String(busy._id), companyName: "Busy Co", isActive: true, openJobs: 4, newApplicants: 3, upcomingInterviews: 2, hires: 0 },
     { employerId: String(quiet._id), companyName: "Quiet Co", isActive: true, openJobs: 1, newApplicants: 0, upcomingInterviews: 0, hires: 1 },
@@ -90,7 +92,7 @@ it("caps the rows but keeps the full count", async () => {
 });
 
 it("does no reads for an agent with nothing assigned", async () => {
-  await expect(loadAssignedAccounts([], NOW)).resolves.toEqual({ total: 0, rows: [] });
+  await expect(loadAssignedAccounts([], NOW)).resolves.toEqual({ total: 0, active: 0, rows: [] });
   expect(employerFind).not.toHaveBeenCalled();
 });
 

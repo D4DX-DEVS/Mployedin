@@ -4,134 +4,108 @@ import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import BackgroundCheck from "@/models/BackgroundCheck";
 import { validateBody } from "@/lib/validators";
-import { backgroundCheckUpdateSchema } from "@/lib/validators/backgroundChecks";
-import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { backgroundCheckActionSchema } from "@/lib/validators/backgroundChecks";
+import { actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
-import type { UserRole } from "@/models/User";
+import { runCheckAction, type CheckActor } from "@/lib/backgroundChecks/workflow";
+import { recordCheckEvent } from "@/lib/backgroundChecks/history";
+import { loadCheckDetail, type CheckDetail } from "@/lib/backgroundChecks/detail";
+import { assignablePeople, notifyAssignee, notifyCompleted } from "@/lib/backgroundChecks/people";
+import logger from "@/lib/logger";
 
-interface AuthCtx {
-  userId: string;
-  role: UserRole;
-  locale: string;
-  /** Present when the caller is a colleague borrowing the owner's workspace. */
-  member?: AuthContext["member"];
+interface EmployerDoc { _id: unknown; userId: unknown; agentId?: unknown; companyName?: string }
+
+/**
+ * The real person behind the request. ctx.userId is the company owner even
+ * when a colleague (ctx.member) or a staff member in tenant view is calling.
+ */
+function employerActor(ctx: AuthContext): CheckActor {
+  return {
+    userId: ctx.tenantView?.actorId ?? ctx.member?.actorId ?? ctx.userId,
+    side: "employer",
+    canManage: !ctx.member || ctx.member.permissions.canManageTeam === true,
+    // The route itself is gated on canRunScreening for colleagues.
+    canPerform: true,
+  };
+}
+
+type Scope = { ok: false; error: NextResponse } | { ok: true; emp: EmployerDoc; jobId: unknown; id: string };
+
+async function loadScope(ctx: AuthContext, id: string | undefined): Promise<Scope> {
+  if (!isValidObjectId(id)) return { ok: false, error: NextResponse.json({ error: "Invalid ID" }, { status: 400 }) };
+  await connectDB();
+  const emp = (await Employer.findOne({ userId: ctx.userId }).select("_id userId agentId companyName").lean()) as EmployerDoc | null;
+  if (!emp) return { ok: false, error: NextResponse.json({ error: "Employer profile not found" }, { status: 404 }) };
+  const stub = (await BackgroundCheck.findOne({ _id: id, employerId: emp._id }).select("jobId").lean()) as { jobId?: unknown } | null;
+  if (!stub) return { ok: false, error: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+  return { ok: true, emp, jobId: stub.jobId, id: id as string };
+}
+
+async function detailFor(id: string, emp: EmployerDoc, jobId: unknown, actor: CheckActor): Promise<CheckDetail | null> {
+  const people = actor.canManage ? await assignablePeople(emp, jobId) : [];
+  return loadCheckDetail({ filter: { _id: id, employerId: emp._id }, actor, includeNotes: true, assignable: people });
 }
 
 /**
- * GET /api/employer/background-checks/[id] (FG-7) — single check detail.
+ * GET /api/employer/background-checks/[id] — one check with its activity
+ * history, who may be handed it, and what this viewer may do with it.
  */
-async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
-  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-  await connectDB();
-  const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-  if (!emp) return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
-
-  const check = await BackgroundCheck.findById(params?.id)
-    .populate({ path: "jobSeekerId", select: "fullName userId", populate: { path: "userId", select: "name" } })
-    .populate({ path: "jobId", select: "title" })
-    .lean();
-  if (!check) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (String((check as { employerId: unknown }).employerId) !== String((emp as { _id: unknown })._id)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  return NextResponse.json({ check });
+async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
+  const scope = await loadScope(ctx, params?.id);
+  if (!scope.ok) return scope.error;
+  const detail = await detailFor(scope.id, scope.emp, scope.jobId, employerActor(ctx));
+  if (!detail) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(detail);
 }
 
 /**
- * PATCH /api/employer/background-checks/[id] (FG-7)
- * Update overall status/outcome, background results, or a single reference's
- * response (status + feedback). Auto-stamps completedAt when marked completed.
+ * PATCH /api/employer/background-checks/[id] — one action on the check
+ * (start, progress, complete, assign, cancel, notes). The rules for each live
+ * in src/lib/backgroundChecks/workflow.ts and are shared with the agent route.
  */
-async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {
-  if (!isValidObjectId(params?.id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-  await connectDB();
-  const emp = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-  if (!emp) return NextResponse.json({ error: "Employer profile not found" }, { status: 404 });
+async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
+  const scope = await loadScope(ctx, params?.id);
+  if (!scope.ok) return scope.error;
+  const { emp, jobId, id } = scope;
+  const actor = employerActor(ctx);
+  const body = await validateBody(req, backgroundCheckActionSchema);
 
-  const check = await BackgroundCheck.findById(params?.id);
-  if (!check) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (String(check.employerId) !== String((emp as { _id: unknown })._id)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const people = body.action === "assign" ? await assignablePeople(emp, jobId) : [];
+  const result = await runCheckAction({
+    checkId: id,
+    scope: { employerId: emp._id },
+    actor,
+    body,
+    assignable: async () => new Set(people.map((p) => p._id)),
+  });
+  if (!result.ok) return NextResponse.json({ error: result.error, code: result.code }, { status: result.status });
+
+  if (result.event) {
+    await recordCheckEvent({ checkId: id, event: result.event, actor: actorFromCtx(ctx), req });
   }
 
-  const body = await validateBody(req, backgroundCheckUpdateSchema);
+  const detail = await detailFor(id, emp, jobId, actor);
+  if (!detail) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // ctx.userId is the company owner even when a colleague is calling, so the
-  // real person is ctx.member.actorId when a member context is present.
-  const actorId = ctx.member?.actorId ?? ctx.userId;
-  const canManage = !ctx.member || ctx.member.permissions.canManageTeam === true;
-
-  if (body.assignedTo !== undefined) {
-    if (!canManage) {
-      return NextResponse.json(
-        { error: "Only the account owner or a team manager can assign a check." },
-        { status: 403 }
-      );
+  const check = detail.check as {
+    jobId?: { title?: string } | null;
+    createdBy?: { _id: unknown } | null;
+    verifiedBy?: { name?: string; email?: string } | null;
+  };
+  const notice = { checkId: id, actorId: actor.userId, jobTitle: check.jobId?.title ?? "", companyName: emp.companyName ?? "" };
+  if (body.action === "assign" && body.assignedTo && result.event) {
+    const person = people.find((p) => p._id === body.assignedTo);
+    if (person) {
+      notifyAssignee(person, notice).catch((err) => logger.error({ err, checkId: id }, "[background-checks] assign notice failed"));
     }
-    check.assignedTo = (body.assignedTo || undefined) as typeof check.assignedTo;
-    check.assignedBy = actorId as unknown as typeof check.assignedBy;
-    check.assignedAt = new Date();
+  }
+  if (body.action === "complete") {
+    const performerName = check.verifiedBy?.name || check.verifiedBy?.email || "";
+    notifyCompleted([emp.userId, check.createdBy?._id], { ...notice, performerName })
+      .catch((err) => logger.error({ err, checkId: id }, "[background-checks] completion notice failed"));
   }
 
-  if (body.verify === true) {
-    // The verdict belongs to whoever holds the check. A manager can always
-    // record one, and an unassigned check is open to anyone who got this far.
-    const assigned = check.assignedTo ? String(check.assignedTo) : null;
-    if (assigned !== null && assigned !== String(actorId) && !canManage) {
-      return NextResponse.json(
-        { error: "This check is assigned to somebody else." },
-        { status: 403 }
-      );
-    }
-    check.status = "completed";
-    if (!check.completedAt) check.completedAt = new Date();
-    check.verifiedBy = actorId as unknown as typeof check.verifiedBy;
-    check.verifiedAt = new Date();
-  }
-
-  if (body.status) {
-    check.status = body.status;
-    if (body.status === "completed" && !check.completedAt) check.completedAt = new Date();
-  }
-  if (body.outcome) check.outcome = body.outcome;
-  if (body.backgroundResults !== undefined) check.backgroundResults = body.backgroundResults;
-  if (body.backgroundNotes !== undefined) check.backgroundNotes = body.backgroundNotes;
-
-  if (body.reference) {
-    const ref = check.references[body.reference.index];
-    if (!ref) return NextResponse.json({ error: "Reference not found" }, { status: 404 });
-    if (body.reference.status) {
-      ref.status = body.reference.status;
-      if (body.reference.status === "responded") ref.respondedAt = new Date();
-    }
-    if (body.reference.feedback !== undefined) ref.feedback = body.reference.feedback;
-    check.markModified("references");
-  }
-
-  await check.save();
-
-  await logActivity({
-    ...actorFromCtx(ctx),
-    action:
-      body.verify === true
-        ? "background_check.verify"
-        : body.assignedTo !== undefined
-          ? "background_check.assign"
-          : "background_check.update",
-    resource: "applications",
-    resourceId: String(check._id),
-    req,
-  }).catch(() => { /* non-blocking */ });
-
-  // Re-fetch with population so the client keeps candidate/job context after update.
-  const populated = await BackgroundCheck.findById(check._id)
-    .populate({ path: "jobSeekerId", select: "fullName userId", populate: { path: "userId", select: "name" } })
-    .populate({ path: "jobId", select: "title" })
-    .populate({ path: "assignedTo", select: "name email" })
-    .populate({ path: "verifiedBy", select: "name email" })
-    .lean();
-
-  return NextResponse.json({ check: populated ?? check });
+  return NextResponse.json(detail);
 }
 
 export const GET = withAuth(getHandler, { resource: "applications", action: "read" });

@@ -1,11 +1,6 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -20,166 +15,29 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  CalendarDays, Clock, Inbox, MapPin, Mail,
-  ThumbsUp, ThumbsDown, Eye,
-  RotateCcw,
+  CalendarDays, CheckCircle2, Clock, Inbox, MapPin, Mail,
+  ThumbsUp, ThumbsDown, Eye, RotateCcw, XCircle,
 } from "lucide-react";
+import { SortableTableHeader } from "@/components/shared/TableSortControl";
+import { ExhibitionMobileList } from "./_components/ExhibitionMobileList";
+import { ExhibitionDetailDialog } from "./_components/ExhibitionDetailDialog";
+import { ExhibitionReviewDialog } from "./_components/ExhibitionReviewDialog";
+import {
+  PRIORITY_COLORS, STATUS_COLORS,
+  getCategoryLabels, getPriorityLabels, getStatusLabels,
+  hasBudget, locationText, reviewActionsFor,
+  type ExhibitionRequest, type ReviewAction,
+} from "./_lib/exhibitions";
+import { SupportItemChips } from "@/components/features/exhibitions/SupportItemsSummary";
 import { exhibitionFiltersAreActive } from "@/components/features/exhibitions/ExhibitionHeroFilters";
-import { csrfFetch } from "@/lib/security/csrf-client";
 import { useTranslations, useLocale } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilters } from "@/hooks/useUrlFilter";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { ApprovalTimeline } from "@/components/features/exhibitions/ApprovalTimeline";
 import { SuperAgentSection } from "@/components/features/super-agent/WorkspacePage";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-interface ExhibitionRequest {
-  _id: string;
-  agentId: { _id: string; name: string; email: string };
-  eventName: string;
-  eventCategory: string;
-  eventLocation: string;
-  venue?: string;
-  country?: string;
-  eventStartDate: string;
-  eventEndDate: string;
-  organizerName?: string;
-  participationTypes: string[];
-  participationDetails?: string;
-  objectives: string[];
-  estimatedBudget: number;
-  /** Advisory figure from this role's operational approval; admin sets the binding one. */
-  recommendedBudget?: number;
-  approvedBudget?: number;
-  budgetBreakdown?: { travel: number; accommodation: number; marketingMaterial: number; stallCost: number; miscellaneous: number };
-  budgetCurrency: string;
-  description?: string;
-  executionPlan?: string;
-  expectedOutcome?: string;
-  expectedLeads?: number;
-  requiredResources: string[];
-  priority: string;
-  status: string;
-  reviewedBy?: { _id: string; name: string };
-  reviewedAt?: string;
-  reviewNote?: string;
-  statusHistory?: { status: string; changedAt: string; changedBy?: { _id: string; name: string }; note?: string; approverRole?: string; statusReason?: string }[];
-  createdAt: string;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Constants                                                          */
-/* ------------------------------------------------------------------ */
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700",
-  submitted: "bg-blue-100 text-blue-800",
-  under_review: "bg-amber-100 text-amber-800",
-  approved: "bg-emerald-100 text-emerald-800",
-  revision_requested: "bg-orange-100 text-orange-800",
-  budget_approved: "bg-teal-100 text-teal-800",
-  resources_assigned: "bg-indigo-100 text-indigo-800",
-  active: "bg-purple-100 text-purple-800",
-  completed: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
-  archived: "bg-slate-100 text-slate-600",
-};
-
-const STATUS_LABEL_KEYS: Record<string, string> = {
-  draft: "statusDraft", submitted: "statusSubmitted", under_review: "statusUnderReview",
-  approved: "statusApproved", revision_requested: "statusRevisionRequested",
-  budget_approved: "statusBudgetApproved", resources_assigned: "statusResourcesAssigned",
-  active: "statusActive", completed: "statusCompleted", rejected: "statusRejected", archived: "statusArchived",
-};
-
-// Helper to resolve status labels with translations
-function getStatusLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(STATUS_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
-  );
-}
-
-const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-gray-100 text-gray-600",
-  medium: "bg-blue-100 text-blue-700",
-  high: "bg-orange-100 text-orange-700",
-  critical: "bg-red-100 text-red-700",
-};
-
-const PRIORITY_LABEL_KEYS: Record<string, string> = {
-  low: "priorityLow", medium: "priorityMedium",
-  high: "priorityHigh", critical: "priorityCritical",
-};
-
-// Helper to resolve priority labels with translations
-function getPriorityLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(PRIORITY_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
-  );
-}
-
-const CATEGORY_LABEL_KEYS: Record<string, string> = {
-  career_fair: "categoryCareerFair", recruitment_expo: "categoryRecruitmentExpo",
-  employer_branding: "categoryEmployerBranding", hiring_drive: "categoryHiringDrive",
-  university_event: "categoryUniversityEvent", gcc_recruitment: "categoryGccRecruitment",
-  job_fair: "categoryJobFair", other: "categoryOther",
-};
-
-// Helper to resolve category labels with translations
-function getCategoryLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(CATEGORY_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
-  );
-}
-
-const OBJECTIVE_LABEL_KEYS: Record<string, string> = {
-  employer_acquisition: "objectiveEmployerAcquisition", candidate_sourcing: "objectiveCandidateSourcing",
-  brand_awareness: "objectiveBrandAwareness", lead_generation: "objectiveLeadGeneration",
-  direct_hiring: "objectiveDirectHiring", market_expansion: "objectiveMarketExpansion",
-};
-
-// Helper to resolve objective labels with translations
-function getObjectiveLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(OBJECTIVE_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
-  );
-}
-
-const RESOURCE_LABEL_KEYS: Record<string, string> = {
-  brochures: "resourceBrochures", standee: "resourceStandee", flyers: "resourceFlyers",
-  presentation_deck: "resourcePresentationDeck", employer_catalog: "resourceEmployerCatalog",
-  candidate_forms: "resourceCandidateForms", branding_banners: "resourceBrandingBanners",
-  video_assets: "resourceVideoAssets", business_cards: "resourceBusinessCards", booth_design: "resourceBoothDesign",
-};
-
-// Helper to resolve resource labels with translations
-function getResourceLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(RESOURCE_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
-  );
-}
-
-const PARTICIPATION_LABEL_KEYS: Record<string, string> = {
-  standee: "participationStandee", stall: "participationStall", booth: "participationBooth", sponsorship: "participationSponsorship",
-  flyers: "participationFlyers", recruitment_desk: "participationRecruitmentDesk", branding_package: "participationBrandingPackage", other: "participationOther",
-};
-
-// Helper to resolve participation labels with translations
-function getParticipationLabels(t: ReturnType<typeof useTranslations>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(PARTICIPATION_LABEL_KEYS).map(([key, labelKey]) => [key, t(labelKey)])
-  );
-}
 
 // Helper to create status options with translations
 function getStatusOptions(t: ReturnType<typeof useTranslations>, allLabel: string) {
@@ -189,9 +47,11 @@ function getStatusOptions(t: ReturnType<typeof useTranslations>, allLabel: strin
     { value: "pending_review", label: t("statusPendingReview") },
     { value: "submitted", label: statusLabels.submitted },
     { value: "under_review", label: statusLabels.under_review },
+    { value: "approved_stage", label: t("statusApprovedStage") },
     { value: "approved", label: statusLabels.approved },
     { value: "revision_requested", label: statusLabels.revision_requested },
     { value: "budget_approved", label: statusLabels.budget_approved },
+    { value: "resources_assigned", label: statusLabels.resources_assigned },
     { value: "active", label: statusLabels.active },
     { value: "completed", label: statusLabels.completed },
     { value: "rejected", label: statusLabels.rejected },
@@ -219,21 +79,34 @@ function getCategoryOptions(t: ReturnType<typeof useTranslations>, allLabel: str
   ];
 }
 
+interface QueueSummary {
+  total: number;
+  pendingReview: number;
+  approved: number;
+  revisionRequested: number;
+  rejected: number;
+}
+
+const EMPTY_SUMMARY: QueueSummary = { total: 0, pendingReview: 0, approved: 0, revisionRequested: 0, rejected: 0 };
+
+const ACTION_ICONS: Record<ReviewAction, { icon: typeof Clock; className: string; labelKey: string }> = {
+  under_review: { icon: Clock, className: "text-amber-600", labelKey: "actionReview" },
+  approved: { icon: ThumbsUp, className: "text-emerald-600", labelKey: "actionApprove" },
+  revision_requested: { icon: RotateCcw, className: "text-orange-600", labelKey: "actionRevise" },
+  rejected: { icon: ThumbsDown, className: "", labelKey: "actionReject" },
+};
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
 export default function SuperAgentExhibitionsPage() {
   const t = useTranslations("exhibitions");
-  const tc = useTranslations("common");
   const tf = useTranslations("exhibitionHeroFilters");
   const locale = useLocale();
   const statusLabels = getStatusLabels(t);
   const priorityLabels = getPriorityLabels(t);
   const categoryLabels = getCategoryLabels(t);
-  const objectiveLabels = getObjectiveLabels(t);
-  const resourceLabels = getResourceLabels(t);
-  const participationLabels = getParticipationLabels(t);
   const statusOptions = getStatusOptions(t, tf("allStatuses"));
   const priorityOptions = getPriorityOptions(t, tf("allPriorities"));
   const categoryOptions = getCategoryOptions(t, tf("allCategories"));
@@ -243,25 +116,31 @@ export default function SuperAgentExhibitionsPage() {
   } = usePagination();
 
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
-  // Queue depth comes from the API's scope-wide aggregate. Counting `items`
-  // only ever saw the current page, so the header under-reported past page 1.
-  const [pendingReview, setPendingReview] = useState(0);
+  // Queue figures come from the API's scope-wide aggregate (the whole team,
+  // not the filtered page), so they do not move when a filter is applied.
+  const [summary, setSummary] = useState<QueueSummary>(EMPTY_SUMMARY);
+  const [countries, setCountries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
   const { filters, setFilter, resetFilters } = useUrlFilters(
-    { status: "all", priority: "all", category: "all", search: "" },
+    // Sort: newest request first by default — this is a review queue, and new
+    // submissions are the work. "Exhibition date" ascending puts the soonest
+    // events on top (undated ones always last — see the API).
+    { status: "all", priority: "all", category: "all", country: "all", search: "", sortBy: "createdAt", sortOrder: "desc" },
     { debounceKeys: ["search"], debounceMs: 400 }
   );
+  const toggleSort = (field: "eventStartDate" | "createdAt") => {
+    if (filters.sortBy === field) setFilter("sortOrder", filters.sortOrder === "asc" ? "desc" : "asc");
+    else {
+      setFilter("sortBy", field);
+      // Exhibition date opens soonest-first; created opens newest-first.
+      setFilter("sortOrder", field === "eventStartDate" ? "asc" : "desc");
+    }
+    resetPage();
+  };
 
-  // Review dialog
-  const [reviewItem, setReviewItem] = useState<ExhibitionRequest | null>(null);
-  const [reviewAction, setReviewAction] = useState<string>("");
-  const [reviewNote, setReviewNote] = useState("");
-  const [approvedBudget, setApprovedBudget] = useState("");
-  const [budgetError, setBudgetError] = useState("");
-
-  // Detail dialog
+  const [review, setReview] = useState<{ item: ExhibitionRequest; action: ReviewAction } | null>(null);
   const [detailItem, setDetailItem] = useState<ExhibitionRequest | null>(null);
   // BUG-09: sidebar badge reads /api/super-agent/action-counts (60s stale).
   // Invalidate it on approve/reject/revise so the badge drops with the queue.
@@ -275,58 +154,31 @@ export default function SuperAgentExhibitionsPage() {
       if (filters.status !== "all") params.set("status", filters.status);
       if (filters.priority !== "all") params.set("priority", filters.priority);
       if (filters.category !== "all") params.set("category", filters.category);
+      if (filters.country !== "all") params.set("country", filters.country);
       if (filters.search.trim()) params.set("search", filters.search.trim());
+      params.set("sortBy", filters.sortBy === "eventStartDate" ? "eventStartDate" : "createdAt");
+      params.set("sortOrder", filters.sortOrder === "asc" ? "asc" : "desc");
       const res = await fetch(`/api/exhibitions?${params}`);
       if (res.ok) {
         const data = await res.json();
         setItems(data.items ?? []);
-        setPendingReview(data.summary?.pendingReview ?? 0);
+        setSummary({ ...EMPTY_SUMMARY, ...(data.summary ?? {}) });
+        setCountries(Array.isArray(data.countries) ? data.countries : []);
         updateTotal(data.total ?? 0);
       } else {
         setLoadError(true);
       }
     } catch { setLoadError(true); } finally { setLoading(false); }
-  }, [filters, t, page, limit, paginationParams, updateTotal]);
+  }, [filters, page, limit, paginationParams, updateTotal]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const handleReview = async () => {
-    if (!reviewItem || !reviewAction) return;
-    try {
-      const trimmedNote = reviewNote.trim() || undefined;
-      const payload: Record<string, unknown> = { status: reviewAction, reviewNote: trimmedNote, statusReason: trimmedNote };
-      if (approvedBudget) {
-        // The server rejects these too; catching them here means the dialog
-        // stays open on the offending field instead of closing on a failure.
-        const parsed = Number(approvedBudget);
-        if (!Number.isFinite(parsed) || parsed < 0) {
-          setBudgetError(t("reviewBudgetInvalid"));
-          return;
-        }
-        payload.approvedBudget = parsed;
-      }
-      const res = await csrfFetch(`/api/exhibitions/${reviewItem._id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        const actionMap: Record<string, string> = {
-          rejected: "toastExhibitionRejected",
-          revision_requested: "toastExhibitionRevisionRequested",
-          approved: "toastExhibitionApproved",
-        };
-        toast.success(t(actionMap[reviewAction] || "toastExhibitionApproved"));
-        setReviewItem(null); setReviewNote(""); setApprovedBudget(""); setBudgetError(""); fetchItems();
-        void queryClient.invalidateQueries({ queryKey: ["super-agent", "action-counts"] });
-      } else { const err = await res.json(); toast.error(err.error ?? t("errorUpdatingExhibition")); }
-    } catch { toast.error(t("errorUpdatingExhibition")); }
-  };
-
-  const openReview = (item: ExhibitionRequest, action: string) => {
-    setReviewItem(item); setReviewAction(action); setReviewNote(""); setBudgetError("");
-    // Prefill this role's own previous recommendation, not the admin's binding
-    // figure — the dialog writes a recommendation and must not look like it is
-    // about to overwrite an approved budget.
-    setApprovedBudget(item.recommendedBudget?.toString() ?? item.estimatedBudget?.toString() ?? "");
+  const openReview = (item: ExhibitionRequest, action: ReviewAction) => setReview({ item, action });
+  const afterReview = () => {
+    setReview(null);
+    setDetailItem(null);
+    void fetchItems();
+    void queryClient.invalidateQueries({ queryKey: ["super-agent", "action-counts"] });
   };
 
   const fmtDate = (d: string | undefined | null) => formatDate(d, { day: "2-digit", month: "short", year: "numeric" }, locale);
@@ -338,24 +190,55 @@ export default function SuperAgentExhibitionsPage() {
     return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1);
   };
 
-  const hasActiveFilters = exhibitionFiltersAreActive(filters.search, filters.status, filters.priority, filters.category);
+  // One primary action plus an overflow menu — the same on the desktop row,
+  // the phone card and the detail footer (all read reviewActionsFor).
+  const renderRowActions = (item: ExhibitionRequest, labelsFrom: "widest" | "always" = "widest") => {
+    const { primary, secondary } = reviewActionsFor(item.status);
+    const entry = (action: ReviewAction) => ({
+      key: action,
+      label: t(ACTION_ICONS[action].labelKey),
+      icon: ACTION_ICONS[action].icon,
+      iconClassName: ACTION_ICONS[action].className || undefined,
+      destructive: action === "rejected" || undefined,
+      onSelect: () => openReview(item, action),
+    });
+    return (
+      <RowActions
+        name={item.eventName}
+        labelsFrom={labelsFrom}
+        quick={[
+          { key: "view", label: t("viewDetails"), icon: Eye, iconOnly: true, onSelect: () => setDetailItem(item) },
+          ...(primary ? [entry(primary)] : []),
+        ]}
+        menu={secondary.map(entry)}
+      />
+    );
+  };
+
+  const hasActiveFilters =
+    exhibitionFiltersAreActive(filters.search, filters.status, filters.priority, filters.category) || filters.country !== "all";
   // A narrower filter on page 3 used to stay on page 3 and show an empty list.
-  const applyFilter = (key: "search" | "status" | "priority" | "category", value: string) => {
+  const applyFilter = (key: "search" | "status" | "priority" | "category" | "country", value: string) => {
     setFilter(key, value);
     resetPage();
   };
+  const countryOptions = useMemo(
+    () => [{ value: "all", label: tf("allCountries") }, ...countries.map((c) => ({ value: c, label: c }))],
+    [countries, tf],
+  );
 
   const exportColumns = useMemo<ExportColumn<ExhibitionRequest>[]>(() => [
     { header: t("tableHeaderEvent"), key: "eventName" },
     { header: t("tableHeaderCategory"), key: "eventCategory", formatter: (_v, row) => categoryLabels[row.eventCategory] ?? row.eventCategory },
-    { header: t("tableHeaderLocation"), key: "eventLocation", formatter: (_v, row) => [row.eventLocation, row.country].filter(Boolean).join(", ") },
+    { header: t("tableHeaderLocation"), key: "eventLocation", formatter: (_v, row) => locationText(row) || t("notSpecified") },
     { header: t("tableHeaderAgent"), key: "agentId", formatter: (_v, row) => row.agentId?.name ?? "" },
     { header: t("tableHeaderStatus"), key: "status", formatter: (_v, row) => statusLabels[row.status] ?? row.status },
     { header: t("tableHeaderPriority"), key: "priority", formatter: (_v, row) => priorityLabels[row.priority] ?? row.priority },
-    { header: t("tableHeaderDates"), key: "eventStartDate", formatter: (_v, row) => `${fmtDate(row.eventStartDate)} – ${fmtDate(row.eventEndDate)}` },
-    { header: t("tableHeaderBudget"), key: "estimatedBudget", formatter: (_v, row) => `${row.budgetCurrency} ${formatCount(row.estimatedBudget)}` },
+    { header: t("tableHeaderExhibitionDate"), key: "eventStartDate", formatter: (_v, row) => row.eventStartDate ? [fmtDate(row.eventStartDate), row.eventEndDate ? fmtDate(row.eventEndDate) : ""].filter(Boolean).join(" – ") : t("tableNoDate") },
+    { header: t("requestedSupport"), key: "supportItems", formatter: (_v, row) => (row.supportItems ?? []).map((s) => `${s.item === "other" && s.label ? s.label : s.item} x${s.requestedQty}`).join(", ") },
+    { header: t("tableHeaderBudget"), key: "estimatedBudget", formatter: (_v, row) => hasBudget(row.estimatedBudget) ? `${row.budgetCurrency} ${formatCount(row.estimatedBudget)}` : t("notSpecified") },
     { header: t("detailBudgetApproved"), key: "approvedBudget", formatter: (_v, row) => typeof row.approvedBudget === "number" ? `${row.budgetCurrency} ${formatCount(row.approvedBudget)}` : "" },
-    { header: t("detailSubmitted"), key: "createdAt", formatter: (_v, row) => fmtDate(row.createdAt) },
+    { header: t("tableHeaderCreated"), key: "createdAt", formatter: (_v, row) => fmtDate(row.createdAt) },
   ], [t, locale]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: items as unknown as Record<string, unknown>[],
@@ -364,13 +247,28 @@ export default function SuperAgentExhibitionsPage() {
     title: t("exhibitionManagement"),
   });
 
+  // Each figure opens the matching slice of the queue; clicking the active one clears it.
+  const metric = (status: string, value: number) => ({
+    value: formatCount(value),
+    active: filters.status === status,
+    onClick: () => applyFilter("status", filters.status === status ? "all" : status),
+  });
+
   return (
     <div className="page-container">
       <DashboardPageHeader
         icon={CalendarDays}
         title={t("exhibitionManagement")}
         description={t("exhibitionManagementDesc")}
-        summary={{ label: t("queueHealth"), value: formatCount(pendingReview), note: t("queueHealthNote") }}
+        compactMetrics
+        metricsClassName="grid-cols-5"
+        metrics={[
+          { label: t("metricTotal"), shortLabel: t("metricTotalShort"), ...metric("all", summary.total), active: false, icon: Inbox, iconClassName: "text-muted-foreground", iconSurfaceClassName: "bg-muted" },
+          { label: t("queueHealthNote"), shortLabel: t("metricAwaitingShort"), ...metric("pending_review", summary.pendingReview), icon: Clock, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-100", className: "sm:bg-amber-50/70 sm:ring-1 sm:ring-inset sm:ring-amber-200" },
+          { label: t("metricApproved"), ...metric("approved_stage", summary.approved), icon: CheckCircle2, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-100" },
+          { label: t("metricRevision"), shortLabel: t("metricRevisionShort"), ...metric("revision_requested", summary.revisionRequested), icon: RotateCcw, iconClassName: "text-orange-600", iconSurfaceClassName: "bg-orange-100" },
+          { label: t("metricRejected"), ...metric("rejected", summary.rejected), icon: XCircle, iconClassName: "text-red-600", iconSurfaceClassName: "bg-red-100" },
+        ]}
       />
 
       {/* Filters sat in the page header behind a Show/Hide toggle, so the
@@ -409,29 +307,89 @@ export default function SuperAgentExhibitionsPage() {
             onValueChange={(v) => applyFilter("category", v)}
             placeholder={tf("allCategories")}
           />
+          {/* Only once the team works in more than one country — one option is not a filter. */}
+          {(countries.length > 1 || filters.country !== "all") && (
+            <SearchableSelect
+              id="sa-exhibitions-country"
+              className={INLINE_FILTER_CONTROL}
+              options={countryOptions}
+              value={filters.country}
+              onValueChange={(v) => applyFilter("country", v)}
+              placeholder={tf("allCountries")}
+            />
+          )}
+          {/* Below 1280px the queue is cards with no column headers to click: sort lives here. */}
+          <SearchableSelect
+            id="sa-exhibitions-sort"
+            className={`${INLINE_FILTER_CONTROL} xl:hidden`}
+            ariaLabel={t("sortLabel")}
+            options={[
+              { value: "createdAt:desc", label: t("sortNewestRequest") },
+              { value: "createdAt:asc", label: t("sortOldestRequest") },
+              { value: "eventStartDate:asc", label: t("sortExhibitionSoonest") },
+              { value: "eventStartDate:desc", label: t("sortExhibitionLatest") },
+            ]}
+            value={`${filters.sortBy}:${filters.sortOrder}`}
+            onValueChange={(v) => {
+              const [field, order] = v.split(":");
+              setFilter("sortBy", field);
+              setFilter("sortOrder", order);
+              resetPage();
+            }}
+            placeholder={t("sortNewestRequest")}
+          />
         </InlineFilterBar>
 
         {loadError ? (
           <ErrorState description={t("fetchError")} onRetry={() => void fetchItems()} />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <ExhibitionMobileList
+            items={items}
+            loading={loading}
+            statusLabels={statusLabels}
+            priorityLabels={priorityLabels}
+            categoryLabels={categoryLabels}
+            statusColors={STATUS_COLORS}
+            priorityColors={PRIORITY_COLORS}
+            fmtDate={fmtDate}
+            onOpen={setDetailItem}
+            renderActions={(item) => renderRowActions(item, "always")}
+          />
+          <div className="hidden overflow-x-auto xl:block">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("tableHeaderEvent")}</TableHead>
                   <TableHead>{t("tableHeaderStatus")}</TableHead>
                   <TableHead className="hidden md:table-cell">{t("tableHeaderAgent")}</TableHead>
-                  <TableHead className="hidden sm:table-cell">{t("tableHeaderDates")}</TableHead>
-                  <TableHead className="hidden lg:table-cell">{t("tableHeaderBudget")}</TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    <SortableTableHeader
+                      label={t("tableHeaderExhibitionDate")}
+                      active={filters.sortBy === "eventStartDate"}
+                      order={filters.sortOrder === "asc" ? "asc" : "desc"}
+                      onClick={() => toggleSort("eventStartDate")}
+                    />
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    <SortableTableHeader
+                      label={t("tableHeaderCreated")}
+                      active={filters.sortBy === "createdAt"}
+                      order={filters.sortOrder === "asc" ? "asc" : "desc"}
+                      onClick={() => toggleSort("createdAt")}
+                    />
+                  </TableHead>
+                  {/* Budget from 1440px: with both date columns the row did not fit at 1280; the budget stays in the detail and review dialogs. */}
+                  <TableHead className="hidden min-[90rem]:table-cell">{t("tableHeaderBudget")}</TableHead>
                   <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableBodySkeleton rows={5} cols={6} />
+                  <TableBodySkeleton rows={5} cols={7} />
                 ) : items.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={6} className="py-12">
+                    <TableCell colSpan={7} className="py-12">
                       <EmptyState title={t("noExhibitionRequestsFound")} description={t("tryAdjustingFiltersExhibitions")} icon={Inbox} />
                     </TableCell>
                   </TableRow>
@@ -461,14 +419,20 @@ export default function SuperAgentExhibitionsPage() {
                           <button type="button" onClick={(e) => { e.stopPropagation(); setDetailItem(item); }} className="line-clamp-2 text-start text-sm font-semibold leading-5 text-foreground hover:text-primary hover:underline">{item.eventName}</button>
                           <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
                             <span className="truncate">{categoryLabels[item.eventCategory] ?? item.eventCategory}</span>
-                            {item.eventLocation ? (
+                            {locationText(item) ? (
                               <span className="inline-flex min-w-0 items-center gap-1">
                                 <span aria-hidden="true">·</span>
                                 <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-                                <span className="truncate">{item.eventLocation}</span>
+                                <span className="truncate">{locationText(item)}</span>
                               </span>
                             ) : null}
                           </p>
+                          {/* What the agent asked for, at a glance: requested quantities only. */}
+                          {(item.supportItems?.length ?? 0) > 0 && (
+                            <div className="mt-1.5">
+                              <SupportItemChips items={item.supportItems!} />
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           {/* `whitespace-nowrap`: in a narrow column "Under Review"
@@ -481,11 +445,12 @@ export default function SuperAgentExhibitionsPage() {
                           {item.reviewedBy && <p className="mt-0.5 truncate text-[11px] leading-4 text-muted-foreground">{item.reviewedBy.name}</p>}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          <div className="flex min-w-0 items-center gap-2">
+                          <div className="flex min-w-0 max-w-[12rem] items-center gap-2">
                             <UserAvatar name={item.agentId?.name} email={item.agentId?.email} className="h-8 w-8 shrink-0" colorful />
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-medium leading-5">{item.agentId?.name}</p>
-                              <p className="flex items-center gap-1 truncate text-xs leading-4 text-muted-foreground">
+                              <p className="truncate text-sm font-medium leading-5" title={item.agentId?.email}>{item.agentId?.name}</p>
+                              {/* Email from 1536px only: seven columns did not fit beside it. */}
+                              <p className="hidden items-center gap-1 truncate text-xs leading-4 text-muted-foreground 2xl:flex">
                                 <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
                                 <span className="truncate">{item.agentId?.email}</span>
                               </p>
@@ -493,11 +458,29 @@ export default function SuperAgentExhibitionsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="hidden whitespace-nowrap sm:table-cell">
-                          <p className="text-xs font-medium">{fmtDate(item.eventStartDate)} – {fmtDate(item.eventEndDate)}</p>
-                          {days ? <p className="mt-0.5 text-[11px] text-muted-foreground">{t("tableDayCount", { count: days })}</p> : null}
+                          {item.eventStartDate ? (
+                            <>
+                              {/* Start on its own line, the end under it: a one-line
+                                  range was the widest cell once Created joined the row. */}
+                              <p className="text-xs font-medium">{fmtDate(item.eventStartDate)}</p>
+                              {item.eventEndDate && item.eventEndDate.slice(0, 10) !== item.eventStartDate.slice(0, 10) ? (
+                                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                  {t("tableDateUntil", { date: fmtDate(item.eventEndDate) })}
+                                  {days ? ` · ${t("tableDayCount", { count: days })}` : ""}
+                                </p>
+                              ) : null}
+                            </>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">{t("tableNoDate")}</p>
+                          )}
                         </TableCell>
-                        <TableCell className="hidden whitespace-nowrap lg:table-cell">
-                          <p className="text-sm font-medium">{item.budgetCurrency} {formatCount(item.estimatedBudget)}</p>
+                        <TableCell className="hidden whitespace-nowrap md:table-cell">
+                          <p className="text-xs">{fmtDate(item.createdAt)}</p>
+                        </TableCell>
+                        <TableCell className="hidden min-[90rem]:table-cell">
+                          {hasBudget(item.estimatedBudget)
+                            ? <p className="whitespace-nowrap text-sm font-medium">{item.budgetCurrency} {formatCount(item.estimatedBudget)}</p>
+                            : <p className="whitespace-nowrap text-xs text-muted-foreground">{t("notSpecified")}</p>}
                           {item.approvedBudget ? (
                             <p className="mt-0.5 text-[11px] font-medium text-emerald-600">{t("tableBudgetApprovedShort")} {item.budgetCurrency} {formatCount(item.approvedBudget)}</p>
                           ) : null}
@@ -510,20 +493,7 @@ export default function SuperAgentExhibitionsPage() {
                               the single biggest cost in the queue. Revise and Reject
                               are the rarer choices, so they move behind the menu. */}
                           <div className="flex flex-nowrap items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                            <RowActions
-                              name={item.eventName}
-                              quick={[
-                                { key: "view", label: t("viewDetails"), icon: Eye, iconOnly: true, onSelect: () => setDetailItem(item) },
-                                ...(item.status === "submitted" ? [{ key: "review", label: t("actionReview"), icon: Clock, iconClassName: "text-amber-600", onSelect: () => openReview(item, "under_review") }] : []),
-                                ...(item.status === "under_review" ? [{ key: "approve", label: t("actionApprove"), icon: ThumbsUp, iconClassName: "text-emerald-600", onSelect: () => openReview(item, "approved") }] : []),
-                              ]}
-                              menu={[
-                                ...(item.status === "under_review" ? [
-                                  { key: "revise", label: t("actionRevise"), icon: RotateCcw, iconClassName: "text-orange-600", onSelect: () => openReview(item, "revision_requested") },
-                                  { key: "reject", label: t("actionReject"), icon: ThumbsDown, destructive: true, onSelect: () => openReview(item, "rejected") },
-                                ] : []),
-                              ]}
-                            />
+                            {renderRowActions(item)}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -533,6 +503,7 @@ export default function SuperAgentExhibitionsPage() {
               </TableBody>
             </Table>
           </div>
+          </>
         )}
       </SuperAgentSection>
       <PaginationControls
@@ -544,110 +515,13 @@ export default function SuperAgentExhibitionsPage() {
         onLimitChange={setLimit}
       />
 
-      {/* Detail Modal */}
-      <Dialog open={!!detailItem} onOpenChange={() => setDetailItem(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          {detailItem && (<>
-            <DialogHeader className="pe-10">
-              <DialogTitle className="flex flex-wrap items-center gap-2">{detailItem.eventName}<Badge className={STATUS_COLORS[detailItem.status]}>{statusLabels[detailItem.status]}</Badge><Badge className={PRIORITY_COLORS[detailItem.priority] ?? PRIORITY_COLORS.medium}>{priorityLabels[detailItem.priority] ?? detailItem.priority}</Badge></DialogTitle>
-              <DialogDescription>{categoryLabels[detailItem.eventCategory]} · {detailItem.eventLocation} {detailItem.country ? `· ${detailItem.country}` : ""}</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 text-sm">
-              {/* Everything the queue row no longer shows lives here: the
-                  table was 12 columns wide and scrolled sideways, so it now
-                  carries only what a reviewer scans, and this panel carries
-                  the full request. */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div><span className="text-muted-foreground">{t("detailAgent")}:</span> <strong>{detailItem.agentId?.name}</strong>{detailItem.agentId?.email ? <span className="block text-xs text-muted-foreground">{detailItem.agentId.email}</span> : null}</div>
-                <div><span className="text-muted-foreground">{t("tableHeaderLocation")}:</span> {[detailItem.eventLocation, detailItem.country].filter(Boolean).join(` · `) || "—"}</div>
-                <div><span className="text-muted-foreground">{t("detailVenue")}:</span> {detailItem.venue ?? "—"}</div>
-                <div><span className="text-muted-foreground">{t("detailOrganizer")}:</span> {detailItem.organizerName ?? "—"}</div>
-                <div><span className="text-muted-foreground">{t("detailDates")}:</span> {fmtDate(detailItem.eventStartDate)}{detailItem.eventEndDate ? ` – ${fmtDate(detailItem.eventEndDate)}` : ""}{dayCount(detailItem.eventStartDate, detailItem.eventEndDate) ? ` (${dayCount(detailItem.eventStartDate, detailItem.eventEndDate)}d)` : ""}</div>
-                <div><span className="text-muted-foreground">{t("detailSubmitted")}:</span> {fmtDate(detailItem.createdAt)}</div>
-                <div><span className="text-muted-foreground">{t("detailBudgetRequested")}:</span> {detailItem.budgetCurrency} {formatCount(detailItem.estimatedBudget)}</div>
-                <div><span className="text-muted-foreground">{t("detailBudgetRecommended")}:</span> {typeof detailItem.recommendedBudget === "number" ? `${detailItem.budgetCurrency} ${formatCount(detailItem.recommendedBudget)}` : "—"}</div>
-                <div><span className="text-muted-foreground">{t("detailBudgetApproved")}:</span> {typeof detailItem.approvedBudget === "number" ? `${detailItem.budgetCurrency} ${formatCount(detailItem.approvedBudget)}` : "—"}</div>
-                <div><span className="text-muted-foreground">{t("detailExpectedLeads")}:</span> {detailItem.expectedLeads ?? "—"}</div>
-                <div><span className="text-muted-foreground">{t("detailReviewedBy")}:</span> {detailItem.reviewedBy?.name ?? "—"}{detailItem.reviewedAt ? ` · ${fmtDate(detailItem.reviewedAt)}` : ""}</div>
-              </div>
-
-              {detailItem.participationTypes?.length > 0 && (<div><p className="text-muted-foreground mb-1">{t("detailParticipation")}:</p><div className="flex flex-wrap gap-1">{detailItem.participationTypes.map((pt) => (<Badge key={pt} variant="outline">{participationLabels[pt] ?? pt}</Badge>))}</div>{detailItem.participationDetails ? <p className="mt-1 whitespace-pre-line text-sm">{detailItem.participationDetails}</p> : null}</div>)}
-              {detailItem.objectives?.length > 0 && (<div><p className="text-muted-foreground mb-1">{t("detailObjectives")}:</p><div className="flex flex-wrap gap-1">{detailItem.objectives.map((o) => (<Badge key={o} variant="outline">{objectiveLabels[o] ?? o}</Badge>))}</div></div>)}
-              {detailItem.requiredResources?.length > 0 && (<div><p className="text-muted-foreground mb-1">{t("detailRequiredResources")}:</p><div className="flex flex-wrap gap-1">{detailItem.requiredResources.map((r) => (<Badge key={r} variant="outline">{resourceLabels[r] ?? r}</Badge>))}</div></div>)}
-              {detailItem.budgetBreakdown && (<div><p className="text-muted-foreground mb-1">{t("detailBudgetBreakdown")}:</p><div className="grid grid-cols-3 gap-2">{Object.entries(detailItem.budgetBreakdown).map(([k, v]) => (<div key={k} className="rounded border p-2 text-center"><p className="text-xs text-muted-foreground capitalize">{k.replace(/([A-Z])/g, " $1")}</p><p className="font-semibold">{detailItem.budgetCurrency} {formatCount(v as number)}</p></div>))}</div></div>)}
-              {detailItem.description && <div><p className="text-muted-foreground">{t("detailDescription")}:</p><p className="whitespace-pre-line">{detailItem.description}</p></div>}
-              {detailItem.executionPlan && <div><p className="text-muted-foreground">{t("detailExecutionPlan")}:</p><p className="whitespace-pre-line">{detailItem.executionPlan}</p></div>}
-              {detailItem.expectedOutcome && <div><p className="text-muted-foreground">{t("detailExpectedOutcome")}:</p><p className="whitespace-pre-line">{detailItem.expectedOutcome}</p></div>}
-
-              {detailItem.reviewNote && <div><p className="text-muted-foreground">{t("detailReviewNote")}:</p><p className="whitespace-pre-line">{detailItem.reviewNote}</p></div>}
-
-              {/* Approval History */}
-              {detailItem.statusHistory && detailItem.statusHistory.length > 0 && (
-                <div>
-                  <p className="text-muted-foreground mb-2 font-medium">{t("detailApprovalHistory")}:</p>
-                  <ApprovalTimeline entries={detailItem.statusHistory} />
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setDetailItem(null)}>{tc("close")}</Button>
-            </DialogFooter>
-          </>)}
-        </DialogContent>
-      </Dialog>
-
-      {/* Review Modal */}
-      <Dialog open={!!reviewItem} onOpenChange={() => { setReviewItem(null); setReviewNote(""); setApprovedBudget(""); setBudgetError(""); }}>
-        <DialogContent className="max-w-md">
-          {reviewItem && (<>
-            <DialogHeader>
-              <DialogTitle>
-                {reviewAction === "under_review" ? t("reviewStartReview") : reviewAction === "approved" ? t("reviewApproveExhibition") : reviewAction === "revision_requested" ? t("reviewRequestRevision") : t("reviewRejectExhibition")}
-              </DialogTitle>
-              <DialogDescription>
-                {reviewItem.eventName} — {reviewItem.agentId?.name}
-                {reviewAction === "approved" && (
-                  <span className="mt-1 block text-[11px] text-amber-600">
-                    {t("reviewOperationalApprovalOnly")}
-                  </span>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              {reviewAction === "approved" && (
-                <div>
-                  <Label>{t("reviewRecommendedBudget")} ({reviewItem.budgetCurrency})</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="any"
-                    value={approvedBudget}
-                    onChange={(e) => { setApprovedBudget(e.target.value); setBudgetError(""); }}
-                    aria-invalid={budgetError ? true : undefined}
-                    placeholder={t("reviewRecommendedBudget")}
-                  />
-                  {budgetError
-                    ? <p className="mt-1 text-xs font-medium text-destructive" role="alert">{budgetError}</p>
-                    : <p className="text-xs text-muted-foreground mt-1">{t("reviewRequested")}: {reviewItem.budgetCurrency} {formatCount(reviewItem.estimatedBudget)}</p>}
-                </div>
-              )}
-              <div>
-                <Label>{reviewAction === "revision_requested" ? t("reviewRevisionNotes") : t("reviewNotes")}</Label>
-                <Textarea value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} placeholder={reviewAction === "revision_requested" ? t("reviewRevisionNotesPlaceholder") : t("reviewNotesPlaceholder")} rows={3} />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => { setReviewItem(null); setReviewNote(""); setBudgetError(""); }}>{tc("cancel")}</Button>
-              <Button onClick={handleReview}
-                variant={reviewAction === "rejected" ? "destructive" : "default"}
-                className={!["rejected"].includes(reviewAction) ? (reviewAction === "revision_requested" ? "bg-orange-600 hover:bg-orange-700" : "bg-emerald-600 hover:bg-emerald-700") : ""}
-                disabled={reviewAction === "revision_requested" && !reviewNote.trim()}>
-                {reviewAction === "rejected" ? t("actionReject") : reviewAction === "revision_requested" ? t("reviewRequestRevision") : tc("confirm")}
-              </Button>
-            </DialogFooter>
-          </>)}
-        </DialogContent>
-      </Dialog>
+      <ExhibitionDetailDialog item={detailItem} onClose={() => setDetailItem(null)} onAction={openReview} />
+      <ExhibitionReviewDialog
+        item={review?.item ?? null}
+        action={review?.action ?? null}
+        onClose={() => setReview(null)}
+        onDone={afterReview}
+      />
     </div>
   );
 }

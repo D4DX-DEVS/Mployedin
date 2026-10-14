@@ -1,5 +1,5 @@
 import Agent from "@/models/Agent";
-import AgentTask from "@/models/AgentTask";
+import AgentTask, { CLOSED_TASK_STATUSES } from "@/models/AgentTask";
 import Lead from "@/models/Lead";
 import Interview from "@/models/Interview";
 import Offer from "@/models/Offer";
@@ -95,7 +95,7 @@ export async function getAgentActionCounts(scope: AgentScope): Promise<AgentActi
       AgentTask.countDocuments({
         userId,
         dueDate: { $ne: null, $lt: now },
-        status: { $ne: "completed" },
+        status: { $nin: CLOSED_TASK_STATUSES },
       }),
       Lead.countDocuments({
         agentId,
@@ -152,7 +152,7 @@ export async function getAgentQueueItems(scope: AgentScope, limit = 6): Promise<
       .sort({ followUpAt: 1 })
       .limit(limit)
       .lean(),
-    AgentTask.find({ userId, dueDate: { $ne: null, $lt: now }, status: { $ne: "completed" } })
+    AgentTask.find({ userId, dueDate: { $ne: null, $lt: now }, status: { $nin: CLOSED_TASK_STATUSES } })
       .select("_id title dueDate")
       .sort({ dueDate: 1 })
       .limit(limit)

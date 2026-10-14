@@ -17,7 +17,7 @@ export const assignLeadsSchema = z.object({
 /** PATCH /api/super-agent/agents/[id] — SA updates agent profile */
 export const saAgentUpdateSchema = z.object({
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
-  assignedStateIds: z.array(commonSchemas.objectId).max(200).optional(),
+  assignedStateIds: z.array(commonSchemas.objectId).max(400).optional(),
   workingHoursStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   workingHoursEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   workingDays: z.array(z.enum(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])).max(7).optional(),

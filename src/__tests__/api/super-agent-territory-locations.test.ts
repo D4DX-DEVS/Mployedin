@@ -127,6 +127,14 @@ describe("GET /api/super-agent/territory/locations", () => {
     expect(all.states).toEqual([]);
   });
 
+  it("states: 'Entire country' only when every state of the country is whole (UAE yes, India no)", async () => {
+    const uae = await (await call("level=states&countryId=co_ae")).json();
+    expect(uae.countryFullyAssigned).toBe(true);
+    // India: only the parent state of the Tirur city grant — not whole.
+    const india = await (await call("level=states&countryId=co_in")).json();
+    expect(india.countryFullyAssigned).toBe(false);
+  });
+
   it("cities: whole assigned state exposes every city and is selectable as a state", async () => {
     const body = await (await call("level=cities&stateId=st_full")).json();
     expect(body.cities.map((c: { _id: string }) => c._id)).toEqual(["c_full_1"]);

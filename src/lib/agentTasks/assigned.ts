@@ -1,10 +1,11 @@
 import mongoose from "mongoose";
-import AgentTask, { type AgentTaskReviewStatus } from "@/models/AgentTask";
+import AgentTask, { CLOSED_TASK_STATUSES, type AgentTaskReviewStatus } from "@/models/AgentTask";
 import SuperAgent from "@/models/SuperAgent";
 import User from "@/models/User";
 import { getSuperAgentTeamAgentUserIds } from "@/lib/auth/agentRestrictions";
 import { notify } from "@/lib/notifications/trigger";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { pushHistory, readTaskHistory } from "./history";
 
 /**
  * Tasks a super agent or an admin gives an agent, and their review.
@@ -15,9 +16,10 @@ import { escapeRegex } from "@/lib/security/sanitize";
  *
  * States of an assigned task:
  *   pending / in_progress            reviewStatus none | returned (agent working)
- *   completed + awaiting_review      agent submitted it with a note
- *   completed + approved             reviewer accepted it
- *   pending   + returned             reviewer sent it back with a comment
+ *   completed|failed + awaiting_review  agent reported it (optional note)
+ *   completed|failed + approved         reviewer accepted the report
+ *   in_progress + returned              reviewer sent it back with a comment
+ * Every change also lands in `history` (who, when, from → to, note).
  * Personal to-dos never carry `assignedBy` and never enter review.
  */
 
@@ -54,9 +56,14 @@ function inScope(scope: "all" | mongoose.Types.ObjectId[], agentUserId: string):
   return scope === "all" || scope.some((id) => String(id) === agentUserId);
 }
 
-/** The agents the caller can pick in "Assign task", by name. */
-export async function listAssignableAgents(ctx: AssignerCtx): Promise<AssignableAgent[]> {
-  const scope = await assigneeScope(ctx);
+/**
+ * The agents the caller can pick in "Assign task", by name. An admin assigning
+ * through a super agent (`viaSuperAgent`) picks from that super agent's team.
+ */
+export async function listAssignableAgents(ctx: AssignerCtx, viaSuperAgent?: string): Promise<AssignableAgent[]> {
+  const scope = ctx.role === "admin" && viaSuperAgent
+    ? (mongoose.isValidObjectId(viaSuperAgent) ? await getSuperAgentTeamAgentUserIds(viaSuperAgent) : [])
+    : await assigneeScope(ctx);
   if (scope !== "all" && scope.length === 0) return [];
   const users = await User.find({
     role: "agent",
@@ -66,6 +73,17 @@ export async function listAssignableAgents(ctx: AssignerCtx): Promise<Assignable
     .select("_id name email")
     .sort({ name: 1 })
     .limit(1000)
+    .lean<Array<{ _id: unknown; name?: string; email?: string }>>();
+  return users.map((u) => ({ userId: String(u._id), name: u.name ?? "", email: u.email ?? "" }));
+}
+
+/** Admin only: the super agents a task can be given through, by name. */
+export async function listAssignableSuperAgents(ctx: AssignerCtx): Promise<AssignableAgent[]> {
+  if (ctx.role !== "admin") return [];
+  const users = await User.find({ role: "super_agent", isActive: { $ne: false } })
+    .select("_id name email")
+    .sort({ name: 1 })
+    .limit(500)
     .lean<Array<{ _id: unknown; name?: string; email?: string }>>();
   return users.map((u) => ({ userId: String(u._id), name: u.name ?? "", email: u.email ?? "" }));
 }
@@ -93,8 +111,8 @@ export async function listAssignedTasks(ctx: AssignerCtx, p: AssignedListParams)
     if (!mongoose.isValidObjectId(p.agentUserId) || !inScope(scope, p.agentUserId)) return empty;
     filter.userId = new mongoose.Types.ObjectId(p.agentUserId);
   }
-  if (p.status === "open") filter.status = { $ne: "completed" };
-  else if (p.status === "pending" || p.status === "in_progress" || p.status === "completed") filter.status = p.status;
+  if (p.status === "open") filter.status = { $nin: CLOSED_TASK_STATUSES };
+  else if (p.status === "pending" || p.status === "in_progress" || p.status === "completed" || p.status === "failed") filter.status = p.status;
   if (p.reviewStatus === "awaiting_review" || p.reviewStatus === "approved" || p.reviewStatus === "returned") {
     filter.reviewStatus = p.reviewStatus;
   }
@@ -107,7 +125,7 @@ export async function listAssignedTasks(ctx: AssignerCtx, p: AssignedListParams)
       .limit(p.limit)
       .lean(),
     AgentTask.countDocuments(filter),
-    AgentTask.countDocuments({ ...base, status: { $ne: "completed" } }),
+    AgentTask.countDocuments({ ...base, status: { $nin: CLOSED_TASK_STATUSES } }),
     AgentTask.aggregate<{ _id: AgentTaskReviewStatus; count: number }>([
       { $match: base },
       { $group: { _id: "$reviewStatus", count: { $sum: 1 } } },
@@ -115,7 +133,7 @@ export async function listAssignedTasks(ctx: AssignerCtx, p: AssignedListParams)
   ]);
   const byReview = Object.fromEntries(reviewRows.map((r) => [r._id, r.count]));
 
-  const userIds = [...new Set(rows.flatMap((t) => [String(t.userId), String(t.assignedBy?.userId ?? ""), String(t.reviewedBy ?? "")]).filter(Boolean))];
+  const userIds = [...new Set(rows.flatMap((t) => [String(t.userId), String(t.assignedBy?.userId ?? ""), String(t.reviewedBy ?? ""), String(t.managedBy ?? "")]).filter(Boolean))];
   const users = userIds.length
     ? await User.find({ _id: { $in: userIds } }).select("_id name").lean<Array<{ _id: unknown; name?: string }>>()
     : [];
@@ -147,16 +165,19 @@ export async function listAssignedTasks(ctx: AssignerCtx, p: AssignedListParams)
       agentName: names.get(String(t.userId)) ?? "",
       assignedByName: names.get(String(t.assignedBy?.userId)) ?? "",
       assignedByRole: t.assignedBy?.role,
+      managedByName: t.managedBy ? names.get(String(t.managedBy)) ?? "" : undefined,
       // Only the assigner's own super agent or an admin may review; the UI
       // shows Approve / Send back only when this is true.
-      canReview: t.reviewStatus === "awaiting_review" && canReviewTask(ctx, t.assignedBy),
+      canReview: t.reviewStatus === "awaiting_review" && canReviewTask(ctx, t),
     })),
   };
 }
 
-function canReviewTask(ctx: AssignerCtx, assignedBy?: { userId?: unknown; role?: string } | null): boolean {
+/** Admin: any task. Super agent: the ones they assigned, or that an admin gave through them. */
+function canReviewTask(ctx: AssignerCtx, task: { assignedBy?: { userId?: unknown } | null; managedBy?: unknown }): boolean {
   if (ctx.role === "admin") return true;
-  return ctx.role === "super_agent" && String(assignedBy?.userId ?? "") === ctx.userId;
+  return ctx.role === "super_agent"
+    && (String(task.assignedBy?.userId ?? "") === ctx.userId || String(task.managedBy ?? "") === ctx.userId);
 }
 
 export class TaskError extends Error {
@@ -183,6 +204,7 @@ export interface AssignInput {
   description?: string;
   priority: "high" | "medium" | "low";
   dueDate?: Date;
+  superAgentUserId?: string;
 }
 
 export async function assignTask(ctx: AssignerCtx, input: AssignInput) {
@@ -190,8 +212,21 @@ export async function assignTask(ctx: AssignerCtx, input: AssignInput) {
   if (!mongoose.isValidObjectId(input.agentUserId)) throw new TaskError(400, "Choose an agent");
   const scope = await assigneeScope(ctx);
   if (!inScope(scope, input.agentUserId)) throw new TaskError(403, "That agent isn't in your team");
-  const agentUser = await User.findOne({ _id: input.agentUserId, role: "agent" }).select("_id").lean();
+  const agentUser = await User.findOne({ _id: input.agentUserId, role: "agent" }).select("_id name").lean<{ name?: string }>();
   if (!agentUser) throw new TaskError(404, "Agent not found");
+
+  // Admin giving it through a super agent: they must exist, and the agent must
+  // be on their team — the super agent manages (and may review) the task.
+  const via = ctx.role === "admin" && input.superAgentUserId ? input.superAgentUserId : undefined;
+  if (via) {
+    if (!mongoose.isValidObjectId(via)) throw new TaskError(400, "Choose a super agent");
+    const sa = await User.findOne({ _id: via, role: "super_agent" }).select("_id").lean();
+    if (!sa) throw new TaskError(404, "Super agent not found");
+    const team = await getSuperAgentTeamAgentUserIds(via);
+    if (!team.some((id) => String(id) === input.agentUserId)) {
+      throw new TaskError(400, "That agent isn't in this super agent's team");
+    }
+  }
 
   const task = await AgentTask.create({
     userId: new mongoose.Types.ObjectId(input.agentUserId),
@@ -205,7 +240,9 @@ export async function assignTask(ctx: AssignerCtx, input: AssignInput) {
       role: ctx.role as AssignerRole,
       assignedAt: new Date(),
     },
+    ...(via ? { managedBy: new mongoose.Types.ObjectId(via) } : {}),
     reviewStatus: "none",
+    history: [{ action: "assigned", to: "pending", by: new mongoose.Types.ObjectId(ctx.userId), at: new Date() }],
   });
 
   const assignerName = await nameOf(ctx.userId);
@@ -221,12 +258,31 @@ export async function assignTask(ctx: AssignerCtx, input: AssignInput) {
     params: { name: assignerName, title: task.title },
     metadata: { taskId: String(task._id) },
   }).catch(() => {});
+  if (via) {
+    await notify({
+      userId: via,
+      actorId: ctx.userId,
+      type: "system",
+      title: "Task for your team",
+      message: `${assignerName || "An admin"} assigned ${agentUser.name || "one of your agents"}: ${task.title}`,
+      link: "/super-agent/tasks",
+      titleKey: "taskViaSuperAgentTitle",
+      bodyKey: "taskViaSuperAgentBody",
+      params: { name: assignerName, agent: agentUser.name ?? "", title: task.title },
+      metadata: { taskId: String(task._id) },
+    }).catch(() => {});
+  }
 
   return task;
 }
 
-/** Agent submits an assigned task as done, with a note: it goes to review. */
-export async function submitAssignedTask(agentUserId: string, taskId: string, completionNote: string) {
+/** Agent reports an assigned task Completed or Failed (note optional): it goes to review. */
+export async function submitAssignedTask(
+  agentUserId: string,
+  taskId: string,
+  outcome: "completed" | "failed",
+  completionNote?: string,
+) {
   const task = await AgentTask.findOne({ _id: taskId, userId: agentUserId }).lean();
   if (!task) throw new TaskError(404, "Task not found");
   if (!isAssignedTask(task)) throw new TaskError(400, "Only assigned tasks go to review");
@@ -235,7 +291,10 @@ export async function submitAssignedTask(agentUserId: string, taskId: string, co
   }
   const updated = await AgentTask.findOneAndUpdate(
     { _id: taskId, userId: agentUserId, reviewStatus: { $nin: ["awaiting_review", "approved"] } },
-    { $set: { status: "completed", reviewStatus: "awaiting_review", completionNote } },
+    {
+      $set: { status: outcome, reviewStatus: "awaiting_review", completionNote },
+      ...pushHistory({ action: "submitted", by: agentUserId, from: task.status, to: outcome, note: completionNote }),
+    },
     { returnDocument: "after" },
   ).lean();
   if (!updated) throw new TaskError(409, "This task is already submitted");
@@ -247,14 +306,43 @@ export async function submitAssignedTask(agentUserId: string, taskId: string, co
     actorId: agentUserId,
     type: "system",
     title: "Task ready for review",
-    message: `${agentName || "An agent"} finished: ${task.title}`,
+    message: outcome === "failed"
+      ? `${agentName || "An agent"} couldn't complete: ${task.title}`
+      : `${agentName || "An agent"} finished: ${task.title}`,
     link: `${await reviewerHome(assignerId, task.assignedBy!.role as AssignerRole)}?review=awaiting_review`,
     titleKey: "taskSubmittedTitle",
     bodyKey: "taskSubmittedBody",
     params: { name: agentName, title: task.title },
     metadata: { taskId },
   }).catch(() => {});
+  // Given through a super agent: they review it too, so they hear about it.
+  if (task.managedBy && String(task.managedBy) !== assignerId) {
+    await notify({
+      userId: String(task.managedBy),
+      actorId: agentUserId,
+      type: "system",
+      title: "Task ready for review",
+      message: outcome === "failed"
+        ? `${agentName || "An agent"} couldn't complete: ${task.title}`
+        : `${agentName || "An agent"} finished: ${task.title}`,
+      link: "/super-agent/tasks?review=awaiting_review",
+      titleKey: "taskSubmittedTitle",
+      bodyKey: "taskSubmittedBody",
+      params: { name: agentName, title: task.title },
+      metadata: { taskId },
+    }).catch(() => {});
+  }
   return updated;
+}
+
+/** An assigned task's activity, for whoever may see it in the assigned list. */
+export async function assignedTaskHistory(ctx: AssignerCtx, taskId: string) {
+  if (!mongoose.isValidObjectId(taskId)) throw new TaskError(400, "Invalid task ID");
+  const task = await AgentTask.findById(taskId).select("userId createdAt assignedBy managedBy history").lean();
+  if (!task || !isAssignedTask(task)) throw new TaskError(404, "Task not found");
+  const scope = await assigneeScope(ctx);
+  if (!inScope(scope, String(task.userId))) throw new TaskError(404, "Task not found");
+  return readTaskHistory(task);
 }
 
 export async function reviewTask(
@@ -267,7 +355,7 @@ export async function reviewTask(
   const task = await AgentTask.findById(taskId).lean();
   if (!task || !isAssignedTask(task)) throw new TaskError(404, "Task not found");
   const scope = await assigneeScope(ctx);
-  if (!inScope(scope, String(task.userId)) || !canReviewTask(ctx, task.assignedBy)) {
+  if (!inScope(scope, String(task.userId)) || !canReviewTask(ctx, task)) {
     throw new TaskError(403, "Only the person who assigned this task or an admin can review it");
   }
   if (task.reviewStatus !== "awaiting_review") throw new TaskError(409, "This task isn't waiting for review");
@@ -278,11 +366,20 @@ export async function reviewTask(
     {
       $set: {
         reviewStatus: action === "approve" ? "approved" : "returned",
-        status: action === "approve" ? "completed" : "pending",
+        // Approving accepts what the agent reported (completed or failed);
+        // sending back puts the agent straight back to work on it.
+        status: action === "approve" ? task.status : "in_progress",
         reviewedBy: new mongoose.Types.ObjectId(ctx.userId),
         reviewedAt: new Date(),
         reviewComment: comment?.trim() || undefined,
       },
+      ...pushHistory({
+        action: action === "approve" ? "approved" : "returned",
+        by: ctx.userId,
+        from: task.status,
+        to: action === "approve" ? task.status : "in_progress",
+        note: comment,
+      }),
     },
     { returnDocument: "after" },
   ).lean();

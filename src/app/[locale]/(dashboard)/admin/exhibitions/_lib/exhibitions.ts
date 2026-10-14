@@ -1,3 +1,4 @@
+import type { SupportItemView } from "@/components/features/exhibitions/SupportItemsSummary";
 import { formatCount } from "@/lib/ui/intlFormat";
 
 export interface ExhibitionRequest {
@@ -33,6 +34,9 @@ export interface ExhibitionRequest {
   expectedOutcome?: string;
   expectedLeads?: number;
   requiredResources: string[];
+  /** Requested support (TV, banners, volunteers…) with what was allocated and delivered. */
+  supportItems?: SupportItemView[];
+  additionalRequirements?: string;
   assignedTeam?: string[];
   priority: string;
   status: string;

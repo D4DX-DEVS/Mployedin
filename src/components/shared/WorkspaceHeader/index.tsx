@@ -14,7 +14,7 @@ export interface WorkspaceMetric {
   /** Desktop only. Hidden on phones so four cells fit one row. */
   icon?: LucideIcon;
   /** Tint of the icon tile on desktop. Defaults to primary. */
-  tone?: "primary" | "success" | "info" | "warning";
+  tone?: "primary" | "success" | "info" | "warning" | "danger";
   /** Makes the metric a toggle (e.g. filter the list by this status). */
   onClick?: () => void;
   /** Makes the metric a link into the list it counts. Ignored when `onClick` is set. */
