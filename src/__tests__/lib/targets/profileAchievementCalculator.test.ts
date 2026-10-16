@@ -2,41 +2,21 @@
  * @jest-environment node
  */
 import {
-  calculateOverallTargetProgress,
   expectedProgressPct,
   getIncentiveTier,
   getRiskScore,
+  pct,
 } from "@/lib/targets/profileAchievementCalculator";
 
-describe("calculateOverallTargetProgress", () => {
-  it("includes employer, employee, and finance progress equally", () => {
-    expect(
-      calculateOverallTargetProgress([
-        { target: 20, progress: 60 },
-        { target: 300, progress: 0 },
-        { target: 300000, progress: 0 },
-      ])
-    ).toBe(20);
+describe("pct", () => {
+  it("is the rounded share of the target", () => {
+    expect(pct(500, 2000)).toBe(25);
+    expect(pct(1, 3)).toBe(33);
   });
 
-  it("does not mark a target complete when finance is still pending", () => {
-    expect(
-      calculateOverallTargetProgress([
-        { target: 5, progress: 100 },
-        { target: 10, progress: 100 },
-        { target: 50000, progress: 0 },
-      ])
-    ).toBe(67);
-  });
-
-  it("ignores categories with no assigned target", () => {
-    expect(
-      calculateOverallTargetProgress([
-        { target: 0, progress: 0 },
-        { target: 10, progress: 50 },
-        { target: 0, progress: 0 },
-      ])
-    ).toBe(50);
+  it("is 0 without a target and caps a runaway outlier at 999", () => {
+    expect(pct(500, 0)).toBe(0);
+    expect(pct(1_000_000, 10)).toBe(999);
   });
 });
 

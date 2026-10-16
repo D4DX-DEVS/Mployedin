@@ -1,3 +1,4 @@
+import { gatePosters } from "@/lib/features/posterGate";
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
@@ -54,7 +55,7 @@ export interface PosterDesign {
  * POST /api/ai/poster-content
  * AI-generates a complete poster design specification for a job.
  */
-export const POST = withAuth(async (req: NextRequest, ctx) => {
+export const POST = gatePosters(withAuth(async (req: NextRequest, ctx) => {
   const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, {
     type: "ai",
     feature: "ai_job_description",
@@ -144,4 +145,4 @@ Vacancies: ${body.vacancies ?? 1}
   });
 
   return NextResponse.json({ design });
-}, { aiQuota: true });
+}, { aiQuota: true }));

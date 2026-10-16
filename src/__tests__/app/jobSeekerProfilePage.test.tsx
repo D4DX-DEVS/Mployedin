@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, renderWithProviders as render, screen, waitFor } from "@/test-utils";
 
 const toastError = jest.fn();
 jest.mock("sonner", () => ({ toast: { error: (...a: unknown[]) => toastError(...a), success: jest.fn() } }));

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Undo2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { STEP_BACK } from "@/lib/exhibitions/transitions";
+import { PAYMENT_APPROVED_STATUSES, editNeedsReason } from "@/lib/exhibitions/transitions";
 
 /** The request fields a reviewer can correct. */
 export interface EditableRequest {
@@ -29,6 +29,8 @@ export interface EditableRequest {
   organizerContact?: string;
   description?: string;
   expectedLeads?: number;
+  approvedBudget?: number;
+  budgetCurrency?: string;
 }
 
 const CATEGORY_KEYS: [string, string][] = [
@@ -48,11 +50,28 @@ const dateOnly = (value?: string) => (value ? value.slice(0, 10) : "");
  * Super agent / admin: correct the facts of a request (client feedback
  * 2026-10-14: no edit option for super agent or admin). The server logs which
  * fields changed in the request's history.
+ *
+ * Edit replaced the step-back moves (owner, 2026-10-15), so the admin also
+ * corrects the approved amount here. Once the payment is approved a change
+ * needs a reason: the history keeps old and new values, and the agent and
+ * super agent are told when the amount moves.
  */
-export function EditRequestDialog({ request, onClose, onSaved }: { request: EditableRequest | null; onClose: () => void; onSaved: () => void }) {
+export function EditRequestDialog({
+  request,
+  canEditBudget = false,
+  onClose,
+  onSaved,
+}: {
+  request: EditableRequest | null;
+  /** Admin only: the approved amount, once the payment is approved. */
+  canEditBudget?: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const t = useTranslations("exhibitions");
   const tc = useTranslations("common");
   const [form, setForm] = useState<Record<string, string>>({});
+  const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
@@ -72,11 +91,16 @@ export function EditRequestDialog({ request, onClose, onSaved }: { request: Edit
       organizerContact: request.organizerContact ?? "",
       description: request.description ?? "",
       expectedLeads: request.expectedLeads != null ? String(request.expectedLeads) : "",
+      approvedBudget: request.approvedBudget != null ? String(request.approvedBudget) : "",
     };
     initial.current = values;
     setForm(values);
+    setReason("");
     setError("");
   }, [request]);
+
+  const needsReason = request ? editNeedsReason(request.status) : false;
+  const showBudget = canEditBudget && !!request && PAYMENT_APPROVED_STATUSES.includes(request.status);
 
   const categoryOptions = useMemo(() => CATEGORY_KEYS.map(([value, key]) => ({ value, label: t(key) })), [t]);
   const set = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
@@ -86,15 +110,23 @@ export function EditRequestDialog({ request, onClose, onSaved }: { request: Edit
     if (!form.eventName?.trim()) { setError(t("enterExhibitionTitle")); return; }
     if (form.eventStartDate && form.eventEndDate && form.eventEndDate < form.eventStartDate) { setError(t("endDateEarlierThanStart")); return; }
     // Only what changed, so an untouched field never overwrites a newer value.
-    const details = Object.fromEntries(Object.entries(form).filter(([key, value]) => value !== initial.current[key]));
-    if (Object.keys(details).length === 0) { onClose(); return; }
+    const { approvedBudget, ...details } = Object.fromEntries(Object.entries(form).filter(([key, value]) => value !== initial.current[key]));
+    const budgetChanged = showBudget && approvedBudget !== undefined;
+    if (Object.keys(details).length === 0 && !budgetChanged) { onClose(); return; }
+    const budget = budgetChanged ? Number(approvedBudget) : undefined;
+    if (budgetChanged && (approvedBudget === "" || !Number.isFinite(budget) || budget! < 0)) { setError(t("approvedBudgetInvalid")); return; }
+    if (needsReason && !reason.trim()) { setError(t("editReasonRequired")); return; }
     setSaving(true);
     setError("");
     try {
+      const payload: Record<string, unknown> = {};
+      if (Object.keys(details).length > 0) payload.details = details;
+      if (budgetChanged) payload.approvedBudget = budget;
+      if (needsReason) payload.statusReason = reason.trim();
       const res = await csrfFetch(`/api/exhibitions/${request._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ details }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -124,7 +156,7 @@ export function EditRequestDialog({ request, onClose, onSaved }: { request: Edit
           <DialogTitle>{t("editDetailsTitle")}</DialogTitle>
           <DialogDescription>{t("editDetailsDescription")}</DialogDescription>
         </DialogHeader>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pe-1">
+        <div className="min-h-0 flex-1 space-y-4 -mx-1 overflow-y-auto px-1 py-1">
           {text("eventName", t("exhibitionTitleLabel"), { maxLength: 200 })}
           <div className="space-y-1.5">
             <Label>{t("tableHeaderCategory")}</Label>
@@ -157,6 +189,35 @@ export function EditRequestDialog({ request, onClose, onSaved }: { request: Edit
             <Label htmlFor="edit-description">{t("description")}</Label>
             <Textarea id="edit-description" rows={3} maxLength={5000} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
           </div>
+          {showBudget && (
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-approvedBudget">{t("approvedBudgetLabel", { currency: request?.budgetCurrency ?? "" })}</Label>
+              <Input
+                id="edit-approvedBudget"
+                type="number"
+                min={0}
+                step="any"
+                value={form.approvedBudget ?? ""}
+                onChange={(e) => set("approvedBudget", e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{t("approvedBudgetChangeHint")}</p>
+            </div>
+          )}
+          {needsReason && (
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-reason">{t("editReasonLabel")} <span className="text-destructive">*</span></Label>
+              <Textarea
+                id="edit-reason"
+                rows={2}
+                maxLength={1000}
+                value={reason}
+                onChange={(e) => { setReason(e.target.value); setError(""); }}
+                placeholder={t("editReasonPlaceholder")}
+                aria-required
+              />
+              <p className="text-xs text-muted-foreground">{t("editReasonHint")}</p>
+            </div>
+          )}
           {error && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
@@ -166,88 +227,6 @@ export function EditRequestDialog({ request, onClose, onSaved }: { request: Edit
             {t("saveChanges")}
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/**
- * Move a request back one stage, with the reason the server requires
- * (client feedback 2026-10-14: "no back option"). `stageLabel` names the
- * stage it returns to, in the caller's own vocabulary.
- */
-export function MoveBackDialog({
-  request,
-  stageLabel,
-  onClose,
-  onDone,
-}: {
-  request: { _id: string; status: string; eventName: string } | null;
-  stageLabel: (status: string) => string;
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const t = useTranslations("exhibitions");
-  const tc = useTranslations("common");
-  const [reason, setReason] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const target = request ? STEP_BACK[request.status as keyof typeof STEP_BACK] : undefined;
-
-  useEffect(() => { setReason(""); setError(""); }, [request]);
-
-  const submit = async () => {
-    if (!request || !target) return;
-    if (!reason.trim()) {
-      setError(t("moveBackReasonRequired"));
-      return;
-    }
-    setSaving(true);
-    setError("");
-    try {
-      const res = await csrfFetch(`/api/exhibitions/${request._id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: target, statusReason: reason.trim(), reviewNote: reason.trim() }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? t("moveBackError"));
-        return;
-      }
-      toast.success(t("movedBackToast", { stage: stageLabel(target) }));
-      onDone();
-    } catch {
-      setError(t("moveBackError"));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={!!request && !!target} onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
-      <DialogContent className="max-w-md">
-        {request && target && (
-          <>
-            <DialogHeader>
-              <DialogTitle>{t("moveBackTitle", { stage: stageLabel(target) })}</DialogTitle>
-              <DialogDescription>{t("moveBackDescription", { name: request.eventName, from: stageLabel(request.status) })}</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-1.5">
-              <Label htmlFor="move-back-reason">{t("moveBackReason")} <span className="text-destructive">*</span></Label>
-              <Textarea id="move-back-reason" rows={3} maxLength={1000} value={reason} onChange={(e) => { setReason(e.target.value); setError(""); }} placeholder={t("moveBackReasonPlaceholder")} aria-required aria-invalid={error && !reason.trim() ? true : undefined} />
-              <p className="text-xs text-muted-foreground">{t("reviewReasonShared")}</p>
-            </div>
-            {error && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</p>}
-            <DialogFooter>
-              <Button variant="ghost" onClick={onClose} disabled={saving}>{tc("cancel")}</Button>
-              <Button onClick={() => void submit()} disabled={saving} className="gap-1.5">
-                {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Undo2 className="size-4" aria-hidden="true" />}
-                {t("moveBackConfirm")}
-              </Button>
-            </DialogFooter>
-          </>
-        )}
       </DialogContent>
     </Dialog>
   );

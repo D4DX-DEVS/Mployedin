@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, Loader2 } from "lucide-react";
-import { getAllocationSummary, getDeliverySummary, type SupportItem } from "@/lib/exhibitions/supportItems";
+import { AlertTriangle, Loader2, MessageSquarePlus } from "lucide-react";
+import { getAllocationSummary, type SupportItem } from "@/lib/exhibitions/supportItems";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { ADMIN_NEXT_STEP } from "@/lib/exhibitions/transitions";
 import { STATUS_LABEL_KEYS, formatMoney, type ExhibitionRequest } from "../_lib/exhibitions";
-import { SupportRowsEditor, saveSupportRows, toSupportRow, type SupportRow, type SupportDialogMode } from "./SupportManageDialog";
+import { SupportRowsEditor, saveSupportRows, toSupportRow, type SupportRow } from "./SupportManageDialog";
 
 interface ExhibitionActionDialogProps {
   item: ExhibitionRequest | null;
@@ -37,23 +37,21 @@ function titleKey(from: string, to: string): string {
 }
 
 /**
- * Confirms one workflow move with an audit note, and collects what that step
- * needs: the approved budget, the reason for a rejection or send-back (the
- * server refuses those without one), and for the two delivery steps the real
- * decisions — Assign resources records the team and what each requested item
- * gets; Mark active records where each delivery stands. Assign resources used
- * to be a status flip with an optional free-text team (client feedback
- * 2026-10-14: "resource assignment function has no meaning").
+ * Confirms one workflow move and collects what that step needs: the reason
+ * for a rejection or send-back (the server refuses those without one; any
+ * other note is optional and folded away); for Approve payment the amount the
+ * company allocates and what each requested support item gets, in one step
+ * (owner, 2026-10-15: it used to be Approve budget, Assign resources and Mark
+ * active).
  */
 export function ExhibitionActionDialog({ item, status, onClose, onDone }: ExhibitionActionDialogProps) {
   const t = useTranslations("adminExhibitions");
   const tx = useTranslations("exhibitions");
   const [note, setNote] = useState("");
+  const [showNote, setShowNote] = useState(false);
   const [approvedBudget, setApprovedBudget] = useState("");
   const [budgetNotes, setBudgetNotes] = useState("");
   const [budgetError, setBudgetError] = useState("");
-  const [assignedTeam, setAssignedTeam] = useState("");
-  const [teamError, setTeamError] = useState("");
   const [rows, setRows] = useState<SupportRow[]>([]);
   const [rowsError, setRowsError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -61,6 +59,7 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
   useEffect(() => {
     if (!item) return;
     setNote("");
+    setShowNote(false);
     setBudgetError("");
     // Prefer the super-agent's recommendation over the raw request when no
     // binding figure exists yet — it is the most informed number available.
@@ -68,8 +67,6 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
       item.approvedBudget?.toString() ?? item.recommendedBudget?.toString() ?? item.estimatedBudget?.toString() ?? "",
     );
     setBudgetNotes(item.budgetNotes ?? "");
-    setAssignedTeam(item.assignedTeam?.join(", ") ?? "");
-    setTeamError("");
     setRows((item.supportItems ?? []).map(toSupportRow));
     setRowsError("");
   }, [item, status]);
@@ -78,24 +75,13 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
 
   const needsReason = REASON_REQUIRED.includes(status);
   const destructive = status === "rejected" || status === "archived";
-  // Which support record this step writes, if any.
-  const supportMode: SupportDialogMode | null =
-    (item.supportItems?.length ?? 0) === 0
-      ? null
-      : status === "resources_assigned" && item.status === "budget_approved"
-        ? "allocate"
-        : status === "active" && item.status === "resources_assigned"
-          ? "delivery"
-          : null;
+  // Approving the payment decides the support too.
+  const supportMode = status === "budget_approved" && (item.supportItems?.length ?? 0) > 0 ? "allocate" : null;
+
   const patchRow = (index: number, change: Partial<SupportRow>) =>
     setRows((previous) => previous.map((row, i) => (i === index ? { ...row, ...change } : row)));
 
   const submit = async () => {
-    const team = assignedTeam.split(",").map((member) => member.trim()).filter(Boolean);
-    if (status === "resources_assigned" && team.length === 0) {
-      setTeamError(tx("teamRequired"));
-      return;
-    }
     if (supportMode === "allocate" && rows.some((row) => row.allocatedQty === "")) {
       setRowsError(tx("allocationRequired"));
       return;
@@ -113,14 +99,13 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
       payload.approvedBudget = parsed;
       payload.budgetNotes = budgetNotes;
     }
-    if (status === "resources_assigned") payload.assignedTeam = team;
     setSaving(true);
     try {
       // The support record first: if it is refused, the request stays put.
       if (supportMode) {
         const saved = await saveSupportRows(item._id, supportMode, rows);
         if (!saved.ok) {
-          setRowsError(saved.error ?? tx(supportMode === "allocate" ? "allocateError" : "deliveryError"));
+          setRowsError(saved.error ?? tx("allocateError"));
           return;
         }
       }
@@ -144,24 +129,13 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
     }
   };
 
-  // Warn, don't block: moving on with support still unallocated (to
-  // Delivery) or undelivered (to Active / Completed) is the admin's call.
-  // Read from the rows being edited, so the warning follows what is typed.
+  // Warn, don't block: approving with support still short is the admin's
+  // call. Read from the rows being edited, so the warning follows what is typed.
   const supportLines = (item.supportItems ?? []).map((line, index) => {
     const row = rows[index];
-    if (!row || !supportMode) return line;
-    return supportMode === "allocate"
-      ? { ...line, allocatedQty: row.allocatedQty === "" ? undefined : Number(row.allocatedQty) }
-      : { ...line, deliveryStatus: row.deliveryStatus as SupportItem["deliveryStatus"] };
+    return row && supportMode ? { ...line, allocatedQty: row.allocatedQty === "" ? undefined : Number(row.allocatedQty) } : line;
   }) as SupportItem[];
-  const supportWarning =
-    supportLines.length === 0
-      ? null
-      : status === "resources_assigned" && getAllocationSummary(supportLines).status !== "full"
-        ? "warningNotAllocated"
-        : (status === "active" || status === "completed") && !getDeliverySummary(supportLines).allDelivered
-          ? "warningNotDelivered"
-          : null;
+  const supportWarning = supportMode && getAllocationSummary(supportLines).status !== "full" ? "warningNotAllocated" : null;
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
@@ -170,10 +144,10 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
           <DialogTitle>{t(titleKey(item.status, status))}</DialogTitle>
           <DialogDescription>
             {item.eventName}
-            {item.agentId?.name ? ` · ${item.agentId.name}` : ""}. {t("addAnAuditNoteBeforeConfirming")}
+            {item.agentId?.name ? ` · ${item.agentId.name}` : ""}
           </DialogDescription>
         </DialogHeader>
-        <div className={supportMode ? "min-h-0 flex-1 space-y-4 overflow-y-auto pe-1" : "space-y-4"}>
+        <div className={supportMode ? "min-h-0 flex-1 space-y-4 -mx-1 overflow-y-auto px-1 py-1" : "space-y-4"}>
           {supportWarning && (
             <p role="status" className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -201,42 +175,38 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
               )}
             </div>
           )}
-          {status === "resources_assigned" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="exhibition-assigned-team">{t("assignedTeam")} <span className="text-destructive">*</span></Label>
-              <Input
-                id="exhibition-assigned-team"
-                value={assignedTeam}
-                onChange={(event) => { setAssignedTeam(event.target.value); setTeamError(""); }}
-                placeholder={t("egJohnSarahAhmed")}
-                aria-invalid={teamError ? true : undefined}
-                aria-required
-              />
-              {teamError ? (
-                <p className="text-xs font-medium text-destructive" role="alert">{teamError}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">{tx("teamHint")}</p>
-              )}
-            </div>
-          )}
           {supportMode && (
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-foreground">{tx(supportMode === "allocate" ? "allocateResources" : "updateDelivery")}</p>
-              <p className="text-xs text-muted-foreground">{tx(supportMode === "allocate" ? "allocateStepHint" : "deliveryStepHint")}</p>
+              <p className="text-sm font-semibold text-foreground">{tx("allocateResources")}</p>
+              <p className="text-xs text-muted-foreground">{tx("allocateStepHint")}</p>
               <SupportRowsEditor mode={supportMode} items={item.supportItems ?? []} rows={rows} onPatch={(index, change) => { patchRow(index, change); setRowsError(""); }} />
               {rowsError && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{rowsError}</p>}
             </div>
           )}
-          <div className="space-y-1.5">
-            <Label htmlFor="exhibition-review-note">{needsReason ? t("reason") : t("reviewNotes")}</Label>
-            <Textarea
-              id="exhibition-review-note"
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder={status === "revision_requested" ? t("whatNeedsToChange") : t("addAConciseAuditNote")}
-              rows={3}
-            />
-          </div>
+          {needsReason || showNote ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="exhibition-review-note">
+                {needsReason ? t("reason") : <>{t("reviewNotes")} <span className="text-xs font-normal text-muted-foreground">({tx("optional")})</span></>}
+              </Label>
+              <Textarea
+                id="exhibition-review-note"
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder={status === "revision_requested" ? t("whatNeedsToChange") : t("addAConciseAuditNote")}
+                rows={3}
+                autoFocus={!needsReason}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowNote(true)}
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary hover:underline sm:min-h-0"
+            >
+              <MessageSquarePlus className="size-4" aria-hidden="true" />
+              {tx("addNoteOptional")}
+            </button>
+          )}
           {destructive && (
             <div className="rounded-xl border border-red-200 bg-red-50 text-xs text-red-700 chip-pad">
               {t("thisIsADestructiveWorkflowAction")}
@@ -253,7 +223,7 @@ export function ExhibitionActionDialog({ item, status, onClose, onDone }: Exhibi
             disabled={saving || (needsReason && !note.trim())}
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-            {t("confirm")}
+            {status === "budget_approved" ? t("approvePayment") : t("confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>

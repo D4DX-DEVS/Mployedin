@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ListSkeleton } from "@/components/shared/ListSkeleton";
 import { usePagination } from "@/hooks/usePagination";
+import { seekerKeys, useSeekerList } from "@/hooks/useSeekerCache";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
 import {
   Search, MapPin, Users, Briefcase,
@@ -48,15 +49,11 @@ const SEARCH_DEBOUNCE_MS = 300;
 export default function CompaniesListPage() {
   const t = useTranslations("jobSeekerCompanies");
   const locale = useLocale();
-  const [companies, setCompanies] = useState<CompanyItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [industryFilter, setIndustryFilter] = useState(ALL_INDUSTRIES);
-  const [industries, setIndustries] = useState<string[]>([]);
   const pagination = usePagination();
-  const { resetPage } = pagination;
+  const { resetPage, paginationParams, updateTotal } = pagination;
 
   // Typing must not fire a request (and a router.replace) per keystroke.
   useEffect(() => {
@@ -68,34 +65,35 @@ export default function CompaniesListPage() {
     return () => clearTimeout(timer);
   }, [searchInput, search, resetPage]);
 
-  const fetchCompanies = useCallback(async () => {
-    setLoading(true);
-    setLoadError(false);
-    try {
-      const params = pagination.paginationParams();
-      if (search) params.set("search", search);
-      if (industryFilter && industryFilter !== ALL_INDUSTRIES) params.set("industry", industryFilter);
-      const res = await fetch(`/api/companies?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCompanies(data.items ?? []);
-        pagination.updateTotal(data.total ?? 0);
-        // Server-side facet across every hiring employer. Deriving this from the
-        // current page only ever listed the industries of the 12 visible cards.
-        setIndustries(Array.isArray(data.industries) ? data.industries : []);
-      } else {
-        setLoadError(true);
-        toast.error(t("loadFailed"));
-      }
-    } catch {
-      setLoadError(true);
-      toast.error(t("loadFailed"));
-    } finally {
-      setLoading(false);
-    }
-  }, [search, industryFilter, pagination.page, pagination.limit, t]);
+  const listQuery = useMemo(() => {
+    const params = paginationParams();
+    if (search) params.set("search", search);
+    if (industryFilter && industryFilter !== ALL_INDUSTRIES) params.set("industry", industryFilter);
+    return params.toString();
+  }, [paginationParams, search, industryFilter]);
 
-  useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
+  // Cached: Back from a company profile shows the grid at once.
+  const { data, isPending: loading, isError: loadError, refetch } = useSeekerList<{
+    items?: CompanyItem[];
+    total?: number;
+    industries?: unknown;
+  }>(seekerKeys.companies(listQuery), `/api/companies?${listQuery}`);
+  const companies = data?.items ?? [];
+  // Server-side facet across every hiring employer. Deriving this from the
+  // current page only ever listed the industries of the 12 visible cards.
+  const industries = useMemo(
+    () => (Array.isArray(data?.industries) ? (data.industries as string[]) : []),
+    [data?.industries],
+  );
+  const fetchCompanies = () => void refetch();
+
+  useEffect(() => {
+    if (data) updateTotal(data.total ?? 0);
+  }, [data, updateTotal]);
+
+  useEffect(() => {
+    if (loadError) toast.error(t("loadFailed"));
+  }, [loadError, t]);
 
   const filtersActive = search.length > 0 || industryFilter !== ALL_INDUSTRIES;
 

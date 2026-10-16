@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Star, CheckCircle, Send, Loader2, AlertTriangle, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { useRefreshSeekerApplications, useSeekerApplication } from "@/hooks/useSeekerApplications";
 
 interface ApplicationInfo {
   _id: string;
@@ -21,8 +22,10 @@ export default function ApplicationFeedbackPage() {
   const t = useTranslations("applicationFeedback");
   const tc = useTranslations("common");
 
-  const [app, setApp] = useState<ApplicationInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Same cache entry as the application page, so arriving from it is instant.
+  // A 404 or failed load leaves `app` empty and the page says so below.
+  const { data: app, isPending: loading } = useSeekerApplication<ApplicationInfo>(id);
+  const refreshApplications = useRefreshSeekerApplications();
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [comment, setComment] = useState("");
@@ -33,18 +36,6 @@ export default function ApplicationFeedbackPage() {
   const [processRating, setProcessRating] = useState(0);
   const [timelinessRating, setTimelinessRating] = useState(0);
   const [wouldRecommend, setWouldRecommend] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    fetch(`/api/applications/${id}`)
-      // A 404 body is not an application: leave app null so the page says it
-      // could not be loaded instead of "wait for a final decision".
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        setApp(data ? data.application ?? data : null);
-      })
-      .catch(() => setError(t("errorLoadingDetails")))
-      .finally(() => setLoading(false));
-  }, [id]);
 
   async function handleSubmit() {
     if (rating === 0) return;
@@ -68,6 +59,7 @@ export default function ApplicationFeedbackPage() {
       if (res.status === 409) {
         // Already submitted
         setSubmitted(true);
+        void refreshApplications();
         return;
       }
       if (!res.ok) {
@@ -75,6 +67,7 @@ export default function ApplicationFeedbackPage() {
         throw new Error(err.error ?? t("submissionFailed"));
       }
       setSubmitted(true);
+      void refreshApplications();
     } catch (e) {
       setError("We couldn't submit your feedback. Nothing was saved. Review your response and try again.");
     } finally {

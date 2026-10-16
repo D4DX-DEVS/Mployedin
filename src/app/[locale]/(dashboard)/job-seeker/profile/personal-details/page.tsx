@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { getSeekerJson, invalidateSeekerProfile, readSeekerProfile, seekerKeys } from "@/hooks/useSeekerCache";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
@@ -41,6 +43,12 @@ interface CountryItem {
   name: string;
   nameAr: string;
   code: string;
+}
+
+interface PersonalDetailsOptions {
+  genders?: LookupItem[];
+  maritalStatuses?: LookupItem[];
+  countries?: CountryItem[];
 }
 
 interface LanguageEntry {
@@ -166,6 +174,7 @@ export default function PersonalDetailsPage() {
   const locale = useLocale();
   const t = useTranslations("jobSeekerExtra.personalDetails");
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
 
@@ -179,20 +188,26 @@ export default function PersonalDetailsPage() {
   // ── Load data ───────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
     try {
-      const [profileRes, optionsRes] = await Promise.all([
-        fetch("/api/job-seeker/profile"),
-        fetch("/api/job-seeker/personal-details-options"),
+      // Both from the shared cache when fresh: Back from Profile is instant.
+      // The option lists are master data, so they stay fresh much longer.
+      const [p, opts] = await Promise.all([
+        readSeekerProfile(queryClient).catch(() => null),
+        queryClient
+          .fetchQuery({
+            queryKey: seekerKeys.personalDetailsOptions,
+            queryFn: () => getSeekerJson<PersonalDetailsOptions>("/api/job-seeker/personal-details-options"),
+            staleTime: 10 * 60_000,
+          })
+          .catch(() => null),
       ]);
 
-      if (optionsRes.ok) {
-        const opts = await optionsRes.json();
+      if (opts) {
         setGenders(opts.genders ?? []);
         setMaritalStatuses(opts.maritalStatuses ?? []);
         setCountries(opts.countries ?? []);
       }
 
-      if (profileRes.ok) {
-        const p = await profileRes.json();
+      if (p) {
         setForm({
           genderId: p?.genderId ?? "",
           maritalStatusId: p?.maritalStatusId ?? "",
@@ -211,7 +226,7 @@ export default function PersonalDetailsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     document.title = t("documentTitle");
@@ -271,6 +286,7 @@ export default function PersonalDetailsPage() {
       });
 
       setSaveState(res.ok ? "saved" : "error");
+      if (res.ok) void invalidateSeekerProfile(queryClient);
     } catch {
       setSaveState("error");
     } finally {

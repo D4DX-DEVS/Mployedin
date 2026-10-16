@@ -21,6 +21,7 @@
 import logger from "@/lib/logger";
 import { providerFetch } from "@/lib/ai/providerFetch";
 import {
+  hasOpenRouterApiKey,
   isOpenRouterTextProvider,
   openRouterChatFetch,
   type OpenRouterRequestOptions,
@@ -200,6 +201,11 @@ export async function chatCompletionsFetch(
     label,
     timeoutMs
   );
+}
+
+/** Whether the provider serving text calls has its key, for routes that answer 503 instead of throwing. */
+export function hasTextProviderKey(): boolean {
+  return isOpenRouterTextProvider() ? hasOpenRouterApiKey() : hasGoogleAiApiKey();
 }
 
 export interface NativePart {

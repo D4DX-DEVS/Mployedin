@@ -8,14 +8,15 @@ import { test, expect, type Browser, type Page } from "@playwright/test";
  *   2. Super agent sees separate Exhibition date / Created columns, sorts by
  *      both (undated last, across filtered pages too), filters with the
  *      "Awaiting your review" figure, sees requested support as chips and as
- *      requested / allocated / delivered in the detail, then starts a review,
- *      approves (nothing allocated), rejects and requests changes with the
- *      reasons required, and all of it survives a reload.
- *   3. Admin (after the existing review + budget steps) allocates in the
- *      inspector: over-allocation is refused, a partial allocation shows as
- *      "Partially allocated"; moving to Delivery warns but is allowed; delivery
- *      refuses "Issue" without a note, records Delivered / Issue, and all of it
- *      survives a reload.
+ *      requested / allocated / delivered in the detail, then verifies straight
+ *      from the queue (no Start review step, owner 2026-10-15), approves
+ *      (nothing allocated), rejects and requests changes with the reasons
+ *      required, and all of it survives a reload.
+ *   3. Admin allocates in the inspector: over-allocation is refused, a partial
+ *      allocation shows as "Partially allocated"; Approve payment takes the
+ *      amount and the support together and warns about the shortfall but
+ *      allows it; delivery refuses "Issue" without a note, records Delivered /
+ *      Issue, and all of it survives a reload.
  *
  * Runs against the seeded agent@ / superagent@ / admin@ accounts. The request
  * it creates is deleted at the end.
@@ -276,24 +277,25 @@ test("agent requests support items; super agent sees dates, sort and support; ad
   await expect(volunteerLine.getByRole("cell").nth(2)).toHaveText("—");
   await expect(volunteerLine.getByRole("cell").nth(3)).toHaveText("—");
   await expect(saDetail.getByText("Two power sockets near the booth.")).toBeVisible();
-  await expect(saDetail.getByText("Not decided yet").first()).toBeVisible();
-  await expect(saDetail.getByRole("button", { name: "Start Review" })).toBeVisible();
+  // No recommendation or approval yet: the budget tiles show "-".
+  await expect(saDetail.getByText("Approved", { exact: true })).toBeVisible();
+  // Verify straight away: no Start review, no Move back.
+  await expect(saDetail.getByText("Waiting on the super agent to verify.")).toBeVisible();
+  await expect(saDetail.getByRole("button", { name: "Approve" })).toBeVisible();
+  await expect(saDetail.getByRole("button", { name: "Revise" })).toBeVisible();
   await expect(saDetail.getByRole("button", { name: "Reject" })).toBeVisible();
-  await expect(saDetail.getByRole("button", { name: "Approve" })).toHaveCount(0);
+  await expect(saDetail.getByRole("button", { name: /start review|move back/i })).toHaveCount(0);
   await sa.screenshot({ path: `${SHOTS}/05-sa-detail.png` });
-
-  // Start review from the detail footer.
-  await saDetail.getByRole("button", { name: "Start Review" }).click();
-  const startDialog = sa.getByRole("dialog", { name: "Start Review" });
-  await startDialog.getByRole("button", { name: "Start Review" }).click();
-  await expect(startDialog).toBeHidden();
-  await expect(row.getByText("Under Review")).toBeVisible({ timeout: 20_000 });
+  await saDetail.getByRole("button", { name: "Close" }).last().click();
+  await expect(saDetail).toBeHidden();
 
   // Approve from the row: the dialog says approval does not allocate.
   await row.getByRole("button", { name: /approve/i }).click();
-  const approveDialog = sa.getByRole("dialog", { name: "Approve Exhibition" });
+  const approveDialog = sa.getByRole("dialog", { name: "Approve exhibition" });
   await expect(approveDialog.getByText(/doesn't allocate the requested resources/)).toBeVisible();
-  await approveDialog.getByLabel("Review Notes").fill("Fits the Q4 plan");
+  // The approval note is optional, so it is folded behind a link.
+  await approveDialog.getByRole("button", { name: /add a note/i }).click();
+  await approveDialog.getByLabel("Review notes").fill("Fits the Q4 plan");
   await sa.screenshot({ path: `${SHOTS}/05c-sa-approve-dialog.png` });
   await approveDialog.getByRole("button", { name: "Approve" }).click();
   await expect(approveDialog).toBeHidden();
@@ -307,17 +309,18 @@ test("agent requests support items; super agent sees dates, sort and support; ad
   };
   expect(approved.status).toBe("approved");
   expect(approved.supportItems.every((s) => s.allocatedQty == null && (s.deliveryStatus ?? "pending") === "pending")).toBe(true);
-  expect(approved.statusHistory.map((h) => h.status)).toEqual(["submitted", "under_review", "approved"]);
-  expect(approved.statusHistory[2]).toMatchObject({ approverRole: "super_agent", note: "Fits the Q4 plan" });
-  expect(approved.statusHistory[2].changedBy?.name).toBeTruthy();
+  expect(approved.statusHistory.map((h) => h.status)).toEqual(["submitted", "approved"]);
+  expect(approved.statusHistory[1]).toMatchObject({ approverRole: "super_agent", note: "Fits the Q4 plan" });
+  expect(approved.statusHistory[1].changedBy?.name).toBeTruthy();
 
   // Nothing left for this role to do on it, and the server agrees.
   await row.getByRole("button", { name: EVENT_NAME }).click();
   const approvedDetail = sa.getByRole("dialog").filter({ hasText: EVENT_NAME });
   await expect(approvedDetail.getByText("Fits the Q4 plan")).toBeVisible();
-  await expect(approvedDetail.getByText(approved.statusHistory[2].changedBy!.name!).first()).toBeVisible();
-  await expect(approvedDetail.getByRole("button", { name: /approve|reject|start review/i })).toHaveCount(0);
-  await approvedDetail.getByText("Approval History").scrollIntoViewIfNeeded();
+  await expect(approvedDetail.getByText(approved.statusHistory[1].changedBy!.name!).first()).toBeVisible();
+  await expect(approvedDetail.getByText("Verified. Waiting on the admin to approve the payment.")).toBeVisible();
+  await expect(approvedDetail.getByRole("button", { name: /approve|reject|start review|move back/i })).toHaveCount(0);
+  await approvedDetail.getByRole("heading", { name: "Workflow" }).scrollIntoViewIfNeeded();
   await sa.screenshot({ path: `${SHOTS}/05d-sa-history.png` });
   await approvedDetail.getByRole("button", { name: "Close" }).last().click();
   await expect(approvedDetail).toBeHidden();
@@ -327,26 +330,24 @@ test("agent requests support items; super agent sees dates, sort and support; ad
   expect((await api(sa, "PATCH", `/api/exhibitions/${requestId}/support`, { action: "allocate", items: [] })).status).toBe(403);
 
   // Reject needs a reason: the button stays disabled until one is given.
-  // A new submission's only extra action is Reject, so it is a button of its own (no "…").
-  await undatedRow.getByRole("button", { name: "Reject" }).click();
-  const rejectDialog = sa.getByRole("dialog", { name: "Reject Exhibition" });
+  // A new submission offers Approve, with Revise and Reject in the menu.
+  await undatedRow.getByRole("button", { name: /more actions/i }).click();
+  await sa.getByRole("menuitem", { name: "Reject" }).click();
+  const rejectDialog = sa.getByRole("dialog", { name: "Reject exhibition" });
   await expect(rejectDialog.getByRole("button", { name: "Reject" })).toBeDisabled();
   await rejectDialog.getByLabel(/reason for rejecting/i).fill("Duplicate of the main request");
   await rejectDialog.getByRole("button", { name: "Reject" }).click();
   await expect(rejectDialog).toBeHidden();
   await expect(undatedRow.getByText("Rejected")).toBeVisible({ timeout: 20_000 });
 
-  // Request changes on the third one, after starting its review.
+  // Request changes on the third one, straight from the queue.
   const reviseRow = sa.getByRole("row").filter({ hasText: `${EVENT_NAME} V` });
-  await reviseRow.getByRole("button", { name: /review/i }).click();
-  await sa.getByRole("dialog", { name: "Start Review" }).getByRole("button", { name: "Start Review" }).click();
-  await expect(reviseRow.getByText("Under Review")).toBeVisible({ timeout: 20_000 });
   await reviseRow.getByRole("button", { name: /more actions/i }).click();
   await sa.getByRole("menuitem", { name: "Revise" }).click();
-  const reviseDialog = sa.getByRole("dialog", { name: "Request Revision" });
-  await expect(reviseDialog.getByRole("button", { name: "Request Revision" })).toBeDisabled();
+  const reviseDialog = sa.getByRole("dialog", { name: "Request revision" });
+  await expect(reviseDialog.getByRole("button", { name: "Request revision" })).toBeDisabled();
   await reviseDialog.getByLabel(/revision notes/i).fill("Add the venue and dates");
-  await reviseDialog.getByRole("button", { name: "Request Revision" }).click();
+  await reviseDialog.getByRole("button", { name: "Request revision" }).click();
   await expect(reviseDialog).toBeHidden();
   await expect(reviseRow.getByText("Revision Requested")).toBeVisible({ timeout: 20_000 });
 
@@ -391,16 +392,17 @@ test("agent requests support items; super agent sees dates, sort and support; ad
   await expect(sentBack.getByText("TBD")).toHaveCount(0);
   await expect(sentBack.getByRole("button", { name: "Edit and resubmit" })).toBeVisible();
   // History names who sent it back, not just the role.
-  const saName = String(approved.statusHistory[2].changedBy?.name);
+  const saName = String(approved.statusHistory[1].changedBy?.name);
   await expect(sentBack.getByText(saName).first()).toBeVisible();
   await agentAgain.screenshot({ path: `${SHOTS}/05f-agent-sent-back-detail.png` });
   await agentAgain.context().close();
 
-  /* ── 3. Admin: allocate, move to Delivery, record delivery ────────── */
+  /* ── 3. Admin: allocate, approve the payment, record delivery ─────── */
   const admin = await login(browser, ADMIN);
   await admin.goto("/en/admin/exhibitions", { waitUntil: "networkidle" });
-  const budget = await api(admin, "PATCH", `/api/exhibitions/${requestId}`, { status: "budget_approved", approvedBudget: 1000, reviewNote: "Budget OK" });
-  expect(budget.status, JSON.stringify(budget.json)).toBe(200);
+  // The payment can't be approved with the support undecided.
+  const early = await api(admin, "PATCH", `/api/exhibitions/${requestId}`, { status: "budget_approved", approvedBudget: 1000 });
+  expect(early.status).toBe(422);
 
   await admin.getByPlaceholder(/search/i).first().fill(EVENT_NAME);
   const adminRow = admin.getByRole("row").filter({ hasText: EVENT_NAME }).filter({ hasNotText: `${EVENT_NAME} R` }).filter({ hasNotText: `${EVENT_NAME} V` });
@@ -434,13 +436,16 @@ test("agent requests support items; super agent sees dates, sort and support; ad
   await expect(inspector.getByText("Responsible: Rashid")).toBeVisible();
   await admin.screenshot({ path: `${SHOTS}/09-admin-partially-allocated.png` });
 
-  // Moving to Delivery warns (not everything allocated) but is allowed.
-  await inspector.getByRole("button", { name: "Assign Resources" }).click();
-  const move = admin.getByRole("dialog").filter({ hasText: "isn't fully allocated yet" });
-  await expect(move).toBeVisible();
-  await admin.screenshot({ path: `${SHOTS}/10-admin-assign-warning.png` });
-  await move.getByRole("textbox").last().fill("Volunteer shortfall accepted");
-  await move.getByRole("button", { name: /assign resources|confirm/i }).last().click();
+  // Approve payment: the amount and the support in one dialog. It warns
+  // (not everything allocated) but allows it.
+  await expect(inspector.getByText("Verified. Waiting on the admin to approve the payment.")).toBeVisible();
+  await expect(inspector.getByRole("button", { name: /assign resources|mark active|move back/i })).toHaveCount(0);
+  await inspector.getByRole("button", { name: "Approve payment" }).click();
+  const move = admin.getByRole("dialog", { name: "Approve payment" });
+  await expect(move.getByText("isn't fully allocated yet")).toBeVisible();
+  await move.getByLabel(/approved budget/i).fill("1000");
+  await admin.screenshot({ path: `${SHOTS}/10-admin-approve-payment.png` });
+  await move.getByRole("button", { name: "Approve payment" }).click();
   await expect(move).toBeHidden({ timeout: 20_000 });
 
   // Delivery: an issue without a note is refused.
@@ -467,7 +472,7 @@ test("agent requests support items; super agent sees dates, sort and support; ad
   // Survives a reload; the history records both changes.
   const after = await api(admin, "GET", `/api/exhibitions/${requestId}`);
   const doc = (after.json?.item ?? after.json) as { status: string; supportItems: Array<Record<string, unknown>>; statusHistory: Array<{ note?: string }> };
-  expect(doc.status).toBe("resources_assigned");
+  expect(doc.status).toBe("budget_approved");
   expect(doc.supportItems.map((s) => [s.item, s.allocatedQty, s.deliveryStatus, s.deliveredQty ?? null])).toEqual([
     ["tv", 1, "delivered", 1],
     ["volunteers", 2, "issue", null],

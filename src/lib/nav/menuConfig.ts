@@ -261,8 +261,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
               // used to sit here as well as inside the Reports tab strip. They
               // now live only under Reports — see the "Reports" entry below.
               {
-                title: "Targets",
-                titleAr: "الأهداف",
+                title: "Profit Targets",
+                titleAr: "أهداف الربح",
                 href: p("/admin/target-management"),
                 icon: "Target",
                 description: "Enterprise target profiles & analytics",
@@ -741,16 +741,16 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "تقارير الأداء",
               },
               {
-                title: "Targets",
-                titleAr: "الأهداف",
+                title: "Profit Targets",
+                titleAr: "أهداف الربح",
                 href: p("/super-agent/target-management"),
                 icon: "Target",
                 description: "Unified target profiles & team tracking",
                 descriptionAr: "ملفات الأهداف الموحدة وتتبع الفريق",
               },
               {
-                title: "Target Report",
-                titleAr: "تقرير الأهداف",
+                title: "Profit Report",
+                titleAr: "تقرير الأرباح",
                 href: p("/super-agent/target-report"),
                 icon: "FileText",
                 description: "Team target performance report",

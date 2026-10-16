@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { renderWithProviders as render, screen, within } from "@/test-utils";
 
 import OnboardingPage from "@/app/[locale]/(dashboard)/job-seeker/onboarding/page";
 

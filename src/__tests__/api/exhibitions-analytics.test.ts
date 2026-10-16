@@ -34,16 +34,20 @@ jest.mock("@/models/ExhibitionPerformance", () => ({
   },
 }));
 
+// The admin hierarchy report lists every agent and super agent: none here.
+const mockEmptyFind = () => ({ select: () => ({ lean: () => Promise.resolve([]) }) });
+
 jest.mock("@/models/Agent", () => ({
   __esModule: true,
   default: {
-    find: jest.fn(),
+    find: jest.fn(mockEmptyFind),
   },
 }));
 
 jest.mock("@/models/SuperAgent", () => ({
   __esModule: true,
   default: {
+    find: jest.fn(mockEmptyFind),
     findOne: jest.fn(),
   },
 }));

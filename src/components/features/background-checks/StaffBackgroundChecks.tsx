@@ -6,6 +6,8 @@
  * Start takes a check nobody holds, and the panel records progress and the
  * verdict. Super agents and admins follow. Scoping and what each row allows
  * come from the API (GET /api/background-checks, `viewer` per row).
+ * An agent can work with many employers, so the list has summary tiles and
+ * filters by employer -> job, status, check type and holder (all in the URL).
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -17,7 +19,6 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
@@ -26,6 +27,15 @@ import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { CheckDetailPanel } from "./CheckDetailPanel";
 import { KNOWN_ERROR_CODES, type CheckViewer } from "./checkDetailTypes";
+import {
+  FILTER_HOLDERS,
+  FILTER_STATUSES,
+  FILTER_TYPES,
+  StaffCheckFilterBar,
+  StaffCheckTiles,
+  type CheckOverview,
+  type StaffCheckFilterValues,
+} from "./StaffCheckFilters";
 
 const STATUSES = ["pending", "in_progress", "completed", "cancelled"] as const;
 type CheckStatus = (typeof STATUSES)[number];
@@ -47,15 +57,18 @@ export interface StaffBackgroundCheck {
   viewer: CheckViewer;
 }
 
-type RowAction = "start" | "continue" | "review" | "result" | "view";
+type RowAction = "start" | "continue" | "review" | "result" | "progress" | "view";
 
 /** What the row's button does, from where the check stands and what this viewer may do. */
 function rowAction(check: StaffBackgroundCheck): RowAction {
   if (check.viewer?.canStart) return "start";
   if (check.viewer?.canWork) return "continue";
   if (check.status === "completed") return check.outcome === "clear" ? "result" : "review";
+  // Someone else is running it: the viewer can follow, not act.
+  if (check.status === "in_progress" || check.viewer?.heldByOther) return "progress";
   return "view";
 }
+const actionLabelKey = (action: RowAction) => (action === "progress" ? "rowActionProgress" : `rowAction.${action}`);
 
 const STATUS_TONE: Record<CheckStatus, string> = {
   pending: "border-border bg-muted/40 text-muted-foreground",
@@ -78,7 +91,13 @@ export function StaffBackgroundChecks() {
   const tWork = useTranslations("backgroundCheckWork");
   const locale = useLocale();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage, paginationParams } = usePagination();
-  const [status, setStatus] = useUrlFilter("status", "all", { allow: ["all", ...STATUSES] });
+  const [status, setStatus] = useUrlFilter("status", "all", { allow: ["all", ...FILTER_STATUSES] });
+  const [checkType, setCheckType] = useUrlFilter("checkType", "all", { allow: ["all", ...FILTER_TYPES] });
+  const [holder, setHolder] = useUrlFilter("holder", "all", { allow: ["all", ...FILTER_HOLDERS] });
+  const [employerId, setEmployerId] = useUrlFilter("employerId", "");
+  const [jobId, setJobId] = useUrlFilter("jobId", "");
+  const [q, setQ] = useUrlFilter("q", "", { debounceMs: 300 });
+  const [overview, setOverview] = useState<CheckOverview | null>(null);
   const [items, setItems] = useState<StaffBackgroundCheck[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -91,6 +110,11 @@ export function StaffBackgroundChecks() {
     setFailed(false);
     const params = paginationParams();
     if (status !== "all") params.set("status", status);
+    if (checkType !== "all") params.set("checkType", checkType);
+    if (holder !== "all") params.set("holder", holder);
+    if (employerId) params.set("employerId", employerId);
+    if (jobId) params.set("jobId", jobId);
+    if (q.trim()) params.set("q", q.trim());
     try {
       const res = await fetch(`/api/background-checks?${params}`);
       if (!res.ok) throw new Error(String(res.status));
@@ -103,9 +127,38 @@ export function StaffBackgroundChecks() {
       setLoading(false);
     }
     // paginationParams changes with page/limit only; the pagination object itself would loop.
-  }, [paginationParams, status, updateTotal]);
+  }, [paginationParams, status, checkType, holder, employerId, jobId, q, updateTotal]);
 
   useEffect(() => { void load(); }, [load]);
+
+  /** Tile counts and the Employer -> Job options; refreshed after any change to a check. */
+  const loadOverview = useCallback(async () => {
+    try {
+      const res = await fetch("/api/background-checks/overview");
+      const data = res.ok ? ((await res.json()) as Partial<CheckOverview>) : null;
+      if (data?.counts) setOverview({ canRun: !!data.canRun, counts: data.counts, employers: data.employers ?? [], jobs: data.jobs ?? [] });
+    } catch {
+      // The tiles keep their last counts; the list itself still works.
+    }
+  }, []);
+  useEffect(() => { void loadOverview(); }, [loadOverview]);
+
+  const refresh = useCallback(() => {
+    void load();
+    void loadOverview();
+  }, [load, loadOverview]);
+
+  const filters: StaffCheckFilterValues = { q, status, checkType, holder, employerId, jobId };
+  const filtered = status !== "all" || checkType !== "all" || holder !== "all" || !!employerId || !!jobId || !!q.trim();
+  const setters: Record<keyof StaffCheckFilterValues, (value: string) => void> = {
+    q: setQ, status: setStatus, checkType: setCheckType, holder: setHolder, employerId: setEmployerId, jobId: setJobId,
+  };
+  const changeFilters = (patch: Partial<StaffCheckFilterValues>) => {
+    (Object.keys(patch) as (keyof StaffCheckFilterValues)[]).forEach((key) => setters[key](patch[key] ?? ""));
+    resetPage();
+  };
+  const clearFilters = () =>
+    changeFilters({ q: "", status: "all", checkType: "all", holder: "all", employerId: "", jobId: "" });
 
   /** Start takes the check, then opens it to work on. */
   const start = async (id: string) => {
@@ -120,11 +173,11 @@ export function StaffBackgroundChecks() {
         const body = (await res.json().catch(() => ({}))) as { code?: string };
         const code = (KNOWN_ERROR_CODES as readonly string[]).includes(body.code ?? "") ? body.code : null;
         toast.error(code ? tWork(`errors.${code}`) : tWork("errors.generic"));
-        void load();
+        refresh();
         return;
       }
       toast.success(tWork("started"));
-      void load();
+      refresh();
       setOpenId(id);
     } catch {
       toast.error(tWork("errors.generic"));
@@ -142,7 +195,7 @@ export function StaffBackgroundChecks() {
         variant={action === "start" ? "default" : "outline"}
         className={cn("min-h-11 rounded-lg sm:min-h-9", className)}
         disabled={starting !== null}
-        aria-label={`${tWork(`rowAction.${action}`)} · ${check.candidateName || t("unknownCandidate")}`}
+        aria-label={`${tWork(actionLabelKey(action))} · ${check.candidateName || t("unknownCandidate")}`}
         onClick={() => (action === "start" ? void start(check._id) : setOpenId(check._id))}
       >
         {starting === check._id ? (
@@ -154,7 +207,7 @@ export function StaffBackgroundChecks() {
         ) : (
           <Eye className="me-1.5 h-4 w-4" aria-hidden="true" />
         )}
-        {tWork(`rowAction.${action}`)}
+        {tWork(actionLabelKey(action))}
       </Button>
     );
   };
@@ -167,11 +220,6 @@ export function StaffBackgroundChecks() {
           : tWork("handledByName", { name: check.assignee.name, kind: tWork(check.assignee.kind === "agent" ? "kindAgent" : "kindTeam") })}
       </span>
     ) : null;
-
-  const changeStatus = (value: string) => {
-    setStatus(value);
-    resetPage();
-  };
 
   const label = {
     status: (value: string) => ((STATUSES as readonly string[]).includes(value) ? t(`status.${value}`) : value),
@@ -196,27 +244,14 @@ export function StaffBackgroundChecks() {
     <div className="page-container">
       <WorkspaceHeader title={t("pageTitle")} context={t("pageContext", { count: total })} />
 
+      <StaffCheckTiles overview={overview} values={filters} onPick={changeFilters} />
+
       <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex flex-col gap-3 border-b border-border pb-3 sm:flex-row sm:items-end sm:justify-between sm:pb-4">
-          <p className="flex items-start gap-2 text-xs text-muted-foreground">
-            <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-            {tWork("workNote")}
-          </p>
-          <div className="flex w-full flex-col gap-1.5 sm:w-52">
-            <label htmlFor="staff-bg-status" className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {t("statusLabel")}
-            </label>
-            <Select value={status} onValueChange={changeStatus}>
-              <SelectTrigger id="staff-bg-status" className="h-11 sm:h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("statusAll")}</SelectItem>
-                {STATUSES.map((value) => <SelectItem key={value} value={value}>{t(`status.${value}`)}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <p className="mb-3 flex items-start gap-2 text-xs text-muted-foreground">
+          <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+          {tWork("workNote")}
+        </p>
+        <StaffCheckFilterBar overview={overview} values={filters} onChange={changeFilters} onClear={clearFilters} active={filtered} />
 
         {failed ? (
           <ErrorState className="mt-4" title={t("loadErrorTitle")} onRetry={() => void load()} />
@@ -224,9 +259,9 @@ export function StaffBackgroundChecks() {
           <EmptyState
             className="mt-4"
             icon={ShieldCheck}
-            title={status === "all" ? t("emptyTitle") : t("emptyFilteredTitle")}
-            description={status === "all" ? t("emptyDescription") : undefined}
-            action={status !== "all" ? <Button variant="outline" onClick={() => changeStatus("all")}>{t("clearFilter")}</Button> : undefined}
+            title={filtered ? t("emptyFiltersTitle") : t("emptyTitle")}
+            description={filtered ? t("emptyFiltersDescription") : t("emptyDescription")}
+            action={filtered ? <Button variant="outline" onClick={clearFilters}>{t("clearFilters")}</Button> : undefined}
           />
         ) : (
           <>
@@ -242,8 +277,8 @@ export function StaffBackgroundChecks() {
                         <p className="min-w-0 truncate font-medium text-foreground">{check.candidateName || t("unknownCandidate")}</p>
                         {statusBadge(check)}
                       </div>
-                      <p className="mt-1 truncate text-sm text-foreground/80">{check.jobTitle || "—"}</p>
-                      <p className="truncate text-xs text-muted-foreground">{check.companyName || "—"}</p>
+                      <p className="mt-1 truncate text-sm font-medium text-foreground/90">{check.companyName || "—"}</p>
+                      <p className="truncate text-xs text-muted-foreground">{check.jobTitle || "—"}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span>{label.type(check.checkType)}</span>
                         {outcomeText(check)}
@@ -283,8 +318,9 @@ export function StaffBackgroundChecks() {
                         <TableRow key={check._id} className="hover:bg-secondary/50">
                           <TableCell className="font-medium text-foreground">{check.candidateName || t("unknownCandidate")}</TableCell>
                           <TableCell>
-                            <span className="block text-foreground/80">{check.jobTitle || "—"}</span>
-                            <span className="block text-xs text-muted-foreground">{check.companyName || "—"}</span>
+                            {/* Employer first: an agent scans the list by who asked. */}
+                            <span className="block font-medium text-foreground/90">{check.companyName || "—"}</span>
+                            <span className="block text-xs text-muted-foreground">{check.jobTitle || "—"}</span>
                           </TableCell>
                           <TableCell>
                             <span className="block text-sm text-foreground/80">{label.type(check.checkType)}</span>
@@ -310,7 +346,7 @@ export function StaffBackgroundChecks() {
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
 
-      <CheckDetailPanel apiBase="/api/background-checks" checkId={openId || null} onClose={() => setOpenId("")} onChanged={() => void load()} />
+      <CheckDetailPanel apiBase="/api/background-checks" checkId={openId || null} onClose={() => setOpenId("")} onChanged={refresh} />
     </div>
   );
 }

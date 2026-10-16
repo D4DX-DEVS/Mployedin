@@ -15,7 +15,8 @@ import Application from "@/models/Application";
 import { downloadBuffer } from "@/lib/storage/spaces";
 import { guessMime } from "@/lib/storage/mime";
 import { extractResumeText } from "@/lib/ats/analyzeCv";
-import { generateMultimodal, generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import { EmptyOcrError, ocrDocument } from "@/lib/ai/visionOcr";
 import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
 import logger from "@/lib/logger";
@@ -24,7 +25,6 @@ import {
   CV_PARSER_VERSION,
   MAX_CV_TEXT,
   MIN_TEXT_LAYER_CHARS,
-  cvTextFromParsed,
   hasParsedContent,
   normalizeParsedCv,
   type ParsedCv,
@@ -105,17 +105,23 @@ async function parseText(text: string): Promise<ParsedCv> {
     `${CV_PARSE_PROMPT}\n\nCV text:\n${text.slice(0, MAX_PROMPT_TEXT)}`,
     GEMINI_MODELS.flash,
     AI_TOKEN_LIMITS.cv_extract,
+    true,
   );
   return normalizeParsedCv(parseJson(raw));
 }
 
-async function parseFile(buffer: Buffer, mimeType: string): Promise<ParsedCv> {
-  const raw = await generateMultimodal(
-    [{ text: CV_PARSE_PROMPT }, { inlineData: { mimeType, data: buffer.toString("base64") } }],
-    GEMINI_MODELS.flash,
-    AI_TOKEN_LIMITS.cv_extract,
-  );
-  return normalizeParsedCv(parseJson(raw));
+/** A scan: transcribe it, then parse the transcription like any text layer. */
+async function readScan(buffer: Buffer, mimeType: string): Promise<{ text: string; parsed: ParsedCv }> {
+  let text: string;
+  try {
+    text = await ocrDocument(buffer, mimeType);
+  } catch (err) {
+    // The model answered with nothing (a blank or too faint scan): reading the
+    // same file again cannot help. Any other error is retryable and passes through.
+    if (err instanceof EmptyOcrError) throw new PermanentCvError("unreadable");
+    throw err;
+  }
+  return { text, parsed: await parseText(text) };
 }
 
 async function readCv(cv: ClaimedCv, finalAttempt: boolean): Promise<Reading> {
@@ -165,9 +171,9 @@ async function readCv(cv: ClaimedCv, finalAttempt: boolean): Promise<Reading> {
   }
 
   if (!VISION_MIMES.has(mimeType)) throw new PermanentCvError("unsupported_type");
-  const parsed = await parseFile(buffer, mimeType);
-  if (!hasParsedContent(parsed)) throw new PermanentCvError("unreadable");
-  return { fingerprint, text: cvTextFromParsed(parsed).slice(0, MAX_CV_TEXT), textSource: "ai_vision", parsed };
+  const scan = await readScan(buffer, mimeType);
+  if (!hasParsedContent(scan.parsed)) throw new PermanentCvError("unreadable");
+  return { fingerprint, text: scan.text.slice(0, MAX_CV_TEXT), textSource: "ai_vision", parsed: scan.parsed };
 }
 
 type Lean = Record<string, unknown>;

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import type { UserRole, PermissionMode, CustomPermissions, Resource, Action } from "@/types/user";
 import type { ParamSchema } from "./paramSchema";
+import type { CopilotView } from "./views";
 
 /** Context passed to every tool executor — mirrors AuthContext from withAuth. */
 export interface CopilotToolContext {
@@ -67,6 +68,8 @@ export type CopilotStreamFrame =
   | { type: "text_delta"; content: string }
   | { type: "tool_call"; tool: string; label: string }
   | { type: "tool_result"; tool: string; ok: boolean; message: string; data?: unknown }
+  /** Cards for a read tool's rows; follows that tool's tool_result frame. */
+  | { type: "view"; tool: string; view: CopilotView }
   | { type: "proposal"; proposalId: string; tool: string; label: string; summary: string; args: Record<string, unknown>; preview?: CopilotToolPreview }
   | { type: "error"; message: string }
   | { type: "done" };

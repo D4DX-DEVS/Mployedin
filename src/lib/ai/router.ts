@@ -9,6 +9,7 @@ import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import logger from "@/lib/logger";
 import AICache, { CACHE_TTL_SEC } from "@/models/AICache";
 import { connectDB } from "@/lib/db/mongoose";
+import { servingModelId } from "@/lib/ai/openRouter";
 
 export type AITask =
   | "chat"
@@ -30,6 +31,16 @@ const TASK_MODEL_MAP: Record<AITask, keyof typeof GEMINI_MODELS> = {
 };
 
 /**
+ * Cache key for a task and prompt, naming the model that answers. A model
+ * switch or an env pin then starts fresh instead of serving another model's
+ * answers for up to a week.
+ */
+function cacheHash(task: AITask, prompt: string): string {
+  const model = servingModelId(GEMINI_MODELS[TASK_MODEL_MAP[task]]);
+  return createHash("sha256").update(`${task}:${model}:${prompt}`).digest("hex");
+}
+
+/**
  * Route a text generation request through the appropriate model.
  * Falls back to flash if the preferred model is unavailable.
  * Results are cached in MongoDB via AICache (TTL per task type).
@@ -45,7 +56,7 @@ export async function routeGenerate(
   const jsonMode = options?.jsonMode ?? false;
 
   // Check cache first
-  const hash = createHash("sha256").update(`${task}:${prompt}`).digest("hex");
+  const hash = cacheHash(task, prompt);
   try {
     await connectDB();
     const cached = await AICache.findOne({ hash }).lean();
@@ -86,7 +97,7 @@ export async function routeGenerate(
  * Invalidate a cached AI response (e.g. when the cached result is malformed).
  */
 export async function invalidateAICache(task: AITask, prompt: string): Promise<void> {
-  const hash = createHash("sha256").update(`${task}:${prompt}`).digest("hex");
+  const hash = cacheHash(task, prompt);
   try {
     await connectDB();
     await AICache.deleteOne({ hash });

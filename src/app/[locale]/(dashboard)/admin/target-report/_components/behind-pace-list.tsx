@@ -8,7 +8,7 @@ import type { TargetPerson } from "./types";
 
 const MAX_ROWS = 6;
 
-/** The people furthest behind the share of the year expected by now, each opening their plan. */
+/** The people furthest behind the share their own schedule expects by now, each opening their plan. */
 export function BehindPaceList({ people, year, expectedProgress, locale, className = "" }: {
   people: TargetPerson[];
   year: number;
@@ -44,15 +44,15 @@ export function BehindPaceList({ people, year, expectedProgress, locale, classNa
                     {t(person.role === "super_agent" ? "roleSuperAgent" : "roleAgent")}
                     {person.region ? ` · ${person.region}` : ""}
                   </span>
-                  {/* The bar carries a tick at the expected share, so the gap is visible. */}
+                  {/* The bar carries a tick at the share this person's schedule expects, so the gap is visible. */}
                   <span className="relative mt-2 block h-1.5 rounded-full bg-secondary">
                     <span className="block h-full rounded-full bg-rose-500" style={{ width: `${Math.min(100, person.progress)}%` }} />
-                    <span className="absolute -top-0.5 h-2.5 w-0.5 rounded bg-foreground/50" style={{ insetInlineStart: `${expectedProgress}%` }} />
+                    <span className="absolute -top-0.5 h-2.5 w-0.5 rounded bg-foreground/50" style={{ insetInlineStart: `${person.expectedProgress}%` }} />
                   </span>
                 </span>
                 <span className="shrink-0 text-end">
                   <span className="block text-sm font-semibold tabular-nums text-foreground">{person.progress}%</span>
-                  <span className="block text-[11px] text-muted-foreground">{t("expectedShort", { expected: expectedProgress })}</span>
+                  <span className="block text-[11px] text-muted-foreground">{t("expectedShort", { expected: person.expectedProgress })}</span>
                 </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl:rotate-180" />
               </Link>

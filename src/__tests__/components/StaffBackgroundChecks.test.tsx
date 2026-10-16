@@ -153,3 +153,67 @@ it("offers a retry when the list can't be loaded", async () => {
   await userEvent.click(retry);
   await screen.findAllByText("Asha Menon");
 });
+
+/* An agent may work with many employers (owner request 2026-10-16): summary
+   tiles, and filters by employer -> job, type and holder, all in the URL. */
+describe("finding checks across many employers", () => {
+  const overview = {
+    canRun: true,
+    counts: { pending: 3, in_progress: 2, awaiting_reply: 1, mine: 4, completed: 7 },
+    employers: [{ _id: "e1", name: "Acme", total: 5, open: 2 }],
+    jobs: [{ _id: "j1", employerId: "e1", title: "Accountant", total: 5, open: 2 }],
+  };
+  beforeEach(() => {
+    fetchMock.mockImplementation(async (url: string) =>
+      url.startsWith("/api/background-checks/overview")
+        ? { ok: true, json: async () => overview }
+        : { ok: true, json: async () => ({ items: [check], total: 1 }) }
+    );
+  });
+
+  it("shows counts per state, and a tile filters the list", async () => {
+    render(<StaffBackgroundChecks />);
+    const mine = await screen.findByRole("button", { name: /my open checks/i });
+    expect(mine).toHaveTextContent("4");
+    await userEvent.click(mine);
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith("/api/background-checks?page=1&limit=20&status=open&holder=me")
+    );
+    expect(screen.getByRole("button", { name: /my open checks/i })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("sends employer, job, type and holder filters from the URL", async () => {
+    searchParamsState = new URLSearchParams("employerId=e1&jobId=j1&checkType=reference&holder=unassigned");
+    render(<StaffBackgroundChecks />);
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/background-checks?page=1&limit=20&checkType=reference&holder=unassigned&employerId=e1&jobId=j1"
+      )
+    );
+  });
+
+  it("offers Clear filters when the filters match nothing", async () => {
+    // useUrlFilter re-reads window.location after mount, so both must agree.
+    window.history.replaceState({}, "", "/en/agent/background-checks?status=awaiting_reply");
+    searchParamsState = new URLSearchParams("status=awaiting_reply");
+    fetchMock.mockImplementation(async (url: string) =>
+      url.startsWith("/api/background-checks/overview")
+        ? { ok: true, json: async () => overview }
+        : { ok: true, json: async () => ({ items: [], total: 0 }) }
+    );
+    render(<StaffBackgroundChecks />);
+    expect(await screen.findByText("No checks match these filters")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /clear filters/i }).length).toBeGreaterThan(0);
+  });
+
+  it("hides My open checks from someone who only follows checks", async () => {
+    fetchMock.mockImplementation(async (url: string) =>
+      url.startsWith("/api/background-checks/overview")
+        ? { ok: true, json: async () => ({ ...overview, canRun: false }) }
+        : { ok: true, json: async () => ({ items: [check], total: 1 }) }
+    );
+    render(<StaffBackgroundChecks />);
+    await screen.findByRole("button", { name: /not started/i });
+    expect(screen.queryByRole("button", { name: /my open checks/i })).toBeNull();
+  });
+});

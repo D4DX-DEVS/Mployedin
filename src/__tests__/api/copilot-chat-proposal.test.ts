@@ -35,7 +35,6 @@ jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn(async () => undefined
 jest.mock("@/lib/validators", () => ({ validateBody: jest.fn(async (req: Request) => req.json()) }));
 jest.mock("@/lib/audit/log", () => ({ logActivity: jest.fn(async () => undefined) }));
 jest.mock("@/lib/logger", () => ({ __esModule: true, default: { warn: jest.fn(), error: jest.fn(), info: jest.fn(), debug: jest.fn() } }));
-jest.mock("@/lib/ai/copilot/modelRouter", () => ({ SMALL_MODEL: "small", LARGE_MODEL: "large", classifyComplexity: () => "small" }));
 jest.mock("@/lib/ai/copilot/pageContext", () => ({ parseEmployerJobIdFromPath: () => null, buildEmployerJobContext: jest.fn() }));
 jest.mock("@/lib/ai/copilot/registry", () => ({
   getToolsForUser: () => [mockTool],
@@ -46,7 +45,7 @@ jest.mock("@/models/CopilotProposal", () => ({
   default: { create: jest.fn(async (doc: Record<string, unknown>) => ({ _id: "prop1", ...doc })) },
 }));
 
-/** One Gemini SSE body. */
+/** One OpenAI-format SSE body, as OpenRouter streams it. */
 function sse(delta: Record<string, unknown>): Response {
   const body = `data: ${JSON.stringify({ choices: [{ delta }] })}\n\ndata: [DONE]\n\n`;
   return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
@@ -70,7 +69,7 @@ async function post(message: string) {
 describe("copilot chat route — proposal branch", () => {
   const fetchMock = jest.fn();
   beforeAll(() => {
-    process.env.GEMINI_API_KEY = "test-key";
+    process.env.OPENROUTER_API_KEY = "test-key";
     global.fetch = fetchMock as unknown as typeof fetch;
   });
   beforeEach(() => {
@@ -160,5 +159,40 @@ describe("copilot chat route — proposal branch", () => {
     const proposal = frames.find((f) => f.type === "proposal") as Record<string, unknown>;
     expect(proposal).toMatchObject({ args: { jobId: JOB_ID, count: 3 }, summary: "Shortlist the top 3 candidates" });
     expect(proposal.preview).toBeUndefined();
+  });
+
+  it("streams from OpenRouter with the Copilot model", async () => {
+    fetchMock.mockResolvedValueOnce(textTurn("Hello."));
+    const frames = await post("hi");
+    const { OPENROUTER_BASE, OPENROUTER_MODELS } = await import("@/lib/ai/openRouter");
+    expect(fetchMock.mock.calls[0][0]).toBe(`${OPENROUTER_BASE}/chat/completions`);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toMatchObject({ model: OPENROUTER_MODELS.copilot, stream: true });
+    expect(frames.at(-2)).toEqual({ type: "text", content: "Hello." });
+  });
+
+  it("answers on the fallback model when the Copilot model fails", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("provider down", { status: 503 })).mockResolvedValueOnce(textTurn("Hello."));
+    const frames = await post("hi");
+    const { OPENROUTER_MODELS } = await import("@/lib/ai/openRouter");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body as string).model).toBe(OPENROUTER_MODELS.copilotFallback);
+    expect(frames.at(-2)).toEqual({ type: "text", content: "Hello." });
+  });
+
+  it("is unavailable without an OpenRouter key", async () => {
+    delete process.env.OPENROUTER_API_KEY;
+    try {
+      const { POST } = await import("@/app/api/ai/copilot/chat/route");
+      const res = await POST(
+        new NextRequest("http://localhost/api/ai/copilot/chat", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ messages: [{ role: "user", content: "hi" }] }),
+        }),
+      );
+      expect(res.status).toBe(503);
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      process.env.OPENROUTER_API_KEY = "test-key";
+    }
   });
 });

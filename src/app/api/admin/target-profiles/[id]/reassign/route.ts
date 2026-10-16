@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
-import TargetProfile from "@/models/TargetProfile";
+import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
 import User from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { targetProfileReassignSchema } from "@/lib/validators/targetProfiles";
@@ -20,11 +20,28 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
   const body = await validateBody(req, targetProfileReassignSchema);
-  const profile = await TargetProfile.findById(id).lean();
+  const profile = await TargetProfile.findOne({ _id: id, ...PROFIT_TARGET_FILTER }).lean();
 
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   if (profile.status !== "active") {
     return NextResponse.json({ error: "Only active target profiles can be reassigned" }, { status: 400 });
+  }
+
+  // A super agent's agents were funded from this target and belong to that
+  // super agent's team; handing the target to someone else would leave them
+  // under a plan whose team they are not in.
+  if (profile.assigneeRole === "super_agent") {
+    const hasAgentTargets = await TargetProfile.exists({
+      ...PROFIT_TARGET_FILTER,
+      parentProfileId: id,
+      status: "active",
+    });
+    if (hasAgentTargets) {
+      return NextResponse.json(
+        { error: "Cancel the agent targets funded from this target before reassigning it" },
+        { status: 409 }
+      );
+    }
   }
 
   const newAssignee = await User.findOne({
@@ -55,8 +72,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     );
   }
 
-  const updated = await TargetProfile.findByIdAndUpdate(
-    id,
+  const updated = await TargetProfile.findOneAndUpdate(
+    { _id: id, ...PROFIT_TARGET_FILTER },
     { $set: { assigneeId: body.newAssigneeId } },
     { returnDocument: "after" }
   ).lean();

@@ -44,7 +44,8 @@ import type { ExportColumn } from "@/lib/export";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { readQuery, writeQuery } from "@/lib/ui/urlQuery";
 import { cn } from "@/lib/utils";
-import { EditRequestDialog, MoveBackDialog } from "@/components/features/exhibitions/ReviewerRequestDialogs";
+import { EditRequestDialog } from "@/components/features/exhibitions/ReviewerRequestDialogs";
+import { CompleteEventDialog } from "@/components/features/exhibitions/CompleteEventDialog";
 import { ExhibitionActionDialog } from "./_components/ExhibitionActionDialog";
 import { ExhibitionBoard } from "./_components/ExhibitionBoard";
 import { ExhibitionDetailDrawer } from "./_components/ExhibitionDetailDrawer";
@@ -163,7 +164,8 @@ export default function AdminExhibitionsPage() {
   const [support, setSupport] = useState<{ item: ExhibitionRequest; mode: SupportDialogMode } | null>(null);
   const [detailItem, setDetailItem] = useState<ExhibitionRequest | null>(null);
   const [editItem, setEditItem] = useState<ExhibitionRequest | null>(null);
-  const [moveBackItem, setMoveBackItem] = useState<ExhibitionRequest | null>(null);
+  // Completing an event, or recording the outcome of one already completed.
+  const [outcome, setOutcome] = useState<{ item: ExhibitionRequest; mode: "complete" | "outcome" } | null>(null);
   // Bumped after any change so the board's columns reload too.
   const [boardVersion, setBoardVersion] = useState(0);
   const [matchedResources, setMatchedResources] = useState<MatchedResource[]>([]);
@@ -268,7 +270,11 @@ export default function AdminExhibitionsPage() {
   const previousDetailItem = detailIndex > 0 ? items[detailIndex - 1] : null;
   const nextDetailItem = detailIndex >= 0 && detailIndex < items.length - 1 ? items[detailIndex + 1] : null;
 
-  const openAction = useCallback((item: ExhibitionRequest, status: string) => setAction({ item, status }), []);
+  // Completing takes the outcome (leads, summary, spend), not an audit note.
+  const openAction = useCallback((item: ExhibitionRequest, status: string) => {
+    if (status === "completed") setOutcome({ item, mode: "complete" });
+    else setAction({ item, status });
+  }, []);
 
   const handleDelete = async (item: ExhibitionRequest) => {
     const ok = await confirm({
@@ -398,7 +404,7 @@ export default function AdminExhibitionsPage() {
 
   // Inspector shortcuts: Esc, ←/→, A (the next step), R (reject, where allowed).
   useEffect(() => {
-    if (!detailItem || action) return;
+    if (!detailItem || action || outcome) return;
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest("input, textarea, select, [contenteditable='true'], [role='dialog']")) return;
@@ -423,7 +429,7 @@ export default function AdminExhibitionsPage() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [action, detailItem, nextDetailItem, openAction, openDetail, previousDetailItem]);
+  }, [action, detailItem, nextDetailItem, openAction, openDetail, outcome, previousDetailItem]);
 
   const rowActionsFor = (item: ExhibitionRequest): { quick: RowAction[]; menu: RowAction[] } => {
     const { next, others } = adminWorkflowActions(item.status);
@@ -590,8 +596,6 @@ export default function AdminExhibitionsPage() {
             { value: "approved", label: t("financeReviewStatus") },
             { value: "revision_requested", label: t("needsRevision") },
             { value: "budget_approved", label: t("statusBudgetApproved") },
-            { value: "resources_assigned", label: t("statusResourcesAssigned") },
-            { value: "active", label: t("statusActive") },
             { value: "completed", label: t("completedStatus") },
             { value: "rejected", label: t("rejected") },
             { value: "archived", label: t("statusArchived") },
@@ -623,8 +627,7 @@ export default function AdminExhibitionsPage() {
             { value: "all", label: t("allStages") },
             { value: "team_leader", label: t("teamLeaderReview") },
             { value: "finance", label: t("financeReviewStage") },
-            { value: "super_agent", label: t("stageResourcing") },
-            { value: "admin", label: t("stageDelivery") },
+            { value: "event", label: t("stageEvent") },
             { value: "completed", label: t("completedStage") },
           ]}
           value={stageFilter}
@@ -655,7 +658,6 @@ export default function AdminExhibitionsPage() {
           refreshKey={boardVersion}
           onOpen={openDetail}
           onAction={openAction}
-          onMoveBack={setMoveBackItem}
           onShowInTable={(statuses) => {
             setStatusFilter(statuses.length === 1 ? statuses[0] : "all");
             setStageFilter(statuses.length === 1 ? "all" : "team_leader");
@@ -837,7 +839,7 @@ export default function AdminExhibitionsPage() {
         onNext={() => nextDetailItem && openDetail(nextDetailItem)}
         onManageSupport={(item, mode) => setSupport({ item, mode })}
         onEdit={setEditItem}
-        onMoveBack={setMoveBackItem}
+        onRecordOutcome={(item) => setOutcome({ item, mode: "outcome" })}
         onItemChange={(item, change) => {
           setDetailItem((current) => (current && current._id === item._id ? { ...current, ...change } : current));
           refresh();
@@ -846,14 +848,9 @@ export default function AdminExhibitionsPage() {
 
       <EditRequestDialog
         request={editItem}
+        canEditBudget
         onClose={() => setEditItem(null)}
         onSaved={() => { setEditItem(null); refresh(); }}
-      />
-      <MoveBackDialog
-        request={moveBackItem}
-        stageLabel={(status) => (STATUS_LABEL_KEYS[status] ? t(STATUS_LABEL_KEYS[status]) : status)}
-        onClose={() => setMoveBackItem(null)}
-        onDone={() => { setMoveBackItem(null); refresh(); }}
       />
 
       <SupportManageDialog
@@ -870,6 +867,14 @@ export default function AdminExhibitionsPage() {
           );
           refresh();
         }}
+      />
+
+      <CompleteEventDialog
+        request={outcome ? { ...outcome.item, completionPhotoCount: (outcome.item.attachments ?? []).filter((a) => a.kind === "completion").length } : null}
+        mode={outcome?.mode}
+        recordSpend
+        onClose={() => setOutcome(null)}
+        onDone={() => { setOutcome(null); refresh(); }}
       />
 
       <ExhibitionActionDialog

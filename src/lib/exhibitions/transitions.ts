@@ -1,53 +1,47 @@
 import type { ExhibitionRequestStatus } from "@/models/ExhibitionRequest";
 
 /**
- * The stage each status steps back to. Reviewers asked for a way to undo a
- * move made too early or by mistake (client feedback 2026-10-14: "no back
- * option"); before this every move was one-way, so the only fix for a wrong
- * approval was a new request. A step back always needs a reason.
- */
-export const STEP_BACK: Partial<Record<ExhibitionRequestStatus, ExhibitionRequestStatus>> = {
-  approved: "under_review",
-  budget_approved: "approved",
-  resources_assigned: "budget_approved",
-  active: "resources_assigned",
-  completed: "active",
-  rejected: "under_review",
-};
-
-/**
  * Which status moves each role may make, by current status. The PATCH route
- * enforces it; the admin queue reads it to offer only the actions the server
- * will accept (it used to offer Approve and Reject at every stage, and most of
- * them came back 400).
+ * enforces it; the screens read it to offer only the actions the server will
+ * accept.
  *
- * A super agent may step back only their own decisions, and only while the
- * request still sits at them (the route also checks a rejection was theirs).
- * An agent's one move is reporting their running event completed.
+ * The workflow is three people doing one job each (owner, 2026-10-15): the
+ * agent submits, the super agent verifies with a recommended budget, the
+ * admin approves the payment and the support items in one step, and the
+ * agent reports the event. Completed is the final record: its balance
+ * (approved against spent) is shown, not settled as a further step, and
+ * nothing is archived (rejected stays rejected). A request that needs fixing is
+ * sent back to the agent (one action); anything else is corrected in place
+ * with Edit. The step-back and reopen moves are gone: they asked for a
+ * reason at every stage and let a decision bounce between reviewers.
+ *
+ * resources_assigned and active are no longer entered; requests already
+ * there can still be completed.
  */
 export const VALID_TRANSITIONS: Record<string, Partial<Record<ExhibitionRequestStatus, ExhibitionRequestStatus[]>>> = {
   agent: {
+    budget_approved: ["completed"],
+    resources_assigned: ["completed"],
     active: ["completed"],
   },
   super_agent: {
-    submitted: ["under_review", "rejected"],
+    submitted: ["approved", "rejected", "revision_requested", "under_review"],
     under_review: ["approved", "rejected", "revision_requested"],
     revision_requested: ["under_review"],
-    approved: ["under_review"],
-    rejected: ["under_review"],
   },
   admin: {
-    submitted: ["under_review", "approved", "rejected"],
+    submitted: ["approved", "rejected", "revision_requested", "under_review"],
     under_review: ["approved", "rejected", "revision_requested"],
-    approved: ["budget_approved", "rejected", "under_review"],
+    approved: ["budget_approved", "rejected", "revision_requested"],
     revision_requested: ["under_review"],
-    budget_approved: ["resources_assigned", "approved"],
-    resources_assigned: ["active", "budget_approved"],
-    active: ["completed", "resources_assigned"],
-    completed: ["archived", "active"],
-    rejected: ["archived", "under_review"],
+    budget_approved: ["completed", "rejected"],
+    resources_assigned: ["completed", "rejected"],
+    active: ["completed", "rejected"],
   },
 };
+
+/** Approved for payment and waiting on the event and the agent's report. */
+export const PAYMENT_APPROVED_STATUSES: readonly string[] = ["budget_approved", "resources_assigned", "active"];
 
 export function canMove(role: string, from: string, to: ExhibitionRequestStatus): boolean {
   return VALID_TRANSITIONS[role]?.[from as ExhibitionRequestStatus]?.includes(to) ?? false;
@@ -57,48 +51,68 @@ export function adminCanMove(from: string, to: ExhibitionRequestStatus): boolean
   return canMove("admin", from, to);
 }
 
-/** True when `from → to` is a step back rather than progress. */
-/**
- * The history entry that moved the request into `status`. Entries written
- * while it stays there (a priority change, a details edit, a support save)
- * repeat the status, so the move is the first entry of the trailing run —
- * the last entry with that status is not (it let a super agent's priority
- * change pass for their own rejection of an admin's decision).
- */
-export function entryIntoStatus<T extends { status?: string }>(history: readonly T[] | undefined, status: string): T | undefined {
-  const list = history ?? [];
-  let i = list.length - 1;
-  if (i < 0 || list[i].status !== status) return undefined;
-  while (i > 0 && list[i - 1].status === status) i -= 1;
-  return list[i];
-}
-
-/**
- * A super agent may undo only their own decision: an approval or rejection
- * the admin made is the admin's to reverse.
- */
-export function superAgentOwnsCurrentDecision(item: { status: string; statusHistory?: readonly { status?: string; approverRole?: string }[] }): boolean {
-  if (item.status !== "approved" && item.status !== "rejected") return false;
-  return entryIntoStatus(item.statusHistory, item.status)?.approverRole === "super_agent";
-}
-
-export function isStepBack(from: string, to: string): boolean {
-  return STEP_BACK[from as ExhibitionRequestStatus] === to;
-}
-
 /**
  * The forward step an admin takes next from each status — the one action the
- * queue row and the inspector offer first. Reject, send-back and start-review
- * are offered separately, where `adminCanMove` allows them.
+ * queue row and the inspector offer first. Reject and send-back are offered
+ * separately, where `adminCanMove` allows them.
  */
 export const ADMIN_NEXT_STEP: Partial<Record<ExhibitionRequestStatus, { status: ExhibitionRequestStatus; labelKey: string }>> = {
   submitted: { status: "approved", labelKey: "approveAction" },
   under_review: { status: "approved", labelKey: "approveAction" },
   revision_requested: { status: "under_review", labelKey: "reReview" },
-  approved: { status: "budget_approved", labelKey: "approveBudget" },
-  budget_approved: { status: "resources_assigned", labelKey: "assignResources" },
-  resources_assigned: { status: "active", labelKey: "markActive" },
+  approved: { status: "budget_approved", labelKey: "approvePayment" },
+  budget_approved: { status: "completed", labelKey: "complete" },
+  resources_assigned: { status: "completed", labelKey: "complete" },
   active: { status: "completed", labelKey: "complete" },
-  completed: { status: "archived", labelKey: "archive" },
-  rejected: { status: "archived", labelKey: "archive" },
 };
+
+/**
+ * Stages where the request is a finished record: its facts, priority and
+ * event files stay as they were. Only the outcome (leads, summary, spend,
+ * photos) is still recorded on a completed event. Archived is no longer
+ * entered; older requests already there stay closed.
+ */
+export const CLOSED_STATUSES: readonly string[] = ["completed", "rejected", "archived"];
+
+export function isClosedStatus(status: string): boolean {
+  return CLOSED_STATUSES.includes(status);
+}
+
+/**
+ * An older event archived after it was completed (archiving is retired).
+ * Archive also closed rejected requests, so the history tells the two apart.
+ */
+export function isSettled(item: { status: string; statusHistory?: readonly { status?: string }[] }): boolean {
+  return item.status === "archived" && (item.statusHistory ?? []).some((entry) => entry.status === "completed");
+}
+
+/**
+ * Past the admin's payment approval, an in-place edit changes something two
+ * people already signed off, so it needs a reason and is logged old to new.
+ */
+export function editNeedsReason(status: string): boolean {
+  return PAYMENT_APPROVED_STATUSES.includes(status) || status === "completed";
+}
+
+/**
+ * Whether the event's start date has come. Nobody marks an event active any
+ * more; it runs on its dates, and the agent reports it once it has started.
+ * Dates are stored as the day at 00:00 UTC, so the check allows for agents
+ * whose local day begins up to 14 hours before UTC's. No date: no gate.
+ */
+export function eventHasStarted(start: Date | string | null | undefined, now: Date = new Date()): boolean {
+  if (!start) return true;
+  const at = new Date(start).getTime();
+  if (Number.isNaN(at)) return true;
+  return at <= now.getTime() + 14 * 60 * 60 * 1000;
+}
+
+/** Support is allocated in the payment approval and adjusted until the event is reported. */
+export const SUPPORT_ALLOCATE_STATUSES: readonly string[] = ["approved", ...PAYMENT_APPROVED_STATUSES];
+/** Delivery is tracked once the support is approved, up to the event's report. */
+export const SUPPORT_DELIVERY_STATUSES: readonly string[] = PAYMENT_APPROVED_STATUSES;
+
+/** The agent's Report event: an approved event whose start date has come. */
+export function canReportEvent(item: { status: string; eventStartDate?: Date | string | null }): boolean {
+  return PAYMENT_APPROVED_STATUSES.includes(item.status) && eventHasStarted(item.eventStartDate);
+}

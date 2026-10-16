@@ -20,7 +20,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { formatDateTime } from "@/lib/ui/intlFormat";
 import { cn } from "@/lib/utils";
 import { useCheckDetail } from "./useCheckDetail";
-import { HistorySection, ReferencesSection, Section } from "./CheckDetailSections";
+import { CheckProgressSteps, HistorySection, ReferencesSection, Section } from "./CheckDetailSections";
 import {
   candidateNameOf,
   FINAL_OUTCOMES,
@@ -60,6 +60,8 @@ export function CheckDetailPanel({ apiBase, checkId, onClose, onChanged }: Check
   const [outcome, setOutcome] = useState<CheckOutcome>("pending");
   const [summary, setSummary] = useState("");
   const [confirmCancel, setConfirmCancel] = useState(false);
+  /** "Saved" shows after the findings reach the server, until the agent types again. */
+  const [findingsSaved, setFindingsSaved] = useState(false);
 
   const check = data?.check;
   const viewer = data?.viewer;
@@ -67,7 +69,10 @@ export function CheckDetailPanel({ apiBase, checkId, onClose, onChanged }: Check
     setSummary(check?.backgroundResults ?? "");
     setConfirmCancel(false);
   }, [check?._id, check?.backgroundResults]);
-  useEffect(() => setOutcome("pending"), [check?._id]);
+  useEffect(() => {
+    setOutcome("pending");
+    setFindingsSaved(false);
+  }, [check?._id]);
 
   const when = (value?: string | null) => (value ? formatDateTime(value, { dateStyle: "medium", timeStyle: "short" }, locale) : "—");
   const who = (person?: CheckPersonRef | null) =>
@@ -75,6 +80,20 @@ export function CheckDetailPanel({ apiBase, checkId, onClose, onChanged }: Check
 
   const summaryDirty = summary.trim() !== (check?.backgroundResults ?? "");
   const busy = pending !== null;
+
+  const saveFindings = async () => {
+    if (!summaryDirty) return;
+    setFindingsSaved(await act({ action: "progress", backgroundResults: summary }, "findings"));
+  };
+
+  // Same rules the server applies on complete (workflow.ts), said up front
+  // instead of after a refused click.
+  const needsReplyForClear =
+    outcome === "clear" &&
+    (check?.checkType === "reference" || check?.checkType === "both") &&
+    !(check?.references ?? []).some((r) => r.status === "responded");
+  const completeBlocker: "outcome" | "summary" | "reply" | null =
+    outcome === "pending" ? "outcome" : !summary.trim() ? "summary" : needsReplyForClear ? "reply" : null;
 
   return (
     <Dialog open={!!checkId} onOpenChange={(open) => !open && onClose()}>
@@ -129,6 +148,10 @@ export function CheckDetailPanel({ apiBase, checkId, onClose, onChanged }: Check
                 </p>
               )}
 
+              {(check.status === "pending" || check.status === "in_progress") && (
+                <CheckProgressSteps check={check} findingsWritten={!!summary.trim() || !!check.backgroundResults} />
+              )}
+
               <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
                 <dt className="text-muted-foreground">{t("requestedBy")}</dt>
                 <dd className="min-w-0 break-words text-foreground">{who(check.createdBy)}</dd>
@@ -176,15 +199,33 @@ export function CheckDetailPanel({ apiBase, checkId, onClose, onChanged }: Check
                 />
               )}
 
-              <Section icon={FileText} title={t("findingsTitle")}>
+              <Section
+                icon={FileText}
+                title={t("findingsTitle")}
+                aside={
+                  viewer.canWork && (pending === "findings" || findingsSaved) ? (
+                    <span role="status" className="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                      {pending === "findings" ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
+                      )}
+                      {pending === "findings" ? t("saving") : t("saved")}
+                    </span>
+                  ) : null
+                }
+              >
                 {viewer.canWork ? (
                   <>
                     <label htmlFor="bc-findings" className="sr-only">{t("findingsTitle")}</label>
                     <Textarea
                       id="bc-findings"
                       value={summary}
-                      onChange={(e) => setSummary(e.target.value)}
-                      onBlur={() => summaryDirty && void act({ action: "progress", backgroundResults: summary })}
+                      onChange={(e) => {
+                        setSummary(e.target.value);
+                        setFindingsSaved(false);
+                      }}
+                      onBlur={() => void saveFindings()}
                       placeholder={t("findingsPlaceholder")}
                       className="min-h-24 text-sm"
                     />
@@ -233,7 +274,9 @@ export function CheckDetailPanel({ apiBase, checkId, onClose, onChanged }: Check
                       </Button>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground">{t("resultHint")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {outcome === "pending" ? t("resultHint") : t(`outcomeHelp.${outcome}`)}
+                  </p>
                 </Section>
               )}
 
@@ -267,9 +310,16 @@ export function CheckDetailPanel({ apiBase, checkId, onClose, onChanged }: Check
                         {t("startCheck")}
                       </Button>
                     )}
+                    {viewer.canWork && completeBlocker && (
+                      // Why Complete is greyed out, beside the button rather than scrolled away above it.
+                      <p id="bc-complete-blocker" className="text-xs text-muted-foreground sm:me-auto sm:self-center">
+                        {t(`completeBlocked.${completeBlocker}`)}
+                      </p>
+                    )}
                     {viewer.canWork && (
                       <Button
-                        disabled={busy || outcome === "pending" || !summary.trim()}
+                        disabled={busy || completeBlocker !== null}
+                        aria-describedby={completeBlocker ? "bc-complete-blocker" : undefined}
                         onClick={() => void act({ action: "complete", outcome, backgroundResults: summary })}
                       >
                         {pending === "complete" && <Loader2 className="me-1.5 h-4 w-4 animate-spin" aria-hidden="true" />}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { sanitizeAIInput, AI_TOKEN_LIMITS, redactPII } from "@/lib/ai/sanitize";
-import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import { generateText, extractionModel } from "@/lib/ai/gemini";
 import logger from "@/lib/logger";
 
 interface SuggestionsResponse {
@@ -77,7 +77,7 @@ Rules:
   try {
     raw = redactPII(
       // Contributor tier: prompt carries only a typed job title and category.
-      await generateText(prompt, GEMINI_MODELS.cheap, AI_TOKEN_LIMITS.skills_suggest)
+      await generateText(prompt, extractionModel(), AI_TOKEN_LIMITS.skills_suggest)
     )
       .replace(/```json\n?|```/g, "")
       .trim();

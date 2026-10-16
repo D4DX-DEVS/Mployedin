@@ -4,13 +4,13 @@ import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
-import { SMALL_MODEL, LARGE_MODEL, classifyComplexity } from "@/lib/ai/copilot/modelRouter";
 import { getCopilotSystemPrompt } from "@/lib/ai/copilot/prompts";
 import { getToolsForUser, getToolByName } from "@/lib/ai/copilot/registry";
 import { toJsonSchema, validateArgs } from "@/lib/ai/copilot/paramSchema";
 import type { CopilotStreamFrame, CopilotToolContext, CopilotToolPreview } from "@/lib/ai/copilot/types";
 import { parseEmployerJobIdFromPath, buildEmployerJobContext } from "@/lib/ai/copilot/pageContext";
 import { prepareHistoryForModel } from "@/lib/ai/copilot/historyToolData";
+import { presentToolResult } from "@/lib/ai/copilot/views";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { copilotChatSchema } from "@/lib/validators/ai";
@@ -19,18 +19,16 @@ import { logActivity } from "@/lib/audit/log";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import logger from "@/lib/logger";
 
-import {
-  GOOGLE_AI_OPENAI_BASE,
-  hasGoogleAiApiKey,
-  getGoogleAiApiKey,
-  openAiCompatHeaders,
-  providerErrorMessage,
-  completionBudget,
-  copilotReasoningEffort,
-} from "@/lib/ai/googleAI";
+import { providerErrorMessage, completionBudget, copilotReasoningEffort } from "@/lib/ai/googleAI";
+import { OPENROUTER_MODELS, hasOpenRouterApiKey, openRouterChatFetch } from "@/lib/ai/openRouter";
 
 const MAX_TOOL_ITERATIONS = 4;
 const PROPOSAL_TTL_MS = 15 * 60 * 1000;
+/** Time to the first streamed byte. The stream itself may run longer. */
+const COPILOT_FIRST_BYTE_MS = 20_000;
+/** Added to a tool result the panel drew as cards, so the model doesn't retype it. */
+const SHOWN_AS_CARDS =
+  "The user already sees these rows as cards. Do not list or tabulate them again; reply in one or two sentences about what stands out or what to do next.";
 
 interface CopilotToolCall {
   id: string;
@@ -62,17 +60,14 @@ interface CopilotDelta {
   }>;
 }
 
-async function callGeminiOnce(
+async function callModelOnce(
   model: string,
   messages: CopilotMessage[],
   tools: unknown[],
-  apiKey: string,
   onDelta?: (chunk: string) => void
 ): Promise<CopilotMessage> {
-  const res = await fetch(`${GOOGLE_AI_OPENAI_BASE}/chat/completions`, {
-    method: "POST",
-    headers: openAiCompatHeaders(apiKey),
-    body: JSON.stringify({
+  const res = await openRouterChatFetch(
+    {
       model,
       messages,
       // Thinking (when enabled via env) shares max_tokens with the answer, so
@@ -81,8 +76,10 @@ async function callGeminiOnce(
       reasoning_effort: copilotReasoningEffort(),
       stream: true,
       ...(tools.length ? { tools, tool_choice: "auto" } : {}),
-    }),
-  });
+    },
+    "[AI Copilot]",
+    COPILOT_FIRST_BYTE_MS,
+  );
   if (!res.ok || !res.body) {
     const err = await res.text().catch(() => "");
     throw new Error(providerErrorMessage(res.status, err));
@@ -135,19 +132,20 @@ async function callGeminiOnce(
 }
 
 /**
- * Calls the given model; on failure (free/small models can be rate-limited or
- * briefly unavailable) transparently retries once on LARGE_MODEL so a flaky
- * cheap tier degrades to "costs more this turn" instead of a broken reply.
+ * Calls the given model; on failure retries once on the fallback model.
+ * Qwen has a single provider on OpenRouter, so an outage there degrades to
+ * "answered by Gemini this turn" instead of a broken reply.
  */
-async function callGemini(model: string, messages: CopilotMessage[], tools: unknown[], apiKey: string, onDelta?: (chunk: string) => void) {
+async function callModel(model: string, messages: CopilotMessage[], tools: unknown[], onDelta?: (chunk: string) => void) {
+  const fallback = OPENROUTER_MODELS.copilotFallback;
   try {
-    return { message: await callGeminiOnce(model, messages, tools, apiKey, onDelta), modelUsed: model };
+    return { message: await callModelOnce(model, messages, tools, onDelta), modelUsed: model };
   } catch (err) {
-    if (model === LARGE_MODEL) throw err;
-    logger.warn({ err, model }, "[AI Copilot] small model failed, falling back to large model");
+    if (model === fallback) throw err;
+    logger.warn({ err, model, fallback }, "[AI Copilot] model failed, falling back");
     // ponytail: a mid-stream failure may have emitted partial deltas before the retry
     // re-streams — the final "text" frame replaces the client's buffer, so it self-heals.
-    return { message: await callGeminiOnce(LARGE_MODEL, messages, tools, apiKey, onDelta), modelUsed: LARGE_MODEL };
+    return { message: await callModelOnce(fallback, messages, tools, onDelta), modelUsed: fallback };
   }
 }
 
@@ -186,9 +184,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "messages array required" }, { status: 400 });
     }
 
-    const apiKey = hasGoogleAiApiKey() ? getGoogleAiApiKey() : "";
-    if (!apiKey) {
-      logger.error("[AI Copilot] GEMINI_API_KEY not set");
+    if (!hasOpenRouterApiKey()) {
+      logger.error("[AI Copilot] OPENROUTER_API_KEY not set");
       return NextResponse.json({ error: "AI service not configured" }, { status: 503 });
     }
 
@@ -232,14 +229,14 @@ export async function POST(req: NextRequest) {
 
         try {
           let toolCallsLogged = 0;
-          let currentModel = classifyComplexity(messages) === "large" ? LARGE_MODEL : SMALL_MODEL;
+          let currentModel = OPENROUTER_MODELS.copilot;
           const modelsUsed = new Set<string>();
           let answered = false;
 
           const onDelta = (chunk: string) => send({ type: "text_delta", content: chunk });
 
           for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
-            const { message, modelUsed } = await callGemini(currentModel, chatMessages, chatTools, apiKey, onDelta);
+            const { message, modelUsed } = await callModel(currentModel, chatMessages, chatTools, onDelta);
             currentModel = modelUsed; // stick with whatever actually served this call
             modelsUsed.add(modelUsed);
 
@@ -287,10 +284,6 @@ export async function POST(req: NextRequest) {
                 send({ type: "tool_call", tool: tool.name, label: tool.summarize(validated.value) });
 
                 if (tool.mutates) {
-                  // A write is being proposed — escalate to the strong model for the
-                  // rest of this turn. Getting a mutation's args or follow-up wrong
-                  // costs more than the model-tier savings are worth.
-                  currentModel = LARGE_MODEL;
                   let preview: CopilotToolPreview | undefined;
                   if (tool.preview) {
                     try {
@@ -346,11 +339,13 @@ export async function POST(req: NextRequest) {
                 } else {
                   const result = await tool.execute(validated.value, toolCtx);
                   send({ type: "tool_result", tool: tool.name, ok: result.ok, message: result.message, data: result.data });
+                  const view = result.ok ? presentToolResult(tool.name, result.data) : null;
+                  if (view) send({ type: "view", tool: tool.name, view });
                   chatMessages.push({
                     role: "tool",
                     tool_call_id: call.id,
                     name: call.function.name,
-                    content: JSON.stringify(result),
+                    content: JSON.stringify(view ? { ...result, shownToUser: SHOWN_AS_CARDS } : result),
                   });
                   logActivity({
                     actorId: userId,
@@ -376,7 +371,7 @@ export async function POST(req: NextRequest) {
             // Model was still calling tools when the iteration cap hit — force a
             // final answer by calling once with no tools, so the user never gets
             // a turn that ends in silence.
-            const { message } = await callGemini(currentModel, chatMessages, [], apiKey, onDelta);
+            const { message } = await callModel(currentModel, chatMessages, [], onDelta);
             send({ type: "text", content: message.content ?? "" });
           }
 

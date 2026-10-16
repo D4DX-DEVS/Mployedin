@@ -1,410 +1,257 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useLocale, useTranslations } from "next-intl";
+import { CircleDollarSign, Clock, Gauge, Search, Target, TrendingUp, Trophy, Wallet, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  KpiCard, TargetSummaryCard, MonthlyDistributionGrid,
-  ProgressRing, TargetEmptyState, RankBadge, PerformanceBadge,
-  RiskBadge, CompletionBadge, CompletionStage, getCompletionStage, IncentiveTierBadge,
+  CompletionBadge, IncentiveTierBadge, KpiCard, MonthlyDistributionGrid, PerformanceBadge,
+  ProgressRing, RankBadge, RiskBadge, TargetEmptyState, TargetSummaryCard, getCompletionStage,
+  type IncentiveTier,
 } from "@/components/features/targets/TargetComponents";
-import { useTranslations } from "next-intl";
+import { TargetYearSelect, defaultTargetYears } from "@/components/features/targets/TargetYearSelect";
+import { formatProfit, monthName } from "@/components/features/targets/profitFormat";
 import { AgentSectionTabs, AGENT_PERFORMANCE_TABS } from "@/components/features/agent/AgentSectionTabs";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import {
-  Building2, Users, DollarSign, TrendingUp, CalendarDays,
-  RotateCcw, Target, Zap, Trophy, Clock, Search, ArrowRight,
-} from "lucide-react";
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { formatCount } from "@/lib/ui/intlFormat";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { Button } from "@/components/ui/button";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import type { EnrichedProfile, MonthlyAchievement } from "@/lib/targets/profileAchievementCalculator";
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-interface MonthlyAchievement {
-  month: number;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  overallProgress: number;
+interface OwnResponse {
+  profile: EnrichedProfile | null;
+  currentMonth: MonthlyAchievement | null;
+  dailyGoals: { profit: number } | null;
+  weeklyGoals: { profit: number } | null;
 }
 
-interface EnrichedProfile {
-  _id: string;
-  year: number;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  currency: string;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  employerProgress: number;
-  employeeProgress: number;
-  financeProgress: number;
-  overallProgress: number;
-  employerPending: number;
-  employeePending: number;
-  financePending: number;
-  riskScore: "high" | "medium" | "low";
-  incentiveTier: "none" | "bronze" | "silver" | "gold" | "platinum";
-  monthlyAchievements: MonthlyAchievement[];
-  status: string;
-}
-
+/** Teammates ranked by progress against their own target. No amounts: rank, name, percent and tier only. */
 interface LeaderboardEntry {
   rank: number;
-  _id: string;
   assigneeId: string;
   assigneeName: string;
-  overallProgress: number;
-  employerProgress: number;
-  employeeProgress: number;
-  financeProgress: number;
-  riskScore: "high" | "medium" | "low";
-  incentiveTier: "none" | "bronze" | "silver" | "gold" | "platinum";
+  profitProgress: number;
+  incentiveTier: IncentiveTier;
+  isMe: boolean;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
+interface LeaderboardResponse {
+  leaderboard: LeaderboardEntry[];
+  myRank: LeaderboardEntry | null;
+  totalParticipants: number;
+}
+
+type Tab = "dashboard" | "analytics" | "leaderboard";
+
+const TABS: { key: Tab; icon: typeof Target }[] = [
+  { key: "dashboard", icon: Target },
+  { key: "analytics", icon: TrendingUp },
+  { key: "leaderboard", icon: Trophy },
+];
+
+async function getJson<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Target error: ${response.status}`);
+  return response.json();
+}
 
 export default function AgentTargetManagementPage() {
-  const t = useTranslations("targets");
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const locale = pathname.split("/")[1] || "en";
-  const currentYear = new Date().getFullYear();
+  const t = useTranslations("profitTargets");
+  const locale = useLocale();
   const currentMonth = new Date().getMonth() + 1;
-  const requestedYear = Number.parseInt(searchParams.get("year") ?? "", 10);
-  const initialYearFilter = Number.isFinite(requestedYear) && requestedYear > 0
-    ? requestedYear
-    : currentYear;
+  const years = defaultTargetYears();
+  const [year, setYear] = useUrlFilter("year", String(new Date().getFullYear()), { allow: years });
+  const [tab, setTab] = useState<Tab>("dashboard");
+  const [search, setSearch] = useState("");
 
-  const [yearFilter, setYearFilter] = useState(initialYearFilter);
-  const [tab, setTab] = useState<"dashboard" | "analytics" | "leaderboard">("dashboard");
-  const [loading, setLoading] = useState(true);
+  const own = useQuery<OwnResponse>({
+    queryKey: ["agent", "target-profiles", "own", year],
+    queryFn: () => getJson(`/api/agent/target-profiles?year=${year}&view=own`),
+    staleTime: 60_000,
+    placeholderData: (previous) => previous,
+  });
+  const board = useQuery<LeaderboardResponse>({
+    queryKey: ["agent", "target-profiles", "leaderboard", year],
+    queryFn: () => getJson(`/api/agent/target-profiles?year=${year}&view=leaderboard`),
+    staleTime: 60_000,
+    placeholderData: (previous) => previous,
+  });
 
-  const [profile, setProfile] = useState<EnrichedProfile | null>(null);
-  const [currentMonthData, setCurrentMonthData] = useState<MonthlyAchievement | null>(null);
-  const [dailyGoals, setDailyGoals] = useState<{ employer: number; employee: number; finance: number } | null>(null);
-  const [weeklyGoals, setWeeklyGoals] = useState<{ employer: number; employee: number; finance: number } | null>(null);
-
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [myRank, setMyRank] = useState<LeaderboardEntry | null>(null);
-  const [totalParticipants, setTotalParticipants] = useState(0);
-  const [leaderboardSearch, setLeaderboardSearch] = useState("");
-  const [leaderboardRiskFilter, setLeaderboardRiskFilter] = useState<"all" | "high" | "medium" | "low">("all");
-  const [leaderboardCompletionFilter, setLeaderboardCompletionFilter] = useState<"all" | CompletionStage>("all");
-
-  useEffect(() => {
-    setYearFilter(initialYearFilter);
-  }, [initialYearFilter]);
-
-  const fetchOwn = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/agent/target-profiles?year=${yearFilter}&view=own`);
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data.profile ?? null);
-        setCurrentMonthData(data.currentMonth ?? null);
-        setDailyGoals(data.dailyGoals ?? null);
-        setWeeklyGoals(data.weeklyGoals ?? null);
-      }
-    } catch {
-      toast.error(t("failedLoadTargets"));
-    } finally {
-      setLoading(false);
-    }
-  }, [yearFilter]);
-
-  const fetchLeaderboard = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/agent/target-profiles?year=${yearFilter}&view=leaderboard`);
-      if (res.ok) {
-        const data = await res.json();
-        setLeaderboard(data.leaderboard ?? []);
-        setMyRank(data.myRank ?? null);
-        setTotalParticipants(data.totalParticipants ?? 0);
-      }
-    } catch { /* ignore */ }
-  }, [yearFilter]);
-
-  useEffect(() => { fetchOwn(); }, [fetchOwn]);
-  useEffect(() => { fetchLeaderboard(); }, [fetchLeaderboard]);
-
-  const MONTH_KEYS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"] as const;
-  const MONTHS_SHORT = MONTH_KEYS.map((key) => t(`months.${key}`));
+  const profile = own.data?.profile ?? null;
+  const leaderboard = board.data?.leaderboard ?? [];
+  const myRank = board.data?.myRank ?? null;
+  const totalParticipants = board.data?.totalParticipants ?? 0;
+  const money = (value: number) => formatProfit(value, profile?.currency ?? "AED", locale);
 
   const filteredLeaderboard = useMemo(() => {
-    return leaderboard.filter((entry) => {
-      if (leaderboardRiskFilter !== "all" && entry.riskScore !== leaderboardRiskFilter) return false;
-      if (leaderboardCompletionFilter !== "all" && getCompletionStage(entry.overallProgress) !== leaderboardCompletionFilter) return false;
-      if (!leaderboardSearch.trim()) return true;
-      return entry.assigneeName.toLowerCase().includes(leaderboardSearch.trim().toLowerCase());
-    });
-  }, [leaderboard, leaderboardCompletionFilter, leaderboardRiskFilter, leaderboardSearch]);
+    const query = search.trim().toLowerCase();
+    return query ? leaderboard.filter((entry) => entry.assigneeName.toLowerCase().includes(query)) : leaderboard;
+  }, [leaderboard, search]);
+
+  const noTarget = <TargetEmptyState title={t("noTargetAssigned")} description={t("contactSupervisor")} />;
 
   return (
     <div className="page-container">
       <AgentSectionTabs tabs={AGENT_PERFORMANCE_TABS} ariaLabelKey="performanceTabsLabel" />
       <WorkspaceHeader
-        title={t("myTargets")}
-        context={t("agentDescription")}
+        title={t("agentTitle")}
+        context={t("agentContext")}
+        actions={<TargetYearSelect value={year} onChange={setYear} label={t("yearLabel")} years={years} />}
       />
 
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative">
-          <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input type="number" aria-label={t("year")} value={yearFilter} onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)} className="h-11 w-28 rounded-xl border-border bg-card pl-9 text-sm" />
-        </div>
-        <Button variant="outline" size="sm" onClick={() => setYearFilter(currentYear)} className="rounded-lg max-sm:min-h-11" disabled={yearFilter === currentYear}>
-          <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset
-        </Button>
-        <div className="flex rounded-xl border border-border/60 bg-card p-0.5">
-          <Button variant={tab === "dashboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("dashboard")} className="rounded-lg gap-1.5 max-sm:min-h-11">
-            <Target className="h-3.5 w-3.5" /> Dashboard
-          </Button>
-          <Button variant={tab === "analytics" ? "default" : "ghost"} size="sm" onClick={() => setTab("analytics")} className="rounded-lg gap-1.5 max-sm:min-h-11">
-            <TrendingUp className="h-3.5 w-3.5" /> Analytics
-          </Button>
-          <Button variant={tab === "leaderboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("leaderboard")} className="rounded-lg gap-1.5 max-sm:min-h-11">
-            <Trophy className="h-3.5 w-3.5" /> Leaderboard
-          </Button>
+        <div className="flex rounded-xl border border-border/60 bg-card p-0.5" role="tablist" aria-label={t("tabsLabel")}>
+          {TABS.map(({ key, icon: Icon }) => (
+            <Button
+              key={key}
+              role="tab"
+              aria-selected={tab === key}
+              variant={tab === key ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setTab(key)}
+              className="gap-1.5 rounded-lg max-sm:min-h-11"
+            >
+              <Icon className="h-3.5 w-3.5" /> {t(`tab_${key}`)}
+            </Button>
+          ))}
         </div>
         {myRank && (
-          <div className="ml-auto workspace-glass-panel inline-flex items-center gap-2 rounded-full text-xs font-semibold chip-pad">
+          <div className="workspace-glass-panel chip-pad ms-auto inline-flex items-center gap-2 rounded-full text-xs font-semibold">
             <Trophy className="h-3.5 w-3.5 text-primary" />
             {t("rankOfTotal", { rank: myRank.rank, total: totalParticipants })}
           </div>
         )}
       </div>
 
-      {tab === "leaderboard" && (
-        <div className="grid gap-3 rounded-2xl border border-border/60 bg-card lg:grid-cols-[minmax(0,1.2fr)_repeat(2,minmax(0,0.8fr))] card-pad">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={leaderboardSearch}
-              onChange={(e) => setLeaderboardSearch(e.target.value)}
-              placeholder={t("searchAgents")}
-              className="h-11 rounded-xl border-border bg-background pl-9 text-sm"
-            />
-          </div>
-          <SearchableSelect
-            options={[
-              { value: "all", label: "All stages" },
-              { value: "not_started", label: "Not started" },
-              { value: "in_progress", label: "In progress" },
-              { value: "completed", label: "Completed" },
-            ]}
-            value={leaderboardCompletionFilter}
-            onValueChange={(value) => setLeaderboardCompletionFilter(value as "all" | CompletionStage)}
-            placeholder={t("stage")}
-            className="h-11 rounded-xl"
-          />
-          <SearchableSelect
-            options={[
-              { value: "all", label: "All risk" },
-              { value: "high", label: "High risk" },
-              { value: "medium", label: "Medium risk" },
-              { value: "low", label: "Low risk" },
-            ]}
-            value={leaderboardRiskFilter}
-            onValueChange={(value) => setLeaderboardRiskFilter(value as "all" | "high" | "medium" | "low")}
-            placeholder={t("risk")}
-            className="h-11 rounded-xl"
-          />
+      {own.isError && !own.data && tab !== "leaderboard" ? (
+        <ErrorState title={t("failedToLoadTargets")} onRetry={() => { void own.refetch(); }} retryLabel={t("retry")} />
+      ) : null}
+
+      {tab === "dashboard" && (own.isLoading ? (
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted/50" />)}
         </div>
-      )}
-
-      {/* ============ DASHBOARD TAB ============ */}
-      {tab === "dashboard" && (
+      ) : !profile ? noTarget : (
         <>
-          {loading ? (
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted/50" />
+          <div className="workspace-glass-panel flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold">{t("executionStatus")}</p>
+              <p className="text-xs text-muted-foreground">{t("executionStatusHint")}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <CompletionBadge stage={getCompletionStage(profile.profitProgress)} />
+              <RiskBadge risk={profile.riskScore} />
+              <IncentiveTierBadge tier={profile.incentiveTier ?? "none"} />
+            </div>
+          </div>
+
+          <section className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
+            <KpiCard
+              label={t("profitTarget")}
+              value={money(profile.profitTarget)}
+              subtext={t("assignedFor", { year: profile.year })}
+              icon={<Target className="h-5 w-5" />}
+              toneClassName="workspace-tone-sky"
+            />
+            <KpiCard
+              label={t("profitAchieved")}
+              value={money(profile.profitAchieved)}
+              subtext={t("balanceValue", { value: money(profile.profitPending) })}
+              icon={<CircleDollarSign className="h-5 w-5" />}
+              toneClassName="workspace-tone-emerald"
+            />
+            <KpiCard
+              label={t("thisMonth")}
+              value={own.data?.currentMonth ? money(own.data.currentMonth.profitAchieved) : "—"}
+              subtext={own.data?.currentMonth
+                ? t("ofMonthTarget", { target: money(own.data.currentMonth.profitTarget) })
+                : t("noMonthTarget")}
+              icon={<Wallet className="h-5 w-5" />}
+              toneClassName="workspace-tone-amber"
+            />
+            <KpiCard
+              label={t("progress")}
+              value={`${profile.profitProgress}%`}
+              subtext={t("expectedByNow")}
+              icon={<Gauge className="h-5 w-5" />}
+              toneClassName="workspace-tone-violet"
+            />
+          </section>
+
+          {own.data?.dailyGoals && own.data.weeklyGoals && (
+            <section className="grid gap-3 sm:grid-cols-2">
+              {([
+                ["dailyGoal", Zap, own.data.dailyGoals.profit],
+                ["weeklyGoal", Clock, own.data.weeklyGoals.profit],
+              ] as const).map(([key, Icon, value]) => (
+                <div key={key} className="workspace-glass-panel card-pad rounded-2xl">
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="rounded-xl bg-primary/10 p-2"><Icon className="h-4 w-4 text-primary" /></div>
+                    <span className="text-sm font-semibold">{t("goalForMonth", { goal: t(key), month: monthName(currentMonth, locale) })}</span>
+                  </div>
+                  <p className="text-2xl font-bold tabular-nums text-primary">{money(value)}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("profitToEarn")}</p>
+                </div>
               ))}
-            </div>
-          ) : !profile ? (
-            <TargetEmptyState title={t("noTargetsAssigned")} description={t("contactSupervisor")} />
-          ) : (
-            <>
-              <div className="workspace-glass-panel flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3">
-                <div>
-                  <p className="text-sm font-semibold">{t("executionStatus")}</p>
-                  <p className="text-xs text-muted-foreground">{t("executionStatusHint")}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <CompletionBadge stage={getCompletionStage(profile.overallProgress)} />
-                  <RiskBadge risk={profile.riskScore} />
-                  <IncentiveTierBadge tier={profile.incentiveTier ?? "none"} />
-                </div>
-              </div>
-
-              {/* Annual KPIs */}
-              <section className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <KpiCard
-                  label={t("employerTarget")}
-                  value={<>{profile.employerAchieved}<span className="text-lg text-muted-foreground">/{profile.employerTarget}</span></>}
-                  subtext={<>{t("assignedValue", { value: profile.employerTarget })} · {t("balanceLabel")} <span className="font-semibold">{profile.employerPending}</span></>}
-                  icon={<Building2 className="h-5 w-5" />}
-                  toneClassName="workspace-tone-sky"
-                />
-                <KpiCard
-                  label={t("employeeTarget")}
-                  value={<>{profile.employeeAchieved}<span className="text-lg text-muted-foreground">/{profile.employeeTarget}</span></>}
-                  subtext={<>{t("assignedValue", { value: profile.employeeTarget })} · {t("balanceLabel")} <span className="font-semibold">{profile.employeePending}</span></>}
-                  icon={<Users className="h-5 w-5" />}
-                  toneClassName="workspace-tone-emerald"
-                />
-                <KpiCard
-                  label={t("financeTarget")}
-                  value={<>{profile.currency} {formatCount(profile.financeAchieved)}<span className="text-lg text-muted-foreground">/{formatCount(profile.financeTarget)}</span></>}
-                  subtext={<>{t("assignedValue", { value: `${profile.currency} ${formatCount(profile.financeTarget)}` })} · {t("balanceLabel")} <span className="font-semibold">{profile.currency} {formatCount(profile.financePending)}</span></>}
-                  icon={<DollarSign className="h-5 w-5" />}
-                  toneClassName="workspace-tone-amber"
-                />
-                <KpiCard
-                  label={t("overallProgress")}
-                  value={`${profile.overallProgress}%`}
-                  subtext={`Status: ${getCompletionStage(profile.overallProgress).replace("_", " ").replace(/\b\w/g, (char) => char.toUpperCase())} · Risk: ${profile.riskScore}`}
-                  icon={<TrendingUp className="h-5 w-5" />}
-                  toneClassName="workspace-tone-violet"
-                />
-              </section>
-
-              {/* Daily / Weekly Goals */}
-              {dailyGoals && weeklyGoals && (
-                <section className="grid gap-3 sm:grid-cols-2">
-                  <div className="workspace-glass-panel card-pad rounded-2xl">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="rounded-xl bg-primary/10 p-2"><Zap className="h-4 w-4 text-primary" /></div>
-                      <span className="text-sm font-semibold">{t("goalsForMonth", { label: t("dailyGoals"), month: MONTHS_SHORT[currentMonth - 1] })}</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div>
-                        <p className="text-2xl font-bold tabular-nums text-primary">{dailyGoals.employer}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("employers")}</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold tabular-nums text-primary">{dailyGoals.employee}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("employees")}</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {formatCount(dailyGoals.finance)}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("finance")}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="workspace-glass-panel card-pad rounded-2xl">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="rounded-xl bg-primary/10 p-2"><Clock className="h-4 w-4 text-primary" /></div>
-                      <span className="text-sm font-semibold">{t("goalsForMonth", { label: t("weeklyGoals"), month: MONTHS_SHORT[currentMonth - 1] })}</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div>
-                        <p className="text-2xl font-bold tabular-nums text-primary">{weeklyGoals.employer}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("employers")}</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold tabular-nums text-primary">{weeklyGoals.employee}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("employees")}</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold tabular-nums text-primary">{profile.currency} {formatCount(weeklyGoals.finance)}</p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("finance")}</p>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              )}
-
-            </>
+            </section>
           )}
         </>
-      )}
+      ))}
 
-      {tab === "analytics" && (
-        <>
-          {loading ? (
-            <div className="h-64 animate-pulse rounded-2xl bg-muted/50" />
-          ) : !profile ? (
-            <TargetEmptyState title={t("noTargetsAssigned")} description={t("contactSupervisor")} />
-          ) : (
-            <div className="space-y-4">
-              <div className="workspace-glass-panel rounded-2xl panel-body">
-                <div className="flex flex-wrap items-center justify-center gap-8">
-                  <ProgressRing value={profile.employerProgress} label={t("labelEmployer")} sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
-                  <ProgressRing value={profile.employeeProgress} label={t("labelEmployee")} sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
-                  <ProgressRing value={profile.financeProgress} label={t("labelFinance")} sublabel={`${profile.currency} ${formatCount(profile.financeAchieved)}`} />
-                  <ProgressRing value={profile.overallProgress} label={t("labelOverall")} sublabel={t("sublabelAnnual")} color="#3b82f6" />
-                </div>
-              </div>
-
-              <TargetSummaryCard
-                employerTarget={profile.employerTarget}
-                employeeTarget={profile.employeeTarget}
-                financeTarget={profile.financeTarget}
-                employerAchieved={profile.employerAchieved}
-                employeeAchieved={profile.employeeAchieved}
-                financeAchieved={profile.financeAchieved}
-                currency={profile.currency}
-              />
-
-              {profile.monthlyAchievements.length > 0 && (
-                <section className="space-y-4">
-                  <div>
-                    <h2 className="heading-section font-semibold tracking-tight">{t("monthlyBreakdown")}</h2>
-                    <p className="text-sm text-muted-foreground">{t("monthlyBreakdownDescription")}</p>
-                  </div>
-                  <MonthlyDistributionGrid months={profile.monthlyAchievements} currency={profile.currency} />
-                </section>
-              )}
+      {tab === "analytics" && (own.isLoading ? (
+        <div className="h-64 animate-pulse rounded-2xl bg-muted/50" />
+      ) : !profile ? noTarget : (
+        <div className="space-y-4">
+          <div className="workspace-glass-panel panel-body rounded-2xl">
+            <div className="flex flex-wrap items-center justify-center gap-8">
+              <ProgressRing value={profile.profitProgress} label={t("profitTarget")} sublabel={`${money(profile.profitAchieved)} / ${money(profile.profitTarget)}`} color="#059669" />
             </div>
-          )}
-        </>
-      )}
+          </div>
 
-      {/* ============ LEADERBOARD TAB ============ */}
+          <TargetSummaryCard profitTarget={profile.profitTarget} profitAchieved={profile.profitAchieved} currency={profile.currency} />
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="heading-section font-semibold tracking-tight">{t("monthlyBreakdown")}</h2>
+              <p className="text-sm text-muted-foreground">{t("monthlyBreakdownDescription")}</p>
+            </div>
+            <MonthlyDistributionGrid months={profile.monthlyAchievements} currency={profile.currency} />
+          </section>
+        </div>
+      ))}
+
       {tab === "leaderboard" && (
         <div className="space-y-4">
           {myRank && (
-            <div className="workspace-glass-panel rounded-2xl flex items-center gap-6 panel-body">
+            <div className="workspace-glass-panel panel-body flex items-center gap-6 rounded-2xl">
               <RankBadge rank={myRank.rank} />
               <div className="flex-1">
                 <p className="text-lg font-semibold">{t("yourPosition")}</p>
                 <p className="text-sm text-muted-foreground">
-                  {t("yourPositionDetail", { rank: myRank.rank, total: totalParticipants, progress: myRank.overallProgress })}
+                  {t("yourPositionDetail", { rank: myRank.rank, total: totalParticipants, progress: myRank.profitProgress })}
                 </p>
               </div>
-              <div className="flex items-center gap-4">
-                <ProgressRing value={myRank.overallProgress} size={80} strokeWidth={6} />
-              </div>
+              <ProgressRing value={myRank.profitProgress} size={80} strokeWidth={6} />
             </div>
           )}
 
-          <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 panel-head">
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
+            <div className="panel-head flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-sm font-semibold">{t("leaderboard")}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t("leaderboardShowing", { shown: filteredLeaderboard.length, top: leaderboard.length })}
-                  {totalParticipants > leaderboard.length ? ` · ${t("leaderboardTotalAgents", { total: totalParticipants })}` : ""}
-                </p>
+                <p className="text-xs text-muted-foreground">{t("leaderboardHint")}</p>
+              </div>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t("searchAgents")}
+                  aria-label={t("searchAgents")}
+                  className="h-11 rounded-xl border-border bg-background ps-9 text-sm"
+                />
               </div>
             </div>
             <Table>
@@ -412,74 +259,36 @@ export default function AgentTargetManagementPage() {
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="w-16 text-center">{t("rank")}</TableHead>
                   <TableHead>{t("agent")}</TableHead>
-                  <TableHead className="text-center">{t("overall")}</TableHead>
-                  <TableHead className="text-center">{t("stage")}</TableHead>
-                  <TableHead className="text-center">{t("employer")}</TableHead>
-                  <TableHead className="text-center">{t("employee")}</TableHead>
-                  <TableHead className="text-center">{t("finance")}</TableHead>
-                  <TableHead className="text-center">{t("risk")}</TableHead>
+                  <TableHead className="text-center">{t("progress")}</TableHead>
+                  <TableHead className="text-center">{t("tier")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {leaderboard.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-16 text-center">
-                      <TargetEmptyState title={t("noLeaderboardData")} description={t("targetsNeedAssignForRankings")} />
+                    <TableCell colSpan={4} className="py-16 text-center">
+                      <TargetEmptyState title={t("noLeaderboardData")} description={t("noLeaderboardHint")} />
                     </TableCell>
                   </TableRow>
                 ) : filteredLeaderboard.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-16 text-center">
+                    <TableCell colSpan={4} className="py-16 text-center">
                       <TargetEmptyState
-                        title={t("noAgentsMatchFilters")}
+                        title={t("noAgentsMatch")}
                         description={t("noMatchHint")}
-                        action={
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setLeaderboardSearch("");
-                              setLeaderboardRiskFilter("all");
-                              setLeaderboardCompletionFilter("all");
-                            }}
-                            className="mt-2 rounded-lg"
-                          >
-                            Clear filters
-                          </Button>
-                        }
+                        action={<Button size="sm" variant="outline" onClick={() => setSearch("")} className="mt-2 rounded-lg">{t("clearFilters")}</Button>}
                       />
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredLeaderboard.map((entry) => (
-                    <TableRow key={entry._id} className={entry.rank <= 3 ? "bg-primary/[0.02]" : ""}>
+                    <TableRow key={entry.assigneeId} className={entry.isMe ? "bg-primary/[0.06]" : entry.rank <= 3 ? "bg-primary/[0.02]" : ""}>
                       <TableCell className="text-center"><RankBadge rank={entry.rank} /></TableCell>
-                      <TableCell><p className="font-medium">{entry.assigneeName}</p></TableCell>
-                      <TableCell className="text-center"><PerformanceBadge pct={entry.overallProgress} /></TableCell>
-                      <TableCell className="text-center"><CompletionBadge stage={getCompletionStage(entry.overallProgress)} /></TableCell>
-                      <TableCell className="text-center">
-                        <span className={`text-sm font-semibold tabular-nums ${entry.employerProgress >= 75 ? "text-emerald-600" : entry.employerProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>
-                          {entry.employerProgress}%
-                        </span>
+                      <TableCell>
+                        <p className="font-medium">{entry.assigneeName}{entry.isMe ? ` (${t("you")})` : ""}</p>
                       </TableCell>
-                      <TableCell className="text-center">
-                        <span className={`text-sm font-semibold tabular-nums ${entry.employeeProgress >= 75 ? "text-emerald-600" : entry.employeeProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>
-                          {entry.employeeProgress}%
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={`text-sm font-semibold tabular-nums ${entry.financeProgress >= 75 ? "text-emerald-600" : entry.financeProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>
-                          {entry.financeProgress}%
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center">
-                          <div className="flex flex-col items-start gap-1.5">
-                            <RiskBadge risk={entry.riskScore} />
-                            <IncentiveTierBadge tier={entry.incentiveTier ?? "none"} />
-                          </div>
-                        </div>
-                      </TableCell>
+                      <TableCell className="text-center"><div className="flex justify-center"><PerformanceBadge pct={entry.profitProgress} /></div></TableCell>
+                      <TableCell className="text-center"><div className="flex justify-center"><IncentiveTierBadge tier={entry.incentiveTier ?? "none"} /></div></TableCell>
                     </TableRow>
                   ))
                 )}

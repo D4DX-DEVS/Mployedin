@@ -112,29 +112,27 @@ Employer **verification** is separate: it controls the verified badge and trust 
 - Referral links: generate one, open it in a private/incognito window, register a new user through it — the new user must be linked to that agent.
 - Post a job on behalf of an employer → confirm it is live immediately and appears under that employer's jobs (no approval queue — section 4).
 - Raise a recruitment invoice (section 11) → confirm it needs approval before it is issued.
-- Targets: see assigned targets and live progress (section 10).
+- Profit target: see the assigned target and live progress (section 10).
 - Commissions: appear after invoice is paid (section 11); commission report numbers must match.
 - Messages/chat, calendar, interviews.
 
-## 10. Targets — how to test them (step by step)
+## 10. Profit targets — how to test them (step by step)
 
-Targets are yearly goals the admin sets for agents and super agents, split into monthly numbers. There are three kinds of targets in one profile:
+A target has **one aim: company profit**. Admin sets a yearly **profit target** for each super agent; the super agent splits it among their own agents. Each target is one yearly amount, cut into periods: **annual** (the whole year), **quarterly**, **monthly**, **weekly** (calendar weeks, Monday to Sunday) or **custom** (your own date ranges, with gaps allowed). Within a type the amount is split **equally**, **seasonally** (Q1 and Q3 weigh more) or **manually** (type each period).
 
-- **Employer target** — how many employers the agent should bring in
-- **Employee target** — how many candidates/placements
-- **Finance target** — how much revenue
+**What counts as profit:** the company's *net* income from invoices (the "Platform revenue" on an invoice: after discount, plus service charge, minus every agent and super-agent commission, tax excluded). It is counted **when money arrives**: each payment adds `platform revenue × payment ÷ invoice total` in the month it was paid. Void, cancelled, refunded and credit-note invoices never count, and a partial refund scales the invoice down. Only invoices in the target's currency count.
+
+**Whose invoice it is:** the invoice's agent; if it has none (subscriptions, premium posts), the agent assigned to the billed employer. A super agent gets their whole team's invoices (agents whose super agent is them, never by territory) plus any invoice carrying their override commission. Each invoice counts once.
 
 **Test flow:**
 
-1. **Admin** → *Targets / Target Management* → create a **Target Profile** for the test agent:
-   - Set the three annual numbers.
-   - Choose a distribution: **equal** (same every month), **seasonal**, or **custom** (type each month yourself).
-   - With **custom**, try entering months that do NOT add up to the annual total — the form must reject it with a clear error.
-2. Save/assign → the **agent should receive a notification** that a target was assigned.
-3. Log in as the **Agent** → *Targets* → confirm the assigned numbers and monthly breakdown match exactly what admin entered.
-4. Do some real activity (e.g. a placement or a paid invoice) → open *Target Report* → progress/achievement % should move accordingly.
-5. **Super Agent** → *Target Management / Target Report* → sees their team's targets and progress; **Admin** → *Target Report* → sees everyone.
-6. Check an agent can only see their **own** targets, never another agent's.
+1. **Admin** → *Profit Targets* → create a target for the test super agent: one yearly amount, a period type and a split. Try each type (annual, quarterly, monthly, weekly, custom). With a *manual* split, make the periods NOT add up to the year — the form must refuse and say so. With *custom*, try overlapping ranges and a range outside the year — both must be refused. A supervisor who already has an active target for the year is marked and cannot be given a second.
+2. The super agent should get a notification.
+3. **Super Agent** → *Profit Targets* → **Distribute** → give part of it to an agent. Try giving away more than your own target (including by a few cents) — it must be refused.
+4. As the **Agent** → create a recruitment invoice for one of your employers, get it approved, and record a **partial** payment, then the rest. Open *Profit Report*: profit rises by `platform revenue × paid ÷ total` each time, inside the period (week, month, quarter or custom range) the payment date falls in; the report's period table shows it.
+5. Mark a **subscription** invoice for the same employer paid: it counts for that agent (and their super agent) once.
+6. **Super Agent** → *Profit Report* shows each agent's profit, progress and share of the team; click an agent to open that agent's report. **Admin** → *Reports* → *Targets* opens on the year that has targets (next year's, if this year has none) and lists every target as a report card: completion status (Achieved / On pace / Behind / Not started), growth against last year, the target bar with a tick at the pace the schedule expects, and one bar per period. Filter by status, search, and open a card for the target's full report (what is left, forecast, days left, latest period against the one before). Super agents come first with their agents underneath, and the totals count every team once.
+7. Check **access**: an agent can open only their own report (and a teammate ranking with names and percentages, never amounts); a super agent can open only their own agents' reports; admin can open anyone's.
 
 ## 11. Money flow: Invoices → Payment → Commissions (step by step)
 

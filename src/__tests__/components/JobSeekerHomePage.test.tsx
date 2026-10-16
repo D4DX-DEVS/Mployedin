@@ -340,4 +340,34 @@ describe("JobSeekerHomePage", () => {
       "/ar/job-seeker/preferences",
     );
   });
+
+  it("paints the page at once and loads the job cards after it", async () => {
+    let release: (value: unknown) => void = () => {};
+    const jobsResponse = new Promise((resolve) => (release = resolve));
+    global.fetch = jest.fn((url: string) =>
+      String(url).startsWith("/api/jobs/recommended")
+        ? jobsResponse
+        : Promise.resolve({ ok: true, json: async () => ({ insights: [] }) }),
+    ) as unknown as typeof fetch;
+
+    const { jobs: _jobs, ...withoutJobs } = initialData;
+    const { container } = render(<JobSeekerHomePage locale="ar" initialData={withoutJobs} />);
+
+    // The page is there before the jobs are.
+    expect(await screen.findByRole("search")).toBeInTheDocument();
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/jobs/recommended?limit="));
+
+    release({
+      ok: true,
+      json: async () => ({ jobs: [job("late")], threshold: 80, bestScore: 88, strongMatches: 1, limitingFactor: null }),
+    });
+    expect(await screen.findByText("Job late")).toBeInTheDocument();
+  });
+
+  it("still treats SSR jobs: [] as final and fetches nothing for them", async () => {
+    render(<JobSeekerHomePage locale="ar" initialData={initialData} />);
+    await screen.findByRole("search");
+    expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining("/api/jobs/recommended"));
+  });
 });

@@ -8,6 +8,9 @@ const EMPLOYER_ID = "64b000000000000000000002";
 const JOB_ID = "64b000000000000000000010";
 const APPLICATION_ID = "64b000000000000000000020";
 
+// The posters case tests the handler's jobId scoping, which stays valid while
+// the feature is hidden; run it with the feature on.
+jest.mock("@/lib/features/posterFeature", () => ({ POSTERS_ENABLED: true }));
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/audit/log", () => ({
   actorFromCtx: jest.fn((ctx) => ({ actorId: ctx.userId, actorRole: ctx.role })),

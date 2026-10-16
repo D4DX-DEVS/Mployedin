@@ -14,7 +14,12 @@ const TOOL_USAGE_RULES = `
 - Lead with the direct answer to the user's question, then supporting detail. Never restate raw tool status messages (e.g. "Pipeline stats retrieved") — the UI already shows tool progress.
 - For counting/ranking questions (most/fewest applicants, totals per job or stage), use the aggregate stats tool for your role, not a search tool — search results are limited and paginated, so counting them gives wrong answers, and items with zero results never appear in searches.
 - "Fewest" includes zero: a job posting with no applicants has fewer applicants than one with 1.
-- When listing per-item counts, present them sorted and complete (include zero-count items), preferably as a short markdown table.`;
+- When listing per-item counts: Unless the tool result has shownToUser, present them sorted and complete (include zero-count items), preferably as a short markdown table.
+
+## Reply Style
+- You are answering in a chat panel about 400px wide. Keep paragraphs to two or three sentences.
+- Put the one number or name that answers the question in **bold**. Use a bulleted list for three or more parallel items.
+- When a tool result carries shownToUser, the user already sees those rows as cards: never list or tabulate them again. Add one or two sentences on what stands out or what to do next.`;
 
 const ROLE_INTROS: Record<UserRole, string> = {
   job_seeker:

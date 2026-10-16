@@ -45,6 +45,12 @@ beforeEach(() => {
 });
 
 describe("recommended_jobs", () => {
+  it("scores with cached Jev verdicts only, so the chat never waits on Jev", async () => {
+    (scoreSeekerPool as jest.Mock).mockResolvedValue({ jobs: [], recommendedCount: 0, threshold: 80, limitingFactor: "score" });
+    await recommendedJobsTool.execute({}, ctx());
+    expect((scoreSeekerPool as jest.Mock).mock.calls[0][3]).toEqual({ jevMode: "cached" });
+  });
+
   // Same list as the Jobs page: strong matches first, then the closest others.
   // The admin's match bar gates the job emails, not what Copilot may show.
   it("lists strong matches first, then the closest others, each with an apply link in the page's locale", async () => {

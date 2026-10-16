@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { cn } from "@/lib/utils";
-import { STEP_BACK, adminCanMove } from "@/lib/exhibitions/transitions";
+import { adminCanMove } from "@/lib/exhibitions/transitions";
 import type { ExhibitionRequestStatus } from "@/models/ExhibitionRequest";
 import { PRIORITY_BADGES, PRIORITY_LABEL_KEYS, formatDate, formatMoney, type ExhibitionRequest } from "../_lib/exhibitions";
 import { adminWorkflowActions } from "../_lib/workflowActions";
@@ -18,14 +18,14 @@ import { adminWorkflowActions } from "../_lib/workflowActions";
  * Board columns, left to right in workflow order. `enter` is the status a card
  * takes when dropped into the column — the move goes through the same action
  * dialog as the queue's buttons, so a drop still asks for the budget, the
- * allocation or the reason that step needs.
+ * allocation or the reason that step needs. Payment approval decides the
+ * support too, so the event column holds everything approved and not yet
+ * reported, including requests left at the retired Resourcing and Live stages.
  */
 const COLUMNS: { key: string; statuses: ExhibitionRequestStatus[]; enter: ExhibitionRequestStatus; titleKey: string; ns: "admin" | "ex"; tone: string }[] = [
   { key: "review", statuses: ["submitted", "under_review", "revision_requested"], enter: "under_review", titleKey: "teamLeaderReview", ns: "admin", tone: "bg-orange-500" },
   { key: "finance", statuses: ["approved"], enter: "approved", titleKey: "financeReviewStage", ns: "admin", tone: "bg-purple-500" },
-  { key: "resourcing", statuses: ["budget_approved"], enter: "budget_approved", titleKey: "stageResourcing", ns: "admin", tone: "bg-sky-500" },
-  { key: "delivery", statuses: ["resources_assigned"], enter: "resources_assigned", titleKey: "stageDelivery", ns: "admin", tone: "bg-blue-600" },
-  { key: "live", statuses: ["active"], enter: "active", titleKey: "boardLive", ns: "ex", tone: "bg-emerald-500" },
+  { key: "event", statuses: ["budget_approved", "resources_assigned", "active"], enter: "budget_approved", titleKey: "stageEvent", ns: "admin", tone: "bg-emerald-500" },
   { key: "done", statuses: ["completed"], enter: "completed", titleKey: "completedStage", ns: "admin", tone: "bg-slate-400" },
 ];
 
@@ -43,7 +43,6 @@ interface ExhibitionBoardProps {
   refreshKey: number;
   onOpen: (item: ExhibitionRequest) => void;
   onAction: (item: ExhibitionRequest, status: string) => void;
-  onMoveBack: (item: ExhibitionRequest) => void;
   /** Show only these statuses in the table (a column's "+N more"). */
   onShowInTable: (statuses: ExhibitionRequestStatus[]) => void;
 }
@@ -52,9 +51,9 @@ interface ExhibitionBoardProps {
  * Admin → Exhibitions as a board (client feedback 2026-10-14: "kanban table
  * for viewing the events status"). Each column is one stage of the workflow,
  * soonest event first; a card's button is the same next step the queue row
- * offers, and dragging a card one stage on (or back) opens that move.
+ * offers, and dragging a card one stage on opens that move.
  */
-export function ExhibitionBoard({ filterParams, refreshKey, onOpen, onAction, onMoveBack, onShowInTable }: ExhibitionBoardProps) {
+export function ExhibitionBoard({ filterParams, refreshKey, onOpen, onAction, onShowInTable }: ExhibitionBoardProps) {
   const t = useTranslations("adminExhibitions");
   const tx = useTranslations("exhibitions");
   const locale = useLocale();
@@ -97,7 +96,6 @@ export function ExhibitionBoard({ filterParams, refreshKey, onOpen, onAction, on
     setDragging(null);
     setOver(null);
     if (!card || column.statuses.includes(card.status as ExhibitionRequestStatus)) return;
-    if (STEP_BACK[card.status as ExhibitionRequestStatus] === column.enter) { onMoveBack(card); return; }
     if (adminCanMove(card.status, column.enter)) { onAction(card, column.enter); return; }
     toast.info(tx("boardMoveNotAllowed"));
   };

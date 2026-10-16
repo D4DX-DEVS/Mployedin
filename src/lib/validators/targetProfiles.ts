@@ -1,51 +1,83 @@
 import { z } from "zod";
 import { commonSchemas } from "./index";
+import { MAX_PERIODS, PERIOD_TYPES, isIsoDate } from "@/lib/targets/schedule";
 
 /* ------------------------------------------------------------------ */
-/*  Monthly target sub-schema                                          */
+/*  Shared building blocks                                             */
 /* ------------------------------------------------------------------ */
 
-const monthlyTargetSchema = z.object({
-  month: z.number().int().min(1).max(12),
-  employerTarget: z.number().min(0).default(0),
-  employeeTarget: z.number().min(0).default(0),
-  financeTarget: z.number().min(0).default(0),
+const strategySchema = z.enum(["equal", "custom", "seasonal"]);
+const periodTypeSchema = z.enum(PERIOD_TYPES);
+
+/** A profit amount: finite, non-negative, at most two decimals (minor units). */
+const profitAmountSchema = z
+  .number()
+  .finite()
+  .min(0)
+  .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6, {
+    message: "Use at most two decimal places",
+  });
+
+const isoDateSchema = z.string().refine(isIsoDate, { message: "Use a real date as YYYY-MM-DD" });
+
+/** One period of a schedule. Bounds are whole days, both inclusive. */
+export const targetPeriodSchema = z.object({
+  label: z.string().max(60).trim().optional(),
+  startDate: isoDateSchema,
+  endDate: isoDateSchema,
+  profitTarget: profitAmountSchema,
 });
 
+const periodsSchema = z.array(targetPeriodSchema).min(1).max(MAX_PERIODS);
+
+/** A custom split, or a custom set of periods, cannot be generated: it has to be sent. */
+function requirePeriodsWhenNotGenerable(
+  data: { periodType?: string; distributionStrategy?: string; periods?: unknown[] },
+  ctx: z.RefinementCtx,
+  path: (string | number)[] = [],
+) {
+  if (data.periods) return;
+  if (data.periodType === "custom") {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "A custom schedule needs its periods", path: [...path, "periods"] });
+  }
+}
+
 /* ------------------------------------------------------------------ */
-/*  Create — unified target profile                                    */
+/*  Create — profit target profile                                     */
 /* ------------------------------------------------------------------ */
 
-export const targetProfileCreateSchema = z.object({
-  assigneeId: commonSchemas.objectId,
-  assigneeRole: z.enum(["super_agent", "agent"]),
-  year: z.number().int().min(2020).max(2100),
-  region: z.string().max(100).trim().optional(),
+// Admin sets the top of the chain. Agent targets are carved out of their super
+// agent's target by the super agent (agentTargetDistributeSchema), so an agent
+// profile is never created from free-form input and always has a parent.
+export const targetProfileCreateSchema = z
+  .object({
+    assigneeId: commonSchemas.objectId,
+    assigneeRole: z.literal("super_agent"),
+    year: z.number().int().min(2020).max(2100),
+    region: z.string().max(100).trim().optional(),
 
-  employerTarget: z.number().min(0),
-  employeeTarget: z.number().min(0),
-  financeTarget: z.number().min(0),
-  currency: z.string().length(3).default("AED"),
+    profitTarget: profitAmountSchema,
+    currency: z.string().length(3).default("AED"),
 
-  distributionStrategy: z.enum(["equal", "custom", "seasonal"]).default("equal"),
-  monthlyTargets: z.array(monthlyTargetSchema).max(12).optional(),
+    periodType: periodTypeSchema.default("monthly"),
+    distributionStrategy: strategySchema.default("equal"),
+    periods: periodsSchema.optional(),
 
-  parentProfileId: commonSchemas.objectId.optional(),
-  notes: z.string().max(2000).trim().optional(),
-});
+    notes: z.string().max(2000).trim().optional(),
+  })
+  .superRefine((data, ctx) => requirePeriodsWhenNotGenerable(data, ctx));
 
 /* ------------------------------------------------------------------ */
 /*  Update — partial fields                                            */
 /* ------------------------------------------------------------------ */
 
 export const targetProfileUpdateSchema = z.object({
-  employerTarget: z.number().min(0).optional(),
-  employeeTarget: z.number().min(0).optional(),
-  financeTarget: z.number().min(0).optional(),
+  profitTarget: profitAmountSchema.optional(),
   currency: z.string().length(3).optional(),
   region: z.string().max(100).trim().optional(),
-  distributionStrategy: z.enum(["equal", "custom", "seasonal"]).optional(),
-  monthlyTargets: z.array(monthlyTargetSchema).max(12).optional(),
+  periodType: periodTypeSchema.optional(),
+  distributionStrategy: strategySchema.optional(),
+  periods: periodsSchema.optional(),
   notes: z.string().max(2000).trim().optional(),
   status: z.enum(["active", "completed", "cancelled"]).optional(),
 });
@@ -60,39 +92,57 @@ export const targetProfileReassignSchema = z.object({
 });
 
 /* ------------------------------------------------------------------ */
-/*  Monthly distribution                                               */
+/*  Bulk create — same target for several super agents                 */
 /* ------------------------------------------------------------------ */
 
-export const targetProfileDistributeSchema = z.object({
-  profileId: commonSchemas.objectId,
-  strategy: z.enum(["equal", "custom", "seasonal"]).default("equal"),
-  monthlyTargets: z.array(monthlyTargetSchema).length(12).optional(),
-});
+export const targetProfileBulkCreateSchema = z
+  .object({
+    assigneeIds: z.array(commonSchemas.objectId).min(1).max(100),
+    // Admin sets the top of the chain; super agents split it among agents.
+    assigneeRole: z.literal("super_agent"),
+    year: z.number().int().min(2020).max(2100),
+    region: z.string().max(100).trim().optional(),
+    profitTarget: profitAmountSchema,
+    currency: z.string().length(3).default("AED"),
+    periodType: periodTypeSchema.default("monthly"),
+    distributionStrategy: strategySchema.default("equal"),
+    periods: periodsSchema.optional(),
+    notes: z.string().max(2000).trim().optional(),
+  })
+  .superRefine((data, ctx) => {
+    requirePeriodsWhenNotGenerable(data, ctx);
+    if (data.distributionStrategy === "custom" && !data.periods && data.periodType !== "annual") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A custom split requires the periods and their amounts",
+        path: ["periods"],
+      });
+    }
+  });
 
 /* ------------------------------------------------------------------ */
-/*  Bulk create — assign to multiple people                            */
+/*  Bulk tabular — a different target per super agent                  */
 /* ------------------------------------------------------------------ */
 
-export const targetProfileBulkCreateSchema = z.object({
-  assigneeIds: z.array(commonSchemas.objectId).min(1).max(100),
-  assigneeRole: z.enum(["super_agent", "agent"]),
+export const targetProfileBulkTabularSchema = z.object({
   year: z.number().int().min(2020).max(2100),
-  region: z.string().max(100).trim().optional(),
-  employerTarget: z.number().min(0),
-  employeeTarget: z.number().min(0),
-  financeTarget: z.number().min(0),
+  assigneeRole: z.literal("super_agent"),
   currency: z.string().length(3).default("AED"),
-  distributionStrategy: z.enum(["equal", "custom", "seasonal"]).default("equal"),
-  monthlyTargets: z.array(monthlyTargetSchema).length(12).optional(),
-  notes: z.string().max(2000).trim().optional(),
-}).superRefine((data, ctx) => {
-  if (data.distributionStrategy === "custom" && !data.monthlyTargets) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Custom monthly distribution requires monthly targets",
-      path: ["monthlyTargets"],
-    });
-  }
+  region: z.string().max(100).trim().optional(),
+  targets: z
+    .array(
+      z.object({
+        assigneeId: commonSchemas.objectId,
+        profitTarget: profitAmountSchema,
+        currency: z.string().length(3).optional(),
+        periodType: periodTypeSchema.optional(),
+        distributionStrategy: strategySchema.optional(),
+        periods: periodsSchema.optional(),
+        notes: z.string().max(2000).trim().optional(),
+      })
+    )
+    .min(1)
+    .max(100),
 });
 
 /* ------------------------------------------------------------------ */
@@ -106,55 +156,46 @@ export const targetProfileCloneSchema = z.object({
 });
 
 /* ------------------------------------------------------------------ */
-/*  Agent distribute — supervisor splits targets to agents             */
+/*  Agent distribute — super agent splits their target to agents       */
 /* ------------------------------------------------------------------ */
 
-export const agentTargetDistributeSchema = z.object({
-  year: z.number().int().min(2020).max(2100),
-  allocationMode: z.enum(["equal", "weighted", "manual"]).default("manual"),
-  allocations: z
-    .array(
-      z.object({
-        agentUserId: commonSchemas.objectId,
-        employerTarget: z.number().min(0),
-        employeeTarget: z.number().min(0),
-        financeTarget: z.number().min(0),
-        weight: z.number().min(0).max(100).optional(),
-        distributionStrategy: z.enum(["equal", "custom", "seasonal"]).default("equal"),
-        monthlyTargets: z.array(monthlyTargetSchema).length(12).optional(),
-        notes: z.string().max(500).trim().optional(),
-      })
-    )
-    .min(1)
-    .max(100),
-}).superRefine((data, ctx) => {
-  const ids = data.allocations.map((allocation) => allocation.agentUserId);
-  if (new Set(ids).size !== ids.length) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Duplicate agent selection is not allowed",
-      path: ["allocations"],
-    });
-  }
-
-  data.allocations.forEach((allocation, index) => {
-    if (allocation.distributionStrategy === "custom" && !allocation.monthlyTargets) {
+export const agentTargetDistributeSchema = z
+  .object({
+    year: z.number().int().min(2020).max(2100),
+    allocationMode: z.enum(["equal", "weighted", "manual"]).default("manual"),
+    allocations: z
+      .array(
+        z.object({
+          agentUserId: commonSchemas.objectId,
+          profitTarget: profitAmountSchema,
+          weight: z.number().min(0).max(100).optional(),
+          periodType: periodTypeSchema.default("monthly"),
+          distributionStrategy: strategySchema.default("equal"),
+          periods: periodsSchema.optional(),
+          notes: z.string().max(500).trim().optional(),
+        })
+      )
+      .min(1)
+      .max(100),
+  })
+  .superRefine((data, ctx) => {
+    const ids = data.allocations.map((allocation) => allocation.agentUserId);
+    if (new Set(ids).size !== ids.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Custom monthly distribution requires monthly targets",
-        path: ["allocations", index, "monthlyTargets"],
+        message: "Duplicate agent selection is not allowed",
+        path: ["allocations"],
       });
     }
+
+    data.allocations.forEach((allocation, index) => {
+      requirePeriodsWhenNotGenerable(allocation, ctx, ["allocations", index]);
+      if (allocation.distributionStrategy === "custom" && !allocation.periods && allocation.periodType !== "annual") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A custom split requires the periods and their amounts",
+          path: ["allocations", index, "periods"],
+        });
+      }
+    });
   });
-});
-
-/* ------------------------------------------------------------------ */
-/*  Re-export old schemas for backward compatibility                   */
-/* ------------------------------------------------------------------ */
-
-export {
-  targetCreateSchema,
-  targetUpdateSchema,
-  targetDistributeSchema,
-  agentDistributeSchema,
-} from "./targets";

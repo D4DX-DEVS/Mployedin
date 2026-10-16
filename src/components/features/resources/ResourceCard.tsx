@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarDays, Download, Eye, History, Info, Loader2 } from "lucide-react";
+import type { ReactNode } from "react";
+import { CalendarDays, Download, Eye, History, Info, Loader2, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,10 @@ interface ResourceCardProps {
   pendingKey: string | null;
   onOpen: (item: Resource, file?: ResourceFile) => void;
   onDownload: (item: Resource, file: ResourceFile) => void;
+  /** Admin: who can see the resource. */
+  accessLabel?: string;
+  /** Admin: edit / download history / delete, under the shared actions. */
+  manageActions?: ReactNode;
 }
 
 /**
@@ -23,7 +28,7 @@ interface ResourceCardProps {
  * description, primary file, metadata, then Preview/Details + Download at the
  * bottom so actions line up across a row of cards.
  */
-export function ResourceCard({ item, categoryLabel, pendingKey, onOpen, onDownload }: ResourceCardProps) {
+export function ResourceCard({ item, categoryLabel, pendingKey, onOpen, onDownload, accessLabel, manageActions }: ResourceCardProps) {
   const t = useTranslations("resources");
   const primary = item.files?.[0];
   const extraFiles = Math.max(0, (item.files?.length ?? 0) - 1);
@@ -45,7 +50,15 @@ export function ResourceCard({ item, categoryLabel, pendingKey, onOpen, onDownlo
           <h3 className="line-clamp-2 break-words font-semibold leading-snug text-foreground" title={item.title}>
             {item.title}
           </h3>
-          <Badge variant="info">{categoryLabel}</Badge>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="info">{categoryLabel}</Badge>
+            {accessLabel && (
+              <Badge variant="outline" className="gap-1">
+                <Shield className="size-3" aria-hidden="true" />
+                {accessLabel}
+              </Badge>
+            )}
+          </div>
           {item.description && (
             <p className="line-clamp-2 text-sm leading-5 text-muted-foreground" title={item.description}>{item.description}</p>
           )}
@@ -96,6 +109,7 @@ export function ResourceCard({ item, categoryLabel, pendingKey, onOpen, onDownlo
           {t("download")}
         </Button>
       </div>
+      {manageActions && <div className="mt-3 flex items-center gap-1 border-t border-border/40 pt-3">{manageActions}</div>}
     </article>
   );
 }

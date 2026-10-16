@@ -78,6 +78,8 @@ export async function ensureIndexes() {
   // ── JobSeekers ─────────────────────────────────────────────────────────────
   await safeCreateIndexes(db, "jobseekers", [
     { key: { userId: 1 }, unique: true },
+    // Matching-vector refresh sweep: profiles changed in the last few minutes
+    { key: { updatedAt: -1 } },
     { key: { "skills.name": 1 } },
     { key: { profileCompleteness: -1 } },
     { key: { nationality: 1 } },
@@ -133,6 +135,8 @@ export async function ensureIndexes() {
     { key: { deletedAt: 1 } },
     // Hot path: list active (non-deleted) jobs, newest first
     { key: { status: 1, deletedAt: 1, createdAt: -1 } },
+    // Matching-vector refresh sweep: documents changed in the last few minutes
+    { key: { updatedAt: -1 } },
     // Compound indexes for employer/agent + status filtering
     { key: { employerId: 1, status: 1 } },
     { key: { agentId: 1, status: 1, createdAt: -1 } },

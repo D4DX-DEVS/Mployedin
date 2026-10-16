@@ -21,7 +21,7 @@
  */
 
 import logger from "@/lib/logger";
-import { providerFetch } from "@/lib/ai/providerFetch";
+import { providerFetch, readJsonWithin } from "@/lib/ai/providerFetch";
 import {
   OPENROUTER_DECISIONS_URL,
   OPENROUTER_MODELS,
@@ -107,6 +107,7 @@ export async function decide<K extends string>(
   if (!hasJev()) return null;
 
   let res: Response;
+  const started = Date.now();
   try {
     res = await providerFetch(
       OPENROUTER_DECISIONS_URL,
@@ -130,7 +131,9 @@ export async function decide<K extends string>(
   }
 
   try {
-    const data = (await res.json()) as JevResult<K>;
+    // One budget for the whole decision: headers and body together.
+    const remaining = Math.max(1, DECISION_TIMEOUT_MS - (Date.now() - started));
+    const data = await readJsonWithin<JevResult<K>>(res, label, remaining);
     if (!data?.answers) {
       logger.warn({ label }, "[jev] response had no answers");
       return null;

@@ -12,7 +12,7 @@ import type { CopilotTool, CopilotToolContext } from "../types";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
-import { buildRecommendedJobQuery, RECOMMENDATION_POOL_SIZE, RECOMMENDED_JOB_SELECT } from "@/lib/jobRecommendations";
+import { buildRecommendedJobQuery, poolCountries, RECOMMENDATION_POOL_SIZE, RECOMMENDED_JOB_SELECT } from "@/lib/jobRecommendations";
 import { scoreSeekerPool } from "@/lib/matching/seekerMatches";
 import { routing } from "@/i18n/routing";
 
@@ -179,7 +179,7 @@ export const recommendedJobsTool: CopilotTool<{ limit?: number }> = {
     // job EMAILS; applied here it made Copilot answer "no jobs" to most seekers.
     const candidateJobs = await Job.find(
       buildRecommendedJobQuery({
-        preferredCountries: seeker.preferredCountries,
+        preferredCountries: poolCountries(seeker),
         excludeJobIds: await appliedJobIds(seeker._id),
       }),
     )
@@ -189,7 +189,7 @@ export const recommendedJobsTool: CopilotTool<{ limit?: number }> = {
       .populate("employerId", "companyName")
       .lean();
 
-    const pool = await scoreSeekerPool(await effectiveSeekerProfile(ctx.userId, seeker), candidateJobs);
+    const pool = await scoreSeekerPool(await effectiveSeekerProfile(ctx.userId, seeker), candidateJobs, undefined, { jevMode: "cached" });
     const rows = pool.jobs
       .slice(0, Math.min(args.limit ?? 5, 10))
       .map((j) => ({

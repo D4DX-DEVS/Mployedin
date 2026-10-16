@@ -10,25 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  ArrowLeft, Building2, Users, DollarSign,
-  CalendarDays, Target, Loader2, ChevronDown, ChevronRight,
+  ArrowLeft, Users, CalendarDays, Target, Loader2, ChevronDown, ChevronRight,
   Save, SlidersHorizontal, Search, X,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { formatCount } from "@/lib/ui/intlFormat";
+import { ScheduleControls, SchedulePeriodsEditor, useScheduleIssue } from "@/components/features/targets/TargetScheduleEditor";
+import { TargetYearSelect } from "@/components/features/targets/TargetYearSelect";
+import { formatProfit } from "@/components/features/targets/profitFormat";
+import { draftIssues, newDraft, withAmount, type ScheduleDraft } from "@/lib/targets/scheduleDraft";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
-
-interface MonthlyTarget {
-  month: number;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-}
 
 interface SupervisorRow {
   id: string;
@@ -37,47 +32,42 @@ interface SupervisorRow {
   teamSize: number;
   territory: string;
   currency: string;
+  /** `available`, or why a target cannot be set for this supervisor now. */
+  availability: "available" | "has_active_target" | "inactive";
 }
 
 interface TargetRow {
   supervisorId: string;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  showMonthly: boolean;
-  monthlyTargets: MonthlyTarget[];
+  profitTarget: number;
+  /** How the year is cut and what each period is worth. */
+  draft: ScheduleDraft;
+  showSchedule: boolean;
 }
 
-const MONTHS_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+/** Why the server left a supervisor out, as message keys. */
+const SKIP_REASON_KEYS: Record<string, string> = {
+  active_profile_exists: "skipActiveExists",
+  active_profile_created_concurrently: "skipActiveExists",
+  ineligible: "skipIneligible",
+  distribution_invalid: "skipInvalidSchedule",
+};
 
-function generateEqualDistribution(annual: { employerTarget: number; employeeTarget: number; financeTarget: number }): MonthlyTarget[] {
-  return Array.from({ length: 12 }, (_, i) => {
-    const empPer = Math.floor(annual.employerTarget / 12);
-    const empRem = annual.employerTarget - empPer * 12;
-    const emplPer = Math.floor(annual.employeeTarget / 12);
-    const emplRem = annual.employeeTarget - emplPer * 12;
-    const finPer = Math.floor(annual.financeTarget / 12);
-    const finRem = annual.financeTarget - finPer * 12;
-    return {
-      month: i + 1,
-      employerTarget: empPer + (i < empRem ? 1 : 0),
-      employeeTarget: emplPer + (i < emplRem ? 1 : 0),
-      financeTarget: finPer + (i < finRem ? 1 : 0),
-    };
-  });
-}
+const emptyRow = (supervisorId: string, year: number): TargetRow => ({
+  supervisorId,
+  profitTarget: 0,
+  draft: newDraft(year, 0),
+  showSchedule: false,
+});
 
 /* ------------------------------------------------------------------ */
 /*  Main Component                                                     */
 /* ------------------------------------------------------------------ */
 
 export default function CreateTargetProfilePage() {
-  const t = useTranslations("targets");
+  const t = useTranslations("profitTargets");
+  const locale = useLocale();
   const pathname = usePathname();
-  const locale = pathname.split("/")[1] || "en";
+  const routeLocale = pathname.split("/")[1] || "en";
   const router = useRouter();
   const currentYear = new Date().getFullYear();
 
@@ -120,7 +110,7 @@ export default function CreateTargetProfilePage() {
             name?: string;
             email?: string;
             user?: { name?: string; _id?: string };
-            directory?: { teamSize?: number; regionNames?: string[]; currencyCode?: string };
+            directory?: { teamSize?: number; regionNames?: string[]; currencyCode?: string; availability?: SupervisorRow["availability"] };
           }) => ({
             id: sa.userId ?? sa.user?._id ?? sa._id ?? "",
             name: sa.name ?? sa.user?.name ?? "Unknown",
@@ -128,23 +118,11 @@ export default function CreateTargetProfilePage() {
             teamSize: sa.directory?.teamSize ?? 0,
             territory: sa.directory?.regionNames?.[0] ?? "",
             currency: sa.directory?.currencyCode ?? "AED",
+            availability: sa.directory?.availability ?? "available",
           })
         );
         setSupervisors(rows);
-
-        // Initialize target rows
-        const initial: Record<string, TargetRow> = {};
-        for (const sup of rows) {
-          initial[sup.id] = {
-            supervisorId: sup.id,
-            employerTarget: 0,
-            employeeTarget: 0,
-            financeTarget: 0,
-            showMonthly: false,
-            monthlyTargets: generateEqualDistribution({ employerTarget: 0, employeeTarget: 0, financeTarget: 0 }),
-          };
-        }
-        setTargetRows(initial);
+        setTargetRows(Object.fromEntries(rows.map((sup) => [sup.id, emptyRow(sup.id, year)])));
       } catch {
         if (!controller.signal.aborted) {
           toast.error(t("failedToLoadSupervisors"));
@@ -156,64 +134,37 @@ export default function CreateTargetProfilePage() {
     return () => controller.abort();
   }, [year]);
 
-  // Update annual target for a supervisor
-  const updateTarget = useCallback((supervisorId: string, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => {
+  const patchRow = useCallback((supervisorId: string, change: (row: TargetRow) => TargetRow) => {
     setTargetRows((prev) => {
       const row = prev[supervisorId];
-      if (!row) return prev;
-      const updated = { ...row, [field]: value };
-      // Regenerate monthly distribution
-      updated.monthlyTargets = generateEqualDistribution({
-        employerTarget: updated.employerTarget,
-        employeeTarget: updated.employeeTarget,
-        financeTarget: updated.financeTarget,
-      });
-      return { ...prev, [supervisorId]: updated };
+      return row ? { ...prev, [supervisorId]: change(row) } : prev;
     });
   }, []);
 
-  // Toggle monthly distribution view
-  const toggleMonthly = useCallback((supervisorId: string) => {
-    setTargetRows((prev) => {
-      const row = prev[supervisorId];
-      if (!row) return prev;
-      return { ...prev, [supervisorId]: { ...row, showMonthly: !row.showMonthly } };
-    });
-  }, []);
+  // A new amount re-spreads over the periods unless they were typed by hand.
+  const updateTarget = useCallback((supervisorId: string, profitTarget: number) => {
+    patchRow(supervisorId, (row) => ({ ...row, profitTarget, draft: withAmount(row.draft, year, profitTarget) }));
+  }, [patchRow, year]);
 
-  // Update monthly target for a supervisor
-  const updateMonthlyTarget = useCallback((supervisorId: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => {
-    setTargetRows((prev) => {
-      const row = prev[supervisorId];
-      if (!row) return prev;
-      const updatedMonthly = row.monthlyTargets.map((m) =>
-        m.month === month ? { ...m, [field]: value } : m
-      );
-      return { ...prev, [supervisorId]: { ...row, monthlyTargets: updatedMonthly } };
-    });
-  }, []);
+  const updateDraft = useCallback((supervisorId: string, draft: ScheduleDraft) => {
+    patchRow(supervisorId, (row) => ({ ...row, draft }));
+  }, [patchRow]);
+
+  const toggleSchedule = useCallback((supervisorId: string) => {
+    patchRow(supervisorId, (row) => ({ ...row, showSchedule: !row.showSchedule }));
+  }, [patchRow]);
 
   // Derived region options
-  const regionOptions = useMemo(() => {
-    const regions = [...new Set(supervisors.map((s) => s.territory).filter(Boolean))].sort();
-    return regions;
-  }, [supervisors]);
+  const regionOptions = useMemo(() => [...new Set(supervisors.map((s) => s.territory).filter(Boolean))].sort(), [supervisors]);
 
   // Filtered supervisors
   const filteredSupervisors = useMemo(() => {
     return supervisors.filter((sup) => {
-      // Name/email filter
       if (filterName.trim()) {
         const q = filterName.trim().toLowerCase();
-        if (!sup.name.toLowerCase().includes(q) && !sup.email.toLowerCase().includes(q)) {
-          return false;
-        }
+        if (!sup.name.toLowerCase().includes(q) && !sup.email.toLowerCase().includes(q)) return false;
       }
-      // Region filter
-      if (filterRegion) {
-        if (sup.territory !== filterRegion) return false;
-      }
-      // Team size filter
+      if (filterRegion && sup.territory !== filterRegion) return false;
       if (filterTeamSize !== "all") {
         if (filterTeamSize === "small" && sup.teamSize > 3) return false;
         if (filterTeamSize === "medium" && (sup.teamSize < 4 || sup.teamSize > 8)) return false;
@@ -231,24 +182,19 @@ export default function CreateTargetProfilePage() {
     setFilterTeamSize("all");
   };
 
-  // Get rows that have at least one target value > 0
-  const validRows = useMemo(() => {
-    return Object.values(targetRows).filter(
-      (row) => row.employerTarget > 0 || row.employeeTarget > 0 || row.financeTarget > 0
-    );
-  }, [targetRows]);
+  // Rows that have a target, and the ones among them whose months do not add up.
+  const validRows = useMemo(() => Object.values(targetRows).filter((row) => row.profitTarget > 0), [targetRows]);
+  const brokenRows = useMemo(() => validRows.filter((row) => draftIssues(row.draft, year, row.profitTarget).length > 0), [validRows, year]);
 
-  // Totals
-  const totals = useMemo(() => {
-    return validRows.reduce(
-      (acc, row) => ({
-        employer: acc.employer + row.employerTarget,
-        employee: acc.employee + row.employeeTarget,
-        finance: acc.finance + row.financeTarget,
-      }),
-      { employer: 0, employee: 0, finance: 0 }
-    );
-  }, [validRows]);
+  // One currency at a time: supervisors in other currencies are listed apart.
+  const totalsByCurrency = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const row of validRows) {
+      const currency = supervisors.find((s) => s.id === row.supervisorId)?.currency ?? "AED";
+      totals.set(currency, (totals.get(currency) ?? 0) + row.profitTarget);
+    }
+    return [...totals.entries()];
+  }, [validRows, supervisors]);
 
   // Submit targets
   const handleCreate = async () => {
@@ -256,23 +202,25 @@ export default function CreateTargetProfilePage() {
       toast.error(t("enterTargetsForSupervisors"));
       return;
     }
+    if (brokenRows.length > 0) {
+      toast.error(t("sumMismatchError"));
+      return;
+    }
 
     setCreating(true);
     try {
       const payload = {
-        assigneeIds: validRows.map((r) => r.supervisorId),
-        assigneeRole: "super_agent" as const,
         year,
+        assigneeRole: "super_agent" as const,
         targets: validRows.map((row) => {
           const sup = supervisors.find((s) => s.id === row.supervisorId);
           return {
             assigneeId: row.supervisorId,
-            employerTarget: row.employerTarget,
-            employeeTarget: row.employeeTarget,
-            financeTarget: row.financeTarget,
+            profitTarget: row.profitTarget,
             currency: sup?.currency ?? "AED",
-            distributionStrategy: "custom" as const,
-            monthlyTargets: row.monthlyTargets,
+            periodType: row.draft.periodType,
+            distributionStrategy: row.draft.strategy,
+            periods: row.draft.periods,
           };
         }),
       };
@@ -286,8 +234,21 @@ export default function CreateTargetProfilePage() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         const created = Number(data.created ?? 0);
-        toast.success(t("profilesCreated", { count: created }));
-        router.push(`/${locale}/admin/target-management?year=${year}`);
+        // A row the server skipped used to vanish into "0 created". Say who, and why.
+        const skipped: { assigneeId: string; reason: string }[] = data.skippedDetails ?? [];
+        if (skipped.length > 0) {
+          const reasons = skipped
+            .map((item) => {
+              const who = supervisors.find((s) => s.id === item.assigneeId)?.name ?? item.assigneeId;
+              return `${who}: ${t(SKIP_REASON_KEYS[item.reason] ?? "skipUnknown", { year })}`;
+            })
+            .join(" · ");
+          toast.error(t("profilesSkipped", { count: skipped.length, reasons }));
+        }
+        if (created > 0) {
+          toast.success(t("profilesCreated", { count: created }));
+          router.push(`/${routeLocale}/admin/target-management?year=${year}`);
+        }
       } else {
         toast.error(data.error ?? t("failedToCreateProfiles"));
       }
@@ -302,7 +263,7 @@ export default function CreateTargetProfilePage() {
     <div className="page-container">
       {/* Back */}
       <button
-        onClick={() => router.push(`/${locale}/admin/target-management`)}
+        onClick={() => router.push(`/${routeLocale}/admin/target-management`)}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-4 w-4" /> {t("backToTargetManagement")}
@@ -315,26 +276,17 @@ export default function CreateTargetProfilePage() {
             <div className="workspace-tone-sky rounded-xl p-2.5">
               <Target className="h-5 w-5" />
             </div>
-            <PageHeader title={t("createTargetProfilesTitle")} description={t("createTargetProfilesDescription")} />
+            <PageHeader title={t("createTitle")} description={t("createDescription")} />
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="target-year" className="text-xs font-medium text-muted-foreground">{t("yearLabel")}</Label>
-              <Input
-                id="target-year"
-                type="number"
-                value={year}
-                onChange={(e) => setYear(parseInt(e.target.value) || currentYear)}
-                className="h-9 w-20 rounded-lg border-border bg-card text-center text-sm"
-              />
-            </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs font-medium text-muted-foreground">{t("yearLabel")}</Label>
+            <TargetYearSelect value={String(year)} onChange={(value) => setYear(Number.parseInt(value, 10) || currentYear + 1)} label={t("yearLabel")} />
           </div>
         </div>
       </div>
 
       {/* Filter Toggle + Panel */}
       <div className="workspace-glass-panel rounded-2xl overflow-hidden">
-        {/* Filter Header */}
         <div className="flex items-center justify-between border-b border-border/50 panel-head">
           <button
             type="button"
@@ -356,16 +308,14 @@ export default function CreateTargetProfilePage() {
               onClick={clearFilters}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              <X className="h-3 w-3" /> Clear
+              <X className="h-3 w-3" /> {t("clearFilters")}
             </button>
           )}
         </div>
 
-        {/* Collapsible Filter Panel */}
         {showFilters && (
           <div className="px-4 py-3 bg-muted/20 border-b border-border/50">
             <div className="grid gap-3 sm:grid-cols-3">
-              {/* Name Search */}
               <div className="field">
                 <Label className="text-[11px] font-medium text-muted-foreground">{t("nameEmailLabel")}</Label>
                 <div className="relative">
@@ -380,24 +330,22 @@ export default function CreateTargetProfilePage() {
                 </div>
               </div>
 
-              {/* Region Filter */}
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">{t("region")}</Label>
+                <Label className="text-[11px] font-medium text-muted-foreground">{t("regionLabel")}</Label>
                 <SearchableSelect
                   value={filterRegion}
                   onValueChange={(val) => setFilterRegion(val)}
                   options={[
-                    { value: "", label: t("allRegionsOption") },
+                    { value: "", label: t("allRegions") },
                     ...regionOptions.map((r) => ({ value: r, label: r })),
                   ]}
-                  placeholder={t("allRegionsOption")}
+                  placeholder={t("allRegions")}
                   searchPlaceholder={t("searchRegions")}
                   emptyMessage={t("noRegionsFound")}
                   className="h-8 text-xs"
                 />
               </div>
 
-              {/* Team Size Filter */}
               <div className="space-y-1">
                 <Label className="text-[11px] font-medium text-muted-foreground">{t("teamSizeLabel")}</Label>
                 <SearchableSelect
@@ -432,9 +380,7 @@ export default function CreateTargetProfilePage() {
               <div key={i} className="flex items-center gap-4 px-4 py-3">
                 <Skeleton className="h-4 w-48" />
                 <Skeleton className="ml-auto h-4 w-16" />
-                <Skeleton className="h-4 w-16" />
                 <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-4 w-16" />
               </div>
             ))}
           </div>
@@ -448,36 +394,24 @@ export default function CreateTargetProfilePage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 border-b border-border/70">
                 <tr>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[200px]">
+                  <th className="px-4 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[200px]">
                     {t("supervisorTableHeader")}
                   </th>
-                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[130px]">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <Building2 className="h-3.5 w-3.5" />
-                      {t("employersHeader")}
-                    </div>
+                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[180px]">
+                    {t("profitTargetHeader")}
                   </th>
-                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[130px]">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <Users className="h-3.5 w-3.5" />
-                      {t("employeesHeader")}
-                    </div>
+                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[260px]">
+                    {t("scheduleTableHeader")}
                   </th>
-                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[140px]">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <DollarSign className="h-3.5 w-3.5" />
-                      {t("revenueHeader")}
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[120px]">
-                    {t("monthlyTableHeader")}
+                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[100px]">
+                    {t("periodsTableHeader")}
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
-                {filteredSupervisors.length === 0 && !loading ? (
+                {filteredSupervisors.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    <td colSpan={4} className="px-4 py-10 text-center text-sm text-muted-foreground">
                       {t("noSupervisorsMatchFilters")}
                     </td>
                   </tr>
@@ -485,36 +419,33 @@ export default function CreateTargetProfilePage() {
                   filteredSupervisors.map((sup) => {
                     const row = targetRows[sup.id];
                     if (!row) return null;
+                    const hasTarget = row.profitTarget > 0;
                     return (
                       <SupervisorTargetRow
                         key={sup.id}
                         supervisor={sup}
                         row={row}
-                        currency={sup.currency}
+                        hasTarget={hasTarget}
+                        locked={sup.availability !== "available"}
+                        year={year}
                         onUpdateTarget={updateTarget}
-                        onToggleMonthly={toggleMonthly}
-                        onUpdateMonthly={updateMonthlyTarget}
+                        onUpdateDraft={updateDraft}
+                        onToggleSchedule={toggleSchedule}
                       />
                     );
                   })
                 )}
               </tbody>
-              {/* Totals Row */}
               <tfoot className="bg-muted/30 border-t-2 border-border">
                 <tr>
                   <td className="px-4 py-3 text-sm font-semibold text-foreground">
-                    {t("totalLabel")} ({validRows.length} {t("supervisorCountLabel", { count: validRows.length })})
+                    {t("totalLabel")} ({t("supervisorCountLabel", { count: validRows.length })})
                   </td>
-                  <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {formatCount(totals.employer)}
+                  <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums" colSpan={3}>
+                    {totalsByCurrency.length === 0
+                      ? "—"
+                      : totalsByCurrency.map(([currency, amount]) => formatProfit(amount, currency, locale)).join(" · ")}
                   </td>
-                  <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {formatCount(totals.employee)}
-                  </td>
-                  <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums">
-                    {formatCount(totals.finance)}
-                  </td>
-                  <td className="px-4 py-3" />
                 </tr>
               </tfoot>
             </table>
@@ -523,10 +454,13 @@ export default function CreateTargetProfilePage() {
       </div>
 
       {/* Submit Button */}
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-2">
+        {brokenRows.length > 0 && (
+          <p role="alert" className="text-xs font-medium text-rose-600">{t("sumMismatchError")}</p>
+        )}
         <Button
           onClick={handleCreate}
-          disabled={creating || validRows.length === 0}
+          disabled={creating || validRows.length === 0 || brokenRows.length > 0}
           className="gap-2 rounded-xl px-6"
         >
           {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -544,28 +478,32 @@ export default function CreateTargetProfilePage() {
 interface SupervisorTargetRowProps {
   supervisor: SupervisorRow;
   row: TargetRow;
-  currency: string;
-  onUpdateTarget: (id: string, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
-  onToggleMonthly: (id: string) => void;
-  onUpdateMonthly: (id: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
+  hasTarget: boolean;
+  /** Already has an active target this year (or is inactive): nothing can be set here. */
+  locked: boolean;
+  year: number;
+  onUpdateTarget: (id: string, profitTarget: number) => void;
+  onUpdateDraft: (id: string, draft: ScheduleDraft) => void;
+  onToggleSchedule: (id: string) => void;
 }
 
 function SupervisorTargetRow({
   supervisor,
   row,
-  currency,
+  hasTarget,
+  locked,
+  year,
   onUpdateTarget,
-  onToggleMonthly,
-  onUpdateMonthly,
+  onUpdateDraft,
+  onToggleSchedule,
 }: SupervisorTargetRowProps) {
   const ta = useTranslations("a11y");
-  const tt = useTranslations("targets");
-  const hasTarget = row.employerTarget > 0 || row.employeeTarget > 0 || row.financeTarget > 0;
+  const t = useTranslations("profitTargets");
+  const issue = useScheduleIssue(row.draft, year, row.profitTarget, supervisor.currency);
 
   return (
     <>
       <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
-        {/* Supervisor Info */}
         <td className="px-4 py-3">
           <div>
             <p className="font-medium text-foreground">{supervisor.name}</p>
@@ -573,196 +511,74 @@ function SupervisorTargetRow({
             {supervisor.territory && (
               <p className="text-[11px] text-muted-foreground mt-0.5">{supervisor.territory}</p>
             )}
+            {locked && (
+              <Badge variant="outline" className="mt-1 px-2 py-0.5 text-[11px]">
+                {supervisor.availability === "inactive" ? t("supervisorInactive") : t("alreadyHasTarget", { year })}
+              </Badge>
+            )}
           </div>
         </td>
 
-        {/* Employer Target */}
-        <td className="px-4 py-3">
-          <Input
-            type="number"
-            aria-label={tt("employerTarget")}
-            min={0}
-            value={row.employerTarget || ""}
-            onChange={(e) => onUpdateTarget(supervisor.id, "employerTarget", parseInt(e.target.value) || 0)}
-            placeholder="0"
-            className="h-9 w-full rounded-lg border-border bg-background text-center text-sm tabular-nums"
-          />
-        </td>
-
-        {/* Employee Target */}
-        <td className="px-4 py-3">
-          <Input
-            type="number"
-            aria-label={tt("employeeTarget")}
-            min={0}
-            value={row.employeeTarget || ""}
-            onChange={(e) => onUpdateTarget(supervisor.id, "employeeTarget", parseInt(e.target.value) || 0)}
-            placeholder="0"
-            className="h-9 w-full rounded-lg border-border bg-background text-center text-sm tabular-nums"
-          />
-        </td>
-
-        {/* Revenue Target */}
         <td className="px-4 py-3">
           <div className="relative">
             <Input
               type="number"
-              aria-label={tt("financeTarget")}
+              aria-label={t("profitTargetLabel", { currency: supervisor.currency })}
               min={0}
-              value={row.financeTarget || ""}
-              onChange={(e) => onUpdateTarget(supervisor.id, "financeTarget", parseInt(e.target.value) || 0)}
+              step="0.01"
+              inputMode="decimal"
+              value={row.profitTarget || ""}
+              onChange={(e) => onUpdateTarget(supervisor.id, Number(e.target.value) || 0)}
               placeholder="0"
-              className="h-9 w-full rounded-lg border-border bg-background text-center text-sm tabular-nums pr-12"
+              disabled={locked}
+              className="h-9 w-full rounded-lg border-border bg-background pe-12 text-center text-sm tabular-nums"
             />
-            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-medium text-muted-foreground">
-              {currency}
+            <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-[11px] font-medium text-muted-foreground">
+              {supervisor.currency}
             </span>
           </div>
         </td>
 
-        {/* Monthly Toggle */}
+        <td className="px-4 py-3">
+          <ScheduleControls
+            draft={row.draft}
+            year={year}
+            profitTarget={row.profitTarget}
+            onChange={(draft) => onUpdateDraft(supervisor.id, draft)}
+            disabled={!hasTarget || locked}
+          />
+          {hasTarget && issue ? <p role="alert" className="mt-1 text-[11px] font-medium text-rose-600">{issue}</p> : null}
+        </td>
+
         <td className="px-4 py-3 text-center">
           <Button
             type="button"
             aria-label={ta("toggleBreakdown")}
-            variant={row.showMonthly ? "default" : "outline"}
+            variant={row.showSchedule ? "default" : "outline"}
             size="dense"
             className="rounded-lg text-xs gap-1"
-            onClick={() => onToggleMonthly(supervisor.id)}
+            onClick={() => onToggleSchedule(supervisor.id)}
             disabled={!hasTarget}
           >
             <CalendarDays className="h-3.5 w-3.5" />
-            {row.showMonthly ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {row.showSchedule ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </Button>
         </td>
       </tr>
 
-      {/* Monthly Distribution Expanded */}
-      {row.showMonthly && hasTarget && (
+      {row.showSchedule && hasTarget && (
         <tr className="bg-muted/10">
-          <td colSpan={5} className="px-4 py-3">
-            <MonthlyDistributionTable
-              supervisorId={supervisor.id}
-              monthly={row.monthlyTargets}
-              currency={currency}
-              annualTargets={{
-                employerTarget: row.employerTarget,
-                employeeTarget: row.employeeTarget,
-                financeTarget: row.financeTarget,
-              }}
-              onUpdate={onUpdateMonthly}
+          <td colSpan={4} className="px-4 py-3">
+            <SchedulePeriodsEditor
+              draft={row.draft}
+              year={year}
+              profitTarget={row.profitTarget}
+              currency={supervisor.currency}
+              onChange={(draft) => onUpdateDraft(supervisor.id, draft)}
             />
           </td>
         </tr>
       )}
     </>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Monthly Distribution Table                                         */
-/* ------------------------------------------------------------------ */
-
-interface MonthlyDistributionTableProps {
-  supervisorId: string;
-  monthly: MonthlyTarget[];
-  currency: string;
-  annualTargets: { employerTarget: number; employeeTarget: number; financeTarget: number };
-  onUpdate: (supervisorId: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
-}
-
-function MonthlyDistributionTable({
-  supervisorId,
-  monthly,
-  currency,
-  annualTargets,
-  onUpdate,
-}: MonthlyDistributionTableProps) {
-  const t = useTranslations("targets");
-  const monthlySum = monthly.reduce(
-    (acc, m) => ({
-      employer: acc.employer + m.employerTarget,
-      employee: acc.employee + m.employeeTarget,
-      finance: acc.finance + m.financeTarget,
-    }),
-    { employer: 0, employee: 0, finance: 0 }
-  );
-
-  const isValid =
-    monthlySum.employer === annualTargets.employerTarget &&
-    monthlySum.employee === annualTargets.employeeTarget &&
-    monthlySum.finance === annualTargets.financeTarget;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-muted-foreground">{t("monthlyDistributionLabel")}</p>
-        {!isValid && (
-          <Badge variant="destructive" className="text-[11px]">
-            {t("sumMismatchError")}
-          </Badge>
-        )}
-      </div>
-      <div className="overflow-x-auto rounded-lg border border-border/60 bg-background">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/30">
-            <tr>
-              <th className="px-2 py-2 text-left font-semibold text-muted-foreground">{t("month")}</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("employers")}</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("employees")}</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("revenue")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/40">
-            {monthly.map((m) => (
-              <tr key={m.month} className="hover:bg-muted/10">
-                <td className="px-2 py-1.5 font-medium text-muted-foreground">{MONTHS_SHORT[m.month - 1]}</td>
-                <td className="px-2 py-1.5">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={m.employerTarget || ""}
-                    onChange={(e) => onUpdate(supervisorId, m.month, "employerTarget", parseInt(e.target.value) || 0)}
-                    className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"
-                  />
-                </td>
-                <td className="px-2 py-1.5">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={m.employeeTarget || ""}
-                    onChange={(e) => onUpdate(supervisorId, m.month, "employeeTarget", parseInt(e.target.value) || 0)}
-                    className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"
-                  />
-                </td>
-                <td className="px-2 py-1.5">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={m.financeTarget || ""}
-                    onChange={(e) => onUpdate(supervisorId, m.month, "financeTarget", parseInt(e.target.value) || 0)}
-                    className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot className="bg-muted/20 border-t border-border">
-            <tr>
-              <td className="px-2 py-1.5 font-semibold">{t("total")}</td>
-              <td className={`px-2 py-1.5 text-center font-bold tabular-nums ${monthlySum.employer !== annualTargets.employerTarget ? "text-red-500" : ""}`}>
-                {monthlySum.employer}
-              </td>
-              <td className={`px-2 py-1.5 text-center font-bold tabular-nums ${monthlySum.employee !== annualTargets.employeeTarget ? "text-red-500" : ""}`}>
-                {monthlySum.employee}
-              </td>
-              <td className={`px-2 py-1.5 text-center font-bold tabular-nums ${monthlySum.finance !== annualTargets.financeTarget ? "text-red-500" : ""}`}>
-                {monthlySum.finance}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
   );
 }

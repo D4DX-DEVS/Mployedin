@@ -15,7 +15,7 @@
  * HOME_RECOMMENDED_JOB_COUNT from it.
  */
 
-import { COUNTRY_REGION_CODES, canonicalCountry } from "@/lib/i18n/locations";
+import { COUNTRY_REGION_CODES, canonicalCountry, countryKeyFromLocationText } from "@/lib/i18n/locations";
 import { escapeRegex } from "@/lib/security/sanitize";
 
 /**
@@ -89,6 +89,24 @@ export function countryPatterns(preferredCountries: string[]): RegExp[] {
     }
   }
   return [...names].map((name) => new RegExp("^[ ]*" + escapeRegex(name) + "[ ]*([(].*)?$", "i"));
+}
+
+/**
+ * The countries a seeker's pool is filtered to: the ones they stated, else the
+ * ones their preferred locations name ("Dubai, UAE"). Every pool surface calls
+ * this so the home page, the feed and Copilot start from the same jobs.
+ */
+export function poolCountries(seeker: {
+  preferredCountries?: string[] | null;
+  preferredLocations?: string[] | null;
+}): string[] | undefined {
+  if (seeker.preferredCountries?.length) return seeker.preferredCountries;
+  const derived: string[] = [];
+  for (const location of seeker.preferredLocations ?? []) {
+    const country = countryKeyFromLocationText(location);
+    if (country && !derived.includes(country)) derived.push(country);
+  }
+  return derived.length > 0 ? derived : undefined;
 }
 
 /**

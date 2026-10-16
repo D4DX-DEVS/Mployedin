@@ -218,6 +218,8 @@ export const dailyRecommendationsCron = inngest.createFunction(
       })
         .select(JOB_MATCH_FIELDS)
         .populate("employerId", "companyName")
+        // Newest 500, not whichever 500 the server returns first (issue 3).
+        .sort({ createdAt: -1, _id: -1 })
         .limit(500)
         .lean();
 

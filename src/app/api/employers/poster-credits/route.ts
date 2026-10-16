@@ -1,3 +1,4 @@
+import { gatePosters } from "@/lib/features/posterGate";
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
@@ -60,4 +61,4 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
   });
 }
 
-export const GET = withAuth(getHandler);
+export const GET = gatePosters(withAuth(getHandler));

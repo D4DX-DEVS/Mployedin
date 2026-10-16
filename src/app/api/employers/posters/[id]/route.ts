@@ -1,3 +1,4 @@
+import { gatePosters } from "@/lib/features/posterGate";
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
@@ -91,5 +92,5 @@ async function deleteHandler(
   return NextResponse.json({ success: true });
 }
 
-export const GET = withAuth(getHandler);
-export const DELETE = withAuth(deleteHandler);
+export const GET = gatePosters(withAuth(getHandler));
+export const DELETE = gatePosters(withAuth(deleteHandler));

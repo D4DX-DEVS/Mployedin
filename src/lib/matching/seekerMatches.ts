@@ -21,6 +21,7 @@ import { mongoJevVerdictStore } from "@/lib/matching/jevVerdictStore";
 import {
   diagnoseLimitingFactor,
   hasKnownLocation,
+  jevFillRequest,
   scorePair,
   toCandidateJob,
   type LimitingFactor,
@@ -28,14 +29,42 @@ import {
   type RecommendOptions,
 } from "@/lib/matching/recommend";
 import { prepareSkillVectors } from "@/lib/matching/skillVectors";
+import { batchVerdictReads } from "@/lib/matching/batchVerdictReads";
+import { JEV_FILL_MAX_JOBS, queueJevFill } from "@/lib/matching/jevFillQueue";
 import { IRRELEVANT_SORT_PENALTY } from "@/lib/jobRecommendations";
 
 export type EngineOptions = Required<Pick<RecommendOptions, "threshold" | "useAi" | "verdicts">>;
 
+/**
+ * How long a render trusts the admin's threshold and AI switch. They change
+ * rarely, and reading SystemConfig cost 0.1–0.35 s on every page render
+ * (2026-10-15). An admin change reaches the pages within this window.
+ */
+const ENGINE_OPTIONS_TTL_MS = 30_000;
+let engineCache: { at: number; value: Promise<EngineOptions> } | null = null;
+
 /** The admin-controlled settings every surface must score under. */
 export async function resolveEngineOptions(): Promise<EngineOptions> {
-  const [threshold, useAi] = await Promise.all([resolveMatchThreshold(), isAiRerankEnabled()]);
-  return { threshold, useAi, verdicts: mongoJevVerdictStore };
+  if (!engineCache || Date.now() - engineCache.at > ENGINE_OPTIONS_TTL_MS) {
+    const value = Promise.all([resolveMatchThreshold(), isAiRerankEnabled()]).then(
+      ([threshold, useAi]): EngineOptions => ({ threshold, useAi, verdicts: mongoJevVerdictStore }),
+    );
+    engineCache = { at: Date.now(), value };
+    value.catch(() => {
+      engineCache = null;
+    });
+  }
+  return engineCache.value;
+}
+
+/** For tests. */
+export function clearEngineOptionsCache(): void {
+  engineCache = null;
+}
+
+export interface PoolOptions {
+  /** "cached" for page renders: no Jev call; misses go to a background fill. */
+  jevMode?: "live" | "cached";
 }
 
 export interface MatchFields {
@@ -78,14 +107,28 @@ export async function scoreSeekerPool<T extends Record<string, unknown>>(
   seeker: SeekerProfile,
   jobs: readonly T[],
   engine?: EngineOptions,
+  pool: PoolOptions = {},
 ): Promise<ScoredPool<T>> {
   const options = engine ?? (await resolveEngineOptions());
+  const jevMode = pool.jevMode ?? "live";
+  const store = options.verdicts;
+  const verdicts = store?.getMany ? batchVerdictReads({ ...store, getMany: store.getMany }) : store;
   const candidates = jobs.map((job) => toCandidateJob(job));
   const vectors = await prepareSkillVectors(candidates, [seeker]);
 
   const scores: PairScore[] = await Promise.all(
-    candidates.map((candidate) => scorePair(seeker, candidate, { ...options, vectors })),
+    candidates.map((candidate) => scorePair(seeker, candidate, { ...options, verdicts, vectors, jevMode })),
   );
+
+  if (jevMode === "cached") {
+    const pending = candidates
+      .map((candidate, i) => ({ candidate, pair: scores[i] }))
+      .filter(({ pair }) => pair.jevPending)
+      .sort((a, b) => b.pair.score - a.pair.score)
+      .slice(0, JEV_FILL_MAX_JOBS)
+      .map(({ candidate }) => candidate);
+    if (pending.length > 0) await queueJevFill(jevFillRequest(seeker, pending));
+  }
 
   const rejected: Partial<Record<IneligibleReason, number>> = {};
   // Every job is still scored for the browse list, but with no country known

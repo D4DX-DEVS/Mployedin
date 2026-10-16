@@ -1,559 +1,69 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
-  ResponsiveContainer, LineChart, Line, AreaChart, Area, Legend,
-} from "recharts";
-import {
-  Building2, Users,
-  CalendarDays, FileText, Target,
-  CircleDollarSign, Activity,
-  ArrowUpRight, ArrowDownRight, Minus, TrendingUp, Trophy,
-} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { Target } from "lucide-react";
 import { AgentSectionTabs, AGENT_PERFORMANCE_TABS } from "@/components/features/agent/AgentSectionTabs";
-import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import { useTableExport } from "@/hooks/useTableExport";
-import type { ExportColumn } from "@/lib/export";
-import {
-  ProgressRing, TargetSummaryCard,
-} from "@/components/features/targets/TargetComponents";
+import { ProfitReportView } from "@/components/features/targets/ProfitReportView";
+import { TargetYearSelect, defaultTargetYears } from "@/components/features/targets/TargetYearSelect";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { formatCount } from "@/lib/ui/intlFormat";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import type { TargetReport } from "@/lib/targets/profitReport";
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-interface MonthlyTrendItem {
-  month: number;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  overallProgress: number;
-}
-
-interface YearOverYear {
-  currentYear: { year: number; employerAchieved: number; employeeAchieved: number; financeAchieved: number; overallProgress: number };
-  previousYear: { year: number; employerAchieved: number; employeeAchieved: number; financeAchieved: number; overallProgress: number };
-  growth: { employerAchieved: number; employeeAchieved: number; financeAchieved: number; overallProgress: number };
-}
-
-interface BusinessVolumeItem {
-  month: number;
-  approved: number;
-  total: number;
-  count: number;
-}
-
-interface OwnProfile {
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  employerProgress: number;
-  employeeProgress: number;
-  financeProgress: number;
-  overallProgress: number;
-  currency: string;
-  riskScore: string;
-  incentiveTier: string;
-}
-
-interface ReportData {
+interface ReportResponse {
   year: number;
-  ownProfile: OwnProfile | null;
-  monthlyTrend: MonthlyTrendItem[];
-  yearOverYear: YearOverYear | null;
-  businessVolume: BusinessVolumeItem[];
-  totalBusinessVolume: number;
+  report: TargetReport | null;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function formatCurrency(value: number, currency = "AED"): string {
-  if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${formatCount(value)}`;
-}
-
-function GrowthIndicator({ value }: { value: number }) {
-  if (value > 0) return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-status-selected"><ArrowUpRight className="h-3 w-3" />+{value}%</span>;
-  if (value < 0) return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500"><ArrowDownRight className="h-3 w-3" />{value}%</span>;
-  return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-muted-foreground"><Minus className="h-3 w-3" />0%</span>;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
+/** An agent's own profit target report. Nobody else's is reachable from here. */
 export default function AgentTargetReportPage() {
-  const t = useTranslations("targets");
-  const currentYear = new Date().getFullYear();
+  const t = useTranslations("profitTargets");
+  const currentYear = String(new Date().getFullYear());
+  const years = defaultTargetYears();
+  const [year, setYear] = useUrlFilter("year", currentYear, { allow: years });
 
-  // Filters
-  const [yearFilter, setYearFilter] = useState(currentYear);
-  const [quarterFilter, setQuarterFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<ReportData | null>(null);
-
-  const fetchReport = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/agent/target-report?year=${yearFilter}`);
-      if (res.ok) {
-        setData(await res.json());
-      } else {
-        toast.error(t("failedToLoadReport"));
-      }
-    } catch {
-      toast.error(t("failedToLoadReport"));
-    } finally {
-      setLoading(false);
-    }
-  }, [yearFilter]);
-
-  useEffect(() => { fetchReport(); }, [fetchReport]);
-
-  const hasActiveFilters = quarterFilter !== "all" || categoryFilter !== "all" || yearFilter !== currentYear;
-
-  function clearFilters() {
-    setYearFilter(currentYear);
-    setQuarterFilter("all");
-    setCategoryFilter("all");
-  }
-
-  // Filter by quarter
-  const filteredTrend = useMemo(() => {
-    if (!data) return [];
-    let months = data.monthlyTrend;
-    if (quarterFilter !== "all") {
-      const q = parseInt(quarterFilter);
-      const start = (q - 1) * 3;
-      months = months.filter((m) => m.month > start && m.month <= start + 3);
-    }
-    return months;
-  }, [data, quarterFilter]);
-
-  const filteredBusinessVolume = useMemo(() => {
-    if (!data) return [];
-    let months = data.businessVolume;
-    if (quarterFilter !== "all") {
-      const q = parseInt(quarterFilter);
-      const start = (q - 1) * 3;
-      months = months.filter((m) => m.month > start && m.month <= start + 3);
-    }
-    return months;
-  }, [data, quarterFilter]);
-
-  // Chart data
-  const trendChartData = useMemo(() => {
-    return filteredTrend.map((m) => ({
-      name: MONTHS_SHORT[m.month - 1],
-      ...(categoryFilter === "all" || categoryFilter === "employer" ? { "Employer Target": m.employerTarget, "Employer Achieved": m.employerAchieved } : {}),
-      ...(categoryFilter === "all" || categoryFilter === "employee" ? { "Employee Target": m.employeeTarget, "Employee Achieved": m.employeeAchieved } : {}),
-      ...(categoryFilter === "all" || categoryFilter === "finance" ? { "Finance Target (K)": Math.round(m.financeTarget / 1000), "Finance Achieved (K)": Math.round(m.financeAchieved / 1000) } : {}),
-      "Overall %": m.overallProgress,
-    }));
-  }, [filteredTrend, categoryFilter]);
-
-  const businessVolumeChartData = useMemo(() => {
-    return filteredBusinessVolume.map((bv) => ({
-      name: MONTHS_SHORT[bv.month - 1],
-      Approved: Math.round(bv.approved / 1000),
-      Total: Math.round(bv.total / 1000),
-      Deals: bv.count,
-    }));
-  }, [filteredBusinessVolume]);
-
-  // Export via useTableExport
-  const exportData = useMemo(() => {
-    if (!data || !data.ownProfile) return [];
-    const p = data.ownProfile;
-    return data.monthlyTrend.map((m, i) => ({
-      month: MONTHS_SHORT[i],
-      employerTarget: m.employerTarget,
-      employerAchieved: m.employerAchieved,
-      employeeTarget: m.employeeTarget,
-      employeeAchieved: m.employeeAchieved,
-      financeTarget: m.financeTarget,
-      financeAchieved: m.financeAchieved,
-      businessVolume: data.businessVolume[i]?.total ?? 0,
-      overallProgress: m.overallProgress,
-      currency: p.currency,
-    }));
-  }, [data]);
-
-  const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: "Month", key: "month" },
-    { header: "Employer Target", key: "employerTarget", formatter: (v) => String(v ?? 0) },
-    { header: "Employer Achieved", key: "employerAchieved", formatter: (v) => String(v ?? 0) },
-    { header: "Employee Target", key: "employeeTarget", formatter: (v) => String(v ?? 0) },
-    { header: "Employee Achieved", key: "employeeAchieved", formatter: (v) => String(v ?? 0) },
-    { header: "Finance Target", key: "financeTarget", formatter: (v) => String(v ?? 0) },
-    { header: "Finance Achieved", key: "financeAchieved", formatter: (v) => String(v ?? 0) },
-    { header: "Business Volume", key: "businessVolume", formatter: (v) => String(v ?? 0) },
-    { header: "Overall %", key: "overallProgress", formatter: (v) => `${v ?? 0}%` },
-  ];
-
-  const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
-    data: exportData as unknown as Record<string, unknown>[],
-    columns: exportColumns,
-    filename: `my-target-report-${yearFilter}`,
-    title: `My Target Report ${yearFilter}`,
+  const { data, isLoading, isError, refetch } = useQuery<ReportResponse>({
+    queryKey: ["agent", "target-report", year],
+    queryFn: async () => {
+      const response = await fetch(`/api/agent/target-report?year=${year}`);
+      if (!response.ok) throw new Error(`Target report error: ${response.status}`);
+      return response.json();
+    },
+    staleTime: 5 * 60_000,
+    placeholderData: (previous) => previous,
   });
-
-  if (loading) {
-    return (
-      <div className="page-container">
-        <div className="h-20 w-full animate-pulse rounded-3xl bg-muted/40" />
-        <div className="grid gap-4 sm:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted/50" />
-          ))}
-        </div>
-        <div className="h-72 animate-pulse rounded-2xl bg-muted/50" />
-      </div>
-    );
-  }
-
-  if (!data || !data.ownProfile) {
-    return (
-      <div className="page-container">
-        <WorkspaceHeader
-          title={t("myTargetReport")}
-          context={t("reportHeroDescription", { year: yearFilter })}
-        />
-        <div className="flex flex-col items-center justify-center min-h-[68vh] text-center">
-          <Target className="h-12 w-12 text-muted-foreground/40 mb-4" />
-          <h2 className="heading-section font-semibold">{t("noTargetsAssigned")}</h2>
-          <p className="text-sm text-muted-foreground mt-1">{t("contactSupervisor")}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const profile = data.ownProfile;
-  const currency = profile.currency ?? "AED";
 
   return (
     <div className="page-container print:space-y-4">
-      <AgentSectionTabs tabs={AGENT_PERFORMANCE_TABS} ariaLabelKey="performanceTabsLabel" />
-      {/* ═══════ HERO ═══════ */}
+      <div className="print:hidden">
+        <AgentSectionTabs tabs={AGENT_PERFORMANCE_TABS} ariaLabelKey="performanceTabsLabel" />
+      </div>
       <WorkspaceHeader
-        title={t("myTargetReport")}
-        context={t("reportHeroDescription", { year: yearFilter })}
-        metrics={[
-          { label: t("overallProgress"), value: `${profile.overallProgress}%`, icon: Target, tone: "primary" },
-          { label: t("riskLabel"), value: profile.riskScore, icon: TrendingUp, tone: "warning" },
-          { label: t("exportHeaderIncentiveTier"), value: profile.incentiveTier, icon: Trophy, tone: "success" },
-        ]}
+        title={t("agentReportTitle")}
+        context={t("agentReportContext", { year })}
+        actions={<TargetYearSelect value={year} onChange={setYear} label={t("yearLabel")} years={years} />}
       />
 
-      {/* ═══════ KPI Cards ═══════ */}
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="workspace-glass-panel card-pad rounded-2xl">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("employer")}</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums">{profile.employerAchieved} <span className="text-base text-muted-foreground">/ {profile.employerTarget}</span></p>
-              {data.yearOverYear && <GrowthIndicator value={data.yearOverYear.growth.employerAchieved} />}
-            </div>
-            <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
+      {isError && !data ? (
+        <ErrorState title={t("failedToLoadReport")} onRetry={() => { void refetch(); }} retryLabel={t("retry")} />
+      ) : isLoading || !data ? (
+        <div className="space-y-4" role="status" aria-live="polite" aria-label={t("loading")}>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="h-28 animate-pulse rounded-2xl bg-muted/50" />
+            ))}
           </div>
+          <div className="h-72 animate-pulse rounded-2xl bg-muted/50" />
         </div>
-        <div className="workspace-glass-panel card-pad rounded-2xl">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("employee")}</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums">{profile.employeeAchieved} <span className="text-base text-muted-foreground">/ {profile.employeeTarget}</span></p>
-              {data.yearOverYear && <GrowthIndicator value={data.yearOverYear.growth.employeeAchieved} />}
-            </div>
-            <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
-          </div>
+      ) : !data.report ? (
+        <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+          <Target className="mb-4 h-12 w-12 text-muted-foreground/40" />
+          <h2 className="heading-section font-semibold">{t("noTargetAssigned")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("contactSupervisor")}</p>
         </div>
-        <div className="workspace-glass-panel card-pad rounded-2xl">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("businessVolumeShort")}</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums">{formatCurrency(data.totalBusinessVolume, currency)}</p>
-              <p className="text-xs text-muted-foreground">{t("totalRevenue")}</p>
-            </div>
-            <div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="workspace-glass-panel card-pad rounded-2xl">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("overall")}</p>
-              <p className="mt-1 text-2xl font-bold tabular-nums">{profile.overallProgress}%</p>
-              {data.yearOverYear && <GrowthIndicator value={data.yearOverYear.growth.overallProgress} />}
-            </div>
-            <div className="workspace-tone-violet rounded-2xl p-2.5"><Activity className="h-5 w-5" /></div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ TOOLBAR ═══════ */}
-      {/* The standard filter row: year, quarter and category always in sight
-          (they sat behind Show/Hide), Print in the Export menu, and Clear
-          resets the year too. */}
-      <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0 print:hidden"
-        onClear={hasActiveFilters ? clearFilters : undefined}
-        clearLabel={t("clearFilters")}
-        onExportCsv={handleExportCsv}
-        onExportExcel={handleExportExcel}
-        onExportPdf={handleExportPdf}
-        exportExtra={(
-          <DropdownMenuItem onClick={() => window.print()}>
-            <FileText className="h-4 w-4" />
-            {t("print")}
-          </DropdownMenuItem>
-        )}
-      >
-        <div className="relative min-w-0 max-w-32 flex-[1_1_6rem]">
-          <CalendarDays className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input
-            type="number"
-            aria-label={t("year")}
-            value={yearFilter}
-            onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)}
-            className="h-11 w-full rounded-lg border-border bg-card ps-8 text-sm shadow-none sm:h-9"
-          />
-        </div>
-        <SearchableSelect
-          id="agent-target-report-quarter"
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "all", label: t("allQuarters") },
-            { value: "1", label: t("q1Quarter") },
-            { value: "2", label: t("q2Quarter") },
-            { value: "3", label: t("q3Quarter") },
-            { value: "4", label: t("q4Quarter") },
-          ]}
-          value={quarterFilter}
-          onValueChange={setQuarterFilter}
-          placeholder={t("quarter")}
-        />
-        <SearchableSelect
-          id="agent-target-report-category"
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "all", label: t("allCategories") },
-            { value: "employer", label: t("categoryEmployer") },
-            { value: "employee", label: t("categoryEmployee") },
-            { value: "finance", label: t("categoryFinance") },
-          ]}
-          value={categoryFilter}
-          onValueChange={setCategoryFilter}
-          placeholder={t("category")}
-        />
-      </InlineFilterBar>
-
-      {/* ═══════ Progress Rings ═══════ */}
-      <section className="workspace-glass-panel rounded-2xl panel-body">
-        <div className="flex flex-wrap items-center justify-center gap-8">
-          <ProgressRing value={profile.employerProgress} label={t("labelEmployer")} sublabel={`${profile.employerAchieved}/${profile.employerTarget}`} />
-          <ProgressRing value={profile.employeeProgress} label={t("labelEmployee")} sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`} />
-          <ProgressRing value={profile.financeProgress} label={t("labelFinance")} sublabel={`${currency} ${formatCount(profile.financeAchieved)}`} />
-          <ProgressRing value={profile.overallProgress} label={t("labelOverall")} sublabel={t("sublabelAnnual")} color="#3b82f6" />
-        </div>
-      </section>
-
-      {/* ═══════ Target Summary Card ═══════ */}
-      <TargetSummaryCard
-        employerTarget={profile.employerTarget}
-        employeeTarget={profile.employeeTarget}
-        financeTarget={profile.financeTarget}
-        employerAchieved={profile.employerAchieved}
-        employeeAchieved={profile.employeeAchieved}
-        financeAchieved={profile.financeAchieved}
-        currency={currency}
-      />
-
-      {/* ═══════ KPI with YoY ═══════ */}
-      {data.yearOverYear && (
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="workspace-glass-panel card-pad rounded-2xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("employers")}</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums">{profile.employerAchieved}</p>
-                <GrowthIndicator value={data.yearOverYear.growth.employerAchieved} />
-              </div>
-              <div className="workspace-tone-sky rounded-2xl p-2.5"><Building2 className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel card-pad rounded-2xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("employees")}</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums">{profile.employeeAchieved}</p>
-                <GrowthIndicator value={data.yearOverYear.growth.employeeAchieved} />
-              </div>
-              <div className="workspace-tone-emerald rounded-2xl p-2.5"><Users className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel card-pad rounded-2xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("businessVolumeShort")}</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums">{formatCurrency(data.totalBusinessVolume, currency)}</p>
-                <GrowthIndicator value={data.yearOverYear.growth.financeAchieved} />
-              </div>
-              <div className="workspace-tone-amber rounded-2xl p-2.5"><CircleDollarSign className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="workspace-glass-panel card-pad rounded-2xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("overallProgress")}</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums">{profile.overallProgress}%</p>
-                <GrowthIndicator value={data.yearOverYear.growth.overallProgress} />
-              </div>
-              <div className="workspace-tone-violet rounded-2xl p-2.5"><Activity className="h-5 w-5" /></div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ═══════ Monthly Trend ═══════ */}
-      {data.monthlyTrend.length > 0 && (
-        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="heading-section font-semibold tracking-tight">{t("monthlyPerformanceTimeline")}</h2>
-              <p className="text-sm text-muted-foreground">
-                {t("targetVsAchieved")}
-                {quarterFilter !== "all" ? t("quarterSuffix", { quarter: quarterFilter }) : ""}
-                {categoryFilter !== "all" ? t("categoryOnlySuffix", { category: categoryFilter }) : ""}
-              </p>
-            </div>
-            <Badge variant="outline" className="shrink-0">{quarterFilter !== "all" ? `Q${quarterFilter}` : "12 months"}</Badge>
-          </div>
-          <div className="h-[22rem] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendChartData} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} className="text-xs" />
-                <YAxis axisLine={false} tickLine={false} className="text-xs" />
-                <ReTooltip
-                  cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
-                  contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)", fontSize: 12 }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
-                {(categoryFilter === "all" || categoryFilter === "employer") && (
-                  <>
-                    <Line type="monotone" dataKey="Employer Target" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Employer Achieved" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3, fill: "#3b82f6" }} activeDot={{ r: 5 }} />
-                  </>
-                )}
-                {(categoryFilter === "all" || categoryFilter === "employee") && (
-                  <>
-                    <Line type="monotone" dataKey="Employee Target" stroke="#c4b5fd" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Employee Achieved" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 3, fill: "#8b5cf6" }} activeDot={{ r: 5 }} />
-                  </>
-                )}
-                {(categoryFilter === "all" || categoryFilter === "finance") && (
-                  <>
-                    <Line type="monotone" dataKey="Finance Target (K)" stroke="#fde68a" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="Finance Achieved (K)" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3, fill: "#f59e0b" }} activeDot={{ r: 5 }} />
-                  </>
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      )}
-
-      {/* ═══════ Business Volume ═══════ */}
-      {data.businessVolume.length > 0 && data.totalBusinessVolume > 0 && (
-        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="heading-section font-semibold tracking-tight">{t("businessVolumeYear", { year: yearFilter })}</h2>
-              <p className="text-sm text-muted-foreground">{t("monthlyRevenueDeals")}{quarterFilter !== "all" ? t("quarterSuffix", { quarter: quarterFilter }) : ""}</p>
-            </div>
-            <CircleDollarSign className="h-5 w-5 text-primary" />
-          </div>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={businessVolumeChartData} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="agentGradApproved" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
-                  </linearGradient>
-                  <linearGradient id="agentGradTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} className="text-xs" />
-                <YAxis axisLine={false} tickLine={false} className="text-xs" unit="K" />
-                <ReTooltip
-                  cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
-                  contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)", fontSize: 12 }}
-                  formatter={(value) => [`${value}K`, ""]}
-                />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
-                <Area type="monotone" dataKey="Approved" stroke="#10b981" strokeWidth={2.5} fill="url(#agentGradApproved)" />
-                <Area type="monotone" dataKey="Total" stroke="#3b82f6" strokeWidth={2} fill="url(#agentGradTotal)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      )}
-
-      {/* ═══════ Year-over-Year ═══════ */}
-      {data.yearOverYear && (
-        <section className="rounded-3xl border bg-card shadow-sm print:break-inside-avoid panel-body">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="heading-section font-semibold tracking-tight">{t("yearOverYearComparison")}</h2>
-              <p className="text-sm text-muted-foreground">{t("yearsComparison", { prevYear: data.yearOverYear.previousYear.year, currYear: data.yearOverYear.currentYear.year })}</p>
-            </div>
-          </div>
-          <div className="h-[16rem] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={[
-                { name: "Employers", [String(data.yearOverYear.previousYear.year)]: data.yearOverYear.previousYear.employerAchieved, [String(data.yearOverYear.currentYear.year)]: data.yearOverYear.currentYear.employerAchieved },
-                { name: "Employees", [String(data.yearOverYear.previousYear.year)]: data.yearOverYear.previousYear.employeeAchieved, [String(data.yearOverYear.currentYear.year)]: data.yearOverYear.currentYear.employeeAchieved },
-                { name: "Finance (K)", [String(data.yearOverYear.previousYear.year)]: Math.round(data.yearOverYear.previousYear.financeAchieved / 1000), [String(data.yearOverYear.currentYear.year)]: Math.round(data.yearOverYear.currentYear.financeAchieved / 1000) },
-              ]} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} className="text-xs" />
-                <YAxis axisLine={false} tickLine={false} className="text-xs" />
-                <ReTooltip
-                  cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
-                  contentStyle={{ borderRadius: "16px", borderColor: "rgba(148, 163, 184, 0.18)", fontSize: 12 }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
-                <Bar dataKey={String(data.yearOverYear.previousYear.year)} fill="#94a3b8" radius={[8, 8, 0, 0]} />
-                <Bar dataKey={String(data.yearOverYear.currentYear.year)} fill="#3b82f6" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
+      ) : (
+        <ProfitReportView report={data.report} />
       )}
     </div>
   );

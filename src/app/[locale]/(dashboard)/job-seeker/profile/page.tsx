@@ -32,6 +32,8 @@ import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { getCsrfToken } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateSeekerProfile, seekerKeys, useSeekerProfileQuery } from "@/hooks/useSeekerCache";
 import { toast } from "sonner";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -118,8 +120,17 @@ export default function JobSeekerProfilePage() {
   const t = useTranslations("jobSeekerExtra.profile");
   const tConfirm = useTranslations("confirm");
   const { confirm, ConfirmDialogNode } = useConfirm();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Cached: Back from Personal details / CV shows the profile at once.
+  const queryClient = useQueryClient();
+  const { data: profileData, isPending: loading, refetch: refetchProfile } = useSeekerProfileQuery<ProfileData>();
+  const profile = profileData ?? null;
+  // Local edits (visibility toggles, AI summary) land in the shared cache.
+  const setProfile = useCallback(
+    (update: (prev: ProfileData | null) => ProfileData | null) => {
+      queryClient.setQueryData<ProfileData | null>(seekerKeys.profile, (prev) => update(prev ?? null));
+    },
+    [queryClient],
+  );
 
   // Redirect unauthenticated users — guards against stale Next.js router cache
   // being served after logout before the server layout re-checks the session.
@@ -173,22 +184,11 @@ export default function JobSeekerProfilePage() {
   }, [t]);
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  useEffect(() => {
     if (session?.user?.image) setAvatarUrl(session.user.image);
   }, [session?.user?.image]);
 
   async function fetchProfile() {
-    try {
-      const res = await fetch("/api/job-seeker/profile", { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data);
-      }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    await refetchProfile();
   }
 
   // ── Avatar handlers ──────────────────────────────────────────────────────
@@ -230,6 +230,7 @@ export default function JobSeekerProfilePage() {
       const data = await res.json();
       setAvatarUrl(data.url);
       await updateSession({ image: data.url });
+      void invalidateSeekerProfile(queryClient);
     } catch {
       setAvatarError(t("errors.network"));
       setAvatarUrl(session?.user?.image ?? null);
@@ -237,7 +238,7 @@ export default function JobSeekerProfilePage() {
       setAvatarUploading(false);
       if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
-  }, [session?.user?.image, updateSession]);
+  }, [session?.user?.image, updateSession, queryClient]);
 
   const handleAvatarRemove = useCallback(async () => {
     const ok = await confirm({
@@ -256,6 +257,7 @@ export default function JobSeekerProfilePage() {
       if (res.ok) {
         setAvatarUrl(null);
         await updateSession({ image: null });
+        void invalidateSeekerProfile(queryClient);
       } else {
         setAvatarError(t("errors.removePhoto"));
       }
@@ -264,7 +266,7 @@ export default function JobSeekerProfilePage() {
     } finally {
       setAvatarUploading(false);
     }
-  }, [confirm, tConfirm, updateSession]);
+  }, [confirm, tConfirm, updateSession, queryClient]);
 
   // ── Save handlers ──────────────────────────────────────────────────────
 
@@ -275,8 +277,9 @@ export default function JobSeekerProfilePage() {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(t("errors.saveFailed"));
-    // Re-fetch via GET for consistent lean() shape used by the rest of the page
-    await fetchProfile();
+    // Re-fetch via GET for consistent lean() shape; invalidating also tells
+    // CV, Skills, Preferences and Personal details the cached copy is old.
+    await invalidateSeekerProfile(queryClient);
     return res.json();
   }
 

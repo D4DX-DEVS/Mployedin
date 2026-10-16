@@ -133,6 +133,36 @@ export async function getSuperAgentScope(saUserId: string): Promise<SuperAgentSc
   };
 }
 
+/** A super agent's explicitly assigned agents, for targets and target reports. */
+export interface SuperAgentTeam {
+  /** The SuperAgent document _id */
+  saProfileId: mongoose.Types.ObjectId;
+  /** Agent PROFILE ids. */
+  agentIds: mongoose.Types.ObjectId[];
+  /** The same agents' USER ids; target profiles key on these. */
+  agentUserIds: mongoose.Types.ObjectId[];
+}
+
+/**
+ * The agents whose `Agent.superAgentId` points at this super agent — nobody
+ * else. Targets and target reports use this instead of getSuperAgentScope,
+ * which also pulls in unowned agents whose territory overlaps: with it one
+ * agent could sit in several super agents' reports and totals would overlap.
+ * Null for an unknown super agent, never everybody.
+ */
+export async function getSuperAgentTeam(saUserId: string): Promise<SuperAgentTeam | null> {
+  await connectDB();
+  const sa = await SuperAgent.findOne({ userId: saUserId }).select("_id").lean();
+  if (!sa) return null;
+
+  const agents = await Agent.find({ superAgentId: sa._id }).select("_id userId").lean();
+  return {
+    saProfileId: sa._id as mongoose.Types.ObjectId,
+    agentIds: agents.map((a) => a._id as mongoose.Types.ObjectId),
+    agentUserIds: agents.map((a) => a.userId as mongoose.Types.ObjectId).filter(Boolean),
+  };
+}
+
 /**
  * The USER ids of the agents in a super agent's team (getSuperAgentScope:
  * their own agents plus unowned agents in their territory), without the super

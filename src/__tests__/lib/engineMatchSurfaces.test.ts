@@ -11,7 +11,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { LimitingFactor } from "@/lib/matching/recommend";
-import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 
 const ROOT = path.resolve(__dirname, "../../..");
 const read = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -42,7 +41,8 @@ describe("every surface that shows a match percentage uses the engine", () => {
   const surfaces: Array<[string, RegExp]> = [
     ["src/app/api/jobs/recommended/handlers.ts", /scoreSeekerPool\(/],
     ["src/app/api/job-seeker/recommended-jobs/route.ts", /scoreSeekerPool\(/],
-    ["src/app/[locale]/(dashboard)/job-seeker/page.tsx", /scoreSeekerPool\(/],
+    // The home cards load from the feed endpoint above after the page paints.
+    ["src/components/features/job-seeker/home/JobSeekerHomePage.tsx", /\/api\/jobs\/recommended\?/],
     ["src/lib/ai/copilot/tools/jobSeeker.ts", /scoreSeekerPool\(/],
     // The employer side scores through computeApplicantMatch, which runs the
     // engine pair score and only adds the checklist and saved weights on top.
@@ -107,19 +107,10 @@ describe("an empty recommendation list can always say why", () => {
   });
 });
 
-describe("the home page loads every field the engine reads", () => {
-  it("selects every SEEKER_MATCH_FIELDS path, or its parent", () => {
-    const page = read("src/app/[locale]/(dashboard)/job-seeker/page.tsx");
-    const call = page.match(/JobSeeker\.findOne\(\{ userId \}\)\s*\.select\(([\s\S]*?)\)\s*\.lean\(\)/);
-    expect(call).not.toBeNull();
-    const selected = new Set(
-      [...call![1].matchAll(/"([^"]*)"/g)].flatMap((m) => m[1].split(/\s+/)).filter(Boolean),
-    );
-    const missing = SEEKER_MATCH_FIELDS.split(/\s+/)
-      .filter(Boolean)
-      .filter((field) => !selected.has(field) && !selected.has(field.split(".")[0]));
-    // A missing field changes the score silently: without totalExperienceYears
-    // the page reads "experience unknown" where the email reads a number.
-    expect(missing).toEqual([]);
+describe("the home page render never scores", () => {
+  it("leaves scoring to /api/jobs/recommended, so the page paints without waiting on it", () => {
+    // Scoring in the render is what made a cold home page take 79 s on prod.
+    const page = stripComments(read("src/app/[locale]/(dashboard)/job-seeker/page.tsx"));
+    expect(page).not.toMatch(/scoreSeekerPool\(|scoreOnePair\(|recommendJobsFor\(/);
   });
 });

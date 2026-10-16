@@ -7,10 +7,12 @@ import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import {
   buildRecommendedJobQuery,
+  poolCountries,
   RECOMMENDATION_POOL_SIZE,
   RECOMMENDED_JOB_SELECT,
 } from "@/lib/jobRecommendations";
 import { scoreSeekerPool } from "@/lib/matching/seekerMatches";
+import { restrictToIds, vectorRetrievalEnabled, vectorRetrieveJobs } from "@/lib/matching/vectorRetrieval";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -77,16 +79,25 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // start from the same pool (live, unexpired, not applied to, in a preferred
   // country or remote).
   const jobQuery = buildRecommendedJobQuery({
-    preferredCountries: seeker.preferredCountries,
+    preferredCountries: poolCountries(seeker),
     excludeJobIds: appliedJobIds,
   });
 
   // Total matching jobs count (for pool page calculation)
   const totalMatchingJobs = await Job.countDocuments(jobQuery);
 
+  // More matching jobs than one pool holds: start from the ones nearest the
+  // seeker's vector instead of the newest. Three pools' worth of ids, because
+  // the vector filter knows only status and jobQuery still drops some (country,
+  // expiry, applied). One pool then, so pool_page stays 1.
+  const vectorIds =
+    poolPage === 1 && totalMatchingJobs > POOL_SIZE && vectorRetrievalEnabled()
+      ? await vectorRetrieveJobs(String(seekerId), POOL_SIZE * 3)
+      : null;
+
   // Candidate pool — fetch the current pool page slice
-  const poolSkip = (poolPage - 1) * POOL_SIZE;
-  const candidateJobs = await Job.find(jobQuery)
+  const poolSkip = vectorIds ? 0 : (poolPage - 1) * POOL_SIZE;
+  const candidateJobs = await Job.find(vectorIds ? restrictToIds(jobQuery, vectorIds) : jobQuery)
     // _id tiebreaker: jobs seeded in the same second otherwise get an arbitrary
     // order per query, so skip/limit windows shift and the same job can land in
     // two pool pages (duplicate React keys downstream).
@@ -100,7 +111,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // Score with the engine. Recommended jobs lead; jobs that fail a hard gate
   // sink by a fixed penalty but stay visible (LinkedIn / Indeed behaviour), and
   // the displayed matchScore is never altered by the ordering.
-  const pool = await scoreSeekerPool(seekerProfile, candidateJobs);
+  const pool = await scoreSeekerPool(seekerProfile, candidateJobs, undefined, { jevMode: "cached" });
   const scoredWithBoost = pool.jobs;
 
   let scored: typeof scoredWithBoost;
@@ -122,7 +133,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const poolTotal = scored.length;
-  const totalPoolPages = Math.max(1, Math.ceil(totalMatchingJobs / POOL_SIZE));
+  const totalPoolPages = vectorIds ? 1 : Math.max(1, Math.ceil(totalMatchingJobs / POOL_SIZE));
 
   // Aggregate signals for the dashboard stat cards (computed over the scored
   // pool so they reflect genuine profile fit, not the raw active-job count).

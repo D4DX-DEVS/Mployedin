@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
@@ -12,77 +12,31 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  FolderOpen, Plus, Trash2, Edit, Search,
-  FileText, Image, Video, Upload, Download, Eye,
-  Tag, Shield, History, BarChart2, Save, Users,
-  Package, Activity,
-} from "lucide-react";
+import { FolderOpen, Plus, Edit, Upload, Download, Save, Users, Package } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useConfirm } from "@/hooks/useConfirm";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { formatDateTime, formatListDate } from "@/lib/ui/intlFormat";
-import { formatFileSize } from "@/lib/ui/fileSize";
-import { useResourceDownload } from "@/components/features/resources/useResourceDownload";
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-interface ResourceFile { fileName: string; url: string; key: string; contentType: string; size: number; }
-interface VersionEntry { version: number; uploadedBy?: string; uploadedAt: string; notes?: string; }
-
-interface Resource {
-  _id: string;
-  title: string;
-  description?: string;
-  category: string;
-  tags: string[];
-  accessLevel: string;
-  version: number;
-  versionHistory: VersionEntry[];
-  downloadCount: number;
-  files: ResourceFile[];
-  uploadedBy?: { _id: string; name: string };
-  isActive: boolean;
-  sortOrder: number;
-  createdAt: string;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Constants                                                          */
-/* ------------------------------------------------------------------ */
-
-// Category labels are resolved inside component with i18n
-// Access levels are resolved inside component with i18n
-// Sort options are resolved inside component with i18n
-
-const ACCESS_COLORS: Record<string, string> = {
-  all_staff: "ring-emerald-200 bg-emerald-50/80 text-emerald-700",
-  agent: "ring-sky-200 bg-sky-50/80 text-sky-700",
-  super_agent: "ring-violet-200 bg-violet-50/80 text-violet-700",
-  admin: "ring-rose-200 bg-rose-50/80 text-rose-700",
-};
-
+import { formatDateTime } from "@/lib/ui/intlFormat";
+import { ResourceLibrary } from "@/components/features/resources/ResourceLibrary";
+import type { Resource } from "@/components/features/resources/types";
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Admin resources: the same library agents and super agents browse (shared
+ * cards, inline filters, detail panel), plus Add / Edit / Delete, who can see
+ * each resource, and its download history (client feedback 2026-10-15).
+ */
 export default function AdminResourcesPage() {
   const t = useTranslations("resources");
   const tc = useTranslations("common");
-  const ta = useTranslations("a11y");
-  const locale = useLocale();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
-  const [items, setItems] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("newest");
-  const [search, setSearch] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [summary, setSummary] = useState({ total: 0, downloads: 0 });
+  const reload = () => setReloadKey((key) => key + 1);
 
   // Build localized options
   const categoryLabels = {
@@ -102,11 +56,8 @@ export default function AdminResourcesPage() {
     other: t("categories.other"),
   };
   const categoryOptions = Object.entries(categoryLabels).map(([v, l]) => ({ value: v, label: l }));
-  const filterCategoryOptions = [{ value: "all", label: t("categories.all") }, ...categoryOptions];
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [detailItem, setDetailItem] = useState<Resource | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formDialogContainer, setFormDialogContainer] = useState<HTMLDivElement | null>(null);
   const setFormDialogRef = useCallback((node: HTMLDivElement | null) => { setFormDialogContainer(node); }, []);
@@ -121,18 +72,6 @@ export default function AdminResourcesPage() {
   const [formVersionNotes, setFormVersionNotes] = useState("");
   const [downloadLogs, setDownloadLogs] = useState<Array<{ _id: string; userId?: { name?: string; email?: string }; fileName: string; downloadedAt: string }>>([]);
   const [showDownloads, setShowDownloads] = useState<string | null>(null);
-
-  const fetchItems = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ sort: sortBy });
-      if (categoryFilter !== "all") params.set("category", categoryFilter);
-      if (search) params.set("search", search);
-      const res = await fetch(`/api/resources?${params}`);
-      if (res.ok) { const data = await res.json(); setItems(data.items ?? []); }
-    } catch { toast.error(t("fetchError")); } finally { setLoading(false); }
-  }, [categoryFilter, sortBy, search, t]);
-  useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const resetForm = () => {
     setFormTitle(""); setFormDesc(""); setFormCategory("brochures"); setFormAccessLevel("all_staff");
@@ -156,7 +95,7 @@ export default function AdminResourcesPage() {
       if (formTags.trim()) fd.append("tags", formTags.trim());
       formFiles.forEach((f) => fd.append("files", f));
       const res = await csrfFetch("/api/resources", { method: "POST", body: fd });
-      if (res.ok) { toast.success(t("created")); resetForm(); fetchItems(); }
+      if (res.ok) { toast.success(t("created")); resetForm(); reload(); }
       else { const err = await res.json(); toast.error(err.error ?? t("actionFailed")); }
     } catch { toast.error(t("createError")); }
   };
@@ -172,7 +111,7 @@ export default function AdminResourcesPage() {
       if (formVersionNotes.trim()) fd.append("versionNotes", formVersionNotes.trim());
       formFiles.forEach((f) => fd.append("files", f));
       const res = await csrfFetch(`/api/resources/${editingId}`, { method: "PATCH", body: fd });
-      if (res.ok) { toast.success(t("updated")); resetForm(); fetchItems(); }
+      if (res.ok) { toast.success(t("updated")); resetForm(); reload(); }
       else { const err = await res.json(); toast.error(err.error ?? t("actionFailed")); }
     } catch { toast.error(t("updateError")); }
   };
@@ -182,15 +121,10 @@ export default function AdminResourcesPage() {
     if (!ok) return;
     try {
       const res = await csrfFetch(`/api/resources/${id}`, { method: "DELETE" });
-      if (res.ok) { toast.success(t("deleted")); fetchItems(); }
+      if (res.ok) { toast.success(t("deleted")); reload(); }
       else { toast.error(t("actionFailed")); }
     } catch { toast.error(t("deleteError")); }
   };
-
-  // The stored file URL is private (403); the shared hook asks the API for a
-  // signed download link and counts the download there.
-  const { download: downloadFile } = useResourceDownload(() => fetchItems());
-  const handleDownloadTrack = (item: Resource, file: ResourceFile) => downloadFile(item._id, file);
 
   const fetchDownloadLogs = async (resourceId: string) => {
     try {
@@ -199,17 +133,6 @@ export default function AdminResourcesPage() {
     } catch { setDownloadLogs([]); }
     setShowDownloads(resourceId);
   };
-
-  // Stats
-  const totalDownloads = items.reduce((s, i) => s + (i.downloadCount ?? 0), 0);
-  const categoryCounts = items.reduce<Record<string, number>>((acc, i) => { acc[i.category] = (acc[i.category] ?? 0) + 1; return acc; }, {});
-
-  // Build localized sort options and access levels
-  const sortOptions = [
-    { value: "newest", label: t("sortNewestFirst") },
-    { value: "popular", label: t("sortMostDownloaded") },
-    { value: "a-z", label: t("sortAZ") },
-  ];
 
   const localizedAccessLevels = [
     { value: "all_staff", label: t("accessAllStaff") },
@@ -234,177 +157,26 @@ export default function AdminResourcesPage() {
           </Button>
         }
         metrics={[
-          { label: t("metricTotalResources"), value: items.length, icon: Package, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
-          { label: t("metricTotalDownloads"), value: totalDownloads, icon: Download, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
+          { label: t("metricTotalResources"), value: summary.total, icon: Package, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: t("metricTotalDownloads"), value: summary.downloads, icon: Download, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
         ]}
-        footer={
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
-            <div className="relative min-w-52 flex-1">
-              <Search className="absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input aria-label={t("searchPlaceholder")} placeholder={t("searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="h-11 ps-9 text-sm sm:h-9" />
-            </div>
-            <SearchableSelect options={filterCategoryOptions} value={categoryFilter} onValueChange={setCategoryFilter} placeholder={t("categories.all")} />
-            <SearchableSelect options={sortOptions} value={sortBy} onValueChange={setSortBy} placeholder={t("sortByPlaceholder")} />
-            {categoryFilter !== "all" && (
-              <button onClick={() => setCategoryFilter("all")} className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground">{tc("clear")}</button>
-            )}
-          </div>
-        }
       />
 
-      {/* Resource Grid */}
-      {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (<div key={i} className="h-48 animate-pulse rounded-2xl bg-background/70" />))}
-        </div>
-      ) : items.length === 0 ? (
-        <EmptyState
-          title={t("noResources")}
-          description={t("noResourcesHint")}
-          action={
+      <ResourceLibrary
+        reloadKey={reloadKey}
+        onSummary={setSummary}
+        manage={{
+          accessLabel: (level) => localizedAccessLevels.find((option) => option.value === level)?.label ?? level,
+          onEdit: (item) => openEdit(item),
+          onDelete: (item) => void handleDelete(item._id),
+          onHistory: (item) => void fetchDownloadLogs(item._id),
+          emptyAction: (
             <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2">
               <Plus className="h-4 w-4" /> {t("addResource")}
             </Button>
-          }
-        />
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((item) => {
-            const CatIcon = item.files?.[0]?.contentType?.startsWith("video/") ? Video : item.files?.[0]?.contentType?.startsWith("image/") ? Image : FileText;
-            return (
-              <article key={item._id} className="workspace-glass-panel rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-38px_rgba(2,132,199,0.38)]">
-                <div className="card-pad space-y-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="rounded-2xl ring-1 ring-inset ring-border/60 bg-background/80 shrink-0 chip-pad">
-                        <CatIcon className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="min-w-0">
-                        <button onClick={() => setDetailItem(item)} className="text-[15px] font-semibold text-foreground text-left hover:text-primary transition-colors truncate block max-w-full">{item.title}</button>
-                        <p className="text-xs text-muted-foreground mt-0.5">{categoryLabels[item.category as keyof typeof categoryLabels] ?? item.category}</p>
-                      </div>
-                    </div>
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${ACCESS_COLORS[item.accessLevel] ?? ACCESS_COLORS.all_staff}`}>
-                      <Shield className="h-2.5 w-2.5" />
-                      {item.accessLevel === "all_staff" ? "All" : item.accessLevel === "super_agent" ? "SA" : item.accessLevel}
-                    </span>
-                  </div>
-
-                  {item.description && <p className="text-sm leading-6 text-muted-foreground line-clamp-2">{item.description}</p>}
-
-                  {item.tags?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {item.tags.slice(0, 3).map((tag) => (
-                        <span key={tag} className="inline-flex items-center gap-0.5 rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-xs font-medium text-muted-foreground"><Tag className="h-2.5 w-2.5" />{tag}</span>
-                      ))}
-                      {item.tags.length > 3 && <span className="rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-xs font-medium text-muted-foreground">+{item.tags.length - 3}</span>}
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Download className="h-3.5 w-3.5" /> {item.downloadCount ?? 0}</span>
-                    <span className="flex items-center gap-1.5"><History className="h-3.5 w-3.5" /> v{item.version ?? 1}</span>
-                    <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" /> {item.files?.length ?? 0}</span>
-                  </div>
-
-                  {item.files?.slice(0, 2).map((f) => (
-                    <div key={f.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-background/60 text-xs chip-pad">
-                      <span className="truncate font-medium text-foreground">{f.fileName}</span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-muted-foreground text-xs">{formatFileSize(f.size)}</span>
-                        {f.contentType?.startsWith("image/") && (
-                          <button aria-label={ta("preview")} onClick={() => setPreviewUrl(f.url)} className="p-1 rounded-lg hover:bg-card transition-colors"><Eye className="h-3.5 w-3.5 text-muted-foreground" /></button>
-                        )}
-                        <button aria-label={ta("download")} onClick={() => handleDownloadTrack(item, f)} className="p-1 rounded-lg hover:bg-card transition-colors"><Download className="h-3.5 w-3.5 text-primary" /></button>
-                      </div>
-                    </div>
-                  ))}
-                  {(item.files?.length ?? 0) > 2 && <p className="text-xs text-muted-foreground text-center font-medium">{t("moreFiles", { count: item.files.length - 2 })}</p>}
-
-                  <div className="flex items-center gap-1.5 pt-3 border-t border-border/40">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(item)} className="flex-1 h-8 text-xs"><Edit className="h-3.5 w-3.5 mr-1.5" /> {t("editResource")}</Button>
-                    <Button variant="ghost" size="sm" onClick={() => fetchDownloadLogs(item._id)} className="h-8 w-8 p-0" title={t("a11yDownloadHistory")}><Users className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="dense" className="w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(item._id)} title={t("a11yDelete")}><Trash2 className="h-3.5 w-3.5" /></Button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Detail Modal */}
-      <Dialog open={!!detailItem} onOpenChange={() => setDetailItem(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          {detailItem && (<>
-            <DialogHeader>
-              <DialogTitle className="text-xl">{detailItem.title}</DialogTitle>
-              {/* A div, not the default <p>: Badge renders a <div>, which a <p> can't hold. */}
-              <DialogDescription asChild>
-                <div className="flex items-center gap-2 pt-2">
-                  <Badge variant="outline" className="text-xs">{categoryLabels[detailItem.category as keyof typeof categoryLabels] ?? detailItem.category}</Badge>
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${ACCESS_COLORS[detailItem.accessLevel]}`}>
-                    <Shield className="h-2.5 w-2.5" />{detailItem.accessLevel}
-                  </span>
-                  <span className="text-xs text-muted-foreground">v{detailItem.version}</span>
-                </div>
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-5 text-sm">
-              {detailItem.description && <p className="text-muted-foreground leading-relaxed">{detailItem.description}</p>}
-              {detailItem.tags?.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">{t("tags")}</p>
-                  <div className="flex flex-wrap gap-1.5">{detailItem.tags.map((tag) => (<Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>))}</div>
-                </div>
-              )}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.downloadCount}</p><p className="text-xs text-muted-foreground font-medium mt-0.5">{t("downloads")}</p></div>
-                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.files?.length}</p><p className="text-xs text-muted-foreground font-medium mt-0.5">{t("files")}</p></div>
-                <div className="workspace-glass-panel card-pad rounded-2xl text-center"><p className="text-xl font-semibold text-foreground">{detailItem.version}</p><p className="text-xs text-muted-foreground font-medium mt-0.5">{t("version")}</p></div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">{t("files")}</p>
-                <div className="space-y-2">
-                  {detailItem.files?.map((f) => (
-                    <div key={f.key} className="flex items-center justify-between gap-2 rounded-xl border border-border/60 chip-pad">
-                      <span className="truncate text-xs font-medium">{f.fileName} <span className="text-muted-foreground">({formatFileSize(f.size)})</span></span>
-                      <Button variant="outline" size="sm" onClick={() => handleDownloadTrack(detailItem, f)} className="h-7 text-xs shrink-0"><Download className="h-3 w-3 mr-1" /> {t("download")}</Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {detailItem.versionHistory?.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">{t("versionHistoryTitle")}</p>
-                  <div className="space-y-1.5">{detailItem.versionHistory.map((v, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs border-l-2 border-primary/30 pl-3 py-1.5">
-                      <Badge variant="outline" className="text-xs shrink-0">v{v.version}</Badge>
-                      <span className="text-muted-foreground">{formatDateTime(new Date(v.uploadedAt))}</span>
-                      {v.notes && <span className="italic text-muted-foreground">{v.notes}</span>}
-                    </div>
-                  ))}</div>
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground pt-2 border-t">{t("uploadedBy")} {detailItem.uploadedBy?.name} &middot; {formatListDate(new Date(detailItem.createdAt), locale)}</p>
-            </div>
-            <DialogFooter><Button variant="ghost" onClick={() => setDetailItem(null)}>{tc("close")}</Button></DialogFooter>
-          </>)}
-        </DialogContent>
-      </Dialog>
-
-      {/* File Preview */}
-      <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh]">
-          <DialogHeader><DialogTitle>{t("previewTitle")}</DialogTitle></DialogHeader>
-          {previewUrl && (
-            previewUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)/i)
-              ? <img src={previewUrl} alt={t("preview")} className="max-h-[65vh] w-full object-contain rounded-lg" />
-              : <embed src={previewUrl} type="application/pdf" className="w-full h-[65vh] rounded-lg" />
-          )}
-          <div className="flex justify-end"><Button variant="outline" size="sm" onClick={() => window.open(previewUrl!, '_blank')}>{t("openInNewTab")}</Button></div>
-        </DialogContent>
-      </Dialog>
+          ),
+        }}
+      />
 
       {/* Download Log Modal */}
       <Dialog open={!!showDownloads} onOpenChange={() => setShowDownloads(null)}>

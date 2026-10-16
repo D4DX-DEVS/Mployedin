@@ -16,6 +16,7 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 import { jobFormSchema, JOB_FORM_STEPS, type JobFormValues } from "./jobFormSchema";
 import { useJobFormDraft, useDebounce } from "./useJobFormDraft";
 import type { StoredDraft } from "./jobDraftStorage";
+import { postSuccessToastOptions } from "./postSuccessToast";
 import { StepIndicator } from "./StepIndicator";
 import { Step1BasicInfo } from "./Step1BasicInfo";
 import { Step2JobDetails } from "./Step2JobDetails";
@@ -430,23 +431,19 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
             duration: 10000,
           });
         } else {
-          toast.success(t("postSuccess"), {
-            description: t("postSuccessDescription"),
-            // The poster maker opens from the employer's and admin's job page;
-            // the agent job page has none, so the action would do nothing there.
-            ...(basePath !== "agent"
-              ? {
-                  action: {
-                    label: t("createPoster"),
-                    onClick: () => {
-                      // Navigate with poster query param to auto-open dialog
-                      router.push(`/${locale}/${basePath}/jobs/${jobId}?poster=1`);
-                    },
-                  },
-                }
-              : {}),
-            duration: 8000,
-          });
+          toast.success(
+            t("postSuccess"),
+            postSuccessToastOptions({
+              basePath,
+              posterHref: `/${locale}/${basePath}/jobs/${jobId}?poster=1`,
+              push: (href) => router.push(href),
+              labels: {
+                description: t("postSuccessDescription"),
+                descriptionNoPoster: t("postSuccessDescriptionNoPoster"),
+                createPoster: t("createPoster"),
+              },
+            }),
+          );
         }
         router.push(`/${locale}/${basePath}/jobs/${jobId}`);
       } else {

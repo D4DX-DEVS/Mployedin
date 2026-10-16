@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,13 +39,15 @@ const TOAST_KEYS: Record<ReviewAction, string> = {
 
 /**
  * Start review / approve / request changes / reject. Reject and request
- * changes need a reason (the server refuses them without one), and approval
- * is operational only — it never allocates or delivers resources.
+ * changes need a reason (the server refuses them without one); an approval
+ * note is optional and folded away. Approval is operational only — it never
+ * allocates or delivers resources.
  */
 export function ExhibitionReviewDialog({ item, action, onClose, onDone }: ExhibitionReviewDialogProps) {
   const t = useTranslations("exhibitions");
   const tc = useTranslations("common");
   const [note, setNote] = useState("");
+  const [showNote, setShowNote] = useState(false);
   const [budget, setBudget] = useState("");
   const [budgetError, setBudgetError] = useState("");
   const [serverError, setServerError] = useState("");
@@ -54,6 +56,7 @@ export function ExhibitionReviewDialog({ item, action, onClose, onDone }: Exhibi
   useEffect(() => {
     if (!item || !action) return;
     setNote("");
+    setShowNote(false);
     setBudgetError("");
     setServerError("");
     // This role's own earlier recommendation, else what the agent asked for —
@@ -138,7 +141,17 @@ export function ExhibitionReviewDialog({ item, action, onClose, onDone }: Exhibi
                   )}
                 </div>
               )}
-              {action !== "under_review" && (
+              {action === "approved" && !showNote && (
+                <button
+                  type="button"
+                  onClick={() => setShowNote(true)}
+                  className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary hover:underline sm:min-h-0"
+                >
+                  <MessageSquarePlus className="size-4" aria-hidden="true" />
+                  {t("addNoteOptional")}
+                </button>
+              )}
+              {(needsReason || (action === "approved" && showNote)) && (
                 <div>
                   <Label htmlFor="sa-review-note">
                     {action === "rejected" ? t("rejectReasonLabel") : action === "revision_requested" ? t("reviewRevisionNotes") : t("reviewNotes")}
@@ -150,6 +163,7 @@ export function ExhibitionReviewDialog({ item, action, onClose, onDone }: Exhibi
                     placeholder={action === "rejected" ? t("rejectReasonPlaceholder") : action === "revision_requested" ? t("reviewRevisionNotesPlaceholder") : t("reviewNotesPlaceholder")}
                     rows={3}
                     aria-required={needsReason || undefined}
+                    autoFocus={!needsReason}
                   />
                   {needsReason && <p className="mt-1 text-xs text-muted-foreground">{t("reviewReasonShared")}</p>}
                 </div>

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useJobDetail } from "@/hooks/useJobs";
 import { useJobHiringSummary, type JobHiringSummary } from "@/hooks/useJobHiringSummary";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { POSTERS_ENABLED } from "@/lib/features/posterFeature";
 
 interface AttentionItem {
   key: string;
@@ -96,7 +97,7 @@ export default function JobOverviewPage() {
     const tab = searchParams.get("tab");
     if (tab === "workflow") router.replace(`${jobHref}/setup?section=workflow`);
     else if (tab === "matching-weights") router.replace(`${jobHref}/setup?section=weights`);
-    else if (searchParams.get("poster") === "1") router.replace(`${jobHref}/posting?create=1`);
+    else if (POSTERS_ENABLED && searchParams.get("poster") === "1") router.replace(`${jobHref}/posting?create=1`);
   }, [searchParams, router, jobHref]);
 
   if (!job) return null;

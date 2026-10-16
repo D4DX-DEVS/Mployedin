@@ -62,6 +62,13 @@ jest.mock("@/lib/matching/scoreApplication", () => ({
   computeApplicantMatch: (...a: unknown[]) => computeApplicantMatch(...a),
 }));
 
+let mockVectorIds: string[] | null = null;
+const mockVectorRetrieveSeekers = jest.fn(async (..._args: unknown[]) => mockVectorIds);
+jest.mock("@/lib/matching/vectorRetrieval", () => ({
+  vectorRetrievalEnabled: () => mockVectorIds !== null,
+  vectorRetrieveSeekers: (...a: unknown[]) => mockVectorRetrieveSeekers(...a),
+}));
+
 import { matchTalentPoolForJob } from "@/lib/matching/talentPoolMatches";
 
 beforeEach(() => {
@@ -134,4 +141,23 @@ it("shares one computation between concurrent first views", async () => {
   await Promise.all([matchTalentPoolForJob(JOB_ID), matchTalentPoolForJob(JOB_ID)]);
   // Two shortlisted candidates, scored once — not once per request.
   expect(computeApplicantMatch).toHaveBeenCalledTimes(2);
+});
+
+it("reads only the seekers nearest the job when vector retrieval is on", async () => {
+  // Another job id, so the ranking cache from the cases above doesn't answer.
+  const otherJob = "64a000000000000000000011";
+  const Job = jest.requireMock("@/models/Job").default as { findById: jest.Mock };
+  Job.findById.mockReturnValueOnce(lean({ ...jobDoc, _id: otherJob }));
+  mockVectorIds = ["s1", "s2"];
+  try {
+    await matchTalentPoolForJob(otherJob);
+    expect(mockVectorRetrieveSeekers).toHaveBeenCalledWith(otherJob, 500);
+    expect(find).toHaveBeenCalledWith({
+      profileVisibility: "visible",
+      roleArchivedAt: null,
+      _id: { $nin: ["applied1"], $in: ["s1", "s2"] },
+    });
+  } finally {
+    mockVectorIds = null;
+  }
 });

@@ -33,6 +33,8 @@ jest.mock("@/lib/effectiveSeekerProfile", () => ({
     jest.requireActual("@/lib/matchScore").seekerProfileFromDoc(doc),
 }));
 
+import { clearEngineOptionsCache } from "@/lib/matching/seekerMatches";
+
 function chain<T>(result: T) {
   const c: Record<string, jest.Mock> = {};
   for (const m of ["select", "populate", "sort", "limit", "skip"]) c[m] = jest.fn(() => c);
@@ -94,6 +96,7 @@ async function run() {
 }
 
 beforeEach(() => {
+  clearEngineOptionsCache();
   mockCreate.mockReset();
   mockCreate.mockImplementation(async (doc: Record<string, unknown>) => ({ _id: `app-${String(doc.jobId)}` }));
   seekerDoc = {

@@ -6,6 +6,7 @@ import ExhibitionPerformance from "@/models/ExhibitionPerformance";
 import Agent from "@/models/Agent";
 import User from "@/models/User";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { SETTLED_AS_COMPLETED, loadOutcomes, loadTeamPerformance } from "@/lib/exhibitions/teamPerformance";
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -48,14 +49,17 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   const [
     statusCounts, budgetAgg, monthlyTrend, participationBreakdown,
-    topAgentsAgg, totalCount, performanceAgg,
+    topAgentsAgg, totalCount, performanceAgg, outcomes, teams,
   ] = await Promise.all([
     ExhibitionRequest.aggregate([
       { $match: baseFilter },
+      SETTLED_AS_COMPLETED,
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]),
     ExhibitionRequest.aggregate([
-      { $match: { ...baseFilter, status: { $in: APPROVED_STATUSES } } },
+      { $match: baseFilter },
+      SETTLED_AS_COMPLETED,
+      { $match: { status: { $in: APPROVED_STATUSES } } },
       {
         $group: {
           _id: null,
@@ -69,6 +73,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     ]),
     ExhibitionRequest.aggregate([
       { $match: baseFilter },
+      SETTLED_AS_COMPLETED,
       { $group: { _id: { month: { $month: "$createdAt" }, status: "$status" }, count: { $sum: 1 } } },
       { $sort: { "_id.month": 1 } },
     ]),
@@ -86,6 +91,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     ]),
     ExhibitionRequest.aggregate([
       { $match: baseFilter },
+      SETTLED_AS_COMPLETED,
       {
         $group: {
           _id: "$agentId",
@@ -130,6 +136,9 @@ async function handler(req: NextRequest, ctx: AuthContext) {
         },
       },
     ]),
+    loadOutcomes(baseFilter),
+    // The whole hierarchy is the admin's view; a super agent sees their own team in topAgents.
+    ctx.role === "admin" ? loadTeamPerformance(baseFilter) : Promise.resolve(null),
   ]);
 
   // Status counts
@@ -239,6 +248,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     monthly,
     participation,
     topAgents,
+    /** Leads and spend from the completion reports, money per currency. */
+    outcomes,
+    /** Admin only: each super agent, their totals and every agent under them. */
+    ...(teams ? { teams } : {}),
   });
 }
 

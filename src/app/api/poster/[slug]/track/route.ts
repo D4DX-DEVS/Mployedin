@@ -1,3 +1,4 @@
+import { gatePosters } from "@/lib/features/posterGate";
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import PosterGeneration from "@/models/PosterGeneration";
@@ -9,7 +10,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
  * Body: { event: "view" | "download" | "qr_scan" }
  * No auth required (public).
  */
-export async function POST(
+async function postHandler(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
@@ -55,3 +56,5 @@ export async function POST(
 
   return NextResponse.json({ success: true });
 }
+
+export const POST = gatePosters(postHandler);

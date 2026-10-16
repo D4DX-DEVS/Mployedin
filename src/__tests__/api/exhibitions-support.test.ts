@@ -146,8 +146,10 @@ describe("PATCH /api/exhibitions/[id]/support", () => {
     expect(doc.supportItems[0]).toMatchObject({ deliveryStatus: "issue", deliveryNote: "Screen cracked" });
   });
 
-  it("delivery is closed before resources are assigned (409)", async () => {
-    makeDoc("budget_approved");
+  // Owner, 2026-10-15: support is decided in the payment approval, so
+  // delivery opens at budget_approved and stays closed until then.
+  it("delivery is closed before the payment is approved (409)", async () => {
+    makeDoc("approved");
     const res = await call({ action: "delivery", items: [{ _id: TV, deliveryStatus: "ready" }] });
     expect(res.status).toBe(409);
   });

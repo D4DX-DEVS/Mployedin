@@ -38,6 +38,15 @@ export const mongoJevVerdictStore: JevVerdictStore = {
     const doc = await JevVerdict.findOne({ key: verdictKey(input) }).select("fit").lean();
     return typeof doc?.fit === "number" ? doc.fit : null;
   },
+  async getMany(inputs) {
+    const keys = inputs.map(verdictKey);
+    const docs = await JevVerdict.find({ key: { $in: keys } }).select("key fit").lean();
+    const byKey = new Map(docs.map((d) => [d.key as string, d.fit]));
+    return keys.map((k) => {
+      const fit = byKey.get(k);
+      return typeof fit === "number" ? fit : null;
+    });
+  },
   async set(input, fit) {
     const expiresAt = new Date(Date.now() + VERDICT_TTL_DAYS * 24 * 60 * 60 * 1000);
     // Upsert: two surfaces deciding the same pair at once must converge, not

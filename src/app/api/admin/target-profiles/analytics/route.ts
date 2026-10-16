@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
-import TargetProfile from "@/models/TargetProfile";
-import { enrichProfiles, expectedProgressPct } from "@/lib/targets/profileAchievementCalculator";
+import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
+import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
+import { profitTotals } from "@/lib/targets/profitTotals";
 import User from "@/models/User";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
+const round2 = (value: number) => Math.round(value * 100) / 100;
+
 /* ------------------------------------------------------------------ */
 /*  GET  /api/admin/target-profiles/analytics                          */
-/*  Comprehensive analytics for admin dashboard                        */
+/*  Leaderboard, region comparison and underperformers for the admin   */
+/*  target page.                                                       */
 /* ------------------------------------------------------------------ */
 async function handler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") {
@@ -24,6 +28,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const assigneeRole = searchParams.get("assigneeRole") ?? "super_agent";
 
   const query: Record<string, unknown> = {
+    ...PROFIT_TARGET_FILTER,
     year,
     status: "active",
   };
@@ -38,7 +43,6 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({
       leaderboard: [],
       regionComparison: [],
-      quarterlyForecast: [],
       underperformers: [],
       topPerformers: [],
     });
@@ -57,22 +61,19 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     return { ...p, assigneeName: user?.name ?? "Unknown", assigneeEmail: user?.email ?? "" };
   });
 
-  // Leaderboard — sorted by overall progress descending
+  // Leaderboard — sorted by profit progress descending
   const leaderboard = [...rows]
-    .sort((a, b) => b.overallProgress - a.overallProgress)
+    .sort((a, b) => b.profitProgress - a.profitProgress)
     .map((r, i) => ({
       rank: i + 1,
       _id: r._id,
       assigneeId: r.assigneeId,
       assigneeName: r.assigneeName,
-      overallProgress: r.overallProgress,
-      employerProgress: r.employerProgress,
-      employeeProgress: r.employeeProgress,
-      financeProgress: r.financeProgress,
+      profitProgress: r.profitProgress,
       riskScore: r.riskScore,
     }));
 
-  // Region comparison
+  // Region comparison — profit per currency, never added across currencies
   const regionMap = new Map<string, typeof rows>();
   for (const r of rows) {
     const region = r.region || "Unassigned";
@@ -83,121 +84,46 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const regionComparison = Array.from(regionMap.entries()).map(([region, rRows]) => ({
     region,
     supervisors: rRows.length,
-    avgPerformance: Math.round(rRows.reduce((s, r) => s + r.overallProgress, 0) / rRows.length),
-    totalEmployerTarget: rRows.reduce((s, r) => s + r.employerTarget, 0),
-    totalEmployerAchieved: rRows.reduce((s, r) => s + r.employerAchieved, 0),
-    totalEmployeeTarget: rRows.reduce((s, r) => s + r.employeeTarget, 0),
-    totalEmployeeAchieved: rRows.reduce((s, r) => s + r.employeeAchieved, 0),
-    totalFinanceTarget: rRows.reduce((s, r) => s + r.financeTarget, 0),
-    totalFinanceAchieved: rRows.reduce((s, r) => s + r.financeAchieved, 0),
+    avgProgress: Math.round(rRows.reduce((s, r) => s + r.profitProgress, 0) / rRows.length),
+    profit: profitTotals(rRows),
     highRisk: rRows.filter((r) => r.riskScore === "high").length,
   }));
 
-  // Quarterly forecast — extrapolate from current pace
-  const currentMonth = new Date().getMonth() + 1;
-  const monthsElapsed = currentMonth;
-  const quarters = [
-    { label: "Q1", months: [1, 2, 3] },
-    { label: "Q2", months: [4, 5, 6] },
-    { label: "Q3", months: [7, 8, 9] },
-    { label: "Q4", months: [10, 11, 12] },
-  ];
-
-  const totalEmpTarget = rows.reduce((s, r) => s + r.employerTarget, 0);
-  const totalEmplTarget = rows.reduce((s, r) => s + r.employeeTarget, 0);
-  const totalFinTarget = rows.reduce((s, r) => s + r.financeTarget, 0);
-  const totalEmpAchieved = rows.reduce((s, r) => s + r.employerAchieved, 0);
-  const totalEmplAchieved = rows.reduce((s, r) => s + r.employeeAchieved, 0);
-  const totalFinAchieved = rows.reduce((s, r) => s + r.financeAchieved, 0);
-
-  const monthlyRate = monthsElapsed > 0
-    ? {
-        employer: totalEmpAchieved / monthsElapsed,
-        employee: totalEmplAchieved / monthsElapsed,
-        finance: totalFinAchieved / monthsElapsed,
-      }
-    : { employer: 0, employee: 0, finance: 0 };
-
-  const quarterlyForecast = quarters.map((q) => {
-    const maxMonth = Math.max(...q.months);
-    const isComplete = currentMonth > maxMonth;
-    const remainingQuarterMonths = q.months.filter((month) => month > currentMonth).length;
-    const quarterActual = rows.reduce(
-      (total, row) => {
-        const quarterMonths = row.monthlyAchievements.filter((month) => q.months.includes(month.month));
-        return {
-          employer: total.employer + quarterMonths.reduce((sum, month) => sum + month.employerAchieved, 0),
-          employee: total.employee + quarterMonths.reduce((sum, month) => sum + month.employeeAchieved, 0),
-          finance: total.finance + quarterMonths.reduce((sum, month) => sum + month.financeAchieved, 0),
-        };
-      },
-      { employer: 0, employee: 0, finance: 0 }
-    );
-
-    return {
-      label: q.label,
-      isComplete,
-      employerForecast: isComplete
-        ? quarterActual.employer
-        : Math.round(quarterActual.employer + monthlyRate.employer * remainingQuarterMonths),
-      employeeForecast: isComplete
-        ? quarterActual.employee
-        : Math.round(quarterActual.employee + monthlyRate.employee * remainingQuarterMonths),
-      financeForecast: isComplete
-        ? quarterActual.finance
-        : Math.round(quarterActual.finance + monthlyRate.finance * remainingQuarterMonths),
-    };
-  });
-
-  // Underperformers — below 50% of expected pace
-  // Against the plan's own year: today's month made every 2027 plan an underperformer.
-  const expectedPct = expectedProgressPct(year);
+  // Underperformers — below half of the pace the profile's own schedule expects by now.
+  // Against the plan's own schedule: today's month made every 2027 plan an underperformer.
   const underperformers = rows
-    .filter((r) => r.overallProgress < expectedPct * 0.5)
-    .sort((a, b) => a.overallProgress - b.overallProgress)
+    .filter((r) => r.profitProgress < r.expectedProgress * 0.5)
+    .sort((a, b) => a.profitProgress - b.profitProgress)
     .slice(0, 10)
     .map((r) => ({
       _id: r._id,
       assigneeId: r.assigneeId,
       assigneeName: r.assigneeName,
-      overallProgress: r.overallProgress,
-      expectedProgress: expectedPct,
-      gap: expectedPct - r.overallProgress,
+      profitProgress: r.profitProgress,
+      expectedProgress: r.expectedProgress,
+      gap: r.expectedProgress - r.profitProgress,
       riskScore: r.riskScore,
       incentiveTier: r.incentiveTier,
     }));
 
   // Top performers
   const topPerformers = [...rows]
-    .sort((a, b) => b.overallProgress - a.overallProgress)
+    .sort((a, b) => b.profitProgress - a.profitProgress)
     .slice(0, 5)
     .map((r) => ({
       _id: r._id,
       assigneeId: r.assigneeId,
       assigneeName: r.assigneeName,
-      overallProgress: r.overallProgress,
-      employerProgress: r.employerProgress,
-      employeeProgress: r.employeeProgress,
-      financeProgress: r.financeProgress,
+      profitProgress: r.profitProgress,
+      profitAchieved: round2(r.profitAchieved),
+      currency: r.currency,
     }));
 
   return NextResponse.json({
     leaderboard,
     regionComparison,
-    quarterlyForecast,
     underperformers,
     topPerformers,
-    summary: {
-      totalEmployerTarget: totalEmpTarget,
-      totalEmployeeTarget: totalEmplTarget,
-      totalFinanceTarget: totalFinTarget,
-      totalEmployerAchieved: totalEmpAchieved,
-      totalEmployeeAchieved: totalEmplAchieved,
-      totalFinanceAchieved: totalFinAchieved,
-      projectedEmployerEOY: Math.round(monthlyRate.employer * 12),
-      projectedEmployeeEOY: Math.round(monthlyRate.employee * 12),
-      projectedFinanceEOY: Math.round(monthlyRate.finance * 12),
-    },
   });
 }
 

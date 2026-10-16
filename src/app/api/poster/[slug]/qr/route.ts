@@ -1,3 +1,4 @@
+import { gatePosters } from "@/lib/features/posterGate";
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import PosterGeneration from "@/models/PosterGeneration";
@@ -8,7 +9,7 @@ import { buildJobApplyUrl } from "@/lib/composer/branding";
  * QR code redirect — increments qrScans and redirects to the job's apply page.
  * This URL is encoded in the poster's QR code.
  */
-export async function GET(
+async function getHandler(
   _req: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
@@ -32,3 +33,5 @@ export async function GET(
   const applyUrl = buildJobApplyUrl(poster.jobId.toString());
   return NextResponse.redirect(new URL(applyUrl, _req.url));
 }
+
+export const GET = gatePosters(getHandler);

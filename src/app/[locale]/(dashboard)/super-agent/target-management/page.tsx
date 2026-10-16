@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,76 +20,44 @@ import {
   CompactProgress, RiskBadge, PerformanceBadge,
   MonthlyDistributionGrid, TargetEmptyState,
   TargetSummaryCard, CompletionBadge,
-  CompletionStage, getCompletionStage, IncentiveTierBadge,
+  CompletionStage, getCompletionStage, IncentiveTierBadge, ProgressRing,
 } from "@/components/features/targets/TargetComponents";
 import { TeamAllocationDialog } from "@/components/features/targets/TeamAllocationDialog";
-import { AgentDetailDialog } from "@/components/features/targets/AgentDetailDialog";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { AgentDetailDialog, type AgentDetailProfile } from "@/components/features/targets/AgentDetailDialog";
+import { TargetYearSelect, defaultTargetYears } from "@/components/features/targets/TargetYearSelect";
+import { formatProfit } from "@/components/features/targets/profitFormat";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
-  ResponsiveContainer, Cell, PieChart, Pie,
+  ResponsiveContainer, Legend,
 } from "recharts";
 import { useTranslations, useLocale } from "next-intl";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Building2, Users, DollarSign, SplitSquareVertical,
-  TrendingUp, CalendarDays, RotateCcw, Download,
-  Search, AlertCircle, CheckCircle2,
-  ClipboardList, TimerReset, Info, MapPin, Mail,
-  Eye, SlidersHorizontal, CircleDollarSign,
-  BarChart3,
+  SplitSquareVertical, TrendingUp, RotateCcw, Download,
+  Search, AlertCircle, CheckCircle2, ClipboardList, MapPin, Mail,
+  Eye, SlidersHorizontal, CircleDollarSign, Users, Wallet, FileText, Pencil,
 } from "lucide-react";
-import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { formatDate } from "@/lib/ui/intlFormat";
 import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import type { EnrichedProfile as EngineProfile } from "@/lib/targets/profileAchievementCalculator";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-interface EnrichedProfile {
-  _id: string;
-  assigneeId: string;
-  assigneeName: string;
-  assigneeEmail: string;
-  region?: string;
-  territory?: string;
-  regionalCurrency?: string;
-  lastActivityAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  currency: string;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  employerProgress: number;
-  employeeProgress: number;
-  financeProgress: number;
-  overallProgress: number;
-  employerPending: number;
-  employeePending: number;
-  financePending: number;
-  riskScore: "high" | "medium" | "low";
-  incentiveTier: "none" | "bronze" | "silver" | "gold" | "platinum";
-  monthlyAchievements: {
-    month: number;
-    employerTarget: number;
-    employeeTarget: number;
-    financeTarget: number;
-    employerAchieved: number;
-    employeeAchieved: number;
-    financeAchieved: number;
-    overallProgress: number;
-  }[];
-  status: string;
+/** A team row: the engine's enriched profile plus the agent's name and territory. */
+type TeamProfile = AgentDetailProfile;
+
+interface TeamTotals {
+  agents: number;
+  /** Super agents' agents are funded in one currency, so this is a plain pair. */
+  profit: { currency: string | null; target: number; achieved: number; others: { currency: string }[] };
+  avgProgress: number;
+  riskBreakdown: { high: number; medium: number; low: number };
 }
 
 interface TeamOverview {
@@ -96,49 +65,36 @@ interface TeamOverview {
   territories: string[];
   currencyLabel: string;
   currencyCount: number;
-  attention: { behindEmployer: number; behindEmployee: number; behindFinance: number; highRisk: number };
-  topPerformers: EnrichedProfile[];
-  underPerformers: EnrichedProfile[];
+  attention: { behindProfit: number; highRisk: number };
+  topPerformers: TeamProfile[];
+  underPerformers: TeamProfile[];
   pendingActions: number;
-  pendingApprovals: number;
-  deadlineAlerts: EnrichedProfile[];
+  deadlineAlerts: TeamProfile[];
 }
 
-interface SuperAgentTargetAnalytics {
+interface Analytics {
   teamSummary: {
     totalAgents: number;
-    avgPerformance: number;
+    avgProgress: number;
     highRiskCount: number;
     onTrackCount: number;
-    incentiveBreakdown: {
-      bronze: number;
-      silver: number;
-      gold: number;
-      platinum: number;
-    };
+    incentiveBreakdown: { bronze: number; silver: number; gold: number; platinum: number };
   };
   agentRankings: {
     rank: number;
     _id: string;
     assigneeName: string;
-    overallProgress: number;
+    currency: string;
+    profitTarget: number;
+    profitAchieved: number;
+    profitProgress: number;
     riskScore: "high" | "medium" | "low";
     incentiveTier: "none" | "bronze" | "silver" | "gold" | "platinum";
   }[];
+  monthlyTeamTrend: { month: number; profitTarget: number; profitAchieved: number }[];
 }
 
 type MetricTone = "blue" | "green" | "violet" | "amber" | "red";
-
-interface DashboardMetricCardProps {
-  label: string;
-  value: ReactNode;
-  helper: string;
-  icon: ReactNode;
-  progress?: number;
-  tone?: MetricTone;
-}
-
-// MONTHS_SHORT resolved in component with useTranslations hook, see below
 
 const METRIC_TONE_CLASS_MAP: Record<MetricTone, string> = {
   blue: "workspace-tone-sky",
@@ -148,11 +104,7 @@ const METRIC_TONE_CLASS_MAP: Record<MetricTone, string> = {
   red: "workspace-tone-rose",
 };
 
-function formatCompactCurrency(value: number, currency = "AED"): string {
-  if (value >= 1_000_000) return `${currency} ${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${currency} ${Math.round(value / 1_000)}K`;
-  return `${currency} ${formatCount(value)}`;
-}
+const pct = (achieved: number, target: number) => (target > 0 ? Math.min(Math.round((achieved / target) * 100), 999) : 0);
 
 function getProgressColor(progress: number): string {
   if (progress >= 75) return "bg-emerald-500";
@@ -166,90 +118,21 @@ function getProgressTextColor(progress: number): string {
   return "text-red-500";
 }
 
-// Returns key if invalid; caller resolves with t()
-function formatShortDate(value?: string): string | null {
-  if (!value) return "noUpdate";
-  const formatted = formatDate(value, { month: "short", day: "numeric" });
-  // formatDate returns em dash for unparseable input — map back to key
-  if (formatted === "—") return "noUpdate";
-  return formatted;
-}
-
-// Returns key; caller resolves with t()
-function getTerritory(agent: EnrichedProfile): string {
-  return agent.territory ?? agent.region ?? "unassigned";
-}
-
-// Returns { key, label, progress } for caller to resolve with t()
-interface RiskReasonResult {
-  key: string;
+function DashboardMetricCard({ label, value, helper, icon, progress, tone = "blue" }: {
   label: string;
-  progress: number;
-}
-function getRiskReason(agent: EnrichedProfile): RiskReasonResult {
-  const metrics = [
-    { labelKey: "metricEmployer", progress: agent.employerProgress },
-    { labelKey: "metricEmployee", progress: agent.employeeProgress },
-    { labelKey: "metricRevenue", progress: agent.financeProgress },
-  ].sort((a, b) => a.progress - b.progress);
-
-  return { key: "riskReason", label: metrics[0].labelKey, progress: metrics[0].progress };
-}
-
-// Returns key; caller resolves with t()
-function getNextAction(agent: EnrichedProfile): string {
-  const metrics = [
-    { key: "addEmployers", progress: agent.employerProgress },
-    { key: "closePlacements", progress: agent.employeeProgress },
-    { key: "pushRevenue", progress: agent.financeProgress },
-  ].sort((a, b) => a.progress - b.progress);
-
-  if (getCompletionStage(agent.overallProgress) === "completed") return "maintainPace";
-  return metrics[0].key;
-}
-
-// Returns { key, month } for caller to resolve month name and then format message
-interface DeadlineAlertResult {
-  key: string;
-  month?: number;
-}
-function getDeadlineAlert(agent: EnrichedProfile): DeadlineAlertResult {
-  const currentMonth = new Date().getMonth() + 1;
-  const currentMonthData = agent.monthlyAchievements.find((month) => month.month === currentMonth);
-  if (!currentMonthData) return { key: "annualTarget" };
-  if (currentMonthData.overallProgress >= 75) return { key: "onTrack", month: currentMonth };
-  if (currentMonthData.overallProgress > 0) return { key: "behindPace", month: currentMonth };
-  return { key: "notStarted", month: currentMonth };
-}
-
-// Returns key; caller resolves with t()
-function getDistributionStatus(agent: EnrichedProfile): string {
-  if (getCompletionStage(agent.overallProgress) === "completed") return "completed";
-  if (agent.employerTarget + agent.employeeTarget + agent.financeTarget > 0) return "distributed";
-  return "notDistributed";
-}
-
-function DashboardMetricCard({
-  label,
-  value,
-  helper,
-  icon,
-  progress,
-  tone = "blue",
-}: DashboardMetricCardProps) {
+  value: ReactNode;
+  helper: string;
+  icon: ReactNode;
+  progress?: number;
+  tone?: MetricTone;
+}) {
   return (
-    // Deliberately tighter than `card-pad`: six of these sit in one row above
-    // the agent table, and at the shared card rhythm (16px padding, mt-2 value,
-    // leading-5 helper, mt-4 bar) the strip alone ran ~165px tall and pushed
-    // the table it summarises off the first screen. Same content, ~40px less.
+    // Tighter than `card-pad`: these sit in one row above the agent table, and
+    // at the shared card rhythm the strip alone pushed the table off the first
+    // screen. Phones show label + value + slim progress only.
     <div className="workspace-glass-panel rounded-xl p-2.5 sm:p-3">
-      {/* Phones: label + value + slim progress only — the helper sentence and
-          icon chip made six of these a three-screen wall of cards. */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          {/* No 0.16em tracking: six cards across 1440px leave ~145px of label
-              column once the icon chip is subtracted, and the wide tracking
-              broke "TEAM COMPLETION" and "PENDING ACTIONS" onto two lines. */}
           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground sm:text-[11px]">{label}</p>
           <div className="mt-0.5 text-base font-semibold leading-tight tracking-tight text-foreground sm:mt-1 sm:text-lg">{value}</div>
           <p className="mt-0.5 hidden text-[11px] leading-4 text-muted-foreground sm:block">{helper}</p>
@@ -261,7 +144,7 @@ function DashboardMetricCard({
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/60">
             <div className={`h-full rounded-full ${getProgressColor(progress)}`} style={{ width: `${Math.min(progress, 100)}%` }} />
           </div>
-          <span className={`min-w-9 text-right text-[11px] font-bold tabular-nums ${getProgressTextColor(progress)} max-sm:hidden`}>{progress}%</span>
+          <span className={`min-w-9 text-end text-[11px] font-bold tabular-nums ${getProgressTextColor(progress)} max-sm:hidden`}>{progress}%</span>
         </div>
       ) : null}
     </div>
@@ -273,62 +156,31 @@ function DashboardMetricCard({
 /* ------------------------------------------------------------------ */
 
 export default function SuperAgentTargetProfilesPage() {
-  const t = useTranslations("targets");
-  const tc = useTranslations("common");
+  const t = useTranslations("profitTargets");
   const locale = useLocale();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const currentYear = new Date().getFullYear();
 
-  // Translated month names
-  const monthsShort = useMemo(() => [
-    t("months.jan"),
-    t("months.feb"),
-    t("months.mar"),
-    t("months.apr"),
-    t("months.may"),
-    t("months.jun"),
-    t("months.jul"),
-    t("months.aug"),
-    t("months.sep"),
-    t("months.oct"),
-    t("months.nov"),
-    t("months.dec"),
-  ], [t]);
-
-  // Resolve helper function returns with t()
-  const resolveRiskReason = (agent: EnrichedProfile) => {
-    const reason = getRiskReason(agent);
-    return t("riskReason", { label: t(reason.label), progress: reason.progress });
-  };
-
-  const resolveDeadlineAlert = (agent: EnrichedProfile) => {
-    const alert = getDeadlineAlert(agent);
-    if (!alert.month) return t(alert.key);
-    return t(alert.key, { month: monthsShort[alert.month - 1] });
-  };
   const requestedYear = Number.parseInt(searchParams.get("year") ?? "", 10);
-  const initialYearFilter = Number.isFinite(requestedYear) && requestedYear > 0
-    ? requestedYear
-    : currentYear;
+  const initialYearFilter = Number.isFinite(requestedYear) && requestedYear > 0 ? requestedYear : currentYear;
 
   const [yearFilter, setYearFilter] = useState(initialYearFilter);
-  const [yearInput, setYearInput] = useState(String(initialYearFilter));
   const [tab, setTab] = useState<"own" | "team" | "analytics">("team");
   const [loading, setLoading] = useState(true);
   const [teamLoading, setTeamLoading] = useState(true);
 
   // Own profile
-  const [ownProfile, setOwnProfile] = useState<EnrichedProfile | null>(null);
+  const [ownProfile, setOwnProfile] = useState<EngineProfile | null>(null);
 
   // Team
-  const [teamProfiles, setTeamProfiles] = useState<EnrichedProfile[]>([]);
+  const [teamProfiles, setTeamProfiles] = useState<TeamProfile[]>([]);
   const [teamTotal, setTeamTotal] = useState(0);
   const [teamTotalPages, setTeamTotalPages] = useState(1);
-  const [teamTotals, setTeamTotals] = useState({
-    employer: { target: 0, achieved: 0 },
-    employee: { target: 0, achieved: 0 },
-    finance: { target: 0, achieved: 0 },
-    avgPerformance: 0,
+  const [teamTotals, setTeamTotals] = useState<TeamTotals>({
+    agents: 0,
+    profit: { currency: null, target: 0, achieved: 0, others: [] },
+    avgProgress: 0,
     riskBreakdown: { high: 0, medium: 0, low: 0 },
   });
   const [teamOverview, setTeamOverview] = useState<TeamOverview>({
@@ -336,14 +188,13 @@ export default function SuperAgentTargetProfilesPage() {
     territories: [],
     currencyLabel: "AED",
     currencyCount: 1,
-    attention: { behindEmployer: 0, behindEmployee: 0, behindFinance: 0, highRisk: 0 },
+    attention: { behindProfit: 0, highRisk: 0 },
     topPerformers: [],
     underPerformers: [],
     pendingActions: 0,
-    pendingApprovals: 0,
     deadlineAlerts: [],
   });
-  const [analytics, setAnalytics] = useState<SuperAgentTargetAnalytics | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState(false);
   const [teamSearch, setTeamSearch] = useState("");
@@ -353,8 +204,7 @@ export default function SuperAgentTargetProfilesPage() {
 
   // Distribute dialog
   const [showDistribute, setShowDistribute] = useState(false);
-  // Row Adjust lands the dialog on that agent (was ignored: the dialog always
-  // opened unfiltered no matter which row was clicked).
+  // Row Adjust lands the dialog on that agent instead of ignoring which row was clicked.
   const [distributeAgentName, setDistributeAgentName] = useState("");
   const openDistributeFor = useCallback((agentName?: string) => {
     setDistributeAgentName(agentName ?? "");
@@ -362,15 +212,20 @@ export default function SuperAgentTargetProfilesPage() {
   }, []);
   const [showTeamFilters, setShowTeamFilters] = useState(false);
 
+  // The Create menu and ⌘K arrive with ?distribute=1: open the dialog once.
+  const openedFromLinkRef = useRef(false);
+  useEffect(() => {
+    if (openedFromLinkRef.current || searchParams.get("distribute") !== "1") return;
+    openedFromLinkRef.current = true;
+    openDistributeFor();
+  }, [searchParams, openDistributeFor]);
+
   // Agent detail dialog
-  const [detailAgent, setDetailAgent] = useState<EnrichedProfile | null>(null);
+  const [detailAgent, setDetailAgent] = useState<TeamProfile | null>(null);
 
   // Pagination
   const [teamPage, setTeamPage] = useState(1);
   const [teamPageSize, setTeamPageSize] = useState(10);
-
-  // Insights dialog
-  const [showInsights, setShowInsights] = useState(false);
 
   useEffect(() => {
     setYearFilter(initialYearFilter);
@@ -386,7 +241,7 @@ export default function SuperAgentTargetProfilesPage() {
       }
     } catch { toast.error(t("failedLoadTargets")); }
     finally { setLoading(false); }
-  }, [yearFilter]);
+  }, [yearFilter, t]);
 
   const fetchTeam = useCallback(async () => {
     setTeamLoading(true);
@@ -409,24 +264,20 @@ export default function SuperAgentTargetProfilesPage() {
         setTeamTotalPages(data.totalPages ?? 1);
         if (data.totals) setTeamTotals(data.totals);
         if (data.overview) setTeamOverview(data.overview);
-        // Team endpoint also returns ownProfile — update it to avoid separate call
+        // The team endpoint also returns the own profile, which saves a separate call.
         if (data.ownProfile) setOwnProfile(data.ownProfile);
       }
     } catch { toast.error(t("failedLoadTeamTargets")); }
     finally { setTeamLoading(false); }
-  }, [teamCompletionFilter, teamPage, teamPageSize, teamRiskFilter, teamSearch, teamTerritoryFilter, yearFilter]);
+  }, [teamCompletionFilter, teamPage, teamPageSize, teamRiskFilter, teamSearch, teamTerritoryFilter, yearFilter, t]);
 
   const fetchAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
     setAnalyticsError(false);
     try {
       const res = await fetch(`/api/super-agent/target-profiles/analytics?year=${yearFilter}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAnalytics(data);
-      } else {
-        setAnalyticsError(true);
-      }
+      if (res.ok) setAnalytics(await res.json());
+      else setAnalyticsError(true);
     } catch { setAnalyticsError(true); }
     finally { setAnalyticsLoading(false); }
   }, [yearFilter]);
@@ -438,225 +289,175 @@ export default function SuperAgentTargetProfilesPage() {
   // Reset page when filters change
   useEffect(() => { setTeamPage(1); }, [teamSearch, teamRiskFilter, teamCompletionFilter, teamTerritoryFilter]);
 
-  const totalTeamPages = teamTotalPages;
-  const paginatedTeamProfiles = teamProfiles;
+  const currency = ownProfile?.currency ?? teamTotals.profit.currency ?? "AED";
+  const money = (value: number, notation: "standard" | "compact" = "standard") => formatProfit(value, currency, locale, notation);
   const territoryOptions = [
     { value: "all", label: t("allTerritories") },
     ...teamOverview.territories.map((territory) => ({ value: territory, label: territory })),
   ];
-  // The API used to hand back a ready-made English phrase here. It now sends the
-  // count, so a mixed-currency team reads in the user's own language and plurals.
   const currencyLabel = teamOverview.currencyCount === 1
     ? teamOverview.currencyLabel
     : t("currencyCount", { count: teamOverview.currencyCount });
-  const filteredStageCounts = teamOverview.stageCounts;
-  const filteredTotals = {
-    agents: teamTotal,
-    employer: teamTotals.employer,
-    employee: teamTotals.employee,
-    finance: teamTotals.finance,
-    avgPerformance: teamTotals.avgPerformance,
-    riskHigh: teamTotals.riskBreakdown.high,
-  };
-  const attentionItems = [
-    { label: t("behindEmployer", { count: teamOverview.attention.behindEmployer }), tone: "bg-red-500" },
-    { label: t("behindEmployee", { count: teamOverview.attention.behindEmployee }), tone: "bg-amber-500" },
-    { label: t("behindFinance", { count: teamOverview.attention.behindFinance }), tone: "bg-amber-500" },
-    { label: t("markedHighRisk", { count: teamOverview.attention.highRisk }), tone: "bg-red-500" },
-  ];
-  const topPerformers = teamOverview.topPerformers;
-  const underPerformers = teamOverview.underPerformers;
-  const pendingActionsCount = teamOverview.pendingActions;
-  const pendingApprovalsCount = teamOverview.pendingApprovals;
-  const deadlineAlerts = teamOverview.deadlineAlerts;
 
-  // Team-table export via the shared hook (same as leads/commissions): the
-  // old hand-built join() never quoted commas in names and left missing dates
-  // as the literal "noUpdate" key instead of its translation.
+  // Budget: what the team holds against the super agent's own target.
+  const ownTarget = ownProfile?.profitTarget ?? 0;
+  const teamTargetSum = teamTotals.profit.target;
+  const unallocated = Math.max(0, ownTarget - teamTargetSum);
+
+  const territoryOf = (agent: TeamProfile) => agent.territory ?? agent.region ?? "";
+  const lastUpdate = (agent: TeamProfile) => {
+    const value = agent.lastActivityAt ?? agent.updatedAt;
+    const formatted = value ? formatDate(value, { month: "short", day: "numeric" }, locale) : "—";
+    return formatted === "—" ? t("noUpdate") : formatted;
+  };
+  const monthStatus = (agent: TeamProfile) => {
+    const month = new Date().getMonth() + 1;
+    const row = agent.monthlyAchievements.find((entry) => entry.month === month);
+    if (!row || row.profitTarget === 0) return t("noMonthTarget");
+    return row.profitProgress >= 75 ? t("monthOnTrack") : row.profitProgress > 0 ? t("monthBehind") : t("monthNotStarted");
+  };
+
+  // Team-table export via the shared hook (same as leads/commissions).
   const teamExportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("csvHeaderAgent"), key: "assigneeName" },
     { header: t("csvHeaderEmail"), key: "assigneeEmail" },
-    {
-      header: t("csvHeaderTerritory"), key: "territory",
-      formatter: (_v, row) => {
-        const terr = (row.territory as string) ?? (row.region as string) ?? "unassigned";
-        return terr === "unassigned" ? t("unassigned") : terr;
-      },
-    },
+    { header: t("csvHeaderTerritory"), key: "territory", formatter: (_v, row) => (row.territory as string) || (row.region as string) || t("unassigned") },
     { header: t("csvHeaderCurrency"), key: "currency" },
-    { header: t("csvHeaderEmployerTarget"), key: "employerTarget" },
-    { header: t("csvHeaderEmployerAchieved"), key: "employerAchieved" },
-    { header: t("csvHeaderEmployeeTarget"), key: "employeeTarget" },
-    { header: t("csvHeaderEmployeeAchieved"), key: "employeeAchieved" },
-    { header: t("csvHeaderFinanceTarget"), key: "financeTarget" },
-    { header: t("csvHeaderFinanceAchieved"), key: "financeAchieved" },
-    { header: t("csvHeaderOverallPercent"), key: "overallProgress" },
-    {
-      header: t("csvHeaderStage"), key: "overallProgress",
-      formatter: (v) => t(getCompletionStage(Number(v ?? 0))),
-    },
-    {
-      header: t("csvHeaderRisk"), key: "riskScore",
-      formatter: (v) => t(String(v ?? "low")),
-    },
-    {
-      header: t("csvHeaderNextAction"), key: "assigneeId",
-      formatter: (_v, row) => t(getNextAction(row as unknown as EnrichedProfile)),
-    },
-    {
-      header: t("csvHeaderLastUpdate"), key: "lastActivityAt",
-      formatter: (_v, row) => {
-        const r = row as unknown as EnrichedProfile;
-        const short = formatShortDate(r.lastActivityAt ?? r.updatedAt);
-        return short === "noUpdate" || short == null ? t("noUpdate") : short;
-      },
-    },
+    { header: t("csvHeaderProfitTarget"), key: "profitTarget" },
+    { header: t("csvHeaderProfitAchieved"), key: "profitAchieved" },
+    { header: t("csvHeaderProgressPercent"), key: "profitProgress" },
+    { header: t("csvHeaderStage"), key: "profitProgress", formatter: (v) => t(getCompletionStage(Number(v ?? 0))) },
+    { header: t("csvHeaderRisk"), key: "riskScore", formatter: (v) => t(String(v ?? "low")) },
+    { header: t("csvHeaderLastUpdate"), key: "lastActivityAt", formatter: (_v, row) => lastUpdate(row as unknown as TeamProfile) },
   ];
 
   const { handleExportCsv: handleExportTeamCsv } = useTableExport({
     data: teamProfiles as unknown as Record<string, unknown>[],
     columns: teamExportColumns,
     filename: `team-targets-${yearFilter}`,
-    title: t("title"),
+    title: t("saTitle"),
   });
 
-  // BUG-10: same 999% cap as profileAchievementCalculator.pct — 27/2 = 1350%
-  // must render 999% here too, not 1350%, or the two pages disagree.
-  const pct = (a: number, tgt: number) => tgt > 0 ? Math.min(Math.round((a / tgt) * 100), 999) : 0;
-  // The empty table had two branches on the same condition: the first caught
-  // every empty list, so the filtered-empty branch (with its Clear action)
-  // never rendered and a filtered-to-zero search dead-ended with no way back.
   const teamFiltersActive = teamSearch.trim().length > 0 || teamRiskFilter !== "all" || teamCompletionFilter !== "all" || teamTerritoryFilter !== "all";
-  const hasActiveDashboardFilters = yearFilter !== currentYear || teamSearch.trim().length > 0 || teamTerritoryFilter !== "all" || teamCompletionFilter !== "all" || teamRiskFilter !== "all";
+  const hasActiveDashboardFilters = yearFilter !== currentYear || teamFiltersActive;
 
   const handleResetDashboard = () => {
     setYearFilter(currentYear);
-    setYearInput(String(currentYear));
     setTeamSearch("");
     setTeamTerritoryFilter("all");
     setTeamCompletionFilter("all");
     setTeamRiskFilter("all");
   };
 
+  const reportHref = (agentUserId?: string) =>
+    `/${locale}/super-agent/target-report?year=${yearFilter}${agentUserId ? `&agentId=${agentUserId}` : ""}`;
+
   return (
     <div className="page-container">
-      {/* SuperAgentPageIntro, not PageHero: this was the one page in the role
-          still on the other hero, so its title sat at a different size and its
-          action floated on a second row while every sibling page kept them on
-          one. */}
       <SuperAgentPageIntro
-        title={t("title")}
-        description={t("superAgentDescription")}
+        title={t("saTitle")}
+        description={t("saDescription")}
         inlineActions
       >
         <Badge variant="outline" className="rounded-full px-2.5 py-1.5 sm:px-3">
-          <CircleDollarSign className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{currencyLabel}</span>
+          <CircleDollarSign className="h-3.5 w-3.5 sm:me-1.5" /> <span className="hidden sm:inline">{currencyLabel}</span>
         </Badge>
       </SuperAgentPageIntro>
 
       <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="number"
-              aria-label={t("year")}
-              value={yearInput}
-              onChange={(e) => setYearInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  const parsed = parseInt(yearInput);
-                  if (parsed >= 2020 && parsed <= 2099) setYearFilter(parsed);
-                }
-              }}
-              className="h-10 w-28 rounded-xl border-border bg-background pl-9 text-sm"
-            />
-          </div>
-          <Button
-            variant="default"
-            size="sm"
-            aria-label={t("go")}
-            className="h-10 rounded-xl px-3"
-            disabled={parseInt(yearInput) === yearFilter || !yearInput || parseInt(yearInput) < 2020}
-            onClick={() => {
-              const parsed = parseInt(yearInput);
-              if (parsed >= 2020 && parsed <= 2099) setYearFilter(parsed);
-            }}
-          >
-            <CalendarDays className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{t("go")}</span>
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleResetDashboard} aria-label={t("reset")} className="h-10 rounded-xl" disabled={!hasActiveDashboardFilters}>
-            <RotateCcw className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{t("reset")}</span>
-          </Button>
-          <div className="flex rounded-xl border border-border/60 bg-background p-0.5">
-            <Button variant={tab === "own" ? "default" : "ghost"} size="sm" onClick={() => setTab("own")} className="h-9 flex-1 rounded-lg px-3">{t("mine")}</Button>
-            <Button variant={tab === "team" ? "default" : "ghost"} size="sm" onClick={() => setTab("team")} className="h-9 flex-1 rounded-lg px-3">{t("team")}</Button>
-            <Button variant={tab === "analytics" ? "default" : "ghost"} size="sm" onClick={() => setTab("analytics")} className="h-9 flex-1 rounded-lg px-3">{t("analytics")}</Button>
-          </div>
-          {tab === "team" && (
+        <TargetYearSelect
+          value={String(yearFilter)}
+          onChange={(value) => setYearFilter(Number.parseInt(value, 10) || currentYear)}
+          label={t("yearLabel")}
+          years={defaultTargetYears()}
+        />
+        <Button variant="outline" size="sm" onClick={handleResetDashboard} aria-label={t("reset")} className="h-10 rounded-xl" disabled={!hasActiveDashboardFilters}>
+          <RotateCcw className="h-3.5 w-3.5 sm:me-1.5" /> <span className="hidden sm:inline">{t("reset")}</span>
+        </Button>
+        <div className="flex rounded-xl border border-border/60 bg-background p-0.5" role="tablist" aria-label={t("tabsLabel")}>
+          {(["own", "team", "analytics"] as const).map((key) => (
             <Button
-              variant="outline"
+              key={key}
+              role="tab"
+              aria-selected={tab === key}
+              variant={tab === key ? "default" : "ghost"}
               size="sm"
-              onClick={() => setShowTeamFilters((v) => !v)}
-              aria-expanded={showTeamFilters}
-              aria-label={t("filters")}
-              className={showTeamFilters ? "h-10 rounded-xl border-primary/30 bg-primary/10 text-primary" : "h-10 rounded-xl"}
+              onClick={() => setTab(key)}
+              className="h-9 flex-1 rounded-lg px-3"
             >
-              <SlidersHorizontal className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">{t("filters")}</span>
+              {t(key === "own" ? "mine" : key)}
             </Button>
-          )}
-          {tab === "team" && showTeamFilters ? (
-            <>
-              <div className="relative min-w-[220px] flex-1 basis-full sm:basis-auto">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  aria-label={t("searchAgentsTerritory")}
-                  value={teamSearch}
-                  onChange={(e) => setTeamSearch(e.target.value)}
-                  placeholder={t("searchAgentsTerritory")}
-                  className="h-10 rounded-xl border-border bg-background pl-9 text-sm"
-                />
-              </div>
-              <SearchableSelect
-                options={territoryOptions}
-                value={teamTerritoryFilter}
-                onValueChange={setTeamTerritoryFilter}
-                placeholder={t("territory")}
-                className="h-10 w-40 rounded-xl"
-              />
-              <SearchableSelect
-                options={[
-                  { value: "all", label: t("allStages") },
-                  { value: "not_started", label: t("notStarted") },
-                  { value: "in_progress", label: t("inProgress") },
-                  { value: "completed", label: t("completed") },
-                ]}
-                value={teamCompletionFilter}
-                onValueChange={(value) => setTeamCompletionFilter(value as "all" | CompletionStage)}
-                placeholder={t("stage")}
-                className="h-10 w-36 rounded-xl"
-              />
-              <SearchableSelect
-                options={[
-                  { value: "all", label: t("allRisk") },
-                  { value: "high", label: t("highRisk") },
-                  { value: "medium", label: t("mediumRisk") },
-                  { value: "low", label: t("lowRisk") },
-                ]}
-                value={teamRiskFilter}
-                onValueChange={(value) => setTeamRiskFilter(value as "all" | "high" | "medium" | "low")}
-                placeholder={t("risk")}
-                className="h-10 w-32 rounded-xl"
-              />
-              <Button variant="outline" size="sm" className="h-10 gap-0 rounded-xl sm:gap-2" onClick={handleExportTeamCsv} aria-label={t("export")} disabled={teamProfiles.length === 0}>
-                <Download className="h-4 w-4" /> <span className="hidden sm:inline">{t("export")}</span>
-              </Button>
-            </>
-          ) : null}
-          <Button className="gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => openDistributeFor()} aria-label={t("distribute")}>
-            <SplitSquareVertical className="h-4 w-4" /> <span className="hidden sm:inline">{t("distribute")}</span>
-          </Button>
+          ))}
         </div>
-
+        {tab === "team" && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTeamFilters((v) => !v)}
+            aria-expanded={showTeamFilters}
+            aria-label={t("filters")}
+            className={showTeamFilters ? "h-10 rounded-xl border-primary/30 bg-primary/10 text-primary" : "h-10 rounded-xl"}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 sm:me-1.5" /> <span className="hidden sm:inline">{t("filters")}</span>
+          </Button>
+        )}
+        {tab === "team" && showTeamFilters ? (
+          <>
+            <div className="relative min-w-[220px] flex-1 basis-full sm:basis-auto">
+              <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                aria-label={t("searchAgentsTerritory")}
+                value={teamSearch}
+                onChange={(e) => setTeamSearch(e.target.value)}
+                placeholder={t("searchAgentsTerritory")}
+                className="h-10 rounded-xl border-border bg-background ps-9 text-sm"
+              />
+            </div>
+            <SearchableSelect
+              options={territoryOptions}
+              value={teamTerritoryFilter}
+              onValueChange={setTeamTerritoryFilter}
+              placeholder={t("territory")}
+              className="h-10 w-40 rounded-xl"
+            />
+            <SearchableSelect
+              options={[
+                { value: "all", label: t("allStages") },
+                { value: "not_started", label: t("notStarted") },
+                { value: "in_progress", label: t("inProgress") },
+                { value: "completed", label: t("completed") },
+              ]}
+              value={teamCompletionFilter}
+              onValueChange={(value) => setTeamCompletionFilter(value as "all" | CompletionStage)}
+              placeholder={t("stage")}
+              className="h-10 w-36 rounded-xl"
+            />
+            <SearchableSelect
+              options={[
+                { value: "all", label: t("allRisk") },
+                { value: "high", label: t("highRisk") },
+                { value: "medium", label: t("mediumRisk") },
+                { value: "low", label: t("lowRisk") },
+              ]}
+              value={teamRiskFilter}
+              onValueChange={(value) => setTeamRiskFilter(value as "all" | "high" | "medium" | "low")}
+              placeholder={t("risk")}
+              className="h-10 w-32 rounded-xl"
+            />
+            <Button variant="outline" size="sm" className="h-10 gap-0 rounded-xl sm:gap-2" onClick={handleExportTeamCsv} aria-label={t("export")} disabled={teamProfiles.length === 0}>
+              <Download className="h-4 w-4" /> <span className="hidden sm:inline">{t("export")}</span>
+            </Button>
+          </>
+        ) : null}
+        <Link href={reportHref()} className="ms-auto">
+          <Button variant="outline" size="sm" className="h-10 gap-0 rounded-xl sm:gap-2" aria-label={t("openReport")}>
+            <FileText className="h-4 w-4" /> <span className="hidden sm:inline">{t("openReport")}</span>
+          </Button>
+        </Link>
+        <Button className="gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => openDistributeFor()} aria-label={t("distribute")}>
+          <SplitSquareVertical className="h-4 w-4" /> <span className="hidden sm:inline">{t("distribute")}</span>
+        </Button>
+      </div>
 
       {/* ============ OWN TAB ============ */}
       {tab === "own" && (
@@ -668,7 +469,7 @@ export default function SuperAgentTargetProfilesPage() {
               ))}
             </div>
           ) : !ownProfile ? (
-            <TargetEmptyState title={t("noTargetsAssigned")} description={t("contactSupervisor")} />
+            <TargetEmptyState title={t("noTargetAssigned")} description={t("saNoTargetHint")} />
           ) : (
             <>
               <div className="workspace-glass-panel flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-3">
@@ -676,55 +477,29 @@ export default function SuperAgentTargetProfilesPage() {
                   <div className="workspace-tone-violet rounded-lg p-1.5"><TrendingUp className="h-4 w-4" /></div>
                   <div>
                     <p className="text-sm font-semibold">{t("executionStatus")}</p>
-                    <p className="text-xs text-muted-foreground">{t("executionStatusHelper")}</p>
+                    <p className="text-xs text-muted-foreground">{t("executionStatusHint")}</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <CompletionBadge stage={getCompletionStage(ownProfile.overallProgress)} />
+                  <CompletionBadge stage={getCompletionStage(ownProfile.profitProgress)} />
                   <RiskBadge risk={ownProfile.riskScore} />
                   <IncentiveTierBadge tier={ownProfile.incentiveTier ?? "none"} />
                 </div>
               </div>
 
-              <TargetSummaryCard
-                compact
-                employerTarget={ownProfile.employerTarget}
-                employeeTarget={ownProfile.employeeTarget}
-                financeTarget={ownProfile.financeTarget}
-                employerAchieved={ownProfile.employerAchieved}
-                employeeAchieved={ownProfile.employeeAchieved}
-                financeAchieved={ownProfile.financeAchieved}
-                currency={ownProfile.currency}
-              />
-
-              {/* Overall progress — compact single-line bar */}
-              <div className="workspace-glass-panel flex flex-wrap items-center justify-between gap-4 rounded-2xl px-5 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="workspace-tone-violet rounded-lg p-1.5"><TrendingUp className="h-4 w-4" /></div>
-                  <span className="text-sm font-semibold">{t("overallProgress")}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="h-2.5 w-48 overflow-hidden rounded-full bg-muted/60">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ${
-                        ownProfile.overallProgress >= 75 ? "bg-emerald-500" :
-                        ownProfile.overallProgress >= 40 ? "bg-amber-500" : "bg-red-500"
-                      }`}
-                      style={{ width: `${Math.min(ownProfile.overallProgress, 100)}%` }}
-                    />
-                  </div>
-                  <span className={`text-lg font-bold tabular-nums ${
-                    ownProfile.overallProgress >= 75 ? "text-emerald-600" :
-                    ownProfile.overallProgress >= 40 ? "text-amber-600" : "text-red-500"
-                  }`}>{ownProfile.overallProgress}%</span>
+              <div className="workspace-glass-panel panel-body rounded-2xl">
+                <div className="flex flex-wrap items-center justify-center gap-8">
+                  <ProgressRing value={ownProfile.profitProgress} label={t("profitTarget")} sublabel={`${money(ownProfile.profitAchieved)} / ${money(ownProfile.profitTarget)}`} color="#059669" />
                 </div>
               </div>
 
+              <TargetSummaryCard profitTarget={ownProfile.profitTarget} profitAchieved={ownProfile.profitAchieved} currency={ownProfile.currency} />
             </>
           )}
         </div>
       )}
 
+      {/* ============ ANALYTICS TAB ============ */}
       {tab === "analytics" && (
         <div className="space-y-4">
           {analyticsLoading ? (
@@ -745,10 +520,10 @@ export default function SuperAgentTargetProfilesPage() {
                 />
                 <DashboardMetricCard
                   label={t("avgPerformance")}
-                  value={`${analytics.teamSummary.avgPerformance}%`}
+                  value={`${analytics.teamSummary.avgProgress}%`}
                   helper={t("avgPerformanceHelper")}
                   icon={<TrendingUp className="h-5 w-5" />}
-                  progress={analytics.teamSummary.avgPerformance}
+                  progress={analytics.teamSummary.avgProgress}
                   tone="green"
                 />
                 <DashboardMetricCard
@@ -767,8 +542,37 @@ export default function SuperAgentTargetProfilesPage() {
                 />
               </div>
 
+              {analytics.monthlyTeamTrend.some((row) => row.profitTarget > 0 || row.profitAchieved > 0) && (
+                <SuperAgentSection eyebrow={t("monthlyBreakdown")} title={t("teamTrendTitle")}>
+                  <div className="card-pad rounded-2xl border border-border/60 bg-card">
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart
+                        data={analytics.monthlyTeamTrend.map((row) => ({
+                          month: new Date(Date.UTC(2000, row.month - 1, 1)).toLocaleDateString(locale, { month: "short", timeZone: "UTC" }),
+                          target: row.profitTarget,
+                          profit: row.profitAchieved,
+                        }))}
+                        barGap={2}
+                        barCategoryGap="20%"
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                        <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" tickFormatter={(value) => money(Number(value), "compact")} />
+                        <ReTooltip
+                          contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
+                          formatter={(value) => [money(Number(value)), undefined]}
+                        />
+                        <Bar dataKey="target" name={t("seriesTarget")} fill="#cbd5e1" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="profit" name={t("seriesProfit")} fill="#10b981" radius={[2, 2, 0, 0]} />
+                        <Legend wrapperStyle={{ fontSize: "11px" }} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </SuperAgentSection>
+              )}
+
               <SuperAgentSection eyebrow={t("rankingsEyebrow")} title={t("teamPerformanceLeaderboard")}>
-                <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+                <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -785,10 +589,15 @@ export default function SuperAgentTargetProfilesPage() {
                           <TableCell>
                             <div className="flex min-w-0 items-center gap-2">
                               <UserAvatar name={agent.assigneeName} className="h-8 w-8 shrink-0" colorful />
-                              <p className="truncate font-medium">{agent.assigneeName}</p>
+                              <div className="min-w-0">
+                                <p className="truncate font-medium">{agent.assigneeName}</p>
+                                <p className="text-xs tabular-nums text-muted-foreground">
+                                  {formatProfit(agent.profitAchieved, agent.currency, locale)} / {formatProfit(agent.profitTarget, agent.currency, locale)}
+                                </p>
+                              </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-center"><PerformanceBadge pct={agent.overallProgress} /></TableCell>
+                          <TableCell className="text-center"><PerformanceBadge pct={agent.profitProgress} /></TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
                               <div className="flex flex-col items-start gap-1.5">
@@ -810,9 +619,9 @@ export default function SuperAgentTargetProfilesPage() {
               <button
                 type="button"
                 onClick={() => fetchAnalytics()}
-                className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-all"
+                className="shrink-0 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition-all hover:bg-destructive/20"
               >
-                {tc("tryAgain")}
+                {t("retry")}
               </button>
             </div>
           ) : null}
@@ -820,9 +629,7 @@ export default function SuperAgentTargetProfilesPage() {
           {loading ? (
             <div className="h-64 animate-pulse rounded-2xl bg-muted/50" />
           ) : !ownProfile ? (
-            <TargetEmptyState title={t("noTargetsAssigned")} description={t("contactSupervisor")} />
-          ) : ownProfile.monthlyAchievements.length === 0 ? (
-            <TargetEmptyState title={t("noMonthlyAnalyticsYet")} description={t("monthlyDistributionInfo")} />
+            <TargetEmptyState title={t("noTargetAssigned")} description={t("saNoTargetHint")} />
           ) : (
             <SuperAgentSection eyebrow={t("monthlyBreakdown")} title={t("monthlyBreakdownDescription")}>
               <MonthlyDistributionGrid months={ownProfile.monthlyAchievements} currency={ownProfile.currency} />
@@ -834,52 +641,37 @@ export default function SuperAgentTargetProfilesPage() {
       {/* ============ TEAM TAB ============ */}
       {tab === "team" && (
         <div className="space-y-3">
-          <section className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
+          <section className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             <DashboardMetricCard
-              label={t("teamCompletion")}
-              value={`${filteredTotals.avgPerformance}%`}
-              helper={t("teamCompletionHelper", { inProgress: filteredStageCounts.in_progress, completed: filteredStageCounts.completed })}
-              icon={<TrendingUp className="h-5 w-5" />}
-              progress={filteredTotals.avgPerformance}
-              tone="blue"
-            />
-            <DashboardMetricCard
-              label={t("employerTarget")}
-              value={<>{filteredTotals.employer.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employer.target}</span></>}
-              helper={t("employerTargetHelper", { balance: Math.max(0, filteredTotals.employer.target - filteredTotals.employer.achieved) })}
-              icon={<Building2 className="h-5 w-5" />}
-              progress={pct(filteredTotals.employer.achieved, filteredTotals.employer.target)}
+              label={t("teamProfit")}
+              value={money(teamTotals.profit.achieved, "compact")}
+              helper={t("teamProfitHelper", { assigned: money(teamTotals.profit.target, "compact") })}
+              icon={<CircleDollarSign className="h-5 w-5" />}
+              progress={pct(teamTotals.profit.achieved, teamTotals.profit.target)}
               tone="green"
             />
             <DashboardMetricCard
-              label={t("employeeTarget")}
-              value={<>{filteredTotals.employee.achieved}<span className="text-base text-muted-foreground"> / {filteredTotals.employee.target}</span></>}
-              helper={t("employeeTargetHelper", { balance: Math.max(0, filteredTotals.employee.target - filteredTotals.employee.achieved) })}
-              icon={<Users className="h-5 w-5" />}
-              progress={pct(filteredTotals.employee.achieved, filteredTotals.employee.target)}
-              tone="violet"
-            />
-            <DashboardMetricCard
-              label={t("revenueTarget")}
-              value={formatCompactCurrency(filteredTotals.finance.achieved, ownProfile?.currency ?? "AED")}
-              helper={t("revenueTargetHelper", { assigned: formatCompactCurrency(filteredTotals.finance.target, ownProfile?.currency ?? "AED") })}
-              icon={<DollarSign className="h-5 w-5" />}
-              progress={pct(filteredTotals.finance.achieved, filteredTotals.finance.target)}
+              label={t("unallocatedBudget")}
+              value={money(unallocated, "compact")}
+              helper={t("unallocatedBudgetHelper", { total: money(ownTarget, "compact") })}
+              icon={<Wallet className="h-5 w-5" />}
+              progress={pct(teamTargetSum, ownTarget)}
               tone="amber"
             />
             <DashboardMetricCard
-              label={t("atRisk")}
-              value={filteredTotals.riskHigh}
-              helper={t("atRiskHelper")}
-              icon={<AlertCircle className="h-5 w-5" />}
-              tone="red"
+              label={t("teamCompletion")}
+              value={`${teamTotals.avgProgress}%`}
+              helper={t("teamCompletionHelper", { inProgress: teamOverview.stageCounts.in_progress, completed: teamOverview.stageCounts.completed })}
+              icon={<TrendingUp className="h-5 w-5" />}
+              progress={teamTotals.avgProgress}
+              tone="blue"
             />
             <DashboardMetricCard
-              label={t("pendingActions")}
-              value={pendingActionsCount}
-              helper={t("pendingActionsHelper")}
+              label={t("atRisk")}
+              value={teamTotals.riskBreakdown.high}
+              helper={t("atRiskHelper", { pending: teamOverview.pendingActions })}
               icon={<ClipboardList className="h-5 w-5" />}
-              tone="blue"
+              tone="red"
             />
           </section>
 
@@ -889,30 +681,21 @@ export default function SuperAgentTargetProfilesPage() {
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>
-                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("territory")}</TableHead>
-                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> {t("metricEmployer")}</div>
-                  </TableHead>
-                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {t("metricEmployee")}</div>
-                  </TableHead>
-                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> {t("metricRevenue")}</div>
-                  </TableHead>
+                  <TableHead className="hidden text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground md:table-cell">{t("territory")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("profitHeader")}</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("progress")}</TableHead>
-                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("stage")}</TableHead>
+                  <TableHead className="hidden text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground md:table-cell">{t("stage")}</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("risk")}</TableHead>
-                  <TableHead className="hidden md:table-cell text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("colUpdate")}</TableHead>
-                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("colActions")}</TableHead>
+                  <TableHead className="hidden text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground md:table-cell">{t("colUpdate")}</TableHead>
+                  <TableHead className="text-end text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("colActions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {teamLoading ? (
-                  <TableBodySkeleton rows={3} cols={10} />
+                  <TableBodySkeleton rows={3} cols={8} />
                 ) : teamProfiles.length === 0 && teamFiltersActive ? (
-                  // Filtered empty — distinct from the true empty below, not dead code
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={10} className="py-12">
+                    <TableCell colSpan={8} className="py-12">
                       <TargetEmptyState
                         title={t("noAgentsMatchFilters")}
                         description={t("noMatchHint")}
@@ -936,20 +719,20 @@ export default function SuperAgentTargetProfilesPage() {
                   </TableRow>
                 ) : teamProfiles.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={10} className="py-12">
+                    <TableCell colSpan={8} className="py-12">
                       <TargetEmptyState
                         title={t("noAgentTargets")}
-                        description={t("distributeEmptyHint")}
-                        action={
+                        description={ownProfile ? t("distributeEmptyHint") : t("saNoTargetHint")}
+                        action={ownProfile ? (
                           <Button size="sm" onClick={() => openDistributeFor()} className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
                             <SplitSquareVertical className="h-4 w-4" /> {t("distribute")}
                           </Button>
-                        }
+                        ) : undefined}
                       />
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedTeamProfiles.map((agent) => (
+                  teamProfiles.map((agent) => (
                     <TableRow key={agent._id} className="group">
                       <TableCell>
                         <div className="flex min-w-0 items-center gap-3">
@@ -960,52 +743,42 @@ export default function SuperAgentTargetProfilesPage() {
                               <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
                               <span className="truncate">{agent.assigneeEmail}</span>
                             </p>
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                              <Badge variant="info" className="px-2 py-0.5 text-[11px]">{t(getDistributionStatus(agent))}</Badge>
-                              <span className="text-[11px] text-muted-foreground">{resolveDeadlineAlert(agent)}</span>
-                            </div>
+                            <span className="text-[11px] text-muted-foreground">{monthStatus(agent)}</span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                           <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                          {getTerritory(agent) === "unassigned" ? t("unassigned") : getTerritory(agent)}
+                          {territoryOf(agent) && territoryOf(agent) !== "Unassigned" ? territoryOf(agent) : t("unassigned")}
                         </div>
-                        <p className="mt-1 text-[11px] text-muted-foreground">{agent.regionalCurrency ?? agent.currency}</p>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <CompactProgress achieved={agent.employerAchieved} target={agent.employerTarget} progress={agent.employerProgress} type="employer" />
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <CompactProgress achieved={agent.employeeAchieved} target={agent.employeeTarget} progress={agent.employeeProgress} type="employee" />
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <CompactProgress achieved={agent.financeAchieved} target={agent.financeTarget} progress={agent.financeProgress} type="finance" currency={agent.currency} />
                       </TableCell>
                       <TableCell>
-                        <PerformanceBadge pct={agent.overallProgress} />
+                        <CompactProgress
+                          achieved={agent.profitAchieved}
+                          target={agent.profitTarget}
+                          progress={agent.profitProgress}
+                          currency={agent.currency}
+                          className="min-w-0"
+                        />
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <CompletionBadge stage={getCompletionStage(agent.overallProgress)} />
-                      </TableCell>
+                      <TableCell><PerformanceBadge pct={agent.profitProgress} /></TableCell>
+                      <TableCell className="hidden md:table-cell"><CompletionBadge stage={getCompletionStage(agent.profitProgress)} /></TableCell>
                       <TableCell>
-                        <div className="space-y-1">
+                        <div className="flex flex-col items-start gap-1.5">
                           <RiskBadge risk={agent.riskScore} />
                           <IncentiveTierBadge tier={agent.incentiveTier ?? "none"} />
-                          <p className="text-[11px] text-muted-foreground">{resolveRiskReason(agent)}</p>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <p className="text-sm font-medium text-foreground">{formatDate(new Date(agent.lastActivityAt ?? agent.updatedAt ?? agent.createdAt ?? Date.now()), { day: "2-digit", month: "short", year: "numeric" }, locale)}</p>
-                        <p className="text-[11px] text-muted-foreground">{t(getNextAction(agent))}</p>
-                      </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="hidden text-xs text-muted-foreground md:table-cell">{lastUpdate(agent)}</TableCell>
+                      <TableCell className="text-end">
                         <RowActions
                           name={agent.assigneeName}
-                          quick={[
-                            { key: "view", label: t("viewAgentDetails"), icon: Eye, iconOnly: true, onSelect: () => setDetailAgent(agent) },
-                            { key: "adjust", label: t("ariaAdjustTargetFor", { name: agent.assigneeName }), icon: SlidersHorizontal, iconOnly: true, onSelect: () => openDistributeFor(agent.assigneeName) },
+                          labelsFrom="wide"
+                          quick={[{ key: "view", label: t("viewDetails"), icon: Eye, onSelect: () => setDetailAgent(agent) }]}
+                          menu={[
+                            { key: "adjust", label: t("adjustTarget"), icon: Pencil, onSelect: () => openDistributeFor(agent.assigneeName) },
+                            { key: "report", label: t("openAgentReport"), icon: FileText, href: reportHref(agent.assigneeId) },
                           ]}
                         />
                       </TableCell>
@@ -1016,251 +789,40 @@ export default function SuperAgentTargetProfilesPage() {
             </Table>
           </div>
 
-          {/* Pagination & Insights */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Button variant="outline" size="dense" className="gap-1 rounded-lg px-3 text-xs font-medium" onClick={() => setShowInsights(true)}>
-              <BarChart3 className="h-3.5 w-3.5" /> {t("insightsButton")}
-            </Button>
-            <PaginationControls
-              page={teamPage}
-              totalPages={totalTeamPages}
-              total={teamTotal}
-              limit={teamPageSize}
-              onPageChange={setTeamPage}
-              onLimitChange={(newLimit) => {
-                setTeamPageSize(newLimit);
-                setTeamPage(1);
-              }}
-            />
-          </div>
+          <PaginationControls
+            page={teamPage}
+            totalPages={teamTotalPages}
+            total={teamTotal}
+            limit={teamPageSize}
+            onPageChange={setTeamPage}
+            onLimitChange={(size) => { setTeamPageSize(size); setTeamPage(1); }}
+          />
         </div>
       )}
-
-      {/* Insights Dialog */}
-      <Dialog open={showInsights} onOpenChange={setShowInsights}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <BarChart3 className="h-5 w-5 text-primary" /> {t("teamInsightsTitle")}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="max-h-[70vh] space-y-3 sm:space-y-4 overflow-y-auto pr-1" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-            <style>{`.insights-scroll::-webkit-scrollbar { display: none; }`}</style>
-
-            {/* Target Progress Chart */}
-            <div>
-              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("targetProgressOverview")}</h4>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { name: t("metricEmployer"), target: filteredTotals.employer.target, achieved: filteredTotals.employer.achieved },
-                    { name: t("metricEmployee"), target: filteredTotals.employee.target, achieved: filteredTotals.employee.achieved },
-                    { name: t("metricRevenue"), target: filteredTotals.finance.target / 1000, achieved: filteredTotals.finance.achieved / 1000 },
-                  ]} barGap={4}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <ReTooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="target" fill="#94a3b8" name={t("chartSeriesTarget")} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="achieved" fill="#3b82f6" name={t("chartSeriesAchieved")} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <p className="mt-1 text-center text-[11px] text-muted-foreground">{t("revenueInThousands")}</p>
-            </div>
-
-            {/* Risk Distribution */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("riskDistribution")}</h4>
-                <div className="h-32 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: t("riskHighLabel"), value: teamTotals.riskBreakdown.high },
-                          { name: t("riskMediumLabel"), value: teamTotals.riskBreakdown.medium },
-                          { name: t("riskLowLabel"), value: teamTotals.riskBreakdown.low },
-                        ].filter((d) => d.value > 0)}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={30}
-                        outerRadius={50}
-                        paddingAngle={3}
-                        dataKey="value"
-                        label={({ name, value }) => `${name}: ${value}`}
-                      >
-                        <Cell fill="#ef4444" />
-                        <Cell fill="#f59e0b" />
-                        <Cell fill="#10b981" />
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <div>
-                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("teamSummary")}</h4>
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                    <span className="text-xs text-muted-foreground">{t("totalAgentsLabel")}</span>
-                    <span className="text-sm font-bold">{teamTotal}</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                    <span className="text-xs text-muted-foreground">{t("avgPerformanceLabel")}</span>
-                    <span className="text-sm font-bold">{filteredTotals.avgPerformance}%</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                    <span className="text-xs text-muted-foreground">{t("atRiskLabel")}</span>
-                    <span className="text-sm font-bold text-red-500">{filteredTotals.riskHigh}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Attention Required */}
-            <div>
-              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("attentionRequired")}</h4>
-              <div className="space-y-1.5">
-                {attentionItems.map((item) => (
-                  <div key={item.label} className="flex items-start gap-2 text-sm text-foreground">
-                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.tone}`} />
-                    <span>{item.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Agent Performance Comparison */}
-            <div>
-              <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("agentPerformanceComparison")}</h4>
-              <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={teamProfiles.map((a) => ({
-                    name: a.assigneeName.split(" ").slice(0, 2).join(" "),
-                    employer: a.employerProgress,
-                    employee: a.employeeProgress,
-                    finance: a.financeProgress,
-                  }))} barGap={2}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} unit="%" />
-                    <ReTooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="employer" fill="#6366f1" name={t("chartSeriesEmployerPct")} radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="employee" fill="#06b6d4" name={t("chartSeriesEmployeePct")} radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="finance" fill="#f59e0b" name={t("chartSeriesRevenuePct")} radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Top & Under Performers */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("topPerformers")}</h4>
-                {topPerformers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t("noDataYet")}</p>
-                ) : (
-                  <div className="space-y-2">
-                    {topPerformers.map((agent, index) => (
-                      <div key={agent._id} className="flex items-center gap-2.5">
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/10 text-[11px] font-bold text-emerald-600">{index + 1}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-medium">{agent.assigneeName}</p>
-                          <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-muted/60">
-                            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(agent.overallProgress, 100)}%` }} />
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold tabular-nums text-emerald-600">{agent.overallProgress}%</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("underPerformers")}</h4>
-                {underPerformers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">{t("noDataYet")}</p>
-                ) : (
-                  <div className="space-y-2">
-                    {underPerformers.map((agent) => (
-                      <div key={agent._id} className="flex items-center gap-2.5">
-                        <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-medium">{agent.assigneeName}</p>
-                          <div className="mt-0.5 h-1 overflow-hidden rounded-full bg-muted/60">
-                            <div className="h-full rounded-full bg-red-500" style={{ width: `${Math.min(agent.overallProgress, 100)}%` }} />
-                          </div>
-                        </div>
-                        <span className="text-xs font-bold tabular-nums text-red-500">{agent.overallProgress}%</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Pending & Deadlines */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("pendingApprovals")}</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                      <span>{t("approvalQueue")}</span>
-                    </div>
-                    <span className="text-sm font-bold">{pendingApprovalsCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <SplitSquareVertical className="h-3.5 w-3.5 text-blue-600" />
-                      <span>{t("openDistributions")}</span>
-                    </div>
-                    <span className="text-sm font-bold">{pendingActionsCount}</span>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("deadlines")}</h4>
-                {deadlineAlerts.length === 0 ? (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                    <span>{t("noDeadlineAlerts")}</span>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {deadlineAlerts.slice(0, 5).map((agent) => (
-                      <div key={agent._id} className="flex items-center gap-2.5">
-                        <TimerReset className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-medium">{agent.assigneeName}</p>
-                          <p className="text-[11px] text-muted-foreground">{resolveDeadlineAlert(agent)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <TeamAllocationDialog
         open={showDistribute}
         onOpenChange={setShowDistribute}
         year={yearFilter}
-        supervisorProfile={ownProfile}
-        teamProfiles={teamProfiles}
-        onSuccess={fetchTeam}
+        supervisorProfile={ownProfile ? { profitTarget: ownProfile.profitTarget, profitAchieved: ownProfile.profitAchieved, currency: ownProfile.currency } : null}
+        teamProfiles={teamProfiles.map((profile) => ({
+          assigneeId: profile.assigneeId,
+          profitTarget: profile.profitTarget,
+          profitProgress: profile.profitProgress,
+          distributionStrategy: profile.distributionStrategy,
+          periodType: profile.periodType,
+          periods: profile.periods,
+        }))}
+        onSuccess={() => Promise.all([fetchTeam(), fetchOwn(), fetchAnalytics()]).then(() => undefined)}
         initialFilterName={distributeAgentName}
       />
 
       <AgentDetailDialog
-        open={!!detailAgent}
+        open={Boolean(detailAgent)}
         onOpenChange={(open) => { if (!open) setDetailAgent(null); }}
         agent={detailAgent}
         year={yearFilter}
+        onOpenReport={(agent) => router.push(reportHref(agent.assigneeId))}
       />
     </div>
   );

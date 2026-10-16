@@ -44,3 +44,23 @@ export async function providerFetch(
     clearTimeout(timer);
   }
 }
+
+/**
+ * Read a JSON body within `timeoutMs`. `providerFetch`'s timer stops at
+ * headers (so streams are never cut), which left `res.json()` unbounded: a
+ * provider that sent headers and then stalled pinned the caller indefinitely.
+ */
+export async function readJsonWithin<T>(res: Response, label: string, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      logger.warn({ label, timeoutMs }, "AI provider body read timed out");
+      reject(new AiTimeoutError(label, timeoutMs));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([res.json() as Promise<T>, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}

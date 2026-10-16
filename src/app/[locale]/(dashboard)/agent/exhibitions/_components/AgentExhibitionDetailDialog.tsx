@@ -16,6 +16,8 @@ import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 import { AttachmentsSection } from "@/components/features/exhibitions/ExhibitionAttachments";
 import { CompletionReportView, type CompletionReport } from "@/components/features/exhibitions/CompletionReportView";
 import type { ExhibitionAttachmentView } from "@/components/features/exhibitions/attachmentsClient";
+import { WaitingOn } from "@/components/features/exhibitions/ExhibitionInspectorParts";
+import { canReportEvent, isSettled } from "@/lib/exhibitions/transitions";
 
 export interface AgentExhibitionDetail {
   _id: string;
@@ -69,7 +71,6 @@ const PRIORITY_KEYS: Record<string, string> = {
 
 const EDITABLE = ["draft", "submitted", "revision_requested"];
 /** From the moment the event runs, its outcome and photos belong on the request. */
-const OUTCOME_STATUSES = ["active", "completed"];
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -149,7 +150,9 @@ export function AgentExhibitionDetailDialog({
   }
   const place = detail ? placeOf(detail) : "";
   const editable = detail ? EDITABLE.includes(detail.status) : false;
-  const showOutcome = detail ? OUTCOME_STATUSES.includes(detail.status) : false;
+  // Reporting opens on the event's start date; the report stays on the settled record.
+  const canReport = detail ? canReportEvent(detail) : false;
+  const showOutcome = detail ? canReport || detail.status === "completed" || isSettled(detail) : false;
   const attachments = detail?.attachments ?? [];
   const setAttachments = (all: ExhibitionAttachmentView[]) =>
     setFull((prev) => (prev ? { ...prev, attachments: all } : detail ? { ...detail, attachments: all } : prev));
@@ -174,6 +177,7 @@ export function AgentExhibitionDetailDialog({
             </DialogHeader>
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+              <WaitingOn item={detail} viewer="agent" />
               {detail.reviewNote && (detail.status === "revision_requested" || detail.status === "rejected") && (
                 <div
                   role="status"
@@ -255,7 +259,7 @@ export function AgentExhibitionDetailDialog({
                     report={detail.completionReport}
                     expectedLeads={detail.expectedLeads}
                     attachments={attachments}
-                    canManagePhotos
+                    canManagePhotos={detail.status !== "archived"}
                     onAttachmentsChange={setAttachments}
                   />
                 </Section>
@@ -289,7 +293,7 @@ export function AgentExhibitionDetailDialog({
 
             <DialogFooter className="shrink-0 gap-2 border-t px-6 py-4 sm:gap-2">
               <Button variant="ghost" onClick={onClose}>{tc("close")}</Button>
-              {detail.status === "active" && (
+              {canReport && (
                 <Button onClick={() => onComplete(detail)}>
                   <CheckCheck className="h-4 w-4" aria-hidden="true" />
                   {t("markEventCompleted")}

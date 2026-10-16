@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, X, Calendar, DollarSign, FileDown, ArrowLeftRight, Inbox } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useDebounce } from "@/hooks/useDebounce";
+import { seekerKeys, useRefreshSeeker, useSeekerList } from "@/hooks/useSeekerCache";
 import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
 import { csrfFetch } from "@/lib/security/csrf-client";
@@ -61,13 +63,12 @@ const STATUS_TABS = [
 
 type OfferStatusTab = (typeof STATUS_TABS)[number];
 type OfferStats = { total: number; pending: number; accepted: number; declined: number; expired: number; countered: number };
+type OfferListResponse = { offers?: Offer[]; total?: number; pagination?: { total?: number }; stats?: OfferStats };
 
 export default function OffersPage() {
   const t = useTranslations("jobSeekerOffers");
   const tj = useTranslations("jobSeekerJourney");
   const locale = useLocale();
-  const [offers, setOffers] = useState<Offer[]>([]);
-  const [loading, setLoading] = useState(true);
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [counteringId, setCounteringId] = useState<string | null>(null);
@@ -81,41 +82,53 @@ export default function OffersPage() {
   const debouncedSearch = useDebounce(searchTerm, 400);
   const pagination = usePagination();
   const { paginationParams, updateTotal } = pagination;
+  const queryClient = useQueryClient();
+  const refreshSeeker = useRefreshSeeker();
 
   useEffect(() => {
     document.title = t("documentTitle");
   }, [t]);
 
-  const fetchOffers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = paginationParams();
-      if (debouncedSearch) params.set("search", debouncedSearch);
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      const res = await fetch(`/api/offers?${params}`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch offers");
-      }
+  const listQuery = useMemo(() => {
+    const params = paginationParams();
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    return params.toString();
+  }, [paginationParams, debouncedSearch, statusFilter]);
+  const listKey = useMemo(() => seekerKeys.offerList(listQuery), [listQuery]);
 
-      const data = await res.json();
-      const nextOffers = data.offers ?? [];
-      setOffers(nextOffers);
-      updateTotal(data.pagination?.total ?? data.total ?? nextOffers.length);
-      // `stats` is computed without the status filter server-side — account-wide.
-      setStats(data.stats ?? null);
-    } catch (err) {
-      setOffers([]);
-      updateTotal(0);
-      setStats((prev) => prev ?? null);
-      toast.error(t("errors.fetchFailed"));
-    } finally {
-      setLoading(false);
-    }
-  }, [paginationParams, updateTotal, debouncedSearch, statusFilter, t]);
+  // Cached: coming back to Offers shows them at once instead of a skeleton.
+  const { data: listData, isPending: loading, isError: listFailed } = useSeekerList<OfferListResponse>(
+    listKey,
+    `/api/offers?${listQuery}`,
+  );
+  const offers = listData?.offers ?? [];
 
   useEffect(() => {
-    fetchOffers();
-  }, [fetchOffers]);
+    if (!listData) return;
+    const nextOffers = listData.offers ?? [];
+    updateTotal(listData.pagination?.total ?? listData.total ?? nextOffers.length);
+    // `stats` is computed without the status filter server-side — account-wide.
+    setStats(listData.stats ?? null);
+  }, [listData, updateTotal]);
+
+  useEffect(() => {
+    if (!listFailed) return;
+    setStats((prev) => prev ?? null);
+    toast.error(t("errors.fetchFailed"));
+  }, [listFailed, t]);
+
+  // Shows the new status on the card at once; the refetch below confirms it.
+  const markOffer = useCallback(
+    (offerId: string, status: Offer["status"]) => {
+      queryClient.setQueryData<OfferListResponse>(listKey, (prev) =>
+        prev ? { ...prev, offers: (prev.offers ?? []).map((o) => (o._id === offerId ? { ...o, status } : o)) } : prev,
+      );
+    },
+    [queryClient, listKey],
+  );
+
+  const fetchOffers = useCallback(() => refreshSeeker(seekerKeys.offers), [refreshSeeker]);
 
   async function handleAcceptOffer(offerId: string) {
     if (!signatureName.trim()) {
@@ -133,9 +146,7 @@ export default function OffersPage() {
         throw new Error("Failed to accept offer");
       }
 
-      setOffers((prev) =>
-        prev.map((o) => (o._id === offerId ? { ...o, status: "accepted" } : o))
-      );
+      markOffer(offerId, "accepted");
       setAcceptingId(null);
       setSignatureName("");
       setRespondingId(null);
@@ -166,9 +177,7 @@ export default function OffersPage() {
         throw new Error("Failed to decline offer");
       }
 
-      setOffers((prev) =>
-        prev.map((o) => (o._id === offerId ? { ...o, status: "declined" } : o))
-      );
+      markOffer(offerId, "declined");
       setRespondingId(null);
       setDeclineReason("");
       await fetchOffers();

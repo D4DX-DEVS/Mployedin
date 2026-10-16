@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useId } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateSeekerProfile, readSeekerProfile } from "@/hooks/useSeekerCache";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
@@ -102,6 +104,7 @@ export default function CVBuilderPage() {
   const [certInput, setCertInput] = useState("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const queryClient = useQueryClient();
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   /* Contextual writing-tips drawer */
@@ -147,9 +150,9 @@ export default function CVBuilderPage() {
   /* ── Fetch profile ── */
   async function fetchProfile() {
     try {
-      const res = await fetch("/api/job-seeker/profile");
-      if (res.ok && res.status !== 204) {
-        const profile = await res.json();
+      // From the shared cache when fresh, so Back from Profile/Skills is instant.
+      const profile = await readSeekerProfile(queryClient);
+      if (profile) {
         // Older CV imports stored a link's text as its address ("LinkedIn");
         // sent back on save, one of those failed the whole save.
         const links = splitProfileLinks(cleanSocialLinks(profile.socialLinks));
@@ -385,6 +388,7 @@ export default function CVBuilderPage() {
       }
       const data = await res.json();
       setForm((f) => ({ ...f, photo: data.url }));
+      void invalidateSeekerProfile(queryClient);
     } catch (e) {
       toast.error(t("errors.saveFailed"));
     } finally {
@@ -452,6 +456,7 @@ export default function CVBuilderPage() {
       });
       if (!res.ok) throw new Error(t("errors.saveProfile"));
       toast.success(t("messages.profileSaved"));
+      void invalidateSeekerProfile(queryClient);
       setImportPending(false);
       preImportForm.current = null;
     } catch (e) {

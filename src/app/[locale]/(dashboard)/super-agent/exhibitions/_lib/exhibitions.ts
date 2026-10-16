@@ -3,7 +3,6 @@ import type { SupportItemView } from "@/components/features/exhibitions/SupportI
 import type { TimelineEntry } from "@/components/features/exhibitions/ApprovalTimeline";
 import type { ExhibitionAttachmentView } from "@/components/features/exhibitions/attachmentsClient";
 import type { CompletionReport } from "@/components/features/exhibitions/CompletionReportView";
-import { superAgentOwnsCurrentDecision } from "@/lib/exhibitions/transitions";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -159,27 +158,20 @@ export function getParticipationLabels(t: ReturnType<typeof useTranslations>): R
 export type ReviewAction = "under_review" | "approved" | "revision_requested" | "rejected";
 
 /**
- * What a super agent can do from each status — the same moves
+ * What a super agent can do from each status — the moves
  * VALID_TRANSITIONS.super_agent allows, minus revision_requested → under_review,
  * which would start a review the agent has not resubmitted yet. The row, the
  * phone card and the detail footer all read this, so they never disagree.
+ * Verifying needs no "Start review" click first (owner, 2026-10-15), and a
+ * decision is not undone here: the admin sends back or edits in place.
  */
 export function reviewActionsFor(status: string): { primary?: ReviewAction; secondary: ReviewAction[] } {
-  if (status === "submitted") return { primary: "under_review", secondary: ["rejected"] };
-  if (status === "under_review") return { primary: "approved", secondary: ["revision_requested", "rejected"] };
+  if (status === "submitted" || status === "under_review") return { primary: "approved", secondary: ["revision_requested", "rejected"] };
   return { secondary: [] };
 }
 
 /** Statuses at which a super agent may still correct a request's facts (the API enforces the same). */
 export const SA_EDITABLE_STATUSES = ["submitted", "under_review", "revision_requested", "approved"];
-
-/**
- * Whether this role can step the request back: its own approval while the
- * admin has not acted on it, or its own rejection (the API checks the same).
- */
-export function canSuperAgentMoveBack(item: Pick<ExhibitionRequest, "status" | "statusHistory">): boolean {
-  return superAgentOwnsCurrentDecision(item);
-}
 
 /** The stored default for "no location yet" — shown as not specified, not as a place. */
 export function locationText(item: Pick<ExhibitionRequest, "eventLocation" | "country">): string {

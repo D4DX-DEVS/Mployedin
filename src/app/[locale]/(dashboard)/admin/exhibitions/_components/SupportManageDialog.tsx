@@ -253,7 +253,7 @@ export function SupportManageDialog({ mode, item, onClose, onSaved }: SupportMan
           <DialogDescription>{t(mode === "delivery" ? "deliveryDialogDescription" : "allocateDialogDescription")}</DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[60vh] overflow-y-auto pe-1">
+        <div className="max-h-[60vh] -mx-1 overflow-y-auto px-1 py-1">
           {mode && <SupportRowsEditor mode={mode} items={items} rows={rows} onPatch={patch} />}
         </div>
 

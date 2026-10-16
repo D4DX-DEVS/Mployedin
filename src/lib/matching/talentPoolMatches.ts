@@ -9,6 +9,7 @@ import { scorePair, toCandidateJob } from "@/lib/matching/recommend";
 import { collectSkillVocabulary, loadSkillVectors } from "@/lib/matching/skillVectors";
 import { resolveEngineOptions, type EngineOptions } from "@/lib/matching/seekerMatches";
 import { APPLICANT_JOB_FIELDS, APPLICANT_SEEKER_FIELDS, computeApplicantMatch } from "@/lib/matching/scoreApplication";
+import { vectorRetrievalEnabled, vectorRetrieveSeekers } from "@/lib/matching/vectorRetrieval";
 import type { ApplicantBreakdown } from "@/lib/matching/applicantScore";
 import type { IneligibleReason } from "@/lib/matching/eligibility";
 import type { RequirementsStatus } from "@/lib/matching/qualifications";
@@ -27,6 +28,8 @@ export const TALENT_POOL_FILTER = { profileVisibility: "visible", roleArchivedAt
 
 /** Upper bound on the pool read per request; the live pool is a few hundred. */
 const MAX_POOL = 3000;
+/** Seekers taken by vector when retrieval is on; pass 1 scores all of them. */
+const VECTOR_POOL = 500;
 /** Full applicant scores computed side by side. */
 const SCORE_CONCURRENCY = 5;
 /** A ranking is reused while paging through it, until the job changes. */
@@ -128,9 +131,16 @@ async function rankPoolForJob(jobId: string, job: Lean): Promise<TalentPoolMatch
   ]);
   const engine: EngineOptions = { ...engineDefaults, useAi: false };
 
+  // Nearest seekers by vector when retrieval is on; otherwise the whole
+  // discoverable pool, most recently active first, as before.
+  const vectorIds = vectorRetrievalEnabled() ? await vectorRetrieveSeekers(jobId, VECTOR_POOL) : null;
+
   // Registers the model the populate below reads.
   void User;
-  const seekers = ((await JobSeeker.find({ ...TALENT_POOL_FILTER, _id: { $nin: appliedIds } })
+  const seekers = ((await JobSeeker.find({
+    ...TALENT_POOL_FILTER,
+    _id: { $nin: appliedIds, ...(vectorIds ? { $in: vectorIds } : {}) },
+  })
     .select(`${APPLICANT_SEEKER_FIELDS} fullName headline availabilityStatus`)
     .populate({ path: "userId", select: "name avatar isActive" })
     // Most recently active first, so a cap (never reached today) drops the stalest.

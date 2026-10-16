@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { seekerKeys, useSeekerResource } from "@/hooks/useSeekerCache";
 import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 import { ApplicationJourneyShell } from "@/components/features/job-seeker/ApplicationJourneyShell";
 
@@ -72,32 +73,21 @@ export default function JobSeekerOnboardingPage() {
   const t = useTranslations("jobSeekerOnboarding");
   const tj = useTranslations("jobSeekerJourney");
 
-  const [onboardings, setOnboardings] = useState<Onboarding[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      const res = await fetch("/api/job-seeker/onboarding");
-      if (!res.ok) throw new Error("failed");
-      const data = await res.json();
-      setOnboardings(Array.isArray(data.onboardings) ? data.onboardings : []);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Cached: Back from a document shows the checklist at once; an upload or
+  // signature refetches behind the rows instead of flashing the skeleton.
+  const { data, isPending: loading, isError, refetch } = useSeekerResource<{ onboardings?: Onboarding[] }>(
+    seekerKeys.onboarding,
+    "/api/job-seeker/onboarding",
+  );
+  const onboardings = Array.isArray(data?.onboardings) ? data.onboardings : [];
+  const error = isError && !data;
+  const load = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
   useEffect(() => {
     document.title = `${t("title")} · MPLOYEDIN`;
   }, [t]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   // The list is not paginated, so its length is the whole truth.
   const contextLine = loading ? undefined : error ? null : tj("contextOnboarding", { count: onboardings.length });

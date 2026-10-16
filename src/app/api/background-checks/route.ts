@@ -3,13 +3,13 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import BackgroundCheck from "@/models/BackgroundCheck";
 import { staffActor, staffCheckFilter } from "@/lib/backgroundChecks/scope";
+import { buildStaffListFilter } from "@/lib/backgroundChecks/listFilters";
 import { refId, viewerFlags, type CheckActor } from "@/lib/backgroundChecks/workflow";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
 const STAFF_ROLES: readonly string[] = ["agent", "super_agent", "admin"];
-const STATUSES: readonly string[] = ["pending", "in_progress", "completed", "cancelled"];
 const PAGE_SIZES = [10, 20, 50, 100];
 
 interface StoredCheck {
@@ -66,6 +66,8 @@ function toStaffView(check: StoredCheck, actor: CheckActor) {
  * GET /api/background-checks — the background checks of employers the caller
  * works with, and of jobs their agents handle (client report 2026-09-30).
  * Agents run them from /api/background-checks/[id] (owner decision 2026-10-14).
+ * An agent can work with many employers, so the list filters by employer, job,
+ * check type, holder and status, and searches candidate/employer/job names.
  */
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (!STAFF_ROLES.includes(ctx.role)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -80,9 +82,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const scope = await staffCheckFilter(ctx);
   if (scope === "none") return NextResponse.json({ items: [], total: 0, page, limit });
 
-  const filter: Record<string, unknown> = scope === "all" ? {} : { ...scope };
-  const status = url.searchParams.get("status");
-  if (status && STATUSES.includes(status)) filter.status = status;
+  // Status, type, holder, employer, job and search — always ANDed with the scope.
+  const filter = await buildStaffListFilter(scope, url.searchParams, ctx.userId);
 
   const [items, total] = await Promise.all([
     BackgroundCheck.find(filter)

@@ -63,6 +63,14 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
       query.agentId = { $in: agentProfiles.map((a) => a.userId) };
     }
   }
+  // Admin: one team's or one agent's requests (the analytics team panel).
+  // Agent user ids, comma separated, capped so the list stays one query.
+  const agents = (searchParams.get("agents") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => /^[a-f0-9]{24}$/i.test(value))
+    .slice(0, 500);
+  if (ctx.role === "admin" && agents.length > 0) query.agentId = { $in: agents };
   const scopeQuery = { ...query };
 
   // "pending_review" = the summary's pendingReview bucket, so the queue count
@@ -89,6 +97,9 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   const stageStatuses: Record<string, string[]> = {
     team_leader: ["draft", "submitted", "under_review", "revision_requested"],
     finance: ["approved"],
+    // Payment approved, waiting on the event and its report (owner,
+    // 2026-10-15). super_agent / admin are the retired stage names.
+    event: ["budget_approved", "resources_assigned", "active"],
     super_agent: ["budget_approved"],
     admin: ["resources_assigned", "active"],
     completed: ["completed", "rejected"],

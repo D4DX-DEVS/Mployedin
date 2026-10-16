@@ -1,5 +1,6 @@
 import { getPresignedUrl } from "@/lib/storage/spaces";
 import type { ExhibitionAttachmentKind, IExhibitionAttachment } from "@/models/ExhibitionRequest";
+import { PAYMENT_APPROVED_STATUSES, isClosedStatus } from "./transitions";
 
 /**
  * Exhibition attachments: the agent's event files (client feedback
@@ -19,10 +20,12 @@ export const ATTACHMENT_VALIDATION: Record<ExhibitionAttachmentKind, "cv" | "ima
   completion: "image",
 };
 
-/** When the owning agent may add or remove each kind. Admin may at any status. */
+/** When the owning agent may add or remove each kind. */
 export const AGENT_ATTACHMENT_STATUSES: Record<ExhibitionAttachmentKind, string[]> = {
   event: ["draft", "submitted", "revision_requested"],
-  completion: ["active", "completed"],
+  // Photos go up with the event report, which the agent files from any
+  // payment-approved stage once the event has started.
+  completion: [...PAYMENT_APPROVED_STATUSES, "completed"],
 };
 
 export function isAttachmentKind(value: unknown): value is ExhibitionAttachmentKind {
@@ -40,7 +43,9 @@ export function canManageAttachments(
   item: { agentId: { toString(): string }; status: string },
   kind: ExhibitionAttachmentKind,
 ): boolean {
-  if (role === "admin") return item.status !== "archived";
+  // Admin: event files while the request is open. Event photos are the
+  // agent's: they ran the event (owner, 2026-10-15).
+  if (role === "admin") return kind === "event" && !isClosedStatus(item.status);
   if (role !== "agent") return false;
   if (item.agentId.toString() !== userId) return false;
   return AGENT_ATTACHMENT_STATUSES[kind].includes(item.status);

@@ -144,7 +144,8 @@ describe("PATCH /api/exhibitions/[id] — super-agent review", () => {
     for (const [from, to] of [
       ["approved", "approved"],
       ["approved", "budget_approved"],
-      ["submitted", "approved"],
+      // No step back or reopen (owner, 2026-10-15): one Send back instead.
+      ["approved", "under_review"],
       ["rejected", "under_review"],
       ["budget_approved", "resources_assigned"],
     ]) {
