@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,13 +15,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { generateMonthlyDistribution } from "@/lib/targets/distributionStrategies";
+import { distributeByWeights, distributeEvenly, type PeriodType, type SchedulePeriod } from "@/lib/targets/schedule";
 import {
-  Building2,
+  draftFromProfile,
+  draftIssues,
+  newDraft,
+  withAmount,
+  withStrategy,
+  type ScheduleDraft,
+} from "@/lib/targets/scheduleDraft";
+import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
-  DollarSign,
+  CircleDollarSign,
   Loader2,
   RotateCcw,
   Search,
@@ -31,76 +38,44 @@ import {
   Weight,
   WandSparkles,
 } from "lucide-react";
-import { formatCount } from "@/lib/ui/intlFormat";
+import { ScheduleControls, SchedulePeriodsEditor, useScheduleIssue } from "./TargetScheduleEditor";
+import { formatProfit } from "./profitFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
 type AllocationMode = "equal" | "weighted" | "manual";
-type RiskScore = "high" | "medium" | "low";
-
-interface MonthlyTarget {
-  month: number;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-}
 
 interface SupervisorProfile {
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
+  profitTarget: number;
+  profitAchieved: number;
   currency: string;
 }
 
 interface TeamProfile {
-  _id: string;
   assigneeId: string;
-  assigneeName: string;
-  assigneeEmail: string;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  currency: string;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  employerProgress: number;
-  employeeProgress: number;
-  financeProgress: number;
-  overallProgress: number;
-  riskScore: RiskScore;
-  monthlyAchievements: Array<{
-    month: number;
-    employerTarget: number;
-    employeeTarget: number;
-    financeTarget: number;
-  }>;
+  profitTarget: number;
+  profitProgress: number;
+  distributionStrategy: string;
+  periodType: PeriodType;
+  periods: SchedulePeriod[];
 }
 
-interface AgentDirectoryItem {
+interface TeamAgent {
   _id: string;
   name: string;
   email: string;
-  leadsCount: number;
-  conversions: number;
-  conversionRate: number;
-  avgResponseHours: number;
 }
 
 interface TargetRow {
   agentId: string;
   agentName: string;
   agentEmail: string;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  showMonthly: boolean;
-  monthlyTargets: MonthlyTarget[];
+  profitTarget: number;
+  /** How the year is cut and what each period is worth. */
+  draft: ScheduleDraft;
+  showSchedule: boolean;
 }
 
 interface TeamAllocationDialogProps {
@@ -119,52 +94,7 @@ interface TeamAllocationDialogProps {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-const MONTHS_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-function generateEqualDistribution(annual: { employerTarget: number; employeeTarget: number; financeTarget: number }): MonthlyTarget[] {
-  return Array.from({ length: 12 }, (_, i) => {
-    const empPer = Math.floor(annual.employerTarget / 12);
-    const empRem = annual.employerTarget - empPer * 12;
-    const emplPer = Math.floor(annual.employeeTarget / 12);
-    const emplRem = annual.employeeTarget - emplPer * 12;
-    const finPer = Math.floor(annual.financeTarget / 12);
-    const finRem = annual.financeTarget - finPer * 12;
-    return {
-      month: i + 1,
-      employerTarget: empPer + (i < empRem ? 1 : 0),
-      employeeTarget: emplPer + (i < emplRem ? 1 : 0),
-      financeTarget: finPer + (i < finRem ? 1 : 0),
-    };
-  });
-}
-
-function distributeEvenly(total: number, count: number): number[] {
-  if (count <= 0) return [];
-  const base = Math.floor(total / count);
-  const rem = total - base * count;
-  return Array.from({ length: count }, (_, i) => base + (i < rem ? 1 : 0));
-}
-
-function distributeByWeights(total: number, weights: number[]): number[] {
-  if (weights.length === 0) return [];
-  const safe = weights.map((w) => (w > 0 ? w : 0));
-  const sum = safe.reduce((s, w) => s + w, 0);
-  if (sum <= 0) return distributeEvenly(total, weights.length);
-  const raw = safe.map((w) => (w / sum) * total);
-  const floored = raw.map((v) => Math.floor(v));
-  let rem = total - floored.reduce((s, v) => s + v, 0);
-  const ranked = raw
-    .map((v, i) => ({ i, frac: v - Math.floor(v) }))
-    .sort((a, b) => b.frac - a.frac);
-  for (let j = 0; j < ranked.length && rem > 0; j++) {
-    floored[ranked[j].i] += 1;
-    rem -= 1;
-  }
-  return floored;
-}
+const toCents = (value: number) => Math.round((value || 0) * 100);
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -180,15 +110,17 @@ export function TeamAllocationDialog({
   initialFilterName = "",
 }: TeamAllocationDialogProps) {
   const t = useTranslations("teamAllocationDialog");
+  const locale = useLocale();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<AllocationMode>("manual");
-  const [agents, setAgents] = useState<AgentDirectoryItem[]>([]);
+  const [agents, setAgents] = useState<TeamAgent[]>([]);
   const [targetRows, setTargetRows] = useState<Record<string, TargetRow>>({});
   const [filterName, setFilterName] = useState("");
   const initializedRef = useRef(false);
 
   const currency = supervisorProfile?.currency ?? "AED";
+  const money = (value: number) => formatProfit(value, currency, locale);
 
   /* ---- Init on open ---- */
   useEffect(() => {
@@ -205,12 +137,11 @@ export function TeamAllocationDialog({
 
     (async () => {
       try {
-        const res = await fetch(
-          "/api/super-agent/agents?sortBy=name&sortOrder=asc&limit=200",
-        );
+        // Only this super agent's own team: the server refuses anyone else.
+        const res = await fetch(`/api/super-agent/target-profiles?view=agents&year=${year}`);
         if (!res.ok) throw new Error("Failed to load agents");
         const data = await res.json();
-        const items: AgentDirectoryItem[] = data.items ?? [];
+        const items: TeamAgent[] = data.agents ?? [];
         setAgents(items);
 
         // Initialize target rows — pre-fill existing profiles
@@ -220,24 +151,11 @@ export function TeamAllocationDialog({
           const profile = existingByAgent.get(agent._id);
           initial[agent._id] = {
             agentId: agent._id,
-            agentName: agent.name ?? "Unknown",
-            agentEmail: agent.email ?? "",
-            employerTarget: profile?.employerTarget ?? 0,
-            employeeTarget: profile?.employeeTarget ?? 0,
-            financeTarget: profile?.financeTarget ?? 0,
-            showMonthly: false,
-            monthlyTargets: profile?.monthlyAchievements?.length === 12
-              ? profile.monthlyAchievements.map((m) => ({
-                  month: m.month,
-                  employerTarget: m.employerTarget,
-                  employeeTarget: m.employeeTarget,
-                  financeTarget: m.financeTarget,
-                }))
-              : generateEqualDistribution({
-                  employerTarget: profile?.employerTarget ?? 0,
-                  employeeTarget: profile?.employeeTarget ?? 0,
-                  financeTarget: profile?.financeTarget ?? 0,
-                }),
+            agentName: agent.name || "Unknown",
+            agentEmail: agent.email,
+            profitTarget: profile?.profitTarget ?? 0,
+            draft: profile ? draftFromProfile(profile) : newDraft(year, 0),
+            showSchedule: false,
           };
         }
         setTargetRows(initial);
@@ -247,43 +165,27 @@ export function TeamAllocationDialog({
         setLoading(false);
       }
     })();
-  }, [open, teamProfiles, initialFilterName]);
+  }, [open, teamProfiles, initialFilterName, year, t]);
 
-  /* ---- Update target for an agent ---- */
-  const updateTarget = useCallback((agentId: string, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => {
+  const patchRow = useCallback((agentId: string, change: (row: TargetRow) => TargetRow) => {
     setTargetRows((prev) => {
       const row = prev[agentId];
-      if (!row) return prev;
-      const updated = { ...row, [field]: value };
-      updated.monthlyTargets = generateEqualDistribution({
-        employerTarget: updated.employerTarget,
-        employeeTarget: updated.employeeTarget,
-        financeTarget: updated.financeTarget,
-      });
-      return { ...prev, [agentId]: updated };
+      return row ? { ...prev, [agentId]: change(row) } : prev;
     });
   }, []);
 
-  /* ---- Toggle monthly ---- */
-  const toggleMonthly = useCallback((agentId: string) => {
-    setTargetRows((prev) => {
-      const row = prev[agentId];
-      if (!row) return prev;
-      return { ...prev, [agentId]: { ...row, showMonthly: !row.showMonthly } };
-    });
-  }, []);
+  /* ---- A new amount re-spreads over the periods unless they were typed by hand ---- */
+  const updateTarget = useCallback((agentId: string, profitTarget: number) => {
+    patchRow(agentId, (row) => ({ ...row, profitTarget, draft: withAmount(row.draft, year, profitTarget) }));
+  }, [patchRow, year]);
 
-  /* ---- Update monthly target ---- */
-  const updateMonthlyTarget = useCallback((agentId: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => {
-    setTargetRows((prev) => {
-      const row = prev[agentId];
-      if (!row) return prev;
-      const updatedMonthly = row.monthlyTargets.map((m) =>
-        m.month === month ? { ...m, [field]: value } : m
-      );
-      return { ...prev, [agentId]: { ...row, monthlyTargets: updatedMonthly } };
-    });
-  }, []);
+  const updateDraft = useCallback((agentId: string, draft: ScheduleDraft) => {
+    patchRow(agentId, (row) => ({ ...row, draft }));
+  }, [patchRow]);
+
+  const toggleSchedule = useCallback((agentId: string) => {
+    patchRow(agentId, (row) => ({ ...row, showSchedule: !row.showSchedule }));
+  }, [patchRow]);
 
   /* ---- Filtered agents ---- */
   const filteredAgents = useMemo(() => {
@@ -294,82 +196,37 @@ export function TeamAllocationDialog({
     });
   }, [agents, filterName]);
 
-  /* ---- Valid rows (at least one target > 0) ---- */
-  const validRows = useMemo(() => {
-    return Object.values(targetRows).filter(
-      (row) => row.employerTarget > 0 || row.employeeTarget > 0 || row.financeTarget > 0
-    );
-  }, [targetRows]);
+  /* ---- Rows with a target, and the ones whose months do not add up ---- */
+  const validRows = useMemo(() => Object.values(targetRows).filter((row) => row.profitTarget > 0), [targetRows]);
+  const brokenRows = useMemo(() => validRows.filter((row) => draftIssues(row.draft, year, row.profitTarget).length > 0), [validRows, year]);
 
-  /* ---- Totals ---- */
-  const totals = useMemo(() => {
-    return validRows.reduce(
-      (acc, row) => ({
-        employer: acc.employer + row.employerTarget,
-        employee: acc.employee + row.employeeTarget,
-        finance: acc.finance + row.financeTarget,
-      }),
-      { employer: 0, employee: 0, finance: 0 }
-    );
-  }, [validRows]);
-
-  /* ---- Remaining budget ---- */
-  const remaining = useMemo(() => ({
-    emp: (supervisorProfile?.employerTarget ?? 0) - totals.employer,
-    ee: (supervisorProfile?.employeeTarget ?? 0) - totals.employee,
-    fin: (supervisorProfile?.financeTarget ?? 0) - totals.finance,
-  }), [supervisorProfile, totals]);
+  /* ---- Budget ---- */
+  const allocatedCents = useMemo(() => validRows.reduce((sum, row) => sum + toCents(row.profitTarget), 0), [validRows]);
+  const budgetCents = toCents(supervisorProfile?.profitTarget ?? 0);
+  const remainingCents = budgetCents - allocatedCents;
+  const overBudget = remainingCents < 0;
+  const budgetStatus = budgetCents === 0 ? "not-set" : overBudget ? "over" : remainingCents === 0 ? "full" : "ok";
 
   /* ---- Strategy: distribute equally or by weight ---- */
   function applyStrategy(nextMode: AllocationMode) {
     setMode(nextMode);
-    if (nextMode === "manual") return;
+    if (nextMode === "manual" || agents.length === 0 || !supervisorProfile) return;
 
-    const agentIds = agents.map((a) => a._id);
-    const count = agentIds.length;
-    if (count === 0 || !supervisorProfile) return;
-
-    const available = {
-      emp: Math.max(0, supervisorProfile.employerTarget),
-      ee: Math.max(0, supervisorProfile.employeeTarget),
-      fin: Math.max(0, supervisorProfile.financeTarget),
-    };
-
-    let empArr: number[];
-    let eeArr: number[];
-    let finArr: number[];
-
-    if (nextMode === "weighted") {
-      const existingByAgent = new Map(teamProfiles.map((p) => [p.assigneeId, p]));
-      const weights = agentIds.map((id) => {
-        const profile = existingByAgent.get(id);
-        const agent = agents.find((a) => a._id === id);
-        return Math.max(1, profile?.overallProgress ?? agent?.conversionRate ?? 1);
-      });
-      empArr = distributeByWeights(available.emp, weights);
-      eeArr = distributeByWeights(available.ee, weights);
-      finArr = distributeByWeights(available.fin, weights);
-    } else {
-      empArr = distributeEvenly(available.emp, count);
-      eeArr = distributeEvenly(available.ee, count);
-      finArr = distributeEvenly(available.fin, count);
-    }
+    const total = toCents(Math.max(0, supervisorProfile.profitTarget));
+    const existingByAgent = new Map(teamProfiles.map((p) => [p.assigneeId, p]));
+    const shares = nextMode === "weighted"
+      ? distributeByWeights(total, agents.map((agent) => Math.max(1, existingByAgent.get(agent._id)?.profitProgress ?? 1)))
+      : distributeEvenly(total, agents.length);
 
     setTargetRows((prev) => {
       const updated = { ...prev };
-      agentIds.forEach((id, i) => {
-        const row = updated[id];
+      agents.forEach((agent, i) => {
+        const row = updated[agent._id];
         if (!row) return;
-        const annual = {
-          employerTarget: empArr[i] ?? 0,
-          employeeTarget: eeArr[i] ?? 0,
-          financeTarget: finArr[i] ?? 0,
-        };
-        updated[id] = {
-          ...row,
-          ...annual,
-          monthlyTargets: generateEqualDistribution(annual),
-        };
+        const profitTarget = (shares[i] ?? 0) / 100;
+        // An even or weighted share replaces typed amounts, so the split goes back to a rule.
+        const draft = row.draft.strategy === "custom" ? withStrategy(row.draft, profitTarget, "equal") : withAmount(row.draft, year, profitTarget);
+        updated[agent._id] = { ...row, profitTarget, draft };
       });
       return updated;
     });
@@ -380,13 +237,7 @@ export function TeamAllocationDialog({
     setTargetRows((prev) => {
       const updated = { ...prev };
       for (const id of Object.keys(updated)) {
-        updated[id] = {
-          ...updated[id],
-          employerTarget: 0,
-          employeeTarget: 0,
-          financeTarget: 0,
-          monthlyTargets: generateEqualDistribution({ employerTarget: 0, employeeTarget: 0, financeTarget: 0 }),
-        };
+        updated[id] = { ...updated[id], profitTarget: 0, draft: newDraft(year, 0, updated[id].draft.periodType) };
       }
       return updated;
     });
@@ -399,8 +250,12 @@ export function TeamAllocationDialog({
       toast.error(t("enterTargetsForAtLeastOne"));
       return;
     }
-    if (remaining.emp < 0 || remaining.ee < 0 || remaining.fin < 0) {
+    if (overBudget) {
       toast.error(t("overAllocatedToast"));
+      return;
+    }
+    if (brokenRows.length > 0) {
+      toast.error(t("sumMismatch"));
       return;
     }
 
@@ -416,58 +271,29 @@ export function TeamAllocationDialog({
             allocationMode: mode,
             allocations: validRows.map((r) => ({
               agentUserId: r.agentId,
-              employerTarget: r.employerTarget,
-              employeeTarget: r.employeeTarget,
-              financeTarget: r.financeTarget,
+              profitTarget: r.profitTarget,
               weight: 1,
-              distributionStrategy: "equal",
-              monthlyTargets: r.monthlyTargets,
+              periodType: r.draft.periodType,
+              distributionStrategy: r.draft.strategy,
+              periods: r.draft.periods,
             })),
           }),
         },
       );
       const payload = await res.json();
       if (!res.ok) {
-        toast.error(payload.error ?? "Failed to distribute");
+        toast.error(payload.error ?? t("failedToDistribute"));
         return;
       }
-      toast.success(`Distributed targets to ${payload.count ?? validRows.length} agents`);
+      toast.success(t("distributedToast", { count: payload.count ?? validRows.length }));
       onOpenChange(false);
       await onSuccess();
-    } catch (e) {
-      toast.error("We couldn't distribute these targets. Existing assignments are unchanged. Review the allocation and try again.");
+    } catch {
+      toast.error(t("distributeFailedToast"));
     } finally {
       setSaving(false);
     }
   }
-
-  /* ---- Budget cards ---- */
-  const budgetCards = [
-    {
-      key: "employer",
-      label: "EMPLOYER",
-      icon: <Building2 className="h-4 w-4" />,
-      total: supervisorProfile?.employerTarget ?? 0,
-      allocated: totals.employer,
-      remain: remaining.emp,
-    },
-    {
-      key: "employee",
-      label: "EMPLOYEE",
-      icon: <Users className="h-4 w-4" />,
-      total: supervisorProfile?.employeeTarget ?? 0,
-      allocated: totals.employee,
-      remain: remaining.ee,
-    },
-    {
-      key: "finance",
-      label: "FINANCE",
-      icon: <DollarSign className="h-4 w-4" />,
-      total: supervisorProfile?.financeTarget ?? 0,
-      allocated: totals.finance,
-      remain: remaining.fin,
-    },
-  ];
 
   /* ---------------------------------------------------------------- */
   /*  Render                                                           */
@@ -490,50 +316,25 @@ export function TeamAllocationDialog({
         {/* Body */}
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           <div className="space-y-4">
-            {/* Budget summary — horizontal cards */}
-            <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 chip-pad">
-              {budgetCards.map((c, idx) => {
-                const status =
-                  c.total === 0
-                    ? "not-set"
-                    : c.remain < 0
-                      ? "over"
-                      : c.remain === 0
-                        ? "full"
-                        : "ok";
-                return (
-                  <div key={c.key} className={`flex flex-1 items-center gap-2 ${idx > 0 ? "border-l border-border/40 pl-3" : ""}`}>
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      {c.icon}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          {c.label}
-                        </span>
-                        <Badge
-                          variant={
-                            status === "over"
-                              ? "destructive"
-                              : status === "not-set"
-                                ? "outline"
-                                : "success"
-                          }
-                          className="h-4 px-1 text-[9px]"
-                        >
-                          {status === "over"
-                            ? t("over")
-                            : status === "not-set"
-                              ? t("noBudget")
-                              : status === "full"
-                                ? t("full")
-                                : `${c.allocated}/${c.total}`}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            {/* Budget summary */}
+            <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 chip-pad">
+              <CircleDollarSign className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("budgetLabel")}
+                  </span>
+                  <span className="text-xs font-semibold tabular-nums">
+                    {t("budgetUsed", { allocated: money(allocatedCents / 100), total: money(budgetCents / 100) })}
+                  </span>
+                  <Badge
+                    variant={budgetStatus === "over" ? "destructive" : budgetStatus === "not-set" ? "outline" : "success"}
+                    className="h-4 px-1 text-[9px]"
+                  >
+                    {budgetStatus === "over" ? t("over") : budgetStatus === "not-set" ? t("noBudget") : budgetStatus === "full" ? t("full") : t("withinBudget")}
+                  </Badge>
+                </div>
+              </div>
             </div>
 
             {/* Strategy + Search */}
@@ -564,7 +365,7 @@ export function TeamAllocationDialog({
               <Button
                 variant="ghost"
                 size="sm"
-                className="ml-auto h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                className="ms-auto h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
                 onClick={resetAllocations}
               >
                 <RotateCcw className="h-3 w-3" /> {t("reset")}
@@ -573,61 +374,50 @@ export function TeamAllocationDialog({
 
             {/* Search bar */}
             <div className="relative max-w-xs">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={filterName}
                 onChange={(e) => setFilterName(e.target.value)}
                 placeholder={t("searchAgents")}
-                className="h-8 rounded-lg border-border bg-background pl-8 text-xs"
+                aria-label={t("searchAgents")}
+                className="h-8 rounded-lg border-border bg-background ps-8 text-xs"
               />
             </div>
 
             {/* Main Table */}
-            <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+            <div className="overflow-hidden rounded-xl border border-border/60 bg-card">
               {loading ? (
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : agents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <Users className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <Users className="mb-3 h-10 w-10 text-muted-foreground/50" />
                   <p className="text-sm text-muted-foreground">{t("noAgentsInTeam")}</p>
                 </div>
               ) : (
-                <div>
+                <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/40 border-b border-border/70">
+                    <thead className="border-b border-border/70 bg-muted/40">
                       <tr>
-                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[30%]">
+                        <th className="w-[30%] px-4 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {t("agent")}
                         </th>
                         <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <Building2 className="h-3.5 w-3.5" />
-                            {t("employers")}
-                          </div>
+                          {t("profitTarget")}
                         </th>
-                        <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <Users className="h-3.5 w-3.5" />
-                            {t("employees")}
-                          </div>
+                        <th className="min-w-[240px] px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {t("scheduleColumn")}
                         </th>
-                        <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <DollarSign className="h-3.5 w-3.5" />
-                            {t("revenue")}
-                          </div>
-                        </th>
-                        <th className="px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[80px]">
-                          {t("monthly")}
+                        <th className="w-[80px] px-3 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {t("periodsColumn")}
                         </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/50">
                       {filteredAgents.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                          <td colSpan={4} className="px-4 py-10 text-center text-sm text-muted-foreground">
                             {t("noAgentsMatch")}
                           </td>
                         </tr>
@@ -635,53 +425,39 @@ export function TeamAllocationDialog({
                         filteredAgents.map((agent) => {
                           const row = targetRows[agent._id];
                           if (!row) return null;
+                          const hasTarget = row.profitTarget > 0;
                           return (
                             <AgentTargetRow
                               key={agent._id}
                               agent={agent}
                               row={row}
                               currency={currency}
+                              hasTarget={hasTarget}
+                              year={year}
                               disabled={mode !== "manual"}
                               onUpdateTarget={updateTarget}
-                              onToggleMonthly={toggleMonthly}
-                              onUpdateMonthly={updateMonthlyTarget}
-                              t={t}
+                              onUpdateDraft={updateDraft}
+                              onToggleSchedule={toggleSchedule}
                             />
                           );
                         })
                       )}
                     </tbody>
                     {/* Totals + Remaining */}
-                    <tfoot className="bg-muted/30 border-t-2 border-border">
+                    <tfoot className="border-t-2 border-border bg-muted/30">
                       <tr>
                         <td className="px-4 py-2.5 text-sm font-semibold text-foreground">
-                          {t("total")} ({validRows.length} {t(validRows.length !== 1 ? "agents" : "agent")})
+                          {t("total")} ({t("agentCount", { count: validRows.length })})
                         </td>
-                        <td className="px-3 py-2.5 text-center text-sm font-bold text-foreground tabular-nums">
-                          {formatCount(totals.employer)}
+                        <td className="px-3 py-2.5 text-center text-sm font-bold tabular-nums text-foreground" colSpan={3}>
+                          {money(allocatedCents / 100)}
                         </td>
-                        <td className="px-3 py-2.5 text-center text-sm font-bold text-foreground tabular-nums">
-                          {formatCount(totals.employee)}
-                        </td>
-                        <td className="px-3 py-2.5 text-center text-sm font-bold text-foreground tabular-nums">
-                          {formatCount(totals.finance)}
-                        </td>
-                        <td className="px-3 py-2.5" />
                       </tr>
                       <tr className="bg-muted/10">
-                        <td className="px-4 py-2 text-xs text-muted-foreground">
-                          {t("remaining")}
+                        <td className="px-4 py-2 text-xs text-muted-foreground">{t("remaining")}</td>
+                        <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${overBudget ? "text-red-500" : "text-emerald-600"}`} colSpan={3}>
+                          {money(remainingCents / 100)}
                         </td>
-                        <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${remaining.emp < 0 ? "text-red-500" : "text-emerald-600"}`}>
-                          {formatCount(remaining.emp)}
-                        </td>
-                        <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${remaining.ee < 0 ? "text-red-500" : "text-emerald-600"}`}>
-                          {formatCount(remaining.ee)}
-                        </td>
-                        <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${remaining.fin < 0 ? "text-red-500" : "text-emerald-600"}`}>
-                          {formatCount(remaining.fin)}
-                        </td>
-                        <td className="px-3 py-2" />
                       </tr>
                     </tfoot>
                   </table>
@@ -696,31 +472,26 @@ export function TeamAllocationDialog({
           <div className="flex min-h-7 flex-1 items-center text-[11px] text-muted-foreground">
             {!supervisorProfile ? (
               <span className="text-red-500">{t("noSupervisorProfile")}</span>
-            ) : remaining.emp < 0 || remaining.ee < 0 || remaining.fin < 0 ? (
+            ) : overBudget ? (
               <span className="text-red-500">{t("overAllocated")}</span>
+            ) : brokenRows.length > 0 ? (
+              <span role="alert" className="text-red-500">{t("sumMismatch")}</span>
             ) : validRows.length > 0 ? (
-              <span>{validRows.length} {t(validRows.length > 1 ? "agents" : "agent")} · {mode} {t("distribution")}</span>
+              <span>{t("summaryLine", { count: validRows.length, mode: t(mode) })}</span>
             ) : null}
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="dense"
-              className=""
-              onClick={() => onOpenChange(false)}
-            >
+            <Button variant="outline" size="dense" onClick={() => onOpenChange(false)}>
               {t("cancel")}
             </Button>
             <Button
               size="dense"
               onClick={handleSubmit}
-              disabled={saving || validRows.length === 0 || !supervisorProfile}
+              disabled={saving || validRows.length === 0 || !supervisorProfile || overBudget || brokenRows.length > 0}
               className="gap-1.5 bg-sky-600 text-white hover:bg-sky-700"
             >
               <Target className="h-3.5 w-3.5" />
-              {saving
-                ? t("distributing")
-                : `${t("distributeTo")} ${validRows.length} ${t(validRows.length !== 1 ? "agents" : "agent")}`}
+              {saving ? t("distributing") : t("distributeTo", { count: validRows.length })}
             </Button>
           </div>
         </DialogFooter>
@@ -734,32 +505,34 @@ export function TeamAllocationDialog({
 /* ------------------------------------------------------------------ */
 
 interface AgentTargetRowProps {
-  agent: AgentDirectoryItem;
+  agent: TeamAgent;
   row: TargetRow;
   currency: string;
+  hasTarget: boolean;
+  year: number;
   disabled: boolean;
-  onUpdateTarget: (id: string, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
-  onToggleMonthly: (id: string) => void;
-  onUpdateMonthly: (id: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
-  t: ReturnType<typeof useTranslations>;
+  onUpdateTarget: (id: string, profitTarget: number) => void;
+  onUpdateDraft: (id: string, draft: ScheduleDraft) => void;
+  onToggleSchedule: (id: string) => void;
 }
 
 function AgentTargetRow({
   agent,
   row,
   currency,
+  hasTarget,
+  year,
   disabled,
   onUpdateTarget,
-  onToggleMonthly,
-  onUpdateMonthly,
-  t,
+  onUpdateDraft,
+  onToggleSchedule,
 }: AgentTargetRowProps) {
-  const hasTarget = row.employerTarget > 0 || row.employeeTarget > 0 || row.financeTarget > 0;
+  const t = useTranslations("teamAllocationDialog");
+  const issue = useScheduleIssue(row.draft, year, row.profitTarget, currency);
 
   return (
     <>
       <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
-        {/* Agent Info */}
         <td className="px-4 py-2.5">
           <div>
             <p className="text-sm font-medium text-foreground">{agent.name}</p>
@@ -767,194 +540,66 @@ function AgentTargetRow({
           </div>
         </td>
 
-        {/* Employer Target */}
-        <td className="px-3 py-2.5">
-          <Input
-            type="number"
-            min={0}
-            value={row.employerTarget || ""}
-            onChange={(e) => onUpdateTarget(agent._id, "employerTarget", parseInt(e.target.value) || 0)}
-            placeholder="0"
-            className="h-9 w-full rounded-lg border-border bg-background text-center text-sm tabular-nums"
-            disabled={disabled}
-          />
-        </td>
-
-        {/* Employee Target */}
-        <td className="px-3 py-2.5">
-          <Input
-            type="number"
-            min={0}
-            value={row.employeeTarget || ""}
-            onChange={(e) => onUpdateTarget(agent._id, "employeeTarget", parseInt(e.target.value) || 0)}
-            placeholder="0"
-            className="h-9 w-full rounded-lg border-border bg-background text-center text-sm tabular-nums"
-            disabled={disabled}
-          />
-        </td>
-
-        {/* Revenue Target */}
         <td className="px-3 py-2.5">
           <div className="relative">
             <Input
               type="number"
+              aria-label={t("profitTarget")}
               min={0}
-              value={row.financeTarget || ""}
-              onChange={(e) => onUpdateTarget(agent._id, "financeTarget", parseInt(e.target.value) || 0)}
+              step="0.01"
+              inputMode="decimal"
+              value={row.profitTarget || ""}
+              onChange={(e) => onUpdateTarget(agent._id, Number(e.target.value) || 0)}
               placeholder="0"
-              className="h-9 w-full rounded-lg border-border bg-background text-center text-sm tabular-nums pr-11"
+              className="h-9 w-full rounded-lg border-border bg-background pe-12 text-center text-sm tabular-nums"
               disabled={disabled}
             />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-medium text-muted-foreground">
+            <span className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 text-[11px] font-medium text-muted-foreground">
               {currency}
             </span>
           </div>
         </td>
 
-        {/* Monthly Toggle */}
+        <td className="px-3 py-2.5">
+          <ScheduleControls
+            draft={row.draft}
+            year={year}
+            profitTarget={row.profitTarget}
+            onChange={(draft) => onUpdateDraft(agent._id, draft)}
+            disabled={!hasTarget}
+          />
+          {hasTarget && issue ? <p role="alert" className="mt-1 text-[11px] font-medium text-rose-600">{issue}</p> : null}
+        </td>
+
         <td className="px-3 py-2.5 text-center">
           <Button
             type="button"
-            variant={row.showMonthly ? "default" : "outline"}
+            aria-label={t("toggleSchedule")}
+            variant={row.showSchedule ? "default" : "outline"}
             size="dense"
-            className="rounded-lg text-xs gap-1"
-            onClick={() => onToggleMonthly(agent._id)}
+            className="gap-1 rounded-lg text-xs"
+            onClick={() => onToggleSchedule(agent._id)}
             disabled={!hasTarget}
           >
             <CalendarDays className="h-3.5 w-3.5" />
-            {row.showMonthly ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {row.showSchedule ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </Button>
         </td>
       </tr>
 
-      {/* Monthly Distribution Expanded */}
-      {row.showMonthly && hasTarget && (
+      {row.showSchedule && hasTarget && (
         <tr className="bg-muted/10">
-          <td colSpan={5} className="px-4 py-3">
-            <MonthlyDistributionTable
-              agentId={agent._id}
-              monthly={row.monthlyTargets}
+          <td colSpan={4} className="px-4 py-3">
+            <SchedulePeriodsEditor
+              draft={row.draft}
+              year={year}
+              profitTarget={row.profitTarget}
               currency={currency}
-              annualTargets={{
-                employerTarget: row.employerTarget,
-                employeeTarget: row.employeeTarget,
-                financeTarget: row.financeTarget,
-              }}
-              onUpdate={onUpdateMonthly}
-              t={t}
+              onChange={(draft) => onUpdateDraft(agent._id, draft)}
             />
           </td>
         </tr>
       )}
     </>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Monthly Distribution Table                                         */
-/* ------------------------------------------------------------------ */
-
-interface MonthlyDistributionTableProps {
-  agentId: string;
-  monthly: MonthlyTarget[];
-  currency: string;
-  annualTargets: { employerTarget: number; employeeTarget: number; financeTarget: number };
-  onUpdate: (agentId: string, month: number, field: "employerTarget" | "employeeTarget" | "financeTarget", value: number) => void;
-  t: ReturnType<typeof useTranslations>;
-}
-
-function MonthlyDistributionTable({
-  agentId,
-  monthly,
-  currency,
-  annualTargets,
-  onUpdate,
-  t,
-}: MonthlyDistributionTableProps) {
-  const monthlySum = monthly.reduce(
-    (acc, m) => ({
-      employer: acc.employer + m.employerTarget,
-      employee: acc.employee + m.employeeTarget,
-      finance: acc.finance + m.financeTarget,
-    }),
-    { employer: 0, employee: 0, finance: 0 }
-  );
-
-  const isValid =
-    monthlySum.employer === annualTargets.employerTarget &&
-    monthlySum.employee === annualTargets.employeeTarget &&
-    monthlySum.finance === annualTargets.financeTarget;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-muted-foreground">{t("monthlyDistribution")}</p>
-        {!isValid && (
-          <Badge variant="destructive" className="text-[11px]">
-            {t("sumMismatch")}
-          </Badge>
-        )}
-      </div>
-      <div className="rounded-lg border border-border/60 bg-background">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/30">
-            <tr>
-              <th className="px-2 py-2 text-left font-semibold text-muted-foreground">{t("month")}</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("employers")}</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("employees")}</th>
-              <th className="px-2 py-2 text-center font-semibold text-muted-foreground">{t("revenue")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/40">
-            {monthly.map((m) => (
-              <tr key={m.month} className="hover:bg-muted/10">
-                <td className="px-2 py-1.5 font-medium text-muted-foreground">{MONTHS_SHORT[m.month - 1]}</td>
-                <td className="px-2 py-1.5">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={m.employerTarget || ""}
-                    onChange={(e) => onUpdate(agentId, m.month, "employerTarget", parseInt(e.target.value) || 0)}
-                    className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"
-                  />
-                </td>
-                <td className="px-2 py-1.5">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={m.employeeTarget || ""}
-                    onChange={(e) => onUpdate(agentId, m.month, "employeeTarget", parseInt(e.target.value) || 0)}
-                    className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"
-                  />
-                </td>
-                <td className="px-2 py-1.5">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={m.financeTarget || ""}
-                    onChange={(e) => onUpdate(agentId, m.month, "financeTarget", parseInt(e.target.value) || 0)}
-                    className="h-7 w-full rounded border-border/60 bg-background text-center text-xs tabular-nums"
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot className="bg-muted/20 border-t border-border">
-            <tr>
-              <td className="px-2 py-1.5 font-semibold">{t("total")}</td>
-              <td className={`px-2 py-1.5 text-center font-bold tabular-nums ${monthlySum.employer !== annualTargets.employerTarget ? "text-red-500" : ""}`}>
-                {monthlySum.employer}
-              </td>
-              <td className={`px-2 py-1.5 text-center font-bold tabular-nums ${monthlySum.employee !== annualTargets.employeeTarget ? "text-red-500" : ""}`}>
-                {monthlySum.employee}
-              </td>
-              <td className={`px-2 py-1.5 text-center font-bold tabular-nums ${monthlySum.finance !== annualTargets.financeTarget ? "text-red-500" : ""}`}>
-                {monthlySum.finance}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
   );
 }

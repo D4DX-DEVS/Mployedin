@@ -412,7 +412,7 @@ export async function notifyTargetAssigned(
     userId: assigneeId,
     type: "target_assigned",
     title: "Target assigned",
-    message: `Your ${year} target plan is ready. Review your employer, employee, and finance goals.`,
+    message: `Your ${year} profit target is ready. Review your goal and monthly breakdown.`,
     link: getTargetManagementLink(assigneeRole, locale),
     sendEmail: false,
     metadata: { profileId, year, assigneeRole },
@@ -433,7 +433,7 @@ export async function notifyTargetUpdated(
     userId: assigneeId,
     type: "target_updated",
     title: "Target updated",
-    message: `Your ${year} target plan has been updated. Check the latest allocation and monthly breakdown.`,
+    message: `Your ${year} profit target has been updated. Check the latest amount and monthly breakdown.`,
     link: getTargetManagementLink(assigneeRole, locale),
     sendEmail: false,
     metadata: { profileId, year, assigneeRole },
@@ -465,6 +465,29 @@ export async function notifyTargetAtRisk(
   });
 }
 
+/** Tells a super agent that one of their agents is falling behind on their profit target. */
+export async function notifyTeamTargetAtRisk(
+  superAgentUserId: string,
+  agentName: string,
+  agentProfileId: string,
+  progress: number,
+  expectedProgress: number,
+  locale = "en"
+): Promise<void> {
+  await notify({
+    userId: superAgentUserId,
+    type: "target_at_risk",
+    title: "An agent is behind on their target",
+    message: `${agentName} is at ${progress}% of their profit target against an expected pace of ${expectedProgress}%.`,
+    link: getTargetManagementLink("super_agent", locale),
+    sendEmail: false,
+    metadata: { profileId: agentProfileId, progress, expectedProgress, agentName },
+    titleKey: "targetTeamAtRiskTitle",
+    bodyKey: "targetTeamAtRiskBody",
+    params: { agentName, progress: String(progress), expectedProgress: String(expectedProgress) },
+  });
+}
+
 export async function notifyTargetMilestone(
   assigneeId: string,
   assigneeRole: TargetAssigneeRole,
@@ -477,7 +500,7 @@ export async function notifyTargetMilestone(
     userId: assigneeId,
     type: "target_milestone",
     title: "Target milestone reached",
-    message: `You reached the ${tier} target tier at ${overallProgress}% overall progress.`,
+    message: `You reached the ${tier} target tier at ${overallProgress}% of your profit target.`,
     link: getTargetManagementLink(assigneeRole, locale),
     sendEmail: false,
     metadata: { profileId, tier, overallProgress, assigneeRole },

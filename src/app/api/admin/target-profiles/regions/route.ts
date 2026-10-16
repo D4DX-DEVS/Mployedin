@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
-import TargetProfile from "@/models/TargetProfile";
+import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -17,6 +17,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const year = Number.isFinite(requestedYear) ? requestedYear : currentYear;
 
   const values = await TargetProfile.distinct("region", {
+    ...PROFIT_TARGET_FILTER,
     year,
     status: "active",
   });

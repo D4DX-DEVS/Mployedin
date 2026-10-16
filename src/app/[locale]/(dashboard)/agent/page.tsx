@@ -8,7 +8,7 @@ import JobSeeker from "@/models/JobSeeker";
 import Lead from "@/models/Lead";
 import Placement from "@/models/Placement";
 import Commission from "@/models/Commission";
-import TargetProfile from "@/models/TargetProfile";
+import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { BriefcaseBusiness, Building2, Goal, Wallet } from "lucide-react";
 import type { WorkspaceMetric } from "@/components/shared/WorkspaceHeader";
@@ -29,6 +29,7 @@ import { loadAssignedAccounts } from "@/lib/agents/assignedAccounts";
 import { getAgentEmployerIds, getAgentSeekerArea, seekerRegionMatch } from "@/lib/auth/agentRestrictions";
 import { buildBroughtInFilter } from "@/lib/jobseekers/onboarded";
 import { calculateMonthlyAchievements } from "@/lib/targets/profileAchievementCalculator";
+import { fromStoredPeriods, monthlyTargets } from "@/lib/targets/schedule";
 import { formatCurrency } from "@/lib/currency";
 import { isValidTimeZone } from "@/lib/datetime/zone";
 import { localHourIn } from "@/lib/datetime/countryZone";
@@ -269,9 +270,9 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     commissionTo.setHours(23, 59, 59, 999);
     const [targetProfile, commissionRows] = await Promise.all([
       // The same profile /api/agent/target-report reads.
-      TargetProfile.findOne({ assigneeId: session.user.id, assigneeRole: "agent", year, status: "active" })
-        .select("monthlyTargets")
-        .lean<{ monthlyTargets?: { month: number; employerTarget: number; employeeTarget: number; financeTarget: number }[] } | null>(),
+      TargetProfile.findOne({ ...PROFIT_TARGET_FILTER, assigneeId: session.user.id, assigneeRole: "agent", year, status: "active" })
+        .select("periods currency")
+        .lean<{ periods?: { startDate: Date; endDate: Date; profitTarget: number }[]; currency?: string } | null>(),
       // Pending + approved + paid: the three cards on the commissions page.
       // Override lines carry only superAgentId, so agentId is this agent's own.
       Commission.aggregate<{ total: number }>([
@@ -280,10 +281,11 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       ]),
     ]);
     commissionThisMonth = commissionRows[0]?.total ?? 0;
-    const monthTarget = targetProfile?.monthlyTargets?.find((m) => m.month === month);
-    if (monthTarget && (monthTarget.employerTarget > 0 || monthTarget.employeeTarget > 0 || monthTarget.financeTarget > 0)) {
-      const [achievement] = await calculateMonthlyAchievements(String(session.user.id), "agent", year, [monthTarget]);
-      targetProgress = achievement?.overallProgress ?? 0;
+    // What the schedule carries for this month, whether it is cut by week, quarter or year.
+    const monthTarget = { month, profitTarget: monthlyTargets(fromStoredPeriods(targetProfile?.periods))[month - 1] ?? 0 };
+    if (monthTarget.profitTarget > 0) {
+      const [achievement] = await calculateMonthlyAchievements(String(session.user.id), "agent", year, [monthTarget], targetProfile?.currency);
+      targetProgress = achievement?.profitProgress ?? 0;
     }
   }
 

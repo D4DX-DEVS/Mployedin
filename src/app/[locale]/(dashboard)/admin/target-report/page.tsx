@@ -2,33 +2,35 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { Building2, CircleDollarSign, Gauge, UserCheck } from "lucide-react";
+import { Briefcase, CircleDollarSign, Gauge, Receipt, Wallet } from "lucide-react";
 import { ReportTabs } from "@/components/features/admin/ReportTabs";
 import { PageHero } from "@/components/shared/PageHero";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReportKpiGrid, type ReportKpi } from "@/components/features/admin/reports/ReportKpiGrid";
+import { ReportCardHeader, reportCardClassName } from "@/components/features/admin/reports/ReportCard";
+import { IncomeSourcesList } from "@/components/features/targets/IncomeSourcesList";
+import { TargetYearSelect } from "@/components/features/targets/TargetYearSelect";
+import { formatProfit } from "@/components/features/targets/profitFormat";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { BehindPaceList } from "./_components/behind-pace-list";
-import { TargetPeopleTable } from "./_components/target-people-table";
+import { TargetReportList } from "./_components/target-report-list";
 import { TargetProgressChart } from "./_components/target-progress-chart";
-import { percentOf, type Progress, type TargetReport } from "./_components/types";
+import { percentOf, type TargetReport } from "./_components/types";
 
 /*
  * Target report: four totals, then
- *   Monthly progress (target vs achieved) | Behind pace (who to talk to)
- *   Progress by person (every plan, searchable, exportable)
- * Dropped: business volume (the Commissions tab, and it added INR to AED),
- * the quarterly chart (counts and money on one axis), the year-over-year grid
- * and the quarter/category/risk filters that only re-sliced the same numbers.
+ *   Monthly profit (target vs achieved) | Behind pace (who to talk to)
+ *   Where the profit came from
+ *   Target reports (every plan as a card: completion status, growth, target bar and
+ *   period bars, opening into the full report; super agents with their agents)
+ * Every figure is company profit: net invoice income after commissions.
  */
 
 /** The TargetProfile schema's year bounds; the URL can only hold one of these. */
 const YEAR_OPTIONS = Array.from({ length: 81 }, (_, index) => String(2020 + index));
 
-function ProgressFooter({ progress, label }: { progress: Progress; label: string }) {
-  const share = percentOf(progress);
+function ProgressFooter({ share, label }: { share: number | null; label: string }) {
   return (
     <div className="flex w-full items-center gap-2">
       <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
@@ -43,15 +45,16 @@ export default function AdminTargetReportPage() {
   const t = useTranslations("adminTargetReport");
   const locale = useLocale();
   const currentYear = String(new Date().getFullYear());
-  // The year lives in the URL, like the Platform tab's period, so a refresh or
-  // a shared link shows the same plan year.
-  const [year, setYear] = useUrlFilter("year", currentYear, { allow: YEAR_OPTIONS });
+  // The year lives in the URL, like the Platform tab's period, so a refresh or a shared link
+  // shows the same plan year. With none chosen the API opens on a year that has targets, so
+  // targets set for next year are there to see; picking a year always writes it to the URL.
+  const [chosenYear, setYear] = useUrlFilter("year", "", { allow: YEAR_OPTIONS });
 
   // Cached per year; the previous year's figures stay on screen while the next loads.
   const { data, isLoading, isFetching, isError, refetch } = useQuery<TargetReport>({
-    queryKey: ["admin", "target-report", year],
+    queryKey: ["admin", "target-report", chosenYear || "auto"],
     queryFn: async () => {
-      const response = await fetch(`/api/admin/target-report?year=${year}`);
+      const response = await fetch(chosenYear ? `/api/admin/target-report?year=${chosenYear}` : "/api/admin/target-report");
       if (!response.ok) throw new Error(`Target report error: ${response.status}`);
       return response.json();
     },
@@ -59,64 +62,61 @@ export default function AdminTargetReportPage() {
     placeholderData: (previous) => previous,
   });
 
-  const count = (value: number) => formatCount(value, undefined, locale);
-  const shareLabel = (progress: Progress) => {
-    const share = percentOf(progress);
-    return share === null ? t("noTarget") : t("percentOfTarget", { percent: share });
-  };
+  const year = data ? String(data.year) : chosenYear || currentYear;
   const managementHref = `/${locale}/admin/target-management?year=${year}`;
-  const yearOptions = data?.years.map(String) ?? [currentYear];
+  const yearOptions = data?.years.map(String) ?? [year];
 
   const kpis: ReportKpi[] = [];
   if (data) {
-    const { employers, employees, finance, people } = data.totals;
-    const money = (value: number, notation: "standard" | "compact" = "standard") => finance.currency
-      ? formatCount(value, { style: "currency", currency: finance.currency, notation, maximumFractionDigits: 0 }, locale)
-      : count(value);
+    const { profit, drivers, people } = data.totals;
+    const money = (value: number, notation: "standard" | "compact" = "standard") => formatProfit(value, profit.currency, locale, notation);
+    const share = percentOf(profit.achieved, profit.target);
+    const started = people.total - people.notStarted;
+    const commissionShare = percentOf(drivers.commissionCost, drivers.revenue);
     kpis.push(
       {
-        key: "employers",
-        label: t("metricEmployers"),
-        value: `${count(employers.achieved)} / ${count(employers.target)}`,
-        phoneValue: count(employers.achieved),
-        detail: t("kpiEmployersDetail"),
-        footer: <ProgressFooter progress={employers} label={shareLabel(employers)} />,
-        dot: "bg-blue-500",
+        key: "profit",
+        label: t("metricProfit"),
+        value: money(profit.achieved),
+        phoneValue: money(profit.achieved, "compact"),
+        detail: profit.target > 0 ? t("kpiProfitDetail", { target: money(profit.target) }) : t("kpiProfitNoTarget"),
+        footer: <ProgressFooter share={share} label={share === null ? t("noTarget") : t("percentOfTarget", { percent: share })} />,
+        note: profit.others.length > 0 ? t("profitOtherCurrencies", { count: profit.others.length }) : null,
+        dot: "bg-emerald-500",
+        tone: "workspace-tone-emerald",
+        icon: CircleDollarSign,
+        href: managementHref,
+      },
+      {
+        key: "revenue",
+        label: t("metricRevenue"),
+        value: money(drivers.revenue),
+        phoneValue: money(drivers.revenue, "compact"),
+        detail: t("kpiRevenueDetail"),
+        dot: "bg-sky-500",
         tone: "workspace-tone-sky",
-        icon: Building2,
+        icon: Wallet,
         href: managementHref,
       },
       {
-        key: "employees",
-        label: t("metricEmployees"),
-        value: `${count(employees.achieved)} / ${count(employees.target)}`,
-        phoneValue: count(employees.achieved),
-        detail: t("kpiEmployeesDetail"),
-        footer: <ProgressFooter progress={employees} label={shareLabel(employees)} />,
-        dot: "bg-violet-500",
-        tone: "workspace-tone-violet",
-        icon: UserCheck,
-        href: managementHref,
-      },
-      {
-        key: "finance",
-        label: t("metricFinance"),
-        value: money(finance.achieved),
-        phoneValue: money(finance.achieved, "compact"),
-        detail: finance.target > 0 ? t("kpiFinanceDetail", { target: money(finance.target) }) : t("kpiFinanceNoTarget"),
-        footer: <ProgressFooter progress={finance} label={shareLabel(finance)} />,
-        note: finance.others.length > 0 ? t("financeOtherCurrencies", { count: finance.others.length }) : null,
+        key: "commission",
+        label: t("metricCommission"),
+        value: money(drivers.commissionCost),
+        phoneValue: money(drivers.commissionCost, "compact"),
+        detail: commissionShare === null ? t("kpiCommissionDetail") : t("kpiCommissionShare", { percent: commissionShare }),
         dot: "bg-amber-500",
         tone: "workspace-tone-amber",
-        icon: CircleDollarSign,
+        icon: Receipt,
         href: managementHref,
       },
       {
         key: "pace",
         label: t("kpiOnPace"),
-        value: `${count(people.onPace + people.achieved)} / ${count(people.total)}`,
-        phoneValue: count(people.onPace + people.achieved),
-        detail: t("kpiOnPaceDetail", { expected: data.expectedProgress, year: data.year }),
+        value: `${formatCount(people.onPace + people.achieved, undefined, locale)} / ${formatCount(started, undefined, locale)}`,
+        phoneValue: formatCount(people.onPace + people.achieved, undefined, locale),
+        detail: started === 0 && people.total > 0
+          ? t("kpiNotStarted", { year: data.year })
+          : t("kpiOnPaceDetail", { expected: data.expectedProgress, year: data.year }),
         footer: (
           <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${people.behind > 0 ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
             {t("behindCount", { count: people.behind })}
@@ -140,18 +140,7 @@ export default function AdminTargetReportPage() {
         compactOnMobile
         title={t("title")}
         description={t("description", { year })}
-        actions={(
-          <Select value={year} onValueChange={setYear}>
-            <SelectTrigger aria-label={t("yearLabel")} className="h-10 w-[8.5rem] rounded-xl border-border/70 bg-background/90 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {(yearOptions.includes(year) ? yearOptions : [year, ...yearOptions]).map((option) => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        actions={<TargetYearSelect value={year} onChange={setYear} label={t("yearLabel")} years={yearOptions} />}
       />
 
       {isError && !data ? (
@@ -177,7 +166,7 @@ export default function AdminTargetReportPage() {
               className="xl:col-span-7"
               monthly={data.monthly}
               year={data.year}
-              currency={data.totals.finance.currency}
+              currency={data.totals.profit.currency}
               locale={locale}
             />
             <BehindPaceList
@@ -189,7 +178,21 @@ export default function AdminTargetReportPage() {
             />
           </div>
 
-          <TargetPeopleTable people={data.people} year={data.year} locale={locale} />
+          <section className={reportCardClassName} aria-label={t("sourcesTitle")}>
+            <ReportCardHeader
+              title={t("sourcesTitle")}
+              description={t("sourcesDescription")}
+              icon={Briefcase}
+              tone="workspace-tone-violet"
+            />
+            <IncomeSourcesList
+              byCategory={data.byCategory}
+              currency={data.totals.profit.currency ?? "AED"}
+              emptyLabel={t("noSources", { year: data.year })}
+            />
+          </section>
+
+          <TargetReportList key={data.year} people={data.people} year={data.year} locale={locale} />
         </div>
       )}
     </div>

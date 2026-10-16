@@ -3,9 +3,10 @@ import Interview from "@/models/Interview";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import Placement from "@/models/Placement";
-import TargetProfile from "@/models/TargetProfile";
+import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
 import User from "@/models/User";
 import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
+import { targetPace } from "@/lib/targets/pace";
 import type { DashboardPeriod } from "./period";
 import { ACTIVE_JOB_FILTER, getUserRoleCounts } from "./shared.server";
 import type { AgentOperations, EmployerHealth, PeopleOverview } from "./types";
@@ -66,14 +67,7 @@ export async function getEmployerHealth(period: DashboardPeriod): Promise<Employ
   };
 }
 
-/**
- * A profile's pace against the year so far — the same `riskScore` the target
- * report computes: behind when more than 10 points under the expected share.
- */
-export function targetPace(profile: { overallProgress: number; riskScore: "high" | "medium" | "low" }): "behind" | "onPace" | "achieved" {
-  if (profile.overallProgress >= 100) return "achieved";
-  return profile.riskScore === "low" ? "onPace" : "behind";
-}
+export { targetPace };
 
 export async function getAgentOperations(period: DashboardPeriod): Promise<AgentOperations> {
   const { now, start } = period;
@@ -82,7 +76,7 @@ export async function getAgentOperations(period: DashboardPeriod): Promise<Agent
   const [activeAgents, signedInThisWeek, profiles, candidatesSourced, interviewsArranged, placements] = await Promise.all([
     User.countDocuments(liveAccounts("agent")),
     User.countDocuments({ ...liveAccounts("agent"), lastLogin: { $gte: weekAgo } }),
-    TargetProfile.find({ status: "active", year: now.getFullYear() }).lean(),
+    TargetProfile.find({ ...PROFIT_TARGET_FILTER, status: "active", year: now.getFullYear() }).lean(),
     JobSeeker.countDocuments({ isAgentReferred: true, createdAt: { $gte: start } }),
     Interview.countDocuments({ agentId: { $ne: null }, createdAt: { $gte: start } }),
     Placement.countDocuments({ agentId: { $ne: null }, placedAt: { $gte: start } }),

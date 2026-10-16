@@ -63,13 +63,13 @@ describe("periodChange", () => {
 
 describe("targetPace", () => {
   it("puts a finished target in achieved whatever its risk", () => {
-    expect(targetPace({ overallProgress: 100, riskScore: "high" })).toBe("achieved");
+    expect(targetPace({ profitProgress: 100, riskScore: "high" })).toBe("achieved");
   });
 
   it("uses the target report's risk score for the rest", () => {
-    expect(targetPace({ overallProgress: 60, riskScore: "low" })).toBe("onPace");
-    expect(targetPace({ overallProgress: 60, riskScore: "medium" })).toBe("behind");
-    expect(targetPace({ overallProgress: 10, riskScore: "high" })).toBe("behind");
+    expect(targetPace({ profitProgress: 60, riskScore: "low" })).toBe("onPace");
+    expect(targetPace({ profitProgress: 60, riskScore: "medium" })).toBe("behind");
+    expect(targetPace({ profitProgress: 10, riskScore: "high" })).toBe("behind");
   });
 });
 

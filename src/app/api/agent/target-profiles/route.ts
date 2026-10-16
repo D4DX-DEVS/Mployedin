@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
-import TargetProfile from "@/models/TargetProfile";
+import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
 import { enrichProfile, enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
 import User from "@/models/User";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
 /* ------------------------------------------------------------------ */
-/*  GET  /api/agent/target-profiles — agent's own targets + leaderboard*/
+/*  GET  /api/agent/target-profiles — agent's own target + leaderboard */
 /* ------------------------------------------------------------------ */
 async function handler(req: NextRequest, ctx: AuthCtx) {
+  if (ctx.role !== "agent") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   await connectDB();
 
   const { searchParams } = new URL(req.url);
@@ -21,6 +24,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
   if (view === "own") {
     const profile = await TargetProfile.findOne({
+      ...PROFIT_TARGET_FILTER,
       assigneeId: ctx.userId,
       year,
       assigneeRole: "agent",
@@ -42,20 +46,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     const monthlyTarget = enriched.monthlyAchievements.find((m) => m.month === currentMonth);
 
     const dailyGoals = monthlyTarget
-      ? {
-          employer: Math.ceil(Math.max(0, monthlyTarget.employerTarget - monthlyTarget.employerAchieved) / remainingDays),
-          employee: Math.ceil(Math.max(0, monthlyTarget.employeeTarget - monthlyTarget.employeeAchieved) / remainingDays),
-          finance: Math.ceil(Math.max(0, monthlyTarget.financeTarget - monthlyTarget.financeAchieved) / remainingDays),
-        }
+      ? { profit: Math.ceil(Math.max(0, monthlyTarget.profitTarget - monthlyTarget.profitAchieved) / remainingDays) }
       : null;
 
-    const weeklyGoals = dailyGoals
-      ? {
-          employer: dailyGoals.employer * 5,
-          employee: dailyGoals.employee * 5,
-          finance: dailyGoals.finance * 5,
-        }
-      : null;
+    const weeklyGoals = dailyGoals ? { profit: dailyGoals.profit * 5 } : null;
 
     return NextResponse.json({
       profile: enriched,
@@ -65,9 +59,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     });
   }
 
-  // Leaderboard — agents in the same distributed target group only
+  // Leaderboard — agents in the same distributed target group only. It ranks
+  // by progress against each agent's own target, so it motivates without
+  // exposing anyone's profit amounts, targets or reports.
   if (view === "leaderboard") {
     const ownProfile = await TargetProfile.findOne({
+      ...PROFIT_TARGET_FILTER,
       assigneeId: ctx.userId,
       year,
       assigneeRole: "agent",
@@ -79,6 +76,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     }
 
     const allAgentProfiles = await TargetProfile.find({
+      ...PROFIT_TARGET_FILTER,
       year,
       assigneeRole: "agent",
       status: "active",
@@ -89,30 +87,22 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
     const userIds = [...new Set(allAgentProfiles.map((p) => String(p.assigneeId)))];
     const users = await User.find({ _id: { $in: userIds } })
-      .select("_id name email")
+      .select("_id name")
       .lean();
     const userMap = new Map(users.map((u) => [String(u._id), u]));
 
     const enriched = await enrichProfiles(allAgentProfiles as unknown as Record<string, unknown>[]);
     const ranked = enriched
-      .map((p) => {
-        const user = userMap.get(p.assigneeId);
-        return {
-          _id: p._id,
-          assigneeId: p.assigneeId,
-          assigneeName: user?.name ?? "Unknown",
-          overallProgress: p.overallProgress,
-          employerProgress: p.employerProgress,
-          employeeProgress: p.employeeProgress,
-          financeProgress: p.financeProgress,
-          riskScore: p.riskScore,
-          incentiveTier: p.incentiveTier,
-        };
-      })
-      .sort((a, b) => b.overallProgress - a.overallProgress)
-      .map((r, i) => ({ ...r, rank: i + 1 }));
+      .map((p) => ({
+        assigneeId: p.assigneeId,
+        assigneeName: userMap.get(p.assigneeId)?.name ?? "Unknown",
+        profitProgress: p.profitProgress,
+        incentiveTier: p.incentiveTier,
+      }))
+      .sort((a, b) => b.profitProgress - a.profitProgress || a.assigneeName.localeCompare(b.assigneeName))
+      .map((r, i) => ({ ...r, rank: i + 1, isMe: r.assigneeId === ctx.userId }));
 
-    const myRank = ranked.find((r) => r.assigneeId === ctx.userId);
+    const myRank = ranked.find((r) => r.isMe);
 
     return NextResponse.json({
       leaderboard: ranked.slice(0, 20),

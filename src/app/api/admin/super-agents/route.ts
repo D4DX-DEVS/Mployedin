@@ -4,7 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
-import TargetProfile from "@/models/TargetProfile";
+import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
 import "@/models/City";
 import "@/models/State";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -26,7 +26,7 @@ interface DirectoryTargetProfileSummary {
   id: string;
   year: number;
   region?: string;
-  overallProgress: number;
+  profitProgress: number;
   riskScore: "high" | "medium" | "low";
 }
 
@@ -168,6 +168,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       }
 
       const targetProfiles = await TargetProfile.find({
+        ...PROFIT_TARGET_FILTER,
         assigneeId: { $in: userIds },
         assigneeRole: "super_agent",
         year: targetYear,
@@ -185,7 +186,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
             id: profile._id,
             year: profile.year,
             region: profile.region,
-            overallProgress: profile.overallProgress,
+            profitProgress: profile.profitProgress,
             riskScore: profile.riskScore,
           },
         ])

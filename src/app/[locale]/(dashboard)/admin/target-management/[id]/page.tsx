@@ -1,125 +1,62 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  CompactProgress, RiskBadge, PerformanceBadge, KpiCard,
-  TargetSummaryCard, MonthlyDistributionGrid, TargetEmptyState,
-  ProgressRing,
-} from "@/components/features/targets/TargetComponents";
-import {
-  ArrowLeft, Building2, Users, DollarSign, Target, TrendingUp,
-  Clock, CalendarDays, UsersRound, Activity, MapPin, Eye,
-} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { formatCount } from "@/lib/ui/intlFormat";
+import { ArrowLeft, MapPin, Target } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { TargetEmptyState } from "@/components/features/targets/TargetComponents";
+import { ProfitReportView } from "@/components/features/targets/ProfitReportView";
+import type { TargetReport } from "@/lib/targets/profitReport";
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-interface MonthlyAchievement {
-  month: number;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  overallProgress: number;
-}
-
-interface ProfileDetail {
-  _id: string;
+interface ProfileHeader {
   assigneeName: string;
   assigneeEmail: string;
   assigneeRole: string;
   year: number;
   region?: string;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  currency: string;
   distributionStrategy: string;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  employerProgress: number;
-  employeeProgress: number;
-  financeProgress: number;
-  overallProgress: number;
-  employerPending: number;
-  employeePending: number;
-  financePending: number;
-  riskScore: "high" | "medium" | "low";
-  monthlyAchievements: MonthlyAchievement[];
   status: string;
   notes?: string;
-  createdAt: string;
 }
 
-interface AgentProfile {
-  _id: string;
-  assigneeId: string;
-  assigneeName: string;
-  assigneeEmail: string;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  employerProgress: number;
-  employeeProgress: number;
-  financeProgress: number;
-  overallProgress: number;
-  riskScore: "high" | "medium" | "low";
-  status: string;
+async function getJson<T>(url: string): Promise<T | null> {
+  const res = await fetch(url);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Target error: ${res.status}`);
+  return res.json();
 }
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
+/** One profit target as admin sees it: who it is for, and the same report that person (or their super agent) gets. */
 export default function AdminTargetProfileDetailPage() {
-  const t = useTranslations("targets");
+  const t = useTranslations("profitTargets");
   const params = useParams();
+  const router = useRouter();
   const locale = (params.locale as string) || "en";
   const id = params.id as string;
 
-  const [profile, setProfile] = useState<ProfileDetail | null>(null);
-  const [agentProfiles, setAgentProfiles] = useState<AgentProfile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const header = useQuery({
+    queryKey: ["admin", "target-profile", id],
+    queryFn: async () => (await getJson<{ profile: ProfileHeader }>(`/api/admin/target-profiles/${id}`))?.profile ?? null,
+  });
+  const report = useQuery({
+    queryKey: ["admin", "target-report", "profile", id],
+    queryFn: async () => (await getJson<{ report: TargetReport }>(`/api/admin/target-report?profileId=${id}`))?.report ?? null,
+  });
 
-  const fetchProfile = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/admin/target-profiles/${id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(data.profile);
-        setAgentProfiles(data.agentProfiles ?? []);
-      } else {
-        toast.error(t("profileNotFound"));
-      }
-    } catch {
-      toast.error(t("failedToLoadProfile"));
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+  const back = (
+    <Link
+      href={`/${locale}/admin/target-management`}
+      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <ArrowLeft className="h-4 w-4" /> {t("backToTargets")}
+    </Link>
+  );
 
-  useEffect(() => { fetchProfile(); }, [fetchProfile]);
-
-  if (loading) {
+  if (header.isLoading || report.isLoading) {
     return (
       <div className="page-container">
         <div className="h-8 w-40 animate-pulse rounded-xl bg-muted" />
@@ -128,7 +65,21 @@ export default function AdminTargetProfileDetailPage() {
     );
   }
 
-  if (!profile) {
+  if (header.isError || report.isError) {
+    return (
+      <div className="page-container">
+        {back}
+        <ErrorState
+          title={t("failedToLoadProfile")}
+          onRetry={() => { void header.refetch(); void report.refetch(); }}
+          retryLabel={t("retry")}
+        />
+      </div>
+    );
+  }
+
+  const profile = header.data;
+  if (!profile || !report.data) {
     return (
       <div className="page-container">
         <TargetEmptyState
@@ -147,16 +98,9 @@ export default function AdminTargetProfileDetailPage() {
 
   return (
     <div className="page-container">
-      {/* Back */}
-      <Link
-        href={`/${locale}/admin/target-management`}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" /> {t("backToTargets")}
-      </Link>
+      {back}
 
-      {/* Header */}
-      <div className="workspace-glass-panel rounded-2xl panel-body">
+      <div className="workspace-glass-panel panel-body rounded-2xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">
             <div className="workspace-tone-sky rounded-2xl p-3.5">
@@ -165,16 +109,16 @@ export default function AdminTargetProfileDetailPage() {
             <div>
               <h1 className="page-header-title font-semibold tracking-tight">{profile.assigneeName}</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {profile.year} · {profile.assigneeRole === "super_agent" ? t("supervisorHeader") : t("agentDescription")} · {profile.assigneeEmail}
+                {profile.year} · {profile.assigneeRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")} · {profile.assigneeEmail}
               </p>
-              <div className="mt-1 flex items-center gap-2 flex-wrap">
+              <div className="mt-1 flex flex-wrap items-center gap-2">
                 {profile.region && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
                     <MapPin className="h-3 w-3" /> {profile.region}
                   </span>
                 )}
-                <span className="text-xs text-muted-foreground capitalize">
-                  Strategy: {profile.distributionStrategy}
+                <span className="text-xs text-muted-foreground">
+                  {t("strategyValue", { strategy: t(`strategy_${profile.distributionStrategy}`) })}
                 </span>
               </div>
               {profile.notes && (
@@ -182,148 +126,14 @@ export default function AdminTargetProfileDetailPage() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <StatusBadge status={profile.status} />
-            <RiskBadge risk={profile.riskScore} />
-          </div>
-        </div>
-
-        {/* Overall progress */}
-        <div className="mt-6 flex items-center gap-4">
-          <Progress value={Math.min(profile.overallProgress, 100)} className="h-3 flex-1" />
-          <span className={`text-lg font-bold tabular-nums ${
-            profile.overallProgress >= 75 ? "text-emerald-600" :
-            profile.overallProgress >= 40 ? "text-amber-600" :
-            "text-muted-foreground"
-          }`}>{profile.overallProgress}%</span>
+          <StatusBadge status={profile.status} />
         </div>
       </div>
 
-      {/* Progress rings */}
-      <section className="workspace-glass-panel rounded-2xl panel-body">
-        <div className="flex flex-wrap items-center justify-center gap-8">
-          <ProgressRing
-            value={profile.employerProgress}
-            label={t("employerLabel")}
-            sublabel={`${profile.employerAchieved}/${profile.employerTarget}`}
-          />
-          <ProgressRing
-            value={profile.employeeProgress}
-            label={t("employeeLabel")}
-            sublabel={`${profile.employeeAchieved}/${profile.employeeTarget}`}
-          />
-          <ProgressRing
-            value={profile.financeProgress}
-            label={t("financeLabel")}
-            sublabel={`${profile.currency} ${formatCount(profile.financeAchieved)}/${formatCount(profile.financeTarget)}`}
-          />
-          <ProgressRing
-            value={profile.overallProgress}
-            label={t("labelOverall")}
-            sublabel={t("labelOverall")}
-            color="#3b82f6"
-          />
-        </div>
-      </section>
-
-      {/* Target Summary Cards */}
-      <TargetSummaryCard
-        employerTarget={profile.employerTarget}
-        employeeTarget={profile.employeeTarget}
-        financeTarget={profile.financeTarget}
-        employerAchieved={profile.employerAchieved}
-        employeeAchieved={profile.employeeAchieved}
-        financeAchieved={profile.financeAchieved}
-        currency={profile.currency}
+      <ProfitReportView
+        report={report.data}
+        onSelectAgent={(agent) => router.push(`/${locale}/admin/target-management/${agent.profileId}`)}
       />
-
-      {/* Monthly Breakdown */}
-      {profile.monthlyAchievements.length > 0 && (
-        <section className="space-y-4">
-          <div>
-            <h2 className="heading-section font-semibold tracking-tight">{t("monthlyBreakdown")}</h2>
-            <p className="text-sm text-muted-foreground">{t("monthlyBreakdownDescription")}</p>
-          </div>
-          <MonthlyDistributionGrid
-            months={profile.monthlyAchievements}
-            currency={profile.currency}
-          />
-        </section>
-      )}
-
-      {/* Agent Team Breakdown */}
-      {agentProfiles.length > 0 && (
-        <section className="space-y-4">
-          <div>
-            <h2 className="heading-section font-semibold tracking-tight">{t("teamBreakdownTitle")}</h2>
-            <p className="text-sm text-muted-foreground">
-              {t("teamBreakdownDescription")}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-border/60 bg-card overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> {t("employer")}</div>
-                  </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {t("employee")}</div>
-                  </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                    <div className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> {t("finance")}</div>
-                  </TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("performance")}</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("risk")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {agentProfiles.map((agent) => (
-                  <TableRow key={agent._id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{agent.assigneeName}</p>
-                        <p className="text-xs text-muted-foreground">{agent.assigneeEmail}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <CompactProgress
-                        achieved={agent.employerAchieved}
-                        target={agent.employerTarget}
-                        progress={agent.employerProgress}
-                        type="employer"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <CompactProgress
-                        achieved={agent.employeeAchieved}
-                        target={agent.employeeTarget}
-                        progress={agent.employeeProgress}
-                        type="employee"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <CompactProgress
-                        achieved={agent.financeAchieved}
-                        target={agent.financeTarget}
-                        progress={agent.financeProgress}
-                        type="finance"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <PerformanceBadge pct={agent.overallProgress} />
-                    </TableCell>
-                    <TableCell>
-                      <RiskBadge risk={agent.riskScore} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
-      )}
     </div>
   );
 }

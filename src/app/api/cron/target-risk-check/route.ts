@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { verifyCronRequest } from "@/lib/security/cron-auth";
-import TargetProfile from "@/models/TargetProfile";
+import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
 import Notification from "@/models/Notification";
-import { enrichProfile } from "@/lib/targets/profileAchievementCalculator";
-import { notifyTargetAtRisk, notifyTargetMilestone } from "@/lib/notifications/trigger";
+import User from "@/models/User";
+import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
+import { notifyTargetAtRisk, notifyTargetMilestone, notifyTeamTargetAtRisk } from "@/lib/notifications/trigger";
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 50;
 
 export const maxDuration = 300;
-
-function chunk<T>(items: T[], size: number): T[][] {
-  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
-    items.slice(index * size, index * size + size)
-  );
-}
 
 export async function GET(req: NextRequest) {
   const authError = verifyCronRequest(req);
@@ -24,26 +19,42 @@ export async function GET(req: NextRequest) {
 
   const now = new Date();
   const year = now.getFullYear();
-  const expectedProgress = Math.round(((now.getMonth() + 1) / 12) * 100);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-  const profiles = await TargetProfile.find({
-    year,
-    status: "active",
-  })
-    .limit(2000)
-    .lean();
 
   let processed = 0;
   let atRiskAlerted = 0;
   let milestoneAlerted = 0;
   const errors: string[] = [];
 
-  for (const batch of chunk(profiles, BATCH_SIZE)) {
-    const enrichedBatch = await Promise.all(
-      batch.map((profile) => enrichProfile(profile as unknown as Record<string, unknown>))
-    );
+  // Every active profile of the year, a page at a time: each page costs a fixed
+  // number of queries, and nothing past the first N is silently skipped.
+  let lastId: unknown = null;
+  for (;;) {
+    const batch = await TargetProfile.find({
+      ...PROFIT_TARGET_FILTER,
+      year,
+      status: "active",
+      ...(lastId ? { _id: { $gt: lastId } } : {}),
+    })
+      .sort({ _id: 1 })
+      .limit(BATCH_SIZE)
+      .lean();
+    if (batch.length === 0) break;
+    lastId = batch[batch.length - 1]._id;
+
+    const enrichedBatch = await enrichProfiles(batch as unknown as Record<string, unknown>[]);
+
+    // The super agent who funded each at-risk agent, told alongside the agent.
+    const atRiskAgents = enrichedBatch.filter((p) => p.riskScore === "high" && p.assigneeRole === "agent" && p.parentProfileId);
+    const parents = atRiskAgents.length
+      ? await TargetProfile.find({ _id: { $in: atRiskAgents.map((p) => p.parentProfileId) } }).select("assigneeId").lean()
+      : [];
+    const supervisorByParent = new Map(parents.map((parent) => [String(parent._id), String(parent.assigneeId)]));
+    const agentUsers = atRiskAgents.length
+      ? await User.find({ _id: { $in: atRiskAgents.map((p) => p.assigneeId) } }).select("_id name").lean()
+      : [];
+    const agentNames = new Map(agentUsers.map((user) => [String(user._id), user.name as string]));
 
     for (const profile of enrichedBatch) {
       processed += 1;
@@ -61,10 +72,30 @@ export async function GET(req: NextRequest) {
               profile.assigneeId,
               profile.assigneeRole as "agent" | "super_agent",
               profile._id,
-              profile.overallProgress,
-              expectedProgress
+              profile.profitProgress,
+              profile.expectedProgress
             );
             atRiskAlerted += 1;
+          }
+
+          const supervisorId = profile.parentProfileId ? supervisorByParent.get(profile.parentProfileId) : undefined;
+          if (supervisorId) {
+            const told = await Notification.findOne({
+              userId: supervisorId,
+              type: "target_at_risk",
+              "meta.profileId": profile._id,
+              createdAt: { $gte: sevenDaysAgo },
+            }).lean();
+
+            if (!told) {
+              await notifyTeamTargetAtRisk(
+                supervisorId,
+                agentNames.get(profile.assigneeId) ?? "An agent",
+                profile._id,
+                profile.profitProgress,
+                profile.expectedProgress
+              );
+            }
           }
         }
 
@@ -82,7 +113,7 @@ export async function GET(req: NextRequest) {
               profile.assigneeRole as "agent" | "super_agent",
               profile._id,
               "platinum",
-              profile.overallProgress
+              profile.profitProgress
             );
             milestoneAlerted += 1;
           }

@@ -1,15 +1,20 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Progress } from "@/components/ui/progress";
 import {
-  Building2, Users, DollarSign, AlertTriangle, CheckCircle2,
-  Clock, TrendingUp, TrendingDown, Target, Zap, Award, Medal,
+  AlertTriangle, CheckCircle2, Clock, TrendingUp, TrendingDown, Target, Zap, Award, Medal,
 } from "lucide-react";
-import { formatCount } from "@/lib/ui/intlFormat";
+import { resolveIntlLocale } from "@/lib/ui/intlFormat";
 import { cn } from "@/lib/utils";
+import { formatProfit, monthName } from "./profitFormat";
 
 export type IncentiveTier = "none" | "bronze" | "silver" | "gold" | "platinum";
+
+/** Green from 75%, amber from 40%, red below: one scale for every progress figure. */
+function progressTone(progress: number) {
+  return progress >= 75 ? "text-emerald-600" : progress >= 40 ? "text-amber-600" : "text-red-500";
+}
 
 /* ------------------------------------------------------------------ */
 /*  Compact Progress Cell (table cell with achieved/target + bar)      */
@@ -19,32 +24,23 @@ interface CompactProgressProps {
   achieved: number;
   target: number;
   progress: number;
-  type?: "employer" | "employee" | "finance";
   currency?: string;
   className?: string;
 }
 
-export function CompactProgress({
-  achieved, target, progress, type, currency = "AED", className = "",
-}: CompactProgressProps) {
-  const isFinance = type === "finance";
-  const fmt = (v: number) =>
-    isFinance ? `${currency} ${formatCount(v)}` : formatCount(v);
-  const color =
-    progress >= 75 ? "text-emerald-600" :
-    progress >= 40 ? "text-amber-600" :
-    "text-red-500";
+export function CompactProgress({ achieved, target, progress, currency = "AED", className = "" }: CompactProgressProps) {
+  const locale = useLocale();
 
   return (
     <div className={cn("space-y-1 min-w-[120px]", className)}>
       <div className="flex items-baseline gap-1 tabular-nums">
-        <span className="text-sm font-semibold">{fmt(achieved)}</span>
-        <span className="text-[11px] text-muted-foreground">/ {fmt(target)}</span>
+        <span className="text-sm font-semibold">{formatProfit(achieved, currency, locale)}</span>
+        <span className="text-[11px] text-muted-foreground">/ {formatProfit(target, currency, locale)}</span>
       </div>
       <div className="flex items-center gap-2">
         {/* Up to 4rem, down to 2rem when a crowded table passes `min-w-0`. */}
         <Progress value={Math.min(progress, 100)} className="h-1.5 min-w-8 max-w-16" />
-        <span className={`shrink-0 text-[11px] font-bold tabular-nums ${color}`}>{progress}%</span>
+        <span className={`shrink-0 text-[11px] font-bold tabular-nums ${progressTone(progress)}`}>{progress}%</span>
       </div>
     </div>
   );
@@ -155,41 +151,6 @@ export function PerformanceBadge({ pct }: { pct: number }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Target Type Icon                                                   */
-/* ------------------------------------------------------------------ */
-
-const TYPE_ICON_MAP = {
-  employer: Building2,
-  employee: Users,
-  finance: DollarSign,
-} as const;
-
-const TYPE_TONE_MAP = {
-  employer: "workspace-tone-sky",
-  employee: "workspace-tone-emerald",
-  finance: "workspace-tone-amber",
-} as const;
-
-export function TargetTypeIcon({
-  type,
-  size = "md",
-}: {
-  type: "employer" | "employee" | "finance";
-  size?: "sm" | "md" | "lg";
-}) {
-  const Icon = TYPE_ICON_MAP[type];
-  const tone = TYPE_TONE_MAP[type];
-  const sizeClass = size === "sm" ? "p-1.5" : size === "lg" ? "p-3.5" : "p-2.5";
-  const iconSize = size === "sm" ? "h-3.5 w-3.5" : size === "lg" ? "h-6 w-6" : "h-5 w-5";
-
-  return (
-    <div className={`${tone} rounded-2xl ${sizeClass}`}>
-      <Icon className={iconSize} />
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /*  KPI Stat Card                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -210,11 +171,11 @@ export function KpiCard({
   return (
     <div className="workspace-glass-panel card-pad rounded-2xl">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {label}
           </p>
-          <p className="mt-2 text-3xl font-semibold tracking-tight text-primary">
+          <p className="mt-2 break-words text-3xl font-semibold tracking-tight text-primary">
             {value}
           </p>
           {subtext && (
@@ -232,87 +193,49 @@ export function KpiCard({
             </div>
           )}
         </div>
-        <div className={`${toneClassName} rounded-2xl p-2.5`}>{icon}</div>
+        <div className={`${toneClassName} shrink-0 rounded-2xl p-2.5`}>{icon}</div>
       </div>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Unified Target Summary Card (employer + employee + finance)        */
+/*  Profit Target Summary Card (assigned / achieved / balance)         */
 /* ------------------------------------------------------------------ */
 
 interface TargetSummaryCardProps {
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
+  profitTarget: number;
+  profitAchieved: number;
   currency?: string;
-  compact?: boolean;
 }
 
-export function TargetSummaryCard({
-  employerTarget, employeeTarget, financeTarget,
-  employerAchieved, employeeAchieved, financeAchieved,
-  currency = "AED", compact = false,
-}: TargetSummaryCardProps) {
+export function TargetSummaryCard({ profitTarget, profitAchieved, currency = "AED" }: TargetSummaryCardProps) {
   const t = useTranslations("targetComponents");
-  const types = [
-    { type: "employer" as const, target: employerTarget, achieved: employerAchieved },
-    { type: "employee" as const, target: employeeTarget, achieved: employeeAchieved },
-    { type: "finance" as const, target: financeTarget, achieved: financeAchieved },
-  ];
+  const locale = useLocale();
+  const progress = profitTarget > 0 ? Math.min(Math.round((profitAchieved / profitTarget) * 100), 999) : 0;
+  const pending = Math.max(0, profitTarget - profitAchieved);
+  const fmt = (value: number) => formatProfit(value, currency, locale);
 
   return (
-    <div className={`grid gap-3 ${compact ? "sm:grid-cols-3" : "sm:grid-cols-1 lg:grid-cols-3"}`}>
-      {types.map(({ type, target: tgt, achieved }) => {
-        const pct = tgt > 0 ? Math.min(Math.round((achieved / tgt) * 100), 999) : 0;
-        const pending = Math.max(0, tgt - achieved);
-        const isFinance = type === "finance";
-        const fmt = (v: number) =>
-          isFinance ? `${currency} ${formatCount(v)}` : formatCount(v);
-
-        return (
-          <div key={type} className="workspace-glass-panel card-pad rounded-xl">
-            <div className="flex items-center gap-2 mb-3">
-              <TargetTypeIcon type={type} size="sm" />
-              <span className="text-sm font-semibold capitalize">{type}</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-sm mb-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("assigned")}
-                </p>
-                <p className="font-semibold tabular-nums">{fmt(tgt)}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("achieved")}
-                </p>
-                <p className="font-semibold tabular-nums text-primary">{fmt(achieved)}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("balance")}
-                </p>
-                <p className="font-semibold tabular-nums text-amber-600">
-                  {fmt(pending)}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Progress value={Math.min(pct, 100)} className="h-2 flex-1" />
-              <span className={`text-xs font-bold tabular-nums ${
-                pct >= 75 ? "text-emerald-600" :
-                pct >= 40 ? "text-amber-600" :
-                "text-red-500"
-              }`}>{pct}%</span>
-            </div>
-          </div>
-        );
-      })}
+    <div className="workspace-glass-panel card-pad rounded-xl">
+      <div className="mb-3 grid grid-cols-3 gap-2 text-sm">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("assigned")}</p>
+          <p className="font-semibold tabular-nums">{fmt(profitTarget)}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("achieved")}</p>
+          <p className="font-semibold tabular-nums text-primary">{fmt(profitAchieved)}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("balance")}</p>
+          <p className="font-semibold tabular-nums text-amber-600">{fmt(pending)}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Progress value={Math.min(progress, 100)} className="h-2 flex-1" />
+        <span className={`text-xs font-bold tabular-nums ${progressTone(progress)}`}>{progress}%</span>
+      </div>
     </div>
   );
 }
@@ -384,29 +307,22 @@ export function ProgressRing({
 /*  Monthly Distribution Grid                                          */
 /* ------------------------------------------------------------------ */
 
-const MONTHS_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-interface MonthlyAchievementData {
+interface MonthlyProfit {
   month: number;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  overallProgress: number;
+  profitTarget: number;
+  profitAchieved: number;
+  profitProgress: number;
 }
 
 export function MonthlyDistributionGrid({
   months,
   currency = "AED",
 }: {
-  months: MonthlyAchievementData[];
+  months: MonthlyProfit[];
   currency?: string;
 }) {
+  const t = useTranslations("targetComponents");
+  const locale = resolveIntlLocale(useLocale());
   const currentMonth = new Date().getMonth() + 1;
 
   return (
@@ -417,45 +333,27 @@ export function MonthlyDistributionGrid({
         return (
           <div
             key={m.month}
-            className={`workspace-glass-panel rounded-xl transition-all ${ isCurrent ? "ring-2 ring-primary/30" : "" } ${isPast && m.overallProgress < 50 ? "border-red-500/20" : ""} chip-pad`}
+            className={`workspace-glass-panel rounded-xl transition-all ${ isCurrent ? "ring-2 ring-primary/30" : "" } ${isPast && m.profitTarget > 0 && m.profitProgress < 50 ? "border-red-500/20" : ""} chip-pad`}
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-semibold text-muted-foreground">
-                {MONTHS_SHORT[m.month - 1]}
+                {monthName(m.month, locale)}
               </p>
               {isCurrent && (
                 <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                  <Zap className="h-2.5 w-2.5" /> Now
+                  <Zap className="h-2.5 w-2.5" /> {t("now")}
                 </span>
               )}
             </div>
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Emp:</span>
-                <span className="font-semibold tabular-nums">
-                  {m.employerAchieved}/{m.employerTarget}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Empl:</span>
-                <span className="font-semibold tabular-nums">
-                  {m.employeeAchieved}/{m.employeeTarget}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Fin:</span>
-                <span className="font-semibold tabular-nums">
-                  {currency} {formatCount(m.financeAchieved)}/{formatCount(m.financeTarget)}
-                </span>
-              </div>
-            </div>
+            <p className="text-sm font-semibold tabular-nums">{formatProfit(m.profitAchieved, currency, locale)}</p>
+            <p className="text-[11px] tabular-nums text-muted-foreground">
+              {t("ofTarget", { target: formatProfit(m.profitTarget, currency, locale) })}
+            </p>
             <div className="mt-2 flex items-center gap-2">
-              <Progress value={Math.min(m.overallProgress, 100)} className="h-1.5 flex-1" />
-              <span className={`text-[11px] font-bold tabular-nums ${
-                m.overallProgress >= 75 ? "text-emerald-600" :
-                m.overallProgress >= 40 ? "text-amber-600" :
-                "text-muted-foreground"
-              }`}>{m.overallProgress}%</span>
+              <Progress value={Math.min(m.profitProgress, 100)} className="h-1.5 flex-1" />
+              <span className={`text-[11px] font-bold tabular-nums ${m.profitProgress >= 40 ? progressTone(m.profitProgress) : "text-muted-foreground"}`}>
+                {m.profitProgress}%
+              </span>
             </div>
           </div>
         );
@@ -494,58 +392,6 @@ export function RankBadge({ rank }: { rank: number }) {
     <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-muted text-[11px] font-bold tabular-nums text-muted-foreground">
       #{rank}
     </span>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Quarter Card                                                       */
-/* ------------------------------------------------------------------ */
-
-interface QuarterData {
-  label: string;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-}
-
-export function QuarterlyBreakdownGrid({
-  quarters,
-  currency = "AED",
-}: {
-  quarters: QuarterData[];
-  currency?: string;
-}) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {quarters.map((q) => (
-        <div key={q.label} className="workspace-glass-panel card-pad rounded-xl">
-          <p className="text-sm font-semibold text-primary mb-3">{q.label}</p>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground">Employer</span>
-              </div>
-              <span className="font-semibold tabular-nums">{formatCount(q.employerTarget)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground">Employee</span>
-              </div>
-              <span className="font-semibold tabular-nums">{formatCount(q.employeeTarget)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground">Finance</span>
-              </div>
-              <span className="font-semibold tabular-nums">{currency} {formatCount(q.financeTarget)}</span>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 

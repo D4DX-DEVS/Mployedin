@@ -1,56 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
-import TargetProfile, { type ITargetProfile } from "@/models/TargetProfile";
+import TargetProfile, { PROFIT_TARGET_FILTER, type ITargetProfile } from "@/models/TargetProfile";
 import { validateBody } from "@/lib/validators";
 import {
   targetProfileCreateSchema,
   targetProfileBulkCreateSchema,
+  targetProfileBulkTabularSchema,
   targetProfileCloneSchema,
 } from "@/lib/validators/targetProfiles";
-import { financeTotals } from "@/lib/targets/financeTotals";
+import { profitTotals } from "@/lib/targets/profitTotals";
 import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
 import {
-  generateMonthlyDistribution,
-  validateDistributionSum,
-} from "@/lib/targets/distributionStrategies";
+  cloneSchedule,
+  fromStoredPeriods,
+  resolveSchedule,
+  toStoredPeriods,
+  type PeriodType,
+  type SchedulePeriod,
+  type SplitStrategy,
+} from "@/lib/targets/schedule";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notifyTargetAssigned } from "@/lib/notifications/trigger";
 import User from "@/models/User";
+import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import type { TargetProfileSortField } from "@/lib/targets/profileSortFields";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
-interface AnnualTargets {
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
-}
-
-interface MonthlyTargetInput extends AnnualTargets {
-  month: number;
-}
-
-function resolveMonthlyTargets(
-  annualTargets: AnnualTargets,
-  distributionStrategy: "equal" | "custom" | "seasonal",
-  monthlyTargets?: MonthlyTargetInput[],
-): { monthlyTargets: MonthlyTargetInput[] } | { error: string; details: string[] } {
-  const resolvedMonthlyTargets = monthlyTargets ?? generateMonthlyDistribution(
-    annualTargets,
-    distributionStrategy,
-  );
-
-  const validation = validateDistributionSum(annualTargets, resolvedMonthlyTargets);
-  if (!validation.valid) {
-    return {
-      error: "Monthly distribution must equal annual targets",
-      details: validation.errors,
-    };
-  }
-
-  return { monthlyTargets: resolvedMonthlyTargets };
+/** The schedule a request asks for, checked; a sound one is stored as dates, a bad one is reported. */
+function scheduleFor(input: {
+  year: number;
+  profitTarget: number;
+  periodType?: PeriodType;
+  strategy?: SplitStrategy;
+  periods?: SchedulePeriod[];
+}) {
+  return resolveSchedule({
+    year: input.year,
+    profitTarget: input.profitTarget,
+    periodType: input.periodType ?? "monthly",
+    strategy: input.strategy ?? "equal",
+    periods: input.periods,
+  });
 }
 
 function isDuplicateKeyError(error: unknown): boolean {
@@ -65,10 +58,9 @@ function isDuplicateKeyError(error: unknown): boolean {
 interface SortableRow {
   assigneeName: string;
   teamSize: number;
-  employerProgress: number;
-  employeeProgress: number;
-  financeProgress: number;
-  overallProgress: number;
+  profitTarget: number;
+  profitAchieved: number;
+  profitProgress: number;
   riskScore: "high" | "medium" | "low";
 }
 
@@ -78,10 +70,9 @@ const RISK_RANK: Record<SortableRow["riskScore"], number> = { low: 1, medium: 2,
 const SORTERS: Record<TargetProfileSortField, (a: SortableRow, b: SortableRow) => number> = {
   name: (a, b) => a.assigneeName.localeCompare(b.assigneeName, undefined, { sensitivity: "base" }),
   teamSize: (a, b) => a.teamSize - b.teamSize,
-  employerProgress: (a, b) => a.employerProgress - b.employerProgress,
-  employeeProgress: (a, b) => a.employeeProgress - b.employeeProgress,
-  financeProgress: (a, b) => a.financeProgress - b.financeProgress,
-  overallProgress: (a, b) => a.overallProgress - b.overallProgress,
+  profitTarget: (a, b) => a.profitTarget - b.profitTarget,
+  profitAchieved: (a, b) => a.profitAchieved - b.profitAchieved,
+  profitProgress: (a, b) => a.profitProgress - b.profitProgress,
   risk: (a, b) => RISK_RANK[a.riskScore] - RISK_RANK[b.riskScore],
 };
 
@@ -130,7 +121,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "50")));
 
-  const query: Record<string, unknown> = { year };
+  const query: Record<string, unknown> = { ...PROFIT_TARGET_FILTER, year };
   if (status && status !== "all") query.status = status;
   if (region) query.region = region;
   if (assigneeRole && assigneeRole !== "all") query.assigneeRole = assigneeRole;
@@ -148,16 +139,21 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     .lean();
   const userMap = new Map(users.map((u) => [String(u._id), u]));
 
-  // Get team sizes
+  // Team size is the agents who point at the super agent, the same team the reports use.
   const saIds = profiles
     .filter((p) => p.assigneeRole === "super_agent")
     .map((p) => String(p.assigneeId));
-  const saDocs = await SuperAgent.find({ userId: { $in: saIds } })
-    .select("userId agentIds")
-    .lean();
-  const teamSizeMap = new Map(
-    saDocs.map((sa) => [String(sa.userId), (sa.agentIds ?? []).length])
-  );
+  const saDocs = saIds.length
+    ? await SuperAgent.find({ userId: { $in: saIds } }).select("_id userId").lean()
+    : [];
+  const teamCounts = saDocs.length
+    ? await Agent.aggregate<{ _id: unknown; count: number }>([
+        { $match: { superAgentId: { $in: saDocs.map((sa) => sa._id) } } },
+        { $group: { _id: "$superAgentId", count: { $sum: 1 } } },
+      ])
+    : [];
+  const countBySaDoc = new Map(teamCounts.map((row) => [String(row._id), row.count]));
+  const teamSizeMap = new Map(saDocs.map((sa) => [String(sa.userId), countBySaDoc.get(String(sa._id)) ?? 0]));
 
   // Enrich with achievements
   const enriched = await enrichProfiles(profiles as unknown as Record<string, unknown>[]);
@@ -172,23 +168,20 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     };
   });
 
+  // A super agent's profit already covers their agents', so only top-level
+  // profiles add up; an agent whose parent is not in the list stands alone.
+  const listedIds = new Set(allRows.map((r) => r._id));
+  const topLevel = allRows.filter((r) => !r.parentProfileId || !listedIds.has(r.parentProfileId));
+
   // Aggregated totals
   const totals = {
     totalProfiles: allRows.length,
     supervisors: allRows.filter((r) => r.assigneeRole === "super_agent").length,
     totalTeamSize: allRows.reduce((s, r) => s + r.teamSize, 0),
-    employer: {
-      target: allRows.reduce((s, r) => s + r.employerTarget, 0),
-      achieved: allRows.reduce((s, r) => s + r.employerAchieved, 0),
-    },
-    employee: {
-      target: allRows.reduce((s, r) => s + r.employeeTarget, 0),
-      achieved: allRows.reduce((s, r) => s + r.employeeAchieved, 0),
-    },
-    // One currency at a time: this used to add INR plans to AED ones.
-    finance: financeTotals(allRows),
-    avgPerformance: allRows.length > 0
-      ? Math.round(allRows.reduce((s, r) => s + r.overallProgress, 0) / allRows.length)
+    // One currency at a time: INR plans are never added to AED ones.
+    profit: profitTotals(topLevel),
+    avgProgress: allRows.length > 0
+      ? Math.round(allRows.reduce((s, r) => s + r.profitProgress, 0) / allRows.length)
       : 0,
     riskBreakdown: {
       high: allRows.filter((r) => r.riskScore === "high").length,
@@ -201,9 +194,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const filteredRows = allRows.filter((row) => {
     if (risk && risk !== "all" && row.riskScore !== risk) return false;
     if (completion && completion !== "all") {
-      const stage = row.overallProgress >= 100
+      const stage = row.profitProgress >= 100
         ? "completed"
-        : row.overallProgress > 0 ? "in_progress" : "not_started";
+        : row.profitProgress > 0 ? "in_progress" : "not_started";
       if (stage !== completion) return false;
     }
     if (!search) return true;
@@ -223,7 +216,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  POST  /api/admin/target-profiles — create unified profile          */
+/*  POST  /api/admin/target-profiles — create profit targets           */
+/*  Admin sets super-agent targets; agents are funded by their super   */
+/*  agent through /api/super-agent/target-profiles?action=distribute.  */
 /* ------------------------------------------------------------------ */
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "admin") {
@@ -234,7 +229,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const url = new URL(req.url);
   const action = url.searchParams.get("action");
 
-  // Bulk create
+  // Bulk create: the same target for several super agents
   if (action === "bulk") {
     const body = await validateBody(req, targetProfileBulkCreateSchema);
     const eligibleAssigneeIds = await getEligibleAssigneeIds(body.assigneeIds, body.assigneeRole);
@@ -246,22 +241,16 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       );
     }
 
-    const annualTargets = {
-      employerTarget: body.employerTarget,
-      employeeTarget: body.employeeTarget,
-      financeTarget: body.financeTarget,
-    };
-    const monthlyResolution = resolveMonthlyTargets(
-      annualTargets,
-      body.distributionStrategy ?? "equal",
-      body.monthlyTargets,
-    );
+    const schedule = scheduleFor({
+      year: body.year,
+      profitTarget: body.profitTarget,
+      periodType: body.periodType,
+      strategy: body.distributionStrategy,
+      periods: body.periods,
+    });
 
-    if ("error" in monthlyResolution) {
-      return NextResponse.json(
-        { error: monthlyResolution.error, details: monthlyResolution.details },
-        { status: 400 },
-      );
+    if ("error" in schedule) {
+      return NextResponse.json({ error: schedule.error, details: schedule.details }, { status: 400 });
     }
 
     const results = [];
@@ -288,12 +277,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
           assignedBy: ctx.userId,
           year: body.year,
           region: body.region,
-          employerTarget: body.employerTarget,
-          employeeTarget: body.employeeTarget,
-          financeTarget: body.financeTarget,
+          profitTarget: body.profitTarget,
           currency: body.currency ?? "AED",
+          periodType: body.periodType,
           distributionStrategy: body.distributionStrategy ?? "equal",
-          monthlyTargets: monthlyResolution.monthlyTargets,
+          periods: toStoredPeriods(schedule.periods),
           notes: body.notes,
           status: "active",
         });
@@ -332,30 +320,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }, { status: 201 });
   }
 
-  // Bulk tabular: each supervisor gets individual targets
+  // Bulk tabular: each supervisor gets an individual target
   if (action === "bulk-tabular") {
-    const rawBody = await req.json();
-    const { assigneeIds, assigneeRole, year, currency, targets } = rawBody as {
-      assigneeIds: string[];
-      assigneeRole: "super_agent" | "agent";
-      year: number;
-      currency?: string;
-      targets: Array<{
-        assigneeId: string;
-        employerTarget: number;
-        employeeTarget: number;
-        financeTarget: number;
-        currency?: string;
-        distributionStrategy?: "equal" | "custom" | "seasonal";
-        monthlyTargets?: MonthlyTargetInput[];
-      }>;
-    };
+    const { year, assigneeRole, currency, region, targets } = await validateBody(req, targetProfileBulkTabularSchema);
 
-    if (!assigneeIds?.length || !targets?.length || !year) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    const eligibleIds = await getEligibleAssigneeIds(assigneeIds, assigneeRole);
+    const eligibleIds = await getEligibleAssigneeIds(targets.map((target) => target.assigneeId), assigneeRole);
     const results = [];
     const skippedDetails: Array<{ assigneeId: string; reason: string }> = [];
 
@@ -377,18 +346,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         continue;
       }
 
-      const annualTargets: AnnualTargets = {
-        employerTarget: target.employerTarget,
-        employeeTarget: target.employeeTarget,
-        financeTarget: target.financeTarget,
-      };
-      const monthlyResolution = resolveMonthlyTargets(
-        annualTargets,
-        target.distributionStrategy ?? "equal",
-        target.monthlyTargets,
-      );
+      const schedule = scheduleFor({
+        year,
+        profitTarget: target.profitTarget,
+        periodType: target.periodType,
+        strategy: target.distributionStrategy,
+        periods: target.periods,
+      });
 
-      if ("error" in monthlyResolution) {
+      if ("error" in schedule) {
         skippedDetails.push({ assigneeId: target.assigneeId, reason: "distribution_invalid" });
         continue;
       }
@@ -399,12 +365,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
           assigneeRole,
           assignedBy: ctx.userId,
           year,
-          employerTarget: target.employerTarget,
-          employeeTarget: target.employeeTarget,
-          financeTarget: target.financeTarget,
-          currency: target.currency ?? currency ?? "AED",
-          distributionStrategy: target.distributionStrategy ?? "custom",
-          monthlyTargets: monthlyResolution.monthlyTargets,
+          region,
+          profitTarget: target.profitTarget,
+          currency: target.currency ?? currency,
+          periodType: target.periodType ?? "monthly",
+          distributionStrategy: target.distributionStrategy ?? "equal",
+          periods: toStoredPeriods(schedule.periods),
+          notes: target.notes,
           status: "active",
         });
         results.push(profile);
@@ -445,6 +412,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   if (action === "clone") {
     const body = await validateBody(req, targetProfileCloneSchema);
     const sourceProfiles = await TargetProfile.find({
+      ...PROFIT_TARGET_FILTER,
       year: body.sourceYear,
       status: "active",
       assigneeRole: "super_agent",
@@ -468,13 +436,16 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       }).lean();
       if (existing) continue;
 
-      const empT = Math.round(src.employerTarget * adj);
-      const emplT = Math.round(src.employeeTarget * adj);
-      const finT = Math.round(src.financeTarget * adj);
+      const profitTarget = Math.round(src.profitTarget * adj * 100) / 100;
 
-      const monthlyTargets = generateMonthlyDistribution(
-        { employerTarget: empT, employeeTarget: emplT, financeTarget: finT },
-        (src.distributionStrategy as "equal" | "custom" | "seasonal") ?? "equal"
+      const cloned_ = cloneSchedule(
+        {
+          periodType: (src.periodType as PeriodType | undefined) ?? "monthly",
+          strategy: (src.distributionStrategy as SplitStrategy | undefined) ?? "equal",
+          periods: fromStoredPeriods(src.periods),
+        },
+        body.targetYear,
+        profitTarget,
       );
 
       const profile = await TargetProfile.create({
@@ -483,12 +454,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         assignedBy: ctx.userId,
         year: body.targetYear,
         region: src.region,
-        employerTarget: empT,
-        employeeTarget: emplT,
-        financeTarget: finT,
+        profitTarget,
         currency: src.currency,
-        distributionStrategy: src.distributionStrategy,
-        monthlyTargets,
+        periodType: src.periodType ?? "monthly",
+        distributionStrategy: cloned_.strategy,
+        periods: toStoredPeriods(cloned_.periods),
         notes: `Cloned from ${body.sourceYear} with ${body.adjustmentPct ?? 0}% adjustment`,
         status: "active",
       });
@@ -539,21 +509,16 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     );
   }
 
-  const monthlyResolution = resolveMonthlyTargets(
-    {
-      employerTarget: body.employerTarget,
-      employeeTarget: body.employeeTarget,
-      financeTarget: body.financeTarget,
-    },
-    body.distributionStrategy ?? "equal",
-    body.monthlyTargets,
-  );
+  const schedule = scheduleFor({
+    year: body.year,
+    profitTarget: body.profitTarget,
+    periodType: body.periodType,
+    strategy: body.distributionStrategy,
+    periods: body.periods,
+  });
 
-  if ("error" in monthlyResolution) {
-    return NextResponse.json(
-      { error: monthlyResolution.error, details: monthlyResolution.details },
-      { status: 400 },
-    );
+  if ("error" in schedule) {
+    return NextResponse.json({ error: schedule.error, details: schedule.details }, { status: 400 });
   }
 
   let profile: ITargetProfile;
@@ -561,7 +526,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     profile = await TargetProfile.create({
       ...body,
       assignedBy: ctx.userId,
-      monthlyTargets: monthlyResolution.monthlyTargets,
+      periods: toStoredPeriods(schedule.periods),
       status: "active",
     });
   } catch (error) {
@@ -582,9 +547,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     resourceId: String(profile._id),
     meta: {
       year: body.year,
-      employerTarget: body.employerTarget,
-      employeeTarget: body.employeeTarget,
-      financeTarget: body.financeTarget,
+      profitTarget: body.profitTarget,
       assigneeId: body.assigneeId,
     },
     req,

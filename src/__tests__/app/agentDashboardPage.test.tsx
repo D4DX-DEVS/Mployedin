@@ -154,6 +154,7 @@ const monthlyAchievementsMock = jest.fn();
 
 jest.mock("@/models/TargetProfile", () => ({
   __esModule: true,
+  PROFIT_TARGET_FILTER: { targetType: "profit" },
   default: { findOne: (...args: unknown[]) => targetFindOneMock(...args) },
 }));
 jest.mock("@/models/Commission", () => ({
@@ -165,6 +166,7 @@ jest.mock("@/lib/targets/profileAchievementCalculator", () => ({
 }));
 
 const THIS_MONTH = new Date().getMonth() + 1;
+const THIS_YEAR = new Date().getFullYear();
 
 describe("AgentDashboard", () => {
   beforeEach(() => {
@@ -172,14 +174,16 @@ describe("AgentDashboard", () => {
     targetFindOneMock.mockReturnValue({
       select: () => ({
         lean: async () => ({
-          monthlyTargets: [{ month: THIS_MONTH, employerTarget: 1, employeeTarget: 6, financeTarget: 6250 }],
+          currency: "AED",
+          // An annual target: the tile reads this month's share of it by days.
+          periods: [{ startDate: new Date(Date.UTC(THIS_YEAR, 0, 1)), endDate: new Date(Date.UTC(THIS_YEAR, 11, 31)), profitTarget: 75000 }],
         }),
       }),
     });
     commissionAggregateMock.mockReset();
     commissionAggregateMock.mockResolvedValue([{ total: 1500 }]);
     monthlyAchievementsMock.mockReset();
-    monthlyAchievementsMock.mockResolvedValue([{ month: THIS_MONTH, overallProgress: 42 }]);
+    monthlyAchievementsMock.mockResolvedValue([{ month: THIS_MONTH, profitProgress: 42 }]);
     authMock.mockReset();
     redirectMock.mockReset();
     connectDBMock.mockReset();
@@ -328,10 +332,10 @@ describe("AgentDashboard", () => {
     expect(within(accounts).getByRole("link", { name: /view all/i })).toHaveAttribute("href", "/en/agent/employers?view=assigned");
     expect(screen.getByRole("link", { name: "Live Roles: 1" })).toHaveAttribute("href", "/en/agent/jobs?status=active");
     expect(screen.getByRole("link", { name: "Target this month: 42%" })).toHaveAttribute("href", "/en/agent/target-report");
-    expect(targetFindOneMock).toHaveBeenCalledWith(expect.objectContaining({ assigneeId: "user-1", assigneeRole: "agent", status: "active" }));
+    expect(targetFindOneMock).toHaveBeenCalledWith(expect.objectContaining({ targetType: "profit", assigneeId: "user-1", assigneeRole: "agent", status: "active" }));
     expect(monthlyAchievementsMock).toHaveBeenCalledWith("user-1", "agent", new Date().getFullYear(), [
       expect.objectContaining({ month: THIS_MONTH }),
-    ]);
+    ], "AED");
     const commission = screen.getByRole("link", { name: /^Commission this month: / });
     expect(commission).toHaveTextContent("1,500");
     expect(commission.getAttribute("href")).toMatch(/^\/en\/agent\/commissions\?dateFrom=\d{4}-\d{2}-01&dateTo=\d{4}-\d{2}-\d{2}$/);

@@ -18,9 +18,14 @@ import {
   RankBadge, CompletionStage, IncentiveTierBadge,
 } from "@/components/features/targets/TargetComponents";
 import {
-  Plus, Building2, Users, DollarSign, Crosshair, CalendarDays, Eye, Trash2, UsersRound, Activity, ShieldAlert, BarChart3, Download, Copy, TrendingUp, MapPin, Award, SplitSquareVertical,
+  Plus, CircleDollarSign, Crosshair, Eye, Trash2, UsersRound, Activity, ShieldAlert, BarChart3, Download, Copy, TrendingUp, MapPin, Award, SplitSquareVertical, Pencil,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { TargetYearSelect } from "@/components/features/targets/TargetYearSelect";
+import { TargetScheduleEditor } from "@/components/features/targets/TargetScheduleEditor";
+import { formatProfit } from "@/components/features/targets/profitFormat";
+import { draftFromProfile, draftIssues, withAmount, type ScheduleDraft } from "@/lib/targets/scheduleDraft";
+import type { PeriodType, SchedulePeriod } from "@/lib/targets/schedule";
 import { useConfirm } from "@/hooks/useConfirm";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -28,7 +33,6 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { TARGET_PROFILE_SORT_FIELDS, type TargetProfileSortField } from "@/lib/targets/profileSortFields";
-import { formatCount } from "@/lib/ui/intlFormat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -42,37 +46,28 @@ interface EnrichedProfile {
   assigneeRole: string;
   year: number;
   region?: string;
-  employerTarget: number;
-  employeeTarget: number;
-  financeTarget: number;
+  profitTarget: number;
   currency: string;
   distributionStrategy: string;
-  monthlyTargets: { month: number; employerTarget: number; employeeTarget: number; financeTarget: number }[];
-  employerAchieved: number;
-  employeeAchieved: number;
-  financeAchieved: number;
-  employerProgress: number;
-  employeeProgress: number;
-  financeProgress: number;
-  overallProgress: number;
-  employerPending: number;
-  employeePending: number;
-  financePending: number;
+  periodType: PeriodType;
+  periods: SchedulePeriod[];
+  profitAchieved: number;
+  profitProgress: number;
+  profitPending: number;
   riskScore: "high" | "medium" | "low";
   incentiveTier: "none" | "bronze" | "silver" | "gold" | "platinum";
   teamSize: number;
   status: string;
+  notes?: string;
 }
 
 interface Totals {
   totalProfiles: number;
   supervisors: number;
   totalTeamSize: number;
-  employer: { target: number; achieved: number };
-  employee: { target: number; achieved: number };
   /** Main currency only; other currencies are listed in `others`, never added in. */
-  finance: { currency: string | null; target: number; achieved: number; others: { currency: string; target: number; achieved: number }[] };
-  avgPerformance: number;
+  profit: { currency: string | null; target: number; achieved: number; others: { currency: string; target: number; achieved: number }[] };
+  avgProgress: number;
   riskBreakdown: { high: number; medium: number; low: number };
   regions: string[];
 }
@@ -82,18 +77,14 @@ interface LeaderboardEntry {
   _id: string;
   assigneeId: string;
   assigneeName: string;
-  overallProgress: number;
-  employerProgress: number;
-  employeeProgress: number;
-  financeProgress: number;
+  profitProgress: number;
   riskScore: "high" | "medium" | "low";
-  incentiveTier: "none" | "bronze" | "silver" | "gold" | "platinum";
 }
 
 interface UnderperformerEntry {
   _id: string;
   assigneeName: string;
-  overallProgress: number;
+  profitProgress: number;
   expectedProgress: number;
   gap: number;
   riskScore: "high" | "medium" | "low";
@@ -116,7 +107,9 @@ const SORT_FIELDS: string[] = [...TARGET_PROFILE_SORT_FIELDS];
 /* ------------------------------------------------------------------ */
 
 export default function AdminTargetManagementPage() {
-  const t = useTranslations("targets");
+  const t = useTranslations("profitTargets");
+  const tr = useTranslations("profitReport");
+  const intlLocale = useLocale();
   const tc = useTranslations("common");
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pathname = usePathname();
@@ -150,6 +143,12 @@ export default function AdminTargetManagementPage() {
   const [reassignReason, setReassignReason] = useState("");
   const [reassignOptions, setReassignOptions] = useState<ReassignSupervisorOption[]>([]);
   const [reassignLoading, setReassignLoading] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [cloneAdjustment, setCloneAdjustment] = useState("0");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editDraft, setEditDraft] = useState<ScheduleDraft | null>(null);
+  const [editNotes, setEditNotes] = useState("");
 
   // Analytics
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -256,10 +255,9 @@ export default function AdminTargetManagementPage() {
     { value: "dateAdded", label: t("sortDateAdded") },
     { value: "name", label: t("supervisorHeader") },
     { value: "teamSize", label: t("teamHeader") },
-    { value: "employerProgress", label: t("employerHeader") },
-    { value: "employeeProgress", label: t("employeeHeader") },
-    { value: "financeProgress", label: t("financeHeader") },
-    { value: "overallProgress", label: t("performanceHeader") },
+    { value: "profitTarget", label: t("targetHeader") },
+    { value: "profitAchieved", label: t("achievedHeader") },
+    { value: "profitProgress", label: t("performanceHeader") },
     { value: "risk", label: t("riskHeader") },
   ];
   const sortHeader = (field: TargetProfileSortField, label: string) => (
@@ -278,6 +276,11 @@ export default function AdminTargetManagementPage() {
   };
 
   const handleClone = async () => {
+    const adjustmentPct = Number(cloneAdjustment);
+    if (!Number.isFinite(adjustmentPct) || adjustmentPct < -100 || adjustmentPct > 500) {
+      toast.error(t("cloneAdjustmentInvalid"));
+      return;
+    }
     try {
       const res = await csrfFetch(`/api/admin/target-profiles?action=clone`, {
         method: "POST",
@@ -285,12 +288,13 @@ export default function AdminTargetManagementPage() {
         body: JSON.stringify({
           sourceYear: yearFilter - 1,
           targetYear: yearFilter,
-          adjustmentPct: 10,
+          adjustmentPct,
         }),
       });
       if (res.ok) {
         const data = await res.json();
         toast.success(t("profilesCloned", { count: data.cloned, year: yearFilter - 1 }));
+        setCloneOpen(false);
         fetchProfiles();
       } else {
         const err = await res.json();
@@ -309,6 +313,50 @@ export default function AdminTargetManagementPage() {
     setReassigningId(null);
     setReassignAssigneeId("");
     setReassignReason("");
+  };
+
+  const openEdit = (profile: EnrichedProfile) => {
+    setEditingId(profile._id);
+    setEditAmount(String(profile.profitTarget));
+    setEditDraft(draftFromProfile(profile));
+    setEditNotes(profile.notes ?? "");
+  };
+
+  const handleEdit = async () => {
+    if (!editingId || !editDraft || !editingTarget) return;
+    const profitTarget = Number(editAmount);
+    if (!Number.isFinite(profitTarget) || profitTarget < 0) {
+      toast.error(t("amountInvalid"));
+      return;
+    }
+    if (draftIssues(editDraft, editingTarget.year, profitTarget).length > 0) {
+      toast.error(t("scheduleInvalidToast"));
+      return;
+    }
+    try {
+      const res = await csrfFetch(`/api/admin/target-profiles/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profitTarget,
+          periodType: editDraft.periodType,
+          distributionStrategy: editDraft.strategy,
+          periods: editDraft.periods,
+          notes: editNotes.trim(),
+        }),
+      });
+      if (res.ok) {
+        toast.success(t("profileUpdated"));
+        setEditingId(null);
+        fetchProfiles();
+        fetchAnalytics();
+        return;
+      }
+      const err = await res.json();
+      toast.error(err.error ?? t("failedToUpdate"));
+    } catch {
+      toast.error(t("failedToUpdate"));
+    }
   };
 
   const handleReassign = async () => {
@@ -342,15 +390,13 @@ export default function AdminTargetManagementPage() {
 
   const handleExport = () => {
     const csvRows = [
-      [t("csvHeaderSupervisor"), t("csvHeaderEmail"), t("csvHeaderRegion"), t("csvHeaderTeamSize"), t("csvHeaderCurrency"), t("csvHeaderEmployerTarget"), t("csvHeaderEmployerAchieved"), t("csvHeaderEmployeeTarget"), t("csvHeaderEmployeeAchieved"), t("csvHeaderFinanceTarget"), t("csvHeaderFinanceAchieved"), t("csvHeaderOverallPercent"), t("csvHeaderRisk")].join(","),
+      [t("csvHeaderSupervisor"), t("csvHeaderEmail"), t("csvHeaderRegion"), t("csvHeaderTeamSize"), t("csvHeaderCurrency"), t("csvHeaderProfitTarget"), t("csvHeaderProfitAchieved"), t("csvHeaderProgressPercent"), t("csvHeaderRisk")].join(","),
       ...filteredProfiles.map((r) =>
         [
           `"${r.assigneeName}"`, `"${r.assigneeEmail}"`, `"${r.region ?? ""}"`, r.teamSize,
           r.currency ?? "AED",
-          r.employerTarget, r.employerAchieved,
-          r.employeeTarget, r.employeeAchieved,
-          r.financeTarget, r.financeAchieved,
-          r.overallProgress, r.riskScore,
+          r.profitTarget, r.profitAchieved,
+          r.profitProgress, r.riskScore,
         ].join(",")
       ),
     ];
@@ -365,16 +411,15 @@ export default function AdminTargetManagementPage() {
   };
 
   const reassignTarget = profiles.find((profile) => profile._id === reassigningId) ?? null;
-  /* The finance total is in one currency, named by the API. It used to be a
-     sum over every currency, labelled with whatever the first row's was. */
-  const financeAmount = (value: number, notation: "standard" | "compact" = "standard") => totals?.finance.currency
-    ? formatCount(value, { style: "currency", currency: totals.finance.currency, notation, maximumFractionDigits: notation === "compact" ? 1 : 0 }, locale)
-    : formatCount(value, { notation }, locale);
-  const financeRatio = (notation: "standard" | "compact") =>
-    `${financeAmount(totals?.finance.achieved ?? 0, notation)} / ${financeAmount(totals?.finance.target ?? 0, notation)}`;
-  // Phones: bare compact numbers. Even "AED 0 / AED 612K" is wider than a third
-  // of the strip; the currency is named in the line under the risk chips.
-  const financeRatioPhone = `${formatCount(totals?.finance.achieved ?? 0, { notation: "compact", maximumFractionDigits: 1 }, locale)} / ${formatCount(totals?.finance.target ?? 0, { notation: "compact", maximumFractionDigits: 1 }, locale)}`;
+  const editingTarget = profiles.find((profile) => profile._id === editingId) ?? null;
+  /* The profit total is in one currency, named by the API: plans in other
+     currencies are listed beside it and never added in. */
+  const profitAmount = (value: number, notation: "standard" | "compact" = "standard") =>
+    formatProfit(value, totals?.profit.currency, intlLocale, notation);
+  const profitRatio = (notation: "standard" | "compact") =>
+    `${profitAmount(totals?.profit.achieved ?? 0, notation)} / ${profitAmount(totals?.profit.target ?? 0, notation)}`;
+  // Phones: bare compact numbers; the currency is named in the line under the risk chips.
+  const profitRatioPhone = `${formatProfit(totals?.profit.achieved ?? 0, null, intlLocale, "compact")} / ${formatProfit(totals?.profit.target ?? 0, null, intlLocale, "compact")}`;
 
   return (
     <div className="page-container">
@@ -391,16 +436,14 @@ export default function AdminTargetManagementPage() {
         description={t("description")}
         metrics={[
           { label: t("supervisorCount"), value: totals?.supervisors ?? 0, note: t("totalAgentsNote", { count: totals?.totalTeamSize ?? 0 }), icon: UsersRound, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
-          { label: t("employerMetric"), value: `${formatCount(totals?.employer.achieved ?? 0)} / ${formatCount(totals?.employer.target ?? 0)}`, note: t("balanceNote", { value: formatCount(Math.max(0, (totals?.employer.target ?? 0) - (totals?.employer.achieved ?? 0))) }), icon: Building2, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
-          { label: t("employeeMetric"), value: `${formatCount(totals?.employee.achieved ?? 0)} / ${formatCount(totals?.employee.target ?? 0)}`, note: t("balanceNote", { value: formatCount(Math.max(0, (totals?.employee.target ?? 0) - (totals?.employee.achieved ?? 0))) }), icon: Users, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
-          { label: t("financeMetric"), value: (
+          { label: t("profitMetric"), value: (
             // A full amount pair is wider than a third of a phone screen.
             <>
-              <span className="sm:hidden">{financeRatioPhone}</span>
-              <span className="hidden sm:inline">{financeRatio("standard")}</span>
+              <span className="sm:hidden">{profitRatioPhone}</span>
+              <span className="hidden sm:inline">{profitRatio("standard")}</span>
             </>
-          ), note: t("balanceNote", { value: financeAmount(Math.max(0, (totals?.finance.target ?? 0) - (totals?.finance.achieved ?? 0))) }), icon: DollarSign, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
-          { label: t("avgAchievementMetric"), value: `${totals?.avgPerformance ?? 0}%`, icon: Activity, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
+          ), note: t("balanceNote", { value: profitAmount(Math.max(0, (totals?.profit.target ?? 0) - (totals?.profit.achieved ?? 0))) }), icon: CircleDollarSign, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
+          { label: t("avgAchievementMetric"), value: `${totals?.avgProgress ?? 0}%`, icon: Activity, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
           { label: t("activeProfilesLabel"), value: totals?.totalProfiles ?? 0, icon: BarChart3, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
         ]}
         footer={
@@ -409,17 +452,17 @@ export default function AdminTargetManagementPage() {
             <span className="chip-pad rounded-full bg-status-rejected-bg text-xs font-semibold text-status-rejected">{t("riskHighCount", { count: totals?.riskBreakdown.high ?? 0 })}</span>
             <span className="chip-pad rounded-full bg-status-shortlisted-bg text-xs font-semibold text-status-shortlisted">{t("riskMediumCount", { count: totals?.riskBreakdown.medium ?? 0 })}</span>
             <span className="chip-pad rounded-full bg-status-selected-bg text-xs font-semibold text-status-selected">{t("riskLowCount", { count: totals?.riskBreakdown.low ?? 0 })}</span>
-            {totals?.finance.currency && totals.finance.others.length > 0 ? (
-              <span className="text-xs text-muted-foreground" data-finance-other-currencies>
-                {t("financeOtherCurrenciesNote", {
-                  currency: totals.finance.currency,
-                  others: totals.finance.others.map((row) => row.currency).join(", "),
+            {totals?.profit.currency && totals.profit.others.length > 0 ? (
+              <span className="text-xs text-muted-foreground" data-profit-other-currencies>
+                {t("profitOtherCurrenciesNote", {
+                  currency: totals.profit.currency,
+                  others: totals.profit.others.map((row) => row.currency).join(", "),
                 })}
               </span>
-            ) : totals?.finance.currency ? (
+            ) : totals?.profit.currency ? (
               // Wider screens show the currency in the figure itself.
-              <span className="text-xs text-muted-foreground sm:hidden" data-finance-currency>
-                {t("financeCurrencyNote", { currency: totals.finance.currency })}
+              <span className="text-xs text-muted-foreground sm:hidden" data-profit-currency>
+                {t("profitCurrencyNote", { currency: totals.profit.currency })}
               </span>
             ) : null}
           </div>
@@ -466,16 +509,11 @@ export default function AdminTargetManagementPage() {
           onChange={setSearchQuery}
           placeholder={t("searchSupervisors")}
         />
-        <div className="relative">
-          <CalendarDays className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="number"
-            value={yearFilter}
-            onChange={(e) => setYearFilter(parseInt(e.target.value) || currentYear)}
-            className="h-11 w-32 rounded-xl border-border bg-card pl-9 text-sm"
-            aria-label={t("a11yYear")}
-          />
-        </div>
+        <TargetYearSelect
+          value={String(yearFilter)}
+          onChange={(value) => setYearFilter(Number.parseInt(value, 10) || currentYear)}
+          label={t("a11yYear")}
+        />
         {regionOptions.length > 0 && (
           <div className="relative">
             <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -515,7 +553,7 @@ export default function AdminTargetManagementPage() {
           <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleExport} disabled={profiles.length === 0} title={tc("export")}>
             <Download className="h-4 w-4" /> <span className="hidden sm:inline">{tc("export")}</span>
           </Button>
-          <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleClone} title={t("cloneYear", { year: yearFilter - 1 })}>
+          <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={() => setCloneOpen((open) => !open)} aria-expanded={cloneOpen} title={t("cloneYear", { year: yearFilter - 1 })}>
             <Copy className="h-4 w-4" /> <span className="hidden sm:inline">{t("cloneYear", { year: yearFilter - 1 })}</span>
           </Button>
           <Link href={`/${locale}/admin/target-management/create`} className="min-w-0">
@@ -531,6 +569,80 @@ export default function AdminTargetManagementPage() {
       {/* ============= DASHBOARD TAB ============= */}
       {tab === "dashboard" && (
         <>
+          {cloneOpen && (
+            <section className="workspace-glass-panel card-pad rounded-2xl">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">{t("cloneYear", { year: yearFilter - 1 })}</p>
+                  <p className="text-xs text-muted-foreground">{t("cloneHint", { from: yearFilter - 1, to: yearFilter })}</p>
+                </div>
+                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                  {t("cloneAdjustmentLabel")}
+                  <Input
+                    type="number"
+                    min={-100}
+                    max={500}
+                    step={1}
+                    value={cloneAdjustment}
+                    onChange={(event) => setCloneAdjustment(event.target.value)}
+                    className="h-11 rounded-xl lg:w-40"
+                  />
+                </label>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="h-11 rounded-lg" onClick={() => setCloneOpen(false)}>{t("cancelButton")}</Button>
+                  <Button size="sm" className="h-11 rounded-lg" onClick={handleClone}>{t("cloneButton")}</Button>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {editingTarget && editDraft && (
+            <section className="workspace-glass-panel card-pad rounded-2xl">
+              <div className="space-y-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">{t("editTarget")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("editHint", { name: editingTarget.assigneeName, year: editingTarget.year })}
+                    </p>
+                  </div>
+                  <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+                    {t("profitTargetLabel", { currency: editingTarget.currency })}
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={editAmount}
+                      onChange={(event) => {
+                        setEditAmount(event.target.value);
+                        setEditDraft(withAmount(editDraft, editingTarget.year, Number(event.target.value) || 0));
+                      }}
+                      className="h-11 rounded-xl lg:w-48"
+                    />
+                  </label>
+                  <Input
+                    value={editNotes}
+                    onChange={(event) => setEditNotes(event.target.value)}
+                    placeholder={t("notesLabel")}
+                    maxLength={2000}
+                    className="h-11 rounded-xl lg:w-64"
+                  />
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="h-11 rounded-lg" onClick={() => setEditingId(null)}>{t("cancelButton")}</Button>
+                    <Button size="sm" className="h-11 rounded-lg" onClick={handleEdit}>{t("saveButton")}</Button>
+                  </div>
+                </div>
+                <TargetScheduleEditor
+                  draft={editDraft}
+                  year={editingTarget.year}
+                  profitTarget={Number(editAmount) || 0}
+                  currency={editingTarget.currency}
+                  onChange={setEditDraft}
+                />
+              </div>
+            </section>
+          )}
+
           {reassignTarget && (
             <section className="workspace-glass-panel card-pad rounded-2xl">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
@@ -575,11 +687,9 @@ export default function AdminTargetManagementPage() {
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{sortHeader("name", t("supervisorHeader"))}</TableHead>
                   <TableHead className="text-center">{sortHeader("teamSize", t("teamHeader"))}</TableHead>
-                  <TableHead>{sortHeader("employerProgress", t("employerHeader"))}</TableHead>
-                  <TableHead>{sortHeader("employeeProgress", t("employeeHeader"))}</TableHead>
-                  <TableHead>{sortHeader("financeProgress", t("financeHeader"))}</TableHead>
-                  <TableHead>{t("monthlyHeader")}</TableHead>
-                  <TableHead>{sortHeader("overallProgress", t("performanceHeader"))}</TableHead>
+                  <TableHead>{sortHeader("profitProgress", t("profitHeader"))}</TableHead>
+                  <TableHead>{t("scheduleHeader")}</TableHead>
+                  <TableHead>{sortHeader("profitProgress", t("performanceHeader"))}</TableHead>
                   <TableHead>{sortHeader("risk", t("riskHeader"))}</TableHead>
                   <TableHead className="text-end">{t("actionsHeader")}</TableHead>
                 </TableRow>
@@ -588,14 +698,14 @@ export default function AdminTargetManagementPage() {
                 {loading ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 9 }).map((_, j) => (
+                      {Array.from({ length: 7 }).map((_, j) => (
                         <TableCell key={j}><div className="h-4 w-16 animate-pulse rounded bg-muted" /></TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : filteredProfiles.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-16 text-center">
+                    <TableCell colSpan={7} className="py-16 text-center">
                       <TargetEmptyState
                         title={t("noTargets")}
                         description={t("emptyStateTargetProfile")}
@@ -635,39 +745,21 @@ export default function AdminTargetManagementPage() {
                         </TableCell>
                         <TableCell>
                           <CompactProgress
-                            achieved={row.employerAchieved}
-                            target={row.employerTarget}
-                            progress={row.employerProgress}
-                            type="employer"
-                            className="min-w-0"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <CompactProgress
-                            achieved={row.employeeAchieved}
-                            target={row.employeeTarget}
-                            progress={row.employeeProgress}
-                            type="employee"
-                            className="min-w-0"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <CompactProgress
-                            achieved={row.financeAchieved}
-                            target={row.financeTarget}
-                            progress={row.financeProgress}
-                            type="finance"
+                            achieved={row.profitAchieved}
+                            target={row.profitTarget}
+                            progress={row.profitProgress}
                             currency={row.currency}
                             className="min-w-0"
                           />
                         </TableCell>
                         <TableCell>
-                          <span className="text-xs font-medium tabular-nums">
-                            {row.monthlyTargets.length}/12
+                          <span className="text-xs font-medium">
+                            {tr(`period_${row.periodType}`)}
+                            <span className="ms-1 tabular-nums text-muted-foreground">· {row.periods.length}</span>
                           </span>
                         </TableCell>
                         <TableCell>
-                          <PerformanceBadge pct={row.overallProgress} />
+                          <PerformanceBadge pct={row.profitProgress} />
                         </TableCell>
                         <TableCell>
                             <div className="flex flex-col items-start gap-1.5">
@@ -681,6 +773,7 @@ export default function AdminTargetManagementPage() {
                             labelsFrom="wide"
                             quick={[{ key: "view", label: t("a11yViewDetails"), icon: Eye, href: `/${locale}/admin/target-management/${row._id}` }]}
                             menu={[
+                              { key: "edit", label: t("a11yEdit"), icon: Pencil, onSelect: () => openEdit(row) },
                               { key: "reassign", label: t("a11yReassign"), icon: SplitSquareVertical, onSelect: () => openReassign(row._id) },
                               { key: "cancel", label: t("a11yCancel"), icon: Trash2, onSelect: () => handleCancel(row._id), destructive: true },
                             ]}
@@ -717,7 +810,7 @@ export default function AdminTargetManagementPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{u.assigneeName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {u.overallProgress}% vs expected {u.expectedProgress}% ({u.gap}% gap)
+                        {t("underperformerLine", { progress: u.profitProgress, expected: u.expectedProgress, gap: u.gap })}
                       </p>
                     </div>
                     <div className="flex flex-col items-start gap-1.5">
@@ -741,17 +834,14 @@ export default function AdminTargetManagementPage() {
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("rank")}</TableHead>
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("supervisor")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("overall")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("employer")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("employee")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("finance")}</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("progress")}</TableHead>
                   <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("risk")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {leaderboard.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-16 text-center">
+                    <TableCell colSpan={4} className="py-16 text-center">
                       <TargetEmptyState title={t("noLeaderboardData")} description={t("createProfilesToSeeRankings")} />
                     </TableCell>
                   </TableRow>
@@ -765,29 +855,11 @@ export default function AdminTargetManagementPage() {
                         <p className="font-medium">{entry.assigneeName}</p>
                       </TableCell>
                       <TableCell className="text-center">
-                        <PerformanceBadge pct={entry.overallProgress} />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={`text-sm font-semibold tabular-nums ${entry.employerProgress >= 75 ? "text-emerald-600" : entry.employerProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>
-                          {entry.employerProgress}%
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={`text-sm font-semibold tabular-nums ${entry.employeeProgress >= 75 ? "text-emerald-600" : entry.employeeProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>
-                          {entry.employeeProgress}%
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={`text-sm font-semibold tabular-nums ${entry.financeProgress >= 75 ? "text-emerald-600" : entry.financeProgress >= 40 ? "text-amber-600" : "text-red-500"}`}>
-                          {entry.financeProgress}%
-                        </span>
+                        <PerformanceBadge pct={entry.profitProgress} />
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center">
-                          <div className="flex flex-col items-start gap-1.5">
-                            <RiskBadge risk={entry.riskScore} />
-                            <IncentiveTierBadge tier={entry.incentiveTier ?? "none"} />
-                          </div>
+                          <RiskBadge risk={entry.riskScore} />
                         </div>
                       </TableCell>
                     </TableRow>
