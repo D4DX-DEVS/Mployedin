@@ -13,7 +13,7 @@ import ExhibitionRequest, {
 import User from "@/models/User";
 import { sendEmail } from "@/lib/communications/email";
 import logger from "@/lib/logger";
-import { canMove, isStepBack, superAgentOwnsCurrentDecision } from "@/lib/exhibitions/transitions";
+import { canMove, editNeedsReason, eventHasStarted, isClosedStatus } from "@/lib/exhibitions/transitions";
 import { validateSupportItems } from "@/lib/exhibitions/supportItems";
 import { withSignedAttachments } from "@/lib/exhibitions/attachments";
 import { parseCompletionReport, parseReviewerEdits } from "@/lib/exhibitions/reviewerEdits";
@@ -21,7 +21,7 @@ import { parseCompletionReport, parseReviewerEdits } from "@/lib/exhibitions/rev
 /** Statuses that require a non-empty statusReason — enforced backend-side */
 const REASON_REQUIRED: ExhibitionRequestStatus[] = ["rejected", "revision_requested"];
 
-/** A super agent edits the request's facts only before it is resourced (admin: until archived). */
+/** A super agent edits the request's facts only before it is resourced (admin: until it is closed). */
 const SA_EDITABLE_STATUSES = ["submitted", "under_review", "revision_requested", "approved"];
 
 async function getHandler(_req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
@@ -87,7 +87,15 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     if (body.status === "completed") {
       if (!canMove("agent", item.status, "completed")) {
         return NextResponse.json(
-          { error: "Only a running event can be marked completed.", code: "INVALID_TRANSITION", from: item.status, to: "completed" },
+          { error: "Only an approved event can be marked completed.", code: "INVALID_TRANSITION", from: item.status, to: "completed" },
+          { status: 409 },
+        );
+      }
+      // The event runs on its dates now that nobody marks it active, so the
+      // report waits for the start date.
+      if (!eventHasStarted(item.eventStartDate)) {
+        return NextResponse.json(
+          { error: "You can report the event once it has started.", code: "EVENT_NOT_STARTED" },
           { status: 409 },
         );
       }
@@ -258,11 +266,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     };
 
     if (status) {
-      // A super agent's only moves out of approved/rejected are undoing a
-      // decision, and only one they made; the admin's are the admin's.
-      const saReopeningOthers =
-        ctx.role === "super_agent" && (item.status === "rejected" || item.status === "approved") && !superAgentOwnsCurrentDecision(item);
-      if (!canMove(ctx.role, item.status, status) || saReopeningOthers) {
+      if (!canMove(ctx.role, item.status, status)) {
         // Usually a stale screen: someone else already moved the request on.
         return NextResponse.json(
           {
@@ -275,39 +279,25 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
         );
       }
 
-      // Backend enforcement: rejection, revision and any step back need a reason
-      const steppingBack = isStepBack(item.status, status);
-      if (REASON_REQUIRED.includes(status as ExhibitionRequestStatus) || steppingBack) {
+      // Backend enforcement: rejection and revision need a reason.
+      if (REASON_REQUIRED.includes(status as ExhibitionRequestStatus)) {
         const reason = (statusReason?.trim() || reviewNote?.trim()) ?? "";
         if (!reason) {
           return NextResponse.json(
-            {
-              error: steppingBack
-                ? "Say why this request is moving back a stage."
-                : status === "rejected" ? "Give the agent a reason for rejecting this request." : "Tell the agent what needs to change.",
-            },
+            { error: status === "rejected" ? "Give the agent a reason for rejecting this request." : "Tell the agent what needs to change." },
             { status: 422 },
           );
         }
       }
 
-      // Assigning resources means deciding them: who runs the event, and what
-      // each requested item gets (0 is a decision too, with a note). It used
-      // to be a bare status change (client feedback 2026-10-14: "resource
-      // assignment function has no meaning").
-      if (status === "resources_assigned" && !steppingBack) {
-        const team: string[] = Array.isArray(assignedTeam)
-          ? assignedTeam.filter((m: unknown): m is string => typeof m === "string" && m.trim().length > 0)
-          : item.assignedTeam ?? [];
+      // Approving the payment also decides the support: what each requested
+      // item gets (0 is a decision too). Budget approval, Assign resources and
+      // Mark active used to be three separate admin moves (owner, 2026-10-15).
+      if (status === "budget_approved") {
         const undecided = (item.supportItems ?? []).filter((s: { allocatedQty?: number }) => typeof s.allocatedQty !== "number");
-        if (team.length === 0 || undecided.length > 0) {
+        if (undecided.length > 0) {
           return NextResponse.json(
-            {
-              error: team.length === 0
-                ? "Name the team running this event before assigning resources."
-                : "Decide an allocation for every requested item first (0 is allowed, with a note).",
-              code: team.length === 0 ? "TEAM_REQUIRED" : "ALLOCATION_REQUIRED",
-            },
+            { error: "Decide an allocation for every requested item first (0 is allowed).", code: "ALLOCATION_REQUIRED" },
             { status: 422 },
           );
         }
@@ -316,11 +306,6 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       const resolvedReason = (statusReason ?? "").trim() || undefined;
       const resolvedNote = (reviewNote ?? "").trim() || undefined;
 
-      // Stepping back past finance reopens the budget decision.
-      if (previousStatus === "budget_approved" && status === "approved") {
-        item.budgetApprovedBy = undefined;
-        item.budgetApprovedAt = undefined;
-      }
       if (status === "completed" && completionReport !== undefined) {
         const report = parseCompletionReport(completionReport);
         if ("error" in report) return NextResponse.json({ error: report.error }, { status: 400 });
@@ -371,17 +356,68 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
         status: status as ExhibitionRequestStatus,
         changedAt: new Date(),
         changedBy: ctx.userId as unknown as typeof item.reviewedBy,
-        note: resolvedNote,
+        // An admin completing the event usually writes the outcome, not a note.
+        note: resolvedNote ?? (status === "completed" ? item.completionReport?.summary?.slice(0, 500) : undefined),
         approverRole: ctx.role,
         statusReason: resolvedReason,
       });
     }
 
-    // Budget fields — only admin can set approvedBudget at any time
+    // The outcome of a finished event: the admin records or corrects the leads
+    // collected and the summary afterwards (events closed from the admin side
+    // used to be left with no outcome at all).
+    if (!status && completionReport !== undefined) {
+      if (ctx.role !== "admin" || item.status !== "completed") {
+        return NextResponse.json({ error: "The outcome can be recorded once the event is completed." }, { status: 409 });
+      }
+      const report = parseCompletionReport(completionReport);
+      if ("error" in report) return NextResponse.json({ error: report.error }, { status: 400 });
+      const previous = item.completionReport;
+      item.completionReport = {
+        actualLeads: report.value.actualLeads,
+        summary: report.value.summary,
+        completedAt: previous?.completedAt ?? new Date(),
+        completedBy: previous?.completedBy ?? (ctx.userId as unknown as typeof item.reviewedBy),
+      };
+      item.statusHistory.push({
+        status: item.status,
+        changedAt: new Date(),
+        changedBy: ctx.userId as unknown as typeof item.reviewedBy,
+        note: "Event outcome updated",
+        approverRole: ctx.role,
+      });
+    }
+
+    // A settled event is the final record: its money no longer changes.
+    const touchesMoney = (approvedBudget !== undefined && status !== "budget_approved") || actualSpend !== undefined;
+    if (ctx.role === "admin" && touchesMoney && previousStatus === "archived") {
+      return NextResponse.json({ error: "This event's balance is settled, so its amounts can't change." }, { status: 409 });
+    }
+
+    // The approved amount is corrected in place instead of stepping the
+    // request back. Once it was approved for payment, a change needs a reason,
+    // is logged old to new, and the agent and super agent are told.
+    let budgetChange: { from: number; to: number; reason: string } | null = null;
     if (approvedBudget !== undefined && status !== "budget_approved" && ctx.role === "admin") {
       const budgetNum = parseMoney(approvedBudget, "approvedBudget");
       if (typeof budgetNum !== "number") {
         return NextResponse.json({ error: budgetNum.error }, { status: 400 });
+      }
+      const before = item.approvedBudget ?? 0;
+      if (budgetNum !== before && editNeedsReason(previousStatus)) {
+        const reason = statusReason?.trim() || "";
+        if (!reason) {
+          return NextResponse.json({ error: "Say why the approved budget is changing.", code: "REASON_REQUIRED" }, { status: 422 });
+        }
+        budgetChange = { from: before, to: budgetNum, reason };
+        item.statusHistory.push({
+          status: item.status,
+          changedAt: new Date(),
+          changedBy: ctx.userId as unknown as typeof item.reviewedBy,
+          note: `Approved budget changed from ${item.budgetCurrency ?? ""} ${before} to ${item.budgetCurrency ?? ""} ${budgetNum}`.replace(/ {2,}/g, " "),
+          approverRole: ctx.role,
+          statusReason: reason,
+        });
       }
       item.approvedBudget = budgetNum;
     }
@@ -407,7 +443,8 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
 
     // Who set the priority, and when, is part of the record.
     // A super agent sets priority while the request is theirs to review.
-    const mayPrioritise = ctx.role === "admin" ? item.status !== "archived" : SA_EDITABLE_STATUSES.includes(item.status);
+    // Priority orders the review queue, so a closed request keeps the one it had.
+    const mayPrioritise = ctx.role === "admin" ? !isClosedStatus(item.status) : SA_EDITABLE_STATUSES.includes(item.status);
     if (priority !== undefined && priority !== item.priority && !mayPrioritise) {
       return NextResponse.json({ error: "Priority can no longer be changed at this stage." }, { status: 409 });
     }
@@ -425,7 +462,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     // Reviewer edits to the request's facts (client feedback 2026-10-14: no
     // edit option for super agent or admin), logged with the fields changed.
     if (details !== undefined) {
-      const editable = ctx.role === "admin" ? item.status !== "archived" : SA_EDITABLE_STATUSES.includes(item.status);
+      const editable = ctx.role === "admin" ? !isClosedStatus(item.status) : SA_EDITABLE_STATUSES.includes(item.status);
       if (!editable) {
         return NextResponse.json({ error: "This request can no longer be edited at its current stage." }, { status: 409 });
       }
@@ -433,6 +470,19 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       if ("error" in edits) return NextResponse.json({ error: edits.error }, { status: 400 });
       const comparable = (v: unknown) => (v instanceof Date ? v.toISOString() : v ?? null);
       const changed = Object.entries(edits.value).filter(([key, value]) => comparable(item.get(key)) !== comparable(value));
+      // Past the payment approval the edit changes what two people signed
+      // off, so it says why and keeps the old values.
+      const signedOff = editNeedsReason(item.status);
+      const editReason = statusReason?.trim() || "";
+      if (signedOff && changed.length > 0 && !editReason) {
+        return NextResponse.json({ error: "Say why these details are changing after approval.", code: "REASON_REQUIRED" }, { status: 422 });
+      }
+      const shown = (v: unknown) => {
+        const value = comparable(v);
+        if (value === null || value === "") return "-";
+        return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value) ? value.slice(0, 10) : String(value);
+      };
+      const oldToNew = changed.map(([key, value]) => `${key}: ${shown(item.get(key))} → ${shown(value)}`);
       for (const [key, value] of changed) item.set(key, value ?? undefined);
       // Checked on the merged dates: editing only the start could pass an end before it.
       if (item.eventStartDate && item.eventEndDate && new Date(item.eventEndDate) < new Date(item.eventStartDate)) {
@@ -443,8 +493,11 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
           status: item.status,
           changedAt: new Date(),
           changedBy: ctx.userId as unknown as typeof item.reviewedBy,
-          note: `Details edited: ${changed.map(([key]) => key).join(", ")}`,
+          note: signedOff
+            ? `Details edited: ${oldToNew.join("; ")}`.slice(0, 1000)
+            : `Details edited: ${changed.map(([key]) => key).join(", ")}`,
           approverRole: ctx.role,
+          statusReason: signedOff ? editReason : undefined,
         });
       }
     }
@@ -468,8 +521,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       throw err;
     }
 
-    // A step back is not progress: the "approved"/"active" mail would say it was.
-    if (status && !isStepBack(previousStatus, status)) {
+    if (status) {
       sendExhibitionStatusEmail(
         item.agentId.toString(),
         item.eventName,
@@ -478,10 +530,42 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       ).catch((err) => logger.error({ err, exhibitionId: item._id.toString() }, "Failed to send exhibition status email"));
     }
 
+    if (budgetChange) {
+      void notifyBudgetChange(item, budgetChange, ctx.userId);
+    }
+
     return NextResponse.json(await withSignedAttachments(item));
   }
 
   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+}
+
+/** Tell the agent and their super agent the approved amount moved. Never throws. */
+async function notifyBudgetChange(
+  item: { _id: unknown; agentId: unknown; superAgentId?: unknown; eventName: string; budgetCurrency?: string },
+  change: { from: number; to: number; reason: string },
+  actorId: string,
+) {
+  try {
+    const [{ notifyExhibitionBudgetChanged }, { default: SuperAgent }] = await Promise.all([
+      import("@/lib/notifications/trigger"),
+      import("@/models/SuperAgent"),
+    ]);
+    const sa = item.superAgentId ? await SuperAgent.findById(item.superAgentId).select("userId").lean() : null;
+    const currency = item.budgetCurrency ?? "";
+    const money = (amount: number) => `${currency} ${amount.toLocaleString("en")}`.trim();
+    await notifyExhibitionBudgetChanged(
+      [String(item.agentId), ...(sa?.userId ? [String(sa.userId)] : [])],
+      item.eventName,
+      money(change.from),
+      money(change.to),
+      change.reason,
+      "/agent/exhibitions",
+      actorId,
+    );
+  } catch (err) {
+    logger.error({ err, exhibitionId: String(item._id) }, "Failed to notify exhibition budget change");
+  }
 }
 
 async function deleteHandler(_req: NextRequest, ctx: AuthContext, params?: Record<string, string>) {
@@ -506,11 +590,14 @@ async function deleteHandler(_req: NextRequest, ctx: AuthContext, params?: Recor
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Soft delete — preserve record for audit/compliance
-  item.isDeleted = true;
-  item.deletedAt = new Date();
-  item.deletedBy = ctx.userId as unknown as typeof item.deletedBy;
-  await item.save();
+  // Soft delete — preserve record for audit/compliance. Only these fields are
+  // written: save() re-validates the whole document, so an older record that
+  // no longer fits the schema (e.g. a "pending" history entry, no category)
+  // could never be deleted.
+  await ExhibitionRequest.updateOne(
+    { _id: item._id },
+    { $set: { isDeleted: true, deletedAt: new Date(), deletedBy: ctx.userId } },
+  );
 
   return NextResponse.json({ success: true });
 }
@@ -526,7 +613,7 @@ const STATUS_EMAIL_CONFIG: Record<string, { emoji: string; color: string; label:
   approved: { emoji: "✅", color: "#059669", label: "Operationally Approved" },
   rejected: { emoji: "❌", color: "#dc2626", label: "Rejected" },
   revision_requested: { emoji: "✏️", color: "#d97706", label: "Revision Requested" },
-  budget_approved: { emoji: "💰", color: "#059669", label: "Financially Approved" },
+  budget_approved: { emoji: "💰", color: "#059669", label: "Payment Approved" },
   resources_assigned: { emoji: "📦", color: "#7c3aed", label: "Resources Assigned" },
   active: { emoji: "🚀", color: "#059669", label: "Active" },
   completed: { emoji: "🏆", color: "#0891b2", label: "Completed" },

@@ -8,8 +8,7 @@ import {
   Activity,
   Percent,
   Target,
-  TrendingUp,
-  Trophy,
+  UsersRound,
 } from "lucide-react";
 import {
   Bar,
@@ -28,15 +27,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
+import { TeamPerformanceReport, formatMoneyByCurrency, type TeamRow } from "./_components/TeamPerformanceReport";
 
 interface KPIs {
   totalRequests: number;
@@ -53,15 +45,14 @@ interface KPIs {
   budgetVariance: number;
 }
 
-interface PerformanceData {
-  totalLeads: number;
-  totalEmployers: number;
-  totalCandidates: number;
-  totalHires: number;
-  totalRevenue: number;
-  totalCost: number;
-  roi: number;
+/** From the completion reports; money per currency. */
+interface Outcomes {
+  completed: number;
   eventsReported: number;
+  completedWithoutReport: number;
+  expectedLeads: number;
+  leadsCollected: number;
+  actualSpend: Record<string, number>;
 }
 
 interface MonthlyPoint {
@@ -78,22 +69,13 @@ interface ParticipationItem {
   count: number;
 }
 
-interface TopAgent {
-  agentId: string;
-  name: string;
-  total: number;
-  approved: number;
-  approvalRate: number;
-  totalBudget: number;
-}
-
 interface AnalyticsData {
   year: number;
   kpis: KPIs;
-  performance: PerformanceData;
+  outcomes?: Outcomes;
   monthly: MonthlyPoint[];
   participation: ParticipationItem[];
-  topAgents: TopAgent[];
+  teams?: TeamRow[];
 }
 
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, index) => {
@@ -112,15 +94,13 @@ const PARTICIPATION_COLORS = [
   "#6366f1",
 ];
 
-const DEFAULT_PERFORMANCE: PerformanceData = {
-  totalLeads: 0,
-  totalEmployers: 0,
-  totalCandidates: 0,
-  totalHires: 0,
-  totalRevenue: 0,
-  totalCost: 0,
-  roi: 0,
+const EMPTY_OUTCOMES: Outcomes = {
+  completed: 0,
   eventsReported: 0,
+  completedWithoutReport: 0,
+  expectedLeads: 0,
+  leadsCollected: 0,
+  actualSpend: {},
 };
 
 export default function AdminExhibitionAnalyticsPage() {
@@ -222,7 +202,7 @@ export default function AdminExhibitionAnalyticsPage() {
           metrics={[
             { label: t("requestsLabel"), value: <Skeleton className="h-7 w-12" />, icon: Target },
             { label: t("approvalRateLabel"), value: <Skeleton className="h-7 w-12" />, icon: Percent },
-            { label: t("roiLabel"), value: <Skeleton className="h-7 w-12" />, icon: TrendingUp },
+            { label: t("leadsCollectedLabel"), value: <Skeleton className="h-7 w-12" />, icon: UsersRound },
           ]}
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -242,8 +222,8 @@ export default function AdminExhibitionAnalyticsPage() {
     return <div className="p-6 text-muted-foreground">{t("errorLoadingAnalytics")}</div>;
   }
 
-  const { kpis, monthly, participation, topAgents } = data;
-  const performance = data.performance ?? DEFAULT_PERFORMANCE;
+  const { kpis, monthly, participation } = data;
+  const outcomes = data.outcomes ?? EMPTY_OUTCOMES;
   const totalParticipation = participation.reduce((sum, item) => sum + item.count, 0);
   const strongestMonth = monthly.length > 0 ? [...monthly].sort((left, right) => right.total - left.total)[0] : null;
 
@@ -268,7 +248,7 @@ export default function AdminExhibitionAnalyticsPage() {
         metrics={[
           { label: t("requestsLabel"), value: kpis.totalRequests, note: strongestMonth ? t("requestsBusiestMonth", { month: strongestMonth.month }) : t("requestsNoData"), icon: Target, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
           { label: t("approvalRateLabel"), value: `${kpis.approvalRate}%`, note: t("approvalRateSub", { approved: kpis.approved, rejected: kpis.rejected }), icon: Percent, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
-          { label: t("roiLabel"), value: `${performance.roi}%`, note: performance.eventsReported > 0 ? t("roiEventsReported", { eventsReported: performance.eventsReported }) : t("roiAwaitingReports"), icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
+          { label: t("leadsCollectedLabel"), value: outcomes.leadsCollected, note: t("leadsCollectedNote", { count: outcomes.eventsReported }), icon: UsersRound, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
         ]}
       />
 
@@ -307,13 +287,22 @@ export default function AdminExhibitionAnalyticsPage() {
 
         <div className="panel-stack">
           <p className="heading-label">{t("outcomesGroupLabel")}</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-            <MiniMetric label={t("leadsGeneratedLabel")} value={performance.totalLeads} />
-            <MiniMetric label={t("employersEngagedLabel")} value={performance.totalEmployers} />
-            <MiniMetric label={t("candidatesSourchedLabel")} value={performance.totalCandidates} />
-            <MiniMetric label={t("hiresGeneratedLabel")} value={performance.totalHires} />
-            <MiniMetric label={t("revenueLabel")} value={formatCurrency(performance.totalRevenue, currencyCode)} />
-            <MiniMetric label={t("costLabel")} value={formatCurrency(performance.totalCost, currencyCode)} />
+          {/* From the completion reports. The old tiles read a performance record
+              no screen ever writes, so leads, hires, revenue and ROI were always 0. */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <MiniMetric
+              label={t("leadsCollectedLabel")}
+              value={outcomes.leadsCollected}
+              sub={t("leadsExpectedSub", { expected: outcomes.expectedLeads })}
+            />
+            <MiniMetric
+              label={t("eventsReportedLabel")}
+              value={outcomes.eventsReported}
+              sub={outcomes.completedWithoutReport > 0
+                ? t("eventsMissingReportSub", { count: outcomes.completedWithoutReport })
+                : t("eventsReportedSub", { completed: outcomes.completed })}
+            />
+            <MiniMetric label={t("actualSpendTileLabel")} value={formatMoneyByCurrency(outcomes.actualSpend)} />
           </div>
         </div>
       </section>
@@ -372,7 +361,9 @@ export default function AdminExhibitionAnalyticsPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:gap-6 xl:grid-cols-[0.95fr_1.05fr] xl:items-start">
+      {data.teams && <TeamPerformanceReport teams={data.teams} />}
+
+      <section>
         <div className="workspace-panel-surface min-w-0 rounded-2xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
@@ -432,57 +423,6 @@ export default function AdminExhibitionAnalyticsPage() {
           )}
         </div>
 
-        <div className="workspace-panel-surface rounded-2xl panel-body">
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="heading-section font-semibold tracking-tight">{t("topAgentsTitle")}</h2>
-              <p className="text-sm text-muted-foreground">{t("topAgentsDescription")}</p>
-            </div>
-            <Trophy className="h-5 w-5 text-primary" />
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead>{t("tableHeaderAgent")}</TableHead>
-                <TableHead className="text-center">{t("tableHeaderRequests")}</TableHead>
-                <TableHead className="text-center">{t("tableHeaderApproval")}</TableHead>
-                <TableHead className="text-right">{t("tableHeaderBudget")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {topAgents.map((agent) => (
-                <TableRow key={agent.agentId} className="h-16">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
-                        {agent.name.slice(0, 1).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{agent.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{t("tableApprovedSub", { count: agent.approved })}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-center font-medium">{agent.total}</TableCell>
-                  <TableCell className="whitespace-nowrap text-center">
-                    <Badge variant="outline">{agent.approvalRate}%</Badge>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-right font-medium">
-                    {formatCurrency(agent.totalBudget, currencyCode)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {topAgents.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                    {t("tableNoActivity")}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-
-        </div>
       </section>
     </div>
   );

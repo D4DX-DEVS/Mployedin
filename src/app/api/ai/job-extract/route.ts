@@ -7,7 +7,11 @@ import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { validateUploadedFile } from "@/lib/security/file-validation";
 import { scanForMalware } from "@/lib/security/malware-scan";
 import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
-import { generateMultimodal, generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+// The answer carries the job's skills, so it uses the extraction model
+// (Gemini by default: Qwen supported 3/10 extracted skills on 2026-10-16).
+import { extractionModel, generateMultimodal, generateText } from "@/lib/ai/gemini";
+import { extractResumeText } from "@/lib/ats/analyzeCv";
+import { MIN_TEXT_LAYER_CHARS } from "@/lib/cv/parsedCv";
 import type { UserRole } from "@/models/User";
 import { ExtractionDraft, type ExtractedJobPayload } from "@/models/ExtractionDraft";
 import { agentPostingFor } from "@/lib/jobs/agentPosting";
@@ -177,20 +181,38 @@ export async function POST(req: NextRequest) {
 
       text = (await generateText(
         `${EXTRACTION_PROMPT}\n\nDocument text:\n${extractedDocText.slice(0, 15000)}`,
-        GEMINI_MODELS.flash,
+        extractionModel(),
         AI_TOKEN_LIMITS.cv_extract
       )).trim();
     } else {
-      // Use multimodal for PDF/image
-      const base64 = Buffer.from(bytes).toString("base64");
-      text = (await generateMultimodal(
-        [
-          { text: EXTRACTION_PROMPT },
-          { inlineData: { mimeType, data: base64 } },
-        ],
-        GEMINI_MODELS.flash,
-        AI_TOKEN_LIMITS.cv_extract
-      )).trim();
+      // A PDF's own text first: exact, cheap and fast, and a model that can't
+      // read PDFs would otherwise get every page as an image. Only a scan (or a
+      // PDF with almost no text) and an image go to the vision path.
+      let layerText = "";
+      if (mimeType === "application/pdf") {
+        try {
+          layerText = (await extractResumeText(Buffer.from(bytes), mimeType)).text;
+        } catch {
+          layerText = "";
+        }
+      }
+      if (layerText.length >= MIN_TEXT_LAYER_CHARS) {
+        text = (await generateText(
+          `${EXTRACTION_PROMPT}\n\nDocument text:\n${layerText.slice(0, 15000)}`,
+          extractionModel(),
+          AI_TOKEN_LIMITS.cv_extract
+        )).trim();
+      } else {
+        const base64 = Buffer.from(bytes).toString("base64");
+        text = (await generateMultimodal(
+          [
+            { text: EXTRACTION_PROMPT },
+            { inlineData: { mimeType, data: base64 } },
+          ],
+          extractionModel(),
+          AI_TOKEN_LIMITS.cv_extract
+        )).trim();
+      }
     }
 
     // Parse JSON response

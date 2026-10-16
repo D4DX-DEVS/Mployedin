@@ -6,7 +6,7 @@
  * full-page state had an h1 (audit 2026-09-24 re-audit).
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders as render, screen } from "@/test-utils";
 
 const t = (key: string) => key;
 jest.mock("next-intl", () => ({ useTranslations: () => t }));

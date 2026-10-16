@@ -27,11 +27,15 @@ import {
   type NativePart,
 } from "@/lib/ai/googleAI";
 import {
+  OPENROUTER_MODELS,
   isOpenRouterTextProvider,
   PDF_NATIVE_PARSER,
   toOpenRouterContent,
+  toOpenRouterModel,
   type OpenRouterRequestOptions,
 } from "@/lib/ai/openRouter";
+import { modelReadsPdf } from "@/lib/ai/modelCapabilities";
+import { pdfPartsToImages, visionTimeoutMs } from "@/lib/ai/visionInput";
 
 /**
  * Aliases kept because call sites and TASK_MODEL_MAP in `@/lib/ai/router` index
@@ -47,6 +51,15 @@ export const GEMINI_MODELS = {
 } as const;
 
 type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
+
+/**
+ * Model for structured extraction prompts (job skills, job-title suggestions):
+ * OPENROUTER_EXTRACTION_MODEL when OpenRouter serves text, else the Google
+ * default. A namespaced OpenRouter id must never reach Google's API.
+ */
+export function extractionModel(): GeminiModel {
+  return isOpenRouterTextProvider() ? OPENROUTER_MODELS.extraction : GEMINI_MODELS.flash;
+}
 
 async function chatFetch(
   model: GeminiModel,
@@ -164,7 +177,9 @@ export async function generateMultimodal(
 /**
  * The OpenRouter half of generateMultimodal. Same request shape as every other
  * text call — chatCompletionsFetch routes it and maps the model id — with the
- * document as a content part and, for a PDF, the native parser pinned.
+ * document as content parts. Gemini gets a PDF as a file with its own reader
+ * pinned; any other model gets the PDF's pages as images, under a timeout
+ * sized for vision.
  */
 async function generateMultimodalViaOpenRouter(
   parts: NativePart[],
@@ -173,7 +188,9 @@ async function generateMultimodalViaOpenRouter(
 ): Promise<string> {
   const start = Date.now();
   const effort = textReasoningEffort();
-  const content = toOpenRouterContent(parts);
+  const readable = modelReadsPdf(toOpenRouterModel(model)) ? parts : await pdfPartsToImages(parts);
+  const content = toOpenRouterContent(readable);
+  const images = content.filter((part) => part.type === "image_url").length;
   const res = await chatCompletionsFetch(
     {
       model,
@@ -182,7 +199,8 @@ async function generateMultimodalViaOpenRouter(
       reasoning_effort: effort,
       ...(content.some((part) => part.type === "file") ? { plugins: [PDF_NATIVE_PARSER] } : {}),
     },
-    `multimodal:${model}`
+    `multimodal:${model}`,
+    images > 0 ? visionTimeoutMs(images) : undefined
   );
   if (!res.ok) {
     const err = await res.text().catch(() => "");

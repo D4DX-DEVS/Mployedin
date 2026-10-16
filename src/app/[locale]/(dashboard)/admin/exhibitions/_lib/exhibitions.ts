@@ -207,8 +207,9 @@ export function formatDateRange(item: ExhibitionRequest, locale: string): string
 export function getStage(item: ExhibitionRequest): { value: string; labelKey: string } {
   if (item.status === "submitted" || item.status === "under_review") return { value: "team_leader", labelKey: "teamLeaderReview" };
   if (item.status === "approved") return { value: "finance", labelKey: "financeReviewStage" };
-  if (item.status === "budget_approved") return { value: "super_agent", labelKey: "stageResourcing" };
-  if (item.status === "resources_assigned" || item.status === "active") return { value: "admin", labelKey: "stageDelivery" };
+  // Payment approved: the event runs on its dates and is then reported.
+  // resources_assigned and active are retired stages kept for old requests.
+  if (["budget_approved", "resources_assigned", "active"].includes(item.status)) return { value: "event", labelKey: "stageEvent" };
   if (item.status === "completed") return { value: "completed", labelKey: "completedStage" };
   if (item.status === "rejected") return { value: "completed", labelKey: "rejected" };
   return { value: "team_leader", labelKey: "underReview" };

@@ -203,6 +203,11 @@ export interface IJob extends Document {
   clonedFrom?: mongoose.Types.ObjectId;
   deletedAt?: Date;
   preDeletionStatus?: JobStatus;
+  /** Matching vector (1024-d) and what it was built from; see src/lib/matching/matchEmbeddings.ts. */
+  matchEmbedding?: number[];
+  matchEmbeddingAt?: Date;
+  matchEmbeddingModel?: string;
+  matchTextHash?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -366,6 +371,12 @@ const JobSchema = new Schema<IJob>(
       type: String,
       enum: ["draft", "active", "paused", "closed", "expired"],
     },
+    // Matching vector (1024-d, OpenRouter). Written only by refreshMatchEmbeddings,
+    // with timestamps off so the write doesn't count as a profile change.
+    matchEmbedding: { type: [Number], select: false },
+    matchEmbeddingAt: Date,
+    matchEmbeddingModel: String,
+    matchTextHash: { type: String, select: false },
   },
   { timestamps: true }
 );

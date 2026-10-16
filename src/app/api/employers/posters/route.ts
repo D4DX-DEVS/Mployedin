@@ -1,3 +1,4 @@
+import { gatePosters } from "@/lib/features/posterGate";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "@/lib/auth/withAuth";
@@ -120,5 +121,5 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   return NextResponse.json({ id: poster._id, shareSlug: poster.shareSlug });
 }
 
-export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+export const GET = gatePosters(withAuth(getHandler));
+export const POST = gatePosters(withAuth(postHandler));

@@ -114,8 +114,12 @@ type RecommendationSummary = {
 export type InitialHomeData = {
   profile: ProfileData;
   stats: DashboardStats;
-  /** The first cards of the Jobs page: strong matches first, then the closest others. */
-  jobs: FeedJob[];
+  /**
+   * The first cards of the Jobs page: strong matches first, then the closest
+   * others. Absent: the client loads them, so the page paints first. [] still
+   * means "no jobs".
+   */
+  jobs?: FeedJob[];
   recommendation?: RecommendationSummary;
   appliedJobs?: AppliedJobSnippet[];
 };
@@ -162,6 +166,10 @@ export function JobSeekerHomePage({
   const [appliedJobs, setAppliedJobs] = useState<AppliedJobSnippet[]>(initialData?.appliedJobs ?? []);
   // If SSR data was provided this is false from the start — no loading flash
   const [loading, setLoading] = useState(!initialData);
+  // The server sent the page without job cards; they load after it paints.
+  const jobsFromClient = initialData !== undefined && initialData.jobs === undefined;
+  const [jobsLoading, setJobsLoading] = useState(jobsFromClient);
+  const [jobsFailed, setJobsFailed] = useState(false);
   const [homeDataError, setHomeDataError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   // Resolved after mount: the server and the browser can sit in different time
@@ -187,8 +195,10 @@ export function JobSeekerHomePage({
     if (initialData) {
       setProfile(initialData.profile ?? null);
       setStats(initialData.stats ?? null);
-      setJobs(initialData.jobs ?? []);
-      setRecommendation(initialData.recommendation ?? null);
+      if (initialData.jobs !== undefined) {
+        setJobs(initialData.jobs);
+        setRecommendation(initialData.recommendation ?? null);
+      }
       setAppliedJobs(initialData.appliedJobs ?? []);
       setLoading(false);
       return;
@@ -267,6 +277,36 @@ export function JobSeekerHomePage({
       active = false;
     };
   }, [initialData, t]);
+
+  // Its own effect, keyed on nothing that changes per render, so the cards are
+  // fetched once however often `t` or `initialData` change identity.
+  useEffect(() => {
+    if (!jobsFromClient) return;
+    let active = true;
+    fetch(`/api/jobs/recommended?limit=${HOME_RECOMMENDED_JOB_COUNT}&sort=match`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((jobsData) => {
+        if (!active) return;
+        if (Array.isArray(jobsData?.jobs)) setJobs(jobsData.jobs);
+        if (typeof jobsData?.threshold === "number") {
+          setRecommendation({
+            threshold: jobsData.threshold,
+            bestScore: jobsData.bestScore ?? 0,
+            recommendedCount: jobsData.strongMatches ?? 0,
+            limitingFactor: jobsData.limitingFactor ?? null,
+          });
+        }
+      })
+      .catch(() => {
+        if (active) setJobsFailed(true);
+      })
+      .finally(() => {
+        if (active) setJobsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [jobsFromClient]);
 
   // First name only, as the super-agent dashboard greets: a full name pushed
   // the hero heading onto a second line on phones.
@@ -499,13 +539,13 @@ export function JobSeekerHomePage({
           </Link>
         </div>
 
-        {homeDataError && (
+        {(homeDataError || jobsFailed) && (
           <div className="mb-3 rounded-2xl border border-[hsl(var(--status-shortlisted)/0.18)] bg-[hsl(var(--status-shortlisted-bg))] px-4 py-3 text-sm text-foreground">
-            {homeDataError}
+            {homeDataError ?? t("messages.homeDataError")}
           </div>
         )}
 
-        {loading ? (
+        {loading || jobsLoading ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, index) => (
               <div key={index} className="h-[132px] animate-pulse rounded-2xl bg-muted/60" />

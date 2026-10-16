@@ -43,7 +43,13 @@ jest.mock("@/lib/matching/skillVectors", () => ({
 import { IRRELEVANT_SORT_PENALTY } from "@/lib/jobRecommendations";
 import { recommendJobsFor, toCandidateJob } from "@/lib/matching/recommend";
 import { mongoJevVerdictStore } from "@/lib/matching/jevVerdictStore";
-import { scoreOnePair, scoreSeekerPool, storedBreakdown } from "@/lib/matching/seekerMatches";
+import {
+  clearEngineOptionsCache,
+  resolveEngineOptions,
+  scoreOnePair,
+  scoreSeekerPool,
+  storedBreakdown,
+} from "@/lib/matching/seekerMatches";
 
 function seeker(overrides: Partial<SeekerProfile> = {}): SeekerProfile {
   return {
@@ -88,6 +94,7 @@ const gated = () => job("gated", { location: { country: "Oman", isRemote: false 
 const byId = <T extends Record<string, unknown>>(jobs: T[], id: string) => jobs.find((j) => j._id === id)!;
 
 beforeEach(() => {
+  clearEngineOptionsCache();
   mockThreshold = 80;
   mockAiOn = true;
   mockVerdicts.clear();
@@ -191,6 +198,18 @@ describe("a page and the email agree", () => {
     mockAiOn = false;
     await scoreSeekerPool(seeker(), [strong()]);
     expect(mockDecide).not.toHaveBeenCalled();
+  });
+});
+
+describe("engine settings", () => {
+  it("reads SystemConfig once per 30 s, and again after the cache is cleared", async () => {
+    clearEngineOptionsCache();
+    mockThreshold = 70;
+    expect((await resolveEngineOptions()).threshold).toBe(70);
+    mockThreshold = 60;
+    expect((await resolveEngineOptions()).threshold).toBe(70);
+    clearEngineOptionsCache();
+    expect((await resolveEngineOptions()).threshold).toBe(60);
   });
 });
 

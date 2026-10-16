@@ -8,10 +8,8 @@ import { getAllocationSummary, getDeliverySummary, type SupportItem } from "@/li
 import { SupportItemsTable } from "@/components/features/exhibitions/SupportItemsSummary";
 import type { ExhibitionRequest } from "../_lib/exhibitions";
 import type { SupportDialogMode } from "./SupportManageDialog";
-
-/** Statuses at which each record can be changed — the support route enforces the same. */
-export const ALLOCATE_STATUSES = ["budget_approved", "resources_assigned"];
-export const DELIVERY_STATUSES_ALLOWED = ["resources_assigned", "active"];
+// The support route enforces the same stages.
+import { SUPPORT_ALLOCATE_STATUSES, SUPPORT_DELIVERY_STATUSES } from "@/lib/exhibitions/transitions";
 
 const ALLOCATION_TONES = {
   none: "bg-amber-100 text-amber-800",
@@ -41,8 +39,8 @@ export function SupportInventoryPanel({
   const items = item.supportItems ?? [];
   const allocation = getAllocationSummary(items as SupportItem[]);
   const delivery = getDeliverySummary(items as SupportItem[]);
-  const canAllocate = items.length > 0 && ALLOCATE_STATUSES.includes(item.status);
-  const canDeliver = items.length > 0 && DELIVERY_STATUSES_ALLOWED.includes(item.status);
+  const canAllocate = items.length > 0 && SUPPORT_ALLOCATE_STATUSES.includes(item.status);
+  const canDeliver = items.length > 0 && SUPPORT_DELIVERY_STATUSES.includes(item.status);
 
   return (
     <div className="space-y-3">

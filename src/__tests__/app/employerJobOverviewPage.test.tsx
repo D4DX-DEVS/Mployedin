@@ -11,13 +11,16 @@ import { render, screen } from "@testing-library/react";
 import JobOverviewPage from "@/app/[locale]/(dashboard)/employer/jobs/[id]/page";
 
 let mockJob: Record<string, unknown> = {};
+let mockQuery = "";
+const mockReplace = jest.fn();
 
 jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en", id: "job1" }),
-  useSearchParams: () => ({ get: () => null, toString: () => "" }),
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(mockQuery),
+  useRouter: () => ({ push: jest.fn(), replace: mockReplace }),
   usePathname: () => "/en/employer/jobs/job1",
 }));
+jest.mock("@/lib/features/posterFeature", () => ({ POSTERS_ENABLED: false }));
 jest.mock("@/hooks/useJobs", () => ({ useJobDetail: () => ({ data: mockJob }) }));
 let mockSummary: Record<string, unknown> | undefined;
 jest.mock("@/hooks/useJobHiringSummary", () => ({ useJobHiringSummary: () => ({ data: mockSummary }) }));
@@ -37,6 +40,14 @@ describe("employer job Overview", () => {
   beforeEach(() => {
     mockJob = { ...baseJob };
     mockSummary = undefined;
+    mockQuery = "";
+    mockReplace.mockClear();
+  });
+
+  it("ignores the legacy ?poster=1 link while posters are hidden", () => {
+    mockQuery = "poster=1";
+    render(<JobOverviewPage />);
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it("hides the optional sections and facts the employer never filled in", () => {

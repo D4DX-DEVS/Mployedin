@@ -10,6 +10,8 @@ import {
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useQueryClient } from "@tanstack/react-query";
+import { seekerKeys, useSeekerResource } from "@/hooks/useSeekerCache";
 
 /* ── Document Categories ── */
 
@@ -38,6 +40,8 @@ interface UploadedDocument {
   /** Resumes only. */
   cvStatus?: CvStatus;
 }
+
+type DocumentsResponse = { documents?: UploadedDocument[]; profileCv?: { cvStatus?: CvStatus } };
 
 function CvReadingNote({ status }: { status: CvStatus }) {
   const t = useTranslations("jobSeekerExtra.documents");
@@ -124,9 +128,21 @@ export default function JobSeekerDocumentsPage() {
   const [extracted, setExtracted] = useState<ExtractedData | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [documents, setDocuments] = useState<UploadedDocument[]>([]);
-  const [profileCvStatus, setProfileCvStatus] = useState<CvStatus | null>(null);
-  const [loadingDocs, setLoadingDocs] = useState(true);
+  const queryClient = useQueryClient();
+  // Cached: re-opening Documents shows the list at once and refreshes behind it.
+  const { data: docsData, isPending: loadingDocs } = useSeekerResource<DocumentsResponse>(
+    seekerKeys.documents,
+    "/api/job-seeker/documents",
+  );
+  const documents = docsData?.documents ?? [];
+  const profileCvStatus = docsData?.profileCv?.cvStatus ?? null;
+  // Local edits (upload, remove) land in the cache so Back and re-visits see them.
+  const setDocuments = (update: (prev: UploadedDocument[]) => UploadedDocument[]) => {
+    queryClient.setQueryData<DocumentsResponse>(seekerKeys.documents, (prev) => ({
+      ...prev,
+      documents: update(prev?.documents ?? []),
+    }));
+  };
   const [searchTerm, setSearchTerm] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -140,23 +156,7 @@ export default function JobSeekerDocumentsPage() {
 
   useEffect(() => {
     document.title = t("documentTitle");
-    fetchDocuments();
   }, [t]);
-
-  async function fetchDocuments() {
-    try {
-      const res = await fetch("/api/job-seeker/documents");
-      if (res.ok) {
-        const data = await res.json();
-        setDocuments(data.documents ?? []);
-        setProfileCvStatus(data.profileCv?.cvStatus ?? null);
-      }
-    } catch {
-      // Non-blocking
-    } finally {
-      setLoadingDocs(false);
-    }
-  }
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -232,6 +232,9 @@ export default function JobSeekerDocumentsPage() {
       toast.error(t("uploadGenericFailed"));
     } finally {
       setUploading(false);
+      // A resume upload also replaces the profile CV and its reading status.
+      void queryClient.invalidateQueries({ queryKey: seekerKeys.documents });
+      if (category === "resume") void queryClient.invalidateQueries({ queryKey: seekerKeys.profile });
     }
   };
 
@@ -308,6 +311,7 @@ export default function JobSeekerDocumentsPage() {
       });
       if (res.ok) {
         toast.success(t("profileUpdated"));
+        void queryClient.invalidateQueries({ queryKey: seekerKeys.profile });
       } else {
         toast.error(t("saveFailed"));
       }

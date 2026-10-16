@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateSeekerProfile, readSeekerProfile } from "@/hooks/useSeekerCache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -228,6 +230,7 @@ export default function JobSeekerSkillsPage() {
   const [newSkill, setNewSkill] = useState("");
   const [animateScore, setAnimateScore] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const queryClient = useQueryClient();
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [platformData, setPlatformData] = useState<PlatformData | null>(null);
 
@@ -240,9 +243,8 @@ export default function JobSeekerSkillsPage() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const res = await fetch("/api/job-seeker/profile");
-        if (!res.ok) return;
-        const data = await res.json();
+        // From the shared cache when fresh, so Back from a job is instant.
+        const data = await readSeekerProfile(queryClient);
         if (!data) return;
 
         if (Array.isArray(data.skills) && data.skills.length > 0) {
@@ -287,6 +289,7 @@ export default function JobSeekerSkillsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ skills: mySkills }),
         });
+        void invalidateSeekerProfile(queryClient);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
       } catch {
@@ -373,6 +376,8 @@ export default function JobSeekerSkillsPage() {
         setGapResult(data.analysis ?? null);
         setProgress(data.progress ?? null);
         setPlatformData(data.platformData ?? null);
+        // The analysis is saved as the profile's coach progress.
+        void invalidateSeekerProfile(queryClient);
         await loadMatchingJobsCount();
 
         setAnimateScore(true);

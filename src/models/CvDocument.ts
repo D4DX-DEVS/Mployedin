@@ -20,7 +20,7 @@ export type CvStatus = "uploaded" | "processing" | "processed" | "failed";
 /** Where the file came from: the profile CV, a resume in the document library, or an application attachment. */
 export type CvSource = "profile" | "document" | "application";
 
-/** text_layer: the PDF/DOCX text; ai_vision: a scan the AI read; reused: copied from an identical file. */
+/** text_layer: the PDF/DOCX text; ai_vision: a scan the AI transcribed (and parsed); reused: copied from an identical file. */
 export type CvTextSource = "text_layer" | "ai_vision" | "reused";
 
 export interface ICvDocument extends Document {

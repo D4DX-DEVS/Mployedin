@@ -1,8 +1,11 @@
+import type { CopilotView } from "@/lib/ai/copilot/views";
+
 export type CopilotStreamFrame =
   | { type: "text"; content: string }
   | { type: "text_delta"; content: string }
   | { type: "tool_call"; tool: string; label: string }
   | { type: "tool_result"; tool: string; ok: boolean; message: string; data?: unknown }
+  | { type: "view"; tool: string; view: CopilotView }
   | {
       type: "proposal";
       proposalId: string;
@@ -22,6 +25,7 @@ export type TranscriptItem =
   | { id: string; kind: "assistant_text"; content: string }
   | { id: string; kind: "tool_call"; tool: string; label: string; done?: boolean; ok?: boolean }
   | { id: string; kind: "tool_result"; tool: string; ok: boolean; message: string }
+  | { id: string; kind: "view"; tool: string; view: CopilotView }
   | {
       id: string;
       kind: "proposal";

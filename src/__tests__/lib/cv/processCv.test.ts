@@ -86,11 +86,15 @@ jest.mock("@/lib/storage/spaces", () => ({ downloadBuffer: (...a: unknown[]) => 
 const extractResumeText = jest.fn();
 jest.mock("@/lib/ats/analyzeCv", () => ({ extractResumeText: (...a: unknown[]) => extractResumeText(...a) }));
 const generateText = jest.fn();
-const generateMultimodal = jest.fn();
 jest.mock("@/lib/ai/gemini", () => ({
   GEMINI_MODELS: { flash: "flash" },
   generateText: (...a: unknown[]) => generateText(...a),
-  generateMultimodal: (...a: unknown[]) => generateMultimodal(...a),
+}));
+const ocrDocument = jest.fn();
+jest.mock("@/lib/ai/visionOcr", () => ({
+  ocrDocument: (...a: unknown[]) => ocrDocument(...a),
+  // The real class, so the reader's `instanceof` matches what the tests throw.
+  EmptyOcrError: jest.requireActual("@/lib/ai/visionOcr").EmptyOcrError,
 }));
 jest.mock("@/lib/ai/sanitize", () => ({ AI_TOKEN_LIMITS: { cv_extract: 16000 } }));
 jest.mock("@/lib/jobSeeker/profileCompleteness", () => ({ profileCompletenessScore: jest.fn(() => 77) }));
@@ -98,10 +102,12 @@ jest.mock("@/lib/logger", () => ({ __esModule: true, default: { warn: jest.fn(),
 
 import { processCvDocument, MAX_CV_ATTEMPTS } from "@/lib/cv/processCv";
 import { CV_PARSER_VERSION } from "@/lib/cv/parsedCv";
+import { EmptyOcrError } from "@/lib/ai/visionOcr";
 
 const SEEKER = "seeker1";
 const URL = "https://cdn/cvs/antony.pdf";
 const LONG_TEXT = "Antony P — Sales leader. Channel Sales, Distribution Management. ".repeat(10);
+const SCAN_TEXT = "Antony P\nAGM Sales, Sowparnika\nSkills: Channel Sales, Distribution Management";
 const AI_JSON = JSON.stringify({
   headline: "Sales leader",
   currentLocation: "Cherthala, Kerala",
@@ -129,7 +135,7 @@ beforeEach(() => {
   downloadBuffer.mockResolvedValue(Buffer.from("%PDF file bytes"));
   extractResumeText.mockResolvedValue({ text: LONG_TEXT });
   generateText.mockResolvedValue(AI_JSON);
-  generateMultimodal.mockResolvedValue(AI_JSON);
+  ocrDocument.mockResolvedValue(SCAN_TEXT);
   // The seeker typed their job history but left skills and location empty.
   seekers.rows.push({
     _id: SEEKER,
@@ -170,7 +176,7 @@ describe("processCvDocument", () => {
     });
     expect(generateText).toHaveBeenCalledTimes(1);
     expect(generateText.mock.calls[0][0]).toContain("CV text:\nAntony P");
-    expect(generateMultimodal).not.toHaveBeenCalled();
+    expect(ocrDocument).not.toHaveBeenCalled();
 
     const doc = row(id);
     expect(doc).toMatchObject({ status: "processed", textSource: "text_layer", parserVersion: CV_PARSER_VERSION, attempts: 0 });
@@ -233,22 +239,47 @@ describe("processCvDocument", () => {
     expect(row(id).text).toBe("first text");
   });
 
-  it("lets the AI read a scan with no text layer", async () => {
+  it("transcribes a scan with no text layer, then parses the transcription", async () => {
     extractResumeText.mockResolvedValue({ text: "" });
     const id = addCv();
     const result = await processCvDocument(id);
-    expect(result).toMatchObject({ outcome: "processed", textSource: "ai_vision" });
-    expect(generateMultimodal).toHaveBeenCalledTimes(1);
-    expect(generateText).not.toHaveBeenCalled();
-    expect(row(id).text).toContain("Skills: Channel Sales, Distribution Management");
+    expect(result).toMatchObject({ outcome: "processed", textSource: "ai_vision", parsed: true });
+    expect(ocrDocument).toHaveBeenCalledWith(expect.any(Buffer), "application/pdf");
+    expect(generateText).toHaveBeenCalledTimes(1);
+    expect(generateText.mock.calls[0][0]).toContain(`CV text:\n${SCAN_TEXT}`);
+    // The ATS searches the file's own words, not the parser's summary of them.
+    expect(row(id).text).toBe(SCAN_TEXT);
   });
 
   it("marks a scan the AI finds nothing in as unreadable, without retrying", async () => {
     extractResumeText.mockResolvedValue({ text: "" });
-    generateMultimodal.mockResolvedValue("{}");
+    generateText.mockResolvedValue("{}");
     const id = addCv();
     await expect(processCvDocument(id)).resolves.toEqual({ outcome: "failed", error: "unreadable", jobIds: ["job1"] });
     expect(row(id)).toMatchObject({ status: "failed", error: "unreadable" });
+  });
+
+  it("marks a scan the model transcribes to nothing as unreadable, without parsing or retrying", async () => {
+    extractResumeText.mockResolvedValue({ text: "" });
+    ocrDocument.mockRejectedValue(new EmptyOcrError());
+    const id = addCv();
+    await expect(processCvDocument(id)).resolves.toEqual({ outcome: "failed", error: "unreadable", jobIds: ["job1"] });
+    expect(row(id)).toMatchObject({ status: "failed", error: "unreadable" });
+    expect(generateText).not.toHaveBeenCalled();
+    // Failed on the first try; the record was not put back for the queue.
+    expect(row(id).attempts).toBe(1);
+    // Nothing was read, so the profile is untouched.
+    expect((seeker().cv as Rec).rawText).toBeUndefined();
+    expect(seeker().skills).toEqual([]);
+  });
+
+  it("keeps retrying a scan when the transcription fails for another reason", async () => {
+    extractResumeText.mockResolvedValue({ text: "" });
+    ocrDocument.mockRejectedValue(new Error("OCR 503"));
+    const id = addCv();
+    await expect(processCvDocument(id)).rejects.toThrow("OCR 503");
+    expect(row(id)).toMatchObject({ status: "uploaded", error: "error", attempts: 1 });
+    expect(generateText).not.toHaveBeenCalled();
   });
 
   it("marks a missing file failed at once", async () => {
@@ -262,7 +293,7 @@ describe("processCvDocument", () => {
     extractResumeText.mockResolvedValue({ text: "" });
     const id = addCv({ fileUrl: "https://cdn/cvs/old.doc" });
     await expect(processCvDocument(id)).resolves.toMatchObject({ outcome: "failed", error: "unsupported_type" });
-    expect(generateMultimodal).not.toHaveBeenCalled();
+    expect(ocrDocument).not.toHaveBeenCalled();
   });
 
   it("puts a transient failure back for the queue to retry", async () => {

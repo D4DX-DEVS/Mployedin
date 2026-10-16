@@ -42,6 +42,7 @@ const generateMultimodal = jest.fn();
 jest.mock("@/lib/ai/gemini", () => ({
   generateMultimodal: (...a: unknown[]) => generateMultimodal(...a),
   generateText: jest.fn(),
+  extractionModel: () => "flash",
   GEMINI_MODELS: { flash: "flash" },
 }));
 

@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { ToolProposalCard } from "./ToolProposalCard";
+import { CopilotViewCard } from "./CopilotViewCard";
 import { sameOriginPath } from "./links";
 import type { CopilotStreamFrame, TranscriptItem } from "./types";
 import { formatDate } from "@/lib/ui/intlFormat";
@@ -419,6 +420,10 @@ export function Copilot({ className }: CopilotProps) {
               // ponytail: only surface failures; successful raw tool messages stay hidden
               return ok ? next : [...next, { id: nextId(), kind: "tool_result", tool, ok, message }];
             });
+          } else if (frame.type === "view") {
+            streamingId = null; // text after the cards is its own bubble
+            const { tool, view } = frame;
+            setTranscript((prev) => [...prev, { id: nextId(), kind: "view", tool, view }]);
           } else if (frame.type === "proposal") {
             setTranscript((prev) => [
               ...prev,
@@ -655,6 +660,13 @@ export function Copilot({ className }: CopilotProps) {
             return (
               <div key={item.id} className={cn("pl-1 text-xs", item.ok ? "text-muted-foreground" : "text-destructive")}>
                 {item.message}
+              </div>
+            );
+          }
+          if (item.kind === "view") {
+            return (
+              <div key={item.id} className="min-w-0">
+                <CopilotViewCard view={item.view} onInternalLink={handleInternalLink} />
               </div>
             );
           }

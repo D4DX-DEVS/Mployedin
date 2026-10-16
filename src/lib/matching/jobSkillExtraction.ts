@@ -19,7 +19,7 @@
  */
 
 import logger from "@/lib/logger";
-import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import { generateText, extractionModel } from "@/lib/ai/gemini";
 
 /** Cap so one verbose description cannot dominate the prompt budget. */
 const MAX_DESCRIPTION_CHARS = 6000;
@@ -95,7 +95,7 @@ export async function extractJobSkills(job: {
   let raw: string;
   try {
     // Enrichment, never on a request path: flex tier, half price.
-    raw = await generateText(buildPrompt(title, description, existing), GEMINI_MODELS.flash, 400, true, {
+    raw = await generateText(buildPrompt(title, description, existing), extractionModel(), 400, true, {
       tier: "flex",
     });
   } catch (err) {

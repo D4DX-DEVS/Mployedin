@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Inbox } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Inbox, Pencil, Trash2, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,11 +32,30 @@ function CardSkeleton() {
   );
 }
 
+/** Admin only: the library plus who can see each resource and its upkeep. */
+export interface ResourceManagement {
+  accessLabel: (accessLevel: string) => string;
+  onEdit: (item: Resource) => void;
+  onDelete: (item: Resource) => void;
+  onHistory: (item: Resource) => void;
+  /** Shown on the empty state, e.g. Add resource. */
+  emptyAction?: ReactNode;
+}
+
+interface ResourceLibraryProps {
+  manage?: ResourceManagement;
+  /** Bump to refetch after a create, edit or delete made outside the library. */
+  reloadKey?: number;
+  /** The figures for the page header. */
+  onSummary?: (summary: { total: number; downloads: number }) => void;
+}
+
 /**
- * The staff resource library (agent + super agent "Resource Downloads").
- * Read-only: only admin uploads, from /admin/resources.
+ * The staff resource library: the same cards, inline filters and detail panel
+ * for agent, super agent and admin (client feedback 2026-10-15: the admin page
+ * had its own cards and stacked filters). Only admin passes `manage`.
  */
-export function ResourceLibrary() {
+export function ResourceLibrary({ manage, reloadKey = 0, onSummary }: ResourceLibraryProps = {}) {
   const t = useTranslations("resources");
   const [items, setItems] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +97,10 @@ export function ResourceLibrary() {
   // change, so the list fetches once (an effect-driven reset fetched twice).
   const withPageReset = (set: (v: string) => void) => (v: string) => { set(v); setPage(1); };
 
+  // A ref, so an inline callback from the page does not refetch every render.
+  const summaryRef = useRef(onSummary);
+  useEffect(() => { summaryRef.current = onSummary; });
+
   const fetchItems = useCallback(async () => {
     setLoading(true);
     setError(false);
@@ -89,14 +112,17 @@ export function ResourceLibrary() {
       const res = await fetch(`/api/resources?${params}`);
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
-      setItems(data.items ?? []);
+      const nextItems: Resource[] = data.items ?? [];
+      setItems(nextItems);
       setTotal(data.total ?? 0);
+      summaryRef.current?.({ total: data.total ?? 0, downloads: nextItems.reduce((sum, r) => sum + (r.downloadCount ?? 0), 0) });
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, [category, fileType, sortBy, debouncedSearch, page, pageSize]);
+    // reloadKey is not read: bumping it is how the admin page asks for a refetch.
+  }, [category, fileType, sortBy, debouncedSearch, page, pageSize, reloadKey]);
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   // Bump the count in place so the card reflects the download without a refetch.
@@ -133,7 +159,7 @@ export function ResourceLibrary() {
           icon={Inbox}
           title={filtered ? t("noResourcesFound") : t("noResources")}
           description={filtered ? t("noMatchesHint") : t("noResourcesHint")}
-          action={filtered ? <Button variant="outline" onClick={clearFilters}>{t("clear")}</Button> : undefined}
+          action={filtered ? <Button variant="outline" onClick={clearFilters}>{t("clear")}</Button> : manage?.emptyAction}
         />
       ) : (
         <>
@@ -146,6 +172,21 @@ export function ResourceLibrary() {
                 pendingKey={pendingKey}
                 onOpen={(i, file) => setOpen({ item: i, file })}
                 onDownload={(i, file) => download(i._id, file)}
+                accessLabel={manage?.accessLabel(item.accessLevel)}
+                manageActions={manage ? (
+                  <>
+                    <Button variant="ghost" size="sm" className="min-h-11 flex-1 gap-1.5 sm:min-h-9" onClick={() => manage.onEdit(item)}>
+                      <Pencil className="size-4" aria-hidden="true" />
+                      {t("editResource")}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="size-11 sm:size-9" onClick={() => manage.onHistory(item)} aria-label={t("a11yDownloadHistory")} title={t("a11yDownloadHistory")}>
+                      <Users className="size-4" aria-hidden="true" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="size-11 text-destructive hover:text-destructive sm:size-9" onClick={() => manage.onDelete(item)} aria-label={t("a11yDelete")} title={t("a11yDelete")}>
+                      <Trash2 className="size-4" aria-hidden="true" />
+                    </Button>
+                  </>
+                ) : undefined}
               />
             ))}
           </div>

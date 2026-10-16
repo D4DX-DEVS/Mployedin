@@ -30,6 +30,14 @@ jest.mock("@/models/Job", () => ({
 }));
 jest.mock("@/lib/effectiveSeekerProfile", () => ({ effectiveSeekerProfile: async () => ({ skills: [] }) }));
 
+let mockVectorOn = false;
+const mockVectorRetrieveJobs = jest.fn(async (..._args: unknown[]): Promise<string[] | null> => null);
+jest.mock("@/lib/matching/vectorRetrieval", () => ({
+  vectorRetrievalEnabled: () => mockVectorOn,
+  vectorRetrieveJobs: (...a: unknown[]) => mockVectorRetrieveJobs(...a),
+  restrictToIds: (query: Record<string, unknown>, ids: string[]) => ({ $and: [query, { _id: { $in: ids } }] }),
+}));
+
 type PoolJob = { _id: string; matchScore: number; sortScore: number; recommended: boolean; eligible: boolean; createdAt: string };
 let mockPool: {
   jobs: PoolJob[];
@@ -39,7 +47,8 @@ let mockPool: {
   bestScore: number;
   limitingFactor?: string;
 };
-jest.mock("@/lib/matching/seekerMatches", () => ({ scoreSeekerPool: async () => mockPool }));
+const scoreSeekerPool = jest.fn(async (..._args: unknown[]) => mockPool);
+jest.mock("@/lib/matching/seekerMatches", () => ({ scoreSeekerPool: (...a: unknown[]) => scoreSeekerPool(...a) }));
 
 const now = new Date().toISOString();
 const pj = (id: string, score: number, recommended: boolean, eligible = true): PoolJob => ({
@@ -72,6 +81,12 @@ beforeEach(() => {
 });
 
 describe("GET /api/jobs/recommended", () => {
+  it("scores the feed with cached Jev verdicts only, so a render never waits on Jev", async () => {
+    scoreSeekerPool.mockClear();
+    await get("limit=10");
+    expect(scoreSeekerPool.mock.calls[0][3]).toEqual({ jevMode: "cached" });
+  });
+
   it("returns the whole scored pool for the feed, with the engine's verdict on each job", async () => {
     const body = await get("limit=10");
     expect(body.jobs.map((j: PoolJob) => j._id)).toEqual(["a", "b", "c", "d"]);
@@ -94,6 +109,36 @@ describe("GET /api/jobs/recommended", () => {
     const body = await get("limit=4&recommended=true");
     expect(body.jobs).toEqual([]);
     expect(body).toMatchObject({ threshold: 80, bestScore: 67, limitingFactor: "score", strongMatches: 0 });
+  });
+
+  describe("vector retrieval", () => {
+    const JobModel = async () => (await import("@/models/Job")).default as unknown as { find: jest.Mock; countDocuments: jest.Mock };
+    afterEach(async () => {
+      mockVectorOn = false;
+      mockVectorRetrieveJobs.mockClear();
+      (await JobModel()).countDocuments.mockImplementation(async () => 3);
+    });
+
+    it("takes the most relevant jobs by vector when more match than one pool holds", async () => {
+      mockVectorOn = true;
+      mockVectorRetrieveJobs.mockResolvedValueOnce(["v1", "v2"]);
+      const Job = await JobModel();
+      Job.countDocuments.mockImplementation(async () => 500);
+      Job.find.mockClear();
+
+      const body = await get("limit=10");
+
+      expect(mockVectorRetrieveJobs).toHaveBeenCalledWith("s1", 600);
+      expect(Job.find.mock.calls[0][0]).toEqual({ $and: [expect.objectContaining({ status: "active" }), { _id: { $in: ["v1", "v2"] } }] });
+      // One pool: the vector picks are the best page there is.
+      expect(body.totalPoolPages).toBe(1);
+    });
+
+    it("keeps the newest-first pool when every matching job fits in one", async () => {
+      mockVectorOn = true;
+      await get("limit=10");
+      expect(mockVectorRetrieveJobs).not.toHaveBeenCalled();
+    });
   });
 
   it("counts strong matches as the jobs it recommends, not as a local 80% cut", async () => {

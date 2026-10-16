@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { buildRecommendedJobQuery, countryPatterns } from "@/lib/jobRecommendations";
+import { buildRecommendedJobQuery, countryPatterns, poolCountries } from "@/lib/jobRecommendations";
 
 // Ranking and the recommend/don't verdict moved to the matching engine; their
 // guarantees are pinned in seekerMatches.test.ts.
@@ -94,5 +94,22 @@ describe("countryPatterns — real preference data is messy", () => {
   it("still narrows the query when a real country sits beside a remote preference", () => {
     const query = buildRecommendedJobQuery({ preferredCountries: ["Remote / Global", "Oman (Muscat)"] });
     expect(query.$and).toHaveLength(2);
+  });
+});
+
+describe("poolCountries", () => {
+  it("uses the countries the seeker stated", () => {
+    expect(poolCountries({ preferredCountries: ["India"], preferredLocations: ["Dubai, UAE"] })).toEqual(["India"]);
+  });
+
+  it("reads countries off preferred locations when none are stated", () => {
+    const countries = poolCountries({ preferredCountries: [], preferredLocations: ["Dubai, UAE", "Abu Dhabi, UAE"] });
+    expect(countries).toHaveLength(1);
+    expect(countryPatterns(countries ?? []).some((p) => p.test("United Arab Emirates"))).toBe(true);
+  });
+
+  it("leaves the pool unfiltered when no location names a country", () => {
+    expect(poolCountries({ preferredLocations: ["Kochi"] })).toBeUndefined();
+    expect(poolCountries({})).toBeUndefined();
   });
 });

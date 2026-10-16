@@ -15,8 +15,8 @@ export interface CompletionReport {
 
 /**
  * What the event delivered: leads collected against the expectation, the
- * agent's summary, and the event photos (addable by the agent while the
- * request is completed, and by the admin).
+ * agent's summary, and the event photos. Photos are the agent's to add, while
+ * the event runs or once it is completed; everyone else sees them.
  */
 export function CompletionReportView({
   requestId,
@@ -36,6 +36,7 @@ export function CompletionReportView({
   const t = useTranslations("exhibitions");
   const locale = useLocale();
   const by = report && typeof report.completedBy === "object" ? report.completedBy?.name : undefined;
+  const hasPhotos = attachments.some((file) => file.kind === "completion");
 
   return (
     <div className="space-y-3">
@@ -66,7 +67,11 @@ export function CompletionReportView({
       ) : null}
       <div>
         <p className="mb-2 text-xs font-semibold text-muted-foreground">{t("completionPhotosTitle")}</p>
-        <AttachmentsSection requestId={requestId} kind="completion" attachments={attachments} canManage={canManagePhotos} onChange={onAttachmentsChange} />
+        {canManagePhotos || hasPhotos ? (
+          <AttachmentsSection requestId={requestId} kind="completion" attachments={attachments} canManage={canManagePhotos} onChange={onAttachmentsChange} />
+        ) : (
+          <p className="text-sm text-muted-foreground">{t("photosByAgentHint")}</p>
+        )}
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import {
   buildRecommendedJobQuery,
+  poolCountries,
   RECOMMENDATION_POOL_SIZE,
   RECOMMENDED_JOB_SELECT,
 } from "@/lib/jobRecommendations";
@@ -49,7 +50,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // anything off-profile, so the "matching jobs" count it feeds the skills page
   // disagreed with the jobs the seeker could actually see.
   const query = buildRecommendedJobQuery({
-    preferredCountries: seeker.preferredCountries,
+    preferredCountries: poolCountries(seeker),
     excludeJobIds: appliedJobIds,
   });
 
@@ -63,7 +64,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // Score with the engine, including confirmed skills, so the % matches every
   // other surface and the email.
   const seekerProfile = await effectiveSeekerProfile(ctx.userId, seeker);
-  const pool = await scoreSeekerPool(seekerProfile, candidateJobs);
+  const pool = await scoreSeekerPool(seekerProfile, candidateJobs, undefined, { jevMode: "cached" });
 
   // Both pages that call this present the result as "jobs matching you", so
   // it lists and counts recommended jobs only. It used to return the top of

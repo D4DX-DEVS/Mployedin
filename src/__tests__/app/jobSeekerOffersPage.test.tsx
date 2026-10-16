@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { renderWithProviders as render, screen, waitFor, within } from "@/test-utils";
 
 import OffersPage from "@/app/[locale]/(dashboard)/job-seeker/offers/page";
 

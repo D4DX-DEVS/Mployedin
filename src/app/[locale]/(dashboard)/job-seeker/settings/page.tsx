@@ -1,6 +1,8 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { getSeekerJson, invalidateSeekerProfile, SEEKER_FRESH_MS, seekerKeys } from "@/hooks/useSeekerCache";
 import { useForm, Controller } from "react-hook-form";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -272,6 +274,7 @@ export default function JobSeekerSettingsPage() {
 
   // ── Resume documents from user's profile ────────────────────────────────
   const [userResumes, setUserResumes] = useState<{ id: string; name: string }[]>([]);
+  const queryClient = useQueryClient();
 
   // ── Avatar state ────────────────────────────────────────────────────────────
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -322,6 +325,7 @@ export default function JobSeekerSettingsPage() {
       const data = await res.json();
       setAvatarUrl(data.url);
       await updateSession({ image: data.url });
+      void invalidateSeekerProfile(queryClient);
     } catch {
       setAvatarError("Network error. Please try again.");
       setAvatarUrl(session?.user?.image ?? null);
@@ -329,7 +333,7 @@ export default function JobSeekerSettingsPage() {
       setAvatarUploading(false);
       if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
-  }, [session?.user?.image, updateSession]);
+  }, [session?.user?.image, updateSession, queryClient]);
 
   const handleAvatarRemove = useCallback(async () => {
     const ok = await confirm({
@@ -348,13 +352,14 @@ export default function JobSeekerSettingsPage() {
       if (res.ok) {
         setAvatarUrl(null);
         await updateSession({ image: null });
+        void invalidateSeekerProfile(queryClient);
       }
     } catch {
       setAvatarError("Failed to remove photo.");
     } finally {
       setAvatarUploading(false);
     }
-  }, [confirm, tConfirm, updateSession]);
+  }, [confirm, tConfirm, updateSession, queryClient]);
 
   const form = useForm<SettingsForm>({
     resolver: zodResolver(settingsFormSchema),
@@ -366,16 +371,21 @@ export default function JobSeekerSettingsPage() {
   const isDirty = formState.isDirty;
 
   // Load from API
+  // From the shared cache when fresh, so Back from a sub-page is instant.
   useEffect(() => {
-    fetch("/api/job-seekers/settings")
-      .then((r) => r.json())
+    queryClient
+      .fetchQuery({
+        queryKey: seekerKeys.settings,
+        queryFn: () => getSeekerJson<{ settings?: Partial<SettingsForm>; resumes?: typeof userResumes }>("/api/job-seekers/settings"),
+        staleTime: SEEKER_FRESH_MS,
+      })
       .then((d) => {
         if (d.settings) reset({ ...DEFAULTS, ...d.settings });
         if (d.resumes?.length) setUserResumes(d.resumes);
       })
       .catch(console.error)
       .finally(() => setInitialLoading(false));
-  }, [reset]);
+  }, [reset, queryClient]);
 
   const showToast = (type: "success" | "error", message: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -396,6 +406,7 @@ export default function JobSeekerSettingsPage() {
       });
       if (!res.ok) throw new Error("Failed to save");
       reset(data);
+      void queryClient.invalidateQueries({ queryKey: seekerKeys.settings });
       showToast("success", t("savedToast"));
     } catch {
       showToast("error", t("failedToast"));

@@ -12,7 +12,10 @@ export function formatProfit(
   notation: "standard" | "compact" = "standard",
 ): string {
   if (!currency) return formatCount(value, notation === "compact" ? { notation, maximumFractionDigits: 1 } : undefined, locale);
-  return formatCount(value, { style: "currency", currency, notation, maximumFractionDigits: notation === "compact" ? 1 : 0 }, locale);
+  // minimumFractionDigits pinned: Node's ICU otherwise keeps the currency's
+  // default minimum (clamped to 1) and renders "AED 0.0" where browsers render
+  // "AED 0" — a hydration mismatch.
+  return formatCount(value, { style: "currency", currency, notation, minimumFractionDigits: 0, maximumFractionDigits: notation === "compact" ? 1 : 0 }, locale);
 }
 
 /** Whole-number share of a target, or null when no target is set. */

@@ -56,6 +56,7 @@ import { formatListDate } from "@/lib/ui/intlFormat";
 import { PriorityFormField } from "@/components/features/exhibitions/PriorityFields";
 import { AttachmentList, PendingFilesField } from "@/components/features/exhibitions/ExhibitionAttachments";
 import { CompleteEventDialog } from "@/components/features/exhibitions/CompleteEventDialog";
+import { canReportEvent } from "@/lib/exhibitions/transitions";
 import {
   removeExhibitionFile,
   uploadExhibitionFiles,
@@ -713,7 +714,7 @@ export default function AgentExhibitionsPage() {
                   if (["draft", "submitted", "revision_requested"].includes(item.status)) {
                     menu.push({ key: "edit", label: t("editRequest"), icon: Pencil, onSelect: () => startEdit(item) });
                   }
-                  if (item.status === "active") {
+                  if (canReportEvent(item)) {
                     menu.unshift({ key: "complete", label: t("markEventCompleted"), icon: CheckCheck, onSelect: () => setCompleteItem(item) });
                   }
                   if (["draft", "submitted"].includes(item.status)) {

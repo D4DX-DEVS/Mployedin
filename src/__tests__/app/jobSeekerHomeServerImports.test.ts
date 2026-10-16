@@ -27,8 +27,19 @@ describe("job-seeker home page server imports", () => {
   });
 
   it("takes the card count from the server-safe recommendations module", () => {
-    expect(page).toMatch(/HOME_RECOMMENDED_JOB_COUNT[\s\S]*?from "@\/lib\/jobRecommendations"/);
     expect(client).toMatch(/import \{ HOME_RECOMMENDED_JOB_COUNT \} from "@\/lib\/jobRecommendations"/);
     expect(client).not.toMatch(/export const HOME_RECOMMENDED_JOB_COUNT/);
+    // The server page must not reach into the client module for it either.
+    expect(page).not.toMatch(/HOME_RECOMMENDED_JOB_COUNT[\s\S]*?from "@\/components/);
+  });
+
+  // The recent-applications query populates jobId (Job) and its employerId
+  // (Employer). Mongoose throws MissingSchemaError when a populated model was
+  // never imported in this process, so a fresh server crashed the page once
+  // the job pool query (and its Job import) moved to the client fetch.
+  it("registers every model its populate calls reach", () => {
+    expect(page).toMatch(/populate\(\{ path: "jobId"/);
+    expect(page).toMatch(/import (Job from )?"@\/models\/Job";/);
+    expect(page).toMatch(/import (Employer from )?"@\/models\/Employer";/);
   });
 });

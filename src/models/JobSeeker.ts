@@ -280,6 +280,11 @@ export interface IJobSeeker extends Document {
   }[];
   // Vector search embedding
   searchEmbedding?: number[];
+  /** Matching vector (1024-d) and what it was built from; see src/lib/matching/matchEmbeddings.ts. */
+  matchEmbedding?: number[];
+  matchEmbeddingAt?: Date;
+  matchEmbeddingModel?: string;
+  matchTextHash?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -600,6 +605,12 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     ],
     // Vector search embedding (auto-generated from profile text)
     searchEmbedding: { type: [Number], select: false },
+    // Matching vector (1024-d, OpenRouter). Written only by refreshMatchEmbeddings,
+    // with timestamps off so the write doesn't count as a profile change.
+    matchEmbedding: { type: [Number], select: false },
+    matchEmbeddingAt: Date,
+    matchEmbeddingModel: String,
+    matchTextHash: { type: String, select: false },
   },
   { timestamps: true }
 );

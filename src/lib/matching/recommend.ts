@@ -161,6 +161,8 @@ export interface JevVerdictStore {
   /** Jev's genuine-fit probability for this exact input, or null if never asked. */
   get(input: unknown): Promise<number | null>;
   set(input: unknown, fit: number): Promise<void>;
+  /** Many reads in one round trip, in input order. Optional; page renders batch through it. */
+  getMany?(inputs: unknown[]): Promise<Array<number | null>>;
 }
 
 export interface RecommendOptions {
@@ -176,6 +178,13 @@ export interface RecommendOptions {
    * it is what makes the email, the app and the employer view agree.
    */
   verdicts?: JevVerdictStore;
+  /**
+   * "live" (default) asks Jev on a verdict-cache miss. "cached" never calls
+   * Jev: a miss keeps the deterministic score and marks the pair `jevPending`
+   * so the caller can fill it in the background. Page renders use "cached"
+   * because a live miss there made the seeker home wait 79 s (2026-10-15).
+   */
+  jevMode?: "live" | "cached";
 }
 
 /** Turn a lean Job document into the shape the pipeline works with. */
@@ -253,27 +262,40 @@ function inJevBand(deterministic: number, threshold: number): boolean {
  */
 const JEV_CV_CHARS = 2500;
 
-/** The facts Jev is shown about one pair. One builder, so request and cache key cannot drift. */
-function jevState(seeker: SeekerProfile, job: CandidateJob) {
+function jevJobState(job: CandidateJob) {
+  return {
+    title: job.title,
+    required_skills: job.profile.skills,
+    preferred_skills: job.profile.preferredSkills,
+    experience_min_years: job.profile.minExp,
+    experience_max_years: job.profile.maxExp,
+    country: job.profile.location,
+  };
+}
+
+function jevCandidateState(seeker: SeekerProfile) {
   const cv = seeker.cvText ? sanitizeAIInput(seeker.cvText, JEV_CV_CHARS) : "";
   return {
-    job: {
-      title: job.title,
-      required_skills: job.profile.skills,
-      preferred_skills: job.profile.preferredSkills,
-      experience_min_years: job.profile.minExp,
-      experience_max_years: job.profile.maxExp,
-      country: job.profile.location,
-    },
-    candidate: {
-      skills: seeker.skills,
-      preferred_roles: seeker.preferredRoles,
-      total_experience_years: seeker.experienceKnown === false ? null : seeker.experienceYears,
-      recent_roles: (seeker.roleHistory ?? []).slice(0, 5).map((r) => r.title),
-      // Only when there is one, so a pair with no CV keeps its cached verdict.
-      ...(cv ? { cv_excerpt: cv } : {}),
-    },
+    skills: seeker.skills,
+    preferred_roles: seeker.preferredRoles,
+    total_experience_years: seeker.experienceKnown === false ? null : seeker.experienceYears,
+    recent_roles: (seeker.roleHistory ?? []).slice(0, 5).map((r) => r.title),
+    // Only when there is one, so a pair with no CV keeps its cached verdict.
+    ...(cv ? { cv_excerpt: cv } : {}),
   };
+}
+
+export type JevJobState = ReturnType<typeof jevJobState>;
+export type JevCandidateState = ReturnType<typeof jevCandidateState>;
+
+/** The facts Jev is shown about one pair. One builder, so request and cache key cannot drift. */
+function jevState(seeker: SeekerProfile, job: CandidateJob) {
+  return { job: jevJobState(job), candidate: jevCandidateState(seeker) };
+}
+
+/** The verdict-cache input for a pair. Unchanged from before the split, so stored verdicts stay valid. */
+export function jevVerdictInput(seeker: SeekerProfile, job: CandidateJob) {
+  return { model: OPENROUTER_MODELS.decision, questions: JEV_QUESTIONS, state: jevState(seeker, job) };
 }
 
 /**
@@ -290,8 +312,8 @@ async function jevFit(
   job: CandidateJob,
   verdicts?: JevVerdictStore,
 ): Promise<number | null> {
-  const state = jevState(seeker, job);
-  const key = { model: OPENROUTER_MODELS.decision, questions: JEV_QUESTIONS, state };
+  const key = jevVerdictInput(seeker, job);
+  const state = key.state;
 
   if (verdicts) {
     try {
@@ -313,6 +335,21 @@ async function jevFit(
     }
   }
   return fit;
+}
+
+/** A stored verdict only; never asks Jev. */
+async function storedJevFit(
+  seeker: SeekerProfile,
+  job: CandidateJob,
+  verdicts?: JevVerdictStore,
+): Promise<number | null> {
+  if (!verdicts) return null;
+  try {
+    return await verdicts.get(jevVerdictInput(seeker, job));
+  } catch (err) {
+    logger.warn({ err }, "[recommend] Jev verdict cache read failed");
+    return null;
+  }
 }
 
 /**
@@ -345,6 +382,11 @@ export interface PairScore {
   breakdown: RelevanceBreakdown;
   /** Jev's probability that this is a real fit, when it was consulted. */
   aiConfidence?: number;
+  /**
+   * Cached mode only: an eligible pair Jev could still move, with no stored
+   * verdict yet. The caller queues it for a background fill.
+   */
+  jevPending?: true;
 }
 
 /**
@@ -364,7 +406,7 @@ export interface PairScore {
 export async function scorePair(
   seekerDoc: SeekerInput,
   job: CandidateJob,
-  options: Pick<RecommendOptions, "threshold" | "useAi" | "vectors" | "verdicts"> = {},
+  options: Pick<RecommendOptions, "threshold" | "useAi" | "vectors" | "verdicts" | "jevMode"> = {},
 ): Promise<PairScore> {
   const seeker = toSeekerProfile(seekerDoc);
   const threshold = options.threshold ?? DEFAULT_MIN_RELEVANCE;
@@ -373,12 +415,19 @@ export async function scorePair(
 
   let score = breakdown.overall;
   let aiConfidence: number | undefined;
+  let jevPending = false;
   if (options.useAi && hasJev() && inJevBand(score, threshold)) {
     try {
-      const fit = await jevFit(seeker, job, options.verdicts);
+      const cachedOnly = options.jevMode === "cached";
+      const fit = cachedOnly
+        ? await storedJevFit(seeker, job, options.verdicts)
+        : await jevFit(seeker, job, options.verdicts);
       if (fit !== null) {
         aiConfidence = fit;
         score = applyJev(breakdown.overall, fit);
+      } else if (cachedOnly && gate.eligible) {
+        // Ineligible pairs are never recommended, so never worth paying for.
+        jevPending = true;
       }
     } catch (err) {
       logger.warn({ err }, "[recommend] Jev scoring failed; using deterministic score");
@@ -391,6 +440,7 @@ export async function scorePair(
     score,
     breakdown,
     ...(aiConfidence !== undefined ? { aiConfidence } : {}),
+    ...(jevPending ? { jevPending: true as const } : {}),
   };
 }
 
@@ -472,4 +522,43 @@ export async function recommendJobsFor(
       ? { limitingFactor: diagnoseLimitingFactor(seeker, rejected, scored.length) }
       : {}),
   };
+}
+
+/** Everything a background worker needs to decide a seeker's missing verdicts. */
+export interface JevFillRequest {
+  candidate: JevCandidateState;
+  jobs: Array<{ id: string; job: JevJobState }>;
+}
+
+export function jevFillRequest(seeker: SeekerProfile, jobs: readonly CandidateJob[]): JevFillRequest {
+  return { candidate: jevCandidateState(seeker), jobs: jobs.map((job) => ({ id: job.id, job: jevJobState(job) })) };
+}
+
+/**
+ * Ask Jev about each queued pair and store the answers, a few at a time.
+ * Keys are built from the request's own state, so they match what the render
+ * that queued it will read. A pair stored meanwhile is skipped.
+ */
+export async function fillJevVerdicts(
+  request: JevFillRequest,
+  verdicts: JevVerdictStore,
+  concurrency = 4,
+): Promise<{ asked: number; stored: number }> {
+  let next = 0;
+  let stored = 0;
+  const worker = async () => {
+    while (next < request.jobs.length) {
+      const { id, job } = request.jobs[next++];
+      const state = { job, candidate: request.candidate };
+      const input = { model: OPENROUTER_MODELS.decision, questions: JEV_QUESTIONS, state };
+      if ((await verdicts.get(input)) !== null) continue;
+      const fit = noulValue((await decide(state, JEV_QUESTIONS, `jev:fill:${id}`))?.answers.genuine_fit);
+      if (fit !== null) {
+        await verdicts.set(input, fit);
+        stored += 1;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, request.jobs.length) }, worker));
+  return { asked: request.jobs.length, stored };
 }

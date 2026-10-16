@@ -1,4 +1,6 @@
 import { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { POSTERS_ENABLED } from "@/lib/features/posterFeature";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { pickMessages } from "@/lib/i18n/clientMessages";
@@ -13,6 +15,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  if (!POSTERS_ENABLED) notFound();
   const { slug } = await params;
   await connectDB();
   const poster = await PosterGeneration.findOne({ shareSlug: slug })
@@ -39,6 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PosterSharePage({ params }: Props) {
+  if (!POSTERS_ENABLED) notFound();
   const { slug, locale } = await params;
   await connectDB();
 

@@ -81,17 +81,20 @@ const RETIRING_ON_SUNSET = [
 ];
 
 /**
- * Benchmarked 2026-09-22 against 2.5-flash-lite on this codebase's own prompts.
+ * qwen/qwen3.7-flash since 2026-10-15, by the owner's choice: $0.03/$0.13 per
+ * 1M against $0.25/$1.50 for gemini-3.1-flash-lite. Measured on this codebase:
+ * OCR of 10 real CVs kept 99.90% of words (Gemini 99.97%); a Copilot-style
+ * tool call was correct in ~2.7 s; it honours reasoning_effort "none", which
+ * every call sends. One provider only (Alibaba Cloud); openRouterChatFetch
+ * asks for no data retention.
  *
- * The smart tier is the cheap model too. google/gemini-3.8-flash answers 400
- * "Reasoning is mandatory" here, and every call sends reasoning_effort "none",
- * so poster copy and complex Copilot questions always failed (client report
- * 2026-09-30). The owner chose this over paying for reasoning;
- * OPENROUTER_SMART_MODEL still pins a different model.
+ * Weaker spots, each with an env pin back to Gemini and no deploy:
+ * OPENROUTER_SMART_MODEL (reports), OPENROUTER_EXTRACTION_MODEL (job skills and
+ * titles), OPENROUTER_TEXT_MODEL (everything).
  */
 const DEFAULTS = {
-  text: "google/gemini-3.1-flash-lite",
-  smart: "google/gemini-3.1-flash-lite",
+  text: "qwen/qwen3.7-flash",
+  smart: "qwen/qwen3.7-flash",
 } as const;
 
 export function isPastTextSunset(now: Date = new Date()): boolean {
@@ -125,6 +128,28 @@ export const OPENROUTER_MODELS = {
   /** Tool calling and report-grade tasks. */
   get smart(): string {
     return resolveModel(process.env.OPENROUTER_SMART_MODEL, DEFAULTS.smart);
+  },
+  /**
+   * Job skill extraction and job-title suggestions. Skills are 60% of the
+   * relevance score, so an invented or repeated skill does real damage. The
+   * probe on 2026-10-16 (scripts/probe-skill-extraction.ts) found Qwen only
+   * 3/10 (30%) supported against an 80% bar, so this stays on Gemini 3.1
+   * Flash-Lite until a re-probe passes. OPENROUTER_EXTRACTION_MODEL overrides.
+   */
+  get extraction(): string {
+    return resolveModel(process.env.OPENROUTER_EXTRACTION_MODEL, "google/gemini-3.1-flash-lite");
+  },
+  /** Copilot chat and tool calling. Follows the text model unless pinned. */
+  get copilot(): string {
+    return resolveModel(process.env.OPENROUTER_COPILOT_MODEL, OPENROUTER_MODELS.text);
+  },
+  /**
+   * Served when the Copilot model fails. Qwen has a single provider (Alibaba
+   * Cloud) on OpenRouter, so the fallback sits on a different one. Gemini 3.1
+   * Flash-Lite ran Copilot until 2026-10 and handles every tool.
+   */
+  get copilotFallback(): string {
+    return resolveModel(process.env.OPENROUTER_COPILOT_FALLBACK_MODEL, "google/gemini-3.1-flash-lite");
   },
   /**
    * TypeSafe Jev — a "System One" structured decision model. Returns calibrated
@@ -182,6 +207,11 @@ export function toOpenRouterModel(modelId: string): string {
   return OPENROUTER_MODELS.text;
 }
 
+/** The model that actually answers a call made with this (Google) id. What a cache key must name. */
+export function servingModelId(modelId: string): string {
+  return isOpenRouterTextProvider() ? toOpenRouterModel(modelId) : modelId;
+}
+
 /**
  * Headers for OpenRouter. `HTTP-Referer` and `X-Title` are optional attribution
  * headers OpenRouter shows on the account's activity page; they make a runaway
@@ -230,6 +260,17 @@ function isFlexCapacityFailure(status: number): boolean {
  */
 export const FLEX_TIMEOUT_MS = 45_000;
 
+/**
+ * Only providers that neither store nor train on prompts. CVs and profiles go
+ * through here, and qwen/qwen3.7-flash has one provider (Alibaba Cloud), so
+ * this also makes OpenRouter refuse a call rather than route it to a provider
+ * that keeps the data. A caller's other provider preferences are kept.
+ */
+function noRetentionProvider(requested: unknown): Record<string, unknown> {
+  const base = requested && typeof requested === "object" ? (requested as Record<string, unknown>) : {};
+  return { ...base, data_collection: "deny" };
+}
+
 /** POST to OpenRouter's chat completions endpoint, under the shared timeout rule. */
 export async function openRouterChatFetch(
   body: Record<string, unknown>,
@@ -244,7 +285,7 @@ export async function openRouterChatFetch(
       {
         method: "POST",
         headers: openRouterHeaders(),
-        body: JSON.stringify({ ...body, model, ...extra }),
+        body: JSON.stringify({ ...body, model, provider: noRetentionProvider(body.provider), ...extra }),
       },
       label,
       timeout,

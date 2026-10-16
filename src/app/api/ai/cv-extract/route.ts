@@ -10,7 +10,9 @@ import { logActivity } from "@/lib/audit/log";
 import { validateUploadedFile } from "@/lib/security/file-validation";
 import { scanForMalware } from "@/lib/security/malware-scan";
 import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
-import { generateMultimodal, generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
+import { EmptyOcrError, ocrDocument } from "@/lib/ai/visionOcr";
+import { cleanContact } from "@/lib/cv/contactValidation";
 import { uploadBuffer } from "@/lib/storage/spaces";
 import mammoth from "mammoth";
 import { createHash } from "crypto";
@@ -126,14 +128,14 @@ export async function POST(req: NextRequest) {
     // One prompt for this route and the background CV reader (lib/cv/parsedCv.ts).
     const prompt = CV_PARSE_PROMPT;
 
-    let text = "";
     // The file's own text, kept for the ATS below.
     let layerText = "";
+    // A scan's transcription, when the file had no usable text layer.
+    let ocrText = "";
 
     if (mimeType === DOCX_MIME) {
-      let extractedDocText = "";
       try {
-        extractedDocText = (await mammoth.extractRawText({ buffer: Buffer.from(bytes) })).value.trim();
+        layerText = (await mammoth.extractRawText({ buffer: Buffer.from(bytes) })).value.trim();
       } catch {
         return NextResponse.json(
           { error: "Invalid or corrupted DOCX file." },
@@ -141,31 +143,47 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (!extractedDocText) {
+      if (!layerText) {
         return NextResponse.json(
           { error: "Could not extract readable text from DOCX file." },
           { status: 400 }
         );
       }
-      layerText = extractedDocText;
-
-      text = (await generateText(
-        `${prompt}\n\nCV text:\n${extractedDocText}`,
-        GEMINI_MODELS.flash,
-        AI_TOKEN_LIMITS.cv_extract
-      )).trim();
     } else {
-      // Use multimodal path for PDF/image uploads.
-      const base64 = Buffer.from(bytes).toString("base64");
-      text = (await generateMultimodal(
-        [
-          { text: prompt },
-          { inlineData: { mimeType, data: base64 } },
-        ],
-        GEMINI_MODELS.flash,
-        AI_TOKEN_LIMITS.cv_extract
-      )).trim();
+      // PDF or image. The file's own text first: exact, free and instant
+      // (2026-10-15: OCR changed characters in contact details the text layer
+      // had right). Only a scan, or a PDF with almost no text, is transcribed.
+      try {
+        layerText = (await extractResumeText(Buffer.from(bytes), mimeType)).text;
+      } catch {
+        layerText = "";
+      }
+      if (layerText.length < MIN_TEXT_LAYER_CHARS) {
+        try {
+          ocrText = await ocrDocument(Buffer.from(bytes), mimeType);
+        } catch (err) {
+          if (!(err instanceof EmptyOcrError)) throw err;
+          logger.info({ mimeType, layerChars: layerText.length }, "[CV Extract] the scan transcribed to no text");
+          // A short text layer is still something to parse (below). With
+          // neither, the file is blank or unreadable: nothing is parsed or saved.
+          if (!layerText.trim()) {
+            return NextResponse.json(
+              { error: "Couldn't read any text from this file. Try a clearer scan, or a PDF with selectable text." },
+              { status: 422 }
+            );
+          }
+        }
+      }
     }
+
+    // One parse call for every file type, on the best text there is.
+    const sourceText = layerText.length >= MIN_TEXT_LAYER_CHARS ? layerText : ocrText || layerText;
+    const text = (await generateText(
+      `${prompt}\n\nCV text:\n${sourceText}`,
+      GEMINI_MODELS.flash,
+      AI_TOKEN_LIMITS.cv_extract,
+      true
+    )).trim();
 
     // Strip markdown code fences if present
     const jsonStr = text.startsWith("`")
@@ -173,6 +191,16 @@ export async function POST(req: NextRequest) {
       : text;
 
     const extracted = JSON.parse(jsonStr);
+
+    // Contact details are checked before anything shows or stores them. A
+    // value that fails is dropped for the seeker to fill in, never guessed.
+    const contact = cleanContact({ email: extracted.email, phone: extracted.phone });
+    extracted.email = contact.email;
+    extracted.phone = contact.phone;
+    if (contact.dropped.length) {
+      // Field names only: the values are personal data.
+      logger.info({ dropped: contact.dropped, scan: Boolean(ocrText) }, "[CV Extract] dropped malformed contact details");
+    }
 
     if (previewOnly) {
       await logActivity({
@@ -203,16 +231,10 @@ export async function POST(req: NextRequest) {
     const mappedEducation = reading.education;
     const mappedLanguages = reading.languages;
 
-    // What the ATS searches: the text layer, or for a scan the reading written out.
-    if (!layerText) {
-      try {
-        layerText = (await extractResumeText(Buffer.from(bytes), mimeType)).text;
-      } catch {
-        layerText = "";
-      }
-    }
+    // What the ATS searches: the file's own text, else the scan's
+    // transcription, else (a near-empty DOCX) the reading written out.
     const hasLayer = layerText.length >= MIN_TEXT_LAYER_CHARS;
-    const cvText = (hasLayer ? layerText : cvTextFromParsed(reading)).slice(0, MAX_CV_TEXT);
+    const cvText = (hasLayer ? layerText : ocrText || cvTextFromParsed(reading)).slice(0, MAX_CV_TEXT);
 
     const mappedProjects = extracted.projects?.length
       ? extracted.projects.map((p: {

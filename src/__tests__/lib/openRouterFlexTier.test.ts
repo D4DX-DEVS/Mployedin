@@ -16,7 +16,7 @@ jest.mock("@/lib/ai/providerFetch", () => ({
   providerFetch: (...args: unknown[]) => providerFetch(...args),
 }));
 
-import { openRouterChatFetch, FLEX_TIMEOUT_MS } from "@/lib/ai/openRouter";
+import { openRouterChatFetch, FLEX_TIMEOUT_MS, OPENROUTER_MODELS } from "@/lib/ai/openRouter";
 
 function sentBody(call: number): Record<string, unknown> {
   const init = providerFetch.mock.calls[call][1] as RequestInit;
@@ -43,7 +43,7 @@ describe("openRouterChatFetch service tiers", () => {
     providerFetch.mockResolvedValue(new Response("{}", { status: 200 }));
     await openRouterChatFetch(BODY, "bg", undefined, { tier: "flex" });
     expect(providerFetch).toHaveBeenCalledTimes(1);
-    expect(sentBody(0)).toMatchObject({ service_tier: "flex", model: "google/gemini-3.1-flash-lite" });
+    expect(sentBody(0)).toMatchObject({ service_tier: "flex", model: OPENROUTER_MODELS.text });
   });
 
   it("gives the flex attempt a longer timeout — it took 16.7 s live, near the 20 s default", async () => {

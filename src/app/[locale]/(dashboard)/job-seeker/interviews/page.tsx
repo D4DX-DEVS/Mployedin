@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { useDebounce } from "@/hooks/useDebounce";
+import { seekerKeys, useRefreshSeeker, useSeekerList } from "@/hooks/useSeekerCache";
 import { CalendarSkeleton } from "@/components/ui/loading/CalendarSkeleton";
 import { ApplicationJourneyShell } from "@/components/features/job-seeker/ApplicationJourneyShell";
 import { StatusPillTabs } from "@/components/features/job-seeker/StatusPillTabs";
@@ -56,6 +57,7 @@ const STATUS_TABS = [
 
 type InterviewStatusTab = (typeof STATUS_TABS)[number];
 type JourneyCounts = { upcoming: number; past: number };
+type InterviewListResponse = { interviews?: Interview[]; items?: Interview[]; total?: number; counts?: JourneyCounts };
 
 export default function InterviewsPage() {
   const t = useTranslations("jobSeekerInterviews");
@@ -63,8 +65,6 @@ export default function InterviewsPage() {
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const searchParams = useSearchParams();
-  const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<InterviewStatusTab>("all");
   const [view, setView] = useState<"list" | "calendar">(
@@ -74,6 +74,7 @@ export default function InterviewsPage() {
   const [counts, setCounts] = useState<JourneyCounts | null | undefined>(undefined);
   const debouncedSearch = useDebounce(searchTerm, 400);
   const pagination = usePagination();
+  const { paginationParams, updateTotal } = pagination;
   // The calendar reads its own month-scoped slice. The list's pagination only
   // ever holds one page, so reusing it left every month but the first empty and
   // the month arrows with nothing to load.
@@ -81,77 +82,76 @@ export default function InterviewsPage() {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
   });
-  const [calendarInterviews, setCalendarInterviews] = useState<Interview[]>([]);
-  const [calendarLoading, setCalendarLoading] = useState(true);
+  const refreshSeeker = useRefreshSeeker();
 
   useEffect(() => {
     document.title = t("documentTitle");
   }, [t]);
 
-  const fetchInterviews = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = pagination.paginationParams();
-      if (debouncedSearch) params.set("search", debouncedSearch);
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      // Newest first: oldest-first put every upcoming interview on the last
-      // page, behind a full page of "Past" (the upcoming group re-sorts below).
-      params.set("sortOrder", "desc");
-      // Account-wide upcoming/past for the header, computed server-side on the
-      // seeker's scope so the chips and search never move it.
-      params.set("fetchCounts", "true");
-      const res = await fetch(`/api/interviews?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        const items = data.interviews ?? data.items ?? [];
-        setInterviews(items);
-        pagination.updateTotal(data.total ?? items.length);
-        // A "no match" search short-circuits without counts; keep the last ones.
-        setCounts((prev) => data.counts ?? prev ?? null);
-      } else {
-        setCounts((prev) => prev ?? null);
-        toast.error(t("loadFailed"));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.page, pagination.limit, debouncedSearch, statusFilter]);
+  const listQuery = useMemo(() => {
+    const params = paginationParams();
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    // Newest first: oldest-first put every upcoming interview on the last
+    // page, behind a full page of "Past" (the upcoming group re-sorts below).
+    params.set("sortOrder", "desc");
+    // Account-wide upcoming/past for the header, computed server-side on the
+    // seeker's scope so the chips and search never move it.
+    params.set("fetchCounts", "true");
+    return params.toString();
+  }, [paginationParams, debouncedSearch, statusFilter]);
 
-  useEffect(() => { fetchInterviews(); }, [fetchInterviews]);
-
-  const fetchCalendarMonth = useCallback(async () => {
-    setCalendarLoading(true);
-    try {
-      const first = new Date(calendarMonth.year, calendarMonth.month, 1);
-      const last = new Date(calendarMonth.year, calendarMonth.month + 1, 0);
-      const iso = (d: Date) =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      const params = new URLSearchParams({
-        // The grid also paints the tail of the previous month and the head of
-        // the next one, so pad a week either side.
-        dateFrom: iso(new Date(first.getFullYear(), first.getMonth(), first.getDate() - 7)),
-        dateTo: iso(new Date(last.getFullYear(), last.getMonth(), last.getDate() + 7)),
-        limit: "100",
-      });
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      const res = await fetch(`/api/interviews?${params}`);
-      if (!res.ok) {
-        toast.error(t("monthLoadFailed"));
-        return;
-      }
-      const data = await res.json();
-      setCalendarInterviews(data.interviews ?? data.items ?? []);
-    } catch {
-      toast.error(t("monthLoadFailed"));
-    } finally {
-      setCalendarLoading(false);
-    }
-  }, [calendarMonth.year, calendarMonth.month, statusFilter, t]);
+  // Cached: Back from a job or the calendar shows the list at once.
+  const { data: listData, isPending: loading, isError: listFailed } = useSeekerList<InterviewListResponse>(
+    seekerKeys.interviewList(listQuery),
+    `/api/interviews?${listQuery}`,
+  );
+  const interviews = listData?.interviews ?? listData?.items ?? [];
 
   useEffect(() => {
-    if (view !== "calendar") return;
-    fetchCalendarMonth();
-  }, [view, fetchCalendarMonth]);
+    if (!listData) return;
+    updateTotal(listData.total ?? (listData.interviews ?? listData.items ?? []).length);
+    // A "no match" search short-circuits without counts; keep the last ones.
+    setCounts((prev) => listData.counts ?? prev ?? null);
+  }, [listData, updateTotal]);
+
+  useEffect(() => {
+    if (!listFailed) return;
+    setCounts((prev) => prev ?? null);
+    toast.error(t("loadFailed"));
+  }, [listFailed, t]);
+
+  const monthQuery = useMemo(() => {
+    const first = new Date(calendarMonth.year, calendarMonth.month, 1);
+    const last = new Date(calendarMonth.year, calendarMonth.month + 1, 0);
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const params = new URLSearchParams({
+      // The grid also paints the tail of the previous month and the head of
+      // the next one, so pad a week either side.
+      dateFrom: iso(new Date(first.getFullYear(), first.getMonth(), first.getDate() - 7)),
+      dateTo: iso(new Date(last.getFullYear(), last.getMonth(), last.getDate() + 7)),
+      limit: "100",
+    });
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    return params.toString();
+  }, [calendarMonth.year, calendarMonth.month, statusFilter]);
+
+  const { data: monthData, isPending: calendarLoading, isError: monthFailed } = useSeekerList<InterviewListResponse>(
+    seekerKeys.interviewMonth(monthQuery),
+    `/api/interviews?${monthQuery}`,
+    { enabled: view === "calendar" },
+  );
+  const calendarInterviews = monthData?.interviews ?? monthData?.items ?? [];
+
+  useEffect(() => {
+    if (monthFailed) toast.error(t("monthLoadFailed"));
+  }, [monthFailed, t]);
+
+  // After a reply: the list, the calendar month and the nav badges all move.
+  const fetchInterviews = useCallback(() => {
+    void refreshSeeker(seekerKeys.interviews);
+  }, [refreshSeeker]);
 
   // Filter out legacy "rescheduled" rows (superseded by in-place updates)
   const activeInterviews = interviews.filter((i) => i.status !== "rescheduled");

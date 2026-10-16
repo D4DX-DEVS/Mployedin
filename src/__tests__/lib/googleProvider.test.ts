@@ -37,8 +37,7 @@ import {
   nativeThinkingConfig,
   providerErrorMessage,
 } from "@/lib/ai/googleAI";
-import { GEMINI_MODELS } from "@/lib/ai/gemini";
-import { SMALL_MODEL, LARGE_MODEL } from "@/lib/ai/copilot/modelRouter";
+import { GEMINI_MODELS, extractionModel } from "@/lib/ai/gemini";
 import { EMBEDDING_DIMENSIONS } from "@/lib/ai/embeddings";
 import {
   OPENROUTER_MODELS,
@@ -77,11 +76,6 @@ describe("Gemini model table", () => {
     expect(GEMINI_MODELS.flashLite).toBe(GOOGLE_AI_MODELS.text);
     expect(GEMINI_MODELS.pro).toBe(GOOGLE_AI_MODELS.smart);
     expect(GEMINI_MODELS.gpt).toBe(GOOGLE_AI_MODELS.smart);
-  });
-
-  it("keeps Copilot on Gemini models", () => {
-    expect(SMALL_MODEL).toBe(GOOGLE_AI_MODELS.text);
-    expect(LARGE_MODEL).toBe(GOOGLE_AI_MODELS.smart);
   });
 
   it("keeps the embedding model the Atlas index was built with", () => {
@@ -205,18 +199,37 @@ describe("Provider split", () => {
     expect(OPENROUTER_MODELS.decision).toContain("jev");
   });
 
-  it("defaults to models that are not scheduled for retirement", () => {
-    // 2.5-flash-lite was the default until 2026-09-22. Two things moved us:
-    // OpenRouter retires the whole 2.5 family on 2026-10-20, and a benchmark on
-    // this codebase's own extraction prompt showed 2.5 inventing skills off the
-    // job title (45% of what it returned was supported by the text it read,
-    // against 100% for 3.1-flash-lite). Skills are 60% of the relevance score,
-    // so an invented one is not a cosmetic problem.
+  it("defaults to Qwen 3.7 Flash, and to nothing scheduled for retirement", () => {
+    // Gemini 3.1 Flash-Lite was the default from 2026-09-22 to 2026-10-15. The
+    // owner moved text to qwen/qwen3.7-flash: $0.03/$0.13 per 1M against
+    // $0.25/$1.50, and 99.90% vs 99.97% of words on a 10-CV OCR test.
     delete process.env.OPENROUTER_TEXT_MODEL;
     delete process.env.OPENROUTER_SMART_MODEL;
-    expect(OPENROUTER_MODELS.text).toBe("google/gemini-3.1-flash-lite");
+    expect(OPENROUTER_MODELS.text).toBe("qwen/qwen3.7-flash");
     expect(OPENROUTER_MODELS.text).not.toContain("2.5");
     expect(OPENROUTER_MODELS.smart).not.toContain("2.5");
+  });
+
+  it("pins extraction separately, and never sends an OpenRouter id to Google", () => {
+    process.env.OPENROUTER_API_KEY = "k";
+    delete process.env.AI_TEXT_PROVIDER;
+    delete process.env.OPENROUTER_TEXT_MODEL;
+    delete process.env.OPENROUTER_EXTRACTION_MODEL;
+    expect(OPENROUTER_MODELS.extraction).toBe("google/gemini-3.1-flash-lite");
+    expect(extractionModel()).toBe("google/gemini-3.1-flash-lite");
+
+    // Qwen 3.7 Flash scored 3/10 (30%) on job-skill support in the 2026-10-16
+    // probe, so it is only used when pinned by env.
+    process.env.OPENROUTER_EXTRACTION_MODEL = "qwen/qwen3.7-flash";
+    expect(extractionModel()).toBe("qwen/qwen3.7-flash");
+    delete process.env.OPENROUTER_EXTRACTION_MODEL;
+
+    process.env.OPENROUTER_EXTRACTION_MODEL = "google/gemini-3.1-flash-lite";
+    expect(extractionModel()).toBe("google/gemini-3.1-flash-lite");
+    delete process.env.OPENROUTER_EXTRACTION_MODEL;
+
+    process.env.AI_TEXT_PROVIDER = "google";
+    expect(extractionModel()).toBe(GEMINI_MODELS.flash);
   });
 
   it("serves the smart tier from the cheap model unless one is pinned", () => {
@@ -248,7 +261,7 @@ describe("Provider split", () => {
     // sunset it is ignored rather than left to 404 inside a 06:00 cron.
     process.env.OPENROUTER_TEXT_MODEL = "google/gemini-2.5-flash-lite";
     jest.useFakeTimers().setSystemTime(new Date("2026-10-21T00:00:00Z"));
-    expect(OPENROUTER_MODELS.text).toBe("google/gemini-3.1-flash-lite");
+    expect(OPENROUTER_MODELS.text).toBe("qwen/qwen3.7-flash");
     jest.setSystemTime(new Date("2026-10-19T00:00:00Z"));
     expect(OPENROUTER_MODELS.text).toBe("google/gemini-2.5-flash-lite");
     jest.useRealTimers();
@@ -344,7 +357,9 @@ describe("Multimodal input — CV and job-poster extraction", () => {
     process.env.OPENROUTER_API_KEY = "or-test-key";
     process.env.GEMINI_API_KEY = "g-test-key";
     delete process.env.AI_TEXT_PROVIDER;
-    delete process.env.OPENROUTER_TEXT_MODEL;
+    // These tests cover Gemini reading the PDF itself. The Qwen path (PDF pages
+    // as images) is covered in multimodalPdfImages.test.ts.
+    process.env.OPENROUTER_TEXT_MODEL = "google/gemini-3.1-flash-lite";
   });
 
   afterEach(() => {

@@ -740,6 +740,40 @@ export async function notifySuperAgentExhibitionRequest(
   });
 }
 
+/**
+ * The admin changed an approved amount in place. The agent planned around
+ * the old figure and the super agent recommended it, so both are told, with
+ * the admin's reason (owner, 2026-10-15: edits after approval need
+ * safeguards).
+ */
+export async function notifyExhibitionBudgetChanged(
+  userIds: string[],
+  eventName: string,
+  from: string,
+  to: string,
+  reason: string,
+  link: string,
+  actorId?: string,
+): Promise<void> {
+  await Promise.all(
+    [...new Set(userIds)].map((userId) =>
+      notify({
+        userId,
+        type: "exhibition_request",
+        title: "Approved budget changed",
+        message: `The approved budget for "${eventName}" changed from ${from} to ${to}. Reason: ${reason}`,
+        link,
+        sendEmail: true,
+        metadata: { eventName, from, to, reason },
+        titleKey: "exhibitionBudgetChangedTitle",
+        bodyKey: "exhibitionBudgetChangedBody",
+        params: { eventName, from, to, reason },
+        actorId,
+      }),
+    ),
+  );
+}
+
 // ─── Admin notification helpers ───
 //
 // Before these, not one of the eighteen triggers in this file addressed an

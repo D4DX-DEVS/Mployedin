@@ -6,10 +6,8 @@ import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { GEMINI_MODELS } from "@/lib/ai/gemini";
 import {
-  GOOGLE_AI_OPENAI_BASE,
-  hasGoogleAiApiKey,
-  getGoogleAiApiKey,
-  openAiCompatHeaders,
+  chatCompletionsFetch,
+  hasTextProviderKey,
   completionBudget,
   chatReasoningEffort,
   logUsage,
@@ -812,16 +810,16 @@ ${interviewLines ? `\n### Upcoming Interviews\n${interviewLines}` : ""}`;
       })),
     ];
 
-    if (!hasGoogleAiApiKey()) {
-      logger.error("[AI Chat] GEMINI_API_KEY not set");
+    if (!hasTextProviderKey()) {
+      logger.error("[AI Chat] the AI text provider has no key configured");
       return NextResponse.json({ error: "AI service not configured" }, { status: 503 });
     }
 
     const startedAt = Date.now();
-    const upstream = await fetch(`${GOOGLE_AI_OPENAI_BASE}/chat/completions`, {
-      method: "POST",
-      headers: openAiCompatHeaders(getGoogleAiApiKey()),
-      body: JSON.stringify({
+    // The shared transport: OpenRouter or Google, whichever serves text, with
+    // the shared timeout on the wait for the first response.
+    const upstream = await chatCompletionsFetch(
+      {
         model: CHAT_MODEL,
         messages: chatMessages,
         // Thinking (when enabled via env) shares max_tokens with the answer, so
@@ -829,12 +827,13 @@ ${interviewLines ? `\n### Upcoming Interviews\n${interviewLines}` : ""}`;
         max_tokens: completionBudget(AI_TOKEN_LIMITS.chat, chatReasoningEffort()),
         reasoning_effort: chatReasoningEffort(),
         stream: true,
-      }),
-    });
+      },
+      "ai-chat"
+    );
 
     if (!upstream.ok) {
       const err = await upstream.text();
-      logger.error({ status: upstream.status, err }, "[AI Chat] Gemini error");
+      logger.error({ status: upstream.status, err }, "[AI Chat] AI provider error");
       return NextResponse.json({ error: "AI service error" }, { status: 502 });
     }
 
@@ -864,7 +863,7 @@ ${interviewLines ? `\n### Upcoming Interviews\n${interviewLines}` : ""}`;
             // 200 with an empty body: safety block, exhausted budget, or the
             // model answered nothing. The client treats an empty stream as an
             // error and offers a retry; this is the only place the cause shows.
-            logger.error({ finishReason, usage, promptChars, context }, "[AI Chat] Gemini returned no visible content");
+            logger.error({ finishReason, usage, promptChars, context }, "[AI Chat] the model returned no visible content");
           }
         };
         try {

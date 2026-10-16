@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import ExhibitionRequest from "@/models/ExhibitionRequest";
+import { SUPPORT_ALLOCATE_STATUSES, SUPPORT_DELIVERY_STATUSES } from "@/lib/exhibitions/transitions";
 import {
   validateAllocationRequest,
   validateDeliveryRequest,
@@ -49,10 +50,10 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
   /*  Allocate resources                                                */
   /* ------------------------------------------------------------------ */
   if (action === "allocate") {
-    // Only allowed in budget_approved or resources_assigned status
-    if (!["budget_approved", "resources_assigned"].includes(item.status)) {
+    // Decided in the payment approval, adjustable until the event is reported.
+    if (!SUPPORT_ALLOCATE_STATUSES.includes(item.status)) {
       return NextResponse.json(
-        { error: `Cannot allocate in status "${item.status}" — allowed: budget_approved, resources_assigned` },
+        { error: `Cannot allocate in status "${item.status}" — allowed: ${SUPPORT_ALLOCATE_STATUSES.join(", ")}` },
         { status: 409 },
       );
     }
@@ -105,10 +106,10 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
   /*  Update delivery                                                    */
   /* ------------------------------------------------------------------ */
   if (action === "delivery") {
-    // Only allowed in resources_assigned or active status
-    if (!["resources_assigned", "active"].includes(item.status)) {
+    // Tracked once the support is approved, up to the event's report.
+    if (!SUPPORT_DELIVERY_STATUSES.includes(item.status)) {
       return NextResponse.json(
-        { error: `Cannot update delivery in status "${item.status}" — allowed: resources_assigned, active` },
+        { error: `Cannot update delivery in status "${item.status}" — allowed: ${SUPPORT_DELIVERY_STATUSES.join(", ")}` },
         { status: 409 },
       );
     }

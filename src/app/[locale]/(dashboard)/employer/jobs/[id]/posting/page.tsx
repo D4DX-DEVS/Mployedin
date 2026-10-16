@@ -11,8 +11,9 @@ import { MyPostersPage } from "@/components/features/employer/poster/MyPostersPa
 import { usePermissions } from "@/hooks/usePermissions";
 import { useJobDetail, useSaveAsTemplate, useJobTemplates } from "@/hooks/useJobs";
 import { toUserFacingError } from "@/lib/errors/user-facing";
+import { POSTERS_ENABLED } from "@/lib/features/posterFeature";
 
-/** Posting tab: the public listing, this job's posters, and reuse (template). */
+/** Posting tab: the public listing, this job's posters (when enabled), and reuse (template). */
 export default function JobPostingPage() {
   const { locale, id } = useParams<{ locale: string; id: string }>();
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function JobPostingPage() {
 
   // Legacy ?poster=1 lands here as ?create=1 → straight into the composer.
   useEffect(() => {
-    if (searchParams.get("create") === "1") router.replace(`${jobHref}/poster`);
+    if (POSTERS_ENABLED && searchParams.get("create") === "1") router.replace(`${jobHref}/poster`);
   }, [searchParams, router, jobHref]);
 
   async function copyLink() {
@@ -86,29 +87,31 @@ export default function JobPostingPage() {
       </section>
 
       {/* Posters for this job */}
-      <section aria-labelledby="posting-posters-heading" className="card-base panel-body">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h3 id="posting-posters-heading" className="heading-section font-semibold text-foreground">{t("postingPostersTitle")}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{t("postingPostersDesc")}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="ghost" className="min-h-11 rounded-xl sm:min-h-10">
-              <Link href={`/${locale}/employer/my-posters`}>{t("postingManagePosters")}</Link>
-            </Button>
-            {can("jobs", "create") && (
-              <Button asChild className="min-h-11 gap-1.5 rounded-xl sm:min-h-10">
-                <Link href={`${jobHref}/poster`}>
-                  <Plus className="h-4 w-4" aria-hidden /> {t("postingCreatePoster")}
-                </Link>
+      {POSTERS_ENABLED && (
+        <section aria-labelledby="posting-posters-heading" className="card-base panel-body">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 id="posting-posters-heading" className="heading-section font-semibold text-foreground">{t("postingPostersTitle")}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{t("postingPostersDesc")}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button asChild variant="ghost" className="min-h-11 rounded-xl sm:min-h-10">
+                <Link href={`/${locale}/employer/my-posters`}>{t("postingManagePosters")}</Link>
               </Button>
-            )}
+              {can("jobs", "create") && (
+                <Button asChild className="min-h-11 gap-1.5 rounded-xl sm:min-h-10">
+                  <Link href={`${jobHref}/poster`}>
+                    <Plus className="h-4 w-4" aria-hidden /> {t("postingCreatePoster")}
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="mt-4">
-          <MyPostersPage jobId={id} embedded />
-        </div>
-      </section>
+          <div className="mt-4">
+            <MyPostersPage jobId={id} embedded />
+          </div>
+        </section>
+      )}
 
       {/* Reuse */}
       <section aria-labelledby="posting-template-heading" className="card-base panel-body">

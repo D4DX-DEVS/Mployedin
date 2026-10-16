@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateSeekerProfile, readSeekerProfile } from "@/hooks/useSeekerCache";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -355,6 +357,7 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 export default function JobPreferencesPage() {
   const t = useTranslations("jobSeekerExtra.preferences");
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
   const [fieldErrors, setFieldErrors] = useState<PreferenceErrors>({});
@@ -394,11 +397,12 @@ export default function JobPreferencesPage() {
 
   const loadPreferences = useCallback(async () => {
     try {
-      const res = await fetch("/api/job-seeker/profile");
-      if (res.ok) {
+      // From the shared cache when fresh, so Back from Jobs/Profile is instant.
+      const profile = await readSeekerProfile(queryClient).catch(() => null);
+      if (profile) {
         // Normalised so the form always saves: stored profiles can hold a
         // salary with no min/max and over-long imported roles.
-        const saved = preferencesFromProfile(await res.json());
+        const saved = preferencesFromProfile(profile);
         setSavedPrefs(saved);
         // Restore any unsaved draft from sessionStorage
         const raw = sessionStorage.getItem(DRAFT_KEY);
@@ -416,7 +420,7 @@ export default function JobPreferencesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   const loadRecommendedJobs = useCallback(async () => {
     setJobsLoading(true);
@@ -490,6 +494,7 @@ export default function JobPreferencesPage() {
         setPrevScore(currentScore);
         setSavedPrefs({ ...prefs });
         sessionStorage.removeItem(DRAFT_KEY);
+        void invalidateSeekerProfile(queryClient);
         setSaveState("saved");
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => setSaveState("idle"), 3000);
