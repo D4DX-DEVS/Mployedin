@@ -8,8 +8,31 @@
 
 import { normalizeSkill } from "@/lib/matchScore";
 
+/**
+ * Dimensions a skill vector is kept at. `gemini-embedding-001` returns 3,072
+ * numbers, but it is a Matryoshka model: the first 768, renormalized, carry
+ * almost all of the meaning (Google's MTEB figures are 68.17 against 67.99).
+ * Kept short because every cold server reads the whole vocabulary a page
+ * needs: at 3,072 doubles a skill cost 42 KB on the wire, at 768 float32s
+ * about 3 KB.
+ */
+export const SKILL_VECTOR_DIMENSIONS = 768;
+
 /** Resolved skill vectors, keyed by canonical string. */
 export type SkillVectorMap = Map<string, number[]>;
+
+/**
+ * The stored form of an embedding: its first SKILL_VECTOR_DIMENSIONS entries,
+ * scaled to unit length. `null` when the input is too short to be one of our
+ * vectors or has no direction at all.
+ */
+export function toSkillVector(full: ArrayLike<number>): number[] | null {
+  if (full.length < SKILL_VECTOR_DIMENSIONS) return null;
+  const head = Array.from({ length: SKILL_VECTOR_DIMENSIONS }, (_, i) => full[i]);
+  const norm = Math.sqrt(head.reduce((sum, x) => sum + x * x, 0));
+  if (!Number.isFinite(norm) || norm === 0) return null;
+  return head.map((x) => x / norm);
+}
 
 export const EMPTY_SKILL_VECTORS: SkillVectorMap = new Map();
 
