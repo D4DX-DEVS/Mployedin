@@ -268,7 +268,7 @@ export const dailyRecommendationsCron = inngest.createFunction(
           );
 
           // Skill vectors are loaded here rather than in a step of their own:
-          // 800-odd 3072-float vectors would be serialised into Inngest's step
+          // 800-odd 768-float vectors would be serialised into Inngest's step
           // state on every resume. Loading them inside the step keeps them in
           // memory, and the Mongo cache means only the first batch of the
           // first ever run pays for embedding.

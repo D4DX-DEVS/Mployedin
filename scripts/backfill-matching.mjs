@@ -45,6 +45,25 @@ const EMBEDDING_MODEL = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-
 const EMBEDDING_DIMENSIONS = 3072;
 const MAX_SKILLS = 12;
 
+// Mirrors SKILL_VECTOR_DIMENSIONS, toSkillVector() and encodeSkillVector() in
+// src/lib/matching/skillSimilarity.ts and skillVectors.ts: the cache keeps the
+// first 768 dims, renormalized, as float32 little-endian bytes (3 KB a row,
+// not 42 KB). Writing the full array here would put a row back into the slow
+// form; the app's reader still accepts it, so nothing would complain.
+const SKILL_VECTOR_DIMENSIONS = 768;
+function toSkillVector(full) {
+  if (!Array.isArray(full) || full.length < SKILL_VECTOR_DIMENSIONS) return null;
+  const head = full.slice(0, SKILL_VECTOR_DIMENSIONS);
+  const norm = Math.sqrt(head.reduce((sum, x) => sum + x * x, 0));
+  if (!Number.isFinite(norm) || norm === 0) return null;
+  return head.map((x) => x / norm);
+}
+function encodeSkillVector(vector) {
+  const bytes = Buffer.alloc(vector.length * 4);
+  vector.forEach((x, i) => bytes.writeFloatLE(x, i * 4));
+  return bytes;
+}
+
 // Mirrors normalizeSkill() in src/lib/matchScore.ts. Duplicated rather than
 // imported because this is a plain .mjs script with no TS pipeline; the guard
 // below asserts the two agree on a sample before writing anything.
@@ -225,9 +244,11 @@ if (runVectors) {
     }
     for (const s of seekers) add(s.skills);
 
+    // Any stored shape counts as cached: the app reads float32 rows and the
+    // older 3,072-number arrays alike.
     const existing = await db
       .collection("skillvectors")
-      .find({ canonical: { $in: [...wanted.keys()] }, dims: EMBEDDING_DIMENSIONS })
+      .find({ canonical: { $in: [...wanted.keys()] } })
       .project({ canonical: 1 })
       .toArray();
     for (const row of existing) wanted.delete(row.canonical);
@@ -245,15 +266,17 @@ if (runVectors) {
         try {
           const vectors = await embedBatch(slice.map(([, raw]) => raw));
           const ops = slice
-            .map(([canonical, raw], idx) => ({ canonical, raw, vector: vectors[idx] }))
-            .filter((d) => d.vector?.length === EMBEDDING_DIMENSIONS)
+            .map(([canonical, raw], idx) => ({ canonical, raw, full: vectors[idx] }))
+            .filter((d) => d.full?.length === EMBEDDING_DIMENSIONS)
+            .map((d) => ({ ...d, short: toSkillVector(d.full) }))
+            .filter((d) => d.short)
             .map((d) => ({
               updateOne: {
                 filter: { canonical: d.canonical },
                 update: {
                   $set: {
-                    vector: d.vector,
-                    dims: EMBEDDING_DIMENSIONS,
+                    vector: encodeSkillVector(d.short),
+                    dims: SKILL_VECTOR_DIMENSIONS,
                     embeddingModel: EMBEDDING_MODEL,
                     sample: d.raw,
                     updatedAt: new Date(),

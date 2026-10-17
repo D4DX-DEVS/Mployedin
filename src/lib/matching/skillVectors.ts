@@ -14,6 +14,13 @@
  * Embeddings stay on Google direct: OpenRouter sells no embedding model, and
  * the Atlas index is built on `gemini-embedding-001`.
  *
+ * Storage: 768 float32 values as little-endian bytes (3 KB a skill). Rows
+ * written before 2026-10-16 hold the full 3,072 numbers as a BSON array
+ * (42 KB a skill); they are read truncated, so both forms score identically,
+ * and `scripts/migrate-skill-vectors-f32.ts` rewrites them. The size matters
+ * because a cold server reads ~180 of these before it can score a seeker's
+ * home page, and on the shared Atlas tier that read ran at ~100 KB/s.
+ *
  * Every entry point degrades to lexical-only matching if embeddings are
  * unavailable. A missing AI key must never stop the digest going out.
  */
@@ -22,7 +29,13 @@ import logger from "@/lib/logger";
 import SkillVector from "@/models/SkillVector";
 import { generateEmbeddingBatch, EMBEDDING_DIMENSIONS } from "@/lib/ai/embeddings";
 import { GOOGLE_AI_MODELS, hasGoogleAiApiKey } from "@/lib/ai/googleAI";
-import { skillKey, EMPTY_SKILL_VECTORS, type SkillVectorMap } from "@/lib/matching/skillSimilarity";
+import {
+  skillKey,
+  toSkillVector,
+  EMPTY_SKILL_VECTORS,
+  SKILL_VECTOR_DIMENSIONS,
+  type SkillVectorMap,
+} from "@/lib/matching/skillSimilarity";
 
 // The vector maths lives in `skillSimilarity.ts` so the relevance scorer can
 // import it without pulling in Mongoose. Re-exported here for callers that
@@ -42,12 +55,12 @@ const EMBED_BATCH_SIZE = 64;
  * Vectors this process has already read or embedded.
  *
  * A stored vector never changes: the key is the canonical skill, and anything
- * from another embedding model is rejected by the dims check before it gets
+ * of another shape is rejected by decodeStoredSkillVector before it gets
  * here. So nothing in this map can go stale. It exists because the in-app
  * recommendation feed scores its whole pool on every scroll page, and without
- * it each page re-read ~15 MB of vectors from Mongo (821 skills, 3,072 doubles
- * each). Cleared wholesale past the cap rather than LRU-evicted: the whole
- * platform vocabulary is well under it today.
+ * it each page re-read every vector it needed from Mongo. Cleared wholesale
+ * past the cap rather than LRU-evicted: the whole platform vocabulary is well
+ * under it today.
  */
 const MEMO_CAP = 3000;
 const memo: SkillVectorMap = new Map();
@@ -55,6 +68,47 @@ const memo: SkillVectorMap = new Map();
 function remember(canonical: string, vector: number[]): void {
   if (memo.size >= MEMO_CAP) memo.clear();
   memo.set(canonical, vector);
+}
+
+/** For tests. */
+export function clearSkillVectorMemo(): void {
+  memo.clear();
+}
+
+/** A 768-dim vector as the bytes stored in Mongo: float32, little-endian. */
+export function encodeSkillVector(vector: readonly number[]): Buffer {
+  const bytes = Buffer.alloc(vector.length * 4);
+  vector.forEach((x, i) => bytes.writeFloatLE(x, i * 4));
+  return bytes;
+}
+
+/** The bytes of a stored vector, whether lean() handed back a Buffer or the driver's Binary. */
+function bytesOf(raw: unknown): Uint8Array | null {
+  if (raw instanceof Uint8Array) return raw;
+  const inner = (raw as { buffer?: unknown } | null)?.buffer;
+  return inner instanceof Uint8Array ? inner : null;
+}
+
+/**
+ * A stored `vector` field as the 768 numbers scoring uses, or `null` when the
+ * row is not one of ours (wrong size, wrong type). Accepts both storage forms:
+ * the float32 bytes written now and the legacy 3,072-number array, which is
+ * truncated and renormalized exactly as the embedder's output is on write.
+ */
+export function decodeStoredSkillVector(raw: unknown): number[] | null {
+  if (Array.isArray(raw)) return raw.length === EMBEDDING_DIMENSIONS ? toSkillVector(raw) : null;
+  const bytes = bytesOf(raw);
+  if (!bytes || bytes.byteLength !== SKILL_VECTOR_DIMENSIONS * 4) return null;
+  const view = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const vector = Array.from({ length: SKILL_VECTOR_DIMENSIONS }, (_, i) => view.readFloatLE(i * 4));
+  // Corrupt bytes read as absent, so the skill is embedded again instead of
+  // poisoning every cosine with NaN or scoring zero against everything.
+  let norm = 0;
+  for (const x of vector) {
+    if (!Number.isFinite(x)) return null;
+    norm += x * x;
+  }
+  return norm > 0 ? vector : null;
 }
 
 /**
@@ -91,22 +145,23 @@ export async function loadSkillVectors(
   }
   if (wanted.size === 0) return out;
 
-  let cached: Array<{ canonical: string; vector: number[]; dims: number }> = [];
+  let cached: Array<{ canonical: string; vector: unknown }> = [];
   try {
     cached = await SkillVector.find({ canonical: { $in: [...wanted.keys()] } })
-      .select("canonical vector dims")
-      .lean<Array<{ canonical: string; vector: number[]; dims: number }>>();
+      .select("canonical vector")
+      .lean<Array<{ canonical: string; vector: unknown }>>();
   } catch (err) {
     logger.warn({ err }, "[skillVectors] cache read failed; falling back to lexical only");
     return EMPTY_SKILL_VECTORS;
   }
 
   for (const row of cached) {
-    // A vector from a different embedding model is not comparable to a fresh
-    // one. Treat it as absent rather than mixing dimensionalities.
-    if (row.dims === EMBEDDING_DIMENSIONS && row.vector?.length) {
-      out.set(row.canonical, row.vector);
-      remember(row.canonical, row.vector);
+    // A vector of another shape (other model, corrupt bytes) is not comparable
+    // to a fresh one. Treat it as absent rather than mixing dimensionalities.
+    const vector = decodeStoredSkillVector(row.vector);
+    if (vector) {
+      out.set(row.canonical, vector);
+      remember(row.canonical, vector);
       wanted.delete(row.canonical);
     }
   }
@@ -118,9 +173,15 @@ export async function loadSkillVectors(
     const slice = missing.slice(i, i + EMBED_BATCH_SIZE);
     try {
       const vectors = await generateEmbeddingBatch(slice.map(([, raw]) => raw));
+      // The full-length check is the model guard: a different embedder would
+      // hand back another size, and must not be stored under this model's name.
       const docs = slice
-        .map(([canonical, raw], idx) => ({ canonical, raw, vector: vectors[idx] }))
-        .filter((d) => d.vector?.length === EMBEDDING_DIMENSIONS);
+        .map(([canonical, raw], idx) => ({ canonical, raw, full: vectors[idx] }))
+        .filter((d) => d.full?.length === EMBEDDING_DIMENSIONS)
+        .flatMap((d) => {
+          const vector = toSkillVector(d.full);
+          return vector ? [{ canonical: d.canonical, raw: d.raw, vector }] : [];
+        });
 
       for (const d of docs) {
         out.set(d.canonical, d.vector);
@@ -136,8 +197,8 @@ export async function loadSkillVectors(
               filter: { canonical: d.canonical },
               update: {
                 $set: {
-                  vector: d.vector,
-                  dims: EMBEDDING_DIMENSIONS,
+                  vector: encodeSkillVector(d.vector),
+                  dims: SKILL_VECTOR_DIMENSIONS,
                   embeddingModel: GOOGLE_AI_MODELS.embedding,
                   sample: d.raw,
                 },
