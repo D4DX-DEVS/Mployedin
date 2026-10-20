@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Mail, Phone, MapPin, Linkedin, Globe, Link as LinkIcon, type LucideIcon } from "lucide-react";
+import { Mail, Phone, MapPin, Flag, Linkedin, Globe, Link as LinkIcon, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CVForm, FormattingOptions, SectionKey, DateFormat } from "./types";
 import {
@@ -24,12 +24,13 @@ function getProfileLinks(data: CVForm): { url: string; label: string }[] {
   return links;
 }
 
-/** Builds the ordered contact items (email, phone, location, profile links) with icons. */
+/** Builds the ordered contact items (email, phone, location, nationality, profile links) with icons. The PDF twin is PdfContactBar in ./pdf/shared.tsx. */
 function buildContactItems(data: CVForm): { icon: LucideIcon; url?: string; label: string }[] {
   const items: { icon: LucideIcon; url?: string; label: string }[] = [];
   if (data.email) items.push({ icon: Mail, url: `mailto:${data.email}`, label: data.email });
   if (data.phone) items.push({ icon: Phone, url: `tel:${data.phone}`, label: data.phone });
   if (data.currentLocation) items.push({ icon: MapPin, label: data.currentLocation });
+  if (data.nationality) items.push({ icon: Flag, label: data.nationality });
   for (const link of getProfileLinks(data)) {
     const icon = /linkedin/i.test(link.label) ? Linkedin : /portfolio/i.test(link.label) ? Globe : LinkIcon;
     items.push({ icon, url: link.url, label: link.label });
@@ -387,7 +388,7 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
                 <div key={i}>
                   <div className="flex justify-between items-start">
                     <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
-                    {edu.graduationDate && <span className="text-[0.6rem] text-gray-500">{edu.graduationDate}</span>}
+                    {edu.graduationDate && <span className="text-[0.6rem] text-gray-500">{formatDateValue(edu.graduationDate, formatting.dateFormat)}</span>}
                   </div>
                   <p style={{ fontSize: `${8 * scale}px`, color: "#6b7280" }}>{edu.institution}</p>
                 </div>
@@ -448,7 +449,7 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
           {data.experience.map((exp, i) => (
             <div key={i}>
               <div className="flex justify-between">
-                <p className="font-medium" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle} <span className="font-normal text-gray-500">{t("atCompany", { company: exp.company })}</span></p>
+                <p className="font-medium" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle} <span className="font-normal text-gray-500">{t("atCompany", { company: exp.company })}{exp.country ? ` · ${exp.country}` : ""}</span></p>
                 <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} df={df} />
               </div>
               {exp.description && <RichText value={exp.description} className="text-gray-500 mt-0.5" style={{ fontSize: `${8 * scale}px` }} />}
@@ -464,7 +465,7 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
           {data.education.map((edu, i) => (
             <div key={i} className="flex justify-between">
               <div>
-                <p className="font-medium" style={{ fontSize: `${9.5 * scale}px` }}>{edu.degree}{edu.field ? `, ${edu.field}` : ""}</p>
+                <p className="font-medium" style={{ fontSize: `${9.5 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
                 <p className="text-gray-500" style={{ fontSize: `${8 * scale}px` }}>{edu.institution}</p>
               </div>
               {edu.graduationDate && <span className="text-[0.6rem] text-gray-400">{formatDateValue(edu.graduationDate, df)}</span>}
@@ -612,9 +613,9 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
               <div className="space-y-2">
                 {data.education.map((edu, i) => (
                   <div key={i}>
-                    <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}</p>
+                    <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
                     <p className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }}>{edu.institution}</p>
-                    {edu.graduationDate && <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{edu.graduationDate}</p>}
+                    {edu.graduationDate && <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{formatDateValue(edu.graduationDate, formatting.dateFormat)}</p>}
                   </div>
                 ))}
               </div>
@@ -694,7 +695,7 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
           <div>
             <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("skills")}</h2>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-              {data.skills.slice(0, 10).map((s, i) => (
+              {data.skills.map((s, i) => (
                 <div key={i}>
                   <div className="flex justify-between mb-0.5" style={{ fontSize: `${7.5 * scale}px` }}>
                     <span className="font-medium">{s}</span>
@@ -721,7 +722,7 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
                       <p className="font-bold" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle}</p>
                       <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} df={df} />
                     </div>
-                    <p style={{ fontSize: `${8 * scale}px`, color: theme.primary }}>{exp.company}</p>
+                    <p style={{ fontSize: `${8 * scale}px`, color: theme.primary }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
                     {exp.description && <RichText value={exp.description} className="text-gray-500 mt-0.5" style={{ fontSize: `${7.5 * scale}px` }} />}
                   </div>
                 </div>
@@ -740,7 +741,7 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
                   <div className="flex-shrink-0 w-2 h-2 rounded-full mt-1.5" style={{ backgroundColor: theme.primary }} />
                   <div>
                     <p className="font-bold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
-                    <p className="text-gray-500" style={{ fontSize: `${8 * scale}px` }}>{[edu.institution, edu.graduationDate].filter(Boolean).join(" · ")}</p>
+                    <p className="text-gray-500" style={{ fontSize: `${8 * scale}px` }}>{[edu.institution, formatDateValue(edu.graduationDate, df)].filter(Boolean).join(" · ")}</p>
                   </div>
                 </div>
               ))}
@@ -774,6 +775,16 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Certifications */}
+        {data.certifications.length > 0 && (
+          <div>
+            <h2 className="font-bold uppercase tracking-wide mb-1" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("certifications")}</h2>
+            <ul className="space-y-0.5 text-gray-700" style={{ fontSize: `${7.5 * scale}px` }}>
+              {data.certifications.map((c, i) => <li key={i}>• {c}</li>)}
+            </ul>
           </div>
         )}
       </div>
@@ -987,7 +998,7 @@ export function ProfessionalTemplate({ data, formatting }: { data: CVForm; forma
                   <div key={i}>
                     <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
                     <p className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }}>{edu.institution}</p>
-                    {edu.graduationDate && <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{edu.graduationDate}</p>}
+                    {edu.graduationDate && <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{formatDateValue(edu.graduationDate, formatting.dateFormat)}</p>}
                   </div>
                 ))}
               </div>
@@ -1043,7 +1054,7 @@ export function CompactTemplate({ data, formatting }: { data: CVForm; formatting
         {data.experience.map((exp, i) => (
           <div key={i} className="mt-1">
             <div className="flex justify-between items-baseline gap-2">
-              <p className="font-semibold" style={{ fontSize: `${8.5 * scale}px` }}>{exp.jobTitle} <span className="font-normal text-gray-500">— {exp.company}</span></p>
+              <p className="font-semibold" style={{ fontSize: `${8.5 * scale}px` }}>{exp.jobTitle} <span className="font-normal text-gray-500">— {exp.company}{exp.country ? ` · ${exp.country}` : ""}</span></p>
               <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} df={df} />
             </div>
             {exp.description && <RichText value={exp.description} className="text-gray-600" style={{ fontSize: `${7.5 * scale}px` }} />}

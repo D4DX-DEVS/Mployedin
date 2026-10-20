@@ -112,7 +112,13 @@ export interface TemplateDefinition {
   tier: TemplateTier;
   /** Whether this template renders a profile photo when one is provided. */
   supportsPhoto?: boolean;
+  /** Plain single-column layout that applicant-tracking systems parse reliably. */
+  atsFriendly?: boolean;
+  /** Look family, for the gallery's style filter. */
+  style: TemplateStyle;
 }
+
+export type TemplateStyle = "minimal" | "modern" | "creative";
 
 /* ── Constants ── */
 
@@ -142,18 +148,18 @@ export const FONT_OPTIONS: { value: FontFamily; label: string; stack: string }[]
 ];
 
 export const TEMPLATES: TemplateDefinition[] = [
-  { id: "classic",      name: "Classic",      description: "Clean professional layout with blue accents",     tier: "free" },
-  { id: "modern",       name: "Modern",       description: "Contemporary design with sidebar layout",         tier: "free", supportsPhoto: true },
-  { id: "minimal",      name: "Minimal",      description: "Simple, ATS-friendly single-column design",       tier: "free" },
-  { id: "executive",    name: "Executive",    description: "Premium two-column layout for senior roles",      tier: "free", supportsPhoto: true },
-  { id: "creative",     name: "Creative",     description: "Bold design with colored header and skill bars",  tier: "free", supportsPhoto: true },
-  { id: "elegant",      name: "Elegant",      description: "Refined serif typography with gold accents",      tier: "free" },
-  { id: "professional", name: "Professional", description: "Photo header with two-column body for impact",    tier: "free", supportsPhoto: true },
-  { id: "compact",      name: "Compact",      description: "Dense single-column layout that fits more on a page", tier: "free" },
-  { id: "timeline",     name: "Timeline",     description: "Single column with a vertical timeline accent",   tier: "free" },
-  { id: "academic",     name: "Academic",     description: "Formal serif CV for academic and research roles", tier: "free" },
-  { id: "technical",    name: "Technical",    description: "Developer-focused layout with mono accents",      tier: "free" },
-  { id: "banner",       name: "Banner",       description: "Bold full-width colored name band, single column", tier: "free", supportsPhoto: true },
+  { id: "classic",      name: "Classic",      description: "Clean professional layout with blue accents",     tier: "free", style: "minimal", atsFriendly: true },
+  { id: "modern",       name: "Modern",       description: "Contemporary design with sidebar layout",         tier: "free", style: "modern", supportsPhoto: true },
+  { id: "minimal",      name: "Minimal",      description: "Simple, ATS-friendly single-column design",       tier: "free", style: "minimal", atsFriendly: true },
+  { id: "executive",    name: "Executive",    description: "Premium two-column layout for senior roles",      tier: "free", style: "modern", supportsPhoto: true },
+  { id: "creative",     name: "Creative",     description: "Bold design with colored header and skill bars",  tier: "free", style: "creative", supportsPhoto: true },
+  { id: "elegant",      name: "Elegant",      description: "Refined serif typography with gold accents",      tier: "free", style: "creative" },
+  { id: "professional", name: "Professional", description: "Photo header with two-column body for impact",    tier: "free", style: "modern", supportsPhoto: true },
+  { id: "compact",      name: "Compact",      description: "Dense single-column layout that fits more on a page", tier: "free", style: "minimal", atsFriendly: true },
+  { id: "timeline",     name: "Timeline",     description: "Single column with a vertical timeline accent",   tier: "free", style: "modern" },
+  { id: "academic",     name: "Academic",     description: "Formal serif CV for academic and research roles", tier: "free", style: "minimal", atsFriendly: true },
+  { id: "technical",    name: "Technical",    description: "Developer-focused layout with mono accents",      tier: "free", style: "modern", atsFriendly: true },
+  { id: "banner",       name: "Banner",       description: "Bold full-width colored name band, single column", tier: "free", style: "creative", supportsPhoto: true },
 ];
 
 /** Reorderable body sections in their default order, with default English labels. */

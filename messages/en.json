@@ -2086,7 +2086,9 @@
     "preview": {
       "resume": "Resume",
       "minimize": "Minimize",
-      "expand": "Expand"
+      "expand": "Expand",
+      "hide": "Hide preview",
+      "show": "Show preview"
     },
     "messages": {
       "importSuccess": "CV imported successfully! Review and edit the fields below.",
@@ -2132,12 +2134,19 @@
       "filters": {
         "all": "All",
         "free": "Free",
-        "pro": "PRO"
+        "pro": "PRO",
+        "ats": "ATS-friendly",
+        "photo": "With photo",
+        "modern": "Modern",
+        "minimal": "Minimal",
+        "creative": "Creative"
       },
       "badges": {
         "free": "Free",
         "pro": "PRO",
-        "photo": "Photo"
+        "photo": "Photo",
+        "ats": "ATS-friendly",
+        "selected": "Selected"
       },
       "templates": {
         "classic": {
@@ -2188,7 +2197,18 @@
           "name": "Banner",
           "description": "Bold full-width photo banner header"
         }
-      }
+      },
+      "filterLabel": "Filter templates",
+      "sampleNotice": "Showing sample content. Add your name and experience to see your own CV in each template.",
+      "selectTemplate": "Use the {name} template",
+      "preview": "Preview",
+      "previewTemplate": "Preview the {name} template",
+      "previewTitle": "{name} template",
+      "previousTemplate": "Previous template",
+      "nextTemplate": "Next template",
+      "position": "{current} of {total}",
+      "useThisTemplate": "Use this template",
+      "inUseClose": "Keep this template"
     },
     "formatting": {
       "sectionSpacing": "Section spacing",

@@ -1,246 +1,171 @@
 "use client";
 
-import React from "react";
+import { useDeferredValue, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, Image as ImageIcon, Pipette } from "lucide-react";
+import { Check, Eye, Image as ImageIcon, Pipette, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import type { FormattingOptions, TemplateDefinition, SectionKey } from "./types";
+import type { CVForm, FormattingOptions, TemplateDefinition, TemplateStyle, SectionKey } from "./types";
 import {
   TEMPLATES, THEME_COLORS, FONT_OPTIONS, DEFAULT_FORMATTING,
   PAGE_FORMAT_OPTIONS, DATE_FORMAT_OPTIONS, LINE_HEIGHT_OPTIONS, MARGIN_OPTIONS,
-  SECTION_META, getSectionOrder, resolveTheme,
+  getSectionOrder,
 } from "./types";
 import { SortableList, SortableItem } from "./sortable";
+import { SAMPLE_CV, TemplateThumbnail, hasThumbnailContent } from "./template-thumbnail";
+import { TemplatePreviewDialog } from "./template-preview-dialog";
 
 /* ─────────────────────────────────────
    Template Picker (grid of thumbnails)
    ───────────────────────────────────── */
 
-/** Miniature preview SVG placeholder for each template */
-function TemplateThumbnail({ template, themeColor }: { template: TemplateDefinition; themeColor: string }) {
-  const c = resolveTheme(themeColor).primary;
+/** One filter at a time, so the gallery never lands on a confusing empty intersection. */
+type TemplateFilter = "all" | "ats" | TemplateStyle | "photo";
 
-  const layouts: Record<string, React.ReactNode> = {
-    classic: (
-      <>
-        <rect x="8" y="6" width="44" height="3" rx="1" fill={c} />
-        <rect x="8" y="11" width="30" height="1.5" rx="0.5" fill="#d1d5db" />
-        <rect x="8" y="16" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="19" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="22" width="40" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="27" width="20" height="2" rx="0.5" fill={c} opacity="0.6" />
-        <rect x="8" y="31" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="34" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-      </>
-    ),
-    modern: (
-      <>
-        <rect x="0" y="0" width="22" height="44" fill={c} />
-        <rect x="4" y="5" width="14" height="2.5" rx="0.5" fill="white" />
-        <rect x="4" y="10" width="12" height="1" rx="0.5" fill="white" opacity="0.6" />
-        <rect x="4" y="14" width="14" height="1" rx="0.5" fill="white" opacity="0.4" />
-        <rect x="26" y="6" width="30" height="2" rx="0.5" fill="#d1d5db" />
-        <rect x="26" y="10" width="30" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="26" y="13" width="30" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="26" y="18" width="20" height="2" rx="0.5" fill={c} opacity="0.5" />
-        <rect x="26" y="22" width="30" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="26" y="25" width="30" height="1" rx="0.5" fill="#e5e7eb" />
-      </>
-    ),
-    minimal: (
-      <>
-        <rect x="14" y="5" width="32" height="3" rx="1" fill={c} />
-        <rect x="18" y="10" width="24" height="1" rx="0.5" fill="#d1d5db" />
-        <rect x="8" y="16" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="19" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="22" width="38" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="28" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="31" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-      </>
-    ),
-    executive: (
-      <>
-        <rect x="0" y="0" width="60" height="12" fill={c} />
-        <circle cx="10" cy="6" r="3.5" fill="white" opacity="0.3" />
-        <rect x="16" y="4" width="28" height="2" rx="0.5" fill="white" />
-        <rect x="16" y="7.5" width="20" height="1" rx="0.5" fill="white" opacity="0.6" />
-        <rect x="4" y="16" width="32" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="4" y="19" width="32" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="40" y="16" width="16" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="40" y="19" width="16" height="1" rx="0.5" fill="#e5e7eb" />
-      </>
-    ),
-    creative: (
-      <>
-        <rect x="0" y="0" width="60" height="14" fill={c} />
-        <rect x="4" y="4" width="30" height="3" rx="0.5" fill="white" />
-        <rect x="4" y="8.5" width="20" height="1" rx="0.5" fill="white" opacity="0.6" />
-        <rect x="4" y="18" width="24" height="1.5" rx="1" fill={c} opacity="0.3" />
-        <rect x="4" y="21" width="20" height="1.5" rx="1" fill={c} opacity="0.3" />
-        <rect x="32" y="18" width="24" height="1.5" rx="1" fill={c} opacity="0.3" />
-        <rect x="32" y="21" width="20" height="1.5" rx="1" fill={c} opacity="0.3" />
-        <rect x="4" y="27" width="52" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="4" y="30" width="52" height="1" rx="0.5" fill="#e5e7eb" />
-      </>
-    ),
-    elegant: (
-      <>
-        <rect x="12" y="5" width="36" height="2.5" rx="0.5" fill={c} />
-        <rect x="18" y="9" width="24" height="1" rx="0.5" fill="#d1d5db" />
-        <line x1="10" y1="13" x2="50" y2="13" stroke={c} strokeWidth="0.5" opacity="0.4" />
-        <rect x="26" y="11.5" width="3" height="3" fill={c} transform="rotate(45 27.5 13)" />
-        <rect x="8" y="18" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="21" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="27" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="30" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-      </>
-    ),
-    professional: (
-      <>
-        <rect x="0" y="0" width="60" height="15" fill={c} />
-        <circle cx="9" cy="7.5" r="4.5" fill="white" opacity="0.85" />
-        <rect x="17" y="5" width="28" height="2.5" rx="0.5" fill="white" />
-        <rect x="17" y="9" width="22" height="1" rx="0.5" fill="white" opacity="0.6" />
-        <rect x="4" y="19" width="34" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="4" y="22" width="34" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="4" y="25" width="30" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="42" y="19" width="14" height="1.5" rx="0.5" fill={c} opacity="0.5" />
-        <rect x="42" y="23" width="14" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="42" y="26" width="14" height="1" rx="0.5" fill="#e5e7eb" />
-      </>
-    ),
-    compact: (
-      <>
-        <rect x="6" y="5" width="34" height="2.5" rx="0.5" fill={c} />
-        <rect x="6" y="9" width="24" height="1" rx="0.5" fill="#d1d5db" />
-        <rect x="6" y="13" width="16" height="1.5" rx="0.5" fill={c} opacity="0.5" />
-        <rect x="6" y="16" width="48" height="0.8" rx="0.4" fill="#e5e7eb" />
-        <rect x="6" y="18" width="48" height="0.8" rx="0.4" fill="#e5e7eb" />
-        <rect x="6" y="20" width="44" height="0.8" rx="0.4" fill="#e5e7eb" />
-        <rect x="6" y="24" width="16" height="1.5" rx="0.5" fill={c} opacity="0.5" />
-        <rect x="6" y="27" width="48" height="0.8" rx="0.4" fill="#e5e7eb" />
-        <rect x="6" y="29" width="48" height="0.8" rx="0.4" fill="#e5e7eb" />
-        <rect x="6" y="31" width="40" height="0.8" rx="0.4" fill="#e5e7eb" />
-      </>
-    ),
-    timeline: (
-      <>
-        <rect x="8" y="5" width="30" height="3" rx="1" fill={c} />
-        <rect x="8" y="10" width="20" height="1" rx="0.5" fill="#d1d5db" />
-        <line x1="11" y1="16" x2="11" y2="38" stroke={c} strokeWidth="0.6" opacity="0.4" />
-        <circle cx="11" cy="18" r="1.6" fill={c} />
-        <rect x="16" y="17" width="38" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="16" y="20" width="34" height="1" rx="0.5" fill="#e5e7eb" />
-        <circle cx="11" cy="27" r="1.6" fill={c} />
-        <rect x="16" y="26" width="38" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="16" y="29" width="30" height="1" rx="0.5" fill="#e5e7eb" />
-        <circle cx="11" cy="35" r="1.6" fill={c} />
-        <rect x="16" y="34" width="34" height="1" rx="0.5" fill="#e5e7eb" />
-      </>
-    ),
-    academic: (
-      <>
-        <rect x="14" y="5" width="32" height="3" rx="0.5" fill={c} />
-        <rect x="20" y="10" width="20" height="1" rx="0.5" fill="#d1d5db" />
-        <line x1="8" y1="14" x2="52" y2="14" stroke={c} strokeWidth="0.7" />
-        <rect x="22" y="17" width="16" height="1.5" rx="0.5" fill={c} opacity="0.6" />
-        <line x1="8" y1="20" x2="52" y2="20" stroke="#e5e7eb" strokeWidth="0.4" />
-        <rect x="8" y="22" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="8" y="25" width="40" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="22" y="29" width="16" height="1.5" rx="0.5" fill={c} opacity="0.6" />
-        <rect x="8" y="33" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-      </>
-    ),
-    technical: (
-      <>
-        <rect x="6" y="4" width="48" height="11" rx="1" fill={c} opacity="0.12" />
-        <rect x="9" y="6.5" width="26" height="2.5" rx="0.5" fill={c} />
-        <rect x="9" y="10.5" width="18" height="1" rx="0.5" fill="#9ca3af" />
-        <rect x="6" y="19" width="3" height="1.5" rx="0.3" fill={c} opacity="0.5" />
-        <rect x="11" y="19" width="16" height="1.5" rx="0.5" fill={c} opacity="0.5" />
-        <rect x="6" y="23" width="48" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="6" y="26" width="42" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="6" y="31" width="3" height="1.5" rx="0.3" fill={c} opacity="0.5" />
-        <rect x="11" y="31" width="16" height="1.5" rx="0.5" fill={c} opacity="0.5" />
-        <rect x="6" y="35" width="48" height="1" rx="0.5" fill="#e5e7eb" />
-      </>
-    ),
-    banner: (
-      <>
-        <rect x="0" y="0" width="60" height="16" fill={c} />
-        <circle cx="10" cy="8" r="4.5" fill="white" opacity="0.85" />
-        <rect x="18" y="5.5" width="30" height="2.5" rx="0.5" fill="white" />
-        <rect x="18" y="9.5" width="22" height="1" rx="0.5" fill="white" opacity="0.6" />
-        <rect x="6" y="20" width="16" height="1.5" rx="0.5" fill={c} opacity="0.6" />
-        <rect x="6" y="24" width="48" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="6" y="27" width="44" height="1" rx="0.5" fill="#e5e7eb" />
-        <rect x="6" y="32" width="16" height="1.5" rx="0.5" fill={c} opacity="0.6" />
-        <rect x="6" y="36" width="48" height="1" rx="0.5" fill="#e5e7eb" />
-      </>
-    ),
-  };
+const FILTERS: TemplateFilter[] = ["all", "ats", "modern", "minimal", "creative", "photo"];
 
-  return (
-    <svg viewBox="0 0 60 44" className="w-full rounded border border-border bg-card" preserveAspectRatio="xMidYMid meet">
-      {layouts[template.id] ?? layouts.classic}
-    </svg>
-  );
+function matchesFilter(template: TemplateDefinition, filter: TemplateFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "ats") return Boolean(template.atsFriendly);
+  if (filter === "photo") return Boolean(template.supportsPhoto);
+  return template.style === filter;
 }
 
+/**
+ * Gallery of real, scaled-down CVs. Every card renders the seeker's own CV in
+ * that template (sample content until they have filled in the basics), so
+ * picking a layout shows exactly what the preview and download will look like.
+ */
 export function TemplatePicker({
   selected,
   onSelect,
-  themeColor,
+  data,
+  formatting,
+  wide = false,
 }: {
   selected: string;
   onSelect: (id: string) => void;
-  themeColor: string;
+  /** The CV as the preview shows it (hidden sections already removed). */
+  data: CVForm;
+  formatting: FormattingOptions;
+  /** Live preview hidden: the gallery has the whole width, so show more (and bigger) cards per row. */
+  wide?: boolean;
 }) {
   const t = useTranslations("cvBuilderPage.templatePicker");
+  const [filter, setFilter] = useState<TemplateFilter>("all");
+  // Thumbnails re-render a whole CV each; let typing stay snappy.
+  const deferredData = useDeferredValue(data);
+  const usingSample = !hasThumbnailContent(deferredData);
+  const thumbnailData = usingSample ? { ...SAMPLE_CV, photo: deferredData.photo } : deferredData;
+  const visible = TEMPLATES.filter((tpl) => matchesFilter(tpl, filter));
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const previewTemplate = TEMPLATES.find((tpl) => tpl.id === previewId) ?? null;
 
   return (
     <div className="space-y-4">
-      {/* Template grid — all templates available, no tiers */}
-      <div className="grid grid-cols-2 gap-3">
-        {TEMPLATES.map((template) => {
+      {/* Stays in view while the gallery scrolls under it. */}
+      <div
+        className="sticky top-14 z-20 -mx-1 flex sm:top-16 flex-wrap items-center gap-2 bg-card/95 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-card/80"
+        role="group"
+        aria-label={t("filterLabel")}
+      >
+        {FILTERS.map((f) => (
+          <Button
+            key={f}
+            type="button"
+            size="sm"
+            variant={filter === f ? "default" : "outline"}
+            aria-pressed={filter === f}
+            onClick={() => setFilter(f)}
+            className="h-8 rounded-full text-xs"
+          >
+            {t(`filters.${f}`)}
+          </Button>
+        ))}
+      </div>
+
+      {usingSample && (
+        <p className="text-xs text-muted-foreground">{t("sampleNotice")}</p>
+      )}
+
+      <div className={cn("grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4", wide ? "xl:grid-cols-4" : "lg:grid-cols-2")}>
+        {visible.map((template) => {
           const isSelected = selected === template.id;
+          const name = t(`templates.${template.id}.name`);
 
           return (
-            <button
+            <div
               key={template.id}
-              onClick={() => onSelect(template.id)}
               className={cn(
-                "relative rounded-xl border-2 p-2.5 text-left transition-all",
-                isSelected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-border/80",
+                "group relative flex flex-col rounded-xl border-2 bg-muted/30 p-2.5 transition-all",
+                isSelected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/40",
               )}
             >
-              {/* "Photo" badge for templates that support a profile picture */}
-              {template.supportsPhoto && (
-                <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase text-primary">
-                  <ImageIcon className="h-2.5 w-2.5" /> {t("badges.photo")}
+              <TemplateThumbnail templateId={template.id} data={thumbnailData} formatting={formatting} />
+
+              {isSelected && (
+                <span className="absolute start-4 top-4 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.65rem] font-semibold text-primary-foreground shadow-sm">
+                  <Check aria-hidden="true" className="h-3 w-3" /> {t("badges.selected")}
                 </span>
               )}
 
-              {/* Thumbnail */}
-              <TemplateThumbnail template={template} themeColor={themeColor} />
+              <div className="mt-2 min-w-0">
+                <p className="text-sm font-semibold">{name}</p>
+                <p className="line-clamp-2 text-xs text-muted-foreground">{t(`templates.${template.id}.description`)}</p>
+              </div>
 
-              {/* Selected check */}
-              {isSelected && (
-                <div className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                  <Check className="w-3 h-3 text-white" />
+              <div className="mt-auto flex items-end justify-between gap-2 pt-1.5">
+                <div className="flex min-w-0 flex-wrap gap-1">
+                  {template.atsFriendly && (
+                    <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[0.65rem] font-semibold text-emerald-700">
+                      <ShieldCheck aria-hidden="true" className="h-3 w-3" /> {t("badges.ats")}
+                    </span>
+                  )}
+                  {template.supportsPhoto && (
+                    <span className="inline-flex items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-[0.65rem] font-semibold text-primary">
+                      <ImageIcon aria-hidden="true" className="h-3 w-3" /> {t("badges.photo")}
+                    </span>
+                  )}
                 </div>
-              )}
+                {/* Above the card's select button: looking never changes the selection. */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewId(template.id)}
+                  aria-label={t("previewTemplate", { name })}
+                  className="relative z-10 h-8 shrink-0 gap-1 bg-background px-2.5 text-xs"
+                >
+                  <Eye aria-hidden="true" className="h-3.5 w-3.5" /> {t("preview")}
+                </Button>
+              </div>
 
-              {/* Label */}
-              <p className="mt-1.5 text-xs font-medium">{t(`templates.${template.id}.name`)}</p>
-              <p className="text-[0.65rem] text-muted-foreground">{t(`templates.${template.id}.description`)}</p>
-            </button>
+              {/* Whole card is the hit area; the thumbnail inside is inert. */}
+              <button
+                type="button"
+                onClick={() => onSelect(template.id)}
+                aria-pressed={isSelected}
+                aria-label={t("selectTemplate", { name })}
+                className="absolute inset-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              />
+            </div>
           );
         })}
       </div>
+
+      <TemplatePreviewDialog
+        template={previewTemplate}
+        templates={visible.some((tpl) => tpl.id === previewId) ? visible : TEMPLATES}
+        selected={selected}
+        data={thumbnailData}
+        formatting={formatting}
+        onNavigate={setPreviewId}
+        onUse={(id) => { onSelect(id); setPreviewId(null); }}
+        onClose={() => setPreviewId(null)}
+      />
     </div>
   );
 }
