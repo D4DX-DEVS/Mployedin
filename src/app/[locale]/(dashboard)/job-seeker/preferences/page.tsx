@@ -533,6 +533,7 @@ export default function JobPreferencesPage() {
       <PageHeader
         title={t("title")}
         description={t("description")}
+        backHref="/job-seeker/profile"
       />
 
       <div className="mx-auto grid w-full min-w-0 max-w-3xl grid-cols-[minmax(0,1fr)] gap-4 sm:gap-6">

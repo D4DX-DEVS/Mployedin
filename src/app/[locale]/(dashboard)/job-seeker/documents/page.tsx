@@ -354,6 +354,7 @@ export default function JobSeekerDocumentsPage() {
       <PageHeader
         title={t("title")}
         description={t("description")}
+        backHref="/job-seeker/profile"
       />
 
       <div className="space-y-3 sm:space-y-6">

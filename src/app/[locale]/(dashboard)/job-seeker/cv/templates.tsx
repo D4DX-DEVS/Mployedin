@@ -2,12 +2,12 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { Mail, Phone, MapPin, Linkedin, Globe, Link as LinkIcon, type LucideIcon } from "lucide-react";
+import { Mail, Phone, MapPin, Flag, Linkedin, Globe, Link as LinkIcon, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CVForm, FormattingOptions, SectionKey, DateFormat } from "./types";
 import {
   getTheme, getFontStack, getFontScale, getSectionGap,
-  getLineHeight, getSectionOrder, formatDateValue, normalizeUrl,
+  getLineHeight, getSectionOrder, getColumnOrder, formatDateValue, normalizeUrl,
 } from "./types";
 import { sanitizeHtml, isHtml } from "./rich-text";
 
@@ -24,12 +24,13 @@ function getProfileLinks(data: CVForm): { url: string; label: string }[] {
   return links;
 }
 
-/** Builds the ordered contact items (email, phone, location, profile links) with icons. */
+/** Builds the ordered contact items (email, phone, location, nationality, profile links) with icons. The PDF twin is PdfContactBar in ./pdf/shared.tsx. */
 function buildContactItems(data: CVForm): { icon: LucideIcon; url?: string; label: string }[] {
   const items: { icon: LucideIcon; url?: string; label: string }[] = [];
   if (data.email) items.push({ icon: Mail, url: `mailto:${data.email}`, label: data.email });
   if (data.phone) items.push({ icon: Phone, url: `tel:${data.phone}`, label: data.phone });
   if (data.currentLocation) items.push({ icon: MapPin, label: data.currentLocation });
+  if (data.nationality) items.push({ icon: Flag, label: data.nationality });
   for (const link of getProfileLinks(data)) {
     const icon = /linkedin/i.test(link.label) ? Linkedin : /portfolio/i.test(link.label) ? Globe : LinkIcon;
     items.push({ icon, url: link.url, label: link.label });
@@ -306,6 +307,93 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
   const lineHeight = getLineHeight(formatting);
   const df = formatting.dateFormat;
 
+  const side: Partial<Record<SectionKey, React.ReactNode>> = {
+    skills: data.skills.length > 0 ? (
+      <div>
+        <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>{t("skills")}</h3>
+        <div className="flex flex-wrap gap-1">
+          {data.skills.map((s, i) => (
+            <span key={i} className="px-1.5 py-0.5 rounded text-white" style={{ fontSize: `${7 * scale}px`, backgroundColor: "rgba(255,255,255,0.15)" }}>{s}</span>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    languages: data.languages.length > 0 ? (
+      <div>
+        <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>{t("languages")}</h3>
+        <div className="space-y-0.5" style={{ fontSize: `${7.5 * scale}px` }}>
+          {data.languages.map((l, i) => (
+            <p key={i} className="text-white/90">{l.language} <span className="text-white/60 capitalize">– {l.proficiency}</span></p>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    certifications: data.certifications.length > 0 ? (
+      <div>
+        <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>{t("certifications")}</h3>
+        <ul className="space-y-0.5" style={{ fontSize: `${7.5 * scale}px` }}>
+          {data.certifications.map((c, i) => <li key={i} className="text-white/90">• {c}</li>)}
+        </ul>
+      </div>
+    ) : null,
+  };
+
+  const main: Partial<Record<SectionKey, React.ReactNode>> = {
+    experience: data.experience.length > 0 ? (
+      <div>
+        <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>{t("experience")}</h2>
+        <div className="space-y-2.5">
+          {data.experience.map((exp, i) => (
+            <div key={i}>
+              <div className="flex justify-between items-start">
+                <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{exp.jobTitle}</p>
+                <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} df={df} />
+              </div>
+              <p style={{ fontSize: `${8 * scale}px`, color: "#6b7280" }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
+              {exp.description && <RichText value={exp.description} className="text-gray-600 mt-0.5" style={{ fontSize: `${7.5 * scale}px` }} />}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    education: data.education.length > 0 ? (
+      <div>
+        <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>{t("education")}</h2>
+        <div className="space-y-2">
+          {data.education.map((edu, i) => (
+            <div key={i}>
+              <div className="flex justify-between items-start">
+                <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
+                {edu.graduationDate && <span className="text-[0.6rem] text-gray-500">{formatDateValue(edu.graduationDate, formatting.dateFormat)}</span>}
+              </div>
+              <p style={{ fontSize: `${8 * scale}px`, color: "#6b7280" }}>{edu.institution}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    projects: data.projects.length > 0 ? (
+      <div>
+        <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>{t("projects")}</h2>
+        <div className="space-y-2">
+          {data.projects.map((p, i) => (
+            <div key={i}>
+              <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{p.title}</p>
+              {p.description && <RichText value={p.description} className="text-gray-600" style={{ fontSize: `${7.5 * scale}px` }} />}
+              {p.techStack.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  {p.techStack.map((t, j) => (
+                    <span key={j} className="px-1 py-0.5 rounded" style={{ fontSize: `${6.5 * scale}px`, backgroundColor: theme.light, color: theme.primary }}>{t}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+  };
+
   return (
     <div style={{ fontFamily, fontSize: `${10 * scale}px`, lineHeight }} className="text-gray-900 flex min-h-full">
       {/* Left Sidebar */}
@@ -322,101 +410,16 @@ export function ModernTemplate({ data, formatting }: { data: CVForm; formatting:
 
         <ContactBar data={data} scale={scale} color="rgba(255,255,255,0.9)" vertical className="mb-4" />
 
-        {/* Skills */}
-        {data.skills.length > 0 && (
-          <div className="mb-4">
-            <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>{t("skills")}</h3>
-            <div className="flex flex-wrap gap-1">
-              {data.skills.map((s, i) => (
-                <span key={i} className="px-1.5 py-0.5 rounded text-white" style={{ fontSize: `${7 * scale}px`, backgroundColor: "rgba(255,255,255,0.15)" }}>{s}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Languages */}
-        {data.languages.length > 0 && (
-          <div className="mb-4">
-            <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>{t("languages")}</h3>
-            <div className="space-y-0.5" style={{ fontSize: `${7.5 * scale}px` }}>
-              {data.languages.map((l, i) => (
-                <p key={i} className="text-white/90">{l.language} <span className="text-white/60 capitalize">– {l.proficiency}</span></p>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Certifications */}
-        {data.certifications.length > 0 && (
-          <div>
-            <h3 className="font-bold uppercase tracking-wide text-white/90 mb-1.5 pb-0.5" style={{ fontSize: `${8 * scale}px`, borderBottom: "1px solid rgba(255,255,255,0.3)" }}>{t("certifications")}</h3>
-            <ul className="space-y-0.5" style={{ fontSize: `${7.5 * scale}px` }}>
-              {data.certifications.map((c, i) => <li key={i} className="text-white/90">• {c}</li>)}
-            </ul>
-          </div>
-        )}
+        <div className="flex flex-col gap-4">{getColumnOrder(formatting, "modern", "side").map((key) => (
+          <React.Fragment key={key}>{side[key]}</React.Fragment>
+        ))}</div>
       </div>
 
       {/* Right Main Content */}
       <div className="flex-1 p-4" style={{ display: "flex", flexDirection: "column", gap }}>
-        {/* Experience */}
-        {data.experience.length > 0 && (
-          <div>
-            <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>{t("experience")}</h2>
-            <div className="space-y-2.5">
-              {data.experience.map((exp, i) => (
-                <div key={i}>
-                  <div className="flex justify-between items-start">
-                    <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{exp.jobTitle}</p>
-                    <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} df={df} />
-                  </div>
-                  <p style={{ fontSize: `${8 * scale}px`, color: "#6b7280" }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
-                  {exp.description && <RichText value={exp.description} className="text-gray-600 mt-0.5" style={{ fontSize: `${7.5 * scale}px` }} />}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Education */}
-        {data.education.length > 0 && (
-          <div>
-            <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>{t("education")}</h2>
-            <div className="space-y-2">
-              {data.education.map((edu, i) => (
-                <div key={i}>
-                  <div className="flex justify-between items-start">
-                    <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
-                    {edu.graduationDate && <span className="text-[0.6rem] text-gray-500">{edu.graduationDate}</span>}
-                  </div>
-                  <p style={{ fontSize: `${8 * scale}px`, color: "#6b7280" }}>{edu.institution}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Projects */}
-        {data.projects.length > 0 && (
-          <div>
-            <h2 className="font-bold uppercase tracking-wider pb-1 mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary, borderBottom: `1.5px solid ${theme.primary}30` }}>{t("projects")}</h2>
-            <div className="space-y-2">
-              {data.projects.map((p, i) => (
-                <div key={i}>
-                  <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{p.title}</p>
-                  {p.description && <RichText value={p.description} className="text-gray-600" style={{ fontSize: `${7.5 * scale}px` }} />}
-                  {p.techStack.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-0.5">
-                      {p.techStack.map((t, j) => (
-                        <span key={j} className="px-1 py-0.5 rounded" style={{ fontSize: `${6.5 * scale}px`, backgroundColor: theme.light, color: theme.primary }}>{t}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {getColumnOrder(formatting, "modern", "main").map((key) => (
+          <React.Fragment key={key}>{main[key]}</React.Fragment>
+        ))}
       </div>
     </div>
   );
@@ -448,7 +451,7 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
           {data.experience.map((exp, i) => (
             <div key={i}>
               <div className="flex justify-between">
-                <p className="font-medium" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle} <span className="font-normal text-gray-500">{t("atCompany", { company: exp.company })}</span></p>
+                <p className="font-medium" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle} <span className="font-normal text-gray-500">{t("atCompany", { company: exp.company })}{exp.country ? ` · ${exp.country}` : ""}</span></p>
                 <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} df={df} />
               </div>
               {exp.description && <RichText value={exp.description} className="text-gray-500 mt-0.5" style={{ fontSize: `${8 * scale}px` }} />}
@@ -464,7 +467,7 @@ export function MinimalTemplate({ data, formatting }: { data: CVForm; formatting
           {data.education.map((edu, i) => (
             <div key={i} className="flex justify-between">
               <div>
-                <p className="font-medium" style={{ fontSize: `${9.5 * scale}px` }}>{edu.degree}{edu.field ? `, ${edu.field}` : ""}</p>
+                <p className="font-medium" style={{ fontSize: `${9.5 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
                 <p className="text-gray-500" style={{ fontSize: `${8 * scale}px` }}>{edu.institution}</p>
               </div>
               {edu.graduationDate && <span className="text-[0.6rem] text-gray-400">{formatDateValue(edu.graduationDate, df)}</span>}
@@ -544,6 +547,89 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
   const lineHeight = getLineHeight(formatting);
   const df = formatting.dateFormat;
 
+  const main: Partial<Record<SectionKey, React.ReactNode>> = {
+    experience: data.experience.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("professionalExperience")}</SectionTitle>
+        <div className="space-y-3">
+          {data.experience.map((exp, i) => (
+            <div key={i} className="pl-3" style={{ borderLeft: `2px solid ${theme.primary}40` }}>
+              <p className="font-bold" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle}</p>
+              <p style={{ fontSize: `${8 * scale}px`, color: theme.primary }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
+              <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{formatDateValue(exp.startDate, df)} – {exp.isCurrent ? t("present") : formatDateValue(exp.endDate, df)}</p>
+              {exp.description && <RichText value={exp.description} className="text-gray-600 mt-0.5" style={{ fontSize: `${7.5 * scale}px` }} />}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    projects: data.projects.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("keyProjects")}</SectionTitle>
+        <div className="space-y-2">
+          {data.projects.map((p, i) => (
+            <div key={i}>
+              <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{p.title}</p>
+              {p.description && <RichText value={p.description} className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }} />}
+              {p.techStack.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  {p.techStack.map((t, j) => (
+                    <span key={j} className="px-1 py-0.5 rounded" style={{ fontSize: `${6.5 * scale}px`, backgroundColor: theme.light, color: theme.primary }}>{t}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+  };
+
+  const side: Partial<Record<SectionKey, React.ReactNode>> = {
+    education: data.education.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("education")}</SectionTitle>
+        <div className="space-y-2">
+          {data.education.map((edu, i) => (
+            <div key={i}>
+              <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
+              <p className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }}>{edu.institution}</p>
+              {edu.graduationDate && <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{formatDateValue(edu.graduationDate, formatting.dateFormat)}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    skills: data.skills.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("coreCompetencies")}</SectionTitle>
+        <div className="flex flex-wrap gap-1">
+          {data.skills.map((s, i) => (
+            <span key={i} className="px-1.5 py-0.5 rounded font-medium" style={{ fontSize: `${7.5 * scale}px`, backgroundColor: theme.light, color: theme.primary }}>{s}</span>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    languages: data.languages.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("languages")}</SectionTitle>
+        <div className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
+          {data.languages.map((l, i) => (
+            <p key={i}>{l.language} <span className="text-gray-400 capitalize">({l.proficiency})</span></p>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    certifications: data.certifications.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("certifications")}</SectionTitle>
+        <ul className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
+          {data.certifications.map((c, i) => <li key={i}>• {c}</li>)}
+        </ul>
+      </div>
+    ) : null,
+  };
+
   return (
     <div style={{ fontFamily, fontSize: `${10 * scale}px`, lineHeight }} className="text-gray-900">
       {/* Header band */}
@@ -566,91 +652,16 @@ export function ExecutiveTemplate({ data, formatting }: { data: CVForm; formatti
       <div className="flex gap-4 px-4 pt-3" style={{ paddingTop: gap }}>
         {/* Left column — 60% */}
         <div className="w-[60%]" style={{ display: "flex", flexDirection: "column", gap }}>
-          {data.experience.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("professionalExperience")}</SectionTitle>
-              <div className="space-y-3">
-                {data.experience.map((exp, i) => (
-                  <div key={i} className="pl-3" style={{ borderLeft: `2px solid ${theme.primary}40` }}>
-                    <p className="font-bold" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle}</p>
-                    <p style={{ fontSize: `${8 * scale}px`, color: theme.primary }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
-                    <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{formatDateValue(exp.startDate, df)} – {exp.isCurrent ? t("present") : formatDateValue(exp.endDate, df)}</p>
-                    {exp.description && <RichText value={exp.description} className="text-gray-600 mt-0.5" style={{ fontSize: `${7.5 * scale}px` }} />}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {data.projects.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("keyProjects")}</SectionTitle>
-              <div className="space-y-2">
-                {data.projects.map((p, i) => (
-                  <div key={i}>
-                    <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{p.title}</p>
-                    {p.description && <RichText value={p.description} className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }} />}
-                    {p.techStack.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-0.5">
-                        {p.techStack.map((t, j) => (
-                          <span key={j} className="px-1 py-0.5 rounded" style={{ fontSize: `${6.5 * scale}px`, backgroundColor: theme.light, color: theme.primary }}>{t}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {getColumnOrder(formatting, "executive", "main").map((key) => (
+            <React.Fragment key={key}>{main[key]}</React.Fragment>
+          ))}
         </div>
 
         {/* Right column — 40% */}
         <div className="w-[40%]" style={{ display: "flex", flexDirection: "column", gap }}>
-          {data.education.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("education")}</SectionTitle>
-              <div className="space-y-2">
-                {data.education.map((edu, i) => (
-                  <div key={i}>
-                    <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}</p>
-                    <p className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }}>{edu.institution}</p>
-                    {edu.graduationDate && <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{edu.graduationDate}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {data.skills.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("coreCompetencies")}</SectionTitle>
-              <div className="flex flex-wrap gap-1">
-                {data.skills.map((s, i) => (
-                  <span key={i} className="px-1.5 py-0.5 rounded font-medium" style={{ fontSize: `${7.5 * scale}px`, backgroundColor: theme.light, color: theme.primary }}>{s}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {data.languages.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("languages")}</SectionTitle>
-              <div className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
-                {data.languages.map((l, i) => (
-                  <p key={i}>{l.language} <span className="text-gray-400 capitalize">({l.proficiency})</span></p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {data.certifications.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("certifications")}</SectionTitle>
-              <ul className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
-                {data.certifications.map((c, i) => <li key={i}>• {c}</li>)}
-              </ul>
-            </div>
-          )}
+          {getColumnOrder(formatting, "executive", "side").map((key) => (
+            <React.Fragment key={key}>{side[key]}</React.Fragment>
+          ))}
         </div>
       </div>
     </div>
@@ -671,6 +682,95 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
   const lineHeight = getLineHeight(formatting);
   const df = formatting.dateFormat;
 
+  const sections: Partial<Record<SectionKey, React.ReactNode>> = {
+    skills: data.skills.length > 0 ? (
+      <div>
+        <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("skills")}</h2>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+          {data.skills.map((s, i) => (
+            <div key={i}>
+              <div className="flex justify-between mb-0.5" style={{ fontSize: `${7.5 * scale}px` }}>
+                <span className="font-medium">{s}</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${75 + (i % 4) * 7}%`, backgroundColor: theme.primary, opacity: 0.7 + (i % 3) * 0.1 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    experience: data.experience.length > 0 ? (
+      <div>
+        <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("experience")}</h2>
+        <div className="space-y-3">
+          {data.experience.map((exp, i) => (
+            <div key={i} className="flex gap-3">
+              <div className="flex-shrink-0 w-2 h-2 rounded-full mt-1.5" style={{ backgroundColor: theme.primary }} />
+              <div className="flex-1">
+                <div className="flex justify-between">
+                  <p className="font-bold" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle}</p>
+                  <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} df={df} />
+                </div>
+                <p style={{ fontSize: `${8 * scale}px`, color: theme.primary }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
+                {exp.description && <RichText value={exp.description} className="text-gray-500 mt-0.5" style={{ fontSize: `${7.5 * scale}px` }} />}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    education: data.education.length > 0 ? (
+      <div>
+        <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("education")}</h2>
+        <div className="space-y-2">
+          {data.education.map((edu, i) => (
+            <div key={i} className="flex gap-3">
+              <div className="flex-shrink-0 w-2 h-2 rounded-full mt-1.5" style={{ backgroundColor: theme.primary }} />
+              <div>
+                <p className="font-bold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
+                <p className="text-gray-500" style={{ fontSize: `${8 * scale}px` }}>{[edu.institution, formatDateValue(edu.graduationDate, df)].filter(Boolean).join(" · ")}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    projects: data.projects.length > 0 ? (
+      <div>
+        <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("projects")}</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {data.projects.map((p, i) => (
+            <div key={i} className="p-2 rounded-lg" style={{ backgroundColor: theme.light }}>
+              <p className="font-bold" style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{p.title}</p>
+              {p.description && <RichText value={p.description} className="text-gray-600 mt-0.5" style={{ fontSize: `${7 * scale}px` }} />}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    languages: data.languages.length > 0 ? (
+      <div className="flex gap-6">
+        <div>
+          <h2 className="font-bold uppercase tracking-wide mb-1" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("languages")}</h2>
+          <div className="flex gap-2">
+            {data.languages.map((l, i) => (
+              <span key={i} className="px-2 py-0.5 rounded-full text-white" style={{ fontSize: `${7 * scale}px`, backgroundColor: theme.primary }}>{l.language}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    ) : null,
+    certifications: data.certifications.length > 0 ? (
+      <div>
+        <h2 className="font-bold uppercase tracking-wide mb-1" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("certifications")}</h2>
+        <ul className="space-y-0.5 text-gray-700" style={{ fontSize: `${7.5 * scale}px` }}>
+          {data.certifications.map((c, i) => <li key={i}>• {c}</li>)}
+        </ul>
+      </div>
+    ) : null,
+  };
+
   return (
     <div style={{ fontFamily, fontSize: `${10 * scale}px`, lineHeight }} className="text-gray-900">
       {/* Bold Header */}
@@ -689,93 +789,9 @@ export function CreativeTemplate({ data, formatting }: { data: CVForm; formattin
       </div>
 
       <div className="p-4" style={{ display: "flex", flexDirection: "column", gap }}>
-        {/* Skills as progress bars */}
-        {data.skills.length > 0 && (
-          <div>
-            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("skills")}</h2>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-              {data.skills.slice(0, 10).map((s, i) => (
-                <div key={i}>
-                  <div className="flex justify-between mb-0.5" style={{ fontSize: `${7.5 * scale}px` }}>
-                    <span className="font-medium">{s}</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${75 + (i % 4) * 7}%`, backgroundColor: theme.primary, opacity: 0.7 + (i % 3) * 0.1 }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Experience */}
-        {data.experience.length > 0 && (
-          <div>
-            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("experience")}</h2>
-            <div className="space-y-3">
-              {data.experience.map((exp, i) => (
-                <div key={i} className="flex gap-3">
-                  <div className="flex-shrink-0 w-2 h-2 rounded-full mt-1.5" style={{ backgroundColor: theme.primary }} />
-                  <div className="flex-1">
-                    <div className="flex justify-between">
-                      <p className="font-bold" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle}</p>
-                      <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} df={df} />
-                    </div>
-                    <p style={{ fontSize: `${8 * scale}px`, color: theme.primary }}>{exp.company}</p>
-                    {exp.description && <RichText value={exp.description} className="text-gray-500 mt-0.5" style={{ fontSize: `${7.5 * scale}px` }} />}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Education */}
-        {data.education.length > 0 && (
-          <div>
-            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("education")}</h2>
-            <div className="space-y-2">
-              {data.education.map((edu, i) => (
-                <div key={i} className="flex gap-3">
-                  <div className="flex-shrink-0 w-2 h-2 rounded-full mt-1.5" style={{ backgroundColor: theme.primary }} />
-                  <div>
-                    <p className="font-bold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
-                    <p className="text-gray-500" style={{ fontSize: `${8 * scale}px` }}>{[edu.institution, edu.graduationDate].filter(Boolean).join(" · ")}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Projects */}
-        {data.projects.length > 0 && (
-          <div>
-            <h2 className="font-bold uppercase tracking-wide mb-2" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("projects")}</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {data.projects.map((p, i) => (
-                <div key={i} className="p-2 rounded-lg" style={{ backgroundColor: theme.light }}>
-                  <p className="font-bold" style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{p.title}</p>
-                  {p.description && <RichText value={p.description} className="text-gray-600 mt-0.5" style={{ fontSize: `${7 * scale}px` }} />}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Languages */}
-        {data.languages.length > 0 && (
-          <div className="flex gap-6">
-            <div>
-              <h2 className="font-bold uppercase tracking-wide mb-1" style={{ fontSize: `${9 * scale}px`, color: theme.primary }}>{t("languages")}</h2>
-              <div className="flex gap-2">
-                {data.languages.map((l, i) => (
-                  <span key={i} className="px-2 py-0.5 rounded-full text-white" style={{ fontSize: `${7 * scale}px`, backgroundColor: theme.primary }}>{l.language}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        {getSectionOrder(formatting).map((key) => (
+          <React.Fragment key={key}>{sections[key]}</React.Fragment>
+        ))}
       </div>
     </div>
   );
@@ -910,6 +926,84 @@ export function ProfessionalTemplate({ data, formatting }: { data: CVForm; forma
   const lineHeight = getLineHeight(formatting);
   const df = formatting.dateFormat;
 
+  const main: Partial<Record<SectionKey, React.ReactNode>> = {
+    experience: data.experience.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("professionalExperience")}</SectionTitle>
+        <div className="space-y-2.5">
+          {data.experience.map((exp, i) => (
+            <div key={i}>
+              <div className="flex justify-between items-start">
+                <p className="font-semibold" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle}</p>
+                <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} df={df} />
+              </div>
+              <p style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
+              {exp.description && <RichText value={exp.description} className="text-gray-600 mt-0.5" style={{ fontSize: `${8 * scale}px` }} />}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    projects: data.projects.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("keyProjects")}</SectionTitle>
+        <div className="space-y-2">
+          {data.projects.map((p, i) => (
+            <div key={i}>
+              <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{p.title}</p>
+              {p.description && <RichText value={p.description} className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }} />}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+  };
+
+  const side: Partial<Record<SectionKey, React.ReactNode>> = {
+    skills: data.skills.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("coreCompetencies")}</SectionTitle>
+        <div className="flex flex-wrap gap-1">
+          {data.skills.map((s, i) => (
+            <span key={i} className="px-1.5 py-0.5 rounded font-medium" style={{ fontSize: `${7.5 * scale}px`, backgroundColor: theme.light, color: theme.primary }}>{s}</span>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    education: data.education.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("education")}</SectionTitle>
+        <div className="space-y-2">
+          {data.education.map((edu, i) => (
+            <div key={i}>
+              <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
+              <p className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }}>{edu.institution}</p>
+              {edu.graduationDate && <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{formatDateValue(edu.graduationDate, formatting.dateFormat)}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    languages: data.languages.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("languages")}</SectionTitle>
+        <div className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
+          {data.languages.map((l, i) => (
+            <p key={i}>{l.language} <span className="text-gray-400 capitalize">({l.proficiency})</span></p>
+          ))}
+        </div>
+      </div>
+    ) : null,
+    certifications: data.certifications.length > 0 ? (
+      <div>
+        <SectionTitle color={theme.primary}>{t("certifications")}</SectionTitle>
+        <ul className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
+          {data.certifications.map((c, i) => <li key={i}>• {c}</li>)}
+        </ul>
+      </div>
+    ) : null,
+  };
+
   return (
     <div style={{ fontFamily, fontSize: `${10 * scale}px`, lineHeight }} className="text-gray-900">
       {/* Photo header */}
@@ -933,86 +1027,16 @@ export function ProfessionalTemplate({ data, formatting }: { data: CVForm; forma
       <div className="flex gap-4 px-5" style={{ paddingTop: gap }}>
         {/* Main column */}
         <div className="w-[62%]" style={{ display: "flex", flexDirection: "column", gap }}>
-          {data.experience.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("professionalExperience")}</SectionTitle>
-              <div className="space-y-2.5">
-                {data.experience.map((exp, i) => (
-                  <div key={i}>
-                    <div className="flex justify-between items-start">
-                      <p className="font-semibold" style={{ fontSize: `${9.5 * scale}px` }}>{exp.jobTitle}</p>
-                      <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} df={df} />
-                    </div>
-                    <p style={{ fontSize: `${8.5 * scale}px`, color: theme.primary }}>{exp.company}{exp.country ? ` · ${exp.country}` : ""}</p>
-                    {exp.description && <RichText value={exp.description} className="text-gray-600 mt-0.5" style={{ fontSize: `${8 * scale}px` }} />}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {data.projects.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("keyProjects")}</SectionTitle>
-              <div className="space-y-2">
-                {data.projects.map((p, i) => (
-                  <div key={i}>
-                    <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{p.title}</p>
-                    {p.description && <RichText value={p.description} className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }} />}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {getColumnOrder(formatting, "professional", "main").map((key) => (
+            <React.Fragment key={key}>{main[key]}</React.Fragment>
+          ))}
         </div>
 
         {/* Side column */}
         <div className="w-[38%]" style={{ display: "flex", flexDirection: "column", gap }}>
-          {data.skills.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("coreCompetencies")}</SectionTitle>
-              <div className="flex flex-wrap gap-1">
-                {data.skills.map((s, i) => (
-                  <span key={i} className="px-1.5 py-0.5 rounded font-medium" style={{ fontSize: `${7.5 * scale}px`, backgroundColor: theme.light, color: theme.primary }}>{s}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {data.education.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("education")}</SectionTitle>
-              <div className="space-y-2">
-                {data.education.map((edu, i) => (
-                  <div key={i}>
-                    <p className="font-semibold" style={{ fontSize: `${9 * scale}px` }}>{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
-                    <p className="text-gray-500" style={{ fontSize: `${7.5 * scale}px` }}>{edu.institution}</p>
-                    {edu.graduationDate && <p className="text-gray-400" style={{ fontSize: `${7 * scale}px` }}>{edu.graduationDate}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {data.languages.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("languages")}</SectionTitle>
-              <div className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
-                {data.languages.map((l, i) => (
-                  <p key={i}>{l.language} <span className="text-gray-400 capitalize">({l.proficiency})</span></p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {data.certifications.length > 0 && (
-            <div>
-              <SectionTitle color={theme.primary}>{t("certifications")}</SectionTitle>
-              <ul className="space-y-0.5" style={{ fontSize: `${8 * scale}px` }}>
-                {data.certifications.map((c, i) => <li key={i}>• {c}</li>)}
-              </ul>
-            </div>
-          )}
+          {getColumnOrder(formatting, "professional", "side").map((key) => (
+            <React.Fragment key={key}>{side[key]}</React.Fragment>
+          ))}
         </div>
       </div>
     </div>
@@ -1043,7 +1067,7 @@ export function CompactTemplate({ data, formatting }: { data: CVForm; formatting
         {data.experience.map((exp, i) => (
           <div key={i} className="mt-1">
             <div className="flex justify-between items-baseline gap-2">
-              <p className="font-semibold" style={{ fontSize: `${8.5 * scale}px` }}>{exp.jobTitle} <span className="font-normal text-gray-500">— {exp.company}</span></p>
+              <p className="font-semibold" style={{ fontSize: `${8.5 * scale}px` }}>{exp.jobTitle} <span className="font-normal text-gray-500">— {exp.company}{exp.country ? ` · ${exp.country}` : ""}</span></p>
               <DateRange start={exp.startDate} end={exp.endDate} isCurrent={exp.isCurrent} df={df} />
             </div>
             {exp.description && <RichText value={exp.description} className="text-gray-600" style={{ fontSize: `${7.5 * scale}px` }} />}

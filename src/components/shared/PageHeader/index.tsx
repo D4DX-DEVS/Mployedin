@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { PageNavIcon } from "@/components/shared/PageNavIcon";
+import { PageBackButton } from "./PageBackButton";
 
 interface PageHeaderProps {
   title: string;
@@ -10,6 +11,8 @@ interface PageHeaderProps {
   icon?: LucideIcon;
   className?: string;
   headingLevel?: 1 | 2;
+  /** Locale-relative fallback for a Back control (e.g. "/job-seeker/profile"). Omit on top-nav pages. */
+  backHref?: string;
 }
 
 export function PageHeader({
@@ -19,10 +22,11 @@ export function PageHeader({
   icon: Icon,
   className,
   headingLevel = 1,
+  backHref,
 }: PageHeaderProps) {
   const Heading = headingLevel === 2 ? "h2" : "h1";
 
-  return (
+  const header = (
     <div
       className={cn(
         "page-header-root flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 pb-1",
@@ -45,6 +49,14 @@ export function PageHeader({
       {actions && (
         <div className="page-header-actions flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">{actions}</div>
       )}
+    </div>
+  );
+
+  if (!backHref) return header;
+  return (
+    <div className="flex flex-col">
+      <PageBackButton fallbackHref={backHref} />
+      {header}
     </div>
   );
 }

@@ -86,7 +86,7 @@ export default function JobSeekerSubscriptionPage() {
   return (
     <div className="page-container">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <PageHeader title={t("title")} description={t("description")} />
+        <PageHeader title={t("title")} description={t("description")} backHref="/job-seeker" />
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{t("displayCurrency")}</span>
           <CurrencySelector value={displayCurrency} onChange={setDisplayCurrency} ariaLabel={t("a11yDisplayCurrency")} />

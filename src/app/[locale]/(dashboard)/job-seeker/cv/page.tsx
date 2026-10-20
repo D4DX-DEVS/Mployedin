@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useId } from "react";
+import { useState, useEffect, useRef, useId, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateSeekerProfile, readSeekerProfile } from "@/hooks/useSeekerCache";
 import { useRouter } from "next/navigation";
@@ -36,7 +36,7 @@ import type { CVPDFLabels } from "./cv-pdf-document";
 import {
   PROFICIENCY_OPTIONS, EMPTY_EXPERIENCE, EMPTY_EDUCATION,
   EMPTY_LANGUAGE, EMPTY_PROJECT, EMPTY_LINK,
-  DEFAULT_FORMATTING, toMonthInput, resolveTheme, restoreCvDesign,
+  DEFAULT_FORMATTING, toMonthInput, resolveTheme, restoreCvDesign, getVisibleForm,
 } from "./types";
 import { TemplateRenderer } from "./templates";
 import { TemplatePicker, FormattingPanel } from "./template-picker";
@@ -67,18 +67,7 @@ function splitProfileLinks(links: ProfileLink[]) {
   };
 }
 
-/* ── Filter out hidden sections for preview/PDF ── */
-function getVisibleForm(form: CVForm, hidden: Set<string>): CVForm {
-  return {
-    ...form,
-    experience: hidden.has("experience") ? [] : form.experience,
-    education: hidden.has("education") ? [] : form.education,
-    skills: hidden.has("skills") ? [] : form.skills,
-    projects: hidden.has("projects") ? [] : form.projects,
-    languages: hidden.has("languages") ? [] : form.languages,
-    certifications: hidden.has("certifications") ? [] : form.certifications,
-  };
-}
+const PREVIEW_HIDDEN_KEY = "cvBuilder.previewHidden";
 
 /* ══════════════════════════════════════════════════════════
    MAIN PAGE COMPONENT
@@ -103,6 +92,16 @@ export default function CVBuilderPage() {
   const preImportForm = useRef<CVForm | null>(null);
   const [certInput, setCertInput] = useState("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
+  // Desktop only: give the editor / template gallery the full width. Remembered per browser.
+  const [previewHidden, setPreviewHidden] = useState(false);
+  useEffect(() => {
+    try { setPreviewHidden(window.localStorage.getItem(PREVIEW_HIDDEN_KEY) === "1"); } catch { /* storage blocked */ }
+  }, []);
+  const togglePreviewHidden = (hidden: boolean) => {
+    setPreviewHidden(hidden);
+    if (hidden) setPreviewExpanded(false);
+    try { window.localStorage.setItem(PREVIEW_HIDDEN_KEY, hidden ? "1" : "0"); } catch { /* storage blocked */ }
+  };
   const [photoUploading, setPhotoUploading] = useState(false);
   const queryClient = useQueryClient();
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -129,6 +128,8 @@ export default function CVBuilderPage() {
     headline: "", photo: "", linkedin: "", portfolio: "", additionalLinks: [],
     skills: [], experience: [], education: [], languages: [], certifications: [], projects: [],
   });
+  // One object per edit, shared by the live preview and the template gallery.
+  const previewForm = useMemo(() => getVisibleForm(form, hiddenSections), [form, hiddenSections]);
 
   useEffect(() => {
     document.title = t("documentTitle");
@@ -545,6 +546,13 @@ export default function CVBuilderPage() {
     projects: t("previewSections.projects"),
     languages: t("previewSections.languages"),
     certifications: t("previewSections.certifications"),
+    professionalExperience: t("previewSections.professionalExperience"),
+    keyProjects: t("previewSections.keyProjects"),
+    coreCompetencies: t("previewSections.coreCompetencies"),
+    decoratedExperience: t("previewSections.decoratedExperience"),
+    decoratedEducation: t("previewSections.decoratedEducation"),
+    decoratedSkills: t("previewSections.decoratedSkills"),
+    decoratedProjects: t("previewSections.decoratedProjects"),
     atCompany: t("previewSections.atCompany", { company: "{company}" }),
     proficiency: {
       basic: t("proficiency.basic"),
@@ -563,6 +571,7 @@ export default function CVBuilderPage() {
       <PageHeader
         title={t("header.title")}
         description={t("header.description")}
+        backHref="/job-seeker/profile"
       />
 
       {error && (
@@ -596,7 +605,7 @@ export default function CVBuilderPage() {
       <div className="flex flex-col lg:flex-row gap-6 items-start">
 
         {/* ────── LEFT: EDITOR PANEL ────── */}
-        <div className={`transition-all duration-300 ${previewExpanded ? "hidden" : "w-full lg:w-[55%]"}`}>
+        <div className={`transition-all duration-300 ${previewExpanded ? "hidden" : previewHidden ? "w-full" : "w-full lg:w-[55%]"}`}>
           <Tabs defaultValue="editor" className="w-full">
             <div className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <TabsList className="w-full min-w-0 sm:w-auto">
@@ -617,6 +626,12 @@ export default function CVBuilderPage() {
                 className="inline-flex max-w-full items-center gap-1.5 self-start rounded-lg border border-amber-200 bg-amber-50 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 sm:self-auto chip-pad">
                 <Lightbulb className="h-3.5 w-3.5" />{t("actions.tips")}
               </button>
+              {previewHidden && (
+                <Button type="button" variant="outline" size="sm" onClick={() => togglePreviewHidden(false)}
+                  className="hidden h-8 gap-1.5 text-xs lg:inline-flex">
+                  <Eye aria-hidden="true" className="h-3.5 w-3.5" />{t("preview.show")}
+                </Button>
+              )}
             </div>
 
             {/* ──── TAB: AI EDITOR ──── */}
@@ -996,7 +1011,9 @@ export default function CVBuilderPage() {
                 <TemplatePicker
                   selected={selectedTemplate}
                   onSelect={setSelectedTemplate}
-                  themeColor={formatting.themeColor}
+                  data={previewForm}
+                  formatting={formatting}
+                  wide={previewHidden}
                 />
               </div>
             </TabsContent>
@@ -1004,7 +1021,7 @@ export default function CVBuilderPage() {
             {/* ──── TAB: FORMATTING ──── */}
             <TabsContent value="formatting">
               <div className="card-base panel-body">
-                <FormattingPanel formatting={formatting} onChange={setFormatting} />
+                <FormattingPanel formatting={formatting} onChange={setFormatting} templateId={selectedTemplate} />
               </div>
             </TabsContent>
           </Tabs>
@@ -1024,7 +1041,7 @@ export default function CVBuilderPage() {
         {/* ────── RIGHT: LIVE PREVIEW PANEL ────── */}
         <div
           ref={previewRef}
-          className={`hidden lg:block sticky top-4 transition-all duration-300 ${previewExpanded ? "w-full" : "w-[45%]"}`}
+          className={`hidden sticky top-4 transition-all duration-300 ${previewHidden ? "" : "lg:block"} ${previewExpanded ? "w-full" : "w-[45%]"}`}
         >
           <div className="border border-border rounded-xl bg-card shadow-sm overflow-hidden">
             {/* Preview header */}
@@ -1053,9 +1070,20 @@ export default function CVBuilderPage() {
                   {t("actions.download")}
                 </Button>
                 <button
+                  type="button"
+                  onClick={() => togglePreviewHidden(true)}
+                  className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground"
+                  title={t("preview.hide")}
+                  aria-label={t("preview.hide")}
+                >
+                  <EyeOff aria-hidden="true" className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setPreviewExpanded((p) => !p)}
                   className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground"
                   title={previewExpanded ? t("preview.minimize") : t("preview.expand")}
+                  aria-label={previewExpanded ? t("preview.minimize") : t("preview.expand")}
                 >
                   {previewExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                 </button>
@@ -1063,10 +1091,10 @@ export default function CVBuilderPage() {
             </div>
 
             {/* Template preview */}
-            <div className="p-6 min-h-[600px] max-h-[85vh] overflow-y-auto bg-white">
+            <div data-cv-preview className="p-6 min-h-[600px] max-h-[85vh] overflow-y-auto bg-white">
               <TemplateRenderer
                 templateId={selectedTemplate}
-                data={getVisibleForm(form, hiddenSections)}
+                data={previewForm}
                 formatting={formatting}
               />
             </div>

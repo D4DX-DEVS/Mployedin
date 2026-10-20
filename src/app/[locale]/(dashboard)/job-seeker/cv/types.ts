@@ -112,7 +112,13 @@ export interface TemplateDefinition {
   tier: TemplateTier;
   /** Whether this template renders a profile photo when one is provided. */
   supportsPhoto?: boolean;
+  /** Plain single-column layout that applicant-tracking systems parse reliably. */
+  atsFriendly?: boolean;
+  /** Look family, for the gallery's style filter. */
+  style: TemplateStyle;
 }
+
+export type TemplateStyle = "minimal" | "modern" | "creative";
 
 /* ── Constants ── */
 
@@ -142,18 +148,18 @@ export const FONT_OPTIONS: { value: FontFamily; label: string; stack: string }[]
 ];
 
 export const TEMPLATES: TemplateDefinition[] = [
-  { id: "classic",      name: "Classic",      description: "Clean professional layout with blue accents",     tier: "free" },
-  { id: "modern",       name: "Modern",       description: "Contemporary design with sidebar layout",         tier: "free", supportsPhoto: true },
-  { id: "minimal",      name: "Minimal",      description: "Simple, ATS-friendly single-column design",       tier: "free" },
-  { id: "executive",    name: "Executive",    description: "Premium two-column layout for senior roles",      tier: "free", supportsPhoto: true },
-  { id: "creative",     name: "Creative",     description: "Bold design with colored header and skill bars",  tier: "free", supportsPhoto: true },
-  { id: "elegant",      name: "Elegant",      description: "Refined serif typography with gold accents",      tier: "free" },
-  { id: "professional", name: "Professional", description: "Photo header with two-column body for impact",    tier: "free", supportsPhoto: true },
-  { id: "compact",      name: "Compact",      description: "Dense single-column layout that fits more on a page", tier: "free" },
-  { id: "timeline",     name: "Timeline",     description: "Single column with a vertical timeline accent",   tier: "free" },
-  { id: "academic",     name: "Academic",     description: "Formal serif CV for academic and research roles", tier: "free" },
-  { id: "technical",    name: "Technical",    description: "Developer-focused layout with mono accents",      tier: "free" },
-  { id: "banner",       name: "Banner",       description: "Bold full-width colored name band, single column", tier: "free", supportsPhoto: true },
+  { id: "classic",      name: "Classic",      description: "Clean professional layout with blue accents",     tier: "free", style: "minimal", atsFriendly: true },
+  { id: "modern",       name: "Modern",       description: "Contemporary design with sidebar layout",         tier: "free", style: "modern", supportsPhoto: true },
+  { id: "minimal",      name: "Minimal",      description: "Simple, ATS-friendly single-column design",       tier: "free", style: "minimal", atsFriendly: true },
+  { id: "executive",    name: "Executive",    description: "Premium two-column layout for senior roles",      tier: "free", style: "modern", supportsPhoto: true },
+  { id: "creative",     name: "Creative",     description: "Bold design with colored header and skill bars",  tier: "free", style: "creative", supportsPhoto: true },
+  { id: "elegant",      name: "Elegant",      description: "Refined serif typography with gold accents",      tier: "free", style: "creative" },
+  { id: "professional", name: "Professional", description: "Photo header with two-column body for impact",    tier: "free", style: "modern", supportsPhoto: true },
+  { id: "compact",      name: "Compact",      description: "Dense single-column layout that fits more on a page", tier: "free", style: "minimal", atsFriendly: true },
+  { id: "timeline",     name: "Timeline",     description: "Single column with a vertical timeline accent",   tier: "free", style: "modern" },
+  { id: "academic",     name: "Academic",     description: "Formal serif CV for academic and research roles", tier: "free", style: "minimal", atsFriendly: true },
+  { id: "technical",    name: "Technical",    description: "Developer-focused layout with mono accents",      tier: "free", style: "modern", atsFriendly: true },
+  { id: "banner",       name: "Banner",       description: "Bold full-width colored name band, single column", tier: "free", style: "creative", supportsPhoto: true },
 ];
 
 /** Reorderable body sections in their default order, with default English labels. */
@@ -219,6 +225,23 @@ export function restoreCvDesign(stored: unknown): CVBuilderDesign {
     templateId: template.success ? template.data : "classic",
     formatting,
     hiddenSections: new Set(hidden),
+  };
+}
+
+/**
+ * The CV as rendered: hidden sections emptied. The live preview, the gallery
+ * and the PDF all go through this, so they cannot disagree about visibility.
+ * The seeker's entries stay in the form; hiding never deletes them.
+ */
+export function getVisibleForm(form: CVForm, hidden: ReadonlySet<string>): CVForm {
+  return {
+    ...form,
+    experience: hidden.has("experience") ? [] : form.experience,
+    education: hidden.has("education") ? [] : form.education,
+    skills: hidden.has("skills") ? [] : form.skills,
+    projects: hidden.has("projects") ? [] : form.projects,
+    languages: hidden.has("languages") ? [] : form.languages,
+    certifications: hidden.has("certifications") ? [] : form.certifications,
   };
 }
 
@@ -356,12 +379,16 @@ export function getPdfPageSize(formatting: FormattingOptions): "A4" | "LETTER" {
   return formatting.pageFormat === "letter" ? "LETTER" : "A4";
 }
 
-/** Resolve the effective, de-duplicated section order (always all keys present). */
+/**
+ * The body-section order every template renders (preview, gallery and PDF):
+ * the seeker's order, de-duplicated, with any missing section appended so
+ * nothing disappears. One order for all templates, so switching templates
+ * never rearranges the CV.
+ */
 export function getSectionOrder(formatting: FormattingOptions): SectionKey[] {
-  const provided = formatting.sectionOrder ?? DEFAULT_SECTION_ORDER;
   const seen = new Set<SectionKey>();
   const order: SectionKey[] = [];
-  for (const key of provided) {
+  for (const key of formatting.sectionOrder ?? DEFAULT_SECTION_ORDER) {
     if (DEFAULT_SECTION_ORDER.includes(key) && !seen.has(key)) {
       seen.add(key);
       order.push(key);
@@ -371,6 +398,26 @@ export function getSectionOrder(formatting: FormattingOptions): SectionKey[] {
     if (!seen.has(key)) order.push(key);
   }
   return order;
+}
+
+/**
+ * Two-column templates: which sections live in which column. The seeker's
+ * order applies inside each column; a section never jumps to the other one.
+ */
+export const TEMPLATE_COLUMNS = {
+  modern: { side: ["skills", "languages", "certifications"], main: ["experience", "education", "projects"] },
+  executive: { main: ["experience", "projects"], side: ["education", "skills", "languages", "certifications"] },
+  professional: { main: ["experience", "projects"], side: ["skills", "education", "languages", "certifications"] },
+} as const satisfies Record<string, { main: readonly SectionKey[]; side: readonly SectionKey[] }>;
+
+/** One column's sections, in render order. */
+export function getColumnOrder(
+  formatting: FormattingOptions,
+  templateId: keyof typeof TEMPLATE_COLUMNS,
+  column: "main" | "side",
+): SectionKey[] {
+  const members: readonly SectionKey[] = TEMPLATE_COLUMNS[templateId][column];
+  return getSectionOrder(formatting).filter((key) => members.includes(key));
 }
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

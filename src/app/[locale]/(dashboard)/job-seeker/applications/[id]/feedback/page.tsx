@@ -135,6 +135,7 @@ export default function ApplicationFeedbackPage() {
       <PageHeader
         title={t("rateYourExperience")}
         description={t("applicationForPosition", { jobTitle, companyName })}
+        backHref={`/job-seeker/applications/${id}`}
       />
 
       <div className="max-w-lg space-y-3 sm:space-y-6">

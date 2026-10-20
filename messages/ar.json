@@ -2086,7 +2086,9 @@
     "preview": {
       "resume": "السيرة الذاتية",
       "minimize": "تصغير",
-      "expand": "توسيع"
+      "expand": "توسيع",
+      "hide": "إخفاء المعاينة",
+      "show": "إظهار المعاينة"
     },
     "messages": {
       "importSuccess": "تم استيراد السيرة الذاتية بنجاح! راجع الحقول وعدلها أدناه.",
@@ -2132,12 +2134,19 @@
       "filters": {
         "all": "الكل",
         "free": "مجاني",
-        "pro": "PRO"
+        "pro": "PRO",
+        "ats": "متوافق مع ATS",
+        "photo": "مع صورة",
+        "modern": "عصري",
+        "minimal": "بسيط",
+        "creative": "إبداعي"
       },
       "badges": {
         "free": "مجاني",
         "pro": "PRO",
-        "photo": "صورة"
+        "photo": "صورة",
+        "ats": "متوافق مع ATS",
+        "selected": "محدد"
       },
       "templates": {
         "classic": {
@@ -2188,7 +2197,18 @@
           "name": "بانر",
           "description": "رأس بانر كامل العرض بصورة بارزة"
         }
-      }
+      },
+      "filterLabel": "تصفية القوالب",
+      "sampleNotice": "يُعرض محتوى تجريبي. أضف اسمك وخبرتك لترى سيرتك الذاتية في كل قالب.",
+      "selectTemplate": "استخدام قالب {name}",
+      "preview": "معاينة",
+      "previewTemplate": "معاينة قالب {name}",
+      "previewTitle": "قالب {name}",
+      "previousTemplate": "القالب السابق",
+      "nextTemplate": "القالب التالي",
+      "position": "{current} من {total}",
+      "useThisTemplate": "استخدام هذا القالب",
+      "inUseClose": "الإبقاء على هذا القالب"
     },
     "formatting": {
       "sectionSpacing": "تباعد الأقسام",
@@ -2217,6 +2237,11 @@
       },
       "arrangeSections": "ترتيب الأقسام",
       "arrangeSectionsHint": "اسحب لتغيير ترتيب ظهور الأقسام في سيرتك الذاتية",
+      "arrangeSectionsColumnsHint": "في هذا القالب يبقى كل قسم في عموده. اسحب لتغيير الترتيب داخل العمود.",
+      "columns": {
+        "main": "العمود الرئيسي",
+        "side": "العمود الجانبي"
+      },
       "sections": {
         "experience": "الخبرة",
         "education": "التعليم",
