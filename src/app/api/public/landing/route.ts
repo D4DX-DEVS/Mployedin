@@ -7,6 +7,7 @@ import Testimonial from "@/models/Testimonial";
 import Video from "@/models/Video";
 import BlogPost from "@/models/BlogPost";
 import logger from "@/lib/logger";
+import { getLandingStats } from "@/lib/public/landingStats";
 
 /**
  * Public aggregated landing page data — NO AUTH required.
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
 
-    const [faqs, banners, testimonials, videos, recentPosts] = await Promise.all([
+    const [faqs, banners, testimonials, videos, recentPosts, stats] = await Promise.all([
       FAQ.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
       Banner.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
       Testimonial.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
@@ -30,6 +31,11 @@ export async function GET(req: NextRequest) {
         .limit(6)
         .select("title titleAr slug excerpt excerptAr coverImage author tags publishedAt")
         .lean(),
+      // Numbers are a bonus: if they fail, the CMS sections still load.
+      getLandingStats().catch((error) => {
+        logger.warn({ error }, "[Public] Landing stats unavailable");
+        return null;
+      }),
     ]);
 
     return NextResponse.json({
@@ -38,6 +44,7 @@ export async function GET(req: NextRequest) {
       testimonials,
       videos,
       recentPosts,
+      stats,
     });
   } catch (error) {
     logger.error({ error }, "[Public] Landing data error");
