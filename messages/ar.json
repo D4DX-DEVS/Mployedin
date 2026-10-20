@@ -2237,6 +2237,11 @@
       },
       "arrangeSections": "ترتيب الأقسام",
       "arrangeSectionsHint": "اسحب لتغيير ترتيب ظهور الأقسام في سيرتك الذاتية",
+      "arrangeSectionsColumnsHint": "في هذا القالب يبقى كل قسم في عموده. اسحب لتغيير الترتيب داخل العمود.",
+      "columns": {
+        "main": "العمود الرئيسي",
+        "side": "العمود الجانبي"
+      },
       "sections": {
         "experience": "الخبرة",
         "education": "التعليم",

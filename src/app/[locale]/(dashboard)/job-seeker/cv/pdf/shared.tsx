@@ -221,7 +221,7 @@ export function PdfSectionTitle({ children, style }: { children: React.ReactNode
   return <Text minPresenceAhead={48} style={style}>{children}</Text>;
 }
 
-/** The body sections in the order the seeker chose on the Formatting tab. */
+/** The body sections in the order the seeker chose. */
 export function orderedSections(formatting: FormattingOptions, sections: Partial<Record<string, React.ReactNode>>): React.ReactNode {
   return getSectionOrder(formatting).map((key) => <React.Fragment key={key}>{sections[key] ?? null}</React.Fragment>);
 }

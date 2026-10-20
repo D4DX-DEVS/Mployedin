@@ -12,7 +12,7 @@ import type { CVForm, FormattingOptions, TemplateDefinition, TemplateStyle, Sect
 import {
   TEMPLATES, THEME_COLORS, FONT_OPTIONS, DEFAULT_FORMATTING,
   PAGE_FORMAT_OPTIONS, DATE_FORMAT_OPTIONS, LINE_HEIGHT_OPTIONS, MARGIN_OPTIONS,
-  getSectionOrder,
+  TEMPLATE_COLUMNS, getSectionOrder,
 } from "./types";
 import { SortableList, SortableItem } from "./sortable";
 import { SAMPLE_CV, TemplateThumbnail, hasThumbnailContent } from "./template-thumbnail";
@@ -177,11 +177,21 @@ export function TemplatePicker({
 export function FormattingPanel({
   formatting,
   onChange,
+  templateId,
 }: {
   formatting: FormattingOptions;
   onChange: (f: FormattingOptions) => void;
+  /** The selected template; two-column templates show which column each section lives in. */
+  templateId?: string;
 }) {
   const t = useTranslations("cvBuilderPage.formatting");
+  const columns = templateId && templateId in TEMPLATE_COLUMNS
+    ? TEMPLATE_COLUMNS[templateId as keyof typeof TEMPLATE_COLUMNS]
+    : null;
+  const columnOf = (key: SectionKey): "main" | "side" | null => {
+    if (!columns) return null;
+    return (columns.main as readonly SectionKey[]).includes(key) ? "main" : "side";
+  };
   return (
     <div className="space-y-5">
       {/* Section Spacing */}
@@ -329,7 +339,9 @@ export function FormattingPanel({
       {/* Section order arranger */}
       <div>
         <label className="text-xs font-medium text-foreground mb-1.5 block">{t("arrangeSections")}</label>
-        <p className="text-[0.65rem] text-muted-foreground mb-2">{t("arrangeSectionsHint")}</p>
+        <p className="text-[0.65rem] text-muted-foreground mb-2">
+          {t(columns ? "arrangeSectionsColumnsHint" : "arrangeSectionsHint")}
+        </p>
         <SortableList
           ids={getSectionOrder(formatting)}
           onReorder={(ids) => onChange({ ...formatting, sectionOrder: ids as SectionKey[] })}
@@ -339,9 +351,12 @@ export function FormattingPanel({
             <SortableItem
               key={key}
               id={key}
-              className="group flex items-center rounded-md border border-border bg-card pl-7 pr-3 py-1.5 text-xs"
+              className="group flex items-center justify-between gap-2 rounded-md border border-border bg-card ps-7 pe-3 py-1.5 text-xs max-sm:min-h-11 max-sm:ps-12"
             >
               <span className="font-medium">{t(`sections.${key}`)}</span>
+              {columnOf(key) ? (
+                <span className="text-[0.65rem] text-muted-foreground">{t(`columns.${columnOf(key)}`)}</span>
+              ) : null}
             </SortableItem>
           ))}
         </SortableList>

@@ -36,7 +36,7 @@ import type { CVPDFLabels } from "./cv-pdf-document";
 import {
   PROFICIENCY_OPTIONS, EMPTY_EXPERIENCE, EMPTY_EDUCATION,
   EMPTY_LANGUAGE, EMPTY_PROJECT, EMPTY_LINK,
-  DEFAULT_FORMATTING, toMonthInput, resolveTheme, restoreCvDesign,
+  DEFAULT_FORMATTING, toMonthInput, resolveTheme, restoreCvDesign, getVisibleForm,
 } from "./types";
 import { TemplateRenderer } from "./templates";
 import { TemplatePicker, FormattingPanel } from "./template-picker";
@@ -67,20 +67,7 @@ function splitProfileLinks(links: ProfileLink[]) {
   };
 }
 
-/* ── Filter out hidden sections for preview/PDF ── */
 const PREVIEW_HIDDEN_KEY = "cvBuilder.previewHidden";
-
-function getVisibleForm(form: CVForm, hidden: Set<string>): CVForm {
-  return {
-    ...form,
-    experience: hidden.has("experience") ? [] : form.experience,
-    education: hidden.has("education") ? [] : form.education,
-    skills: hidden.has("skills") ? [] : form.skills,
-    projects: hidden.has("projects") ? [] : form.projects,
-    languages: hidden.has("languages") ? [] : form.languages,
-    certifications: hidden.has("certifications") ? [] : form.certifications,
-  };
-}
 
 /* ══════════════════════════════════════════════════════════
    MAIN PAGE COMPONENT
@@ -1034,7 +1021,7 @@ export default function CVBuilderPage() {
             {/* ──── TAB: FORMATTING ──── */}
             <TabsContent value="formatting">
               <div className="card-base panel-body">
-                <FormattingPanel formatting={formatting} onChange={setFormatting} />
+                <FormattingPanel formatting={formatting} onChange={setFormatting} templateId={selectedTemplate} />
               </div>
             </TabsContent>
           </Tabs>

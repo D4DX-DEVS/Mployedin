@@ -2237,6 +2237,11 @@
       },
       "arrangeSections": "Arrange sections",
       "arrangeSectionsHint": "Drag to change the order sections appear on your CV",
+      "arrangeSectionsColumnsHint": "On this template each section stays in its column. Drag to change the order within a column.",
+      "columns": {
+        "main": "Main column",
+        "side": "Side column"
+      },
       "sections": {
         "experience": "Experience",
         "education": "Education",

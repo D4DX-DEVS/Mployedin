@@ -228,6 +228,23 @@ export function restoreCvDesign(stored: unknown): CVBuilderDesign {
   };
 }
 
+/**
+ * The CV as rendered: hidden sections emptied. The live preview, the gallery
+ * and the PDF all go through this, so they cannot disagree about visibility.
+ * The seeker's entries stay in the form; hiding never deletes them.
+ */
+export function getVisibleForm(form: CVForm, hidden: ReadonlySet<string>): CVForm {
+  return {
+    ...form,
+    experience: hidden.has("experience") ? [] : form.experience,
+    education: hidden.has("education") ? [] : form.education,
+    skills: hidden.has("skills") ? [] : form.skills,
+    projects: hidden.has("projects") ? [] : form.projects,
+    languages: hidden.has("languages") ? [] : form.languages,
+    certifications: hidden.has("certifications") ? [] : form.certifications,
+  };
+}
+
 export const EMPTY_EXPERIENCE: WorkExperience = {
   jobTitle: "", company: "", country: "", startDate: "", endDate: "", isCurrent: false, description: "",
 };
@@ -362,12 +379,16 @@ export function getPdfPageSize(formatting: FormattingOptions): "A4" | "LETTER" {
   return formatting.pageFormat === "letter" ? "LETTER" : "A4";
 }
 
-/** Resolve the effective, de-duplicated section order (always all keys present). */
+/**
+ * The body-section order every template renders (preview, gallery and PDF):
+ * the seeker's order, de-duplicated, with any missing section appended so
+ * nothing disappears. One order for all templates, so switching templates
+ * never rearranges the CV.
+ */
 export function getSectionOrder(formatting: FormattingOptions): SectionKey[] {
-  const provided = formatting.sectionOrder ?? DEFAULT_SECTION_ORDER;
   const seen = new Set<SectionKey>();
   const order: SectionKey[] = [];
-  for (const key of provided) {
+  for (const key of formatting.sectionOrder ?? DEFAULT_SECTION_ORDER) {
     if (DEFAULT_SECTION_ORDER.includes(key) && !seen.has(key)) {
       seen.add(key);
       order.push(key);
@@ -377,6 +398,26 @@ export function getSectionOrder(formatting: FormattingOptions): SectionKey[] {
     if (!seen.has(key)) order.push(key);
   }
   return order;
+}
+
+/**
+ * Two-column templates: which sections live in which column. The seeker's
+ * order applies inside each column; a section never jumps to the other one.
+ */
+export const TEMPLATE_COLUMNS = {
+  modern: { side: ["skills", "languages", "certifications"], main: ["experience", "education", "projects"] },
+  executive: { main: ["experience", "projects"], side: ["education", "skills", "languages", "certifications"] },
+  professional: { main: ["experience", "projects"], side: ["skills", "education", "languages", "certifications"] },
+} as const satisfies Record<string, { main: readonly SectionKey[]; side: readonly SectionKey[] }>;
+
+/** One column's sections, in render order. */
+export function getColumnOrder(
+  formatting: FormattingOptions,
+  templateId: keyof typeof TEMPLATE_COLUMNS,
+  column: "main" | "side",
+): SectionKey[] {
+  const members: readonly SectionKey[] = TEMPLATE_COLUMNS[templateId][column];
+  return getSectionOrder(formatting).filter((key) => members.includes(key));
 }
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
