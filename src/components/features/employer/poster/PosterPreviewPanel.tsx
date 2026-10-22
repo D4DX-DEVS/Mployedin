@@ -8,6 +8,8 @@ import { FORMAT_DIMENSIONS, POSTER_FONTS, TEMPLATES, POSTER_ELEMENTS, POSTER_SWA
 import { PosterOverlay } from "./PosterOverlay";
 import { buildPosterShareUrl, buildQrTrackingUrl } from "@/lib/composer/branding";
 import { exportPosterPng } from "./exportPoster";
+import { posterEditKey } from "@/lib/consent/deviceStorage";
+import { tabStorage } from "@/lib/consent/tabStorage";
 import { Download, Copy, Share2, Save, Undo2, Redo2, ArrowLeft } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 
@@ -58,21 +60,23 @@ export function PosterPreviewPanel({
   const [selectedId, setSelectedId] = useState<PosterElementId | null>(null);
   const activeLayout = state.layout ?? variation?.layout ?? "layout-a";
 
-  // Restore edits from localStorage (survives reload), then autosave on every change.
-  const storageKey = generationId ? `poster-edit:${generationId}` : null;
+  // Restore edits from the tab's storage (survives a reload), then autosave on every change.
+  // The employer's own unsaved work, so tab storage only (never localStorage, whatever the
+  // cookie choice). A copy an older build left in localStorage is deleted on page load.
+  const storageKey = generationId ? posterEditKey(generationId) : null;
   const restored = useRef(false);
   useEffect(() => {
     if (!storageKey || restored.current) return;
     restored.current = true;
     try {
-      const raw = localStorage.getItem(storageKey);
+      const raw = tabStorage.get(storageKey);
       if (raw) { const v = JSON.parse(raw); if (v && typeof v === "object") set({ look: v.look ?? {}, layout: v.layout ?? null }, false); }
     } catch { /* ignore corrupt cache */ }
      
   }, [storageKey]);
   useEffect(() => {
     if (!storageKey) return;
-    try { localStorage.setItem(storageKey, JSON.stringify({ look: state.look, layout: state.layout })); } catch { /* quota/private mode */ }
+    tabStorage.set(storageKey, JSON.stringify({ look: state.look, layout: state.layout }));
   }, [storageKey, state]);
 
   const [recentColors, setRecentColors] = useState<string[]>([]);

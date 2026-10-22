@@ -3,13 +3,14 @@ import { connectDB } from "@/lib/db/mongoose";
 import BlogPost from "@/models/BlogPost";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import logger from "@/lib/logger";
 
 /**
  * Public blog listing — NO AUTH required.
  */
 export async function GET(req: NextRequest) {
-  const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`blogs:${ip}`, { limit: 60, windowSec: 60, prefix: "blogs" });
   if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 

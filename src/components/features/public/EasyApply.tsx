@@ -7,11 +7,14 @@ import { CONSENT_REQUIRED_CODE, signupConsentCredentials } from "@/lib/auth/sign
 import { useSession, signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithPopup } from "firebase/auth";
-import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
+import { getGoogleIdToken, preloadGoogleSignIn } from "@/lib/firebase/googleSignIn";
+import { GooglePopupBlockedError } from "@/lib/firebase/googlePopupBlocked";
+import { GoogleWindowNotice, GOOGLE_WINDOW_NOTICE_ID } from "@/components/features/auth/GoogleWindowNotice";
+import { navigateWithPageLoad } from "@/lib/browser/navigateWithPageLoad";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { isInAppBrowser, inAppBrowserName } from "@/lib/browser/inAppBrowser";
-import { getRecaptchaToken } from "@/lib/browser/recaptcha";
+import { getCaptchaToken } from "@/lib/browser/captcha";
+import { CaptchaNotice } from "@/components/shared/CaptchaNotice";
 import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +24,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { applyErrorKey } from "@/lib/applications/applyErrors";
 import { useJobShareReferral } from "@/lib/referrals/useJobShareReferral";
+import { clearPendingReferral } from "@/lib/referrals/pendingReferral";
 
 export interface EasyApplyScreeningQuestion {
   id: string;
@@ -114,7 +118,16 @@ function EasyApplyFlow({
   const [anonCvFile, setAnonCvFile] = useState<File | null>(null);
   const [anonPhase, setAnonPhase] = useState<"idle" | "auth" | "extract" | "confirm">("idle");
   const [anonError, setAnonError] = useState("");
+  // The browser blocked the Google window (Safari, slow connection): said inline
+  // under the button until the next click.
+  const [googleWindowBlocked, setGoogleWindowBlocked] = useState(false);
   const anonCvInputRef = useRef<HTMLInputElement>(null);
+  // Signed in through Google in this page. Firebase's popup resolver leaves a hidden
+  // Google iframe and window.gapi in the document, so these visitors leave through a
+  // page load once nothing needs to stay in memory (see leaveForSignedInPage).
+  const signedInWithGoogle = useRef(false);
+  // The page load has been started: the confirm step shows it, instead of going idle.
+  const [leavingPage, setLeavingPage] = useState(false);
 
   // Email OTP flow for anonymous users
   const [anonAuthMethod, setAnonAuthMethod] = useState<"google" | "email" | null>(null);
@@ -273,13 +286,28 @@ function EasyApplyFlow({
     );
   }
 
+  // Loads this job page again, now signed in. A full load (not a state update) is
+  // what drops the hidden Google iframe and window.gapi that Firebase's popup
+  // resolver added; the session cookie is already set, so the page comes back
+  // showing the signed-in apply form, the same thing update() re-renders into.
+  function leaveForSignedInPage() {
+    setLeavingPage(true);
+    navigateWithPageLoad(window.location.pathname + window.location.search);
+  }
+
   // Finish the anonymous sign-in and extract CV if present
   async function finishAnonSignIn() {
+    // Signed in (Google with a CV in hand, or the e-mail code): the referral code was sent with it.
+    clearPendingReferral();
     try {
       const fresh = await getSession();
       const freshRole = (fresh?.user as { role?: string } | undefined)?.role;
       if (freshRole !== "job_seeker") {
         // Existing employer/agent account — surface the normal restriction.
+        if (signedInWithGoogle.current) {
+          leaveForSignedInPage();
+          return;
+        }
         await update();
         return;
       }
@@ -341,6 +369,7 @@ function EasyApplyFlow({
   // Handle profile confirmation and profile PATCH
   async function handleAnonProfileConfirm() {
     setAnonError("");
+    let leaving = false;
     try {
       const patchBody: Record<string, unknown> = { onboardingComplete: true };
       if (confirmName && confirmName.trim().length > 0) {
@@ -370,24 +399,37 @@ function EasyApplyFlow({
       // even though the parse (or the fallback upload) just stored one.
       setProfile(null);
 
+      // The CV and the profile are saved on the server, so nothing held in memory
+      // is lost by loading the page again. After a Google sign-in that is what
+      // drops Firebase's hidden Google iframe and window.gapi. It happens only
+      // here, after the save succeeded: a failure above keeps the form.
+      if (signedInWithGoogle.current) {
+        leaving = true;
+        leaveForSignedInPage();
+        return;
+      }
+
       // Refresh the JWT/session so the component re-renders into the apply form.
       await update();
     } catch {
       setAnonError(t("errors.applyFailed"));
     } finally {
-      setAnonPhase("idle");
+      if (!leaving) setAnonPhase("idle");
     }
   }
 
   // CV-first quick apply: pick a CV (kept in memory — Google auth is a popup, so
-  // the page never unloads), sign in with Google, then the CV is extracted into
-  // the fresh profile and onboarding is skipped. Reduces drop-off from shared links.
+  // the page does not unload while it runs), sign in with Google, then the CV is
+  // extracted into the fresh profile and onboarding is skipped. Reduces drop-off
+  // from shared links.
   async function handleAnonGoogleApply() {
     setAnonError("");
+    setGoogleWindowBlocked(false);
+    signedInWithGoogle.current = false;
     setAnonPhase("auth");
     try {
-      const result = await signInWithPopup(firebaseAuth, googleProvider);
-      const idToken = await result.user.getIdToken();
+      // Firebase loads here, on the click, and is disposed once the token is read.
+      const idToken = await getGoogleIdToken();
       let res = await signIn("firebase", { idToken, ...referralCredentials(), redirect: false });
       if ((res as { code?: string } | undefined)?.code === CONSENT_REQUIRED_CODE) {
         if (!(await askSignupConsent())) {
@@ -413,15 +455,36 @@ function EasyApplyFlow({
         return;
       }
 
+      // Firebase's popup resolver leaves a hidden Google iframe and window.gapi in
+      // this document, and only leaving it drops them, so load the job page again
+      // (signed in) rather than re-render it. With no CV held in memory that is
+      // now; with a CV the visitor picked, a reload would discard the file, so the
+      // page stays until the confirm step has saved it (handleAnonProfileConfirm).
+      signedInWithGoogle.current = true;
+      if (!anonCvFile) {
+        leaveForSignedInPage();
+        return;
+      }
+
       await finishAnonSignIn();
     } catch (err) {
-      // Check if it's a popup block error
-      const errorMsg = String(err);
-      if (errorMsg.includes("disallowed") || errorMsg.includes("popup") || errorMsg.includes("blocked")) {
-        setAnonError(t("errors.popupBlocked"));
-      } else {
-        setAnonError(t("googleSignInFailed"));
+      if (err instanceof GooglePopupBlockedError) {
+        // Not a failure to log: the Google handshake is done (and cached for the
+        // page), so pressing the button again opens the window at once.
+        setGoogleWindowBlocked(true);
+        setAnonPhase("idle");
+        return;
       }
+      const code = (err as { code?: string } | null)?.code;
+      // Closing the Google window (or starting another sign-in over it) is a
+      // choice, not an error: no message, the card is simply usable again.
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        setAnonPhase("idle");
+        return;
+      }
+      // The retry on the kept instance was blocked too: the browser really blocks
+      // pop-ups (the helper hands back the Firebase error), so say so.
+      setAnonError(code === "auth/popup-blocked" ? t("errors.popupBlocked") : t("googleSignInFailed"));
       setAnonPhase("idle");
     }
   }
@@ -439,9 +502,10 @@ function EasyApplyFlow({
     }
 
     try {
-      // Invisible reCAPTCHA v3. Resolves to null when no site key is configured,
-      // in which case the server skips the check too.
-      const captchaToken = await getRecaptchaToken("quick_apply");
+      // Invisible captcha (reCAPTCHA v3 today, behind lib/browser/captcha).
+      // Resolves to null when no site key is configured, in which case the
+      // server skips the check too.
+      const captchaToken = await getCaptchaToken("quick_apply");
 
       const res = await csrfFetch("/api/auth/apply-otp/start", {
         method: "POST",
@@ -592,10 +656,10 @@ function EasyApplyFlow({
           <Button
             size="lg"
             onClick={handleAnonProfileConfirm}
-            disabled={anonPhase !== "confirm"}
+            disabled={anonPhase !== "confirm" || leavingPage}
             className="w-full rounded-2xl text-base font-medium gap-2"
           >
-            {anonPhase !== "confirm" ? (
+            {anonPhase !== "confirm" || leavingPage ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Check className="h-4 w-4" />
@@ -680,11 +744,16 @@ function EasyApplyFlow({
             {anonPhase !== "idle" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {t("sendCode")}
           </Button>
+          <CaptchaNotice className="-mt-1.5" />
 
           <Button
             size="lg"
             variant="outline"
             onClick={handleAnonGoogleApply}
+            onPointerEnter={preloadGoogleSignIn}
+            onFocus={preloadGoogleSignIn}
+            onTouchStart={preloadGoogleSignIn}
+            aria-describedby={GOOGLE_WINDOW_NOTICE_ID}
             disabled={anonPhase !== "idle"}
             className="w-full rounded-2xl text-base font-medium gap-2"
           >
@@ -696,6 +765,12 @@ function EasyApplyFlow({
             </svg>
             {t("continueWithGoogle")}
           </Button>
+          <GoogleWindowNotice
+            notice={t("googleWindowNotice")}
+            blockedMessage={t("googleWindowBlocked")}
+            blocked={googleWindowBlocked}
+            className="-mt-2"
+          />
 
           {anonError && <p className="text-center text-xs text-destructive">{anonError}</p>}
 
@@ -866,11 +941,16 @@ function EasyApplyFlow({
               {anonPhase !== "idle" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {t("sendCode")}
             </Button>
+            <CaptchaNotice className="-mt-1.5" />
 
             <Button
               size="lg"
               variant="outline"
               onClick={handleAnonGoogleApply}
+              onPointerEnter={preloadGoogleSignIn}
+              onFocus={preloadGoogleSignIn}
+              onTouchStart={preloadGoogleSignIn}
+              aria-describedby={GOOGLE_WINDOW_NOTICE_ID}
               disabled={anonPhase !== "idle"}
               className="w-full rounded-2xl text-base font-medium gap-2"
             >
@@ -882,6 +962,12 @@ function EasyApplyFlow({
               </svg>
               {t("continueWithGoogle")}
             </Button>
+            <GoogleWindowNotice
+              notice={t("googleWindowNotice")}
+              blockedMessage={t("googleWindowBlocked")}
+              blocked={googleWindowBlocked}
+              className="-mt-2"
+            />
 
             <button
               type="button"
@@ -898,6 +984,10 @@ function EasyApplyFlow({
               size="lg"
               className="w-full rounded-2xl text-base font-medium gap-2"
               onClick={handleAnonGoogleApply}
+              onPointerEnter={preloadGoogleSignIn}
+              onFocus={preloadGoogleSignIn}
+              onTouchStart={preloadGoogleSignIn}
+              aria-describedby={GOOGLE_WINDOW_NOTICE_ID}
               disabled={anonPhase !== "idle"}
             >
               {anonPhase !== "idle" ? (
@@ -912,6 +1002,12 @@ function EasyApplyFlow({
               )}
               {anonPhase === "extract" ? t("settingUpProfile") : t("continueWithGoogle")}
             </Button>
+            <GoogleWindowNotice
+              notice={t("googleWindowNotice")}
+              blockedMessage={t("googleWindowBlocked")}
+              blocked={googleWindowBlocked}
+              className="-mt-2"
+            />
 
             <Button
               size="lg"

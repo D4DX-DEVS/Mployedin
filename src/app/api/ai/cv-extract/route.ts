@@ -6,6 +6,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import User, { type UserRole } from "@/models/User";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import { logActivity } from "@/lib/audit/log";
 import { validateUploadedFile } from "@/lib/security/file-validation";
 import { scanForMalware } from "@/lib/security/malware-scan";
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Rate limit upload/AI calls
-  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(
     `cv-extract:${session.user.id ?? ip}`,
     RATE_LIMIT_CONFIGS.upload

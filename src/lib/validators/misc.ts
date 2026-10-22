@@ -18,7 +18,9 @@ export const contactSchema = z.object({
   phone: commonSchemas.phone.optional().or(z.literal("")),
   subject: z.string().max(200).trim().optional().or(z.literal("")),
   message: z.string().min(1).max(5000).trim(),
-  captchaToken: z.string().max(2000).optional(),
+  // Same cap as quick-apply's (applyOtpStartSchema): one provider token must not
+  // fit one form and be refused by the other on length alone.
+  captchaToken: z.string().max(4096).optional(),
 });
 
 /** The three hiring rules. `aiAutoScreen` is retired but still accepted from old clients. */

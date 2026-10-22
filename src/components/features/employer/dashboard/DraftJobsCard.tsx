@@ -33,7 +33,7 @@ interface DraftJobsCardProps {
  *
  * Backed by the EXISTING auto-draft plumbing: `JobFormWizard.saveDraftBeacon`
  * already writes a real `Job { status: "draft" }` via `navigator.sendBeacon`
- * on quit, and `useJobFormDraft.autosaveLocal` writes to localStorage on
+ * on quit, and `useJobFormDraft.autosaveLocal` writes to the tab's sessionStorage on
  * every keystroke. This card just reads those drafts back and promotes them
  * to the dashboard.
  *

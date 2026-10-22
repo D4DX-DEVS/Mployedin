@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import { routeGenerate, invalidateAICache } from "@/lib/ai/router";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { connectDB } from "@/lib/db/mongoose";
@@ -29,10 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const ip =
-      req.headers.get("x-forwarded-for") ??
-      req.headers.get("x-real-ip") ??
-      "unknown";
+    const ip = getClientIp(req.headers);
     const userId = (session.user as unknown as { id: string }).id ?? ip;
     const { allowed, remaining, resetAt } = await checkRateLimit(
       `ai-prep-brief:${userId}`,

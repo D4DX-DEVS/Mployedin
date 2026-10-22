@@ -19,6 +19,7 @@ const mockUserExists = jest.fn();
 const mockRecordConsents = jest.fn();
 const mockVerifyIdToken = jest.fn();
 let cookieJar: Record<string, string> = {};
+let requestHeaders: Record<string, string> = {};
 
 jest.mock("next-auth", () => ({
   __esModule: true,
@@ -33,6 +34,7 @@ jest.mock("next-auth/providers/apple", () => ({ __esModule: true, default: () =>
 jest.mock("next/headers", () => ({
   __esModule: true,
   cookies: jest.fn(async () => ({ get: (name: string) => (name in cookieJar ? { name, value: cookieJar[name] } : undefined) })),
+  headers: jest.fn(async () => new Headers(requestHeaders)),
 }));
 
 jest.mock("@/lib/db/mongoose", () => ({
@@ -96,6 +98,7 @@ function user(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
   cookieJar = {};
+  requestHeaders = {};
   mockVerifyIdToken.mockResolvedValue({ email: EMAIL, email_verified: true, name: "New Person" });
   mockUserFindOne.mockResolvedValue(null);
   mockUserCreate.mockResolvedValue(user());
@@ -186,6 +189,56 @@ describe("LinkedIn / Apple sign-up gate (signIn callback)", () => {
 
     await expect(signInCallback({ user: { email: EMAIL }, account: { provider: "linkedin" } }))
       .resolves.toBe("/ar/login?error=consent_required&provider=linkedin");
+  });
+
+  // NEXT_LOCALE alone is not enough: a visitor who opened /ar and never used the language switcher has none
+  // (it is a preference cookie). The page the sign-in started from is in Auth.js's callback-url cookie.
+  describe("language of the redirect", () => {
+    const POST_LOGIN = "http://localhost:3888/api/auth/post-login-redirect";
+    const callbackTo = (page: string) => `${POST_LOGIN}?callbackUrl=${encodeURIComponent(page)}`;
+    const redirect = () => signInCallback({ user: { email: EMAIL }, account: { provider: "linkedin" } });
+
+    beforeEach(() => {
+      mockUserExists.mockResolvedValue(null);
+      requestHeaders = { host: "localhost:3888" };
+    });
+
+    it("is Arabic when the sign-in started from an /ar page, with no NEXT_LOCALE", async () => {
+      cookieJar = { "authjs.callback-url": callbackTo("/ar/employer/jobs") };
+      await expect(redirect()).resolves.toBe("/ar/login?error=consent_required&provider=linkedin");
+    });
+
+    it("reads the __Secure- callback-url cookie that Auth.js uses on https", async () => {
+      requestHeaders = { host: "mployedin.example" };
+      cookieJar = { "__Secure-authjs.callback-url": "https://mployedin.example/api/auth/post-login-redirect?callbackUrl=%2Far%2Fjob-seeker" };
+      await expect(redirect()).resolves.toBe("/ar/login?error=consent_required&provider=linkedin");
+    });
+
+    it("prefers the page the sign-in started from over NEXT_LOCALE", async () => {
+      cookieJar = { "authjs.callback-url": callbackTo("/en/employer/jobs"), NEXT_LOCALE: "ar" };
+      await expect(redirect()).resolves.toBe("/en/login?error=consent_required&provider=linkedin");
+    });
+
+    it("falls back to NEXT_LOCALE when the callback URL names no language", async () => {
+      cookieJar = { "authjs.callback-url": POST_LOGIN, NEXT_LOCALE: "ar" };
+      await expect(redirect()).resolves.toBe("/ar/login?error=consent_required&provider=linkedin");
+    });
+
+    it("ignores a callback URL on another site", async () => {
+      cookieJar = { "authjs.callback-url": "https://evil.example/ar/login" };
+      await expect(redirect()).resolves.toBe("/en/login?error=consent_required&provider=linkedin");
+    });
+
+    it("still reads a relative callback URL when the request headers are unavailable", async () => {
+      const { headers } = jest.requireMock("next/headers") as { headers: jest.Mock };
+      headers.mockRejectedValueOnce(new Error("outside a request scope"));
+      cookieJar = { "authjs.callback-url": "/ar/login" };
+      await expect(redirect()).resolves.toBe("/ar/login?error=consent_required&provider=linkedin");
+    });
+
+    it("is English with no signal at all", async () => {
+      await expect(redirect()).resolves.toBe("/en/login?error=consent_required&provider=linkedin");
+    });
   });
 
   it("lets a new user through once the consent cookie is set", async () => {

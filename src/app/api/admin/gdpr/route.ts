@@ -19,7 +19,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
 
   const url = new URL(req.url);
   const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
-  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit") ?? 10)));
+  // Up to 100: the largest rows-per-page option the list offers.
+  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 10)));
   const search = url.searchParams.get("search")?.trim() ?? "";
   const type = url.searchParams.get("type") ?? "";
   const status = url.searchParams.get("status") ?? "";
@@ -51,9 +52,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       GdprRequest.countDocuments({ status: "completed" }),
       // Exports complete the instant the user downloads them, so they measure
       // nothing about how fast admins answer — and they outnumber every other
-      // request, which held the average at zero.
+      // request, which held the average at zero. A refusal is an answer too: its
+      // decision date is completedAt as well (GdprRequest.completedAt).
       GdprRequest.aggregate([
-        { $match: { status: "completed", completedAt: { $ne: null }, requestType: { $ne: "export" } } },
+        { $match: { status: { $in: ["completed", "rejected"] }, completedAt: { $ne: null }, requestType: { $ne: "export" } } },
         { $group: { _id: null, avgMs: { $avg: { $subtract: ["$completedAt", "$createdAt"] } } } },
       ]),
       User.countDocuments({ isActive: true }),
@@ -92,6 +94,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     createdAt: item.createdAt,
     completedAt: item.completedAt,
     notes: item.notes,
+    // What the team recorded (admin-only endpoint; adminNotes never leaves it).
+    outcome: item.outcome,
+    outcomeReason: item.outcomeReason,
+    adminNotes: item.adminNotes,
     handledByName: item.handledBy ? handlerNames.get(String(item.handledBy)) ?? null : null,
   }));
 

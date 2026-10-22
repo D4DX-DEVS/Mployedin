@@ -10,9 +10,14 @@ import { PhoneInput } from "@/components/shared/PhoneInput";
 import { FieldError } from "@/components/shared/FieldError";
 import { RequiredMark } from "@/components/ui/required-mark";
 import { EMAIL_PATTERN } from "@/lib/errors/email-pattern";
+import { getCaptchaToken, isCaptchaEnabled } from "@/lib/browser/captcha";
+import { CaptchaNotice } from "@/components/shared/CaptchaNotice";
 
 const COMPANY_ADDRESS = "MPLOYEDIN UK LTD, X2 Greenleaf Walk, Southall, UB1 1FR";
 const SUPPORT_EMAIL = "support@mployedin.com";
+
+/** A message for the visitor, already in their language (or the server's own refusal text). */
+class Refusal extends Error {}
 
 type ContactField = "name" | "email" | "message";
 /** In form order, so a failed submit focuses the first problem. */
@@ -67,17 +72,34 @@ export default function ContactPage() {
     }
     setSubmitting(true);
     try {
+      // Asked for here, on the tap, so the provider's script is not loaded by
+      // merely viewing the page. null = captcha off (the server skips its check
+      // too) or the provider could not be reached (blocked, offline).
+      const captchaToken = await getCaptchaToken("contact");
+      if (isCaptchaEnabled() && !captchaToken) {
+        setError(t("contactCaptchaBlocked"));
+        return;
+      }
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, ...(captchaToken ? { captchaToken } : {}) }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send");
+      if (!res.ok) {
+        if (data.code === "CAPTCHA_UNAVAILABLE") throw new Refusal(t("contactCaptchaUnavailable"));
+        if (data.code === "CAPTCHA_REQUIRED" || data.code === "CAPTCHA_FAILED") throw new Refusal(t("contactCaptchaBlocked"));
+        // The server's `error` is English; every refusal is said in the visitor's language.
+        if (res.status === 429) throw new Refusal(t("contactRateLimited"));
+        if (res.status === 400) throw new Refusal(t("contactInvalid"));
+        throw new Refusal(t("contactSendFailed"));
+      }
       setSuccess(true);
       setForm({ name: "", email: "", phone: "", subject: "", message: "" });
-    } catch (err: any) {
-      setError(err.message || "Something went wrong");
+    } catch (err: unknown) {
+      // Only a refusal we composed is shown as written; a network or parse error carries the
+      // browser's English text ("Failed to fetch"), so it gets the translated message.
+      setError(err instanceof Refusal && err.message ? err.message : t("contactSendFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -231,6 +253,7 @@ export default function ContactPage() {
                       </span>
                     )}
                   </Button>
+                  <CaptchaNotice className="-mt-2" />
                 </form>
               )}
             </div>

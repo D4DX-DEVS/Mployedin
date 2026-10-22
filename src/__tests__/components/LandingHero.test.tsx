@@ -15,32 +15,82 @@ jest.mock("next/link", () => ({
   ),
 }));
 
+const push = jest.fn();
+jest.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 function renderHero(audience: "jobSeeker" | "employer" = "jobSeeker", onAudienceChange = jest.fn()) {
   return render(<HeroSection locale="en" audience={audience} onAudienceChange={onAudienceChange} />);
 }
 
-describe("landing hero", () => {
-  it("is a plain search form that opens the jobs page with the job and the place", () => {
+function type(sentence: string) {
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: sentence } });
+}
+
+describe("landing hero search", () => {
+  beforeEach(() => push.mockClear());
+
+  it("reads a role and a place out of the sentence as the visitor types", () => {
     renderHero();
-    const form = screen.getByRole("search");
-    expect(form).toHaveAttribute("method", "GET");
-    expect(form).toHaveAttribute("action", "/en/jobs");
-    expect(screen.getByLabelText(/what role are you looking for/i)).toHaveAttribute("name", "search");
-    expect(screen.getByLabelText(/where do you want to work/i)).toHaveAttribute("name", "location");
-    expect(screen.getByRole("button", { name: /find jobs/i })).toHaveAttribute("type", "submit");
+    type("Nursing roles in Abu Dhabi");
+    expect(screen.getByText("Role: Nursing")).toBeInTheDocument();
+    expect(screen.getByText("Location: Abu Dhabi")).toBeInTheDocument();
   });
 
-  it("links the popular searches straight to the jobs page", () => {
+  it("opens the jobs page with what was understood when searching", () => {
     renderHero();
-    expect(screen.getByRole("link", { name: "Engineering jobs" })).toHaveAttribute("href", "/en/jobs?search=Engineering%20jobs");
+    type("Site engineer in Dubai");
+    fireEvent.click(screen.getByRole("button", { name: /find jobs/i }));
+    expect(push).toHaveBeenCalledWith("/en/jobs?search=Site+engineer&location=Dubai");
   });
 
-  it("makes no AI request and shows no AI wording", () => {
+  it("searches on Enter and adds a new line on Shift+Enter", () => {
+    renderHero();
+    type("accountant in Doha");
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter", shiftKey: true });
+    expect(push).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+    expect(push).toHaveBeenCalledWith("/en/jobs?search=accountant&location=Doha");
+  });
+
+  it("leaves out a filter the visitor removed", () => {
+    renderHero();
+    type("Site engineer in Dubai");
+    fireEvent.click(screen.getByRole("button", { name: /remove filter: location: dubai/i }));
+    expect(screen.queryByText("Location: Dubai")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /find jobs/i }));
+    expect(push).toHaveBeenCalledWith("/en/jobs?search=Site+engineer");
+  });
+
+  it("brings the filters back when the sentence is edited", () => {
+    renderHero();
+    type("Site engineer in Dubai");
+    fireEvent.click(screen.getByRole("button", { name: /remove filter: location: dubai/i }));
+    type("Site engineer in Doha");
+    expect(screen.getByText("Location: Doha")).toBeInTheDocument();
+  });
+
+  it("opens the plain jobs list for an empty sentence", () => {
+    renderHero();
+    fireEvent.click(screen.getByRole("button", { name: /find jobs/i }));
+    expect(push).toHaveBeenCalledWith("/en/jobs");
+  });
+
+  it("fills the box from an example and puts the cursor there", () => {
+    renderHero();
+    fireEvent.click(screen.getByRole("button", { name: "Nursing roles in Abu Dhabi" }));
+    expect(screen.getByRole("textbox")).toHaveValue("Nursing roles in Abu Dhabi");
+    expect(screen.getByRole("textbox")).toHaveFocus();
+    expect(screen.getByText("Location: Abu Dhabi")).toBeInTheDocument();
+  });
+
+  it("makes no network request and shows no AI wording", () => {
     const fetchSpy = jest.fn();
     global.fetch = fetchSpy as unknown as typeof fetch;
     renderHero();
+    type("nurse in doha");
+    fireEvent.click(screen.getByRole("button", { name: /find jobs/i }));
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(screen.queryByText(/search with ai/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/AI/)).not.toBeInTheDocument();
   });
 
   it("switches audience through the toggle", () => {
@@ -48,7 +98,6 @@ describe("landing hero", () => {
     renderHero("jobSeeker", onAudienceChange);
     fireEvent.click(screen.getByRole("button", { name: "Hire talent" }));
     expect(onAudienceChange).toHaveBeenCalledWith("employer");
-    expect(screen.getByRole("button", { name: "Find a job" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("gives employers sign-up links instead of the job search", () => {

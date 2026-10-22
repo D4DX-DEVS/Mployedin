@@ -6,6 +6,11 @@ import mongoose, { Document, Schema } from "mongoose";
  * sign-up (terms_and_privacy + cookies, lib/gdpr/consent.ts), on /accept-terms,
  * by the cookie banner / Data & Privacy page for signed-in users, and by the
  * job-seeker profile route when `marketingConsent` changes.
+ *
+ * Cookie rows (`cookies.preferences`, `cookies.media`) carry `receiptId`: the
+ * visitor's choice reference, which ties the row to the anonymous
+ * ConsentReceipt that proves what wording they saw. Older rows, terms and
+ * marketing rows have none.
  */
 export interface IConsentLog extends Document {
   _id: mongoose.Types.ObjectId;
@@ -17,6 +22,8 @@ export interface IConsentLog extends Document {
   source?: string;
   /** For terms_and_privacy rows: the Terms/Privacy version that was accepted. */
   policyVersion?: string;
+  /** Cookie rows: the choice reference (ConsentReceipt.receiptId) this row was written with. */
+  receiptId?: string;
   ipAddress?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -30,6 +37,7 @@ const ConsentLogSchema = new Schema<IConsentLog>(
     granted: { type: Boolean, required: true },
     source: { type: String, maxlength: 60 },
     policyVersion: { type: String, maxlength: 40 },
+    receiptId: { type: String, trim: true, maxlength: 36 },
     ipAddress: String,
   },
   { timestamps: true },
@@ -37,6 +45,16 @@ const ConsentLogSchema = new Schema<IConsentLog>(
 
 ConsentLogSchema.index({ createdAt: -1 });
 ConsentLogSchema.index({ userId: 1, consentType: 1, createdAt: -1 });
+// Admin lookup / search by choice reference; sparse, because most rows have none.
+ConsentLogSchema.index({ receiptId: 1 }, { sparse: true });
+// One row per account, choice reference and category: the receipt route checks then inserts, which is not atomic,
+// so a resend racing the first delivery is stopped here (recordCookieConsent treats the duplicate key as done).
+// Only over rows that have a reference: terms, marketing and older rows repeat legitimately. Existing duplicates are
+// removed by scripts/consent-receipt-unique-index.mjs before this can build (indexes.ts logs it until then).
+ConsentLogSchema.index(
+  { userId: 1, receiptId: 1, consentType: 1 },
+  { unique: true, partialFilterExpression: { receiptId: { $type: "string" } } },
+);
 
 export const ConsentLog =
   mongoose.models.ConsentLog || mongoose.model<IConsentLog>("ConsentLog", ConsentLogSchema);

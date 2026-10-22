@@ -17,6 +17,11 @@ import { CookieConsentMount } from "@/components/shared/CookieConsentMount";
 import { AccessibilityPanel } from "@/components/shared/AccessibilityPanel";
 import { isLegalPagePublished } from "@/lib/cms/legalPageStatus";
 import { MAIN_CONTENT_ID } from "@/components/shared/SkipToContent";
+import { CookieSettingsLink } from "@/components/shared/ConsentManager/CookieSettingsLink";
+
+// 44px tall on phones (touch target), compact from sm up.
+const AUTH_LEGAL_LINK_CLASS =
+  "inline-flex min-h-11 items-center rounded-sm underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:min-h-8";
 
 export default async function AuthLayout({
   children,
@@ -27,6 +32,7 @@ export default async function AuthLayout({
 }) {
   const { locale } = await params;
   const t = await getTranslations("authLayout");
+  const tFooter = await getTranslations("footer");
   const statementPublished = await isLegalPagePublished("accessibility-statement");
   const messages = await getMessages();
 
@@ -55,6 +61,17 @@ export default async function AuthLayout({
               </div>
             </div>
           </main>
+          {/* The banner promises "change this any time in Cookie settings": sign-in and sign-up must
+              offer it too, without leaving the flow. */}
+          <nav aria-label={t("legalLinks")} className="flex shrink-0 flex-wrap items-center justify-center gap-x-4 text-xs text-muted-foreground">
+            <Link href={`/${locale}/privacy`} className={AUTH_LEGAL_LINK_CLASS}>
+              {tFooter("privacy")}
+            </Link>
+            <Link href={`/${locale}/cookies`} className={AUTH_LEGAL_LINK_CLASS}>
+              {tFooter("cookies")}
+            </Link>
+            <CookieSettingsLink className={AUTH_LEGAL_LINK_CLASS}>{tFooter("cookieSettings")}</CookieSettingsLink>
+          </nav>
         </div>
 
         <aside className="relative hidden flex-1 overflow-hidden border-s border-border/50 bg-[linear-gradient(160deg,hsl(var(--background)),hsl(var(--muted)/0.95))] lg:flex">

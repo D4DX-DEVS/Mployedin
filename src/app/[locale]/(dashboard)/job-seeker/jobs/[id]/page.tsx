@@ -89,7 +89,7 @@ function renderJobDescription(text: string) {
           h1: ({ ...props }) => <h3 className="heading-subsection mt-4 mb-1.5 font-semibold text-foreground" {...props} />,
           h2: ({ ...props }) => <h3 className="heading-label mt-4 mb-1.5 font-semibold text-foreground" {...props} />,
           h3: ({ ...props }) => <h3 className="heading-label mt-4 mb-1.5 font-semibold text-foreground" {...props} />,
-          p: ({ ...props }) => <p className="leading-relaxed text-justify" {...props} />,
+          p: ({ ...props }) => <p className="leading-relaxed" {...props} />,
           ul: ({ ...props }) => <ul className="list-disc space-y-1 ps-5" {...props} />,
           ol: ({ ...props }) => <ol className="list-decimal space-y-1 ps-5" {...props} />,
           li: ({ ...props }) => <li className="leading-relaxed" {...props} />,

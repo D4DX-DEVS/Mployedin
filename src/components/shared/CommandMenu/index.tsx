@@ -18,6 +18,7 @@ import { getIcon } from "@/lib/nav/iconRegistry";
 import { getQuickActions } from "@/lib/nav/quickActions";
 import { getEntitySearchRoutes } from "@/lib/nav/entitySearch";
 import { usePermissions } from "@/hooks/usePermissions";
+import { purgeLegacyRecentPages } from "@/lib/consent/deviceStorage";
 import { cn } from "@/lib/utils";
 
 interface CommandMenuProps {
@@ -107,18 +108,12 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
     .map((href) => allItems.find((item) => item.href === href))
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
+  // Recent pages are browsing history, so they live in memory only (gone on
+  // reload) rather than on a device that may be shared. Older builds kept them
+  // in localStorage; drop whatever they left behind.
   useEffect(() => {
-    const storageKey = `mployedin_recent_pages_${locale}`;
-    const stored = window.localStorage.getItem(storageKey);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) setRecentHrefs(parsed.filter((value): value is string => typeof value === "string").slice(0, 5));
-      } catch {
-        window.localStorage.removeItem(storageKey);
-      }
-    }
-  }, [locale]);
+    purgeLegacyRecentPages();
+  }, []);
 
   useEffect(() => {
     const current = [...allItems]
@@ -126,13 +121,10 @@ export function CommandMenu({ navGroups, locale, userRole }: CommandMenuProps) {
       .find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
     if (!current) return;
 
-    const storageKey = `mployedin_recent_pages_${locale}`;
-    setRecentHrefs((previous) => {
-      const next = [current.href, ...previous.filter((href) => href !== current.href)].slice(0, 5);
-      window.localStorage.setItem(storageKey, JSON.stringify(next));
-      return next;
-    });
-  }, [allItems, locale, pathname]);
+    setRecentHrefs((previous) =>
+      [current.href, ...previous.filter((href) => href !== current.href)].slice(0, 5)
+    );
+  }, [allItems, pathname]);
 
   // ── Actions ───────────────────────────────────────────────────────
   // The palette used to answer only "where is X?". These entries answer

@@ -16,6 +16,7 @@
 
 import logger from "@/lib/logger";
 import { connectDB } from "@/lib/db/mongoose";
+import { getClientIp } from "@/lib/security/clientIp";
 import AuditLog from "@/models/AuditLog";
 import { NextRequest } from "next/server";
 
@@ -55,17 +56,6 @@ export interface LogActivityParams {
 }
 
 /**
- * Derive the best-available IP address from request headers.
- */
-function extractIp(req: NextRequest): string {
-  return (
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown"
-  );
-}
-
-/**
  * Derive country code from CDN / proxy headers (no external call).
  * Returns ISO-3166-1 alpha-2 code (e.g. "US") or undefined.
  */
@@ -89,7 +79,7 @@ export async function logActivity(params: LogActivityParams): Promise<void> {
   try {
     await connectDB();
 
-    const ip = params.ipAddress ?? (params.req ? extractIp(params.req) : "unknown");
+    const ip = params.ipAddress ?? (params.req ? getClientIp(params.req.headers) : "unknown");
     const country = params.country ?? (params.req ? extractCountry(params.req) : undefined);
     const userAgent = params.req?.headers.get("user-agent") ?? undefined;
 

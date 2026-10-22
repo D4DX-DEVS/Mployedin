@@ -12,6 +12,7 @@ import { offerRespondSchema } from "@/lib/validators/offers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { getClientIp } from "@/lib/security/clientIp";
 import type { UserRole } from "@/models/User";
 import { agentOwnsOffer, superAgentOwnsOffer } from "@/lib/offers/access";
 import { CLOSED_APPLICATION_STATUSES, OPEN_OFFER_STATUSES } from "@/lib/offers/status";
@@ -109,7 +110,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     setFields.signature = {
       fullName: signatureName,
       signedAt: respondedAt,
-      ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || undefined,
+      ip: getClientIp(req.headers),
     };
   }
   if (status === "countered" && counterOffer) {

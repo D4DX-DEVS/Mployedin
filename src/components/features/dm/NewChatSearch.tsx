@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { useUserSearch, type SearchUser } from "@/hooks/useUserSearch";
 import { cn } from "@/lib/utils";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { toSafeImageSrc } from "@/lib/images/externalAvatar";
 
 /** Split text into segments with matched portions wrapped in <strong> */
 function highlightMatch(text: string, query: string): ReactNode[] {
@@ -209,7 +210,7 @@ export function NewChatSearch({ dashboardPrefix, trigger, newChatLabel }: NewCha
                       <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
                         {user.avatar || user.companyLogo ? (
                           <img
-                            src={user.avatar ?? user.companyLogo}
+                            src={toSafeImageSrc(user.avatar ?? user.companyLogo)}
                             alt=""
                             className="w-full h-full object-cover"
                           />

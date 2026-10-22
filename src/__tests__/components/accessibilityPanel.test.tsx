@@ -2,14 +2,15 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AccessibilityPanel } from "@/components/shared/AccessibilityPanel";
 import { MAIN_CONTENT_ID } from "@/components/shared/SkipToContent";
 import { openAccessibilityPanel, savePreferences } from "@/lib/a11y/usePreferences";
 import { DEFAULT_PREFERENCES } from "@/lib/a11y/preferences";
-import { saveLauncherPosition } from "@/components/shared/AccessibilityPanel/useLauncherPosition";
+import { saveLauncherPosition, useLauncherPosition } from "@/components/shared/AccessibilityPanel/useLauncherPosition";
+import { writeConsent } from "@/lib/consent/client";
 
 jest.mock("next/link", () => ({
   __esModule: true,
@@ -152,7 +153,7 @@ describe("AccessibilityPanel", () => {
     fireEvent.click(launcher);
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(JSON.parse(localStorage.getItem("mployedin.a11y.button") ?? "null")).toEqual({ side: "start", top: 0.25 });
+    expect(JSON.parse(localStorage.getItem("ui:mployedin.a11y.button") ?? "null")).toEqual({ side: "start", top: 0.25 });
 
     fireEvent.pointerDown(launcher, { pointerId: 2, button: 0, clientX: 100, clientY: 200 });
     fireEvent.pointerUp(launcher, { pointerId: 2, clientX: 102, clientY: 201 });
@@ -164,7 +165,7 @@ describe("AccessibilityPanel", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("tab", { name: "Navigation" }));
     await user.click(screen.getByRole("button", { name: "Reset position" }));
-    expect(localStorage.getItem("mployedin.a11y.button")).toBeNull();
+    expect(localStorage.getItem("ui:mployedin.a11y.button")).toBeNull();
   });
 
   it("opens without its own button, as the dashboards' account menu does", async () => {
@@ -173,5 +174,136 @@ describe("AccessibilityPanel", () => {
 
     act(() => openAccessibilityPanel());
     expect(await screen.findByRole("dialog", { name: "Accessibility" })).toBeInTheDocument();
+  });
+});
+
+describe("launcher position storage", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    document.cookie = "mpl_consent=; Max-Age=0; path=/";
+    act(() => saveLauncherPosition(null));
+  });
+
+  it("picks up the position an older build saved under the old name, once", () => {
+    localStorage.setItem("mployedin.a11y.button", JSON.stringify({ side: "start", top: 0.4 }));
+
+    const { result } = renderHook(() => useLauncherPosition());
+
+    expect(result.current).toEqual({ side: "start", top: 0.4 });
+    expect(localStorage.getItem("mployedin.a11y.button")).toBeNull();
+    expect(JSON.parse(localStorage.getItem("ui:mployedin.a11y.button") ?? "null")).toEqual({ side: "start", top: 0.4 });
+  });
+
+  it("is kept for the tab only once preferences were objected to", () => {
+    writeConsent({ preferences: false, media: false });
+
+    act(() => saveLauncherPosition({ side: "end", top: 0.6 }));
+
+    expect(localStorage.getItem("ui:mployedin.a11y.button")).toBeNull();
+    expect(JSON.parse(sessionStorage.getItem("ui:mployedin.a11y.button") ?? "null")).toEqual({ side: "end", top: 0.6 });
+    const { result } = renderHook(() => useLauncherPosition());
+    expect(result.current).toEqual({ side: "end", top: 0.6 });
+  });
+});
+
+describe("launcher position store (useSyncExternalStore)", () => {
+  const LEGACY = "mployedin.a11y.button";
+  const CURRENT = "ui:mployedin.a11y.button";
+  const saved = { side: "start", top: 0.4 };
+
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    document.cookie = "mpl_consent=; Max-Age=0; path=/";
+    act(() => saveLauncherPosition(null));
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  /**
+   * The getSnapshot / getServerSnapshot the hook hands to useSyncExternalStore,
+   * captured on a render whose effects are switched off, so nothing but the
+   * render itself can have touched storage.
+   */
+  function captureStore() {
+    const real = React.useSyncExternalStore;
+    let getSnapshot!: () => unknown;
+    let getServerSnapshot!: () => unknown;
+    const store = jest.spyOn(React, "useSyncExternalStore").mockImplementation((subscribe, snapshot, server) => {
+      getSnapshot = snapshot;
+      getServerSnapshot = server as () => unknown;
+      return real(subscribe, snapshot, server);
+    });
+    const effects = jest.spyOn(React, "useEffect").mockImplementation(() => {});
+    try {
+      renderHook(() => useLauncherPosition());
+    } finally {
+      store.mockRestore();
+      effects.mockRestore();
+    }
+    return { getSnapshot, getServerSnapshot };
+  }
+
+  it("getSnapshot is pure: the same value every time and no storage writes", () => {
+    localStorage.setItem(LEGACY, JSON.stringify(saved));
+    const setItem = jest.spyOn(Storage.prototype, "setItem");
+    const removeItem = jest.spyOn(Storage.prototype, "removeItem");
+
+    const { getSnapshot } = captureStore();
+    const first = getSnapshot();
+    const second = getSnapshot();
+
+    expect(second).toBe(first);
+    expect(first).toEqual(saved);
+    expect(setItem).not.toHaveBeenCalled();
+    expect(removeItem).not.toHaveBeenCalled();
+    expect(localStorage.getItem(LEGACY)).not.toBeNull();
+    expect(sessionStorage.getItem(CURRENT)).toBeNull();
+  });
+
+  it("getSnapshot is stable when there is nothing saved", () => {
+    const { getSnapshot } = captureStore();
+
+    expect(getSnapshot()).toBeNull();
+    expect(getSnapshot()).toBe(getSnapshot());
+  });
+
+  it("the server snapshot is the default, whatever is saved (first paint, then storage is read)", () => {
+    localStorage.setItem(CURRENT, JSON.stringify(saved));
+
+    const { getServerSnapshot } = captureStore();
+
+    expect(getServerSnapshot()).toBeNull();
+  });
+
+  it("moves an old position to the new key after mount, once", () => {
+    localStorage.setItem(LEGACY, JSON.stringify(saved));
+    const setItem = jest.spyOn(Storage.prototype, "setItem");
+    const writesToCurrent = () => setItem.mock.calls.filter(([key]) => key === CURRENT).length;
+
+    const first = renderHook(() => useLauncherPosition());
+
+    expect(first.result.current).toEqual(saved);
+    expect(localStorage.getItem(LEGACY)).toBeNull();
+    expect(JSON.parse(localStorage.getItem(CURRENT) ?? "null")).toEqual(saved);
+    expect(writesToCurrent()).toBe(1);
+
+    first.rerender();
+    first.unmount();
+    const second = renderHook(() => useLauncherPosition());
+
+    expect(second.result.current).toEqual(saved);
+    expect(writesToCurrent()).toBe(1);
+  });
+
+  it("moves it into the tab only when preferences were objected to", () => {
+    writeConsent({ preferences: false, media: false });
+    localStorage.setItem(LEGACY, JSON.stringify(saved));
+
+    const { result } = renderHook(() => useLauncherPosition());
+
+    expect(result.current).toEqual(saved);
+    expect(localStorage.length).toBe(0);
+    expect(JSON.parse(sessionStorage.getItem(CURRENT) ?? "null")).toEqual(saved);
   });
 });

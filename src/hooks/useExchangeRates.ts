@@ -9,7 +9,10 @@ interface ExchangeRateResult {
   isLoading: boolean;
 }
 
-const CACHE_KEY = "mployedin_exchange_rates";
+// An older build kept the rates in localStorage. They are a data cache, not a
+// preference, so they now live in memory only. The old copy is deleted on every
+// page load by the cookie component (sweepLegacyDeviceCopies in lib/consent/legacyKeys),
+// and is never read here.
 const CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12 hours
 
 interface StoredRates {
@@ -17,30 +20,23 @@ interface StoredRates {
   storedAt: number;
 }
 
-function readLocalCache(): Record<string, number> | null {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const parsed: StoredRates = JSON.parse(raw);
-    if (Date.now() - parsed.storedAt > CACHE_MAX_AGE_MS) return null;
-    return parsed.rates;
-  } catch {
-    return null;
-  }
+// Survives client-side navigation (the hook remounts; this module doesn't) and
+// is gone on reload, so nothing is left on the device.
+let memoryCache: StoredRates | null = null;
+
+function readMemoryCache(): Record<string, number> | null {
+  if (!memoryCache) return null;
+  if (Date.now() - memoryCache.storedAt > CACHE_MAX_AGE_MS) return null;
+  return memoryCache.rates;
 }
 
-function writeLocalCache(rates: Record<string, number>) {
-  try {
-    const entry: StoredRates = { rates, storedAt: Date.now() };
-    localStorage.setItem(CACHE_KEY, JSON.stringify(entry));
-  } catch {
-    // ignore
-  }
+function writeMemoryCache(rates: Record<string, number>) {
+  memoryCache = { rates, storedAt: Date.now() };
 }
 
 /**
  * Fetches live exchange rates from /api/exchange-rates.
- * Uses localStorage as a secondary cache so repeated page loads are instant.
+ * Keeps them in memory for the visit so later mounts are instant.
  * Falls back to the hardcoded AED_EXCHANGE_RATES if everything fails.
  */
 export function useExchangeRates(): ExchangeRateResult {
@@ -49,8 +45,8 @@ export function useExchangeRates(): ExchangeRateResult {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Try localStorage cache first for instant display
-    const cached = readLocalCache();
+    // 1. Try the in-memory copy first for instant display
+    const cached = readMemoryCache();
     if (cached) {
       setRates(cached);
       setSource("cache");
@@ -70,7 +66,7 @@ export function useExchangeRates(): ExchangeRateResult {
         if (data?.rates) {
           setRates(data.rates);
           setSource(data.source === "live" ? "live" : "cache");
-          writeLocalCache(data.rates);
+          writeMemoryCache(data.rates);
         }
       })
       .catch(() => {

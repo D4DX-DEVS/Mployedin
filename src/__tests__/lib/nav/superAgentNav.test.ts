@@ -16,7 +16,8 @@ import path from "path";
 import { WORKSPACE_QUICK_ACTIONS, getQuickActions } from "@/lib/nav/quickActions";
 import { getEntitySearchRoutes } from "@/lib/nav/entitySearch";
 import { getNavGroups, getAllNavItems } from "@/lib/nav/menuConfig";
-import { WORKSPACE_BOTTOM_NAV_TABS } from "@/lib/nav/bottomNavTabs";
+import { WORKSPACE_BOTTOM_NAV_TABS, withoutBottomTabItems } from "@/lib/nav/bottomNavTabs";
+import { SUPER_AGENT_REPORT_TABS } from "@/lib/nav/reportRoutes";
 
 const DASHBOARD_ROOT = path.join(process.cwd(), "src", "app", "[locale]", "(dashboard)");
 
@@ -120,12 +121,14 @@ describe("super-agent navigation badges", () => {
   const items = getAllNavItems("super_agent", "en");
 
   it("counts the review queue on the entry that holds it", () => {
-    const exhibitions = items.find((item) => item.href === "/en/super-agent/exhibitions");
+    // The parent row shares this href and sums its children's badges.
+    const exhibitions = items.find((item) => item.href === "/en/super-agent/exhibitions" && item.badgeKey);
     expect(exhibitions?.badgeKey).toBe("pendingExhibitionReviews");
   });
 
   it("counts commissions awaiting sign-off", () => {
-    const commissions = items.find((item) => item.href === "/en/super-agent/commissions");
+    // The parent row shares this href and sums its children's badges.
+    const commissions = items.find((item) => item.href === "/en/super-agent/commissions" && item.badgeKey);
     expect(commissions?.badgeKey).toBe("pendingCommissionApprovals");
   });
 
@@ -135,6 +138,88 @@ describe("super-agent navigation badges", () => {
     ));
     for (const tab of WORKSPACE_BOTTOM_NAV_TABS.super_agent ?? []) {
       expect(hrefs.has(`/en${tab.href}`)).toBe(true);
+    }
+  });
+});
+
+describe("super-agent rail", () => {
+  const groups = getNavGroups("super_agent", "en");
+  const roots = groups.flatMap((group) => group.items);
+  const leaves = roots.flatMap((item) => [item, ...(item.children ?? [])]);
+  const strip = (href: string) => href.replace(/^\/en/, "");
+
+  it("is grouped by the work, not one fourteen-entry Overview", () => {
+    expect(roots.map((item) => item.title)).toEqual([
+      "Dashboard", "Team", "Hiring", "Finance", "Reports", "Agent Tasks", "Exhibitions", "Messages",
+    ]);
+    expect(roots.find((item) => item.title === "Overview")).toBeUndefined();
+  });
+
+  it("points every row at a page that exists", () => {
+    for (const item of leaves) {
+      expect([item.title, pageExists(strip(item.href))]).toEqual([item.title, true]);
+    }
+  });
+
+  it("drops the Insights page; its alerts stay on the Agents page", () => {
+    expect(leaves.some((item) => item.href.includes("/super-agent/insights"))).toBe(false);
+    expect(pageExists("/super-agent/insights")).toBe(false);
+    expect(pageSource("/super-agent/agents").includes("SuperAgentInsightsPanel")).toBe(true);
+  });
+
+  it("keeps every report on one Reports row with the tab strip on each page", () => {
+    const reports = roots.find((item) => item.title === "Reports");
+    expect(reports?.children).toBeUndefined();
+    expect(reports?.activePaths).toEqual(SUPER_AGENT_REPORT_TABS.map((tab) => `/en${tab.path}`));
+    expect(SUPER_AGENT_REPORT_TABS.map((tab) => tab.path)).toEqual(
+      expect.arrayContaining(["/super-agent/market", "/super-agent/target-report", "/super-agent/commissions-report"])
+    );
+    for (const tab of SUPER_AGENT_REPORT_TABS) {
+      expect([tab.path, pageSource(tab.path).includes("<SuperAgentReportTabs />")]).toEqual([tab.path, true]);
+    }
+  });
+
+  it("still reaches every page the old Overview group listed", () => {
+    const reachable = new Set([
+      ...leaves.map((item) => strip(item.href)),
+      ...SUPER_AGENT_REPORT_TABS.map((tab) => tab.path),
+    ]);
+    for (const href of [
+      "/super-agent/jobs", "/super-agent/applications", "/super-agent/interviews", "/super-agent/placements",
+      "/super-agent/background-checks", "/super-agent/commissions", "/super-agent/invoices",
+      "/super-agent/market", "/super-agent/reports", "/super-agent/target-management",
+      "/super-agent/target-report", "/super-agent/commissions-report", "/super-agent/territory",
+    ]) {
+      expect([href, reachable.has(href)]).toEqual([href, true]);
+    }
+  });
+
+  it("keeps the review badges on a row the rail shows", () => {
+    const exhibitions = roots.find((item) => item.title === "Exhibitions");
+    expect(exhibitions?.children?.some((child) => child.badgeKey === "pendingExhibitionReviews")).toBe(true);
+    const finance = roots.find((item) => item.title === "Finance");
+    expect(finance?.children?.some((child) => child.badgeKey === "pendingCommissionApprovals")).toBe(true);
+  });
+});
+
+describe("super-agent phone drawer", () => {
+  // The drawer renders the rail's tree minus what the bottom tabs already link.
+  // It used to be hand-built from child titles, two of which matched nothing.
+  const drawer = withoutBottomTabItems(
+    getNavGroups("super_agent", "en").flatMap((group) => group.items),
+    "super_agent",
+    "en"
+  );
+  const titles = drawer.map((item) => item.title);
+  const hrefs = drawer.flatMap((item) => [item.href, ...(item.children ?? []).map((child) => child.href)]);
+
+  it("keeps every rail group the bottom tabs do not cover", () => {
+    expect(titles).toEqual(["Team", "Hiring", "Finance", "Reports", "Agent Tasks", "Exhibitions", "Messages"]);
+  });
+
+  it("lists the pages the old drawer dropped", () => {
+    for (const href of ["/en/super-agent/target-management", "/en/super-agent/tasks", "/en/super-agent/background-checks"]) {
+      expect([href, hrefs.includes(href)]).toEqual([href, true]);
     }
   });
 });

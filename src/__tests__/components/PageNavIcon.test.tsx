@@ -32,6 +32,13 @@ describe("resolvePageNavIcon", () => {
     expect(resolvePageNavIcon(groups, "/en/x/jobs")).toBe("Briefcase");
     expect(resolvePageNavIcon(groups, "/en/x/jobs/new")).toBe("Plus");
   });
+
+  it("gives a report tab the icon of the row its tab strip hangs from", () => {
+    // The super-agent target and market reports have no nav entry of their own.
+    const superAgent = getNavGroups("super_agent", "en");
+    expect(resolvePageNavIcon(superAgent, "/en/super-agent/target-report")).toBe("BarChart2");
+    expect(resolvePageNavIcon(superAgent, "/en/super-agent/market")).toBe("BarChart2");
+  });
 });
 
 describe("PageNavIcon", () => {

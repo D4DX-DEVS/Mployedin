@@ -2,18 +2,44 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import CookieConsent from "@/components/shared/CookieConsent";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import CookieConsent, { type CookieConsentLabels } from "@/components/shared/CookieConsent";
 import { SmartHeader } from "@/components/features/employer/dashboard/SmartHeader";
+import { CONSENT_COOKIE } from "@/lib/consent/state";
 
-// The cookie banner reads the session to log a signed-in user's choice.
-jest.mock("next-auth/react", () => ({ useSession: () => ({ data: null, status: "unauthenticated" }) }));
+// The banner posts a receipt after a choice; no network in this test.
+jest.mock("@/lib/security/csrf-client", () => ({ csrfFetch: jest.fn().mockResolvedValue({ ok: true }) }));
+
+const cookieLabels: CookieConsentLabels = {
+  message: "We use cookies.",
+  policy: "Cookie policy",
+  rejectAll: "Reject all",
+  acceptAll: "Accept all",
+  customise: "Customise",
+  settings: {
+    title: "Cookie settings",
+    description: "Choose.",
+    necessaryTitle: "Strictly necessary",
+    necessaryDescription: "Needed.",
+    alwaysOn: "Always on",
+    preferencesTitle: "Remember my display settings",
+    preferencesDescription: "Display settings.",
+    preferencesIfOff: "If off: this visit only.",
+    preferencesUndo: "Nothing leaves your device.",
+    mediaTitle: "Videos from YouTube",
+    mediaDescription: "Videos.",
+    mediaIfOff: "If off: no videos.",
+    mediaUndo: "Can't recall.",
+    mediaGoogleControls: "Google controls",
+    reference: "Your choice reference",
+    save: "Save choices",
+    showCovered: "Show what this covers",
+    hideCovered: "Hide",
+  },
+  items: {},
+};
 
 const mockTranslations: Record<string, string> = {
-  "landing.cookieConsent": "We use cookies to improve your experience.",
-  "landing.cookiePolicy": "Cookie policy",
-  "landing.cookieDecline": "Decline",
-  "landing.cookieAccept": "Accept",
   "employerDashboard.smartHeader.aiMatchesFound": "AI matches found",
   "employerDashboard.smartHeader.subtitleAiMatches": "AI found {count} matches.",
   "employerDashboard.smartHeader.welcomeBack": "Welcome back, {userName}",
@@ -39,6 +65,7 @@ describe("responsive visual system", () => {
   afterEach(() => {
     jest.useRealTimers();
     window.localStorage.clear();
+    document.cookie = `${CONSENT_COOKIE}=; Max-Age=0; Path=/`;
     delete document.documentElement.dataset.cookieBanner;
   });
 
@@ -61,24 +88,19 @@ describe("responsive visual system", () => {
     expect(compactLabel.closest("a")).toHaveClass("min-h-11");
   });
 
-  it("reserves document clearance while the compact cookie banner is visible", () => {
-    jest.useFakeTimers();
-    render(
-      <CookieConsent
-        locale="en"
-        labels={{ message: "We use cookies.", policy: "Cookie policy", accept: "Accept", decline: "Decline" }}
-      />,
-    );
+  it("reserves document clearance while the compact cookie banner is visible", async () => {
+    render(<CookieConsent locale="en" labels={cookieLabels} />);
 
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
-
-    expect(screen.getByRole("region", { name: "Cookie policy" })).toBeInTheDocument();
+    // Shown on first paint now: no timer to wait for.
+    expect(screen.getByRole("region", { name: "Cookie settings" })).toBeInTheDocument();
     expect(document.documentElement.dataset.cookieBanner).toBe("visible");
-    expect(screen.getByRole("button", { name: "Accept" })).toHaveClass("min-h-11");
+    for (const name of ["Reject all", "Accept all", "Customise"]) {
+      expect(screen.getByRole("button", { name })).toHaveClass("min-h-11");
+    }
 
-    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
-    expect(document.documentElement.dataset.cookieBanner).toBeUndefined();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Accept all" }));
+    });
+    await waitFor(() => expect(document.documentElement.dataset.cookieBanner).toBeUndefined());
   });
 });

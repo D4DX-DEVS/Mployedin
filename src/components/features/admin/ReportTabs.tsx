@@ -3,10 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ADMIN_REPORT_TABS } from "@/lib/nav/reportRoutes";
+import { ADMIN_REPORT_TABS, type ReportTab } from "@/lib/nav/reportRoutes";
+
+interface ReportTabsProps {
+  /** Defaults to the admin set; the super-agent pages pass their own. */
+  tabs?: readonly ReportTab[];
+  /** Message namespace holding `tabsLabel` and one label per tab key. */
+  namespace?: "adminReportTabs" | "superAgentReportTabs";
+}
 
 /**
- * One strip across every admin report.
+ * One strip across every report in a workspace.
  *
  * There are five reporting destinations and they sit in three different
  * sidebar groups: the platform report and the AI summary under Insight, the
@@ -19,15 +26,15 @@ import { ADMIN_REPORT_TABS } from "@/lib/nav/reportRoutes";
  * The routes stay where they are; this makes the set visible from any one of
  * them, which is what a tab strip is for.
  */
-export function ReportTabs() {
+export function ReportTabs({ tabs = ADMIN_REPORT_TABS, namespace = "adminReportTabs" }: ReportTabsProps = {}) {
   const pathname = usePathname();
   const locale = useLocale();
-  const t = useTranslations("adminReportTabs");
+  const t = useTranslations(namespace);
 
   return (
     <nav aria-label={t("tabsLabel")} className="-mx-1 mb-4 overflow-x-auto px-1">
       <ul className="flex w-max min-w-full items-center gap-1 rounded-xl border border-border/70 bg-card/60 p-1">
-        {ADMIN_REPORT_TABS.map((tab) => {
+        {tabs.map((tab) => {
           const href = `/${locale}${tab.path}`;
           const isActive = pathname === href;
           return (

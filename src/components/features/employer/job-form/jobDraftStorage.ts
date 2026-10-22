@@ -1,4 +1,5 @@
 import type { JobFormValues } from "./jobFormSchema";
+import { JOB_DRAFT_PREFIX, removeStorageKeys } from "@/lib/consent/deviceStorage";
 
 /**
  * How long a local draft stays offerable.
@@ -30,4 +31,24 @@ export function parseStoredDraft(raw: string | null, now: number = Date.now()): 
   } catch {
     return null;
   }
+}
+
+/**
+ * Moves a draft an older build left in localStorage into the tab's
+ * sessionStorage, then deletes the old copy. Drafts used to be mirrored into
+ * localStorage, which outlives sign-out on a shared device.
+ *
+ * Only the signed-in user's draft is carried over (and never over a newer one
+ * already in the tab). Every other `job-draft-*` in localStorage — other
+ * people's, or the "anonymous" slot — is deleted unread. The server keeps the
+ * durable copy (/api/jobs/auto-draft), so this mirror is safe to drop.
+ */
+export function migrateLegacyDraft(storageKey: string, legacy: Storage, current: Storage): void {
+  try {
+    const raw = legacy.getItem(storageKey);
+    if (raw !== null && current.getItem(storageKey) === null) current.setItem(storageKey, raw);
+  } catch {
+    // storage blocked or full — the old copy is still deleted below
+  }
+  removeStorageKeys(legacy, (key) => key.startsWith(JOB_DRAFT_PREFIX));
 }

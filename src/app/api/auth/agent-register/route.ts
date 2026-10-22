@@ -13,6 +13,7 @@ import { hashOtp } from "@/lib/auth/emailVerification";
 import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
 import { recordRegistrationConsents } from "@/lib/gdpr/consent";
+import { resolveRequestLocale } from "@/lib/i18n/requestLocale";
 
 /* ------------------------------------------------------------------ */
 /*  POST /api/auth/agent-register — Agent self-registration            */
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest) {
 
   /* Send verification email (non-blocking — registration already succeeded) */
   const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const locale = req.cookies.get("NEXT_LOCALE")?.value === "ar" ? "ar" : "en";
+  const locale = resolveRequestLocale(req);
   const verifyUrl = `${baseUrl}/${locale}/verify-email?token=${rawToken}&email=${encodeURIComponent(email.toLowerCase().trim())}`;
   await sendEmail({
     to: email.toLowerCase().trim(),

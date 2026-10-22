@@ -60,6 +60,9 @@ describe("Accessibility panel button", () => {
 
     // CookieConsent sets <html data-cookie-banner="visible"> while it shows.
     expect(src).toContain("max-sm:[:root[data-cookie-banner=visible]_&]:bottom-");
+    // By the banner's measured top edge: the three-button banner is taller than
+    // the old fixed 7rem clearance on a phone.
+    expect(src).toContain("var(--cookie-banner-top");
   });
 });
 
@@ -109,5 +112,9 @@ describe("page landmarks", () => {
   it("dashboards open the same panel from the account menu, without the floating button", () => {
     expect(read("src/components/shared/DashboardShell/index.tsx")).toMatch(/<AccessibilityPanel\b[^>]*showLauncher=\{false\}/);
     expect(read("src/components/shared/UserProfileDropdown.tsx")).toMatch(/openAccessibilityPanel\(\)/);
+  });
+
+  it("dashboards open Cookie settings from the same account menu", () => {
+    expect(read("src/components/shared/UserProfileDropdown.tsx")).toMatch(/openCookieSettings\(\)/);
   });
 });

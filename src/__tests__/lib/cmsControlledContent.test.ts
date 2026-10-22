@@ -72,7 +72,7 @@ describe("fields the public site never rendered", () => {
   it("drops a video's thumbnail", () => {
     const result = videoCreateSchema.parse({
       title: "Intro",
-      url: "https://www.youtube.com/watch?v=abc",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       thumbnail: "/t.png",
     });
     expect(result).not.toHaveProperty("thumbnail");

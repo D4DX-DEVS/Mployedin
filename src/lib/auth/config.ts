@@ -1,5 +1,5 @@
 import NextAuth, { CredentialsSignin, type NextAuthConfig } from "next-auth";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import Credentials from "next-auth/providers/credentials";
 import LinkedIn from "next-auth/providers/linkedin";
 import Apple from "next-auth/providers/apple";
@@ -29,6 +29,8 @@ import { recordRegistrationConsents } from "@/lib/gdpr/consent";
 import { parseCookieChoice } from "@/lib/gdpr/cookieChoice";
 import { getCurrentTermsVersion, isTermsAcceptancePending, termsPendingFor } from "@/lib/gdpr/termsVersion";
 import { CONSENT_REQUIRED_CODE, SIGNUP_CONSENT_COOKIE, parseSignupConsent } from "@/lib/auth/signupConsent";
+import { resolveCallbackLocale, resolveCallbackReferral } from "@/lib/i18n/requestLocale";
+import { SESSION_MAX_AGE_S } from "@/lib/auth/sessionMaxAge";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -851,9 +853,10 @@ export const authConfig: NextAuthConfig = {
   trustHost: true,
   session: {
     strategy: "jwt",
-    maxAge: 3 * 24 * 60 * 60,    // 3 days max (remember-me sessions)
+    maxAge: SESSION_MAX_AGE_S,    // 3 days max (remember-me sessions); shared with the edge config
     updateAge: 5 * 60,            // re-check DB every 5 min — catches password changes & deactivation quickly
   },
+  jwt: { maxAge: SESSION_MAX_AGE_S },
   pages: {
     signIn: "/en/login",
     error: "/en/login",
@@ -882,8 +885,27 @@ export const authConfig: NextAuthConfig = {
       if (await User.exists({ email })) return true;
       const jar = await cookies();
       if (parseSignupConsent(jar.get(SIGNUP_CONSENT_COOKIE)?.value).terms) return true;
-      const locale = jar.get("NEXT_LOCALE")?.value === "ar" ? "ar" : "en";
-      return `/${locale}/login?error=${CONSENT_REQUIRED_CODE}&provider=${account.provider}`;
+      // The provider's callback carries no page of ours, so the language is the one the visitor started
+      // from (Auth.js's callback-url cookie), then NEXT_LOCALE. NEXT_LOCALE alone is not enough: a
+      // visitor who landed on /ar and never used the switcher has none.
+      let requestHeaders: Awaited<ReturnType<typeof headers>> | null = null;
+      try {
+        requestHeaders = await headers();
+      } catch {
+        // Outside a request scope: only the configured site URLs count as this site.
+      }
+      const ownHosts = [
+        requestHeaders?.get("x-forwarded-host"),
+        requestHeaders?.get("host"),
+        process.env.NEXTAUTH_URL,
+        process.env.AUTH_URL,
+      ];
+      const locale = resolveCallbackLocale(jar, ownHosts);
+      // A referral code the sign-up started with (the login page puts it in the post-login-redirect
+      // URL) goes back to the login page, which asks for the tick and starts again with it. Already
+      // checked to have the shape of a code, so it is safe in a redirect.
+      const ref = resolveCallbackReferral(jar, ownHosts);
+      return `/${locale}/login?error=${CONSENT_REQUIRED_CODE}&provider=${account.provider}${ref ? `&ref=${ref}` : ""}`;
     },
     async jwt({ token, user, account, trigger, session: updateData }) {
       // Signed-out sessions stay dead: the JWT itself would stay valid until it

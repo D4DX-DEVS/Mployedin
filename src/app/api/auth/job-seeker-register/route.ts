@@ -13,6 +13,7 @@ import { jobSeekerRegisterSchema } from "@/lib/validators/misc";
 import { hashOtp } from "@/lib/auth/emailVerification";
 import { attachJobSeekerReferral } from "@/lib/referrals/attachJobSeeker";
 import { recordRegistrationConsents } from "@/lib/gdpr/consent";
+import { resolveRequestLocale } from "@/lib/i18n/requestLocale";
 import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
 
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     // Send emails — await to prevent Next.js from terminating before delivery
     const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const locale = req.cookies.get("NEXT_LOCALE")?.value === "ar" ? "ar" : "en";
+    const locale = resolveRequestLocale(req);
     const verifyUrl = `${baseUrl}/${locale}/verify-email?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
     const dashboardUrl = `${baseUrl}/${locale}/job-seeker`;
 

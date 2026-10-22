@@ -211,4 +211,67 @@ describe("GET /api/auth/post-login-redirect", () => {
     // Should reject the mismatched locale callback and use default
     expect(location).toContain("/en/onboarding");
   });
+
+  /*
+   * The login and register pages add `locale=<page locale>` to this URL so the
+   * sign-in callback (src/lib/auth/config.ts, via the callback-url cookie) knows
+   * the page language. This route reads only `callbackUrl`: the destination
+   * still follows the session's locale, and the parameter can neither redirect
+   * anywhere nor reach a header.
+   */
+  describe("the locale query parameter (read by the sign-in callback, not here)", () => {
+    const BASE = "http://localhost:3000/api/auth/post-login-redirect";
+
+    async function redirectFor(query: string, user: Record<string, unknown> = {}) {
+      const mockAuth = require("@/lib/auth/config").auth;
+      mockAuth.mockResolvedValueOnce({
+        user: { id: "user_1", role: "job_seeker", locale: "en", isOnboarded: false, ...user },
+      });
+      const response = await GET(new Request(`${BASE}${query}`, { method: "GET" }));
+      return { response, location: response.headers.get("location") ?? "" };
+    }
+
+    it("does not change the destination: the session locale still decides", async () => {
+      const ar = await redirectFor("?locale=ar");
+      expect(ar.response.status).toBe(307);
+      expect(ar.location).toBe("http://localhost:3000/en/onboarding");
+
+      const en = await redirectFor("?locale=en", { locale: "ar", isOnboarded: true });
+      expect(en.location).toBe("http://localhost:3000/ar/job-seeker");
+    });
+
+    it("still honours a valid callback next to it", async () => {
+      const { location } = await redirectFor("?callbackUrl=%2Fen%2Fjobs%2Fabc123&locale=ar");
+      expect(location).toBe("http://localhost:3000/en/jobs/abc123");
+    });
+
+    it("still rejects an off-origin callback next to it", async () => {
+      const { location } = await redirectFor("?callbackUrl=https%3A%2F%2Fevil.com%2Fen%2Fjobs%2F1&locale=ar");
+      expect(location).toBe("http://localhost:3000/en/onboarding");
+    });
+
+    it.each([
+      "//evil.example",
+      "https://evil.example/ar/x",
+      "/\\evil.example",
+      "ar%0d%0aSet-Cookie: x=1",
+      "ar\r\nLocation: https://evil.example",
+      "fr",
+      "",
+    ])("cannot be turned into a redirect or a header by the value %j", async (value) => {
+      const { response, location } = await redirectFor(`?locale=${encodeURIComponent(value)}`);
+      expect(response.status).toBe(307);
+      expect(location).toBe("http://localhost:3000/en/onboarding");
+      expect(new URL(location).origin).toBe("http://localhost:3000");
+      expect(response.headers.get("set-cookie")).toBeNull();
+    });
+
+    it("leaves the signed-out redirect alone", async () => {
+      const mockAuth = require("@/lib/auth/config").auth;
+      mockAuth.mockResolvedValueOnce(null);
+      const response = await GET(new Request(`${BASE}?locale=ar`, { method: "GET" }));
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe("http://localhost:3000/en/login");
+    });
+  });
 });

@@ -7,6 +7,7 @@ import NotificationPreference, {
 import { validateBody } from "@/lib/validators";
 import { notificationPreferencesUpdateSchema } from "@/lib/validators/settings";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { getClientIp } from "@/lib/security/clientIp";
 import { resolveDefaultDigestCadence } from "@/models/SystemConfig";
 import { hasWhatsAppChannel, isWhatsAppReachable, recordWhatsAppOptInChange, type WhatsAppReachAccount } from "@/lib/communications/whatsapp/optIn";
 import { toWaRecipient } from "@/lib/communications/whatsapp/phone";
@@ -185,7 +186,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
       before: hasWhatsAppChannel(beforeDoc?.categories),
       after: hasWhatsAppChannel(afterCategories),
       source: "notification_settings",
-      ipAddress: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined,
+      ipAddress: getClientIp(req.headers),
     });
   }
 

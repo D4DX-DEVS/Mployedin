@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Search, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PublicImage } from "@/components/shared/PublicImage";
 import { formatDate } from "@/lib/ui/intlFormat";
 
 interface BlogPost {
@@ -103,13 +104,16 @@ export default function BlogListingPage() {
               {posts.map((post) => (
                 <Link key={post._id} href={`/${locale}/blog/${post.slug}`} className="group">
                   <article className="rounded-xl border bg-card overflow-hidden h-full flex flex-col transition-shadow group-hover:shadow-md">
-                    {post.coverImage ? (
-                      <img src={post.coverImage} alt="" className="h-48 w-full object-cover" />
-                    ) : (
-                      <div className="h-48 bg-muted flex items-center justify-center">
-                        <span className="text-4xl font-bold text-muted-foreground/30">M</span>
-                      </div>
-                    )}
+                    <PublicImage
+                      src={post.coverImage}
+                      alt=""
+                      className="h-48 w-full object-cover"
+                      fallback={
+                        <div className="h-48 bg-muted flex items-center justify-center">
+                          <span className="text-4xl font-bold text-muted-foreground/30">M</span>
+                        </div>
+                      }
+                    />
                     <div className="p-5 flex-1 flex flex-col">
                       <h2 className="heading-section font-semibold group-hover:text-primary transition-colors line-clamp-2">
                         {isAr ? post.titleAr || post.title : post.title}

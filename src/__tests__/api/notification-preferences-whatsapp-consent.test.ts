@@ -68,13 +68,21 @@ import { GET, PATCH } from "@/app/api/user/notification-preferences/route";
 const routeCtx = { params: Promise.resolve({}) } as never;
 
 const patch = (body: unknown) =>
-  PATCH(new NextRequest("http://x/api/user/notification-preferences", { method: "PATCH", body: JSON.stringify(body), headers: { "content-type": "application/json", "x-forwarded-for": "9.9.9.9, 10.0.0.1" } }), routeCtx);
+  PATCH(new NextRequest("http://x/api/user/notification-preferences", { method: "PATCH", body: JSON.stringify(body), headers: { "content-type": "application/json", "x-forwarded-for": "7.7.7.7", "do-connecting-ip": "9.9.9.9" } }), routeCtx);
 
 const WHATSAPP_ON = { categories: { interviews: { channels: ["in_app", "email", "whatsapp"] } } };
 const WHATSAPP_OFF = { categories: { interviews: { channels: ["in_app", "email"] } } };
 const ENABLE_WHATSAPP = { categories: { interviews: { enabled: true, channels: ["in_app", "email", "whatsapp"] } } };
 
+// getClientIp trusts no client-IP header unless the deployment names one; these tests model DigitalOcean App Platform.
+const originalTrustedHeader = process.env.TRUSTED_CLIENT_IP_HEADER;
+afterEach(() => {
+  if (originalTrustedHeader === undefined) delete process.env.TRUSTED_CLIENT_IP_HEADER;
+  else process.env.TRUSTED_CLIENT_IP_HEADER = originalTrustedHeader;
+});
+
 beforeEach(() => {
+  process.env.TRUSTED_CLIENT_IP_HEADER = "do-connecting-ip";
   jest.clearAllMocks();
   before = WHATSAPP_OFF;
   after = WHATSAPP_ON;
@@ -122,9 +130,14 @@ describe("PATCH /api/user/notification-preferences — WhatsApp consent", () => 
     await patch({ categories: { interviews: { enabled: true, channels: ["in_app", "email"] } } });
     expect(record).toHaveBeenCalledWith(expect.objectContaining({ before: true, after: false }));
   });
-  it("omits the IP when the request carries no forwarded address", async () => {
+  it("records the shared \"direct\" client when the request carries no trusted address", async () => {
     await PATCH(new NextRequest("http://x/api/user/notification-preferences", { method: "PATCH", body: JSON.stringify(ENABLE_WHATSAPP), headers: { "content-type": "application/json" } }), routeCtx);
-    expect(record).toHaveBeenCalledWith(expect.objectContaining({ ipAddress: undefined }));
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({ ipAddress: "direct" }));
+  });
+  it("never stores a caller-supplied x-forwarded-for as the consent address (this route can be reached without the proxy rewrite)", async () => {
+    delete process.env.TRUSTED_CLIENT_IP_HEADER;
+    await PATCH(new NextRequest("http://x/api/user/notification-preferences", { method: "PATCH", body: JSON.stringify(ENABLE_WHATSAPP), headers: { "content-type": "application/json", "x-forwarded-for": "7.7.7.7", "x-real-ip": "7.7.7.8" } }), routeCtx);
+    expect(record).toHaveBeenCalledWith(expect.objectContaining({ ipAddress: "direct" }));
   });
 });
 

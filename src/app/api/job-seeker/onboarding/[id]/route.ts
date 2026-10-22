@@ -9,6 +9,7 @@ import { validateBody } from "@/lib/validators";
 import { onboardingSignSchema } from "@/lib/validators/onboarding";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { getClientIp } from "@/lib/security/clientIp";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -45,7 +46,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   doc.signature = {
     fullName: body.signatureName,
     signedAt: new Date(),
-    ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || undefined,
+    ip: getClientIp(req.headers),
   };
   doc.status = "signed";
   doc.uploadedBy = "candidate";

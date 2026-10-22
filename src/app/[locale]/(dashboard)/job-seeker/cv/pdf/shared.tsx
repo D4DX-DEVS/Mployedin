@@ -8,6 +8,7 @@ import type { Style } from "@react-pdf/types";
 import type { CVForm, FormattingOptions, DateFormat } from "../types";
 import { formatDateValue, getSectionOrder, normalizeUrl } from "../types";
 import { parseRichText } from "../rich-text";
+import { toSafeImageSrc } from "@/lib/images/externalAvatar";
 
 export type CVPDFLabels = {
   yourName: string;
@@ -92,7 +93,10 @@ export function RichPdfText({
 /** Only allow http(s) or data-URI images so a bad value can't break PDF rendering. */
 export function safePhoto(src: string | undefined): string | null {
   if (!src) return null;
-  return /^(https?:|data:image\/)/i.test(src) ? src : null;
+  if (!/^(https?:|data:image\/)/i.test(src)) return null;
+  // The PDF fetches the photo from the browser, so a Google or LinkedIn photo
+  // goes through our own proxy like every other render site.
+  return toSafeImageSrc(src) ?? null;
 }
 
 /**

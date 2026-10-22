@@ -9,6 +9,7 @@ import logger from "@/lib/logger";
 import { z } from "zod";
 import { getClientIp } from "@/lib/security/clientIp";
 import { auth } from "@/lib/auth/config";
+import { resolveRequestLocale } from "@/lib/i18n/requestLocale";
 
 const GENERIC_SUCCESS = "If that email exists, a verification link has been sent.";
 
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
   await user.save();
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const locale = req.cookies.get("NEXT_LOCALE")?.value === "ar" ? "ar" : "en";
+  const locale = resolveRequestLocale(req);
   const verifyUrl = `${baseUrl}/${locale}/verify-email?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
 
   try {

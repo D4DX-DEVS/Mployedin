@@ -6,13 +6,26 @@ const dueDateField = z.preprocess(
   z.coerce.date(),
 );
 
+/** A picked record's id; "" (nothing picked) is treated as omitted. */
+const recordIdField = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  z.string().regex(/^[a-f\d]{24}$/i, "Pick the record from the list").optional(),
+);
+
 export const agentTaskCreateSchema = z.object({
   title: z.string().min(1, "Title is required").max(200).trim(),
   description: z.string().max(2000).trim().optional(),
   priority: z.enum(["high", "medium", "low"]).default("medium"),
   category: z.enum(["follow_up", "call", "meeting", "document", "other"]).default("follow_up"),
   dueDate: dueDateField.optional(),
+  // The candidate, job and/or employer the task is about (all optional).
+  candidateId: recordIdField,
+  jobId: recordIdField,
+  employerId: recordIdField,
 });
+
+/** The record kinds a task can link to, as the picker endpoint names them. */
+export const taskLinkTypeSchema = z.enum(["candidate", "job", "employer"]);
 
 export const agentTaskUpdateSchema = z.object({
   title: z.string().min(1).max(200).trim().optional(),

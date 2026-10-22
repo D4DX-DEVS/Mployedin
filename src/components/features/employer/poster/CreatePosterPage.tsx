@@ -13,6 +13,8 @@ import { PosterPreviewPanel } from "./PosterPreviewPanel";
 import { CreditsBadge } from "./CreditsBadge";
 import { usePosterGenerate } from "@/hooks/usePosterAI";
 import { usePosterCredits } from "@/hooks/usePosterCredits";
+import { posterEditKey } from "@/lib/consent/deviceStorage";
+import { tabStorage } from "@/lib/consent/tabStorage";
 import type { PosterType, PosterFormat, DesignStyle, ShowFields, PosterTemplate } from "@/lib/composer/types";
 
 interface CreatePosterPageProps {
@@ -56,13 +58,14 @@ export function CreatePosterPage({ jobId }: CreatePosterPageProps) {
     if (!savedGen?._id || hydrated.current) return;
     hydrated.current = true;
     // Seed the editor's autosave slot with the DB overrides (unless this browser
-    // already has newer local edits for this generation).
+    // already has newer local edits for this generation in this tab). `poster-edit:<id>`
+    // is the same tab-storage slot PosterPreviewPanel autosaves to.
     try {
-      const key = `poster-edit:${savedGen._id}`;
-      if (!localStorage.getItem(key)) {
-        localStorage.setItem(key, JSON.stringify({ look: savedGen.styleOverrides ?? {}, layout: savedGen.layoutOverride ?? null }));
+      const key = posterEditKey(savedGen._id);
+      if (!tabStorage.get(key)) {
+        tabStorage.set(key, JSON.stringify({ look: savedGen.styleOverrides ?? {}, layout: savedGen.layoutOverride ?? null }));
       }
-    } catch { /* private mode */ }
+    } catch { /* unserialisable overrides: the editor starts from its defaults */ }
     setSelectedType(savedGen.type);
     if (savedGen.showFields) setShowFields(savedGen.showFields);
     if (savedGen.formats?.length) setFormats(savedGen.formats);

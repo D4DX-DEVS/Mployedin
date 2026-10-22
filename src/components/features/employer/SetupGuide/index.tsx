@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { X, Minus, ChevronRight, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { prefStorage } from "@/lib/consent/prefStorage";
+import { LEGACY_SETUP_GUIDE_DISMISSED_KEY } from "@/lib/consent/legacyKeys";
 import { setupStepDefinition, type SetupStepId } from "./setupSteps";
 
 interface StepStatus {
@@ -19,7 +21,8 @@ interface SetupStatusResponse {
   allDone: boolean;
 }
 
-const DISMISSED_KEY = "mployedin:setup-guide:dismissed";
+// A UI preference (ui:*); older builds stored it under the unprefixed name (lib/consent/legacyKeys).
+const DISMISSED_KEY = "ui:mployedin:setup-guide:dismissed";
 
 export function SetupGuide() {
   const params = useParams();
@@ -51,7 +54,7 @@ export function SetupGuide() {
   }, []);
 
   useEffect(() => {
-    const dismissed = localStorage.getItem(DISMISSED_KEY);
+    const dismissed = prefStorage.getWithLegacy(DISMISSED_KEY, LEGACY_SETUP_GUIDE_DISMISSED_KEY);
     if (dismissed === "true") {
       setLoading(false);
       return;
@@ -68,7 +71,7 @@ export function SetupGuide() {
 
   const handleDismiss = () => {
     if (doNotShow) {
-      localStorage.setItem(DISMISSED_KEY, "true");
+      prefStorage.set(DISMISSED_KEY, "true");
     }
     setVisible(false);
   };

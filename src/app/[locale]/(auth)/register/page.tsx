@@ -4,8 +4,10 @@ import { useEffect, useId, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn, getSession } from "next-auth/react";
-import { signInWithPopup } from "firebase/auth";
-import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
+import { getGoogleIdToken, preloadGoogleSignIn } from "@/lib/firebase/googleSignIn";
+import { GooglePopupBlockedError } from "@/lib/firebase/googlePopupBlocked";
+import { GoogleWindowNotice, GOOGLE_WINDOW_NOTICE_ID } from "@/components/features/auth/GoogleWindowNotice";
+import { navigateWithPageLoad } from "@/lib/browser/navigateWithPageLoad";
 import { useTranslations } from "next-intl";
 import { useSignupConsentPrompt } from "@/components/features/auth/SignupConsentDialog";
 import { CONSENT_REQUIRED_CODE, rememberSignupConsent, signupConsentCredentials } from "@/lib/auth/signupConsent";
@@ -14,9 +16,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RequiredMark } from "@/components/ui/required-mark";
 import { FieldError } from "@/components/shared/FieldError";
+import { CookiesDisabledNotice } from "@/components/shared/CookiesDisabledNotice";
 import { BriefcaseBusiness, Handshake, Loader2, UserRoundSearch } from "lucide-react";
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
-import { REFERRAL_CODE_RE, REFERRAL_COOKIE_NAME } from "@/lib/referrals/url";
+import { oauthRedirectUrl } from "@/lib/auth/oauthRedirect";
+import { normalizeReferralCode } from "@/lib/referrals/url";
+import { clearPendingReferral, getPendingReferral, setPendingReferral, stripRefFromAddressBarSoon } from "@/lib/referrals/pendingReferral";
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 import { readCookieChoice } from "@/lib/gdpr/cookieChoice";
 import { EMAIL_PATTERN } from "@/lib/errors/email-pattern";
@@ -45,26 +50,41 @@ export default function RegisterPage() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  // The browser blocked the Google window (Safari, slow connection): said inline
+  // under the button until the next click.
+  const [googleWindowBlocked, setGoogleWindowBlocked] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const { ask: askSignupConsent, dialog: signupConsentDialog } = useSignupConsentPrompt(locale);
 
   // ?ref=MPL-… from an agent's job-seeker referral link. Validated before it is
-  // trusted; a bad link shows nothing and never blocks the signup.
-  const refParam = (searchParams.get("ref") ?? "").trim().toUpperCase();
+  // trusted; a bad link shows nothing and never blocks the signup. Read once and
+  // kept in state: the address bar is cleaned below, and nothing is stored on
+  // arrival. The code is written to a cookie only when LinkedIn / Apple is
+  // clicked (startProviderSignIn); the e-mail form and Google send it directly.
+  // A code held in memory (arrived through a shared job page's register link, or a
+  // back-and-forth inside this tab) stands in when the address carries none.
+  const [refParam] = useState(() => normalizeReferralCode(searchParams.get("ref")) || getPendingReferral());
   const [referralCode, setReferralCode] = useState("");
   const [referralWrongAudience, setReferralWrongAudience] = useState(false);
   // Only job-seeker links point here (referralPathFor), so the link already
   // answered "Find a job or Hire talent?" — asking again sent referred seekers
   // to a chooser whose other half is the employer signup.
-  const arrivedByReferral = REFERRAL_CODE_RE.test(refParam);
+  const arrivedByReferral = refParam !== "";
   const [roleSelected, setRoleSelected] = useState(arrivedByReferral);
   // An employer code on this page still gets the way back to "Hire talent".
   const showRoleChange = !arrivedByReferral || referralWrongAudience;
   const roleBadgeId = useId();
 
+  // The code is in state now; take `ref` out of the address bar (history entry,
+  // shared link, screenshots). Runs for a bad or malformed ref too. One tick later,
+  // after Next's router has patched history, or Back to this page breaks.
   useEffect(() => {
-    if (!refParam || !REFERRAL_CODE_RE.test(refParam)) return;
+    stripRefFromAddressBarSoon();
+  }, []);
+
+  useEffect(() => {
+    if (!refParam) return;
     let cancelled = false;
     fetch(`/api/referral/validate?code=${encodeURIComponent(refParam)}`)
       .then((res) => res.json())
@@ -72,10 +92,8 @@ export default function RegisterPage() {
         if (cancelled) return;
         if (data.valid && data.audience === "job_seeker") {
           setReferralCode(refParam);
-          // Carries the code through the LinkedIn / Apple redirect; claimed and
-          // cleared by /api/auth/post-login-redirect.
-          const secure = window.location.protocol === "https:" ? "; Secure" : "";
-          document.cookie = `${REFERRAL_COOKIE_NAME}=${encodeURIComponent(refParam)}; Max-Age=3600; Path=/; SameSite=Lax${secure}`;
+          // In memory only, so the site's other sign-up links can carry it.
+          setPendingReferral(refParam);
         } else if (data.valid && data.audience === "employer") {
           setReferralWrongAudience(true);
         }
@@ -86,10 +104,11 @@ export default function RegisterPage() {
 
   async function handleGoogleSignIn() {
     setError("");
+    setGoogleWindowBlocked(false);
     setGoogleLoading(true);
     try {
-      const result = await signInWithPopup(firebaseAuth, googleProvider);
-      const idToken = await result.user.getIdToken();
+      // Firebase loads here, on the click, and is disposed once the token is read.
+      const idToken = await getGoogleIdToken();
 
       const referral = referralCode ? { referralCode } : {};
       // The box on this form is the consent; without it a new account is
@@ -118,18 +137,39 @@ export default function RegisterPage() {
         return;
       }
 
+      clearPendingReferral(); // signed in: the code has been sent
       const session = await getSession();
       const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
       const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? false;
+      // A full page load, not a client-side navigation: Firebase's popup resolver leaves a
+      // hidden Google iframe and window.gapi in this document, and only leaving it drops them.
       if (callback) {
-        router.replace(callback);
+        navigateWithPageLoad(callback);
       } else if (!isOnboarded) {
-        router.replace(`/${locale}/onboarding`);
+        navigateWithPageLoad(`/${locale}/onboarding`);
       } else {
         const redirects: Record<string, string> = { admin: "admin", employer: "employer", job_seeker: "job-seeker", agent: "agent", super_agent: "super-agent" };
-        router.replace(`/${locale}/${redirects[role] ?? "job-seeker"}`);
+        navigateWithPageLoad(`/${locale}/${redirects[role] ?? "job-seeker"}`);
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof GooglePopupBlockedError) {
+        // Not a failure to log: the Google handshake is done (and cached for the
+        // page), so pressing the button again opens the window at once.
+        setGoogleWindowBlocked(true);
+        return;
+      }
+      const code = (err as { code?: string } | null)?.code;
+      // Closing the Google window (or starting another sign-in over it) is a
+      // choice, not an error: no message, the form is simply usable again.
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        return;
+      }
+      // The retry on the kept instance was blocked too: the browser really blocks
+      // pop-ups, so say how to allow them instead of asking to press again.
+      if (code === "auth/popup-blocked") {
+        setError(t("googlePopupBlocked"));
+        return;
+      }
       setError(t("googleSignInFailed"));
     } finally {
       setGoogleLoading(false);
@@ -139,7 +179,8 @@ export default function RegisterPage() {
   /**
    * LinkedIn / Apple leave the page, so the Terms & Privacy tick is taken
    * before going (the form's box, or the dialog when it is unticked) and rides
-   * along in a short-lived cookie.
+   * along in a short-lived cookie. A validated referral code goes in the same
+   * cookie, written here on the click (post-login-redirect claims it).
    */
   async function startProviderSignIn(provider: "apple" | "linkedin") {
     setError("");
@@ -147,10 +188,11 @@ export default function RegisterPage() {
       if (!(await askSignupConsent())) return;
       setAgreedToTerms(true);
     }
-    rememberSignupConsent();
+    rememberSignupConsent(referralCode);
     if (provider === "apple") setAppleLoading(true);
     else setLinkedInLoading(true);
-    void signIn(provider, { callbackUrl: withCallback("/api/auth/post-login-redirect", callback) });
+    // `callback` is null without a ?callbackUrl=, so the page language rides in the `locale` parameter, not in the callback.
+    void signIn(provider, { callbackUrl: oauthRedirectUrl(locale, callback) });
   }
 
   /** Clear one field's message as soon as the user acts on it. */
@@ -241,6 +283,7 @@ export default function RegisterPage() {
       return;
     }
 
+    clearPendingReferral(); // account made and signed in: the code has been sent
     router.replace(callback ?? `/${locale}/onboarding`);
   }
 
@@ -322,6 +365,8 @@ export default function RegisterPage() {
           <p className="text-xs text-muted-foreground">{t("referralNoticeWrongAudience")}</p>
         ) : null}
       </div>
+
+      <CookiesDisabledNotice />
 
       {/* `noValidate` hands validation to handleSubmit. The browser's own
           bubbles are never translated and blocked the submit before any of
@@ -447,58 +492,69 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Button size="lg"
-          variant="outline"
-          type="button"
-          className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
-          onClick={handleGoogleSignIn}
-          disabled={googleLoading}
-        >
-          {googleLoading ? (
-            <Loader2 className="w-5 h-5 mr-0.5 animate-spin" />
-          ) : (
-            <svg className="w-5 h-5 mr-0.5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-          )}
-          Google
-        </Button>
-        <Button size="lg"
-          variant="outline"
-          type="button"
-          className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
-          onClick={() => void startProviderSignIn("apple")}
-          disabled={appleLoading}
-        >
-          {appleLoading ? (
-            <Loader2 className="w-5 h-5 mr-0.5 animate-spin" />
-          ) : (
-            <svg className="w-5 h-5 mr-0.5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-            </svg>
-          )}
-          Apple
-        </Button>
-        <Button size="lg"
-          variant="outline"
-          type="button"
-          className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
-          onClick={() => void startProviderSignIn("linkedin")}
-          disabled={linkedInLoading}
-        >
-          {linkedInLoading ? (
-            <Loader2 className="w-5 h-5 mr-0.5 animate-spin" />
-          ) : (
-            <svg className="w-5 h-5 mr-0.5 fill-[#0A66C2]" viewBox="0 0 24 24">
-              <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-            </svg>
-          )}
-          LinkedIn
-        </Button>
+      <div className="space-y-2">
+        <div className="grid grid-cols-3 gap-3">
+          <Button size="lg"
+            variant="outline"
+            type="button"
+            aria-describedby={GOOGLE_WINDOW_NOTICE_ID}
+            className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
+            onClick={handleGoogleSignIn}
+            onPointerEnter={preloadGoogleSignIn}
+            onFocus={preloadGoogleSignIn}
+            onTouchStart={preloadGoogleSignIn}
+            disabled={googleLoading}
+          >
+            {googleLoading ? (
+              <Loader2 className="w-5 h-5 mr-0.5 animate-spin" />
+            ) : (
+              <svg className="w-5 h-5 mr-0.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+              </svg>
+            )}
+            Google
+          </Button>
+          <Button size="lg"
+            variant="outline"
+            type="button"
+            className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
+            onClick={() => void startProviderSignIn("apple")}
+            disabled={appleLoading}
+          >
+            {appleLoading ? (
+              <Loader2 className="w-5 h-5 mr-0.5 animate-spin" />
+            ) : (
+              <svg className="w-5 h-5 mr-0.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+              </svg>
+            )}
+            Apple
+          </Button>
+          <Button size="lg"
+            variant="outline"
+            type="button"
+            className="rounded-xl border-border/70 bg-background/60 font-medium transition-colors hover:bg-muted/60"
+            onClick={() => void startProviderSignIn("linkedin")}
+            disabled={linkedInLoading}
+          >
+            {linkedInLoading ? (
+              <Loader2 className="w-5 h-5 mr-0.5 animate-spin" />
+            ) : (
+              <svg className="w-5 h-5 mr-0.5 fill-[#0A66C2]" viewBox="0 0 24 24">
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+              </svg>
+            )}
+            LinkedIn
+          </Button>
+        </div>
+        <GoogleWindowNotice
+          notice={t("googleWindowNotice")}
+          blockedMessage={t("googleWindowBlocked")}
+          blocked={googleWindowBlocked}
+        />
       </div>
 
       <p className="text-center text-sm text-muted-foreground">

@@ -17,7 +17,7 @@ import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
 import logger from "@/lib/logger";
 import { deleteCvRecordsOfSeeker } from "@/lib/cv/cvDocuments";
-import { eraseWhatsAppData } from "@/lib/gdpr/erasure";
+import { anonymiseConsentLogs, eraseStoredAvatar, eraseWhatsAppData } from "@/lib/gdpr/erasure";
 
 // ── GET — data export ─────────────────────────────────────────────────────────
 
@@ -80,8 +80,8 @@ export const DELETE = withAuth(async (_req: NextRequest, ctx) => {
     // nulled below. The number's STOP (suppression list) is kept while it is in force: it must outlive the account.
     await eraseWhatsAppData(ctx.userId);
 
-    // Pseudonymise the User record
-    await User.findByIdAndUpdate(ctx.userId, {
+    // Pseudonymise the User record. The pre-update document still has the photo address for the storage delete.
+    const userBefore = await User.findByIdAndUpdate(ctx.userId, {
       name: "Deleted User",
       email: anonymisedEmail,
       phone: null,
@@ -90,7 +90,11 @@ export const DELETE = withAuth(async (_req: NextRequest, ctx) => {
       passwordHash: null,
       emailVerificationToken: null,
       passwordResetToken: null,
-    });
+    }).select("avatar").lean<{ avatar?: string | null } | null>();
+    // The same as the admin erasure (lib/gdpr/erasure.ts): the consent rows keep the evidence, not the name or IP,
+    // and the photo object in our bucket is deleted (best effort).
+    await anonymiseConsentLogs(ctx.userId);
+    await eraseStoredAvatar(userBefore?.avatar, ctx.userId);
 
     // Wipe all PII from the JobSeeker profile
     const seekerBefore = await JobSeeker.findOneAndUpdate(

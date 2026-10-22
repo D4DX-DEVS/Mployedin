@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import BlogPost from "@/models/BlogPost";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import logger from "@/lib/logger";
 
 /**
  * Public blog detail by slug — NO AUTH required.
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`blog-detail:${ip}`, { limit: 60, windowSec: 60, prefix: "blogd" });
   if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 

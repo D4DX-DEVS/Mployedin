@@ -102,7 +102,8 @@ export function PaginationControls({
           onValueChange={(v) => onLimitChange(Number(v))}
         >
           <SelectTrigger className="h-11 w-[66px] sm:w-[74px]" aria-label={sizeLabel ?? t("rowsPerPage")}>
-            <SelectValue />
+            {/* The number as children: Radix fills the trigger from its closed list, which only exists in the browser, so the box was empty until hydration. */}
+            <SelectValue>{formatNumber(limit, locale)}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {/* A page whose own size is not in the list (Resources uses 20) still

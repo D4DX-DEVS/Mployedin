@@ -14,7 +14,14 @@ interface AuthCtx {
   locale: string;
 }
 
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/**
+ * Commission that still counts as earned. A clawed-back line was reversed and a
+ * disputed one is not agreed, so neither belongs in a performance total — the
+ * old figure summed every status.
+ */
+const EARNED_STATUSES = ["pending", "approved", "paid"];
+
+const monthKey = (year: number, month: number) => `${year}-${String(month).padStart(2, "0")}`;
 
 export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
   await connectDB();
@@ -26,17 +33,26 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
 
   const agentDocIds = scope.effectiveAgentIds;
   const agentDocs = await Agent.find({ _id: { $in: agentDocIds } })
-    .select("userId performance")
+    .select("userId")
     .lean();
   const agentUserIds = agentDocs.map((a) => a.userId);
 
-  // Fetch agent names
   const agentUsers = await User.find({ _id: { $in: agentUserIds } })
     .select("_id name isActive")
     .lean();
-  const nameMap = new Map(agentUsers.map((u) => [String(u._id), u.name]));
+  const userMap = new Map(agentUsers.map((u) => [String(u._id), u]));
 
-  const [totalAgents, totalLeads, totalPlacements, commissionAgg] = await Promise.all([
+  // What the agents earned, keyed on the earner. `superAgentId` is not used:
+  // placement lines carry it as the overseer (see commissionBeneficiary), so it
+  // would pull in lines from agents who have since left the team. The super
+  // agent's own overrides are on the Commissions tab. Keeping them out means
+  // the agent rows add up to the headline figure.
+  const commissionScope = {
+    agentId: { $in: agentDocIds },
+    status: { $in: EARNED_STATUSES },
+  };
+
+  const [totalAgents, totalLeads, totalPlacements, commissionByCurrency] = await Promise.all([
     User.countDocuments({ _id: { $in: agentUserIds }, role: "agent", isActive: true }),
     Lead.countDocuments({ agentId: { $in: agentDocIds } }),
     Placement.countDocuments({
@@ -45,36 +61,32 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
         { superAgentId: scope.saProfileId },
       ],
     }),
-    Commission.aggregate([
-      {
-        $match: {
-          $or: [
-            { agentId: { $in: agentDocIds } },
-            { superAgentId: scope.saProfileId },
-          ],
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$amount" },
-          pending: {
-            $sum: { $cond: [{ $eq: ["$status", "pending"] }, "$amount", 0] },
-          },
-          approved: {
-            $sum: { $cond: [{ $eq: ["$status", "approved"] }, "$amount", 0] },
-          },
-          paid: {
-            $sum: { $cond: [{ $eq: ["$status", "paid"] }, "$amount", 0] },
-          },
-        },
-      },
+    Commission.aggregate<{ _id: string | null; total: number }>([
+      { $match: commissionScope },
+      { $group: { _id: "$currency", total: { $sum: "$amount" } } },
+      { $sort: { total: -1 } },
     ]),
   ]);
 
-  const commData = commissionAgg[0] ?? { total: 0, pending: 0, approved: 0, paid: 0 };
+  // Amounts in different currencies cannot be added up. Report in the currency
+  // that carries most of the money and list the rest separately — the same rule
+  // the commission report uses.
+  // A line with no currency is AED (the schema default), so fold it in.
+  const totalsByCode = new Map<string, number>();
+  for (const row of commissionByCurrency) {
+    const code = row._id ?? "AED";
+    totalsByCode.set(code, (totalsByCode.get(code) ?? 0) + row.total);
+  }
+  const currencyTotals = [...totalsByCode]
+    .map(([code, total]) => ({ currency: code, total }))
+    .sort((a, b) => b.total - a.total);
+  const currency = currencyTotals[0]?.currency ?? "AED";
+  const otherCurrencies = currencyTotals.slice(1).filter((row) => row.total > 0);
+  const inCurrency = currency === "AED"
+    ? { $in: ["AED", null] }
+    : currency;
 
-  // ── Agent Breakdown: per-agent leads, placements, conversion, commission ──
+  // ── Agent breakdown: per-agent leads, placements, conversion, commission ──
   const [leadsByAgent, placementsByAgent, commissionsByAgent] = await Promise.all([
     Lead.aggregate([
       { $match: { agentId: { $in: agentDocIds } } },
@@ -85,7 +97,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
       { $group: { _id: "$agentId", count: { $sum: 1 } } },
     ]),
     Commission.aggregate([
-      { $match: { agentId: { $in: agentDocIds } } },
+      { $match: { ...commissionScope, currency: inCurrency } },
       { $group: { _id: "$agentId", total: { $sum: "$amount" } } },
     ]),
   ]);
@@ -96,37 +108,40 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
 
   const agentBreakdown = agentDocs.map((a) => {
     const leadsInfo = leadsMap.get(String(a._id)) ?? { total: 0, converted: 0 };
-    const placements = placementsMap.get(String(a._id)) ?? 0;
-    const commission = commissionsMap.get(String(a._id)) ?? 0;
+    const user = userMap.get(String(a.userId));
     return {
-      name: nameMap.get(String(a.userId)) ?? "Unknown",
+      agentId: String(a._id),
+      name: user?.name ?? "Unknown",
+      isActive: user?.isActive !== false,
       leads: leadsInfo.total,
-      placements,
+      convertedLeads: leadsInfo.converted,
+      placements: placementsMap.get(String(a._id)) ?? 0,
       conversionRate: leadsInfo.total > 0 ? Math.round((leadsInfo.converted / leadsInfo.total) * 100) : 0,
-      commission,
+      commission: commissionsMap.get(String(a._id)) ?? 0,
     };
-  }).sort((a, b) => b.placements - a.placements);
+  }).sort((a, b) => b.placements - a.placements || b.commission - a.commission || b.leads - a.leads);
 
-  // ── Monthly Trends: last 6 months of leads, placements, commissions ──
+  // ── Monthly trends: last 6 months, plus the month before for the first change ──
   const now = new Date();
-  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const windowStart = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+  const byMonth = { y: { $year: "$createdAt" }, m: { $month: "$createdAt" } };
 
   const [leadsByMonth, placementsByMonth, commissionsByMonth] = await Promise.all([
     Lead.aggregate([
-      { $match: { agentId: { $in: agentDocIds }, createdAt: { $gte: sixMonthsAgo } } },
-      { $group: { _id: { y: { $year: "$createdAt" }, m: { $month: "$createdAt" } }, count: { $sum: 1 } } },
+      { $match: { agentId: { $in: agentDocIds }, createdAt: { $gte: windowStart } } },
+      { $group: { _id: byMonth, count: { $sum: 1 } } },
     ]),
     Placement.aggregate([
-      { $match: { agentId: { $in: agentDocIds }, createdAt: { $gte: sixMonthsAgo } } },
-      { $group: { _id: { y: { $year: "$createdAt" }, m: { $month: "$createdAt" } }, count: { $sum: 1 } } },
+      { $match: { agentId: { $in: agentDocIds }, createdAt: { $gte: windowStart } } },
+      { $group: { _id: byMonth, count: { $sum: 1 } } },
     ]),
     Commission.aggregate([
-      { $match: { agentId: { $in: agentDocIds }, createdAt: { $gte: sixMonthsAgo } } },
-      { $group: { _id: { y: { $year: "$createdAt" }, m: { $month: "$createdAt" } }, total: { $sum: "$amount" } } },
+      { $match: { ...commissionScope, currency: inCurrency, createdAt: { $gte: windowStart } } },
+      { $group: { _id: byMonth, total: { $sum: "$amount" } } },
     ]),
   ]);
 
-  const mkKey = (r: { _id: { y: number; m: number } }) => `${r._id.y}-${r._id.m}`;
+  const mkKey = (r: { _id: { y: number; m: number } }) => monthKey(r._id.y, r._id.m);
   const leadsMonthMap = new Map(leadsByMonth.map((r) => [mkKey(r), r.count]));
   const placementsMonthMap = new Map(placementsByMonth.map((r) => [mkKey(r), r.count]));
   const commissionsMonthMap = new Map(commissionsByMonth.map((r) => [mkKey(r), r.total]));
@@ -134,22 +149,20 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
   const monthlyTrends: { month: string; leads: number; placements: number; revenue: number; trend: number }[] = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+    const key = monthKey(d.getFullYear(), d.getMonth() + 1);
     const leads = leadsMonthMap.get(key) ?? 0;
-    const placements = placementsMonthMap.get(key) ?? 0;
-    const revenue = commissionsMonthMap.get(key) ?? 0;
 
-    // Trend: compare leads to previous month
+    // Change in new leads against the month before.
     const prevD = new Date(d.getFullYear(), d.getMonth() - 1, 1);
-    const prevKey = `${prevD.getFullYear()}-${prevD.getMonth() + 1}`;
-    const prevLeads = leadsMonthMap.get(prevKey) ?? 0;
+    const prevLeads = leadsMonthMap.get(monthKey(prevD.getFullYear(), prevD.getMonth() + 1)) ?? 0;
     const trend = prevLeads > 0 ? Math.round(((leads - prevLeads) / prevLeads) * 100) : leads > 0 ? 100 : 0;
 
     monthlyTrends.push({
-      month: `${MONTH_NAMES[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`,
+      // "YYYY-MM"; the page names the month in the reader's language.
+      month: key,
       leads,
-      placements,
-      revenue,
+      placements: placementsMonthMap.get(key) ?? 0,
+      revenue: commissionsMonthMap.get(key) ?? 0,
       trend,
     });
   }
@@ -158,12 +171,9 @@ export const GET = withAuth(async (_req: NextRequest, ctx: AuthCtx) => {
     totalAgents,
     totalLeads,
     totalPlacements,
-    totalCommissions: commData.total,
-    commissionBreakdown: {
-      pending: commData.pending,
-      approved: commData.approved,
-      paid: commData.paid,
-    },
+    totalCommissions: currencyTotals[0]?.total ?? 0,
+    currency,
+    otherCurrencies,
     agentBreakdown,
     monthlyTrends,
   });

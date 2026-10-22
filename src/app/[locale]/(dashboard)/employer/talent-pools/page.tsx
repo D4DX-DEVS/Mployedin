@@ -59,6 +59,7 @@ import {
 } from "@/hooks/useTalentPools";
 import { useCandidates } from "@/hooks/useCandidates";
 import { isValidPoolName, normalizePoolTags, POOL_NAME_MAX, POOL_NAME_MIN } from "@/lib/talentPools/fields";
+import { toSafeImageSrc } from "@/lib/images/externalAvatar";
 
 /** "qa, auto, qa" → ["qa", "auto"]: the server's rules, applied before sending. */
 function parseTags(raw: string): string[] {
@@ -102,7 +103,7 @@ function CandidateAvatar({ ref, size = "sm" }: { ref: PooledCandidateRef | null;
   const initials = label !== "—" ? label.slice(0, 2).toUpperCase() : "?";
   if (avatar) {
      
-    return <img src={avatar} alt={label} className={`${dims} rounded-full border-2 border-background object-cover`} />;
+    return <img src={toSafeImageSrc(avatar)} alt={label} className={`${dims} rounded-full border-2 border-background object-cover`} />;
   }
   return (
     <div className={`${dims} flex items-center justify-center rounded-full border-2 border-background bg-muted font-semibold text-muted-foreground`}>

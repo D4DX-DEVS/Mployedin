@@ -50,7 +50,7 @@ const ROLES: RoleDef[] = [
     pages: [
       "/super-agent", "/super-agent/agents", "/super-agent/applications",
       "/super-agent/commissions", "/super-agent/commissions-report", "/super-agent/employers",
-      "/super-agent/exhibitions", "/super-agent/exhibitions/analytics", "/super-agent/insights",
+      "/super-agent/exhibitions", "/super-agent/exhibitions/analytics",
       "/super-agent/interviews", "/super-agent/invoices", "/super-agent/invoices/new", "/super-agent/jobs",
       "/super-agent/job-seekers", "/super-agent/leads", "/super-agent/market", "/super-agent/messages",
       "/super-agent/placements", "/super-agent/referral-links", "/super-agent/reports", "/super-agent/resources",

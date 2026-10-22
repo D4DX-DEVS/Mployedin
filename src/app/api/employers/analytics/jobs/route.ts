@@ -19,7 +19,10 @@ interface JobPerformance {
   views: number;
   uniqueViews: number;
   applications: number;
-  conversionRate: number; // applications / uniqueViews * 100
+  // applications / views * 100. Total views, not uniqueViews: unique views count
+  // signed-in viewers only (no tracking cookie), so they are not a fair denominator.
+  // 0 when the job has no views.
+  conversionRate: number;
   avgMatchScore: number;
   createdAt: string;
   daysActive: number;
@@ -78,7 +81,7 @@ async function getHandler(
     const uv = (job as unknown as { uniqueViews?: number }).uniqueViews ?? 0;
     const views = job.views ?? 0;
     const conversionRate =
-      uv > 0 ? Math.round((stats.count / uv) * 1000) / 10 : 0;
+      views > 0 ? Math.round((stats.count / views) * 1000) / 10 : 0;
     const daysActive = Math.max(
       1,
       Math.ceil(
@@ -123,8 +126,8 @@ async function getHandler(
     0
   );
   const overallConversion =
-    totalUniqueViews > 0
-      ? Math.round((totalApplications / totalUniqueViews) * 1000) / 10
+    totalViews > 0
+      ? Math.round((totalApplications / totalViews) * 1000) / 10
       : 0;
   const activeJobs = jobPerformance.filter((j) => j.status === "active").length;
   const underperforming = jobPerformance.filter(

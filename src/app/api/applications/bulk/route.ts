@@ -13,6 +13,7 @@ import { bulkActionSchema } from "@/lib/validators/applications";
 import { sanitizeHtml } from "@/lib/security/html";
 import { escapeHtml } from "@/lib/security/html-escape";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import Agent from "@/models/Agent";
 import { getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import {
@@ -31,7 +32,7 @@ import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hi
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
 async function postHandler(req: NextRequest, ctx: AuthCtx) {
-  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`bulk:${ctx.userId ?? ip}`, RATE_LIMIT_CONFIGS.bulk);
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });

@@ -11,3 +11,21 @@ export const ADMIN_REPORT_TABS = [
   { key: "commissions", path: "/admin/commissions-report" },
   { key: "subscriptions", path: "/admin/subscription-dashboard" },
 ] as const;
+
+/**
+ * The super-agent report set, built the same way: one "Reports" row in the
+ * sidebar, this strip on each page. The four used to be separate leaves inside
+ * a fourteen-entry "Overview" group, next to an Insights page that only
+ * repeated the alerts the Agents page already opens as a dialog.
+ */
+export const SUPER_AGENT_REPORT_TABS = [
+  { key: "team", path: "/super-agent/reports" },
+  { key: "targets", path: "/super-agent/target-report" },
+  { key: "commissions", path: "/super-agent/commissions-report" },
+  { key: "market", path: "/super-agent/market" },
+] as const;
+
+export interface ReportTab {
+  key: string;
+  path: string;
+}

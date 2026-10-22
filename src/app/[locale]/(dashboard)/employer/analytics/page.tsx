@@ -1278,7 +1278,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
           <SummaryCard label={t("totalJobsCard")} value={summary.totalJobs} />
           <SummaryCard label={t("activeCard")} value={summary.activeJobs} color="green" />
           <SummaryCard label={t("viewsCard")} value={summary.totalViews} color="blue" />
-          <SummaryCard label={t("uniqueViewsCard")} value={summary.totalUniqueViews} color="indigo" />
+          <SummaryCard label={t("signedInViewersCard")} value={summary.totalUniqueViews} color="indigo" />
           <SummaryCard label={t("applicationsCard")} value={summary.totalApplications} color="purple" />
           <SummaryCard label={t("conversionCard")} value={`${summary.overallConversion}%`} color="amber" />
           <SummaryCard
@@ -1287,6 +1287,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
             color={summary.underperforming > 0 ? "red" : "green"}
           />
         </div>
+        <p className="mt-3 text-xs text-muted-foreground">{t("signedInViewersNote")}</p>
       </section>
 
       <AnalyticsPanel className="overflow-hidden p-0">
@@ -1310,7 +1311,7 @@ function PerformanceTab({ performance }: { performance: PerformanceData }) {
                   <th className="text-left py-3 px-4 font-semibold text-foreground">{t("jobTitleCol")}</th>
                   <th className="text-center py-3 px-4 font-semibold text-foreground">{t("statusCol")}</th>
                   <th className="text-right py-3 px-4 font-semibold text-foreground">{t("viewsCard")}</th>
-                  <th className="text-right py-3 px-4 font-semibold text-foreground">{t("uniqueCol")}</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">{t("signedInViewersCol")}</th>
                   <th className="text-right py-3 px-4 font-semibold text-foreground">{t("applicationsCard")}</th>
                   <th className="text-right py-3 px-4 font-semibold text-foreground">{t("convRateCol")}</th>
                   <th className="text-right py-3 px-4 font-semibold text-foreground">{t("avgMatchCol")}</th>

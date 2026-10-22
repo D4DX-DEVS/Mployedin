@@ -198,6 +198,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // One application, still inside the caller's scope — notification links
   // open it in the list's drawer (QA EMP-013).
   const applicationIdParam = searchParams.get("applicationId") ?? "";
+  // One candidate's applications (a task linked to them opens this). Applied on
+  // top of the role's job scope below, so it can only narrow what they see.
+  const jobSeekerIdParam = searchParams.get("jobSeekerId") ?? "";
   const unreviewed = searchParams.get("unreviewed") === "true";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -277,6 +280,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   if (applicationIdParam && mongoose.Types.ObjectId.isValid(applicationIdParam)) {
     query._id = new mongoose.Types.ObjectId(applicationIdParam);
+  }
+  // ANDed, never assigned: a job seeker's own scope is query.jobSeekerId, and
+  // overwriting it would hand them someone else's applications.
+  if (jobSeekerIdParam && mongoose.Types.ObjectId.isValid(jobSeekerIdParam)) {
+    query.$and = [...(query.$and ?? []), { jobSeekerId: new mongoose.Types.ObjectId(jobSeekerIdParam) }];
   }
 
   if (status) {

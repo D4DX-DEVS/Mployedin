@@ -255,9 +255,7 @@ export default async function JobDetailPage({ params }: PageProps) {
               {/* Description */}
               <div className="bg-card border border-border rounded-xl panel-body">
                 <h2 className="heading-section font-semibold text-foreground mb-3">{t("jobDescription")}</h2>
-                <div className="text-justify">
-                  <MarkdownRenderer content={job.description ?? ""} />
-                </div>
+                <MarkdownRenderer content={job.description ?? ""} />
               </div>
 
               {/* Requirements — hidden entirely when every sub-field is empty */}

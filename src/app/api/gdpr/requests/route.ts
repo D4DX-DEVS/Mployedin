@@ -9,23 +9,42 @@ import { createDeletionRequest } from "@/lib/gdpr/deletionRequest";
 /**
  * GET /api/gdpr/requests — the signed-in user's own data requests, newest
  * first, for their Data & Privacy page.
+ *
+ * A person whose request was refused, or only partly done, is told why (UK
+ * GDPR Art 12(4)), so a finished request carries `outcome` and
+ * `outcomeReason`. The team's internal notes (`adminNotes`) are not selected
+ * at all, and a request that is still open shows neither: what the team has
+ * written so far is not yet an answer.
  */
 async function getHandler(_req: NextRequest, ctx: AuthContext) {
   await connectDB();
   const requests = await GdprRequest.find({ userId: ctx.userId })
     .sort({ createdAt: -1 })
     .limit(20)
-    .select("requestType status createdAt completedAt")
-    .lean<Array<{ _id: unknown; requestType: string; status: string; createdAt: Date; completedAt?: Date }>>();
+    .select("requestType status createdAt completedAt outcome outcomeReason")
+    .lean<Array<{
+      _id: unknown;
+      requestType: string;
+      status: string;
+      createdAt: Date;
+      completedAt?: Date;
+      outcome?: string;
+      outcomeReason?: string;
+    }>>();
 
   return NextResponse.json({
-    requests: requests.map((r) => ({
-      _id: String(r._id),
-      requestType: r.requestType,
-      status: r.status,
-      createdAt: r.createdAt,
-      completedAt: r.completedAt ?? null,
-    })),
+    requests: requests.map((r) => {
+      const answered = r.status === "completed" || r.status === "rejected";
+      return {
+        _id: String(r._id),
+        requestType: r.requestType,
+        status: r.status,
+        createdAt: r.createdAt,
+        completedAt: r.completedAt ?? null,
+        outcome: (answered && r.outcome) || null,
+        outcomeReason: (answered && r.outcomeReason) || null,
+      };
+    }),
   });
 }
 

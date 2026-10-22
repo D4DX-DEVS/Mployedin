@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import FAQ from "@/models/FAQ";
 import Banner from "@/models/Banner";
 import Testimonial from "@/models/Testimonial";
@@ -14,7 +15,7 @@ import { getLandingStats } from "@/lib/public/landingStats";
  * Returns all active CMS content for the landing page in one call.
  */
 export async function GET(req: NextRequest) {
-  const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`landing:${ip}`, { limit: 30, windowSec: 60, prefix: "landing" });
   if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 

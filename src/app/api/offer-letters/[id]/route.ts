@@ -5,6 +5,7 @@ import OfferLetter from "@/models/OfferLetter";
 import Employer from "@/models/Employer";
 import { User } from "@/models/User";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
+import { getClientIp } from "@/lib/security/clientIp";
 import mongoose from "mongoose";
 
 type LetterAccess = { kind: "owner" } | { kind: "candidate" };
@@ -84,7 +85,7 @@ async function patchHandler(req: NextRequest, ctx: { userId: string; role: strin
     letter.status = "signed";
     letter.signedAt = new Date();
     letter.signatureData = body.signatureData || "";
-    letter.signatureIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "";
+    letter.signatureIp = getClientIp(req.headers);
     await letter.save();
     await logActivity({ action: "offer_letter.signed", ...actorFromCtx(ctx), resource: "OfferLetter", resourceId: id, meta: {} });
     return NextResponse.json({ letter, message: "Letter signed" });

@@ -3,13 +3,14 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 
 /**
  * GET /api/salary-explorer — Public salary insights by role/location/industry
  */
 export async function GET(req: NextRequest) {
   // SECURITY: public + aggregation-heavy route — throttle per IP.
-  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const rl = await checkRateLimit(ip, { limit: 30, windowSec: 60, prefix: "salary-explorer" });
   if (!rl.allowed) {
     return NextResponse.json(

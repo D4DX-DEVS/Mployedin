@@ -1,6 +1,7 @@
 "use client";
 
 import { WifiOff } from "lucide-react";
+import { resolveClientLocale } from "@/lib/i18n/clientLocale";
 
 // Force static prerendering. The PWA service worker precaches this page, and a
 // dynamically-rendered response carries `Cache-Control: no-store`, which the
@@ -21,23 +22,12 @@ const STRINGS = {
   }
 };
 
-function getLocale(): string {
-  if (typeof document !== "undefined") {
-    const cookie = document.cookie.split("; ").find(c => c.startsWith("NEXT_LOCALE="));
-    if (cookie) {
-      return cookie.split("=")[1];
-    }
-    if (navigator.language.startsWith("ar")) {
-      return "ar";
-    }
-  }
-  return "en";
-}
-
 export default function OfflinePage() {
-  const locale = getLocale();
-  const isArabic = locale.startsWith("ar");
-  const strings = STRINGS[locale as keyof typeof STRINGS] || STRINGS.en;
+  // The URL's language first (the service worker serves this page at the address that was asked
+  // for), then NEXT_LOCALE (only while preferences are allowed), then the browser's.
+  const locale = resolveClientLocale();
+  const isArabic = locale === "ar";
+  const strings = STRINGS[locale];
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center" dir={isArabic ? "rtl" : "ltr"}>

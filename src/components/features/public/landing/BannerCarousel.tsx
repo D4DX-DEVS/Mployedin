@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 
+import { PublicImage } from "@/components/shared/PublicImage";
 import type { Banner } from "./types";
 
 interface BannerCarouselProps {
@@ -61,10 +62,7 @@ export function BannerCarousel({ locale, banners }: BannerCarouselProps) {
             {linkText}
           </Link>
         </div>
-        {active.image && (
-           
-          <img src={active.image} alt={title} className="h-44 w-full rounded-2xl object-cover md:h-52 md:w-5/12" />
-        )}
+        <PublicImage key={active._id} src={active.image} alt={title} className="h-44 w-full rounded-2xl object-cover md:h-52 md:w-5/12" />
       </div>
 
       {banners.length > 1 && (

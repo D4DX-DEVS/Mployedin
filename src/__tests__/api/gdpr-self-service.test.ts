@@ -57,6 +57,7 @@ const gdprCreate = jest.fn(async (doc: Record<string, unknown>) => ({ _id: REQUE
 const gdprFindOne = jest.fn();
 const gdprClaim = jest.fn();
 const gdprUpdateOne = jest.fn().mockResolvedValue({ modifiedCount: 1 });
+const gdprUpdateMany = jest.fn().mockResolvedValue({ modifiedCount: 0 });
 jest.mock("@/models/GdprRequest", () => ({
   __esModule: true,
   ...jest.requireActual("@/models/GdprRequest"),
@@ -67,6 +68,7 @@ jest.mock("@/models/GdprRequest", () => ({
     findById: jest.fn(async () => requestDoc),
     findOneAndUpdate: (...a: unknown[]) => gdprClaim(...a),
     updateOne: (...a: unknown[]) => gdprUpdateOne(...a),
+    updateMany: (...a: unknown[]) => gdprUpdateMany(...a),
   },
 }));
 
@@ -256,7 +258,9 @@ describe("Admin PATCH /api/admin/gdpr/[id] — completing a deletion request", (
     const res = await PATCH(req(`/api/admin/gdpr/${REQUEST_ID}`, "PATCH", { status: "completed" }), params);
 
     expect(res.status).toBe(200);
-    expect(gdprUpdateOne).toHaveBeenCalledWith({ _id: REQUEST_ID }, expect.objectContaining({ $unset: { notes: 1 } }));
+    expect(gdprUpdateOne).toHaveBeenCalledWith({ _id: REQUEST_ID }, expect.objectContaining({ $unset: { notes: 1, ipAddress: 1 } }));
+    // Deliberately changed (Art 17): the IP address goes too, and so does the person's name on their other requests.
+    expect(gdprUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ _id: { $ne: REQUEST_ID } }), expect.objectContaining({ $unset: { notes: 1, ipAddress: 1 } }));
     expect((await res.json()).request.notes).toBeUndefined();
   });
 
@@ -294,6 +298,7 @@ describe("Admin PATCH /api/admin/gdpr/[id] — completing a deletion request", (
 
     expect(res.status).toBe(500);
     expect(gdprUpdateOne).not.toHaveBeenCalled();
+    expect(gdprUpdateMany).not.toHaveBeenCalled();
     expect(requestDoc.save).not.toHaveBeenCalled();
   });
 });
@@ -309,19 +314,12 @@ describe("/api/user/consent", () => {
     expect(body.consents).not.toHaveProperty("marketing");
   });
 
-  it("POST records a cookie change from the privacy page", async () => {
-    const { POST } = await import("@/app/api/user/consent/route");
-    const res = await POST(req("/api/user/consent", "POST", { consentType: "cookies", granted: false, source: "privacy_settings" }), noParams);
-
-    expect(res.status).toBe(200);
-    expect(consentCreate).toHaveBeenCalledWith(expect.objectContaining({ consentType: "cookies", granted: false, source: "privacy_settings" }));
-  });
-
-  it("POST won't take Terms & Privacy — that is recorded at sign-up", async () => {
-    const { POST } = await import("@/app/api/user/consent/route");
-    const res = await POST(req("/api/user/consent", "POST", { consentType: "terms_and_privacy", granted: true }), noParams);
-
-    expect(res.status).toBe(400);
-    expect(consentCreate).not.toHaveBeenCalled();
+  // The legacy cookie-consent writer is gone: it wrote "cookies" rows with the client IP and any value the caller
+  // sent, with no receipt and no match against the choice cookie. A cookie choice is written only by
+  // POST /api/consent/receipt (one writer, no IP).
+  it("has no POST: nothing here writes a cookie choice any more", async () => {
+    const route = (await import("@/app/api/user/consent/route")) as Record<string, unknown>;
+    expect(route.POST).toBeUndefined();
+    expect(typeof route.GET).toBe("function");
   });
 });

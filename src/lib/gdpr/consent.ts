@@ -18,6 +18,77 @@ export const CONSENT_TYPES = {
   marketing: "marketing",
 } as const;
 
+/**
+ * Cookie-choice rows for a signed-in user's account log, one per optional
+ * category. Written by POST /api/consent/receipt next to the anonymous receipt.
+ * The older single "cookies" row (granted = accepted) is still what sign-up
+ * records from the two-value cookieChoice.
+ */
+export const COOKIE_CONSENT_TYPES = {
+  preferences: "cookies.preferences",
+  media: "cookies.media",
+} as const;
+
+/** The banner / Cookie Policy version a cookie row was given against. [LEGAL] bump with the policy text. */
+export const COOKIE_POLICY_VERSION = "cookie-v1";
+
+export type CookieConsentSource = "banner" | "settings";
+
+/**
+ * Log a signed-in user's cookie choice on their account. No IP address
+ * (minimisation: the receipt is the evidence, this row only ties it to the
+ * account). Both rows carry the choice reference (`receiptId`), which is how an
+ * admin goes from a row to the receipt that shows what wording was on screen.
+ * Never throws: the choice is already stored on the device and in the receipt,
+ * and a lost log row must not fail the request. Writes nothing when this user's
+ * log already holds rows for this reference.
+ */
+export async function recordCookieConsent(input: {
+  userId: string;
+  /** The choice reference: ConsentReceipt.receiptId, the id in the visitor's mpl_consent cookie. */
+  receiptId: string;
+  preferences: boolean;
+  media: boolean;
+  source: CookieConsentSource;
+}): Promise<void> {
+  try {
+    // Idempotent per choice reference: the receipt route can be asked for the same receipt again (a resend
+    // after a failed delivery), and the account log must not show one choice twice.
+    const already = await ConsentLog.exists({
+      userId: input.userId,
+      receiptId: input.receiptId,
+      consentType: { $in: [COOKIE_CONSENT_TYPES.preferences, COOKIE_CONSENT_TYPES.media] },
+    });
+    if (already) return;
+    const user = (await User.findById(input.userId).select("name").lean()) as { name?: string } | null;
+    const base = {
+      userId: input.userId,
+      userName: user?.name || "Unknown",
+    };
+    // Unordered: with the unique (userId, receiptId, consentType) index, a row a racing resend already wrote must
+    // not stop the other category's row.
+    await ConsentLog.insertMany(
+      [
+        { ...base, consentType: COOKIE_CONSENT_TYPES.preferences, granted: input.preferences, source: input.source, policyVersion: COOKIE_POLICY_VERSION, receiptId: input.receiptId },
+        { ...base, consentType: COOKIE_CONSENT_TYPES.media, granted: input.media, source: input.source, policyVersion: COOKIE_POLICY_VERSION, receiptId: input.receiptId },
+      ],
+      { ordered: false },
+    );
+  } catch (err) {
+    // A duplicate key means a racing request already wrote these rows: the choice is recorded.
+    if (isDuplicateKeyOnly(err)) return;
+    logger.error({ err, userId: input.userId }, "[gdpr] couldn't record the cookie choice on the account");
+  }
+}
+
+/** True when every failed write was a duplicate key (11000), the only error a racing resend can cause. */
+function isDuplicateKeyOnly(err: unknown): boolean {
+  const e = err as { code?: number; writeErrors?: Array<{ code?: number }> } | null;
+  if (!e) return false;
+  if (Array.isArray(e.writeErrors) && e.writeErrors.length > 0) return e.writeErrors.every((w) => w.code === 11000);
+  return e.code === 11000;
+}
+
 export interface RegistrationConsentInput {
   userId: string;
   userName: string;

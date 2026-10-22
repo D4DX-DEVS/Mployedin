@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { getCopilotSystemPrompt } from "@/lib/ai/copilot/prompts";
@@ -21,6 +22,7 @@ import logger from "@/lib/logger";
 
 import { providerErrorMessage, completionBudget, copilotReasoningEffort } from "@/lib/ai/googleAI";
 import { OPENROUTER_MODELS, hasOpenRouterApiKey, openRouterChatFetch } from "@/lib/ai/openRouter";
+import { claimsConfirmationCard, PHANTOM_CARD_CORRECTION } from "@/lib/ai/copilot/phantomCard";
 
 const MAX_TOOL_ITERATIONS = 4;
 const PROPOSAL_TTL_MS = 15 * 60 * 1000;
@@ -165,7 +167,7 @@ export async function POST(req: NextRequest) {
     const gateErr = await enforceFeatureGate(userId, role, { type: "ai", feature: "ai_chat" });
     if (gateErr) return gateErr;
 
-    const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+    const ip = getClientIp(req.headers);
     const { allowed, resetAt } = await checkRateLimit(`ai-copilot:${userId ?? ip}`, RATE_LIMIT_CONFIGS.ai);
     if (!allowed) {
       return NextResponse.json(
@@ -232,6 +234,9 @@ export async function POST(req: NextRequest) {
           let currentModel = OPENROUTER_MODELS.copilot;
           const modelsUsed = new Set<string>();
           let answered = false;
+          // A reply may only speak of a confirmation card when this turn made one.
+          let proposalsThisTurn = 0;
+          let retriedPhantomCard = false;
 
           const onDelta = (chunk: string) => send({ type: "text_delta", content: chunk });
 
@@ -307,6 +312,7 @@ export async function POST(req: NextRequest) {
                   // Pin whatever the dry run resolved (e.g. the job taken from the
                   // current page) so confirming replays exactly what the card shows.
                   const proposalArgs = preview?.resolvedArgs ? { ...validated.value, ...preview.resolvedArgs } : validated.value;
+                  proposalsThisTurn++;
                   const summary = tool.summarize(proposalArgs);
                   const proposal = await CopilotProposal.create({
                     userId,
@@ -361,7 +367,17 @@ export async function POST(req: NextRequest) {
               continue; // loop back so the model can respond given the tool results
             }
 
-            // No tool calls — this is the final natural-language reply.
+            // No tool calls — this is the final natural-language reply. One
+            // exception: a reply that tells the user to confirm a card when no
+            // write tool ran this turn (the model copying an earlier turn's
+            // wording) — there is no card. Take the text back and ask once more.
+            if (!retriedPhantomCard && proposalsThisTurn === 0 && iter < MAX_TOOL_ITERATIONS - 1 && claimsConfirmationCard(message.content)) {
+              retriedPhantomCard = true;
+              send({ type: "retract" });
+              chatMessages.push({ role: "assistant", content: message.content ?? "" });
+              chatMessages.push({ role: "user", content: PHANTOM_CARD_CORRECTION });
+              continue;
+            }
             send({ type: "text", content: message.content ?? "" });
             answered = true;
             break;

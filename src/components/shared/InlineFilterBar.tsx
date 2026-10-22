@@ -76,6 +76,14 @@ interface InlineFilterBarProps {
   exportExtra?: ReactNode;
   /** Below the controls — e.g. the summary an AI search produced. */
   footer?: ReactNode;
+  /**
+   * Phones only (below `sm`): a full-width row under the first line, in place
+   * of controls the page hides there with `max-sm:hidden`. Shown and hidden
+   * with CSS, so a phone's first paint (and a page with scripts off) already
+   * has it. Nothing is rendered when it is not passed; from `sm` up it is
+   * never shown.
+   */
+  phoneRow?: ReactNode;
   className?: string;
 }
 
@@ -100,6 +108,7 @@ export function InlineFilterBar({
   onExportPdf,
   exportExtra,
   footer,
+  phoneRow,
   className,
 }: InlineFilterBarProps) {
   const t = useTranslations("common");
@@ -199,6 +208,8 @@ export function InlineFilterBar({
           </div>
         )}
       </div>
+
+      {phoneRow && <div className="sm:hidden">{phoneRow}</div>}
 
       {more && moreOpen && (
         <div className={cn("flex flex-wrap items-center gap-2 border-t border-border/60 pt-2", moreClassName)}>

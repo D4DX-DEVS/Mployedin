@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { ArrowRight, ChevronDown, Mail, MapPin } from "lucide-react";
+import { CookieSettingsLink } from "@/components/shared/ConsentManager/CookieSettingsLink";
+import { usePendingReferral } from "@/lib/referrals/pendingReferral";
+import { registerHrefFor } from "@/lib/referrals/url";
 
 type FooterVariant = "full" | "embedded";
 
@@ -18,12 +21,17 @@ interface PublicFooterProps {
 type FooterLink = {
   href: string;
   label: string;
+  /** Opens the Cookie settings dialog instead of navigating; href only keys the row. */
+  opensCookieSettings?: boolean;
 };
 
 type FooterSection = {
   title: string;
   links: FooterLink[];
 };
+
+const FOOTER_LINK_CLASS =
+  "text-sm leading-6 text-white/72 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 
 const WHATSAPP_URL = "https://whatsapp.com/channel/0029VaiIpxg2ER6cM4IX4D41";
 const INSTAGRAM_URL = "https://www.instagram.com/mployedin_jobs?igsh=MTE1MzJob3p5ZDFhMA==";
@@ -64,12 +72,14 @@ export default function PublicFooter({ locale, variant = "full", showAccessibili
   const [mounted, setMounted] = useState(false);
   const [openMobileSection, setOpenMobileSection] = useState<string | null>(null);
   useEffect(() => setMounted(true), []);
+  // A shared job's ?ref= code, held in memory only, rides in the register link.
+  const registerHref = registerHrefFor(locale, usePendingReferral());
 
   const platformSection: FooterSection = {
     title: t("platform"),
     links: [
       { href: `/${locale}/jobs`, label: t("discoverJobs") },
-      { href: `/${locale}/register`, label: t("buildProfile") },
+      { href: registerHref, label: t("buildProfile") },
       { href: `/${locale}/employer-register`, label: t("hiringSolutions") },
       { href: `/${locale}/login`, label: t("workspaceLogin") },
     ],
@@ -90,6 +100,7 @@ export default function PublicFooter({ locale, variant = "full", showAccessibili
       { href: `/${locale}/privacy`, label: t("privacy") },
       { href: `/${locale}/terms`, label: t("terms") },
       { href: `/${locale}/cookies`, label: t("cookies") },
+      { href: "#cookie-settings", label: t("cookieSettings"), opensCookieSettings: true },
       { href: `/${locale}/gdpr`, label: t("gdpr") },
       ...(showAccessibilityLink ? [{ href: `/${locale}/accessibility`, label: t("accessibility") }] : []),
       { href: `/${locale}/contact`, label: t("support") },
@@ -169,14 +180,31 @@ export default function PublicFooter({ locale, variant = "full", showAccessibili
               <ul className="mt-3 space-y-2">
                 {section.links.map((link) => (
                   <li key={`${section.title}-${link.href}`}>
-                    <Link href={link.href} className="text-sm leading-6 text-white/72 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-                      {link.label}
-                    </Link>
+                    {link.opensCookieSettings ? (
+                      <CookieSettingsLink className={`${FOOTER_LINK_CLASS} text-start`}>{link.label}</CookieSettingsLink>
+                    ) : (
+                      <Link href={link.href} className={FOOTER_LINK_CLASS}>
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
             </div>
           ))}
+
+          {/* The Company column above is hidden on phones in the app shell; the Cookie Policy and
+              Cookie settings must still be one tap away there (withdrawing as easy as consenting). */}
+          {isEmbedded && (
+            <div data-testid="footer-phone-legal" className="flex flex-wrap items-center gap-x-5 sm:hidden">
+              <Link href={`/${locale}/cookies`} className={`${FOOTER_LINK_CLASS} inline-flex min-h-11 items-center`}>
+                {t("cookies")}
+              </Link>
+              <CookieSettingsLink className={`${FOOTER_LINK_CLASS} inline-flex min-h-11 items-center text-start`}>
+                {t("cookieSettings")}
+              </CookieSettingsLink>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex flex-col gap-4 border-t border-white/10 pt-4 text-sm text-white/60 lg:flex-row lg:items-center lg:justify-between">

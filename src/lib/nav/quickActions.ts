@@ -232,9 +232,8 @@ export const WORKSPACE_QUICK_ACTIONS: Partial<Record<UserRole, QuickAction[]>> =
       permission: { resource: "leads", action: "create" },
     },
     {
-      // `?new=1` opens the inline create form on arrival — the form is on the
-      // list page, so without it this action lands the agent next to the button
-      // instead of on it.
+      // `?new=1` opens the New task dialog on arrival — without it this
+      // action lands the agent next to the button instead of on it.
       key: "newTask",
       href: "/agent/tasks?new=1",
       icon: "CheckSquare",
@@ -410,6 +409,29 @@ export const WORKSPACE_QUICK_ACTIONS: Partial<Record<UserRole, QuickAction[]>> =
       icon: "Target",
       labelKey: "openLeads",
       descriptionKey: "openLeadsDesc",
+    },
+    // Three of the four report tabs have no sidebar row of their own (one
+    // "Reports" row opens the Team tab), so ⌘K lists them by name, as admin's do.
+    {
+      key: "saOpenTargetReport",
+      href: "/super-agent/target-report",
+      icon: "FileText",
+      labelKey: "saOpenTargetReport",
+      descriptionKey: "saOpenTargetReportDesc",
+    },
+    {
+      key: "saOpenCommissionReport",
+      href: "/super-agent/commissions-report",
+      icon: "BarChart2",
+      labelKey: "saOpenCommissionReport",
+      descriptionKey: "saOpenCommissionReportDesc",
+    },
+    {
+      key: "saOpenMarket",
+      href: "/super-agent/market",
+      icon: "TrendingUp",
+      labelKey: "saOpenMarket",
+      descriptionKey: "saOpenMarketDesc",
     },
   ],
 };

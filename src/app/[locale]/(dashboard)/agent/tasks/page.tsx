@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -13,16 +11,19 @@ import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { readQuery } from "@/lib/ui/urlQuery";
 import {
   Plus, Clock, AlertCircle, CheckCircle2,
-  Trash2, Calendar, PlayCircle, UserCheck, Undo2, XCircle, History,
+  Trash2, Calendar, PlayCircle, UserCheck, Undo2, XCircle, Eye,
 } from "lucide-react";
 import { STATUS_DOT, TaskStatusBadge, TaskStatusDialog, type AgentTaskStatus, type StatusChange } from "@/components/features/tasks/TaskStatusDialog";
-import { TaskHistoryDialog } from "@/components/features/tasks/TaskHistoryDialog";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { NewTaskDialog } from "./_components/NewTaskDialog";
+import { AgentTaskDetailsPanel, type AgentTaskRow } from "./_components/AgentTaskDetailsPanel";
+import { TaskLinkChips } from "./_components/TaskLinkChips";
+import { useCopilotExecuted } from "@/components/shared/Copilot/events";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { useConfirm } from "@/hooks/useConfirm";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
-import { RowActions } from "@/components/shared/RowActions";
+import { RowActions, type RowPicker } from "@/components/shared/RowActions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -31,22 +32,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-interface Task {
-  _id: string;
-  title: string;
-  description?: string;
-  priority: "high" | "medium" | "low";
-  status: AgentTaskStatus;
-  dueDate?: string;
-  category: "follow_up" | "call" | "meeting" | "document" | "other";
-  relatedTo?: string;
-  createdAt: string;
-  /** Present only on tasks a super agent or an admin gave this agent. */
-  assignedBy?: { name: string; role: "super_agent" | "admin" };
-  reviewStatus?: "none" | "awaiting_review" | "approved" | "returned";
-  completionNote?: string;
-  reviewComment?: string;
-}
+type Task = AgentTaskRow;
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -89,6 +75,7 @@ const getPriorityOptions = (t: TranslationFunction) => [
 export default function AgentTasksPage() {
   const t = useTranslations("agentTasks");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const tConfirm = useTranslations("confirm");
   const { confirm, ConfirmDialogNode } = useConfirm();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
@@ -106,24 +93,17 @@ export default function AgentTasksPage() {
   // Every status change confirms with an optional note (kept in the task's
   // history); Completed / Failed on an assigned task goes to review.
   const [statusChange, setStatusChange] = useState<StatusChange | null>(null);
-  const [historyTask, setHistoryTask] = useState<{ id: string; title: string } | null>(null);
+  // The side panel with everything about one task (same shape as the super agent's).
+  const [detailsTask, setDetailsTask] = useState<Task | null>(null);
   // The Create menu and ⌘K link `?new=1` so "New task" starts the task instead
   // of dropping the agent on the list beside the button that starts it.
-  const [showForm, setShowForm] = useState(() => readQuery().get("new") === "1");
+  // Opened after mount: the server has no query string, so reading it in the
+  // initialiser rendered the form on the client only (hydration mismatch).
+  const [showForm, setShowForm] = useState(false);
+  useEffect(() => {
+    if (readQuery().get("new") === "1") setShowForm(true);
+  }, []);
 
-  const emptyTaskForm = { title: "", description: "", priority: "medium", category: "follow_up", dueDate: "" };
-
-  /* New task form */
-  const [newTask, setNewTask] = useState({
-    title: "", description: "", priority: "medium", category: "follow_up",
-    dueDate: "",
-  });
-
-  const closeTaskForm = () => {
-    // BUG-13: reset so a cancelled draft does not reappear on reopen.
-    setNewTask({ ...emptyTaskForm });
-    setShowForm(false);
-  };
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -149,45 +129,9 @@ export default function AgentTasksPage() {
   }, [statusFilter, dueFilter, search, kindFilter, page, limit, updateTotal, t]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
+  // A task the Copilot created or moved shows up without a reload.
+  useCopilotExecuted(["create_task", "update_task_status"], () => void fetchTasks());
   useEffect(() => { resetPage(); }, [statusFilter, dueFilter, search, kindFilter, resetPage]);
-
-  const createTask = async () => {
-    if (!newTask.title.trim()) {
-      toast.error(t("taskTitleRequired"));
-      return;
-    }
-    // BUG-12: name the field failure instead of a generic "Validation failed".
-    if (newTask.title.trim().length > 200) {
-      toast.error(t("taskTitleMax"));
-      return;
-    }
-
-    try {
-      const payload = {
-        ...newTask,
-        dueDate: newTask.dueDate ? new Date(newTask.dueDate).toISOString() : undefined,
-      };
-      const res = await csrfFetch("/api/agent/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        toast.success(t("taskCreatedSuccess"));
-        setNewTask({ ...emptyTaskForm });
-        setShowForm(false);
-        fetchTasks();
-      } else {
-        const err = await res.json().catch(() => null);
-        // Prefer the field-level detail when the API provides it.
-        const detail = Array.isArray(err?.details) ? err.details[0]?.message : undefined;
-        toast.error(detail ?? err?.error ?? t("createTaskFailed"));
-      }
-    } catch {
-      toast.error(t("createTaskFailed"));
-    }
-  };
 
   const deleteTask = async (id: string) => {
     const ok = await confirm({
@@ -210,6 +154,27 @@ export default function AgentTasksPage() {
     }
   };
 
+  // One status control for the row and the details panel. With the reviewer
+  // (or accepted) the agent can't reopen or edit it, so it is disabled.
+  const statusPickerFor = (task: Task): RowPicker => {
+    const assigned = Boolean(task.assignedBy);
+    return {
+      label: t("changeStatusFor", { title: task.title }),
+      heading: t("changeStatus"),
+      value: task.status,
+      options: getStatusOptions(t)
+        .filter((o) => o.value !== "all")
+        .map((o) => ({ ...o, dotClassName: STATUS_DOT[o.value as AgentTaskStatus] })),
+      onChange: (to: string) => {
+        if (to === task.status) return;
+        setDetailsTask(null);
+        setStatusChange({ id: task._id, title: task.title, from: task.status, to: to as AgentTaskStatus, ...(assigned ? { assignerName: task.assignedBy?.name ?? "" } : {}) });
+      },
+      display: <TaskStatusBadge status={task.status} reviewStatus={task.reviewStatus} />,
+      disabled: task.reviewStatus === "awaiting_review" || task.reviewStatus === "approved",
+    };
+  };
+
   // BUG-11: filtered-to-zero must not show first-use copy.
   const hasActiveFilters =
     search.trim().length > 0 || statusFilter !== "all" || dueFilter !== "all" || kindFilter !== "all";
@@ -223,7 +188,7 @@ export default function AgentTasksPage() {
         title={t("pageTitle")}
         context={t("pageDescription")}
         actions={
-          <Button onClick={() => setShowForm(!showForm)} aria-label={t("newTaskButton")} className="min-h-11 gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
+          <Button onClick={() => setShowForm(true)} aria-label={t("newTaskButton")} className="min-h-11 gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">{t("newTaskButton")}</span>
           </Button>
@@ -258,30 +223,6 @@ export default function AgentTasksPage() {
           },
         ]}
       />
-
-      {/* New Task Form */}
-      {showForm && (
-        <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
-          <h2 className="heading-section font-semibold text-foreground">{t("createTaskHeading")}</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Input
-              placeholder={t("taskTitlePlaceholder")}
-              value={newTask.title}
-              maxLength={200}
-              onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))}
-              className="sm:col-span-2"
-            />
-            <Input placeholder={t("taskDescriptionPlaceholder")} value={newTask.description} onChange={(e) => setNewTask((p) => ({ ...p, description: e.target.value }))} className="sm:col-span-2" />
-            <SearchableSelect options={getCategoryOptions(t)} value={newTask.category} onValueChange={(v) => setNewTask((p) => ({ ...p, category: v }))} placeholder={t("categoryPlaceholder")} />
-            <SearchableSelect options={getPriorityOptions(t)} value={newTask.priority} onValueChange={(v) => setNewTask((p) => ({ ...p, priority: v }))} placeholder={t("priorityPlaceholder")} />
-            <DateTimePicker mode="date" value={newTask.dueDate} onChange={(v) => setNewTask((p) => ({ ...p, dueDate: v }))} />
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={createTask}><Plus className="mr-1 h-4 w-4" /> {tc("create")}</Button>
-            <Button variant="ghost" onClick={closeTaskForm}>{tc("cancel")}</Button>
-          </div>
-        </section>
-      )}
 
       {/* Filters */}
       <InlineFilterBar
@@ -345,25 +286,24 @@ export default function AgentTasksPage() {
               ) : (
                 tasks.map((task) => {
                   const assigned = Boolean(task.assignedBy);
-                  // With the reviewer (or accepted): the agent can't reopen or edit it.
-                  const locked = task.reviewStatus === "awaiting_review" || task.reviewStatus === "approved";
                   const assignerName = task.assignedBy?.name ?? "";
                   const closed = task.status === "completed" || task.status === "failed";
-                  const changeStatus = (to: string) => {
-                    if (to === task.status) return;
-                    setStatusChange({ id: task._id, title: task.title, from: task.status, to: to as AgentTaskStatus, ...(assigned ? { assignerName } : {}) });
-                  };
                   return (
                   <TableRow key={task._id} className={`group ${closed ? "opacity-60" : ""}`}>
                     <TableCell>
                       <div className="flex min-w-0 items-start gap-3">
                         <div className="min-w-0">
-                          <p className={`text-sm font-medium truncate ${closed && task.reviewStatus !== "awaiting_review" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                          <button
+                            type="button"
+                            onClick={() => setDetailsTask(task)}
+                            className={`block max-w-full truncate rounded text-start text-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${closed && task.reviewStatus !== "awaiting_review" ? "line-through text-muted-foreground" : "text-foreground"}`}
+                          >
                             {task.title}
-                          </p>
+                          </button>
                           {task.description && (
                             <p className="mt-0.5 text-xs text-muted-foreground truncate">{task.description}</p>
                           )}
+                          <TaskLinkChips locale={locale} links={task.links} />
                           {assigned && (
                             <div className="mt-1 flex flex-wrap items-center gap-1.5">
                               <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
@@ -390,21 +330,7 @@ export default function AgentTasksPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <RowActions
-                        name={task.title}
-                        picker={{
-                          label: t("changeStatusFor", { title: task.title }),
-                          heading: t("changeStatus"),
-                          value: task.status,
-                          options: getStatusOptions(t)
-                            .filter((o) => o.value !== "all")
-                            .map((o) => ({ ...o, dotClassName: STATUS_DOT[o.value as AgentTaskStatus] })),
-                          onChange: changeStatus,
-                          display: <TaskStatusBadge status={task.status} reviewStatus={task.reviewStatus} />,
-                          // With the reviewer, or accepted: the status is theirs now.
-                          disabled: locked,
-                        }}
-                      />
+                      <RowActions name={task.title} picker={statusPickerFor(task)} />
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
@@ -428,13 +354,9 @@ export default function AgentTasksPage() {
                     <TableCell className="text-right">
                       <RowActions
                         name={task.title}
+                        labelsFrom="wide"
+                        quick={[{ key: "details", label: t("detailsAction"), icon: Eye, onSelect: () => setDetailsTask(task) }]}
                         menu={[
-                          {
-                            key: "history",
-                            label: t("historyAction"),
-                            icon: History,
-                            onSelect: () => setHistoryTask({ id: task._id, title: task.title }),
-                          },
                           // An assigned task belongs to whoever gave it: no delete.
                           ...(assigned ? [] : [{
                             key: "delete",
@@ -466,11 +388,22 @@ export default function AgentTasksPage() {
         />
       )}
     </div>
+    <NewTaskDialog
+      open={showForm}
+      onOpenChange={setShowForm}
+      categoryOptions={getCategoryOptions(t)}
+      priorityOptions={getPriorityOptions(t)}
+      onCreated={() => void fetchTasks()}
+    />
     <TaskStatusDialog change={statusChange} onClose={() => setStatusChange(null)} onSaved={() => void fetchTasks()} />
-    <TaskHistoryDialog
-      task={historyTask}
-      url={historyTask ? `/api/agent/tasks/${historyTask.id}` : null}
-      onClose={() => setHistoryTask(null)}
+    <AgentTaskDetailsPanel
+      task={detailsTask}
+      locale={locale}
+      statusPicker={detailsTask ? statusPickerFor(detailsTask) : null}
+      onDelete={detailsTask && !detailsTask.assignedBy
+        ? () => { const id = detailsTask._id; setDetailsTask(null); void deleteTask(id); }
+        : undefined}
+      onClose={() => setDetailsTask(null)}
     />
     </>
   );

@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { conversationKeys } from "@/hooks/useConversations";
 import { useConfirm } from "@/hooks/useConfirm";
+import { toSafeImageSrc } from "@/lib/images/externalAvatar";
 
 interface DMMessage {
   _id: string;
@@ -298,7 +299,7 @@ export function DirectMessageChat({ conversation, currentUserId, onDeleteConvers
         <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
           {otherParticipant?.avatar ? (
             <img
-              src={otherParticipant.avatar}
+              src={toSafeImageSrc(otherParticipant.avatar)}
               alt=""
               className="w-full h-full object-cover"
             />

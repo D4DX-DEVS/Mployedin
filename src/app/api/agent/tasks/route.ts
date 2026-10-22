@@ -7,6 +7,8 @@ import { agentTaskCreateSchema } from "@/lib/validators/agent-tasks";
 import mongoose from "mongoose";
 import AgentTask, { CLOSED_TASK_STATUSES } from "@/models/AgentTask";
 import User from "@/models/User";
+import { resolveTaskLinks, validateTaskLinks } from "@/lib/agentTasks/links";
+import { TaskError } from "@/lib/agentTasks/assigned";
 
 
 
@@ -81,6 +83,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     ? await User.find({ _id: { $in: assignerIds } }).select("_id name").lean<Array<{ _id: unknown; name?: string }>>()
     : [];
   const assignerNames = new Map(assigners.map((u) => [String(u._id), u.name ?? ""]));
+  const links = await resolveTaskLinks(ctx, items);
 
   return NextResponse.json({
     total,
@@ -104,6 +107,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
       dueDate: t.dueDate,
       category: t.category,
       relatedTo: t.relatedTo,
+      links: links.get(String(t._id)),
       createdAt: t.createdAt,
       completionNote: t.completionNote,
       ...(t.assignedBy?.userId
@@ -125,6 +129,14 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
 
   const body = await validateBody(req, agentTaskCreateSchema);
 
+  let links;
+  try {
+    links = await validateTaskLinks(ctx, { candidateId: body.candidateId, jobId: body.jobId, employerId: body.employerId });
+  } catch (err) {
+    if (err instanceof TaskError) return NextResponse.json({ error: err.message }, { status: err.status });
+    throw err;
+  }
+
   const task = await AgentTask.create({
     userId: ctx.userId,
     title: body.title,
@@ -132,6 +144,7 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     priority: body.priority,
     category: body.category,
     dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+    ...(links ? { links } : {}),
     history: [{ action: "created", to: "pending", by: ctx.userId, at: new Date() }],
   });
 

@@ -10,12 +10,17 @@
  *
  * Finished requests had an empty Actions cell and no way to open them, so the
  * reason a user gave for deleting their account was never shown to anyone.
+ *
+ * Complete and Reject no longer use a plain confirm: they open a small form
+ * (GdprDecisionDialog) that records what was done, what was not and why, and
+ * internal notes. A refusal needs a reason.
  */
 import React from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import AdminGdprPage from "@/app/[locale]/(dashboard)/admin/gdpr/page";
+import { toast } from "sonner";
 
 let mockSearchParams = new URLSearchParams();
 jest.mock("next/navigation", () => ({
@@ -131,29 +136,119 @@ describe("admin GDPR page", () => {
     expect(screen.queryByRole("button", { name: /retention/i })).not.toBeInTheDocument();
   });
 
-  it("asks before rejecting, and a cancel sends nothing", async () => {
-    confirm.mockResolvedValue(false);
+  it("shows an error with Retry, not 'No data requests', when the list can't be loaded", async () => {
+    let fail = true;
+    const base = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (fail && String(url).startsWith("/api/admin/gdpr?")) {
+        return Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
+      }
+      return base(url, init);
+    });
+    render(<AdminGdprPage />);
+    const retry = await screen.findByRole("button", { name: "Retry" });
+    expect(screen.getByText("We couldn't load GDPR data")).toBeInTheDocument();
+    expect(screen.queryByText(/No data requests/i)).not.toBeInTheDocument();
+
+    fail = false;
+    await userEvent.click(retry);
+    await screen.findAllByText("Sara Ahmed");
+    expect(screen.queryByText("We couldn't load GDPR data")).not.toBeInTheDocument();
+  });
+
+  it("Reject opens a form instead of a plain confirm, and Cancel sends nothing", async () => {
     render(<AdminGdprPage />);
     await screen.findAllByText("Sara Ahmed");
 
-    await userEvent.click(screen.getByRole("button", { name: "Reject" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Reject" })[0]);
+    const dialog = await screen.findByRole("dialog", { name: "Reject this request?" });
+    expect(confirm).not.toHaveBeenCalled();
+    expect(within(dialog).getByText(/Sara Ahmed.s request will be marked rejected/)).toBeInTheDocument();
 
-    expect(confirm).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: "destructive", message: expect.stringContaining("Sara Ahmed") })
-    );
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(patchCalls()).toHaveLength(0);
   });
 
-  it("asks before completing, then saves once confirmed", async () => {
-    confirm.mockResolvedValue(true);
+  it("Reject can't be sent without a reason: the form says so under the field and nothing is saved", async () => {
+    render(<AdminGdprPage />);
+    await screen.findAllByText("Sara Ahmed");
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Reject" })[0]);
+    const dialog = await screen.findByRole("dialog", { name: "Reject this request?" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Reject" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(/Enter a reason/);
+    expect(patchCalls()).toHaveLength(0);
+  });
+
+  it("Reject sends the reason and the internal notes, then says so and refreshes the list", async () => {
+    render(<AdminGdprPage />);
+    await screen.findAllByText("Sara Ahmed");
+    const listsBefore = listCalls().length;
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Reject" })[0]);
+    const dialog = await screen.findByRole("dialog", { name: "Reject this request?" });
+    await userEvent.type(within(dialog).getByLabelText(/^Reason/), "We could not verify who you are.");
+    await userEvent.type(within(dialog).getByLabelText("Internal notes (only admins see these)"), "Phoned twice");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Reject" }));
+
+    await waitFor(() => expect(patchCalls()).toHaveLength(1));
+    expect(String(patchCalls()[0][0])).toContain(pending._id);
+    expect(JSON.parse(String((patchCalls()[0][1] as RequestInit).body))).toEqual({
+      status: "rejected",
+      outcomeReason: "We could not verify who you are.",
+      adminNotes: "Phoned twice",
+    });
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Request status updated"));
+    await waitFor(() => expect(listCalls().length).toBeGreaterThan(listsBefore));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("Complete opens a form and saves just the status when nothing is filled in", async () => {
     render(<AdminGdprPage />);
     await screen.findAllByText("Sara Ahmed");
 
     await userEvent.click(screen.getByRole("button", { name: "Complete" }));
+    const dialog = await screen.findByRole("dialog", { name: "Mark this request complete?" });
+    expect(confirm).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Complete" }));
 
-    expect(confirm).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(patchCalls()).toHaveLength(1));
     expect(JSON.parse(String((patchCalls()[0][1] as RequestInit).body))).toEqual({ status: "completed" });
+  });
+
+  it("Complete sends what was done, what was not and why, and the internal notes", async () => {
+    render(<AdminGdprPage />);
+    await screen.findAllByText("Sara Ahmed");
+
+    await userEvent.click(screen.getByRole("button", { name: "Complete" }));
+    const dialog = await screen.findByRole("dialog", { name: "Mark this request complete?" });
+    await userEvent.type(within(dialog).getByLabelText("What was done"), "Account erased");
+    await userEvent.type(within(dialog).getByLabelText("Anything not done, and why"), "Invoices kept: the law requires it");
+    await userEvent.type(within(dialog).getByLabelText("Internal notes (only admins see these)"), "Checked with legal");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Complete" }));
+
+    await waitFor(() => expect(patchCalls()).toHaveLength(1));
+    expect(JSON.parse(String((patchCalls()[0][1] as RequestInit).body))).toEqual({
+      status: "completed",
+      outcome: "Account erased",
+      outcomeReason: "Invoices kept: the law requires it",
+      adminNotes: "Checked with legal",
+    });
+  });
+
+  it("completing a deletion still carries the irreversible-erasure warning", async () => {
+    render(<AdminGdprPage />);
+    await screen.findAllByText("Sara Ahmed");
+
+    await userEvent.click(screen.getByRole("button", { name: "Complete" }));
+    const dialog = await screen.findByRole("dialog", { name: "Mark this request complete?" });
+
+    expect(within(dialog).getByText(/Completing this erases Sara Ahmed.s account/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/can't sign in again/)).toBeInTheDocument();
+    expect(patchCalls()).toHaveLength(0);
   });
 
   it("starts a request without a prompt (not a final state)", async () => {
@@ -229,7 +324,9 @@ describe("admin GDPR page", () => {
     const dialog = await screen.findByRole("dialog");
 
     expect(within(dialog).getByText("Super Admin")).toBeInTheDocument();
-    expect(within(dialog).getByText(/no reason given/i)).toBeInTheDocument();
+    // This deletion request carries no reason, so there is no reason block at all.
+    expect(within(dialog).queryByText("Reason given by the user")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/no reason given/i)).not.toBeInTheDocument();
   });
 
   it("keeps a Cancelled status filter that arrives in the link", async () => {
@@ -256,38 +353,42 @@ describe("admin GDPR page", () => {
     expect(screen.getByText("1 day")).toBeInTheDocument();
   });
 
-  it("Complete from the details asks first; cancelling leaves the details open and sends nothing", async () => {
-    confirm.mockResolvedValue(false);
+  it("Complete from the details opens the form; cancelling leaves the details open and sends nothing", async () => {
     render(<AdminGdprPage />);
     await screen.findAllByText("Sara Ahmed");
 
     await userEvent.click(screen.getAllByRole("button", { name: "View" })[1]);
-    const dialog = await screen.findByRole("dialog");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Complete" }));
+    const details = await screen.findByRole("dialog", { name: "Data request" });
+    await userEvent.click(within(details).getByRole("button", { name: "Complete" }));
 
-    // A deletion: the destructive warning, not the plain one.
-    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" }));
+    // A deletion: the erasure warning is in the form.
+    const form = await screen.findByRole("dialog", { name: "Mark this request complete?" });
+    expect(within(form).getByText(/Completing this erases/)).toBeInTheDocument();
+    await userEvent.click(within(form).getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Mark this request complete?" })).not.toBeInTheDocument());
     expect(patchCalls()).toHaveLength(0);
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Data request" })).toBeInTheDocument();
   });
 
-  it("Complete from the details saves once confirmed, then closes them", async () => {
-    confirm.mockResolvedValue(true);
+  it("Complete from the details saves once submitted, then closes both", async () => {
     render(<AdminGdprPage />);
     await screen.findAllByText("Sara Ahmed");
 
     await userEvent.click(screen.getAllByRole("button", { name: "View" })[1]);
-    const dialog = await screen.findByRole("dialog");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Complete" }));
+    const details = await screen.findByRole("dialog", { name: "Data request" });
+    await userEvent.click(within(details).getByRole("button", { name: "Complete" }));
+    const form = await screen.findByRole("dialog", { name: "Mark this request complete?" });
+    await userEvent.type(within(form).getByLabelText("What was done"), "Account erased");
+    await userEvent.click(within(form).getByRole("button", { name: "Complete" }));
 
     await waitFor(() => expect(patchCalls()).toHaveLength(1));
     expect(String(patchCalls()[0][0])).toContain(inProgress._id);
-    expect(JSON.parse(String((patchCalls()[0][1] as RequestInit).body))).toEqual({ status: "completed" });
+    expect(JSON.parse(String((patchCalls()[0][1] as RequestInit).body))).toEqual({ status: "completed", outcome: "Account erased" });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("keeps the details open when saving fails", async () => {
-    confirm.mockResolvedValue(true);
+  it("keeps the form and the details open, with the text kept, when saving fails", async () => {
     fetchMock.mockImplementation((url: string, init?: RequestInit) => {
       if (init?.method === "PATCH") return Promise.resolve({ ok: false, json: async () => ({}) });
       return Promise.resolve({ ok: true, json: async () => ({ items: [pending, inProgress, exported], total: 3 }) });
@@ -296,10 +397,111 @@ describe("admin GDPR page", () => {
     await screen.findAllByText("Sara Ahmed");
 
     await userEvent.click(screen.getAllByRole("button", { name: "View" })[0]);
-    const dialog = await screen.findByRole("dialog");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Reject" }));
+    const details = await screen.findByRole("dialog", { name: "Data request" });
+    await userEvent.click(within(details).getByRole("button", { name: "Reject" }));
+    const form = await screen.findByRole("dialog", { name: "Reject this request?" });
+    await userEvent.type(within(form).getByLabelText(/^Reason/), "Not enough information");
+    await userEvent.click(within(form).getByRole("button", { name: "Reject" }));
 
     await waitFor(() => expect(patchCalls()).toHaveLength(1));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("We couldn't update status"));
+    expect(screen.getByRole("dialog", { name: "Reject this request?" })).toBeInTheDocument();
+    expect(within(screen.getByRole("dialog", { name: "Reject this request?" })).getByLabelText(/^Reason/)).toHaveValue("Not enough information");
+    await waitFor(() => expect(within(screen.getByRole("dialog", { name: "Reject this request?" })).getByRole("button", { name: "Reject" })).toBeEnabled());
+  });
+});
+
+/**
+ * The Consent Logs tab itself is tested in adminGdprConsentTab.test.tsx; these
+ * check how the page mounts it: the header cards it swaps, and the lookup it
+ * must not re-run.
+ */
+describe("admin GDPR page: the Consent Logs tab", () => {
+  const REF = "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed";
+  const choice = {
+    userId: "64d000000000000000000003",
+    userName: "Lina Haddad",
+    userEmail: "lina@example.com",
+    receiptId: REF,
+    recordedAt: "2026-10-01T09:30:00.000Z",
+    source: "banner",
+    policyVersion: "cookie-v1",
+    preferences: false,
+    media: false,
+    outcome: "rejected",
+  };
+  const receipt = {
+    receiptId: REF,
+    preferences: false,
+    media: false,
+    version: 1,
+    locale: "en",
+    createdAt: "2026-10-01T09:30:00.000Z",
+    wordingMatchesCurrent: true,
+    source: "banner",
+  };
+  const lookupCalls = () =>
+    fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/admin/gdpr/consent/receipt?"));
+
+  async function openConsentTab() {
+    render(<AdminGdprPage />);
+    await screen.findAllByText("Sara Ahmed");
+    await userEvent.click(screen.getByRole("button", { name: /Consent Logs/ }));
+    await screen.findByText("Lina Haddad");
+  }
+
+  beforeEach(() => {
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
+    const base = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.startsWith("/api/admin/gdpr/consent/summary")) {
+        return Promise.resolve({ ok: true, json: async () => ({ days: 30, total: 9, acceptedAll: 5, rejectedAll: 3, custom: 1 }) });
+      }
+      if (u.startsWith("/api/admin/gdpr/consent/choices?")) {
+        return Promise.resolve({ ok: true, json: async () => ({ data: [choice], page: 1, pageSize: 10, total: 1, totalPages: 1 }) });
+      }
+      if (u.startsWith("/api/admin/gdpr/consent/receipt?")) {
+        return Promise.resolve({ ok: true, json: async () => ({ receipts: [receipt], linkedAccount: null }) });
+      }
+      if (u.startsWith("/api/admin/gdpr/terms")) {
+        return Promise.resolve({ ok: true, json: async () => ({ version: "2026-09-29", isBaseline: true, acceptedUsers: 3, totalUsers: 40, pendingUsers: 37 }) });
+      }
+      return base!(url, init);
+    });
+  });
+
+  it("keeps the request cards on Data Requests and swaps them for cookie-choice cards on Consent Logs", async () => {
+    render(<AdminGdprPage />);
+    await screen.findAllByText("Sara Ahmed");
+    expect(screen.getByText("Total Requests")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Cookie choice counts" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Consent Logs/ }));
+    const cards = await screen.findByRole("region", { name: "Cookie choice counts" });
+    await waitFor(() => expect(within(cards).getByText("Total choices").closest("li")).toHaveTextContent("9"));
+    expect(screen.queryByText("Total Requests")).not.toBeInTheDocument();
+    expect(screen.queryByText("Avg admin response")).not.toBeInTheDocument();
+  });
+
+  it("lists cookie choices, one row per choice, by default", async () => {
+    await openConsentTab();
+
+    expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith("/api/admin/gdpr/consent/choices?"))).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith("/api/admin/gdpr/consent?"))).toBe(false);
+    expect(screen.queryByText(/IP Address/i)).not.toBeInTheDocument();
+  });
+
+  it("does not run an old lookup again when the tab is opened a second time", async () => {
+    await openConsentTab();
+    await userEvent.click(screen.getByRole("button", { name: new RegExp(REF) }));
+    await waitFor(() => expect(lookupCalls()).toHaveLength(1));
+
+    await userEvent.click(screen.getByRole("button", { name: /Data Requests/ }));
+    await screen.findAllByText("Sara Ahmed");
+    await userEvent.click(screen.getByRole("button", { name: /Consent Logs/ }));
+    await screen.findByText("Lina Haddad");
+
+    expect(lookupCalls()).toHaveLength(1);
   });
 });

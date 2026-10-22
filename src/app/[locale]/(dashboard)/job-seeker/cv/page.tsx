@@ -51,6 +51,9 @@ import {
   cleanSocialLinks, toProfileLinkUrl, type ProfileLink,
 } from "@/lib/jobSeeker/socialLinks";
 import { cleanSkills } from "@/lib/jobSeeker/tagList";
+import { prefStorage } from "@/lib/consent/prefStorage";
+import { LEGACY_CV_PREVIEW_HIDDEN_KEY } from "@/lib/consent/legacyKeys";
+import { toSafeImageSrc } from "@/lib/images/externalAvatar";
 
 /* Reorder an array to match a new ordering of index-string ids. */
 function reorderByIds<T>(arr: T[], ids: string[]): T[] {
@@ -67,7 +70,8 @@ function splitProfileLinks(links: ProfileLink[]) {
   };
 }
 
-const PREVIEW_HIDDEN_KEY = "cvBuilder.previewHidden";
+// A UI preference (ui:*); older builds stored it under the unprefixed name (lib/consent/legacyKeys).
+const PREVIEW_HIDDEN_KEY = "ui:cvBuilder.previewHidden";
 
 /* ══════════════════════════════════════════════════════════
    MAIN PAGE COMPONENT
@@ -92,15 +96,16 @@ export default function CVBuilderPage() {
   const preImportForm = useRef<CVForm | null>(null);
   const [certInput, setCertInput] = useState("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
-  // Desktop only: give the editor / template gallery the full width. Remembered per browser.
+  // Desktop only: give the editor / template gallery the full width. Remembered per browser
+  // while preferences are allowed (prefStorage), for the tab only after an objection.
   const [previewHidden, setPreviewHidden] = useState(false);
   useEffect(() => {
-    try { setPreviewHidden(window.localStorage.getItem(PREVIEW_HIDDEN_KEY) === "1"); } catch { /* storage blocked */ }
+    setPreviewHidden(prefStorage.getWithLegacy(PREVIEW_HIDDEN_KEY, LEGACY_CV_PREVIEW_HIDDEN_KEY) === "1");
   }, []);
   const togglePreviewHidden = (hidden: boolean) => {
     setPreviewHidden(hidden);
     if (hidden) setPreviewExpanded(false);
-    try { window.localStorage.setItem(PREVIEW_HIDDEN_KEY, hidden ? "1" : "0"); } catch { /* storage blocked */ }
+    prefStorage.set(PREVIEW_HIDDEN_KEY, hidden ? "1" : "0");
   };
   const [photoUploading, setPhotoUploading] = useState(false);
   const queryClient = useQueryClient();
@@ -687,7 +692,7 @@ export default function CVBuilderPage() {
                       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
                         {form.photo ? (
                            
-                          <img src={form.photo} alt={form.fullName || "Profile photo"} className="h-full w-full object-cover" />
+                          <img src={toSafeImageSrc(form.photo)} alt={form.fullName || "Profile photo"} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                             <UserIcon className="h-6 w-6" />

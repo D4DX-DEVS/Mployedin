@@ -38,7 +38,7 @@ const PRIORITY_CLASS: Record<TaskDetails["priority"], string> = {
   low: "text-emerald-600 bg-emerald-50",
 };
 
-function Section({ icon: Icon, title, children }: { icon: typeof FileText; title: string; children: ReactNode }) {
+export function TaskSection({ icon: Icon, title, children }: { icon: typeof FileText; title: string; children: ReactNode }) {
   return (
     <section className="space-y-2">
       <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -153,14 +153,14 @@ export function TaskDetailsPanel({
                 </dl>
               </div>
 
-              <Section icon={FileText} title={t("detailsDescription")}>
+              <TaskSection icon={FileText} title={t("detailsDescription")}>
                 <p className="whitespace-pre-line break-words rounded-xl border bg-muted/30 px-3 py-2 text-sm text-foreground/90">
                   {task.description || <span className="text-muted-foreground">{t("detailsNoDescription")}</span>}
                 </p>
-              </Section>
+              </TaskSection>
 
               {submitted && (
-                <Section icon={MessageSquareText} title={t("detailsSubmission")}>
+                <TaskSection icon={MessageSquareText} title={t("detailsSubmission")}>
                   <p className="whitespace-pre-line break-words rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-2 text-sm text-foreground/90">
                     {task.completionNote || <span className="text-muted-foreground">{t("detailsNoNote")}</span>}
                   </p>
@@ -169,12 +169,12 @@ export function TaskDetailsPanel({
                       <span className="font-semibold">{t("reviewCommentLabel")}:</span> {task.reviewComment}
                     </p>
                   )}
-                </Section>
+                </TaskSection>
               )}
 
-              <Section icon={History} title={t("detailsHistory")}>
+              <TaskSection icon={History} title={t("detailsHistory")}>
                 <TaskHistoryTimeline url={`${apiBase}/${task._id}/history`} />
-              </Section>
+              </TaskSection>
             </div>
 
             {task.canReview && (

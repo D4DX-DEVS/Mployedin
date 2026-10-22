@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { AlertTriangle, Cookie, Download, FileCheck2, History, Loader2, Trash2 } from "lucide-react";
@@ -11,7 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { CookieSettingsLink } from "@/components/shared/ConsentManager/CookieSettingsLink";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useConsent } from "@/hooks/useConsent";
 import {
   DeletionRequestError,
   ExportLimitError,
@@ -20,7 +22,6 @@ import {
   useMyConsents,
   useMyDataRequests,
   useRequestAccountDeletion,
-  useSetCookieConsent,
   type DataRequest,
   type DataRequestStatus,
   type DataRequestType,
@@ -49,6 +50,23 @@ const STATUS_VARIANT: Record<DataRequestStatus, "default" | "secondary" | "outli
   cancelled: "outline",
 };
 
+const ICO_COMPLAINT_URL = "https://ico.org.uk/make-a-complaint/";
+/** Stands in for the link while the sentence is formatted, so the link can sit anywhere in a translation. */
+const ICO_TOKEN = "%ico%";
+
+/**
+ * [LEGAL] UK GDPR Art 12(4): a person whose request is refused is told why. A
+ * refused request, and a finished one that was only partly done, shows the
+ * reason the team wrote. The team's internal notes never reach this page.
+ */
+function reasonShown(r: DataRequest): { label: "reasonRefusedLabel" | "reasonNotDoneLabel"; text: string } | null {
+  const text = r.outcomeReason?.trim();
+  if (!text) return null;
+  if (r.status === "rejected") return { label: "reasonRefusedLabel", text };
+  if (r.status === "completed") return { label: "reasonNotDoneLabel", text };
+  return null;
+}
+
 function Section({ icon: Icon, title, description, children }: {
   icon: typeof Download;
   title: string;
@@ -74,10 +92,12 @@ function Section({ icon: Icon, title, description, children }: {
 /**
  * The user's own GDPR controls: download a copy of their data, ask for the
  * account to be deleted (an admin completes it in Admin → GDPR), see the
- * Terms & Privacy acceptance on record and change the cookie answer.
+ * Terms & Privacy acceptance on record, and see or change this browser's
+ * cookie choice (the Cookie settings dialog, which also logs it to the account).
  */
 export function DataPrivacyPanel() {
   const t = useTranslations("dataPrivacy");
+  const tCommon = useTranslations("common");
   const format = useFormatter();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const date = (value: string) => format.dateTime(new Date(value), { dateStyle: "medium" });
@@ -87,7 +107,14 @@ export function DataPrivacyPanel() {
   const download = useDownloadMyData();
   const requestDeletion = useRequestAccountDeletion();
   const cancelRequest = useCancelDataRequest();
-  const setCookies = useSetCookieConsent();
+  // The cookie choice lives in this browser (mpl_consent), not in the account log.
+  // useConsent reads the cookie in an effect, so its state is null on the first
+  // render whether or not a choice exists. `cookieRead` flips in the same
+  // effect pass (batched with that state), so "no choice yet" is only ever shown
+  // for a cookie that was actually read and is absent.
+  const { state: cookieChoice } = useConsent();
+  const [cookieRead, setCookieRead] = useState(false);
+  useEffect(() => setCookieRead(true), []);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -127,13 +154,6 @@ export function DataPrivacyPanel() {
     });
   };
 
-  const handleCookies = (granted: boolean) =>
-    setCookies.mutate(granted, {
-      onSuccess: () => toast.success(t("cookieSaved")),
-      onError: () => toast.error(t("cookieSaveError")),
-    });
-
-  const cookie = consents.data?.cookies ?? null;
   const terms = consents.data?.terms_and_privacy ?? null;
 
   return (
@@ -202,37 +222,32 @@ export function DataPrivacyPanel() {
                   <Cookie className="size-4 text-muted-foreground" aria-hidden="true" />
                   {t("cookiesTitle")}
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {cookie
-                    ? cookie.granted
-                      ? t("cookiesAccepted", { date: date(cookie.at) })
-                      : t("cookiesDeclined", { date: date(cookie.at) })
-                    : t("cookiesNotSet")}
-                </p>
+                {!cookieRead ? (
+                  <Skeleton className="mt-1.5 h-4 w-56 max-w-full" />
+                ) : cookieChoice ? (
+                  <>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {t("cookiesChoice", {
+                        display: t(cookieChoice.preferences ? "cookiesDisplayOn" : "cookiesDisplayOff"),
+                        videos: t(cookieChoice.media ? "cookiesVideosOn" : "cookiesVideosOff"),
+                      })}
+                    </p>
+                    {/* A cookie from an older build or a hand edit can carry an unreadable date; skip the line rather than throw. */}
+                    {Number.isFinite(Date.parse(cookieChoice.at)) && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{t("cookiesChosenOn", { date: date(cookieChoice.at) })}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-muted-foreground">{t("cookiesNotSet")}</p>
+                )}
                 <p className="mt-1 text-xs text-muted-foreground">{t("cookiesDescription")}</p>
               </div>
-              <div className="flex shrink-0 gap-2" role="group" aria-label={t("cookiesTitle")}>
-                <Button
-                  size="sm"
-                  variant={cookie?.granted === false ? "secondary" : "outline"}
-                  aria-pressed={cookie?.granted === false}
-                  disabled={setCookies.isPending}
-                  onClick={() => handleCookies(false)}
-                  className="min-h-11 sm:min-h-9"
-                >
-                  {t("declineCookies")}
+              <CookieSettingsLink asChild>
+                <Button size="sm" variant="outline" className="min-h-11 shrink-0 gap-2 sm:min-h-9">
+                  <Cookie className="size-4" aria-hidden="true" />
+                  {t("cookieSettings")}
                 </Button>
-                <Button
-                  size="sm"
-                  variant={cookie?.granted ? "default" : "outline"}
-                  aria-pressed={cookie?.granted === true}
-                  disabled={setCookies.isPending}
-                  onClick={() => handleCookies(true)}
-                  className="min-h-11 sm:min-h-9"
-                >
-                  {t("acceptCookies")}
-                </Button>
-              </div>
+              </CookieSettingsLink>
             </li>
           </ul>
         )}
@@ -250,15 +265,43 @@ export function DataPrivacyPanel() {
           <p className="text-sm text-muted-foreground">{t("historyEmpty")}</p>
         ) : (
           <ul className="space-y-2">
-            {requests.data!.map((r) => (
-              <li key={r._id} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">{t(TYPE_KEYS[r.requestType] ?? "typeExport")}</p>
-                  <p className="text-xs text-muted-foreground">{t("requestedOn", { date: date(r.createdAt) })}</p>
-                </div>
-                <Badge variant={STATUS_VARIANT[r.status] ?? "outline"}>{t(STATUS_KEYS[r.status] ?? "statusPending")}</Badge>
-              </li>
-            ))}
+            {requests.data!.map((r) => {
+              const reason = reasonShown(r);
+              // [LEGAL] UK GDPR Art 12(4): with the reason, the right to complain to the ICO. One sentence, the link inside it.
+              const [complaintBefore, complaintAfter] = t("reasonComplaint", { ico: ICO_TOKEN }).split(ICO_TOKEN);
+              const complaintLine = (
+                <>
+                  {complaintBefore}
+                  <a href={ICO_COMPLAINT_URL} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-2">
+                    {t("reasonComplaintIco")}
+                    <span className="sr-only"> {tCommon("opensInNewTab")}</span>
+                  </a>
+                  {complaintAfter}
+                </>
+              );
+              return (
+                <li key={r._id} className="rounded-lg bg-muted/40 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">{t(TYPE_KEYS[r.requestType] ?? "typeExport")}</p>
+                      <p className="text-xs text-muted-foreground">{t("requestedOn", { date: date(r.createdAt) })}</p>
+                      {/* [LEGAL] Art 12(4): when the refusal was given (completedAt is its decision date). */}
+                      {r.status === "rejected" && r.completedAt && (
+                        <p className="text-xs text-muted-foreground">{t("refusedOn", { date: date(r.completedAt) })}</p>
+                      )}
+                    </div>
+                    <Badge variant={STATUS_VARIANT[r.status] ?? "outline"}>{t(STATUS_KEYS[r.status] ?? "statusPending")}</Badge>
+                  </div>
+                  {reason && (
+                    <div className="mt-2 border-t border-border/60 pt-2">
+                      <p className="text-xs font-medium text-muted-foreground">{t(reason.label)}</p>
+                      <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-foreground">{reason.text}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{complaintLine}</p>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </Section>

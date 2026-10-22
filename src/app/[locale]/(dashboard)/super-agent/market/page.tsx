@@ -11,6 +11,7 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { formatDateTime } from "@/lib/ui/intlFormat";
+import { SuperAgentReportTabs } from "@/components/features/super-agent/SuperAgentReportTabs";
 
 const getQuickQueries = (t: any) => [
   t("query1"),
@@ -96,6 +97,7 @@ export default function MarketIntelligencePage() {
 
   return (
     <div className="page-container max-sm:min-h-0">
+      <SuperAgentReportTabs />
       <SuperAgentPageIntro
         title={t("pageTitle")}
         description={t("pageDescription")}

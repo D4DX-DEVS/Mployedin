@@ -4,6 +4,7 @@ import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import { validateUploadedFile } from "@/lib/security/file-validation";
 import { scanForMalware } from "@/lib/security/malware-scan";
 import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Rate limit
-  const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(
     `job-extract:${session.user.id ?? ip}`,
     RATE_LIMIT_CONFIGS.upload

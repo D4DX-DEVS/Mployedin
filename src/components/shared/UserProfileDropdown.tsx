@@ -17,6 +17,7 @@ import {
   Crown,
   UserRound,
   Camera,
+  Cookie,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,6 +39,8 @@ import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { openAccessibilityPanel } from "@/lib/a11y/usePreferences";
+import { logoutCleanup } from "@/lib/consent/logoutCleanup";
+import { openCookieSettings } from "@/components/shared/ConsentManager/CookieSettingsLink";
 
 const ROLE_KEYS: Record<string, string> = {
   admin: "admin",
@@ -161,8 +164,11 @@ export function UserProfileDropdown({
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      // Clear idle timeout tracker
-      localStorage.removeItem("mployedin_last_activity");
+      // Clear what this device keeps for the next person (idle tracker, drafts,
+      // chats, Firebase user, push subscription). First: removing the push
+      // subscription needs the session that signOut ends. Never rejects, and
+      // gives up on its slow steps after a couple of seconds.
+      await logoutCleanup();
       await Promise.race([
         signOut({ redirect: false }).catch(() => {}),
         new Promise((resolve) => setTimeout(resolve, 4000)),
@@ -337,6 +343,16 @@ export function UserProfileDropdown({
           >
             <PersonStanding className="h-4 w-4" />
             <span className="font-medium text-sm">{tA11y("accessibility")}</span>
+          </DropdownMenuItem>
+
+          {/* Dashboards have no footer, so this is where a signed-in user
+              changes their cookie choice (the dialog lives in CookieConsent). */}
+          <DropdownMenuItem
+            className="cursor-pointer gap-2 rounded-md hover:bg-muted/50 transition-colors"
+            onSelect={() => openCookieSettings()}
+          >
+            <Cookie className="h-4 w-4" />
+            <span className="font-medium text-sm">{t("cookieSettings")}</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem

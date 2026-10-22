@@ -6,8 +6,11 @@ import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronUp, Play, Star } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { YouTubeFacade } from "@/components/shared/ConsentManager/YouTubeFacade";
+import { parseYouTubeId } from "@/lib/cms/youtube";
 import { formatDate } from "@/lib/ui/intlFormat";
 import type { BlogPost, FAQ, Testimonial, Video } from "./types";
+import { PublicImage } from "@/components/shared/PublicImage";
 
 const SECTION = "container mx-auto px-4 pt-12 sm:px-6 lg:pt-16";
 const HEADING = "text-3xl font-extrabold tracking-[-0.02em] text-foreground sm:text-4xl";
@@ -19,36 +22,48 @@ function gridFor(count: number): string {
   return "md:grid-cols-2 lg:grid-cols-3";
 }
 
-/** A broken avatar URL (blocked host, deleted file) falls back to the initial instead of a broken-image icon. */
+/**
+ * A third-party avatar URL (never loaded: it would reveal the visitor's IP before any cookie choice),
+ * a broken URL or a deleted file falls back to the initial instead of a broken-image icon.
+ */
 function Avatar({ src, name }: { src: string; name: string }) {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return (
-      <span aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-sm font-extrabold text-primary">
-        {name.charAt(0)}
-      </span>
-    );
-  }
-   
-  return <img src={src} alt="" onError={() => setFailed(true)} className="h-11 w-11 rounded-full object-cover" />;
+  return (
+    <PublicImage
+      src={src}
+      alt=""
+      className="h-11 w-11 rounded-full object-cover"
+      fallback={
+        <span aria-hidden="true" className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-sm font-extrabold text-primary">
+          {name.charAt(0)}
+        </span>
+      }
+    />
+  );
 }
 
 function pick(isAr: boolean, en: string, ar: string): string {
   return isAr ? ar || en : en;
 }
 
-function getEmbedUrl(url: string): string {
-  const youtube = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  if (youtube) return `https://www.youtube.com/embed/${youtube[1]}`;
-  const vimeo = url.match(/vimeo\.com\/(\d+)/);
-  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
-  return url;
-}
-
 export function VideosSection({ locale, videos }: { locale: string; videos: Video[] }) {
   const t = useTranslations("landing");
+  const tCommon = useTranslations("common");
   const isAr = locale === "ar";
-  if (videos.length === 0) return null;
+  // Only YouTube links can be framed (click-to-load, owner decision D5). Anything else the CMS holds,
+  // such as an older Vimeo record, is skipped and does not use up one of the three places.
+  const playable = videos
+    .map((video) => ({ video, videoId: parseYouTubeId(video.url) }))
+    .filter((item): item is { video: Video; videoId: string } => item.videoId !== null)
+    .slice(0, 3);
+  if (playable.length === 0) return null;
+  const labels = {
+    play: t("youtubePlay"),
+    watchOnYoutube: t("youtubeWatchOn"),
+    notice: t("youtubeNotice"),
+    always: t("youtubeAlways"),
+    alwaysHint: t("youtubeAlwaysHint"),
+    newTab: tCommon("opensInNewTab"),
+  };
 
   return (
     <section className={SECTION}>
@@ -56,19 +71,10 @@ export function VideosSection({ locale, videos }: { locale: string; videos: Vide
         <h2 className={HEADING}>{t("learnWorkflow")}</h2>
         <p className="mt-3 text-base leading-7 text-muted-foreground sm:text-lg">{t("learnWorkflowDesc")}</p>
       </div>
-      <div className={`grid gap-5 ${videos.length === 1 ? "mx-auto max-w-4xl" : videos.length === 2 ? "md:grid-cols-2 xl:mx-auto xl:max-w-5xl" : "md:grid-cols-2 xl:grid-cols-3"}`}>
-        {videos.slice(0, 3).map((video) => (
+      <div className={`grid gap-5 ${playable.length === 1 ? "mx-auto max-w-4xl" : playable.length === 2 ? "md:grid-cols-2 xl:mx-auto xl:max-w-5xl" : "md:grid-cols-2 xl:grid-cols-3"}`}>
+        {playable.map(({ video, videoId }) => (
           <article key={video._id} className="flex flex-col gap-2.5">
-            <div className="aspect-video overflow-hidden rounded-2xl bg-[hsl(var(--brand-blue-dark))]">
-              <iframe
-                src={getEmbedUrl(video.url)}
-                title={pick(isAr, video.title, video.titleAr)}
-                loading="lazy"
-                className="h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
+            <YouTubeFacade videoId={videoId} title={pick(isAr, video.title, video.titleAr)} labels={labels} locale={locale} />
             <div className="inline-flex items-center gap-1.5 self-start rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-primary">
               <Play className="h-3.5 w-3.5" aria-hidden="true" />
               {t("watch")}
@@ -142,10 +148,7 @@ export function PostsSection({ locale, posts }: { locale: string; posts: BlogPos
             href={`/${locale}/blog/${post.slug}`}
             className="group flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card transition-shadow hover:shadow-md"
           >
-            {post.coverImage && (
-               
-              <img src={post.coverImage} alt="" className="h-40 w-full object-cover" />
-            )}
+            <PublicImage src={post.coverImage} alt="" className="h-40 w-full object-cover" />
             <div className="flex flex-col gap-2 p-5">
               <h3 className="text-lg font-extrabold leading-snug text-foreground transition-colors group-hover:text-primary">
                 {pick(isAr, post.title, post.titleAr)}

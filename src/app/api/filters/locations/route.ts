@@ -5,6 +5,7 @@ import State from "@/models/State";
 import City from "@/models/City";
 import logger from "@/lib/logger";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import { escapeRegex } from "@/lib/security/sanitize";
 
 /**
@@ -21,8 +22,7 @@ import { escapeRegex } from "@/lib/security/sanitize";
  */
 export async function GET(req: NextRequest) {
   // Public and DB-backed — throttle per IP like the sibling reference-data routes.
-  const ip =
-    req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const rl = await checkRateLimit(ip, { limit: 60, windowSec: 60, prefix: "filters-locations" });
   if (!rl.allowed) {
     return NextResponse.json(

@@ -33,6 +33,8 @@ import { isValidWebsiteInput } from "@/lib/validators/website";
 import { useMySubscription } from "@/hooks/useSubscription";
 import type { CompanyData } from "@/hooks/useEmployerProfile";
 import { useCountrySearch } from "@/hooks/useCountrySearch";
+import { logoutCleanup } from "@/lib/consent/logoutCleanup";
+import { resetSignOutInProgress } from "@/lib/consent/deviceStorage";
 import { useFieldHighlight } from "@/hooks/useFieldHighlight";
 import { useTranslations } from "next-intl";
 
@@ -1124,8 +1126,10 @@ function CompanySettingsPage() {
                           const res = await fetch(`/api/employers/${userId}`, { method: "DELETE" });
                           if (!res.ok) throw new Error();
                           toast.success(t("deactivateSuccess"));
+                          await logoutCleanup();
                           await signOut({ callbackUrl: `/${locale}/login` });
                         } catch {
+                          resetSignOutInProgress();
                           toast.error(t("deactivateFailed"));
                           setDeactivating(false);
                         }

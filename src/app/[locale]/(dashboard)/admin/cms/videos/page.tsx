@@ -13,7 +13,7 @@ export default function VideosAdminPage() {
     { name: "titleAr", label: t("titleArabicLabel"), type: "text", placeholder: t("videoTitlePlaceholder") },
     { name: "description", label: t("descriptionEnglishLabel"), type: "textarea", placeholder: t("briefDescriptionPlaceholder") },
     { name: "descriptionAr", label: t("descriptionArabicLabel"), type: "textarea", placeholder: t("briefDescriptionPlaceholder") },
-    { name: "url", label: t("videoUrlLabel"), type: "text", required: true, placeholder: t("youtubeUrlPlaceholder") },
+    { name: "url", label: t("videoUrlLabel"), type: "text", required: true, placeholder: t("youtubeUrlPlaceholder"), hint: t("videoUrlHint") },
     { name: "sortOrder", label: t("sortOrderLabel"), type: "number", placeholder: "0" },
     {
       name: "isActive",

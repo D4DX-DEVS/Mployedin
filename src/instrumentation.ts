@@ -21,6 +21,12 @@ export async function register() {
       );
     }
 
+    // Deploy safety: without a trusted client-IP source every visitor shares one rate-limit bucket and every stored
+    // IP reads "direct". An error, once per process; not a start-up failure (that would take the site down).
+    const { clientIpConfigurationProblem } = await import("@/lib/security/clientIp");
+    const clientIpProblem = clientIpConfigurationProblem();
+    if (clientIpProblem) logger.error(clientIpProblem);
+
     // Optional in production, but each gap should be a conscious choice.
     if (process.env.NODE_ENV === "production") {
       if (!process.env.MALWARE_SCAN_URL) {

@@ -22,6 +22,7 @@ import { recordRegistrationConsents } from "@/lib/gdpr/consent";
 import { parseCookieChoice } from "@/lib/gdpr/cookieChoice";
 import { TERMS_REQUIRED_MESSAGE } from "@/lib/validators/misc";
 import { findRegionCoverage, resolveEmployerRegion } from "@/lib/agents/territoryCoverage";
+import { resolveRequestLocale } from "@/lib/i18n/requestLocale";
 
 export const runtime = "nodejs";
 
@@ -430,7 +431,7 @@ export async function POST(req: NextRequest) {
 
     // Send emails — await to prevent Next.js from terminating before delivery
     const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const locale = req.cookies.get("NEXT_LOCALE")?.value === "ar" ? "ar" : "en";
+    const locale = resolveRequestLocale(req);
     const verifyUrl = `${baseUrl}/${locale}/verify-email?token=${rawToken}&email=${encodeURIComponent(contactEmail)}`;
     const dashboardUrl = `${baseUrl}/${locale}/employer`;
 

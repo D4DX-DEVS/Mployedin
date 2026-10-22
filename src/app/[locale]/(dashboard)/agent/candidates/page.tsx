@@ -115,6 +115,10 @@ export default function AgentCandidatesPage() {
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "");
   const [jobIdFilter, setJobIdFilter] = useUrlFilter("jobId", "");
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  // A task linked to a candidate opens their application (?applicationId=) or,
+  // when there is no linked job, all of theirs (?jobSeekerId=); a chip clears it.
+  const [applicationFilter, setApplicationFilter] = useUrlFilter("applicationId", "");
+  const [candidateFilter, setCandidateFilter] = useUrlFilter("jobSeekerId", "");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   // BUG-07: rapid filter changes let a stale response overwrite the table.
   // Only the latest request may update state (same pattern as leads page).
@@ -129,6 +133,8 @@ export default function AgentCandidatesPage() {
       if (statusFilter) params.set("status", statusFilter);
       if (jobIdFilter) params.set("jobId", jobIdFilter);
       if (search.trim()) params.set("search", search.trim());
+      if (applicationFilter) params.set("applicationId", applicationFilter);
+      if (candidateFilter) params.set("jobSeekerId", candidateFilter);
       const res = await fetch(`/api/applications?${params}`);
       if (requestId !== listRequestRef.current) return;
       if (!res.ok) {
@@ -145,14 +151,14 @@ export default function AgentCandidatesPage() {
     } finally {
       if (requestId === listRequestRef.current) setLoading(false);
     }
-  }, [statusFilter, jobIdFilter, search, pagination.page, pagination.limit]);
+  }, [statusFilter, jobIdFilter, search, applicationFilter, candidateFilter, pagination.page, pagination.limit]);
 
   useEffect(() => {
     const t = setTimeout(loadApplications, 300);
     return () => clearTimeout(t);
   }, [loadApplications]);
 
-  useEffect(() => { pagination.resetPage(); }, [statusFilter, jobIdFilter, search]);
+  useEffect(() => { pagination.resetPage(); }, [statusFilter, jobIdFilter, search, applicationFilter, candidateFilter]);
 
   // Scheduling dialog state
   const [scheduleApp, setScheduleApp] = useState<ApplicationItem | null>(null);
@@ -332,6 +338,14 @@ export default function AgentCandidatesPage() {
   const filteredJobTitle = jobIdFilter && applications.length > 0
     ? applications[0]?.jobId?.title ?? null
     : null;
+  // The chip names who the task link narrowed the list to.
+  const linkedCandidateName = (applicationFilter || candidateFilter) && applications.length > 0
+    ? applications[0]?.jobSeekerId?.userId?.name ?? null
+    : null;
+  const linkedFilterLabel = applicationFilter
+    ? [linkedCandidateName, applications[0]?.jobId?.title].filter(Boolean).join(" · ") || t("clearApplicationFilter")
+    : linkedCandidateName ?? t("clearCandidateFilter");
+  const clearLinkedFilter = () => { setApplicationFilter(""); setCandidateFilter(""); };
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("tableHeaderCandidate"), key: "jobSeekerId", formatter: (_v, row) => (row.jobSeekerId as { userId?: { name?: string } })?.userId?.name ?? "" },
@@ -348,6 +362,8 @@ export default function AgentCandidatesPage() {
     if (statusFilter) base.set("status", statusFilter);
     if (jobIdFilter) base.set("jobId", jobIdFilter);
     if (search.trim()) base.set("search", search.trim());
+    if (applicationFilter) base.set("applicationId", applicationFilter);
+    if (candidateFilter) base.set("jobSeekerId", candidateFilter);
     return fetchAllPaginated<Record<string, unknown>>(
       (page, limit) => `/api/applications?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
       (json) => ({
@@ -355,7 +371,7 @@ export default function AgentCandidatesPage() {
         total: Number((json.pagination as { total?: number } | undefined)?.total ?? 0),
       }),
     );
-  }, [statusFilter, jobIdFilter, search]);
+  }, [statusFilter, jobIdFilter, search, applicationFilter, candidateFilter]);
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: applications as unknown as Record<string, unknown>[],
@@ -376,7 +392,7 @@ export default function AgentCandidatesPage() {
           filter row like every other list, and the job narrowing a chip there. */}
       <InlineFilterBar
         className="workspace-panel-surface rounded-2xl border-b-0"
-        onClear={search || statusFilter || jobIdFilter ? () => { setSearch(""); setStatusFilter(""); setJobIdFilter(""); pagination.resetPage(); } : undefined}
+        onClear={search || statusFilter || jobIdFilter || applicationFilter || candidateFilter ? () => { setSearch(""); setStatusFilter(""); setJobIdFilter(""); clearLinkedFilter(); pagination.resetPage(); } : undefined}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -394,6 +410,18 @@ export default function AgentCandidatesPage() {
           <Button variant="outline" size="sm" onClick={() => setJobIdFilter("")} className="workspace-tone-sky h-11 max-w-56 rounded-lg border-transparent px-3 hover:opacity-90 sm:h-9">
             <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{filteredJobTitle ?? t("clearJobFilter")}</span>
+          </Button>
+        )}
+        {(applicationFilter || candidateFilter) && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearLinkedFilter}
+            aria-label={t("clearLinkedFilterAria", { name: linkedFilterLabel })}
+            className="workspace-tone-sky h-11 max-w-72 rounded-lg border-transparent px-3 hover:opacity-90 sm:h-9"
+          >
+            <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{linkedFilterLabel}</span>
           </Button>
         )}
       </InlineFilterBar>

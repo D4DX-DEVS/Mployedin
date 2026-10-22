@@ -28,7 +28,13 @@ jest.mock("@/lib/logger", () => ({ __esModule: true, default: { warn: jest.fn(),
 jest.mock("@/lib/agents/assignedRegion", () => ({ regionLocale: jest.fn(), resolveAssignedRegions: jest.fn(async () => []) }));
 jest.mock("@/lib/cv/cvDocuments", () => ({ deleteCvRecordsOfSeeker: jest.fn(async () => undefined) }));
 const eraseWhatsAppData = jest.fn(async (..._a: unknown[]) => undefined);
-jest.mock("@/lib/gdpr/erasure", () => ({ eraseWhatsAppData: (...a: unknown[]) => eraseWhatsAppData(...a) }));
+const anonymiseConsentLogs = jest.fn(async (..._a: unknown[]) => undefined);
+const eraseStoredAvatar = jest.fn(async (..._a: unknown[]) => undefined);
+jest.mock("@/lib/gdpr/erasure", () => ({
+  eraseWhatsAppData: (...a: unknown[]) => eraseWhatsAppData(...a),
+  anonymiseConsentLogs: (...a: unknown[]) => anonymiseConsentLogs(...a),
+  eraseStoredAvatar: (...a: unknown[]) => eraseStoredAvatar(...a),
+}));
 
 /** What `Model.find…(…).select(…).lean()` and `.select(…).lean()` after an update resolve to. */
 const chain = (value: unknown) => {
@@ -190,6 +196,15 @@ describe("DELETE /api/job-seekers/account", () => {
     // The helper unsets the whole whatsapp subdocument; no partial copy of it here.
     expect(update).not.toHaveProperty("$unset");
     expect(eraseWhatsAppData.mock.invocationCallOrder[0]).toBeLessThan(userFindByIdAndUpdate.mock.invocationCallOrder[0]);
+  });
+
+  it("anonymises the consent rows and deletes the stored photo, like the admin erasure", async () => {
+    userFindByIdAndUpdate.mockReturnValueOnce(chain({ avatar: "https://bucket.example/avatars/a.jpg" }));
+    const res = await erase();
+    expect(res.status).toBe(200);
+    expect(anonymiseConsentLogs).toHaveBeenCalledWith(USER);
+    expect(eraseStoredAvatar).toHaveBeenCalledWith("https://bucket.example/avatars/a.jpg", USER);
+    expect((userFindByIdAndUpdate.mock.calls[0][1] as Record<string, unknown>).avatar).toBeNull();
   });
 
   it("fails the erasure, with nothing anonymised yet, when the WhatsApp part fails (a retry still has the number)", async () => {

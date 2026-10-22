@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Loader2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
 import { postSignInPath } from "@/lib/auth/roleHome";
+import { logoutCleanup } from "@/lib/consent/logoutCleanup";
+import { resetSignOutInProgress } from "@/lib/consent/deviceStorage";
 
 type Status = "idle" | "verifying" | "success" | "error" | "no-token";
 
@@ -95,6 +97,8 @@ export default function VerifyEmailPage() {
   // and the user was stuck on this page. Refresh once the session is known; a
   // signed-out visitor (verifying on another device) has nothing to refresh.
   const [sessionStale, setSessionStale] = useState(false);
+  // "Back to sign in" is clearing the device and ending the session.
+  const [signingOut, setSigningOut] = useState(false);
   const refreshStartedRef = useRef(false);
   useEffect(() => {
     if (!sessionStale || refreshStartedRef.current || sessionStatus === "loading") return;
@@ -445,7 +449,17 @@ export default function VerifyEmailPage() {
           <Button size="lg"
             variant="outline"
             className="w-full max-w-xs"
-            onClick={() => signOut({ callbackUrl: withCallback(`/${locale ?? "en"}/login`, callback) })}
+            disabled={signingOut}
+            onClick={async () => {
+              setSigningOut(true);
+              try {
+                await logoutCleanup();
+                await signOut({ callbackUrl: withCallback(`/${locale ?? "en"}/login`, callback) });
+              } catch {
+                resetSignOutInProgress();
+                setSigningOut(false);
+              }
+            }}
           >
             {t("backToSignIn")}
           </Button>

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useTranslations } from "next-intl";
-import { BarChart3, Coins, Download, Loader2, Sparkles, Target, TrendingDown, TrendingUp, Users2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { BarChart3, Coins, Target, TrendingDown, TrendingUp, Users2 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -10,27 +10,14 @@ import {
   SuperAgentPageIntro,
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
-import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
+import { SuperAgentReportTabs } from "@/components/features/super-agent/SuperAgentReportTabs";
 import { formatCurrency } from "@/lib/currency";
-import { formatTime } from "@/lib/ui/intlFormat";
-
-
-interface Stats {
-  totalAgents: number;
-  totalLeads: number;
-  totalPlacements: number;
-  totalCommissions: number;
-}
-
-interface AgentBreakdown {
-  name: string;
-  leads: number;
-  placements: number;
-  conversionRate: number;
-  commission: number;
-}
+import { resolveIntlLocale } from "@/lib/ui/intlFormat";
+import { AgentPerformanceTable, type AgentPerformanceRow } from "./_components/AgentPerformanceTable";
+import { TeamAiReport } from "./_components/TeamAiReport";
 
 interface MonthlyTrend {
+  /** "YYYY-MM" */
   month: string;
   leads: number;
   placements: number;
@@ -38,53 +25,47 @@ interface MonthlyTrend {
   trend: number;
 }
 
+interface TeamReport {
+  totalAgents: number;
+  totalLeads: number;
+  totalPlacements: number;
+  totalCommissions: number;
+  currency: string;
+  otherCurrencies: { currency: string; total: number }[];
+  agentBreakdown: AgentPerformanceRow[];
+  monthlyTrends: MonthlyTrend[];
+}
+
+/** "2026-10" → "Oct 2026" in the reader's language. */
+function monthLabel(key: string, locale: string): string {
+  const [year, month] = key.split("-").map(Number);
+  if (!year || !month) return key;
+  return new Intl.DateTimeFormat(resolveIntlLocale(locale), { month: "short", year: "numeric" }).format(
+    new Date(year, month - 1, 1)
+  );
+}
+
+/**
+ * The Team tab of the super-agent reports: every agent's numbers and the last
+ * six months, for the review the dashboard is too short to hold.
+ */
 export default function SuperAgentReportsPage() {
   const t = useTranslations("superAgentReports");
   const tc = useTranslations("common");
-  const tt = useTranslations("table");
+  const locale = useLocale();
 
-  const SA_REPORT_TEMPLATES = [
-    { label: t("teamPerformanceSummary"), query: t("teamPerformanceQuery") },
-    { label: t("agentComparisonAnalysis"), query: t("agentComparisonQuery") },
-    { label: t("leadPipelineHealth"), query: t("leadPipelineQuery") },
-    { label: t("commissionForecast"), query: t("commissionForecastQuery") },
-  ];
-
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [report, setReport] = useState<TeamReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [currencyCode, setCurrencyCode] = useState("AED");
-  const [agentBreakdown, setAgentBreakdown] = useState<AgentBreakdown[]>([]);
-  const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrend[]>([]);
-
-  /* AI Report state */
-  const [aiQuery, setAiQuery] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<{ content: string; generatedAt: string } | null>(null);
-  const [aiError, setAiError] = useState("");
-
-  useEffect(() => {
-    fetch("/api/super-agent/settings")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.settings?.currencyCode) setCurrencyCode(data.settings.currencyCode);
-      })
-      .catch(() => {});
-  }, []);
 
   const fetchReports = useCallback(() => {
     setLoading(true);
     setError(false);
     fetch("/api/super-agent/reports")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data) {
-          setStats(data);
-          if (data.agentBreakdown) setAgentBreakdown(data.agentBreakdown);
-          if (data.monthlyTrends) setMonthlyTrends(data.monthlyTrends);
-        } else {
-          setError(true);
-        }
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: TeamReport | null) => {
+        if (data) setReport(data);
+        else setError(true);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -92,59 +73,39 @@ export default function SuperAgentReportsPage() {
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
-  const generateAIReport = async (reportQuery?: string) => {
-    const q = reportQuery ?? aiQuery;
-    if (!q.trim()) return;
-    setAiLoading(true);
-    setAiError("");
-    setAiResult(null);
-    try {
-      const res = await fetch("/api/ai/report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, scope: "platform" }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      setAiResult({ content: data.report ?? data.content ?? JSON.stringify(data), generatedAt: formatTime(new Date()) });
-    } catch (e) {
-      setAiError(t("aiErrorMessage"));
-    } finally {
-      setAiLoading(false);
-    }
-  };
+  // The API reports money in the currency that carries most of it; the rest is
+  // listed under the header instead of being added in as if it were the same.
+  const currency = report?.currency ?? "AED";
+  const agentRows = report?.agentBreakdown ?? [];
+  const monthlyTrends = report?.monthlyTrends ?? [];
+  const otherCurrencies = report?.otherCurrencies ?? [];
 
-  const downloadAIReport = () => {
-    if (!aiResult) return;
-    const blob = new Blob([aiResult.content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sa-report-${new Date().toISOString().split("T")[0]}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Hero strip, matching every other super-agent listing. As a separate card
-  // grid these four figures pushed the agent breakdown — the actual report —
-  // below the fold.
   const kpis = [
-    { label: t("agentsManaged"), value: stats?.totalAgents ?? 0, note: t("agentsManagedHelper"), icon: Users2 },
-    { label: t("totalLeads"), value: stats?.totalLeads ?? 0, note: t("totalLeadsHelper"), icon: Target },
-    { label: t("placements"), value: stats?.totalPlacements ?? 0, note: t("placementsHelper"), icon: BarChart3 },
-    { label: t("commissions"), value: formatCurrency(stats?.totalCommissions ?? 0, currencyCode), note: t("commissionsHelper"), icon: Coins },
+    { label: t("agentsManaged"), value: report?.totalAgents ?? 0, note: t("agentsManagedHelper"), icon: Users2 },
+    { label: t("totalLeads"), value: report?.totalLeads ?? 0, note: t("totalLeadsHelper"), icon: Target },
+    { label: t("placements"), value: report?.totalPlacements ?? 0, note: t("placementsHelper"), icon: BarChart3 },
+    { label: t("commissionEarned"), value: formatCurrency(report?.totalCommissions ?? 0, currency), note: t("commissionsHelper"), icon: Coins },
   ];
 
   return (
     <div className="page-container">
+      <SuperAgentReportTabs />
       <SuperAgentPageIntro
-        title={t("pageTitle")}
+        title={t("teamPageTitle")}
         description={t("pageDescription")}
-        metrics={loading ? undefined : kpis}
+        // No zeros after a failed load: "0 agents" reads as an empty team.
+        metrics={loading || error ? undefined : kpis}
         compactMetrics
       />
 
-      {/* ---- Error State ---- */}
+      {otherCurrencies.length > 0 ? (
+        <p className="-mt-2 text-xs text-muted-foreground">
+          {t("otherCurrencies", {
+            amounts: otherCurrencies.map((row) => formatCurrency(row.total, row.currency)).join(" · "),
+          })}
+        </p>
+      ) : null}
+
       {error && !loading && (
         <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
           <p className="text-sm text-destructive">{t("loadReportsError")}</p>
@@ -158,179 +119,83 @@ export default function SuperAgentReportsPage() {
         </div>
       )}
 
-      {/* Skeleton shaped like the strip the figures land in, not like the card
-          grid they used to occupy. */}
+      {/* Skeleton shaped like the strip the figures land in. */}
       {loading && (
         <div className="h-16 animate-pulse rounded-2xl border border-border/70 bg-card/90" />
       )}
 
-      {/* Agent Comparison */}
-      <SuperAgentSection
-        eyebrow={t("agentComparison")}
-        title={t("agentPerformanceBreakdown")}
-        description={t("agentPerformanceDescription")}
-      >
-        {/* "No agent data" used to show while the report was still loading. */}
-        {loading ? (
-          <div className="space-y-3" aria-hidden="true">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-16 animate-pulse rounded-2xl bg-muted/50" />
-            ))}
-          </div>
-        ) : agentBreakdown.length === 0 ? (
-          <div className="rounded-2xl border border-border/70 bg-secondary/50 text-sm leading-6 text-muted-foreground panel-body">
-            {t("noAgentData")}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {agentBreakdown.map((agent) => (
-              <div key={agent.name} className="workspace-glass-panel card-pad rounded-2xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                      {agent.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{agent.name}</p>
-                      <p className="text-xs text-muted-foreground">{t("leads")}: {agent.leads} · {t("placements")}: {agent.placements}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-right">
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t("conversion")}</p>
-                      <p className={`text-sm font-semibold ${agent.conversionRate >= 30 ? "text-emerald-600" : agent.conversionRate >= 15 ? "text-amber-600" : "text-red-500"}`}>
-                        {agent.conversionRate}%
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">{t("commission")}</p>
-                      <p className="text-sm font-semibold text-foreground">{formatCurrency(agent.commission, currencyCode)}</p>
-                    </div>
-                  </div>
-                </div>
-                {/* Performance bar */}
-                <div className="mt-3 flex gap-1">
-                  <div className="h-2 rounded-full bg-sky-400" style={{ width: `${Math.min(100, agent.leads * 2)}%` }} title={t("leads")} />
-                  <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${Math.min(100, agent.placements * 5)}%` }} title={t("placements")} />
-                  <div className="h-2 rounded-full bg-amber-400" style={{ width: `${Math.min(100, agent.conversionRate)}%` }} title={t("conversion")} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </SuperAgentSection>
-
-      {/* Monthly Trends */}
-      <SuperAgentSection
-        eyebrow={t("trends")}
-        title={t("monthlyTrends")}
-        description={t("monthlyTrendsDescription")}
-      >
-        {monthlyTrends.length === 0 ? (
-          <div className="rounded-2xl border border-border/70 bg-secondary/50 text-sm leading-6 text-muted-foreground panel-body">
-            {t("noMonthlyData")}
-          </div>
-        ) : (
-          <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead>{t("month")}</TableHead>
-                  <TableHead className="text-right">{t("leads")}</TableHead>
-                  <TableHead className="text-right">{t("placements")}</TableHead>
-                  <TableHead className="text-right">{t("revenue")}</TableHead>
-                  <TableHead className="text-right">{t("trend")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {monthlyTrends.map((m) => (
-                  <TableRow key={m.month} className="bg-transparent">
-                    <TableCell className="font-medium text-foreground">{m.month}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{m.leads}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{m.placements}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{formatCurrency(m.revenue, currencyCode)}</TableCell>
-                    <TableCell className="text-right">
-                      {m.trend > 0 ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-600"><TrendingUp className="h-3.5 w-3.5" /> +{m.trend}%</span>
-                      ) : m.trend < 0 ? (
-                        <span className="inline-flex items-center gap-1 text-red-500"><TrendingDown className="h-3.5 w-3.5" /> {m.trend}%</span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </SuperAgentSection>
-
-      {/* ─── AI Report Section ─── */}
-      <SuperAgentSection
-        eyebrow={t("aiPoweredReports")}
-        title={t("generateCustomReports")}
-        description={t("generateCustomReportsDescription")}
-      >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {SA_REPORT_TEMPLATES.map((t) => (
-            <button
-              key={t.label}
-              onClick={() => { setAiQuery(t.query); generateAIReport(t.query); }}
-              disabled={aiLoading}
-              className="workspace-subtle-surface card-pad rounded-2xl text-left text-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-[0_20px_44px_-36px_rgba(2,132,199,0.45)] disabled:opacity-50"
-            >
-              <BarChart3 className="mb-2 h-4 w-4 text-primary" />
-              <div className="font-semibold text-foreground">{t.label}</div>
-              <div className="mt-1 text-xs leading-5 text-muted-foreground">{t.query}</div>
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <p className="text-sm font-semibold text-foreground">{t("customReport")}</p>
-          </div>
-          <textarea
-            aria-label={t("customReport")}
-            value={aiQuery}
-            onChange={(e) => setAiQuery(e.target.value)}
-            rows={3}
-            placeholder={t("customReportPlaceholder")}
-            className="w-full rounded-2xl border border-border bg-secondary/65 px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/30 focus:ring-2 focus:ring-primary/10"
-          />
-          <button
-            onClick={() => generateAIReport()}
-            disabled={!aiQuery.trim() || aiLoading}
-            className="flex w-full sm:w-auto sm:inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+      {!error ? (
+        <>
+          <SuperAgentSection
+            eyebrow={t("agentComparison")}
+            title={t("agentPerformanceBreakdown")}
+            description={t("agentPerformanceDescription")}
           >
-            {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {aiLoading ? tc("generating") : t("generateReport")}
-          </button>
-        </div>
+            {loading ? (
+              <div className="space-y-2" aria-hidden="true">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-11 animate-pulse rounded-xl bg-muted/50" />
+                ))}
+              </div>
+            ) : agentRows.length === 0 ? (
+              <div className="rounded-2xl border border-border/70 bg-secondary/50 text-sm leading-6 text-muted-foreground panel-body">
+                {t("noAgentData")}
+              </div>
+            ) : (
+              <AgentPerformanceTable rows={agentRows} currency={currency} />
+            )}
+          </SuperAgentSection>
 
-        {aiError && (
-          <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 text-sm text-destructive chip-pad">{aiError}</div>
-        )}
+          <SuperAgentSection
+            eyebrow={t("trends")}
+            title={t("monthlyTrends")}
+            description={t("monthlyTrendsDescription")}
+          >
+            {loading ? (
+              <div className="h-48 animate-pulse rounded-2xl bg-muted/50" aria-hidden="true" />
+            ) : monthlyTrends.every((m) => m.leads === 0 && m.placements === 0 && m.revenue === 0) ? (
+              <div className="rounded-2xl border border-border/70 bg-secondary/50 text-sm leading-6 text-muted-foreground panel-body">
+                {t("noMonthlyData")}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-border/60">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableHead>{t("month")}</TableHead>
+                      <TableHead className="text-end">{t("newLeads")}</TableHead>
+                      <TableHead className="text-end">{t("placements")}</TableHead>
+                      <TableHead className="text-end">{t("commission")}</TableHead>
+                      <TableHead className="hidden text-end sm:table-cell">{t("leadsChange")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {monthlyTrends.map((m) => (
+                      <TableRow key={m.month} className="bg-transparent">
+                        <TableCell className="whitespace-nowrap font-medium text-foreground">{monthLabel(m.month, locale)}</TableCell>
+                        <TableCell className="text-end tabular-nums text-muted-foreground">{m.leads}</TableCell>
+                        <TableCell className="text-end tabular-nums text-muted-foreground">{m.placements}</TableCell>
+                        <TableCell className="text-end tabular-nums text-muted-foreground">{formatCurrency(m.revenue, currency)}</TableCell>
+                        <TableCell className="hidden text-end sm:table-cell">
+                          {m.trend > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-600"><TrendingUp className="h-3.5 w-3.5" aria-hidden="true" /> +{m.trend}%</span>
+                          ) : m.trend < 0 ? (
+                            <span className="inline-flex items-center gap-1 text-red-500"><TrendingDown className="h-3.5 w-3.5" aria-hidden="true" /> {m.trend}%</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </SuperAgentSection>
+        </>
+      ) : null}
 
-        {aiResult && (
-          <div className="mt-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-primary">{t("reportGeneratedAt", { time: aiResult.generatedAt })}</p>
-              <button
-                onClick={downloadAIReport}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-border text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary chip-pad"
-              >
-                <Download className="h-3.5 w-3.5" />{tc("export")}
-              </button>
-            </div>
-            <div className="workspace-subtle-surface card-pad rounded-2xl">
-              <MarkdownRenderer content={aiResult.content} />
-            </div>
-          </div>
-        )}
-      </SuperAgentSection>
+      <TeamAiReport />
     </div>
   );
 }

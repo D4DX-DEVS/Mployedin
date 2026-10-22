@@ -14,6 +14,10 @@ if (process.env.NODE_ENV === "production") {
   withSerwist = withSerwistInit({
     swSrc: "src/app/sw.ts",
     swDest: "public/sw.js",
+    // Serwist registers /sw.js on every page by default. Registration must wait
+    // for the visitor's opt-in (ServiceWorkerRegistration), not happen for
+    // every anonymous visitor.
+    register: false,
   });
 } else {
   withSerwist = (config) => config;
@@ -22,6 +26,10 @@ if (process.env.NODE_ENV === "production") {
 const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
+  // `.next` unless NEXT_DIST_DIR is set. The cookie-consent E2E builds and serves
+  // its production copy from `.next-e2e`, so it never overwrites the `.next`
+  // that another build or the dev server is using.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // Also Turbopack's `[project]` root and the key of its persistent dev cache.
   // Must be one spelling no matter who launched the process — a raw cwd is
   // `D:\` from PowerShell and `d:\` from VS Code, and mixing them across

@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { signOut, useSession } from "next-auth/react";
 import { FileCheck2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { logoutCleanup } from "@/lib/consent/logoutCleanup";
+import { resetSignOutInProgress } from "@/lib/consent/deviceStorage";
 import { TermsAgreement } from "./TermsAgreement";
 
 export type AcceptTermsState = "first" | "updated" | "accepted" | "signedOut";
@@ -86,7 +88,16 @@ export function AcceptTermsForm({
     }
   };
 
-  const signOutToLogin = () => signOut({ callbackUrl: `/${locale}/login` });
+  const signOutToLogin = async () => {
+    setSubmitting(true);
+    try {
+      await logoutCleanup();
+      await signOut({ callbackUrl: `/${locale}/login` });
+    } catch {
+      resetSignOutInProgress();
+      setSubmitting(false);
+    }
+  };
 
   if (state === "signedOut") {
     return (
@@ -97,7 +108,7 @@ export function AcceptTermsForm({
         </div>
         {/* Signing out clears a session cookie the server no longer honours;
             a plain link to /login would bounce straight back here. */}
-        <Button className="min-h-11 w-full" onClick={signOutToLogin}>
+        <Button className="min-h-11 w-full" onClick={signOutToLogin} disabled={submitting}>
           {t("acceptTerms.signInAgain")}
         </Button>
       </div>
@@ -161,6 +172,7 @@ export function AcceptTermsForm({
         <button
           type="button"
           onClick={signOutToLogin}
+          disabled={submitting}
           className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
         >
           {t("acceptTerms.signOut")}
