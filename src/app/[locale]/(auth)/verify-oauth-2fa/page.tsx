@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { roleHomePath } from "@/lib/auth/roleHome";
+import { logoutCleanup } from "@/lib/consent/logoutCleanup";
+import { resetSignOutInProgress } from "@/lib/consent/deviceStorage";
 
 /**
  * /verify-oauth-2fa
@@ -29,6 +31,8 @@ export default function VerifyOAuth2faPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+  // "Sign out" is clearing the device and ending the session.
+  const [signingOut, setSigningOut] = useState(false);
 
   // If we somehow land here without a pending-2FA session (e.g. user navigated
   // here directly, or already verified), redirect to the appropriate dashboard
@@ -131,7 +135,19 @@ export default function VerifyOAuth2faPage() {
   }
 
   async function handleSignOut() {
-    await signOut({ redirect: false });
+    setSigningOut(true);
+    try {
+      await logoutCleanup();
+      await signOut({ redirect: false });
+    } catch {
+      resetSignOutInProgress();
+      setSigningOut(false);
+      return;
+    }
+    // router.replace is a client-side navigation: this page, and the "sign-out
+    // in progress" flag with it, stays alive into the next sign-in. The cleanup
+    // is done, so let autosave write again.
+    resetSignOutInProgress();
     router.replace(`/${locale}/login`);
   }
 
@@ -196,6 +212,7 @@ export default function VerifyOAuth2faPage() {
       <button
         type="button"
         onClick={handleSignOut}
+        disabled={signingOut}
         className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
       >
         {t("oauth2faSignOut")}

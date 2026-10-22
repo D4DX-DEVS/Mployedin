@@ -33,6 +33,11 @@ export function TableSortControl({
 }: TableSortControlProps) {
   const t = useTranslations("common");
   const DirectionIcon = order === "asc" ? ArrowUp : ArrowDown;
+  // Radix prints the chosen item's text into the trigger from the (closed, so
+  // unrendered) list, which only exists in the browser: until the page was
+  // hydrated the box showed an icon and nothing else. Handing it the label
+  // makes it part of the first paint.
+  const currentLabel = options.find((option) => option.value === value)?.label;
 
   return (
     <div className={cn("flex min-w-0 items-center gap-1.5", className)}>
@@ -45,7 +50,7 @@ export function TableSortControl({
           )}
         >
           <ArrowUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <SelectValue placeholder={t("sortBy")} />
+          <SelectValue placeholder={t("sortBy")}>{currentLabel}</SelectValue>
         </SelectTrigger>
         <SelectContent align="end">
           {options.map((option) => (

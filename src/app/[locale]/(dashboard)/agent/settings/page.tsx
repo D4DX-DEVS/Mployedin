@@ -35,6 +35,7 @@ import type { AssignedRegion } from "@/lib/agents/assignedRegion";
 import { useTimezoneOptions } from "@/lib/i18n/useTimezoneOptions";
 import { useConfirm } from "@/hooks/useConfirm";
 import { PhoneInput } from "@/components/shared/PhoneInput";
+import { toSafeImageSrc } from "@/lib/images/externalAvatar";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -319,7 +320,7 @@ function ProfileTab() {
           <div className="relative group shrink-0">
             <div className="w-20 h-20 rounded-2xl border-2 border-primary/20 bg-muted/30 flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary/40 shadow-sm">
               {displayUrl ? (
-                <img src={displayUrl} alt={t("profile.photoAlt")} className="w-full h-full object-cover" />
+                <img src={toSafeImageSrc(displayUrl)} alt={t("profile.photoAlt")} className="w-full h-full object-cover" />
               ) : (
                 <span className="text-xl font-bold text-primary/60">{initials}</span>
               )}

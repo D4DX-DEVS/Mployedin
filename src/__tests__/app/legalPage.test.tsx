@@ -32,6 +32,21 @@ describe("LegalPage", () => {
     expect(screen.getByText("We keep your data safe.")).toBeInTheDocument();
   });
 
+  it("does not load a third-party <img> from the CMS body (the browser would contact that host before any cookie choice)", async () => {
+    mockPage({
+      title: "Privacy notice",
+      body: '<p>Intro</p><img src="https://i.pravatar.cc/300" alt="third party"><img src="https://d4dx-storage.blr1.digitaloceanspaces.com/legal/seal.png" alt="own seal">',
+      updatedAt: "2026-09-28T10:00:00.000Z",
+    });
+    const { container } = render(<LegalPage kind="privacy" />);
+
+    expect(await screen.findByText("Intro")).toBeInTheDocument();
+    expect(container.querySelector('img[src*="pravatar"]')).toBeNull();
+    expect(Array.from(container.querySelectorAll("img")).map((img) => img.getAttribute("src"))).toEqual([
+      "https://d4dx-storage.blr1.digitaloceanspaces.com/legal/seal.png",
+    ]);
+  });
+
   it("dates the page from its last save, not a hardcoded 2023 string", async () => {
     mockPage({ title: "Terms", body: "<p>Terms body</p>", updatedAt: "2026-09-28T10:00:00.000Z" });
     render(<LegalPage kind="terms" />);
@@ -74,5 +89,20 @@ describe("LegalPage", () => {
     expect(await screen.findByText("Cookie policy content is being prepared.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Cookie Policy" })).toBeInTheDocument();
     expect(screen.queryByText(/Last updated/)).not.toBeInTheDocument();
+  });
+});
+
+// [LEGAL] The line under the Cookie Policy: it covers similar technologies too, and promises to ask only for what needs
+// permission (PECR does not require asking before adding a strictly necessary cookie, and the site will not).
+describe("LegalPage: the Cookie Policy's closing line", () => {
+  it("says the policy lists every cookie and similar technology, and that we ask first only for one that needs permission", async () => {
+    mockPathname = "/en/cookies";
+    mockPage({ title: "Cookie Policy", body: "<p>Policy</p>" });
+    render(<LegalPage kind="cookies" />);
+
+    expect(
+      await screen.findByText("This policy lists every cookie and similar technology we use. If we add one that needs your permission, we will ask you first."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/we will ask before adding any others/)).not.toBeInTheDocument();
   });
 });

@@ -195,4 +195,30 @@ describe("copilot chat route — proposal branch", () => {
       process.env.OPENROUTER_API_KEY = "test-key";
     }
   });
+
+  it("takes back a reply that points at a confirmation card no tool made, and asks the model again", async () => {
+    // 2026-10-21: "mark that task as in progress" got "A confirmation card has
+    // been shown…" with no tool call — the model copying an earlier turn.
+    fetchMock
+      .mockResolvedValueOnce(textTurn("A confirmation card has been shown for updating the task. Please confirm it in the UI."))
+      .mockResolvedValueOnce(textTurn("Which task do you mean? I couldn't find one called that."));
+
+    const frames = await post("mark that task as in progress");
+
+    expect(frames).toContainEqual({ type: "retract" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const retry = JSON.parse(fetchMock.mock.calls[1][1].body as string) as { messages: Array<{ role: string; content: string }> };
+    expect(retry.messages.at(-1)).toMatchObject({ role: "user", content: expect.stringContaining("no confirmation card exists") });
+    expect(frames.filter((f) => f.type === "text")).toEqual([{ type: "text", content: "Which task do you mean? I couldn't find one called that." }]);
+  });
+
+  it("lets a reply speak of the card when this turn really made one", async () => {
+    mockPreview.mockResolvedValueOnce({ summary: "Shortlist 5", resolvedArgs: { jobId: JOB_ID, count: 5 } });
+    fetchMock.mockResolvedValueOnce(toolCallTurn({ count: 5 })).mockResolvedValueOnce(textTurn("A confirmation card is shown — confirm it to shortlist."));
+
+    const frames = await post("shortlist the best 5");
+
+    expect(frames.some((f) => f.type === "retract")).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import PosterGeneration from "@/models/PosterGeneration";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 
 /**
  * POST /api/poster/[slug]/track
@@ -20,8 +21,7 @@ async function postHandler(
   }
 
   // Public write — throttle per IP so the counters can't be scripted upward.
-  const ip =
-    req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+  const ip = getClientIp(req.headers);
   const rl = await checkRateLimit(ip, { limit: 30, windowSec: 60, prefix: "poster-track" });
   if (!rl.allowed) {
     return NextResponse.json(

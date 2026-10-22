@@ -2,8 +2,9 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import AuthLayout from "@/app/[locale]/(auth)/layout";
+import { OPEN_SETTINGS_EVENT } from "@/lib/consent/client";
 
 jest.mock("next-auth/react", () => ({
   useSession: () => ({ data: null, status: "unauthenticated" }),
@@ -45,6 +46,10 @@ jest.mock("next-intl/server", () => ({
       heading: "Localized auth marketing heading",
       description: "Localized auth marketing description",
       copyright: "© {year} MPLOYEDIN. Localized rights.",
+      privacy: "Privacy",
+      cookies: "Cookies",
+      cookieSettings: "Cookie settings",
+      legalLinks: "Privacy and cookies",
     };
 
     return (messages[key] ?? key).replace("{year}", String(values?.year ?? ""));
@@ -99,5 +104,25 @@ describe("AuthLayout", () => {
     await renderLayout();
     expect(screen.getByTestId("a11y-panel")).toHaveTextContent("en:statement");
     expect(statementPublished).toHaveBeenCalledWith("accessibility-statement");
+  });
+
+  // Final review M3: the banner promises "change this any time in Cookie settings", but sign-in and
+  // sign-up had no way to reach them, so withdrawing meant leaving the flow.
+  it("offers Privacy, the Cookie Policy and Cookie settings under the form, each a 44px target on phones", async () => {
+    const opened = jest.fn();
+    window.addEventListener(OPEN_SETTINGS_EVENT, opened);
+    render(await AuthLayout({ children: <div>Register form</div>, params: Promise.resolve({ locale: "ar" }) }));
+
+    const legal = screen.getByRole("navigation", { name: "Privacy and cookies" });
+    expect(screen.getByRole("main")).not.toContainElement(legal);
+    expect(within(legal).getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/ar/privacy");
+    expect(within(legal).getByRole("link", { name: "Cookies" })).toHaveAttribute("href", "/ar/cookies");
+    const settings = within(legal).getByRole("button", { name: "Cookie settings" });
+    for (const target of [...within(legal).getAllByRole("link"), settings]) {
+      expect(target).toHaveClass("min-h-11");
+    }
+    fireEvent.click(settings);
+    expect(opened).toHaveBeenCalledTimes(1);
+    window.removeEventListener(OPEN_SETTINGS_EVENT, opened);
   });
 });

@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ArrowLeft, Calendar, User, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { sanitizeHtml } from "@/lib/security/html";
+import { PublicImage } from "@/components/shared/PublicImage";
+import { sanitizePublicHtml } from "@/lib/security/html";
 
 interface Post {
   _id: string;
@@ -88,13 +89,11 @@ export default function BlogDetailPage() {
           {t("backToBlogLink")}
         </Link>
 
-        {post.coverImage && (
-          <img
-            src={post.coverImage}
-            alt={title}
-            className="w-full rounded-xl object-cover max-h-[400px] mb-8"
-          />
-        )}
+        <PublicImage
+          src={post.coverImage}
+          alt={title}
+          className="w-full rounded-xl object-cover max-h-[400px] mb-8"
+        />
 
         <h1 className="text-3xl sm:text-4xl font-bold leading-tight">{title}</h1>
 
@@ -130,7 +129,7 @@ export default function BlogDetailPage() {
 
         <div
           className="mt-10 prose prose-neutral max-w-none"
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(body) }}
+          dangerouslySetInnerHTML={{ __html: sanitizePublicHtml(body) }}
         />
       </div>
     </article>

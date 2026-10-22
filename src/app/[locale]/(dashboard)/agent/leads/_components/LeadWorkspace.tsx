@@ -113,7 +113,7 @@ export function LeadWorkspace({
 
   return (
     <Dialog open={Boolean(leadId)} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent side="end" overlayClassName="!bg-black/20 backdrop-blur-0">
+      <DialogContent side="end">
         {/* Header */}
         <div className="shrink-0 border-b border-border/70 px-5 pb-3 pt-5 pe-28">
           {lead && style ? (

@@ -1,11 +1,12 @@
 import { useTranslations } from "next-intl";
 import { responseTimeParts } from "@/lib/gdpr/responseTime";
+import type { CookieChoiceOutcome } from "@/lib/gdpr/cookieChoiceOutcome";
 
 /**
- * Words for request types and response times, shared by the table, the header
- * metric and the details dialog. Static keys, not t(`type_${x}`): a type
- * stored before a rename must fall back to its raw name instead of throwing a
- * missing-message error.
+ * Words for request types, response times, consent types, consent sources and
+ * cookie choices, shared by the tables, the header metrics and the dialogs.
+ * Static keys, not t(`type_${x}`): a value stored before a rename must fall
+ * back to its raw name instead of throwing a missing-message error.
  */
 export function useGdprLabels() {
   const t = useTranslations("adminGdpr");
@@ -31,5 +32,48 @@ export function useGdprLabels() {
     return t("responseTimeDays", args);
   };
 
-  return { typeLabel, responseTime };
+  const CONSENT_TYPE_LABELS: Record<string, string> = {
+    terms_and_privacy: t("consentTypeTermsAndPrivacy"),
+    cookies: t("consentTypeCookies"),
+    "cookies.preferences": t("consentTypeCookiesPreferences"),
+    "cookies.media": t("consentTypeCookiesMedia"),
+    marketing: t("consentTypeMarketing"),
+  };
+
+  const consentTypeLabel = (type: string): string => CONSENT_TYPE_LABELS[type] ?? type.replace(/_/g, " ");
+
+  // Where a row was recorded; an unknown source shows as stored.
+  const SOURCE_LABELS: Record<string, string> = {
+    registration: t("consentSourceRegistration"),
+    "registration:google": t("consentSourceRegistrationGoogle"),
+    "registration:email_code": t("consentSourceRegistrationEmailCode"),
+    "registration:linkedin": t("consentSourceRegistrationLinkedIn"),
+    "registration:apple": t("consentSourceRegistrationApple"),
+    first_sign_in: t("consentSourceFirstSignIn"),
+    terms_update: t("consentSourceTermsUpdate"),
+    cookie_banner: t("consentSourceCookieBanner"),
+    // Written by POST /api/consent/receipt: the banner's own buttons, and the Cookie settings dialog.
+    banner: t("consentSourceCookieBanner"),
+    settings: t("consentSourceCookieSettings"),
+    privacy_settings: t("consentSourcePrivacySettings"),
+    profile: t("consentSourceProfile"),
+  };
+
+  /** A stored source in words; "Not recorded" when there is none. */
+  const sourceLabel = (source: string | null | undefined): string =>
+    source ? SOURCE_LABELS[source] ?? source : t("cookieChoiceNotRecorded");
+
+  const OUTCOME_LABELS: Record<CookieChoiceOutcome, string> = {
+    accepted: t("cookieOutcomeAcceptedAll"),
+    rejected: t("cookieOutcomeRejectedAll"),
+    custom: t("cookieOutcomeCustom"),
+  };
+
+  const outcomeLabel = (outcome: CookieChoiceOutcome): string => OUTCOME_LABELS[outcome];
+
+  /** A category's state: On, Off, or Not recorded when the choice has no row for it. */
+  const onOffLabel = (value: boolean | null): string =>
+    value === null ? t("cookieChoiceNotRecorded") : value ? t("cookieChoiceOn") : t("cookieChoiceOff");
+
+  return { typeLabel, responseTime, consentTypeLabel, sourceLabel, outcomeLabel, onOffLabel };
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { MapPin, Wallet, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PublicImage } from "@/components/shared/PublicImage";
 import { formatLocalizedLocation } from "@/lib/i18n/locations";
 
 /**
@@ -316,12 +317,7 @@ function CompanyMark({
         palette.text
       )}
     >
-      {logo ? (
-         
-        <img src={logo} alt={alt} className="h-full w-full bg-card object-contain p-1" />
-      ) : (
-        initialsOf(name)
-      )}
+      <PublicImage src={logo} alt={alt} className="h-full w-full bg-card object-contain p-1" fallback={initialsOf(name)} />
     </div>
   );
 }

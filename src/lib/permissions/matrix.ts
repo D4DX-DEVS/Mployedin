@@ -116,6 +116,10 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     // route handlers enforce assigned-employer ownership.
     offers: ["create", "read", "update", "delete"],
     invoices: ["create", "read"],
+    // Their own to-do list. No route is guarded on it (/api/agent/tasks checks
+    // the role and the owner); it gates the Copilot's task tools and the "New
+    // task" quick action, which were both invisible to agents without it.
+    tasks: ["create", "read", "update", "delete"],
   },
   employer: {
     jobs: ["create", "read", "update", "delete"],

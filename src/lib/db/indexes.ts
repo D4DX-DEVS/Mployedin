@@ -867,6 +867,23 @@ export async function ensureIndexes() {
     { key: { createdAt: -1 } },
     // "latest consent per (user, type)" aggregation + per-user history
     { key: { userId: 1, consentType: 1, createdAt: -1 } },
+    // admin lookup / search by the choice reference on cookie rows (most rows have none)
+    { key: { receiptId: 1 }, sparse: true },
+    // One row per account, choice reference and category (models/ConsentLog.ts). A database with duplicates gets
+    // it from scripts/consent-receipt-unique-index.mjs; until then this spec fails and is logged as a UNIQUE failure.
+    { key: { userId: 1, receiptId: 1, consentType: 1 }, unique: true, partialFilterExpression: { receiptId: { $type: "string" } } },
+  ]);
+
+  // Anonymous cookie-choice receipts (models/ConsentReceipt.ts). Looked up by the
+  // reference a visitor quotes; the TTL (= CONSENT_RECEIPT_TTL_S in the model)
+  // deletes them a year after they are written.
+  // [LEGAL] consent lifetime + 6 months; owner/solicitor to confirm.
+  await safeCreateIndexes(db, "consentreceipts", [
+    // Unique: the receipt route upserts on it (one receipt per choice reference). A database that still has
+    // the old non-unique receiptId_1 gets this from scripts/consent-receipt-unique-index.mjs; until then
+    // this spec is rejected with a conflict and logged as a failed UNIQUE index.
+    { key: { receiptId: 1 }, unique: true },
+    { key: { createdAt: 1 }, expireAfterSeconds: 365 * 24 * 60 * 60 },
   ]);
 
   // ── WhatsApp (Cloud API) ───────────────────────────────────────────────────

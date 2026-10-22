@@ -1,9 +1,9 @@
 /// <reference lib="webworker" />
-import { defaultCache } from "@serwist/next/worker";
-import type { PrecacheEntry, RuntimeCaching, SerwistGlobalConfig } from "serwist";
-import { NetworkOnly, Serwist } from "serwist";
+import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
+import { Serwist } from "serwist";
 
-import { isAuthRequest } from "@/lib/security/swAuthBypass";
+import { LEGACY_PERSONAL_DATA_CACHES } from "@/lib/pwa/cacheNames";
+import { runtimeCaching } from "@/lib/pwa/runtimeCaching";
 
 // This declares the value of `injectionPoint` to TypeScript.
 // Also declare ServiceWorkerGlobalScope since tsconfig uses "dom" lib
@@ -19,17 +19,6 @@ type ServiceWorkerGlobalScope = WorkerGlobalScope &
   typeof globalThis & { registration: unknown; clients: unknown };
 
 declare const self: ServiceWorkerGlobalScope;
-
-// Auth handshakes must outrank defaultCache's catch-all `cross-origin`
-// NetworkFirst, which would otherwise hold Firebase's one-shot popup documents
-// for an hour. Rationale and the rule itself: lib/security/swAuthBypass.ts.
-const runtimeCaching: RuntimeCaching[] = [
-  {
-    matcher: ({ url }) => isAuthRequest(url),
-    handler: new NetworkOnly(),
-  },
-  ...defaultCache,
-];
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
@@ -54,6 +43,16 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// The previous worker cached every same-origin /api reply and page for 24 hours
+// (Serwist's defaultCache), which stayed readable offline after sign-out, and
+// kept remote photos in its image caches. This worker never writes any of
+// those caches; delete what the old one left behind.
+self.addEventListener("activate", (event: Event) => {
+  (event as Event & { waitUntil(promise: Promise<unknown>): void }).waitUntil(
+    Promise.all(LEGACY_PERSONAL_DATA_CACHES.map((name) => caches.delete(name))),
+  );
+});
 
 // ── Web Push ────────────────────────────────────────────────────────────────
 // Payload shape comes from src/lib/push.ts: { title, body, link }

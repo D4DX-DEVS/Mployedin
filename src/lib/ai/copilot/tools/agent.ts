@@ -102,7 +102,8 @@ export const createLeadTool: CopilotTool<{
   notes?: string;
 }> = {
   name: "create_lead",
-  description: "Create a new sales lead for an employer prospect.",
+  description:
+    "Create a new sales lead: a prospect company the agent wants to sign up as an employer. Only when the agent asks to add a lead or prospect — never for a task, follow-up, reminder or call about an existing candidate or job (that is create_task).",
   resource: "leads",
   action: "create",
   roles: ["agent"],

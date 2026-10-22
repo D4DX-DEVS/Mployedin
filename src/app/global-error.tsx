@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Manrope } from "next/font/google";
 import { reportError } from "@/lib/observability/report-error";
+import { resolveClientLocale } from "@/lib/i18n/clientLocale";
 
 // This boundary replaces the root layout, so the layout's Manrope variable is
 // not on <body> here — load the product typeface directly.
@@ -29,19 +30,6 @@ const STRINGS = {
   }
 };
 
-function getLocale(): string {
-  if (typeof document !== "undefined") {
-    const cookie = document.cookie.split("; ").find(c => c.startsWith("NEXT_LOCALE="));
-    if (cookie) {
-      return cookie.split("=")[1];
-    }
-    if (navigator.language.startsWith("ar")) {
-      return "ar";
-    }
-  }
-  return "en";
-}
-
 /**
  * Root-level error boundary (Next.js App Router convention).
  *
@@ -60,9 +48,10 @@ export default function GlobalError({
     reportError(error, { source: "global-error", digest: error.digest });
   }, [error]);
 
-  const locale = getLocale();
-  const isArabic = locale.startsWith("ar");
-  const strings = STRINGS[locale as keyof typeof STRINGS] || STRINGS.en;
+  // The URL's language first, then NEXT_LOCALE (only while preferences are allowed), then the browser's.
+  const locale = resolveClientLocale();
+  const isArabic = locale === "ar";
+  const strings = STRINGS[locale];
 
   return (
     <html lang={locale} dir={isArabic ? "rtl" : "ltr"}>

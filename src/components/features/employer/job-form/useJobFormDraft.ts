@@ -3,9 +3,31 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { JobFormValues } from "./jobFormSchema";
-import { parseStoredDraft, type StoredDraft } from "./jobDraftStorage";
+import { migrateLegacyDraft, parseStoredDraft, type StoredDraft } from "./jobDraftStorage";
+import { JOB_DRAFT_PREFIX, isSignOutInProgress } from "@/lib/consent/deviceStorage";
 
 const DRAFT_SAVE_DELAY = 1500; // ms
+
+/**
+ * The raw stored draft for this key. Reads sessionStorage — the draft is
+ * tab-scoped so it does not outlive sign-out on a shared device — after moving
+ * across anything an older build left in localStorage.
+ *
+ * The move (and the purge of every other `job-draft-*` that comes with it) runs
+ * only once the session says whose drafts these are. On a hard reload the first
+ * render has no session yet, so the key is `job-draft-anonymous`; purging then
+ * would delete the real user's draft before it could be moved.
+ */
+function readDraftRaw(storageKey: string, signedIn: boolean): string | null {
+  if (signedIn) migrateLegacyDraft(storageKey, localStorage, sessionStorage);
+  return sessionStorage.getItem(storageKey);
+}
+
+/** Writes the tab's draft, unless sign-out has started and the device is being wiped. */
+function writeDraftRaw(storageKey: string, value: string): void {
+  if (isSignOutInProgress()) return;
+  sessionStorage.setItem(storageKey, value);
+}
 
 interface UseJobFormDraftReturn {
   draftId: string | null;
@@ -18,17 +40,19 @@ interface UseJobFormDraftReturn {
 
 export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
   const { data: session } = useSession();
-  const userId = session?.user?.id ?? "anonymous";
-  const storageKey = `job-draft-${userId}`;
+  const sessionUserId = session?.user?.id;
+  const signedIn = Boolean(sessionUserId);
+  const userId = sessionUserId ?? "anonymous";
+  const storageKey = `${JOB_DRAFT_PREFIX}${userId}`;
 
   const [draftId, setDraftId] = useState<string | null>(null);
   const [savedIndicator, setSavedIndicator] = useState(false);
   const indicatorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // On mount, check if there's an existing draftId in localStorage
+  // On mount, check if there's an existing draftId in the tab's session storage
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(storageKey);
+      const raw = readDraftRaw(storageKey, signedIn);
       if (raw) {
         const parsed = JSON.parse(raw) as { draftId?: string };
         if (parsed.draftId) {
@@ -38,7 +62,7 @@ export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
     } catch {
       // ignore parse errors
     }
-  }, [storageKey]);
+  }, [storageKey, signedIn]);
 
   const flashSaved = useCallback(() => {
     setSavedIndicator(true);
@@ -49,7 +73,7 @@ export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
   const saveDraft = useCallback(
     async (values: JobFormValues): Promise<string | null> => {
       try {
-        // Always persist to localStorage first for resilience
+        // Always persist locally first for resilience
         const existing = draftId;
         const payload = {
           ...values,
@@ -94,8 +118,8 @@ export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
           }
         }
 
-        // Persist to localStorage
-        localStorage.setItem(
+        // Persist to the tab's session storage
+        writeDraftRaw(
           storageKey,
           JSON.stringify({ draftId: id, values, savedAt: Date.now() })
         );
@@ -103,8 +127,8 @@ export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
         flashSaved();
         return id;
       } catch {
-        // Silently save to localStorage even when API fails
-        localStorage.setItem(
+        // Silently save locally even when API fails
+        writeDraftRaw(
           storageKey,
           JSON.stringify({ draftId, values, savedAt: Date.now() })
         );
@@ -117,21 +141,21 @@ export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
 
   const loadDraft = useCallback((): StoredDraft | null => {
     try {
-      const draft = parseStoredDraft(localStorage.getItem(storageKey));
+      const draft = parseStoredDraft(readDraftRaw(storageKey, signedIn));
       // An expired draft is cleared on sight so it cannot be offered again.
-      if (!draft) localStorage.removeItem(storageKey);
+      if (!draft) sessionStorage.removeItem(storageKey);
       return draft;
     } catch {
       return null;
     }
-  }, [storageKey]);
+  }, [storageKey, signedIn]);
 
   // Lightweight local-only autosave that writes to the SAME key loadDraft reads,
   // preserving any existing draftId so a later API sync can PATCH the right draft.
   const autosaveLocal = useCallback(
     (values: JobFormValues) => {
       try {
-        localStorage.setItem(
+        writeDraftRaw(
           storageKey,
           JSON.stringify({ draftId, values, savedAt: Date.now() })
         );
@@ -147,7 +171,7 @@ export function useJobFormDraft(locale: string): UseJobFormDraftReturn {
   // must create a new server draft rather than patch the discarded one.
   const clearDraft = useCallback(() => {
     try {
-      localStorage.removeItem(storageKey);
+      sessionStorage.removeItem(storageKey);
     } catch {
       // ignore storage errors
     }

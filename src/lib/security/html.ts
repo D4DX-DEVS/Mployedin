@@ -5,6 +5,7 @@
  * stored/reflected XSS.
  */
 import DOMPurify from "isomorphic-dompurify";
+import { restrictImagesToPublicSources } from "@/lib/images/publicImageHook";
 
 /** Formatting tags considered safe for user/AI rich text. */
 // Keep in sync with the server-side policy in sanitize-html.ts — CMS content
@@ -24,16 +25,18 @@ const ALLOWED_ATTR = ["href", "title", "target", "rel", "class", "src", "alt", "
  */
 export function sanitizeHtml(dirty: string | null | undefined): string {
   if (!dirty) return "";
-  return DOMPurify.sanitize(dirty, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR,
-    // Block javascript:/data: URIs and unknown protocols.
-    ALLOWED_URI_REGEXP: /^(?:https?|mailto|tel):/i,
-    // Non-URI attrs the strict regexp above would otherwise strip.
-    ADD_URI_SAFE_ATTR: ["width", "height"],
-    ADD_ATTR: ["target"],
-  });
+  return DOMPurify.sanitize(dirty, SANITIZE_CONFIG);
 }
+
+const SANITIZE_CONFIG = {
+  ALLOWED_TAGS,
+  ALLOWED_ATTR,
+  // Block javascript:/data: URIs and unknown protocols.
+  ALLOWED_URI_REGEXP: /^(?:https?|mailto|tel):/i,
+  // Non-URI attrs the strict regexp above would otherwise strip.
+  ADD_URI_SAFE_ATTR: ["width", "height"],
+  ADD_ATTR: ["target"],
+};
 
 /**
  * Strip ALL HTML, returning plain text. Use for fields that must never contain
@@ -42,4 +45,24 @@ export function sanitizeHtml(dirty: string | null | undefined): string {
 export function stripHtml(dirty: string | null | undefined): string {
   if (!dirty) return "";
   return DOMPurify.sanitize(dirty, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+}
+
+/**
+ * Like sanitizeHtml, for CMS rich text on PUBLIC pages (blog posts, legal pages).
+ * Every <img> goes through toPublicImageSrc, so the visitor's browser never
+ * loads an image from a third-party host (that would send their IP address and
+ * browser details before any cookie choice): our own storage stays, Google and
+ * LinkedIn photos go through our proxy, anything else is removed.
+ */
+export function sanitizePublicHtml(dirty: string | null | undefined): string {
+  if (!dirty) return "";
+  // DOMPurify hooks are global, so this one is installed for this call only: sanitize() is synchronous,
+  // and the finally block removes it even if sanitizing throws, so sanitizeHtml (every other caller)
+  // never sees it.
+  DOMPurify.addHook("afterSanitizeAttributes", restrictImagesToPublicSources);
+  try {
+    return DOMPurify.sanitize(dirty, SANITIZE_CONFIG);
+  } finally {
+    DOMPurify.removeHook("afterSanitizeAttributes", restrictImagesToPublicSources);
+  }
 }

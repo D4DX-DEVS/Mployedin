@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import { routeGenerate } from "@/lib/ai/router";
 import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
@@ -19,10 +20,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const ip =
-      req.headers.get("x-forwarded-for") ??
-      req.headers.get("x-real-ip") ??
-      "unknown";
+    const ip = getClientIp(req.headers);
     const userId = (session.user as unknown as { id: string }).id ?? ip;
     const { allowed, remaining, resetAt } = await checkRateLimit(
       `ai-lead-score:${userId}`,

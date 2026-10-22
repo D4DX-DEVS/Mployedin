@@ -9,7 +9,7 @@ import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { validateBody } from "@/lib/validators";
 import { applyOtpStartSchema } from "@/lib/validators/applyOtp";
 import { hashOtp } from "@/lib/auth/emailVerification";
-import { verifyRecaptcha } from "@/lib/security/recaptcha";
+import { verifyCaptcha } from "@/lib/security/captcha";
 import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
 import { z } from "zod";
@@ -48,8 +48,9 @@ async function settle(startedAt: number, res: NextResponse): Promise<NextRespons
  * Deliberately leaks nothing about whether the email is registered or what role
  * it has: same body, same status, same minimum latency on every masked branch.
  *
- * Protection, in order: IP rate limit (fails closed) -> schema -> reCAPTCHA v3
- * when configured (fails closed) -> per-email rate limit (fails closed).
+ * Protection, in order: IP rate limit (fails closed) -> schema -> captcha
+ * (reCAPTCHA v3 today, behind lib/security/captcha) when configured (fails
+ * closed) -> per-email rate limit (fails closed).
  */
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req.headers);
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "INVALID_EMAIL" }, { status: 400 });
   }
 
-  const captcha = await verifyRecaptcha(body.captchaToken, {
+  const captcha = await verifyCaptcha(body.captchaToken, {
     action: "quick_apply",
     hostname: req.nextUrl.hostname,
   });

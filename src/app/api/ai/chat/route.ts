@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { sanitizeChatMessages, sanitizeAIInput, AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { GEMINI_MODELS } from "@/lib/ai/gemini";
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
     if (gateErr) return gateErr;
 
     // Rate limit AI calls per user
-    const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+    const ip = getClientIp(req.headers);
     const { allowed, remaining, resetAt } = await checkRateLimit(
       `ai-chat:${session.user.id ?? ip}`,
       RATE_LIMIT_CONFIGS.ai

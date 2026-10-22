@@ -8,7 +8,10 @@ import { Menu, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { rememberLocaleChoice } from "@/lib/consent/rememberLocale";
 import { roleHomePath } from "@/lib/auth/roleHome";
+import { usePendingReferral } from "@/lib/referrals/pendingReferral";
+import { registerHrefFor } from "@/lib/referrals/url";
 
 interface PublicHeaderProps {
   locale: string;
@@ -26,6 +29,9 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const dashboardHref = role ? roleHomePath(locale, role) : null;
+  // A job an agent shared opens with ?ref=; the code is held in memory (never a
+  // cookie) and carried to sign-up in the link.
+  const registerHref = registerHrefFor(locale, usePendingReferral());
 
   const navLinks = [
     { href: `/${locale}/jobs`, label: tNav("jobs") },
@@ -34,6 +40,12 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
     { href: `/${locale}/blog`, label: tLanding("blog") },
   ];
   const mobileMenuId = "public-mobile-navigation";
+  // A real link (the URL switches the language, with or without JavaScript); the
+  // click also remembers the choice in NEXT_LOCALE while preferences are allowed.
+  const otherLocale = locale === "en" ? "ar" : "en";
+  const rememberOtherLocale = () => {
+    rememberLocaleChoice(otherLocale);
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -59,7 +71,7 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
 
         {/* Auth & Language */}
         <div className="hidden md:flex items-center gap-3">
-          <Link href={locale === "en" ? "/ar" : "/en"}>
+          <Link href={`/${otherLocale}`} onClick={rememberOtherLocale}>
             <Button variant="ghost" size="sm">
               {locale === "en" ? "العربية" : "English"}
             </Button>
@@ -77,7 +89,7 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
                   {tAuth("login")}
                 </Button>
               </Link>
-              <Link href={`/${locale}/register`}>
+              <Link href={registerHref}>
                 <Button size="sm">
                   {tLanding("getStartedBtn")}
                 </Button>
@@ -118,9 +130,12 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
             ))}
             <hr className="my-2" />
             <Link
-              href={locale === "en" ? "/ar" : "/en"}
+              href={`/${otherLocale}`}
               className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent"
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                rememberOtherLocale();
+                setMobileOpen(false);
+              }}
             >
               {locale === "en" ? "العربية" : "English"}
             </Link>
@@ -137,7 +152,7 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
                     {tAuth("login")}
                   </Button>
                 </Link>
-                <Link href={`/${locale}/register`} className="flex-1">
+                <Link href={registerHref} className="flex-1">
                   <Button size="sm" className="w-full">
                     {tLanding("getStartedBtn")}
                   </Button>

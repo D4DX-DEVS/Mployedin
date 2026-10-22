@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 
+import { enableServiceWorker } from "@/lib/pwa/enableServiceWorker";
+import { prefStorage } from "@/lib/consent/prefStorage";
+import { LEGACY_PWA_INSTALL_DISMISS_KEY } from "@/lib/consent/legacyKeys";
+
 /* Registration/login forms must never be covered by the install card
    (it landed on top of active fields at 375px). */
 const SUPPRESSED_PREFIXES = ["/login", "/register", "/employer-register", "/agent-register", "/onboarding", "/forgot-password", "/reset-password"];
@@ -14,29 +18,24 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISS_KEY = "pwa-install-dismissed";
+// A UI preference (ui:*): kept on the device while preferences are allowed, for
+// the tab only after an objection. Older builds used the unprefixed name (lib/consent/legacyKeys).
+const DISMISS_KEY = "ui:pwa-install-dismissed";
 // Stored instead of a timestamp once the app is installed: never offer again.
 const INSTALLED = "installed";
 const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Storage can throw outright (blocked cookies/site data), so every access is guarded.
+// Storage can throw outright (blocked cookies/site data); prefStorage swallows that,
+// and the in-memory flag below still keeps the card closed for this session.
 function isSnoozed(): boolean {
-  try {
-    const stored = window.localStorage.getItem(DISMISS_KEY);
-    if (stored === INSTALLED) return true;
-    const at = parseInt(stored ?? "", 10);
-    return Number.isFinite(at) && Date.now() - at < SNOOZE_MS;
-  } catch {
-    return false;
-  }
+  const stored = prefStorage.getWithLegacy(DISMISS_KEY, LEGACY_PWA_INSTALL_DISMISS_KEY);
+  if (stored === INSTALLED) return true;
+  const at = parseInt(stored ?? "", 10);
+  return Number.isFinite(at) && Date.now() - at < SNOOZE_MS;
 }
 
 function remember(value: string) {
-  try {
-    window.localStorage.setItem(DISMISS_KEY, value);
-  } catch {
-    /* the in-memory flag still keeps it closed for this session */
-  }
+  prefStorage.set(DISMISS_KEY, value);
 }
 
 // Survives client-side navigation (the component remounts; this module doesn't).
@@ -151,9 +150,13 @@ export function PWAInstallPrompt() {
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
+    // `prompt()` must run within the click's user activation, so it goes first.
     await deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     setDeferredPrompt(null);
+    // Accepting the install is the user action that lets the worker register (so
+    // the installed app works offline). Cancelling it registers nothing.
+    if (outcome === "accepted") void enableServiceWorker();
     // Either way the card has done its job: the prompt event is single-use, so
     // leaving the card up left an Install button that did nothing. Cancelling
     // snoozes it like a dismissal; accepting suppresses it for good.

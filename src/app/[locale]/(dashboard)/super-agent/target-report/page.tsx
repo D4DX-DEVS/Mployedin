@@ -10,6 +10,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { SuperAgentPageIntro } from "@/components/features/super-agent/WorkspacePage";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import type { TargetReport } from "@/lib/targets/profitReport";
+import { SuperAgentReportTabs } from "@/components/features/super-agent/SuperAgentReportTabs";
 
 interface ReportResponse {
   year: number;
@@ -49,6 +50,7 @@ export default function SuperAgentTargetReportPage() {
 
   return (
     <div className="page-container print:space-y-4">
+      <SuperAgentReportTabs />
       <SuperAgentPageIntro
         title={agentId && data?.report ? t("agentReportOf", { name: data.report.person.name || t("unknownPerson") }) : t("saReportTitle")}
         description={t("saReportDescription", { year })}

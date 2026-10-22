@@ -6,36 +6,32 @@ import { useTranslations } from "next-intl";
 import { KeyRound, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { csrfFetch } from "@/lib/security/csrf-client";
-
-const DISMISS_KEY_PREFIX = "mployedin:temp-password-notice-dismissed:";
-
-function readDismissed(key: string): boolean {
-  try {
-    return localStorage.getItem(key) === "1";
-  } catch {
-    return false;
-  }
-}
+import { tempPasswordNoticeKey } from "@/lib/consent/deviceStorage";
+import { tabStorage } from "@/lib/consent/tabStorage";
 
 /**
  * Shown after sign-in to someone still using a password another person issued
  * them (an agent converting a lead hands the new employer a shareable password).
  * An offer, not a gate: they can email themselves a link to set their own, or
  * dismiss it. Setting any new password clears the flag server-side.
+ *
+ * The dismissal is kept in the tab only (its key holds the user id, so it is not
+ * a preference): it shows again in a new session. A copy an older build left in
+ * localStorage is deleted on page load (lib/consent/legacyKeys), not read here.
  */
 export function TemporaryPasswordNotice() {
   const t = useTranslations("temporaryPasswordNotice");
   const { data: session } = useSession();
   const userId = session?.user?.id;
   const email = session?.user?.email;
-  const dismissKey = userId ? `${DISMISS_KEY_PREFIX}${userId}` : null;
+  const dismissKey = userId ? tempPasswordNoticeKey(userId) : null;
 
   const [visible, setVisible] = useState(false);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<"sent" | "error" | null>(null);
 
   useEffect(() => {
-    if (!dismissKey || readDismissed(dismissKey)) return;
+    if (!dismissKey || tabStorage.get(dismissKey) === "1") return;
     let active = true;
     fetch("/api/user/password-status")
       .then((res) => (res.ok ? res.json() : null))
@@ -52,12 +48,8 @@ export function TemporaryPasswordNotice() {
 
   const dismiss = () => {
     setVisible(false);
-    if (!dismissKey) return;
-    try {
-      localStorage.setItem(dismissKey, "1");
-    } catch {
-      /* private mode: it simply shows again next visit */
-    }
+    // Storage blocked: it shows again on the next page.
+    if (dismissKey) tabStorage.set(dismissKey, "1");
   };
 
   const sendLink = async () => {

@@ -1,26 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import FAQ from "@/models/FAQ";
 import Banner from "@/models/Banner";
 import Testimonial from "@/models/Testimonial";
 import Video from "@/models/Video";
 import BlogPost from "@/models/BlogPost";
 import logger from "@/lib/logger";
+import { getLandingStats } from "@/lib/public/landingStats";
 
 /**
  * Public aggregated landing page data — NO AUTH required.
  * Returns all active CMS content for the landing page in one call.
  */
 export async function GET(req: NextRequest) {
-  const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`landing:${ip}`, { limit: 30, windowSec: 60, prefix: "landing" });
   if (!allowed) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
 
   try {
     await connectDB();
 
-    const [faqs, banners, testimonials, videos, recentPosts] = await Promise.all([
+    const [faqs, banners, testimonials, videos, recentPosts, stats] = await Promise.all([
       FAQ.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
       Banner.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
       Testimonial.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
@@ -30,6 +32,11 @@ export async function GET(req: NextRequest) {
         .limit(6)
         .select("title titleAr slug excerpt excerptAr coverImage author tags publishedAt")
         .lean(),
+      // Numbers are a bonus: if they fail, the CMS sections still load.
+      getLandingStats().catch((error) => {
+        logger.warn({ error }, "[Public] Landing stats unavailable");
+        return null;
+      }),
     ]);
 
     return NextResponse.json({
@@ -38,6 +45,7 @@ export async function GET(req: NextRequest) {
       testimonials,
       videos,
       recentPosts,
+      stats,
     });
   } catch (error) {
     logger.error({ error }, "[Public] Landing data error");

@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TagAutocomplete, Autocomplete } from "@/components/ui/tag-autocomplete";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { logoutCleanup } from "@/lib/consent/logoutCleanup";
+import { resetSignOutInProgress } from "@/lib/consent/deviceStorage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { safeCallbackPath } from "@/lib/routing/callbackUrl";
 import { countryKeyFromLocationText } from "@/lib/i18n/locations";
@@ -376,6 +378,8 @@ export default function JobSeekerOnboardingPage() {
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  // The top bar's Sign out is clearing the device and ending the session.
+  const [signingOut, setSigningOut] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [industryOpen, setIndustryOpen] = useState(false);
   const [industrySearch, setIndustrySearch] = useState("");
@@ -1188,7 +1192,17 @@ export default function JobSeekerOnboardingPage() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => signOut({ callbackUrl: `/${locale}/login` })}
+            disabled={signingOut}
+            onClick={async () => {
+              setSigningOut(true);
+              try {
+                await logoutCleanup();
+                await signOut({ callbackUrl: `/${locale}/login` });
+              } catch {
+                resetSignOutInProgress();
+                setSigningOut(false);
+              }
+            }}
             className="group ml-1 h-10 rounded-full border-slate-200/80 bg-white/90 px-3.5 text-slate-600 shadow-sm shadow-slate-200/60 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
             title={t("signOut")}
           >

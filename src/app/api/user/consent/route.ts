@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
-import { validateBody } from "@/lib/validators";
-import { getClientIp } from "@/lib/security/clientIp";
 import ConsentLog from "@/models/ConsentLog";
-import User from "@/models/User";
 import { CONSENT_TYPES } from "@/lib/gdpr/consent";
 
 /** The consents the Data & Privacy page shows: legal first, cookies apart. */
@@ -41,37 +37,9 @@ async function getHandler(_req: NextRequest, ctx: AuthContext) {
   return NextResponse.json({ consents });
 }
 
-/**
- * POST /api/user/consent — a signed-in user answered the cookie banner or
- * changed it on their Data & Privacy page.
- *
- * Cookies only. Terms & Privacy acceptance is recorded where it is given — at
- * sign-up — and marketing consent by the profile that holds the flag; a row
- * written here would not change either.
- *
- * Anonymous visitors keep their choice in the browser only; it reaches the
- * consent log when they register (see recordRegistrationConsents).
+/*
+ * No POST. The legacy cookie-consent writer that lived here wrote "cookies" rows with the client IP and whatever
+ * value the caller sent, with no choice reference and no match against the choice cookie, and nothing called it.
+ * A signed-in user's cookie choice is logged only by POST /api/consent/receipt (one writer, no IP address).
  */
-const cookieConsentSchema = z.object({
-  consentType: z.literal(CONSENT_TYPES.cookies),
-  granted: z.boolean(),
-  source: z.enum(["cookie_banner", "privacy_settings"]).optional(),
-});
-
-async function postHandler(req: NextRequest, ctx: AuthContext) {
-  const { consentType, granted, source } = await validateBody(req, cookieConsentSchema);
-  await connectDB();
-  const user = (await User.findById(ctx.userId).select("name").lean()) as { name?: string } | null;
-  await ConsentLog.create({
-    userId: ctx.userId,
-    userName: user?.name ?? "Unknown",
-    consentType,
-    granted,
-    source: source ?? "cookie_banner",
-    ipAddress: getClientIp(req.headers),
-  });
-  return NextResponse.json({ success: true });
-}
-
 export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);

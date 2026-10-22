@@ -12,43 +12,22 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { prefStorage } from "@/lib/consent/prefStorage";
+import { LEGACY_COPILOT_FAB_POS_KEY } from "@/lib/consent/legacyKeys";
 import { ToolProposalCard } from "./ToolProposalCard";
 import { CopilotViewCard } from "./CopilotViewCard";
+import { loadChats, persistChats, removeLegacyChats, type SavedChat } from "./chatStorage";
 import { sameOriginPath } from "./links";
+import { COPILOT_EXECUTED_EVENT } from "./events";
 import type { CopilotStreamFrame, TranscriptItem } from "./types";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { useConfirm } from "@/hooks/useConfirm";
 import { stripToolDataEcho, toolDataEntry } from "@/lib/ai/copilot/historyToolData";
 
+const FAB_POS_KEY = "ui:copilot-fab-pos";
+
 let idCounter = 0;
 const nextId = () => `ci-${Date.now()}-${idCounter++}`;
-
-const CHATS_KEY = "copilot-chats";
-const MAX_SAVED_CHATS = 10;
-
-interface SavedChat {
-  id: string;
-  title: string;
-  updatedAt: number;
-  transcript: TranscriptItem[];
-  history: { role: "user" | "assistant"; content: string }[];
-}
-
-function loadChats(): SavedChat[] {
-  try {
-    const raw = localStorage.getItem(CHATS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function persistChats(chats: SavedChat[]) {
-  try {
-    localStorage.setItem(CHATS_KEY, JSON.stringify(chats.slice(0, MAX_SAVED_CHATS)));
-  } catch { /* ignore unavailable storage */ }
-}
 
 type SuggestionRole = "employer" | "jobSeeker" | "agent" | "superAgent" | "admin" | "default";
 
@@ -149,6 +128,9 @@ export function Copilot({ className }: CopilotProps) {
 
   useEffect(() => setMounted(true), []);
 
+  // Chats now live in the tab; delete the copy older builds left in localStorage.
+  useEffect(() => removeLegacyChats(), []);
+
   useEffect(() => {
     const openCopilot = () => setOpen(true);
     window.addEventListener("mployedin:open-copilot", openCopilot);
@@ -171,7 +153,8 @@ export function Copilot({ className }: CopilotProps) {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("copilot-fab-pos");
+      // A UI preference (ui:*); older builds stored it unprefixed (lib/consent/legacyKeys).
+      const saved = prefStorage.getWithLegacy(FAB_POS_KEY, LEGACY_COPILOT_FAB_POS_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         setFabPos(clampFabPos(parsed.x, parsed.y));
@@ -238,7 +221,7 @@ export function Copilot({ className }: CopilotProps) {
           if (overlap) {
             next = clampFabPos(current.x, current.y - 72);
           }
-          localStorage.setItem("copilot-fab-pos", JSON.stringify(next));
+          prefStorage.set(FAB_POS_KEY, JSON.stringify(next));
           return next;
         }
       } catch { /* ignore unavailable storage */ }
@@ -329,6 +312,13 @@ export function Copilot({ className }: CopilotProps) {
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.ok) {
         updateProposal(item.proposalId, { status: "executed", resultMessage: data.message ?? t("actionConfirmed") });
+        // What the confirmed action did (e.g. the new task's id) joins the
+        // history, so "mark that task done" next has something to point at.
+        const payload = JSON.stringify({ message: data.message, ...(data.data ? { data: data.data } : {}) }).slice(0, 1500);
+        historyForRequest.current = [...historyForRequest.current, { role: "assistant", content: toolDataEntry(item.tool, payload) }];
+        // Lets the page behind the panel reload what the action changed (the
+        // Tasks list after create_task / update_task_status).
+        window.dispatchEvent(new CustomEvent(COPILOT_EXECUTED_EVENT, { detail: { tool: item.tool } }));
       } else {
         updateProposal(item.proposalId, { status: "failed", resultMessage: data.error ?? data.message ?? t("actionFailed") });
       }
@@ -425,8 +415,10 @@ export function Copilot({ className }: CopilotProps) {
             const { tool, view } = frame;
             setTranscript((prev) => [...prev, { id: nextId(), kind: "view", tool, view }]);
           } else if (frame.type === "proposal") {
+            // The confirmation card takes over from its "working…" line, which
+            // no tool_result ever closes (nothing ran yet) — it used to spin forever.
             setTranscript((prev) => [
-              ...prev,
+              ...prev.filter((it) => !(it.kind === "tool_call" && it.tool === frame.tool && !it.done)),
               {
                 id: nextId(),
                 kind: "proposal",
@@ -450,6 +442,13 @@ export function Copilot({ className }: CopilotProps) {
                 setTranscript((prev) => [...prev, { id: nextId(), kind: "assistant_text", content: assistantText }]);
               }
               historyForRequest.current = [...historyForRequest.current, { role: "assistant", content: assistantText }];
+            }
+            streamingId = null;
+          } else if (frame.type === "retract") {
+            // The server is asking the model again: drop what it streamed so far.
+            if (streamingId) {
+              const sid = streamingId;
+              setTranscript((prev) => prev.filter((it) => it.id !== sid));
             }
             streamingId = null;
           } else if (frame.type === "error") {

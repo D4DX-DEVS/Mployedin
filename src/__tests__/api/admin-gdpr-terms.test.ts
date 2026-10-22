@@ -52,14 +52,22 @@ beforeEach(() => {
 });
 
 describe("GET /api/admin/gdpr/terms", () => {
-  it("reports the version and how many non-admin users accepted it", async () => {
+  it("reports the version, how many non-admin users accepted it and how many still have to", async () => {
     const { GET } = await import("@/app/api/admin/gdpr/terms/route");
     const res = await GET(new NextRequest(url), { params: Promise.resolve({}) });
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ version: "2026-09-29", isBaseline: true, acceptedUsers: 3, totalUsers: 40 });
+    await expect(res.json()).resolves.toEqual({ version: "2026-09-29", isBaseline: true, acceptedUsers: 3, totalUsers: 40, pendingUsers: 37 });
     expect(countDocuments).toHaveBeenCalledWith({ role: { $ne: "admin" }, isActive: true });
     expect(countDocuments).toHaveBeenCalledWith({ role: { $ne: "admin" }, isActive: true, termsAcceptedVersion: "2026-09-29" });
+  });
+
+  it("never reports a negative number still to accept (counts read a moment apart)", async () => {
+    countDocuments.mockImplementation(async (filter: Record<string, unknown>) => ("termsAcceptedVersion" in filter ? 41 : 40));
+    const { GET } = await import("@/app/api/admin/gdpr/terms/route");
+    const res = await GET(new NextRequest(url), { params: Promise.resolve({}) });
+
+    expect((await res.json()).pendingUsers).toBe(0);
   });
 
   it("is admin-only", async () => {

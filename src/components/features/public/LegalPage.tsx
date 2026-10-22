@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Accessibility, Building2, Calendar, Cookie, FileText, Mail, MapPin, Shield, ShieldCheck, type LucideIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { sanitizeHtml } from "@/lib/security/html";
+import { sanitizePublicHtml } from "@/lib/security/html";
 import { formatDate } from "@/lib/ui/intlFormat";
 import type { LegalPageSlug } from "@/lib/cms/legalPages";
 
@@ -157,7 +157,7 @@ export default function LegalPage({ kind }: { kind: LegalKind }) {
             {/* Body content */}
             <div
               className={CONTENT_CLASSES}
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(body) }}
+              dangerouslySetInnerHTML={{ __html: sanitizePublicHtml(body) }}
             />
 
             {/* Contact footer card */}

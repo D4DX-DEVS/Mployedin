@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isOwnStorageUrl } from "@/lib/storage/storageHosts";
 
 /**
  * GET /api/image-proxy?url=<encoded>
@@ -6,9 +7,10 @@ import { NextRequest, NextResponse } from "next/server";
  * (html-to-image poster export) without cross-origin taint. DigitalOcean Spaces does
  * not send Access-Control-Allow-Origin, so direct crossOrigin loads fail.
  *
- * Host-locked to DO Spaces to avoid being an open SSRF proxy. Public GET, images only.
+ * Host-locked to OUR bucket and CDN hosts (lib/storage/storageHosts.ts), never any
+ * other Spaces bucket, so it is not a relay for other people's storage. Public GET,
+ * https only, no port or credentials, images only.
  */
-const ALLOWED_HOST_SUFFIX = ".digitaloceanspaces.com";
 
 // Raster formats only. SVG is explicitly excluded — it can carry <script> and this
 // proxy serves same-origin, so a hostile SVG in any Spaces bucket would be XSS.
@@ -25,10 +27,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse("Invalid url", { status: 400 });
   }
 
-  // Pin to the exact bucket host when configured; else fall back to the Spaces suffix.
-  const pinnedHost = process.env.SPACES_PUBLIC_HOST;
-  const hostOk = pinnedHost ? parsed.hostname === pinnedHost : parsed.hostname.endsWith(ALLOWED_HOST_SUFFIX);
-  if (parsed.protocol !== "https:" || !hostOk) {
+  if (!isOwnStorageUrl(parsed)) {
     return new NextResponse("Forbidden host", { status: 403 });
   }
 

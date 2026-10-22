@@ -71,7 +71,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     seekerProfile ? Interview.find({ jobSeekerId: seekerProfile._id }).lean() : [],
     Notification.find({ userId: ctx.userId }).lean(),
     ConsentLog.find({ userId: ctx.userId }).lean(),
-    GdprRequest.find({ userId: ctx.userId }).lean(),
+    // The team's internal notes about a request stay out of the user's file.
+    GdprRequest.find({ userId: ctx.userId }).select("-adminNotes").lean(),
   ]);
 
   await logActivity({ ...actorFromCtx(ctx), action: "gdpr.export", resource: "users", resourceId: ctx.userId, req });

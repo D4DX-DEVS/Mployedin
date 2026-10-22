@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { History, RotateCw } from "lucide-react";
+import { RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatDateTime } from "@/lib/ui/intlFormat";
 import type { AgentTaskStatus } from "./TaskStatusDialog";
 
@@ -111,32 +110,5 @@ export function TaskHistoryTimeline({ url }: { url: string }) {
         </li>
       ))}
     </ol>
-  );
-}
-
-/** The agent's own view of one task's activity. */
-export function TaskHistoryDialog({
-  task, url, onClose,
-}: {
-  task: { title: string } | null;
-  url: string | null;
-  onClose: () => void;
-}) {
-  const t = useTranslations("agentTasks");
-  return (
-    <Dialog open={task !== null} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <History className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
-            {t("historyTitle")}
-          </DialogTitle>
-          <DialogDescription>{task ? `“${task.title}”` : ""}</DialogDescription>
-        </DialogHeader>
-        <div className="max-h-[60vh] overflow-y-auto pe-1">
-          {url && <TaskHistoryTimeline url={url} />}
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }

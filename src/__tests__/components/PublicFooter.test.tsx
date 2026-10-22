@@ -2,9 +2,10 @@
  * @jest-environment jsdom
  */
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import PublicFooter from "@/components/shared/PublicFooter";
+import { OPEN_SETTINGS_EVENT } from "@/lib/consent/client";
 
 const enMessages: Record<string, string> = {
   digitalPlatform: "Digital hiring platform",
@@ -28,6 +29,7 @@ const enMessages: Record<string, string> = {
   company: "Company",
   privacy: "Privacy",
   cookies: "Cookies",
+  cookieSettings: "Cookie settings",
   terms: "Terms",
   gdpr: "GDPR",
   accessibility: "Accessibility",
@@ -124,6 +126,44 @@ describe("PublicFooter", () => {
     expect(screen.getByRole("link", { name: "Workspace login" })).toHaveAttribute("href", "/en/login");
     expect(screen.queryByText("AI-powered matching")).not.toBeInTheDocument();
     expect(screen.queryByText("Resources")).not.toBeInTheDocument();
+  });
+
+  it("offers Cookie settings right after the Cookie Policy link", () => {
+    const opened = jest.fn();
+    window.addEventListener(OPEN_SETTINGS_EVENT, opened);
+    render(<PublicFooter locale="en" />);
+
+    const policy = screen.getByRole("link", { name: "Cookies" });
+    const settings = screen.getByRole("button", { name: "Cookie settings" });
+    expect(policy.closest("li")?.nextElementSibling).toBe(settings.closest("li"));
+    fireEvent.click(settings);
+    expect(opened).toHaveBeenCalledTimes(1);
+    window.removeEventListener(OPEN_SETTINGS_EVENT, opened);
+  });
+
+  // Final review M3: the embedded footer hides its Company column below 640px, which took the Cookie
+  // Policy and Cookie settings with it on phones (onboarding, the job pages inside the app shell).
+  it("keeps the Cookie Policy and Cookie settings reachable on phones in the embedded footer", () => {
+    const opened = jest.fn();
+    window.addEventListener(OPEN_SETTINGS_EVENT, opened);
+    render(<PublicFooter locale="ar" variant="embedded" />);
+
+    const phoneRow = screen.getByTestId("footer-phone-legal");
+    expect(phoneRow).toHaveClass("sm:hidden");
+    expect(phoneRow.closest(".hidden")).toBeNull();
+    expect(within(phoneRow).getByRole("link", { name: "Cookies" })).toHaveAttribute("href", "/ar/cookies");
+    const settings = within(phoneRow).getByRole("button", { name: "Cookie settings" });
+    for (const target of [within(phoneRow).getByRole("link", { name: "Cookies" }), settings]) {
+      expect(target).toHaveClass("min-h-11");
+    }
+    fireEvent.click(settings);
+    expect(opened).toHaveBeenCalledTimes(1);
+    window.removeEventListener(OPEN_SETTINGS_EVENT, opened);
+  });
+
+  it("leaves the phone legal row out of the full footer, whose Company column shows on phones", () => {
+    render(<PublicFooter locale="en" />);
+    expect(screen.queryByTestId("footer-phone-legal")).not.toBeInTheDocument();
   });
 
   it("renders the localized Arabic footer content", () => {

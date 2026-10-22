@@ -11,20 +11,13 @@ import { isValidObjectId } from "@/lib/security/sanitize";
 import { signTenantCookie, TENANT_COOKIE_NAME } from "@/lib/security/tenantCookie";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 
 const SESSION_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 /** Max characters for companyName stored in the cookie to prevent size overflow */
 const MAX_COOKIE_COMPANY_NAME = 100;
 
 const ALLOWED_ROLES = ["admin", "super_agent", "agent"] as const;
-
-function extractIp(req: NextRequest): string {
-  return (
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown"
-  );
-}
 
 /**
  * POST /api/tenant/switch
@@ -176,7 +169,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     ? companyNameRaw.slice(0, MAX_COOKIE_COMPANY_NAME) + "…"
     : companyNameRaw;
   const employerUserId = employer.userId.toString();
-  const ipAddress = extractIp(req);
+  const ipAddress = getClientIp(req.headers);
 
   // Upsert — one active session per actor
   await TenantViewSession.findOneAndUpdate(

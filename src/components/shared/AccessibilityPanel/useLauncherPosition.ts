@@ -1,6 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { prefStorage } from "@/lib/consent/prefStorage";
+import { LEGACY_A11Y_BUTTON_KEY } from "@/lib/consent/legacyKeys";
 
 export type LauncherSide = "start" | "end";
 
@@ -10,20 +12,44 @@ export interface LauncherPosition {
   top: number;
 }
 
-// A per-browser convenience, so localStorage rather than the preferences
-// cookie the server reads: nothing on the server depends on it.
-const STORAGE_KEY = "mployedin.a11y.button";
+// A per-browser convenience, so device storage rather than the preferences
+// cookie the server reads: nothing on the server depends on it. Kept through
+// prefStorage: on the device while preferences are allowed, for the tab only
+// once the visitor objected. Older builds used the unprefixed name (lib/consent/legacyKeys).
+const STORAGE_KEY = "ui:mployedin.a11y.button";
 
 const listeners = new Set<() => void>();
 let unsaved: string | null = null;
 let snapshot: { raw: string | null; position: LauncherPosition | null } = { raw: null, position: null };
 
-function readRaw(): string | null {
+/** What an older build left under the unprefixed name; read-only, null when storage is blocked. */
+function readLegacy(): string | null {
   try {
-    return window.localStorage.getItem(STORAGE_KEY);
+    return localStorage.getItem(LEGACY_A11Y_BUTTON_KEY);
   } catch {
-    return unsaved;
+    return null;
   }
+}
+
+/**
+ * A pure read, because it runs inside getSnapshot (during render, possibly many
+ * times): nothing here may write. prefStorage reads null when storage is blocked,
+ * and `unsaved` then keeps the choice for this visit. The old name is read too,
+ * so a saved position shows on the first client render; migrateLegacyPosition
+ * moves it afterwards.
+ */
+function readRaw(): string | null {
+  return prefStorage.get(STORAGE_KEY) ?? readLegacy() ?? unsaved;
+}
+
+/**
+ * Moves a position saved under the old name to the current key (the tab only if
+ * the visitor objected to preferences) and deletes the old one. Runs in an
+ * effect after mount, never during render; once the old key is gone it does nothing.
+ * The value is the same before and after, so no listener needs telling.
+ */
+function migrateLegacyPosition(): void {
+  prefStorage.getWithLegacy(STORAGE_KEY, LEGACY_A11Y_BUTTON_KEY);
 }
 
 export function parseLauncherPosition(raw: string | null): LauncherPosition | null {
@@ -47,16 +73,17 @@ function getSnapshot(): LauncherPosition | null {
 export function saveLauncherPosition(position: LauncherPosition | null): void {
   const raw = position ? JSON.stringify(position) : null;
   unsaved = raw;
-  try {
-    if (raw) window.localStorage.setItem(STORAGE_KEY, raw);
-    else window.localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Storage blocked: `unsaved` keeps it for this visit.
+  // prefStorage never throws; if storage is blocked, `unsaved` keeps it for this visit.
+  if (raw) prefStorage.set(STORAGE_KEY, raw);
+  else {
+    prefStorage.remove(STORAGE_KEY);
+    prefStorage.remove(LEGACY_A11Y_BUTTON_KEY);
   }
   for (const listener of listeners) listener();
 }
 
 export function useLauncherPosition(): LauncherPosition | null {
+  useEffect(migrateLegacyPosition, []);
   return useSyncExternalStore(
     (listener) => {
       listeners.add(listener);

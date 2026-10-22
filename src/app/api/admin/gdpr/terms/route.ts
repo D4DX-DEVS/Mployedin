@@ -8,8 +8,9 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { TERMS_BASELINE_VERSION, bumpTermsVersion, getCurrentTermsVersion } from "@/lib/gdpr/termsVersion";
 
 /**
- * The Terms of Service + Privacy Policy version in force, and how many users
- * have accepted it. Admins are left out of both counts: they are never asked.
+ * The Terms of Service + Privacy Policy version in force, how many users have
+ * accepted it and how many still have to. Admins are left out of every count:
+ * they are never asked.
  */
 async function summary(version: string) {
   const people = { role: { $ne: "admin" }, isActive: true };
@@ -17,7 +18,14 @@ async function summary(version: string) {
     User.countDocuments(people),
     User.countDocuments({ ...people, termsAcceptedVersion: version }),
   ]);
-  return { version, isBaseline: version === TERMS_BASELINE_VERSION, acceptedUsers, totalUsers };
+  return {
+    version,
+    isBaseline: version === TERMS_BASELINE_VERSION,
+    acceptedUsers,
+    totalUsers,
+    // The two counts are read a moment apart, so never below zero.
+    pendingUsers: Math.max(0, totalUsers - acceptedUsers),
+  };
 }
 
 /* GET /api/admin/gdpr/terms — the current version and its acceptance count */
@@ -33,8 +41,9 @@ async function getHandler(_req: NextRequest, ctx: AuthContext) {
 
 /**
  * POST /api/admin/gdpr/terms — start a new version after the Terms or Privacy
- * Policy changed materially. Every non-admin user is asked to accept again on
- * their next page load. `confirm` guards against a stray request.
+ * Policy changed materially. Every non-admin user, including those who already
+ * accepted, is asked to accept again before they continue (on their next page
+ * load). Nobody is notified. `confirm` guards against a stray request.
  */
 const bumpSchema = z.object({ confirm: z.literal(true) });
 

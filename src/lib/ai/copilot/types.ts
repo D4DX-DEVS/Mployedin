@@ -72,4 +72,6 @@ export type CopilotStreamFrame =
   | { type: "view"; tool: string; view: CopilotView }
   | { type: "proposal"; proposalId: string; tool: string; label: string; summary: string; args: Record<string, unknown>; preview?: CopilotToolPreview }
   | { type: "error"; message: string }
+  /** Drop the reply text streamed so far: the server is asking the model again. */
+  | { type: "retract" }
   | { type: "done" };

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import {
   TAXONOMY_SEEDS,
   TAXONOMY_TYPES,
@@ -17,9 +18,7 @@ import {
  * No AI — fast regex lookup.
  */
 export async function GET(req: NextRequest) {
-  const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown")
-    .split(",")[0]
-    .trim();
+  const ip = getClientIp(req.headers);
   const { allowed, resetAt } = await checkRateLimit(`taxonomy:${ip}`, {
     limit: 120,
     windowSec: 60,

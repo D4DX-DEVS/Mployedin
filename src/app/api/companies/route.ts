@@ -4,13 +4,14 @@ import Employer from "@/models/Employer";
 import Job from "@/models/Job";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 
 /**
  * GET /api/companies — Public company directory for job seekers
  */
 export async function GET(req: NextRequest) {
   // Rate limit: 30 requests per minute per IP
-  const ip = (req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown").split(",")[0].trim();
+  const ip = getClientIp(req.headers);
   const { allowed } = await checkRateLimit(`companies:${ip}`, { limit: 30, windowSec: 60, prefix: "companies" });
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });

@@ -10,6 +10,7 @@ import Conversation from "@/models/Conversation";
 import ContactSubmission from "@/models/ContactSubmission";
 import { isSubscriptionEnforcementEnabled } from "@/lib/subscription/enforcementFlag";
 import mongoose from "mongoose";
+import { clientIpHealth } from "@/lib/security/clientIp";
 
 /* ------------------------------------------------------------------ */
 /*  GET /api/admin/system-health — Platform health metrics             */
@@ -151,6 +152,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       memoryUsedMb: Math.round(memUsage.heapUsed / 1024 / 1024),
       memoryTotalMb: Math.round(memUsage.heapTotal / 1024 / 1024),
     },
+    // Where client IP addresses come from ("critical" in production with none: see lib/security/clientIp.ts).
+    deployment: { clientIp: clientIpHealth() },
   });
 }
 

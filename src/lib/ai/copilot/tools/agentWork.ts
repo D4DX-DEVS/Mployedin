@@ -10,7 +10,12 @@ import Application from "@/models/Application";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { resolveAgentScope, getAgentActionCounts } from "@/lib/agents/workQueue";
-import type { CopilotTool } from "../types";
+import { resolveTaskLinkNames, resolveTaskLinks, validateTaskLinks, type ResolvedLinkNames } from "@/lib/agentTasks/links";
+import { taskLinkHrefs } from "@/lib/agentTasks/linkHrefs";
+import { updateOwnTask } from "@/lib/agentTasks/ownTask";
+import { TaskError } from "@/lib/agentTasks/assigned";
+import { routing } from "@/i18n/routing";
+import type { CopilotTool, CopilotToolContext } from "../types";
 
 /**
  * The rest of an agent's job, for the Copilot.
@@ -58,10 +63,23 @@ export const myWorkQueueTool: CopilotTool<Record<string, never>> = {
   },
 };
 
+/** The page's locale when the chat runs on one, so links keep the agent's language. */
+function pageLocale(ctx: CopilotToolContext): string {
+  const fromPage = ctx.currentPage?.split("/")[1];
+  return routing.locales.find((l) => l === fromPage) ?? ctx.locale;
+}
+
+const STATUS_WORD: Record<AgentTaskStatus, string> = {
+  pending: "pending",
+  in_progress: "in progress",
+  completed: "completed",
+  failed: "failed",
+};
+
 export const myTasksTool: CopilotTool<{ status?: AgentTaskStatus; due?: "overdue" | "today"; limit?: number }> = {
   name: "my_tasks",
   description:
-    "List the agent's own tasks, optionally only the overdue ones or those due today. Use this to get a real taskId before complete_task.",
+    "List the agent's own tasks, optionally only the overdue ones or those due today. Each row carries the candidate / job / employer it is linked to, with a url to open each. Use this to get a real taskId before update_task_status.",
   resource: "tasks",
   action: "read",
   roles: ["agent"],
@@ -71,7 +89,7 @@ export const myTasksTool: CopilotTool<{ status?: AgentTaskStatus; due?: "overdue
       type: "string",
       description: "Filter by task status",
       optional: true,
-      enum: ["pending", "in_progress", "completed"],
+      enum: ["pending", "in_progress", "completed", "failed"],
     },
     due: {
       type: "string",
@@ -97,34 +115,60 @@ export const myTasksTool: CopilotTool<{ status?: AgentTaskStatus; due?: "overdue
     }
 
     const tasks = await AgentTask.find(filter)
-      .select("title priority status dueDate category")
+      .select("title priority status dueDate category links assignedBy reviewStatus")
       .sort({ dueDate: 1, createdAt: -1 })
       .limit(Math.min(args.limit ?? 10, 25))
       .lean();
+    const links = await resolveTaskLinks(ctx, tasks);
+    const locale = pageLocale(ctx);
 
-    const rows = tasks.map((task) => ({
-      taskId: String(task._id),
-      title: task.title,
-      priority: task.priority,
-      status: task.status,
-      dueDate: task.dueDate,
-      category: task.category,
-      overdue: Boolean(task.dueDate && new Date(task.dueDate) < new Date() && !CLOSED_TASK_STATUSES.includes(task.status)),
-    }));
+    const rows = tasks.map((task) => {
+      const linked = links.get(String(task._id));
+      const hrefs = taskLinkHrefs(locale, linked);
+      return {
+        taskId: String(task._id),
+        title: task.title,
+        priority: task.priority,
+        status: task.status,
+        dueDate: task.dueDate,
+        category: task.category,
+        overdue: Boolean(task.dueDate && new Date(task.dueDate) < new Date() && !CLOSED_TASK_STATUSES.includes(task.status)),
+        // Given by a super agent / admin: closing it sends it to them for review.
+        ...(task.assignedBy?.userId ? { assignedBy: task.assignedBy.role, reviewStatus: task.reviewStatus ?? "none" } : {}),
+        ...(linked?.candidate ? { candidate: { name: linked.candidate.name, url: hrefs.candidate } } : {}),
+        ...(linked?.job ? { job: { title: linked.job.title, url: hrefs.job } } : {}),
+        ...(linked?.employer ? { employer: { name: linked.employer.name, url: hrefs.employer } } : {}),
+      };
+    });
     return { ok: true, message: `Found ${rows.length} task(s).`, data: rows };
   },
 };
 
-export const createTaskTool: CopilotTool<{
+type CreateTaskArgs = {
   title: string;
   description?: string;
   priority?: AgentTaskPriority;
   category?: AgentTaskCategory;
   dueInDays?: number;
-}> = {
+  candidate?: string;
+  job?: string;
+  employer?: string;
+  /* Pinned by the preview (resolvedArgs), never sent by the model. */
+  candidateId?: string;
+  jobId?: string;
+  employerId?: string;
+  linkSummary?: string;
+};
+
+async function resolveLinks(args: CreateTaskArgs, ctx: CopilotToolContext): Promise<ResolvedLinkNames> {
+  if (!args.candidate?.trim() && !args.job?.trim() && !args.employer?.trim()) return { ok: true, summary: "" };
+  return resolveTaskLinkNames(ctx, { candidate: args.candidate, job: args.job, employer: args.employer });
+}
+
+export const createTaskTool: CopilotTool<CreateTaskArgs> = {
   name: "create_task",
   description:
-    "Add a task to the agent's own to-do list — a follow-up, a call, a meeting or a document chase.",
+    "Add a task to the agent's own to-do list — use for any task, to-do, follow-up, reminder, call, meeting or document chase the agent asks for (never create_lead). It can be linked to the candidate, job and/or employer it is about (by name, title or email as the agent said it); the task then opens them directly.",
   resource: "tasks",
   action: "create",
   roles: ["agent"],
@@ -151,10 +195,41 @@ export const createTaskTool: CopilotTool<{
       min: 0,
       max: 365,
     },
+    candidate: { type: "string", description: "Candidate the task is about: their name or email", optional: true, maxLength: 120 },
+    job: { type: "string", description: "Job the task is about: its title", optional: true, maxLength: 200 },
+    employer: { type: "string", description: "Employer the task is about: the company name", optional: true, maxLength: 120 },
   },
-  summarize: (args) => `Create task "${args.title}"`,
+  summarize: (args) => `Create task "${args.title}"${args.linkSummary ? ` — linked to ${args.linkSummary}` : ""}`,
+  preview: async (args, ctx) => {
+    await connectDB();
+    const linked = await resolveLinks(args, ctx);
+    if (!linked.ok) return { summary: "", blocker: linked.blocker };
+    return {
+      summary: linked.summary ? `The task will link to ${linked.summary}.` : "A task with no linked records.",
+      resolvedArgs: {
+        ...(linked.candidateId ? { candidateId: linked.candidateId } : {}),
+        ...(linked.jobId ? { jobId: linked.jobId } : {}),
+        ...(linked.employerId ? { employerId: linked.employerId } : {}),
+        ...(linked.summary ? { linkSummary: linked.summary } : {}),
+      },
+    };
+  },
   execute: async (args, ctx) => {
     await connectDB();
+    // The ids the card showed; resolved again only if the preview never ran.
+    const linked: ResolvedLinkNames = args.candidateId || args.jobId || args.employerId
+      ? { ok: true, candidateId: args.candidateId, jobId: args.jobId, employerId: args.employerId, summary: args.linkSummary ?? "" }
+      : await resolveLinks(args, ctx);
+    if (!linked.ok) return { ok: false, message: linked.blocker };
+    let links;
+    try {
+      // Checked again at write time: the agent's reach may have changed since the card.
+      links = await validateTaskLinks(ctx, { candidateId: linked.candidateId, jobId: linked.jobId, employerId: linked.employerId });
+    } catch (err) {
+      if (err instanceof TaskError) return { ok: false, message: err.message };
+      throw err;
+    }
+
     let dueDate: Date | undefined;
     if (typeof args.dueInDays === "number") {
       dueDate = new Date();
@@ -169,36 +244,78 @@ export const createTaskTool: CopilotTool<{
       priority: args.priority ?? "medium",
       category: args.category ?? "follow_up",
       dueDate,
+      ...(links ? { links } : {}),
+      // Same first history line as a task made on the Tasks page.
+      history: [{ action: "created", to: "pending", by: ctx.userId, at: new Date() }],
     });
 
-    return { ok: true, message: `Task "${task.title}" created.`, data: { taskId: String(task._id) } };
+    return {
+      ok: true,
+      message: `Task "${task.title}" created${linked.summary ? `, linked to ${linked.summary}` : ""}.`,
+      data: { taskId: String(task._id), url: `/${pageLocale(ctx)}/agent/tasks` },
+    };
   },
 };
 
-export const completeTaskTool: CopilotTool<{ taskId: string }> = {
-  name: "complete_task",
-  description: "Mark one of the agent's tasks as completed. Requires a real taskId from my_tasks.",
+type UpdateStatusArgs = { taskId: string; status: AgentTaskStatus; note?: string; taskTitle?: string; forReview?: boolean };
+
+export const updateTaskStatusTool: CopilotTool<UpdateStatusArgs> = {
+  name: "update_task_status",
+  description:
+    "Change the status of one of the agent's tasks — pending, in_progress, completed or failed — with an optional note. Requires a real taskId from my_tasks. A task given by a super agent or admin goes to them for review when completed or failed.",
   resource: "tasks",
   action: "update",
   roles: ["agent"],
   mutates: true,
   parameters: {
     taskId: { type: "string", description: "The task's MongoDB _id", maxLength: 32 },
+    status: { type: "string", description: "The new status", enum: ["pending", "in_progress", "completed", "failed"] },
+    note: { type: "string", description: "Optional note kept in the task's history", optional: true, maxLength: 2000 },
   },
-  summarize: () => "Mark task completed",
+  summarize: (args) =>
+    `Mark ${args.taskTitle ? `"${args.taskTitle}"` : "task"} ${STATUS_WORD[args.status] ?? args.status}${args.forReview ? " (sent for review)" : ""}`,
+  preview: async (args, ctx) => {
+    if (!isValidObjectId(args.taskId)) return { summary: "", blocker: "That task id is not valid. Call my_tasks for a real one." };
+    await connectDB();
+    const task = await AgentTask.findOne({ _id: args.taskId, userId: ctx.userId })
+      .select("title status assignedBy reviewStatus")
+      .lean<{ title: string; status: AgentTaskStatus; assignedBy?: { userId?: unknown }; reviewStatus?: string } | null>();
+    if (!task) return { summary: "", blocker: "No task with that id on the agent's list." };
+    const assigned = Boolean(task.assignedBy?.userId);
+    const closing = args.status === "completed" || args.status === "failed";
+    const withReviewer = task.reviewStatus === "awaiting_review" || task.reviewStatus === "approved";
+    if (assigned && withReviewer) {
+      return { summary: "", blocker: `"${task.title}" is with the agent's reviewer, so its status can't be changed now.` };
+    }
+    if (task.status === args.status && !(assigned && closing)) {
+      return { summary: "", blocker: `"${task.title}" is already ${STATUS_WORD[args.status]}.` };
+    }
+    const forReview = assigned && closing;
+    return {
+      summary: `"${task.title}": ${STATUS_WORD[task.status]} → ${STATUS_WORD[args.status]}${forReview ? ". It was assigned to the agent, so this goes to the assigner for review." : "."}`,
+      resolvedArgs: { taskTitle: task.title, forReview },
+    };
+  },
   execute: async (args, ctx) => {
     if (!isValidObjectId(args.taskId)) return { ok: false, message: "That task id is not valid." };
     await connectDB();
-    // Scoped by userId as well as id: a task belongs to one agent, and an id
-    // guessed or hallucinated by the model must not reach anyone else's list.
-    const task = await AgentTask.findOne({ _id: args.taskId, userId: ctx.userId });
-    if (!task) return { ok: false, message: "No task with that id on your list." };
-    if (task.status === "completed") {
-      return { ok: true, message: `"${task.title}" was already completed.` };
+    try {
+      // The Tasks page's own path: review for assigned tasks, a history line, the note.
+      const { outcome } = await updateOwnTask(ctx.userId, args.taskId, {
+        status: args.status,
+        note: args.note ? sanitizeAIInput(args.note, 2000) : undefined,
+      });
+      const name = args.taskTitle ? `"${args.taskTitle}"` : "The task";
+      return {
+        ok: true,
+        message: outcome === "submitted"
+          ? `${name} was reported ${STATUS_WORD[args.status]} and sent for review.`
+          : `${name} marked ${STATUS_WORD[args.status]}.`,
+      };
+    } catch (err) {
+      if (err instanceof TaskError) return { ok: false, message: err.message };
+      throw err;
     }
-    task.status = "completed";
-    await task.save();
-    return { ok: true, message: `"${task.title}" marked completed.` };
   },
 };
 
@@ -347,7 +464,7 @@ export const agentWorkTools = [
   myWorkQueueTool,
   myTasksTool,
   createTaskTool,
-  completeTaskTool,
+  updateTaskStatusTool,
   interviewsAwaitingOutcomeTool,
   recordInterviewOutcomeTool,
   newCandidatesTool,

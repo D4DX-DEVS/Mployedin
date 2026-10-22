@@ -10,6 +10,8 @@ import {
   PREFERENCES_COOKIE_MAX_AGE,
   type A11yPreferences,
 } from "@/lib/a11y/preferences";
+import { readConsent } from "@/lib/consent/client";
+import { allowed } from "@/lib/consent/state";
 
 const listeners = new Set<() => void>();
 // Used when cookies are blocked: the choice still holds for the rest of the visit.
@@ -59,7 +61,11 @@ export function syncPreferencesToDocument(): void {
 export function savePreferences(prefs: A11yPreferences): void {
   const value = encodePreferencesCookie(prefs);
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `${PREFERENCES_COOKIE}=${value}; Path=/; Max-Age=${PREFERENCES_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
+  // A preference cookie: kept for 12 months while preferences are allowed (no
+  // objection), a session cookie once the visitor objected. The choice applies
+  // to the page and is read back for this visit either way.
+  const lifetime = allowed(readConsent(), "preferences") ? `; Max-Age=${PREFERENCES_COOKIE_MAX_AGE}` : "";
+  document.cookie = `${PREFERENCES_COOKIE}=${value}; Path=/${lifetime}; SameSite=Lax${secure}`;
   unsavedValue = readCookie() === value ? null : value;
   applyPreferences(document.documentElement, prefs);
   for (const listener of listeners) listener();

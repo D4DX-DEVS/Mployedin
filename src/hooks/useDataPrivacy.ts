@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { storeCookieChoice } from "@/lib/gdpr/cookieChoice";
 
 // ── Types ──────────────────────────────────────────────────────────
 export type DataRequestType = "export" | "delete" | "rectification" | "restrict";
@@ -11,6 +10,10 @@ export interface DataRequest {
   status: DataRequestStatus;
   createdAt: string;
   completedAt: string | null;
+  /** What the team did. Only on a finished request, and only when they wrote something. */
+  outcome?: string | null;
+  /** Why the request was refused, or what was not done and why. */
+  outcomeReason?: string | null;
 }
 
 export interface ConsentState {
@@ -112,23 +115,6 @@ export function useCancelDataRequest() {
       if (!res.ok) throw new Error("Could not cancel the request");
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: dataPrivacyKeys.requests() }),
-  });
-}
-
-/** Change the cookie answer: this browser's copy and the consent log together. */
-export function useSetCookieConsent() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (granted: boolean) => {
-      const res = await fetch("/api/user/consent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ consentType: "cookies", granted, source: "privacy_settings" }),
-      });
-      if (!res.ok) throw new Error("Could not save the cookie choice");
-      storeCookieChoice(granted ? "accepted" : "declined");
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: dataPrivacyKeys.consents() }),
   });
 }
 

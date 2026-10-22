@@ -3,6 +3,7 @@ import User from "@/models/User";
 import JobSeeker from "@/models/JobSeeker";
 import Application from "@/models/Application";
 import Notification from "@/models/Notification";
+import ConsentLog from "@/models/ConsentLog";
 import WhatsAppMessageLog from "@/models/WhatsAppMessageLog";
 import { deleteLiftedSuppressions } from "@/models/WhatsAppSuppression";
 import { redactUserMessages } from "@/lib/gdpr/redactMessages";
@@ -48,6 +49,65 @@ export async function eraseWhatsAppData(userId: string): Promise<void> {
 }
 
 /**
+ * Every secret and one-time code an account can hold: the password hash, the
+ * e-mail verification, e-mail change and password reset tokens, the 2FA
+ * secrets, the LinkedIn access token and the calendar feed token. An erased
+ * account must not be signed into, reset or read through any of them.
+ */
+export const ERASED_ACCOUNT_SECRETS = [
+  "passwordHash",
+  "emailVerificationToken",
+  "emailVerificationOtp",
+  "emailVerificationExpiry",
+  "pendingEmail",
+  "emailChangeToken",
+  "emailChangeExpires",
+  "passwordResetToken",
+  "passwordResetExpiry",
+  "passwordResetAttempts",
+  "linkedinAccessToken",
+  "twoFactorSecretEnc",
+  "twoFactorPendingSecretEnc",
+  "twoFactorRecoveryCodes",
+  "calendarFeedToken",
+] as const;
+
+/**
+ * Deletes the profile photo object when it is in our own bucket (an upload, or a
+ * Google/LinkedIn photo re-hosted at sign-in: avatars are in the PUBLIC part of
+ * the bucket, so the copy stays downloadable until it is deleted). A provider's
+ * own URL is not ours to delete. Best effort: a storage failure is logged, never
+ * fatal, because the account no longer points at the object.
+ */
+export async function eraseStoredAvatar(avatar: string | null | undefined, userId: string): Promise<void> {
+  if (typeof avatar !== "string" || !avatar.trim()) return;
+  const { deleteFile, urlToKey } = await import("@/lib/storage/spaces");
+  // urlToKey strips our bucket's CDN base; an address it leaves unchanged is someone else's.
+  if (urlToKey(avatar) === avatar) {
+    if (/digitaloceanspaces\.com/i.test(avatar)) {
+      logger.warn({ userId, avatar }, "[gdpr] erasure left a profile photo on another storage host; delete it by hand");
+    }
+    return;
+  }
+  try {
+    await deleteFile(avatar);
+  } catch (err) {
+    logger.warn({ err, userId, avatar }, "[gdpr] erasure could not delete the stored profile photo");
+  }
+}
+
+/**
+ * The person's consent rows stay as the evidence of each choice (UK GDPR
+ * Art 7(1); kept under Art 17(3)(e)): the type, granted, policy version, choice
+ * reference, source and dates. What identifies the person beyond the account id
+ * goes: the name becomes "Deleted User", and the IP address and user agent are
+ * removed. [LEGAL] the solicitor confirms this scope (owner list).
+ */
+export async function anonymiseConsentLogs(userId: string): Promise<void> {
+  await ConsentLog.updateMany({ userId }, { $set: { userName: "Deleted User" }, $unset: { ipAddress: 1, userAgent: 1 } });
+}
+
+/**
  * Erase all personal data for a user — anonymize their account,
  * delete their profile, notifications, and uploaded files per GDPR.
  * @param userId The user ID to erase
@@ -63,15 +123,20 @@ export async function eraseUserPersonalData(userId: string): Promise<{ anonymize
   // write, so erasure can be retried (admin/gdpr/[id]) with the number still there.
   await eraseWhatsAppData(userId);
 
-  const [, seekerBefore] = await Promise.all([
-    // Anonymize user account (the WhatsApp state went with eraseWhatsAppData)
+  const [userBefore, seekerBefore] = await Promise.all([
+    // Anonymize user account (the WhatsApp state went with eraseWhatsAppData). findByIdAndUpdate returns the
+    // PRE-update document, so `userBefore` still has the photo address for the storage delete below.
     User.findByIdAndUpdate(userId, {
-      name: "Deleted User",
-      email: anonymizedEmail,
-      phone: null,
-      isActive: false,
-      deletedAt: new Date(),
-    }),
+      $set: {
+        name: "Deleted User",
+        email: anonymizedEmail,
+        phone: null,
+        avatar: null,
+        isActive: false,
+        deletedAt: new Date(),
+      },
+      $unset: Object.fromEntries(ERASED_ACCOUNT_SECRETS.map((field) => [field, 1])),
+    }).select("avatar").lean<{ avatar?: string | null } | null>(),
     // Delete job seeker profile data. Field names MUST match the schema exactly
     // or $unset silently no-ops: `cv` (holds originalUrl + parsed resume text)
     // and `experience` were previously misnamed `cvUrl`/`workExperience`, so
@@ -98,6 +163,10 @@ export async function eraseUserPersonalData(userId: string): Promise<{ anonymize
     // Delete notifications
     Notification.deleteMany({ userId }),
   ]);
+
+  // Their name, IP address and user agent on the consent rows. Not caught: a failure fails the erasure, and the
+  // request stays in progress for the admin to retry (every step here is safe to run twice).
+  await anonymiseConsentLogs(userId);
 
   // Messages the user wrote, and their name on other people's conversation lists.
   try {
@@ -133,6 +202,7 @@ export async function eraseUserPersonalData(userId: string): Promise<{ anonymize
       logger.warn({ err, userId, url }, "[gdpr] erasure could not delete stored file");
     }
   }
+  await eraseStoredAvatar(userBefore?.avatar, userId);
   // The CV records hold each CV's full text and what was read from it.
   if (seekerBefore?._id) {
     try {

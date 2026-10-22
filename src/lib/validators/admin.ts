@@ -2,6 +2,7 @@ import { z } from "zod";
 import { commonSchemas } from "./index";
 import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 import { broadcastWhatsAppSchema } from "./whatsapp";
+import { ADMIN_NOTES_MAX, OUTCOME_MAX, OUTCOME_REASON_MAX } from "@/lib/gdpr/requestOutcome";
 
 const VALID_ROLES = ["admin", "super_agent", "agent", "employer", "job_seeker"] as const;
 const PERMISSION_MODES = ["role_default", "custom"] as const;
@@ -137,11 +138,25 @@ export const adminUserPatchSchema = z.union([
 ]);
 
 /** DELETE /api/admin/users */
-/** PATCH /api/admin/gdpr/[id] — status transitions are enforced in the handler. Admins cannot set "cancelled" (only users can cancel). */
-export const adminGdprStatusSchema = z.object({
-  status: z.enum(["pending", "in_progress", "completed", "rejected"]),
-  notes: z.string().trim().max(2000).optional(),
-});
+/**
+ * PATCH /api/admin/gdpr/[id] — status transitions are enforced in the handler. Admins cannot set "cancelled" (only users can cancel).
+ *
+ * `notes` is the user's own reason and is not accepted here: a client that
+ * sends it has it dropped. What the team did goes in `outcome`,
+ * `outcomeReason` and `adminNotes`. A refusal needs a reason, because the
+ * person is told why (UK GDPR Art 12(4)).
+ */
+export const adminGdprStatusSchema = z
+  .object({
+    status: z.enum(["pending", "in_progress", "completed", "rejected"]),
+    outcome: z.string().trim().max(OUTCOME_MAX).optional(),
+    outcomeReason: z.string().trim().max(OUTCOME_REASON_MAX).optional(),
+    adminNotes: z.string().trim().max(ADMIN_NOTES_MAX).optional(),
+  })
+  .refine((body) => body.status !== "rejected" || Boolean(body.outcomeReason), {
+    path: ["outcomeReason"],
+    message: "We couldn't reject this request without a reason. Say why it was refused.",
+  });
 
 export const adminUserDeleteSchema = z.object({
   userId: commonSchemas.objectId,

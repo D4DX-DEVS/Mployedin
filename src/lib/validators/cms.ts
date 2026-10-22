@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { FAQ_CATEGORIES } from "@/lib/cms/faqCategories";
+import { parseYouTubeId } from "@/lib/cms/youtube";
 
 const bilingualText = (maxLen: number) =>
   z.string().max(maxLen).trim().optional().or(z.literal(""));
@@ -21,38 +22,20 @@ const sortActive = {
 };
 
 // ── Videos ──────────────────────────────────────────────────────────
-// BUG-005: the admin form labels this field YouTube/Vimeo, but the schema
-// accepted any URL — including javascript: and arbitrary .mp4 hosts. Only
-// http(s) YouTube/Vimeo embeds are stored now.
-const VIDEO_HOSTS = new Set([
-  "youtube.com",
-  "www.youtube.com",
-  "m.youtube.com",
-  "youtu.be",
-  "youtube-nocookie.com",
-  "www.youtube-nocookie.com",
-  "vimeo.com",
-  "www.vimeo.com",
-  "player.vimeo.com",
-]);
-
+// BUG-005: the schema once accepted any URL — including javascript: and
+// arbitrary .mp4 hosts. PECR click-to-load (owner decision D5): YouTube is the
+// only video host the landing page can embed, so Vimeo links are refused rather
+// than saved and never shown. The rule is the landing page's own (parseYouTubeId):
+// a link is valid only if it yields an 11-character video id, so a Shorts,
+// channel or playlist link or a mistyped id fails here instead of saving and
+// then rendering nothing.
 const videoUrl = z
   .string()
   .trim()
   .max(2048)
-  .refine(
-    (v) => {
-      let parsed: URL;
-      try {
-        parsed = new URL(v);
-      } catch {
-        return false;
-      }
-      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
-      return VIDEO_HOSTS.has(parsed.hostname.toLowerCase());
-    },
-    { message: "Must be a YouTube or Vimeo URL (https://…)" },
-  );
+  .refine((v) => parseYouTubeId(v) !== null, {
+    message: "Use a YouTube video link (youtube.com/watch?v=… or youtu.be/…)",
+  });
 
 export const videoCreateSchema = z.object({
   title: z.string().min(1).max(200).trim(),

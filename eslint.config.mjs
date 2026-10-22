@@ -9,6 +9,7 @@ export default [
   {
     ignores: [
       ".next/**",
+      ".next-e2e/**",
       "node_modules/**",
       "coverage/**",
       "dist/**",
@@ -70,6 +71,54 @@ export default [
         "warn",
         {
           allow: ["warn", "error"],
+        },
+      ],
+    },
+  },
+  {
+    // Firebase must start only on a "Continue with Google" click (PECR): a stray
+    // import creates its IndexedDB databases and contacts Google on page load.
+    // Only src/lib/firebase/** may import it; everything else goes through
+    // getGoogleIdToken() in src/lib/firebase/googleSignIn.ts, which loads it
+    // lazily. Tests are exempt (they mock the SDK). Regexes, not gitignore-style
+    // groups: "firebase/*" would also match our own @/lib/firebase/admin.
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    ignores: ["src/lib/firebase/**", "src/__tests__/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^firebase(/.*)?$",
+              message:
+                "Do not import the Firebase SDK here: it must load only on a Google-button click. Use getGoogleIdToken() from '@/lib/firebase/googleSignIn' (src/lib/firebase/googleSignIn.ts).",
+            },
+            {
+              regex: "(^|/)firebase/client$",
+              message:
+                "Do not import the Firebase client here: it pulls the SDK in. Use getGoogleIdToken() from '@/lib/firebase/googleSignIn' (src/lib/firebase/googleSignIn.ts).",
+            },
+          ],
+        },
+      ],
+      // no-restricted-imports does not look at import("...") or require("...").
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportExpression[source.value=/^firebase(\\/.*)?$/]",
+          message:
+            "Do not import the Firebase SDK here: it must load only on a Google-button click. Use getGoogleIdToken() from '@/lib/firebase/googleSignIn' (src/lib/firebase/googleSignIn.ts).",
+        },
+        {
+          selector: "ImportExpression[source.value=/(^|\\/)firebase\\/client$/]",
+          message:
+            "Do not import the Firebase client here: it pulls the SDK in. Use getGoogleIdToken() from '@/lib/firebase/googleSignIn' (src/lib/firebase/googleSignIn.ts).",
+        },
+        {
+          selector: "CallExpression[callee.name='require'][arguments.0.value=/^firebase(\\/.*)?$|(^|\\/)firebase\\/client$/]",
+          message:
+            "Do not require the Firebase SDK or client here. Use getGoogleIdToken() from '@/lib/firebase/googleSignIn' (src/lib/firebase/googleSignIn.ts).",
         },
       ],
     },

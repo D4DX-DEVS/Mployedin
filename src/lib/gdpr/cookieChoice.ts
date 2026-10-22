@@ -1,35 +1,30 @@
-/**
- * The cookie-banner choice, shared by the banner (which stores it) and the
- * registration forms (which send it, so the account's consent log records it).
- * Client-safe: no server imports.
- */
-export const COOKIE_CONSENT_STORAGE_KEY = "cookie-consent";
+import { readConsent } from "@/lib/consent/client";
 
+/**
+ * The cookie answer in the two-value shape the registration forms send, so an
+ * account's consent log records what the visitor chose before signing up.
+ *
+ * An adapter over the `mpl_consent` cookie (lib/consent/client): the banner
+ * and Cookie settings dialog are the only writers. The old localStorage
+ * `cookie-consent` key is no longer read; that answer was given against untrue
+ * banner copy, so everyone is asked again.
+ *
+ * No server imports: the server parse sites (auth/config, employer-register)
+ * use only parseCookieChoice, and the browser-only function below never runs there.
+ */
 export type CookieChoice = "accepted" | "declined";
 
 export function parseCookieChoice(value: unknown): CookieChoice | null {
   return value === "accepted" || value === "declined" ? value : null;
 }
 
-/** The visitor's stored choice; null when none was made or storage is blocked. */
-export function readCookieChoice(): CookieChoice | null {
-  try {
-    return parseCookieChoice(window.localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY));
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Remember the visitor's choice in this browser. The banner and the Data &
- * Privacy page both write here, so changing it on one is what the other reads.
- * Returns false when storage is blocked.
+ * "accepted" when any optional category (Preferences, Media) is on, "declined"
+ * when a choice exists with all of them off, null when no choice was made or
+ * cookies are blocked.
  */
-export function storeCookieChoice(choice: CookieChoice): boolean {
-  try {
-    window.localStorage.setItem(COOKIE_CONSENT_STORAGE_KEY, choice);
-    return true;
-  } catch {
-    return false;
-  }
+export function readCookieChoice(): CookieChoice | null {
+  const state = readConsent();
+  if (!state) return null;
+  return state.preferences || state.media ? "accepted" : "declined";
 }

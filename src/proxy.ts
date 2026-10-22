@@ -17,14 +17,21 @@ import { setCsrfCookie, validateCsrf, isCsrfExempt } from "@/lib/security/csrf";
 import { TENANT_COOKIE_NAME, verifyTenantCookie } from "@/lib/security/tenantCookie";
 import { isPublicRoute } from "@/lib/routing/publicRoutes";
 import { withTrustedClientIp } from "@/lib/security/clientIp";
+import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE_S, localeCookieEnabled } from "@/lib/consent/localeCookie";
 
 const locales = ["en", "ar"] as const;
 const defaultLocale = "en";
 
-const intlMiddleware = createIntlMiddleware({
-  locales,
-  defaultLocale,
-  localePrefix: "always",
+// NEXT_LOCALE is a preference cookie: a visit must not create it, and a visitor
+// who objected to preferences must not have it read. next-intl's middleware has
+// no per-request switch (with `localeCookie: false` it neither writes nor reads
+// the cookie), so there are two and each request picks one — see
+// localeCookieEnabled(). The URL prefix still decides the locale in both.
+const intlConfig = { locales, defaultLocale, localePrefix: "always" } as const;
+const intlMiddleware = createIntlMiddleware({ ...intlConfig, localeCookie: false });
+const intlMiddlewareWithCookie = createIntlMiddleware({
+  ...intlConfig,
+  localeCookie: { name: LOCALE_COOKIE, maxAge: LOCALE_COOKIE_MAX_AGE_S, sameSite: "lax" },
 });
 
 /** Auth-specific routes — logged-in users are redirected away from these */
@@ -177,8 +184,10 @@ export default auth(async function middleware(req: NextAuthRequest) {
   // Consumed by the dashboard layout for path-aware checks (2FA enforcement).
   requestHeaders.set("x-pathname", pathname);
 
-  // Apply i18n middleware to get locale redirects / rewrites / cookies
-  const intlResponse = intlMiddleware(plainReq);
+  // Apply i18n middleware to get locale redirects / rewrites / cookies. Only a
+  // visitor who already has NEXT_LOCALE (and hasn't objected to preferences)
+  // gets it read and refreshed.
+  const intlResponse = (localeCookieEnabled(req.cookies) ? intlMiddlewareWithCookie : intlMiddleware)(plainReq);
 
   // Check auth session
   const session = (req as unknown as { auth?: { user?: { id: string; email?: string; role: UserRole; locale: string; isEmailVerified?: boolean; isOnboarded?: boolean; termsPending?: boolean } } }).auth;
@@ -378,7 +387,9 @@ export default auth(async function middleware(req: NextAuthRequest) {
 });
 
 export const config = {
+  // Static images are skipped by extension, but never under /api/: an API path ending in .png must still get the
+  // CSRF check and the client-IP normalisation (proxyMatcherApiExtensions.test.ts).
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|llms\\.txt|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|llms\\.txt|manifest\\.json|(?!api/).*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -1,31 +1,93 @@
 /**
- * Update privacy-policy and cookie-policy pages with official content from mployedin.com.
+ * Update the cookie-policy page (and, only when named, the privacy-policy page).
  *
  * Usage:
- *   node --env-file=.env scripts/update-legal-content.mjs
+ *   node scripts/update-legal-content.mjs                          # dry run (the default), cookie-policy only
+ *   node scripts/update-legal-content.mjs --dry-run                # same, spelled out
+ *   node scripts/update-legal-content.mjs --slug=privacy-policy    # dry run of the Privacy Policy instead
+ *   node --env-file=.env scripts/update-legal-content.mjs --apply  # write cookie-policy to the database
+ *
+ * Pages: only cookie-policy unless --slug names others (--slug=privacy-policy,
+ * --slug=cookie-policy,privacy-policy, or the flag twice). The Privacy Policy
+ * text in this file predates the consent work and lacks what the live page may
+ * have gained in the CMS, so it is never rewritten by surprise.
+ *
+ * Dry run: prints, for each chosen page and language, the size change and the
+ * first changed lines, then the full unified diff, between the text this script
+ * last wrote (PREVIOUS_COOKIE_BODY*, or PRIVACY_BODY* itself) and the text it
+ * would write now. It does not read .env, does not load the database driver and
+ * does not connect to anything. Review it first.
+ *
+ * --apply: connects with MONGODB_URI and upserts the chosen pages only, so any
+ * edit made to those pages in Admin > CMS > Static Pages since the script last
+ * ran is overwritten.
+ *
+ * The cookie policy is generated from src/lib/consent/registry.json (run
+ * `npm run consent:export` after changing registry.ts) and the Cookie
+ * settings strings in messages/en.json and messages/ar.json.
+ * [LEGAL] the generated wording needs solicitor sign-off before --apply.
  */
 
-import mongoose from "mongoose";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { buildCookiePolicy } from "./lib/cookiePolicyFromRegistry.mjs";
+import { readMessages, readRegistryJson } from "./lib/consentFiles.mjs";
+import { unifiedDiff } from "./lib/unifiedDiff.mjs";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
-  console.error("Missing MONGODB_URI environment variable");
-  process.exit(1);
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+const USAGE = "Usage: node scripts/update-legal-content.mjs [--dry-run | --apply] [--slug=cookie-policy|privacy-policy[,...]]";
+
+/** The pages this script can write. Only cookie-policy is written unless --slug names more. */
+const KNOWN_SLUGS = ["cookie-policy", "privacy-policy"];
+const DEFAULT_SLUGS = ["cookie-policy"];
+
+/**
+ * "dry-run" (the default) or "apply", and the pages to touch. Anything unknown is an error: nothing may write by
+ * accident, and a misspelt slug must not silently fall back to another page.
+ */
+function parseArgs(argv) {
+  const known = new Set(["--dry-run", "--apply"]);
+  const slugArgs = argv.filter((arg) => arg === "--slug" || arg.startsWith("--slug="));
+  const unknown = argv.filter((arg) => !known.has(arg) && !slugArgs.includes(arg));
+  if (unknown.length > 0) {
+    console.error(`Unknown option: ${unknown.join(" ")}\n${USAGE}`);
+    process.exit(1);
+  }
+  if (argv.includes("--apply") && argv.includes("--dry-run")) {
+    console.error(`Use either --dry-run or --apply, not both.\n${USAGE}`);
+    process.exit(1);
+  }
+  const slugs = new Set();
+  for (const arg of slugArgs) {
+    const values = arg.includes("=") ? arg.slice(arg.indexOf("=") + 1).split(",").map((v) => v.trim()) : [];
+    if (values.length === 0 || values.some((v) => !KNOWN_SLUGS.includes(v))) {
+      console.error(`--slug needs one or more of: ${KNOWN_SLUGS.join(", ")} (got "${arg}").\n${USAGE}`);
+      process.exit(1);
+    }
+    for (const v of values) slugs.add(v);
+  }
+  return {
+    mode: argv.includes("--apply") ? "apply" : "dry-run",
+    slugs: slugs.size > 0 ? KNOWN_SLUGS.filter((s) => slugs.has(s)) : DEFAULT_SLUGS,
+  };
 }
 
-const StaticPageSchema = new mongoose.Schema(
-  {
-    slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    title: { type: String, required: true, trim: true },
-    titleAr: { type: String, default: "", trim: true },
-    body: { type: String, required: true },
-    bodyAr: { type: String, default: "" },
-    isActive: { type: Boolean, default: true },
-  },
-  { timestamps: true }
-);
-
-const StaticPage = mongoose.models.StaticPage || mongoose.model("StaticPage", StaticPageSchema);
+// The database driver is loaded only when --apply asks for it (see applyUpdate).
+function staticPageModel(mongoose) {
+  const StaticPageSchema = new mongoose.Schema(
+    {
+      slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
+      title: { type: String, required: true, trim: true },
+      titleAr: { type: String, default: "", trim: true },
+      body: { type: String, required: true },
+      bodyAr: { type: String, default: "" },
+      isActive: { type: Boolean, default: true },
+    },
+    { timestamps: true }
+  );
+  return mongoose.models.StaticPage || mongoose.model("StaticPage", StaticPageSchema);
+}
 
 // ─── Privacy Policy ─────────────────────────────────────────────────────────
 
@@ -193,7 +255,16 @@ const PRIVACY_BODY_AR = `<h2>1. المعلومات التي نجمعها</h2>
 
 // ─── Cookie Policy ──────────────────────────────────────────────────────────
 
-const COOKIE_BODY = `<h2>1. What are Cookies?</h2>
+// The cookie policy this script wrote before it was generated from the registry
+// (it described Performance / Targeting / Advertising cookies and said "By using
+// our website, you consent"). Kept ONLY as the left side of the dry-run diff; it
+// is never written. The text that is written comes from buildCookiePolicy().
+//
+// These two constants are the dry-run BASELINE, not a copy of the live page. After
+// the owner runs --apply, replace them with the text that was applied (the dry
+// run's "generated" side, or the live page's HTML), otherwise every later dry run
+// diffs against this obsolete text and reports a change that was already made.
+const PREVIOUS_COOKIE_BODY = `<h2>1. What are Cookies?</h2>
 <p>Cookies are small text files that are placed on your device (computer, mobile phone, or tablet) when you visit our website. They allow us to recognize your device and collect certain information about your browsing actions and preferences. Cookies can be &ldquo;persistent&rdquo; cookies, which stay on your device for a set period, or &ldquo;session&rdquo; cookies, which are temporary and expire when you close your browser.</p>
 
 <h2>2. Types of Cookies We Use</h2>
@@ -214,7 +285,7 @@ const COOKIE_BODY = `<h2>1. What are Cookies?</h2>
 <h2>5. Changes to this Cookie Policy</h2>
 <p>We may update this Cookie Policy from time to time to reflect changes in our use of cookies or applicable laws and regulations. Any updates will be posted on this page, and the &ldquo;Last Updated&rdquo; date will be revised accordingly. We encourage you to review this policy periodically for any changes.</p>`;
 
-const COOKIE_BODY_AR = `<h2>1. ما هي ملفات تعريف الارتباط؟</h2>
+const PREVIOUS_COOKIE_BODY_AR = `<h2>1. ما هي ملفات تعريف الارتباط؟</h2>
 <p>ملفات تعريف الارتباط هي ملفات نصية صغيرة توضع على جهازك (الكمبيوتر، الهاتف المحمول، أو الجهاز اللوحي) عند زيارة موقعنا. تتيح لنا التعرف على جهازك وجمع معلومات معينة حول إجراءات التصفح وتفضيلاتك. يمكن أن تكون ملفات تعريف الارتباط "دائمة" تبقى على جهازك لفترة محددة، أو ملفات "جلسة" مؤقتة تنتهي صلاحيتها عند إغلاق المتصفح.</p>
 
 <h2>2. أنواع ملفات تعريف الارتباط التي نستخدمها</h2>
@@ -235,11 +306,18 @@ const COOKIE_BODY_AR = `<h2>1. ما هي ملفات تعريف الارتباط�
 <h2>5. التغييرات على سياسة ملفات تعريف الارتباط</h2>
 <p>قد نقوم بتحديث سياسة ملفات تعريف الارتباط هذه من وقت لآخر. سيتم نشر أي تحديثات على هذه الصفحة وسيتم تعديل تاريخ "آخر تحديث" وفقاً لذلك.</p>`;
 
-async function update() {
-  await mongoose.connect(MONGODB_URI);
-  console.log("Connected to MongoDB");
+/** The generated cookie policy, both languages (throws if the registry and the policy text disagree). */
+function generatedCookiePolicy() {
+  const registry = readRegistryJson(ROOT);
+  return {
+    body: buildCookiePolicy({ registry, messages: readMessages(ROOT, "en"), locale: "en" }),
+    bodyAr: buildCookiePolicy({ registry, messages: readMessages(ROOT, "ar"), locale: "ar" }),
+  };
+}
 
-  const pages = [
+/** The chosen pages (`slugs`), in a fixed order. */
+function pagesToWrite(cookie, slugs) {
+  return [
     {
       slug: "privacy-policy",
       title: "Privacy Policy",
@@ -251,10 +329,92 @@ async function update() {
       slug: "cookie-policy",
       title: "Cookie Policy",
       titleAr: "سياسة ملفات تعريف الارتباط",
-      body: COOKIE_BODY,
-      bodyAr: COOKIE_BODY_AR,
+      body: cookie.body,
+      bodyAr: cookie.bodyAr,
     },
-  ];
+  ].filter((page) => slugs.includes(page.slug));
+}
+
+/** What this script last wrote for a page: the dry run's left side. */
+function baselineFor(slug, locale) {
+  if (slug === "cookie-policy") return locale === "en" ? PREVIOUS_COOKIE_BODY : PREVIOUS_COOKIE_BODY_AR;
+  // The Privacy Policy text has not changed since the script last wrote it.
+  return locale === "en" ? PRIVACY_BODY : PRIVACY_BODY_AR;
+}
+
+const FIRST_CHANGED_LINES = 12;
+const count = (n) => n.toLocaleString("en-GB");
+const signed = (n) => (n >= 0 ? `+${count(n)}` : `-${count(-n)}`);
+
+/** One page in one language: the size change, the first changed lines, then the full diff. */
+function printComparison(slug, locale, before, after) {
+  console.log(`=== ${slug} (${locale}) ===`);
+  const diff = unifiedDiff(before, after, {
+    oldLabel: `${slug} ${locale}: text this script last wrote`,
+    newLabel: slug === "cookie-policy"
+      ? `${slug} ${locale}: generated from registry.json + messages/${locale}.json`
+      : `${slug} ${locale}: the text in this file`,
+  });
+  if (diff === "") {
+    console.log(`${slug} (${locale}): ${count(after.length)} characters, no change from the text this script last wrote.\n`);
+    return;
+  }
+  const lines = diff.split("\n");
+  const changed = lines.filter((line) => /^[+-]/.test(line) && !/^(\+\+\+|---) /.test(line));
+  const added = changed.filter((line) => line.startsWith("+")).length;
+  console.log(
+    `${slug} (${locale}): ${count(before.length)} -> ${count(after.length)} characters (${signed(after.length - before.length)}), ` +
+      `+${added} -${changed.length - added} lines`,
+  );
+  console.log("First changed lines:");
+  for (const line of changed.slice(0, FIRST_CHANGED_LINES)) {
+    console.log(`  ${line.length > 160 ? `${line.slice(0, 160)}...` : line}`);
+  }
+  if (changed.length > FIRST_CHANGED_LINES) {
+    console.log(`  (${changed.length - FIRST_CHANGED_LINES} more changed lines in the full diff below)`);
+  }
+  console.log("");
+  console.log(diff);
+  console.log("");
+}
+
+function dryRun(slugs) {
+  const pages = pagesToWrite(generatedCookiePolicy(), slugs);
+  console.log("DRY RUN: nothing is written, and no database connection is made.");
+  console.log("Pass --apply (with MONGODB_URI set) to write the pages listed at the end.\n");
+
+  for (const page of pages) {
+    printComparison(page.slug, "en", baselineFor(page.slug, "en"), page.body);
+    printComparison(page.slug, "ar", baselineFor(page.slug, "ar"), page.bodyAr);
+  }
+
+  console.log("--apply would write these pages (upsert by slug, isActive: true):");
+  for (const page of pages) {
+    const note = page.slug === "cookie-policy" ? "body + bodyAr: the generated text above" : "body + bodyAr: the text in this file";
+    console.log(`  - ${page.slug}: ${note}`);
+  }
+  const others = KNOWN_SLUGS.filter((slug) => !slugs.includes(slug));
+  if (others.length > 0) {
+    console.log(`Not touched: ${others.join(", ")} (add ${others.map((slug) => `--slug=${slug}`).join(" or ")} to include it).`);
+  }
+  console.log(
+    "\nThe left side of each diff is the text this script last wrote, not the live page. If an admin edited a page in" +
+      "\nAdmin > CMS > Static Pages since then, --apply overwrites those edits: compare the live page there first."
+  );
+}
+
+async function applyUpdate(slugs) {
+  const MONGODB_URI = process.env.MONGODB_URI;
+  if (!MONGODB_URI) {
+    console.error("Missing MONGODB_URI environment variable");
+    process.exit(1);
+  }
+  const pages = pagesToWrite(generatedCookiePolicy(), slugs); // generate first: a registry/text mismatch stops here, before any connection
+  const { default: mongoose } = await import("mongoose");
+  const StaticPage = staticPageModel(mongoose);
+
+  await mongoose.connect(MONGODB_URI);
+  console.log("Connected to MongoDB");
 
   for (const page of pages) {
     await StaticPage.findOneAndUpdate(
@@ -269,7 +429,14 @@ async function update() {
   await mongoose.disconnect();
 }
 
-update().catch((err) => {
-  console.error("Update failed:", err);
+const { mode, slugs } = parseArgs(process.argv.slice(2));
+
+async function main() {
+  if (mode === "apply") await applyUpdate(slugs);
+  else dryRun(slugs);
+}
+
+main().catch((err) => {
+  console.error(mode === "apply" ? "Update failed:" : "Dry run failed:", err);
   process.exit(1);
 });

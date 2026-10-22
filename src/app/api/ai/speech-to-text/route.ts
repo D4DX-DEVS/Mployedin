@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logActivity } from "@/lib/audit/log";
 import logger from "@/lib/logger";
@@ -200,10 +201,7 @@ export async function POST(req: NextRequest) {
     const gateErr = await enforceFeatureGate(session.user.id!, userRole, { type: "ai", feature: "ai_voice_input" });
     if (gateErr) return gateErr;
 
-    const ip =
-      req.headers.get("x-forwarded-for") ??
-      req.headers.get("x-real-ip") ??
-      "unknown";
+    const ip = getClientIp(req.headers);
     const { allowed, remaining, resetAt } = await checkRateLimit(
       `ai-speech:${(session.user as unknown as { id: string }).id ?? ip}`,
       RATE_LIMIT_CONFIGS.ai

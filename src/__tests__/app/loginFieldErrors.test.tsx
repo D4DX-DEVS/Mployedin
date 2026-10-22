@@ -11,8 +11,10 @@ jest.mock("next-auth/react", () => ({
   signIn: (...args: unknown[]) => signInMock(...args),
   getSession: jest.fn().mockResolvedValue(null),
 }));
-jest.mock("firebase/auth", () => ({ signInWithPopup: jest.fn() }));
-jest.mock("@/lib/firebase/client", () => ({ firebaseAuth: {}, googleProvider: {} }));
+jest.mock("@/lib/firebase/googleSignIn", () => ({
+  getGoogleIdToken: jest.fn(),
+  preloadGoogleSignIn: jest.fn(),
+}));
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
   useParams: () => ({ locale: "en" }),

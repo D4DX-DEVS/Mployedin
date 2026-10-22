@@ -7,10 +7,21 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
 import { logActivity } from "@/lib/audit/log";
 import logger from "@/lib/logger";
 import { getClientIp } from "@/lib/security/clientIp";
+import { verifyCaptcha, type CaptchaResult } from "@/lib/security/captcha";
+
+/** Lowest captcha score the contact form accepts. */
+const CONTACT_MIN_SCORE = 0.3;
+
+const CAPTCHA_MESSAGES = {
+  CAPTCHA_REQUIRED: "CAPTCHA verification required",
+  CAPTCHA_FAILED: "CAPTCHA verification failed",
+  CAPTCHA_UNAVAILABLE: "CAPTCHA verification is temporarily unavailable",
+} satisfies Record<Extract<CaptchaResult, { ok: false }>["error"], string>;
 
 /**
  * Public contact form submission — NO AUTH required.
- * Validates input, optional reCAPTCHA, creates ContactSubmission.
+ * Validates input, optional captcha (reCAPTCHA behind lib/security/captcha),
+ * creates ContactSubmission.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -26,51 +37,17 @@ export async function POST(req: NextRequest) {
 
     const { name, email, phone, subject, message, captchaToken } = body;
 
-    // When reCAPTCHA is configured it is mandatory and fails closed.
-    const captchaSecret = process.env.RECAPTCHA_SECRET_KEY;
-    if (captchaSecret) {
-      if (!captchaToken) {
-        return NextResponse.json({ error: "CAPTCHA verification required" }, { status: 403 });
-      }
-      try {
-        const params = new URLSearchParams();
-        params.append("secret", captchaSecret);
-        params.append("response", captchaToken);
-        const captchaRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: params.toString(),
-        });
-        if (!captchaRes.ok) throw new Error(`CAPTCHA service returned ${captchaRes.status}`);
-        const captchaData = (await captchaRes.json()) as {
-          success?: boolean;
-          score?: number;
-          action?: string;
-          hostname?: string;
-        };
-        const allowedHosts = (process.env.RECAPTCHA_ALLOWED_HOSTS ?? req.nextUrl.hostname)
-          .split(",")
-          .map((host) => host.trim().toLowerCase())
-          .filter(Boolean);
-        if (
-          !captchaData.success ||
-          (captchaData.score !== undefined && captchaData.score < 0.3) ||
-          (captchaData.action !== undefined && captchaData.action !== "contact") ||
-          !captchaData.hostname ||
-          !allowedHosts.includes(captchaData.hostname.toLowerCase())
-        ) {
-          return NextResponse.json(
-            { error: "CAPTCHA verification failed" },
-            { status: 403 }
-          );
-        }
-      } catch (error) {
-        logger.warn({ error }, "[Contact] CAPTCHA service unavailable");
-        return NextResponse.json(
-          { error: "CAPTCHA verification is temporarily unavailable" },
-          { status: 503 },
-        );
-      }
+    // When a captcha provider is configured it is mandatory and fails closed.
+    // The same verifier as quick-apply; the response bodies below are this
+    // route's own, and `code` lets the form say the same thing in the visitor's
+    // language instead of showing the English text.
+    const captcha = await verifyCaptcha(captchaToken, {
+      action: "contact",
+      hostname: req.nextUrl.hostname,
+      minScore: CONTACT_MIN_SCORE,
+    });
+    if (!captcha.ok) {
+      return NextResponse.json({ error: CAPTCHA_MESSAGES[captcha.error], code: captcha.error }, { status: captcha.status });
     }
 
     const ipAddress = ip;

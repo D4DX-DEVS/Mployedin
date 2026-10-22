@@ -1,0 +1,418 @@
+[
+  {
+    "name": "authjs.*",
+    "kind": "cookie",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "session / up to 3 days",
+    "owner": "auth",
+    "purposeKey": "auth"
+  },
+  {
+    "name": "__Secure-authjs.*",
+    "kind": "cookie",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "session / up to 3 days",
+    "owner": "auth",
+    "purposeKey": "auth"
+  },
+  {
+    "name": "__Host-authjs.*",
+    "kind": "cookie",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "session",
+    "owner": "auth",
+    "purposeKey": "auth"
+  },
+  {
+    "name": "csrf-token",
+    "kind": "cookie",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "2 hours",
+    "owner": "security",
+    "purposeKey": "csrf"
+  },
+  {
+    "name": "mployedin_tenant_view",
+    "kind": "cookie",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "session",
+    "owner": "security",
+    "purposeKey": "tenantView"
+  },
+  {
+    "name": "mpl_signup_consent",
+    "kind": "cookie",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "30 minutes",
+    "owner": "auth",
+    "purposeKey": "signupConsent"
+  },
+  {
+    "name": "mpl_consent",
+    "kind": "cookie",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "6 months",
+    "owner": "consent",
+    "purposeKey": "consentChoice"
+  },
+  {
+    "name": "mpl_receipt_pending",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "tab",
+    "owner": "consent",
+    "purposeKey": "consentChoice"
+  },
+  {
+    "name": "mployedin_last_activity",
+    "kind": "localStorage",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "until sign-out",
+    "owner": "auth",
+    "purposeKey": "idle"
+  },
+  {
+    "name": "mployedin_remember_email",
+    "kind": "localStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "until removed",
+    "owner": "auth",
+    "purposeKey": "rememberEmail"
+  },
+  {
+    "name": "job-ai-*",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "employer",
+    "purposeKey": "taskState"
+  },
+  {
+    "name": "job-draft-*",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "employer",
+    "purposeKey": "jobDraft"
+  },
+  {
+    "name": "job-prefs-draft",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "seeker",
+    "purposeKey": "taskState"
+  },
+  {
+    "name": "employer-candidate-matching-session-v1",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "employer",
+    "purposeKey": "taskState"
+  },
+  {
+    "name": "ai-thread-*",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "ai",
+    "purposeKey": "taskState"
+  },
+  {
+    "name": "ai_insights_*",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "ai",
+    "purposeKey": "taskState"
+  },
+  {
+    "name": "copilot-chats",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "ai",
+    "purposeKey": "taskState"
+  },
+  {
+    "name": "poster-edit:*",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "employer",
+    "purposeKey": "taskState"
+  },
+  {
+    "name": "mployedin:temp-password-notice-dismissed:*",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "auth",
+    "purposeKey": "noticeDismissed"
+  },
+  {
+    "name": "firebaseLocalStorageDb",
+    "kind": "indexedDB",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "none (held in memory only)",
+    "owner": "auth",
+    "purposeKey": "firebase",
+    "legal": "pending"
+  },
+  {
+    "name": "firebase-heartbeat-database",
+    "kind": "indexedDB",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "deleted on the next full page load",
+    "owner": "auth",
+    "purposeKey": "firebase",
+    "legal": "pending"
+  },
+  {
+    "name": "apis.google.com",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "per Google",
+    "owner": "auth",
+    "purposeKey": "firebase"
+  },
+  {
+    "name": "*.firebaseapp.com",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "per Google",
+    "owner": "auth",
+    "purposeKey": "firebase"
+  },
+  {
+    "name": "identitytoolkit.googleapis.com",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "per Google",
+    "owner": "auth",
+    "purposeKey": "firebase"
+  },
+  {
+    "name": "securetoken.googleapis.com",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "per Google",
+    "owner": "auth",
+    "purposeKey": "firebase"
+  },
+  {
+    "name": "accounts.google.com",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "per Google",
+    "owner": "auth",
+    "purposeKey": "firebase"
+  },
+  {
+    "name": "www.google.com/recaptcha",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "per Google",
+    "owner": "security",
+    "purposeKey": "recaptcha",
+    "legal": "pending"
+  },
+  {
+    "name": "recaptcha.google.com/recaptcha",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "per Google",
+    "owner": "security",
+    "purposeKey": "recaptcha",
+    "legal": "pending"
+  },
+  {
+    "name": "www.gstatic.com/recaptcha",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "per Google",
+    "owner": "security",
+    "purposeKey": "recaptcha",
+    "legal": "pending"
+  },
+  {
+    "name": "_grecaptcha",
+    "kind": "localStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "per Google",
+    "owner": "security",
+    "purposeKey": "recaptcha",
+    "legal": "pending"
+  },
+  {
+    "name": "mployedin-sw",
+    "kind": "serviceWorker",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "until uninstalled",
+    "owner": "pwa",
+    "purposeKey": "offline"
+  },
+  {
+    "name": "mployedin_sw_opt_in",
+    "kind": "localStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "until notifications/app removed",
+    "owner": "pwa",
+    "purposeKey": "offline"
+  },
+  {
+    "name": "serwist-*",
+    "kind": "cacheStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "up to 30 days, static assets only",
+    "owner": "pwa",
+    "purposeKey": "offline"
+  },
+  {
+    "name": "serwist-expiration",
+    "kind": "indexedDB",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "with SW",
+    "owner": "pwa",
+    "purposeKey": "offline"
+  },
+  {
+    "name": "*.digitaloceanspaces.com",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "n/a",
+    "owner": "storage",
+    "purposeKey": "files"
+  },
+  {
+    "name": "res.cloudinary.com",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "third",
+    "duration": "n/a",
+    "owner": "storage",
+    "purposeKey": "files"
+  },
+  {
+    "name": "NEXT_LOCALE",
+    "kind": "cookie",
+    "category": "preferences",
+    "basis": "appearance",
+    "party": "first",
+    "duration": "12 months",
+    "owner": "i18n",
+    "purposeKey": "locale"
+  },
+  {
+    "name": "mployedin_a11y",
+    "kind": "cookie",
+    "category": "preferences",
+    "basis": "appearance",
+    "party": "first",
+    "duration": "12 months (session if not allowed)",
+    "owner": "a11y",
+    "purposeKey": "a11y"
+  },
+  {
+    "name": "mployedin_display_currency",
+    "kind": "localStorage",
+    "category": "preferences",
+    "basis": "appearance",
+    "party": "first",
+    "duration": "until removed (this visit only if you object)",
+    "owner": "billing",
+    "purposeKey": "currency"
+  },
+  {
+    "name": "ui:*",
+    "kind": "localStorage",
+    "category": "preferences",
+    "basis": "appearance",
+    "party": "first",
+    "duration": "until removed (this visit only if you object)",
+    "owner": "ui",
+    "purposeKey": "uiState"
+  },
+  {
+    "name": "www.youtube-nocookie.com",
+    "kind": "thirdPartyHost",
+    "category": "media",
+    "basis": "consent",
+    "party": "third",
+    "duration": "per Google",
+    "owner": "cms",
+    "purposeKey": "youtube"
+  }
+]

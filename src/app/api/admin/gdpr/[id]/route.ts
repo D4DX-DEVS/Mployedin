@@ -8,6 +8,7 @@ import { adminGdprStatusSchema } from "@/lib/validators/admin";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { eraseUserPersonalData } from "@/lib/gdpr/erasure";
+import { outcomeAuditFields, pickOutcomeFields } from "@/lib/gdpr/requestOutcome";
 import logger from "@/lib/logger";
 
 /* ------------------------------------------------------------------ */
@@ -23,6 +24,9 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
   }
 
   const body = await validateBody(req, adminGdprStatusSchema);
+  // What the team recorded. Empty fields are dropped, and `notes` (the user's
+  // own words) is not part of the schema, so it can never be written here.
+  const recorded = pickOutcomeFields(body);
 
   await connectDB();
   const request = await GdprRequest.findById(params?.id);
@@ -37,6 +41,19 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       { error: `Cannot move a ${from} request to ${to}` },
       { status: 409 },
     );
+  }
+
+  // A deletion whose erasure already ran (a failed or interrupted erasure leaves the request in progress with the
+  // account deactivated) can't be refused: the person would be told "refused" about a scrubbed account. The admin
+  // finishes it with Complete instead (the erasure is safe to run again).
+  if (to === "rejected" && request.requestType === "delete") {
+    const subject = await User.findById(request.userId).select("deletedAt").lean() as { deletedAt?: Date | null } | null;
+    if (subject?.deletedAt) {
+      return NextResponse.json(
+        { error: "This account's erasure has already started. Complete the request to finish it.", code: "ERASURE_STARTED" },
+        { status: 409 },
+      );
+    }
   }
 
   const erasing = to === "completed" && request.requestType === "delete";
@@ -76,10 +93,11 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       );
     }
 
-    // The register keeps only the anonymised identity. An atomic write, so
-    // nothing concurrent can stop the completed status landing after erasure.
-    // The reason the user typed goes too: it is their own words and can name
-    // them, so it is part of the data being erased.
+    // The register keeps only the anonymised identity, plus what the team
+    // recorded about the request. An atomic write, so nothing concurrent can
+    // stop the completed status landing after erasure. The reason the user
+    // typed and the address they filed from go too: they are personal data,
+    // so they are part of the data being erased.
     const completedAt = new Date();
     const done = {
       status: "completed" as const,
@@ -87,19 +105,33 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       completedAt,
       userName: "Deleted User",
       userEmail: anonymizedEmail,
-      ...(body.notes !== undefined ? { notes: body.notes } : {}),
+      ...recorded,
     };
-    await GdprRequest.updateOne(
-      { _id: request._id },
-      body.notes !== undefined ? { $set: done } : { $set: done, $unset: { notes: 1 } },
-    );
+    // The person's other requests carry the same name, e-mail, their own words and IP address: anonymise them too (UK GDPR Art 17).
+    // Their status, outcome and the team's notes stay: that is the register of what was done. Done BEFORE this request is
+    // marked completed: erasure, this and that write can each run twice, so a failure leaves the request in progress for a retry
+    // instead of final, un-audited and with other rows still naming the person.
+    try {
+      await GdprRequest.updateMany(
+        { userId: request.userId, _id: { $ne: request._id } },
+        { $set: { userName: "Deleted User", userEmail: anonymizedEmail }, $unset: { notes: 1, ipAddress: 1 } },
+      );
+    } catch (err) {
+      logger.error({ err, requestId: String(request._id), userId: String(request.userId) }, "[gdpr] admin erasure: anonymising the other requests failed");
+      return NextResponse.json(
+        { error: "We couldn't complete the erasure. Please try again.", code: "ERASURE_FAILED" },
+        { status: 500 },
+      );
+    }
+    await GdprRequest.updateOne({ _id: request._id }, { $set: done, $unset: { notes: 1, ipAddress: 1 } });
     Object.assign(request, done);
-    if (body.notes === undefined) request.notes = undefined;
+    request.notes = undefined;
   } else {
     request.status = to;
     request.handledBy = ctx.userId as unknown as typeof request.handledBy;
-    if (body.notes !== undefined) request.notes = body.notes;
-    if (to === "completed") request.completedAt = new Date();
+    Object.assign(request, recorded);
+    // The decision date, for a refusal as much as a completion (GdprRequest.completedAt).
+    if (to === "completed" || to === "rejected") request.completedAt = new Date();
     await request.save();
   }
 
@@ -108,7 +140,7 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     action: "gdpr.request.status_changed",
     resource: "gdpr",
     resourceId: String(request._id),
-    changes: { before: { status: from }, after: { status: to } },
+    changes: { before: { status: from }, after: { status: to, ...outcomeAuditFields(recorded) } },
     meta: {
       requestType: request.requestType,
       subjectUserId: String(request.userId),
@@ -126,6 +158,9 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
       requestType: request.requestType,
       status: request.status,
       notes: request.notes,
+      outcome: request.outcome,
+      outcomeReason: request.outcomeReason,
+      adminNotes: request.adminNotes,
       completedAt: request.completedAt,
       handledBy: request.handledBy ? String(request.handledBy) : undefined,
       createdAt: request.createdAt,

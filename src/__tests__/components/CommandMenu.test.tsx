@@ -197,5 +197,45 @@ describe("CommandMenu", () => {
       expect(dialog.getByRole("button", { name: "Pages" })).toBeInTheDocument();
     });
   });
+
+  describe("recent pages", () => {
+    const recentKeys = () =>
+      Object.keys(localStorage).filter((key) => key.startsWith("mployedin_recent_pages_"));
+
+    beforeEach(() => localStorage.clear());
+
+    async function openPalette() {
+      render(<CommandMenu navGroups={getNavGroups("employer", "en")} locale="en" userRole="employer" />);
+      fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+      return within(await screen.findByRole("dialog"));
+    }
+
+    // Browsing history is not an appearance preference: it stays in memory and
+    // is gone on reload, so a shared device does not keep a trail of pages.
+    it("lists the page you are on from memory without writing anything to the device", async () => {
+      const dialog = await openPalette();
+
+      await waitFor(() => expect(dialog.getByRole("group", { name: "Recent" })).toBeInTheDocument());
+      expect(recentKeys()).toEqual([]);
+    });
+
+    it("deletes the recents an older build left in localStorage and does not read them", async () => {
+      const navGroups = getNavGroups("employer", "en");
+      const other = navGroups
+        .flatMap((group) => group.items)
+        .find((item) => !item.children && item.href !== "/en/employer");
+      localStorage.setItem("mployedin_recent_pages_en", JSON.stringify([other!.href]));
+      localStorage.setItem("mployedin_recent_pages_ar", JSON.stringify([other!.href]));
+      localStorage.setItem("mployedin_remember_email", "me@example.com");
+
+      const dialog = await openPalette();
+
+      await waitFor(() => expect(recentKeys()).toEqual([]));
+      // Only the current page — the old stored list was dropped, not restored.
+      const recent = dialog.getByRole("group", { name: "Recent" });
+      expect(within(recent).getAllByRole("option")).toHaveLength(1);
+      expect(localStorage.getItem("mployedin_remember_email")).toBe("me@example.com");
+    });
+  });
 });
 

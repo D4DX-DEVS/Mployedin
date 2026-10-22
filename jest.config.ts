@@ -30,6 +30,7 @@ const config: Config = {
     "/node_modules/",
     "/e2e/",
     "/\\.next/",
+    "/\\.next-e2e/",
   ],
   collectCoverageFrom: [
     "src/**/*.{ts,tsx}",

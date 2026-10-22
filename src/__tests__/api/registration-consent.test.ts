@@ -185,28 +185,11 @@ describe("employer registration", () => {
   });
 });
 
-describe("POST /api/user/consent (cookie banner, signed in)", () => {
-  const post = (body: unknown) =>
-    new NextRequest("http://localhost/api/user/consent", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-  it("logs the signed-in user's cookie choice", async () => {
-    const { POST } = await import("@/app/api/user/consent/route");
-    const res = await POST(post({ consentType: "cookies", granted: true }), { params: Promise.resolve({}) });
-
-    expect(res.status).toBe(200);
-    expect(consentCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: USER_ID, userName: "Sara Ahmed", consentType: "cookies", granted: true, source: "cookie_banner" })
-    );
-  });
-
-  it("accepts cookie consent only", async () => {
-    const { POST } = await import("@/app/api/user/consent/route");
-    const res = await POST(post({ consentType: "marketing", granted: true }), { params: Promise.resolve({}) });
-    expect(res.status).toBe(400);
-    expect(consentCreate).not.toHaveBeenCalled();
+describe("/api/user/consent (the legacy cookie writer)", () => {
+  // Removed: a signed-in user's cookie choice is logged only by POST /api/consent/receipt, with the choice
+  // reference and no IP address (gdpr-self-service.test.ts checks the route has no POST).
+  it("no longer accepts a POST", async () => {
+    const route = (await import("@/app/api/user/consent/route")) as Record<string, unknown>;
+    expect(route.POST).toBeUndefined();
   });
 });

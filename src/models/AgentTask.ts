@@ -30,6 +30,20 @@ export interface IAgentTaskHistoryEntry {
   at: Date;
 }
 
+/**
+ * The records a task is about, picked from the database when it is created —
+ * so "follow up with Sara about the driver job" opens Sara's application
+ * instead of only having a status to change. Each id is checked against what
+ * the agent may see when it is saved (lib/agentTasks/links.ts).
+ */
+export interface IAgentTaskLinks {
+  /** JobSeeker profile _id. */
+  candidateId?: mongoose.Types.ObjectId;
+  jobId?: mongoose.Types.ObjectId;
+  /** Employer profile _id (not the employer's user id). */
+  employerId?: mongoose.Types.ObjectId;
+}
+
 export interface IAgentTask {
   userId: mongoose.Types.ObjectId;
   title: string;
@@ -39,6 +53,7 @@ export interface IAgentTask {
   dueDate?: Date;
   category: AgentTaskCategory;
   relatedTo?: string;
+  links?: IAgentTaskLinks;
   /* Assignment & review fields — personal tasks have null/defaults */
   assignedBy?: {
     userId: mongoose.Types.ObjectId;
@@ -71,6 +86,17 @@ const AgentTaskSchema = new Schema<IAgentTask>(
       default: "follow_up",
     },
     relatedTo: String,
+    links: {
+      type: new Schema<IAgentTaskLinks>(
+        {
+          candidateId: { type: Schema.Types.ObjectId, ref: "JobSeeker" },
+          jobId: { type: Schema.Types.ObjectId, ref: "Job" },
+          employerId: { type: Schema.Types.ObjectId, ref: "Employer" },
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
     assignedBy: {
       userId: { type: Schema.Types.ObjectId, ref: "User" },
       role: { type: String, enum: ["super_agent", "admin"] },

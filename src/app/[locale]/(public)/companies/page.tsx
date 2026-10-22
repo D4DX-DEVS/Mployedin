@@ -3,6 +3,7 @@ import Employer from "@/models/Employer";
 import Job from "@/models/Job";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PublicImage } from "@/components/shared/PublicImage";
 import { getTranslations } from "next-intl/server";
 import { Building2, MapPin, Users, Briefcase, CheckCircle2 } from "lucide-react";
 
@@ -133,13 +134,16 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
               className="group block bg-card border border-border rounded-xl hover:shadow-md hover:border-primary/30 transition-all panel-body"
             >
               <div className="flex items-start gap-4">
-                {emp.logo ? (
-                  <img src={emp.logo as string} alt="" className="w-14 h-14 rounded-lg object-cover border border-border" />
-                ) : (
-                  <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center">
-                    <Building2 className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                )}
+                <PublicImage
+                  src={emp.logo as string | undefined}
+                  alt=""
+                  className="w-14 h-14 rounded-lg object-cover border border-border"
+                  fallback={
+                    <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center">
+                      <Building2 className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                  }
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">

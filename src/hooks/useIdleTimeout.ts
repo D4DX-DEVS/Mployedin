@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { signOut } from "next-auth/react";
+import { logoutCleanup } from "@/lib/consent/logoutCleanup";
+import { resetSignOutInProgress } from "@/lib/consent/deviceStorage";
 
 const ACTIVITY_EVENTS = [
   "mousedown",
@@ -43,6 +45,7 @@ export function useIdleTimeout({
 }: UseIdleTimeoutOptions = {}) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const warningFiredRef = useRef(false);
+  const signingOutRef = useRef(false);
 
   const updateActivity = useCallback(() => {
     const now = Date.now().toString();
@@ -68,8 +71,21 @@ export function useIdleTimeout({
     const elapsed = Date.now() - lastActivity;
 
     if (elapsed >= timeout) {
-      // Auto-logout
-      signOut({ callbackUrl: "/en/login?reason=idle" });
+      // One sign-out at a time: the next check can fire while this one is still
+      // clearing the device.
+      if (signingOutRef.current) return;
+      signingOutRef.current = true;
+      // Auto-logout. Clear the device first (it never rejects): removing the
+      // push subscription needs the session that signOut ends, and an idle
+      // timeout is the sign-out most likely to leave a shared computer behind.
+      void logoutCleanup()
+        .then(() => signOut({ callbackUrl: "/en/login?reason=idle" }))
+        .catch(() => {
+          // sign-out failed (offline?) — the person stays, so let autosave write
+          // again and the next check try again
+          signingOutRef.current = false;
+          resetSignOutInProgress();
+        });
       return;
     }
 

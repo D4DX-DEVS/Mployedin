@@ -4,6 +4,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { useRef, useState } from "react";
+import { rememberLocaleChoice } from "@/lib/consent/rememberLocale";
 
 const LOCALES = [
   { code: "en", label: "EN", flag: "/flags/gb.svg", dir: "ltr" },
@@ -39,8 +40,12 @@ export function LanguageSwitcher() {
       body: JSON.stringify({ locale: newLocale }),
     }).catch(() => {/* ignore – preference will still work via URL */ });
 
-    // Set a cookie so middleware/server components can pick up the preference
-    document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=31536000;SameSite=Lax`;
+    // Remember the choice for the next visit in NEXT_LOCALE. It is a preference
+    // cookie: written only while preferences are allowed (no objection). The URL
+    // carries the language either way, so switching works regardless. The choice is
+    // read from the cookie now, not from state kept since mount: an objection made in
+    // another tab does not reach this tab's state.
+    rememberLocaleChoice(newLocale);
 
     // Wait for the slide animation to finish, then navigate
     setTimeout(() => {

@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { ADMIN_NOTES_MAX, OUTCOME_MAX, OUTCOME_REASON_MAX } from "@/lib/gdpr/requestOutcome";
 
 /**
  * GDPR data-subject request register.
@@ -8,6 +9,12 @@ import mongoose, { Document, Schema } from "mongoose";
  * restriction) move through pending → in_progress → completed | rejected on
  * the admin GDPR page. Audit logs are immutable, which is why this lives in
  * its own collection instead of being derived from them.
+ *
+ * Two kinds of free text, never mixed: `notes` is the USER's own words (the
+ * reason they gave for deleting their account) and is never written by an
+ * admin; `outcome`, `outcomeReason` and `adminNotes` are what the TEAM
+ * recorded. The user may be shown `outcome` and `outcomeReason` (a refused
+ * person is told why); `adminNotes` is internal and is never sent to them.
  */
 export type GdprRequestType = "export" | "delete" | "rectification" | "restrict";
 export type GdprRequestStatus = "pending" | "in_progress" | "completed" | "rejected" | "cancelled";
@@ -32,7 +39,20 @@ export interface IGdprRequest extends Document {
   userEmail: string;
   requestType: GdprRequestType;
   status: GdprRequestStatus;
+  /** The user's own reason (deletion requests). Written once, at request time; never by an admin. */
   notes?: string;
+  /** What the team did. */
+  outcome?: string;
+  /** Why the request was refused, or what was not done and why. Shown to the user. */
+  outcomeReason?: string;
+  /** Internal only; never sent to the user. */
+  adminNotes?: string;
+  /**
+   * When the request was DECIDED: set when it is completed and when it is refused (rejected), so the register
+   * shows the date of every answer (UK GDPR Art 12(3)/(4)) and the average response time counts refusals.
+   * Reused instead of a separate decidedAt field (the smaller change); `updatedAt` can't stand in for it,
+   * because an erasure's anonymisation of the person's other requests moves theirs.
+   */
   completedAt?: Date;
   handledBy?: mongoose.Types.ObjectId;
   ipAddress?: string;
@@ -48,6 +68,9 @@ const GdprRequestSchema = new Schema<IGdprRequest>(
     requestType: { type: String, enum: GDPR_REQUEST_TYPES, required: true },
     status: { type: String, enum: GDPR_REQUEST_STATUSES, default: "pending" },
     notes: { type: String, maxlength: 2000 },
+    outcome: { type: String, trim: true, maxlength: OUTCOME_MAX },
+    outcomeReason: { type: String, trim: true, maxlength: OUTCOME_REASON_MAX },
+    adminNotes: { type: String, trim: true, maxlength: ADMIN_NOTES_MAX },
     completedAt: Date,
     handledBy: { type: Schema.Types.ObjectId, ref: "User" },
     ipAddress: String,

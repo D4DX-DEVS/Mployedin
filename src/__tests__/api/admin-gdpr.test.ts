@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 let ctxRole: "admin" | "super_agent" = "admin";
 const ADMIN_ID = "64d000000000000000000001";
 const REQUEST_ID = "64d000000000000000000002";
+const CHOICE_REF = "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed";
 
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/audit/log", () => ({
@@ -125,7 +126,7 @@ describe("Admin GDPR register", () => {
     expect(gdprFind).toHaveBeenCalled();
   });
 
-  it("GET /api/admin/gdpr averages response time over admin-handled requests, never self-service exports", async () => {
+  it("GET /api/admin/gdpr averages response time over admin-handled requests, refusals included, never self-service exports", async () => {
     // An export completes the instant the user downloads it; counting those
     // pinned the average at 0 days whatever admins actually did.
     gdprAggregate.mockResolvedValueOnce([{ avgMs: 30 * 60 * 60 * 1000 }]);
@@ -134,8 +135,10 @@ describe("Admin GDPR register", () => {
     const payload = await res.json();
 
     const [pipeline] = gdprAggregate.mock.calls[0] as [Array<{ $match?: Record<string, unknown> }>];
+    // A refusal is an answer too (UK GDPR Art 12(4)): its decision date is completedAt as well.
     expect(pipeline[0].$match).toEqual(expect.objectContaining({
-      status: "completed",
+      status: { $in: ["completed", "rejected"] },
+      completedAt: { $ne: null },
       requestType: { $ne: "export" },
     }));
     expect(payload.stats.avgResponseMs).toBe(30 * 60 * 60 * 1000);
@@ -149,7 +152,7 @@ describe("Admin GDPR register", () => {
     expect(payload.stats.avgResponseMs).toBeNull();
   });
 
-  it("GET /api/admin/gdpr names the admin who handled a request and returns the user's reason", async () => {
+  it("GET /api/admin/gdpr names the admin who handled a request and returns the user's reason, the outcome and the internal notes", async () => {
     gdprFind.mockImplementation(() => chain([{
       ...requestDoc,
       requestType: "delete",
@@ -157,6 +160,9 @@ describe("Admin GDPR register", () => {
       completedAt: new Date("2026-08-02T10:00:00Z"),
       handledBy: ADMIN_ID,
       notes: "Moving abroad",
+      outcome: "Account erased",
+      outcomeReason: "Invoices were kept: the law requires it",
+      adminNotes: "Checked with legal",
     }]));
     userFind.mockImplementationOnce(() => chain([{ _id: ADMIN_ID, name: "Super Admin" }]));
     const { GET } = await import("@/app/api/admin/gdpr/route");
@@ -167,6 +173,9 @@ describe("Admin GDPR register", () => {
     expect(payload.items[0]).toEqual(expect.objectContaining({
       handledByName: "Super Admin",
       notes: "Moving abroad",
+      outcome: "Account erased",
+      outcomeReason: "Invoices were kept: the law requires it",
+      adminNotes: "Checked with legal",
     }));
   });
 
@@ -216,6 +225,14 @@ describe("Admin GDPR register", () => {
     }));
   });
 
+  it("GET /api/admin/gdpr/consent shows an erased account as Deleted User with no e-mail, even on a row written before erasure anonymised it", async () => {
+    userFind.mockImplementationOnce(() => chain([{ _id: "64d000000000000000000003", email: "deleted_x@anonymized.mployedin.com", deletedAt: new Date("2026-10-01") }]));
+    const { GET } = await import("@/app/api/admin/gdpr/consent/route");
+    const payload = await (await GET(new NextRequest("http://localhost:3000/api/admin/gdpr/consent?page=1&limit=10"), { params: Promise.resolve({}) })).json();
+
+    expect(payload.items[0]).toEqual(expect.objectContaining({ userName: "Deleted User", userEmail: null, consentType: "marketing", granted: true }));
+  });
+
   it("GET /api/admin/gdpr/consent filters by consent type and ignores an unknown one", async () => {
     const { GET } = await import("@/app/api/admin/gdpr/consent/route");
     await GET(new NextRequest("http://localhost:3000/api/admin/gdpr/consent?type=terms_and_privacy"), { params: Promise.resolve({}) });
@@ -225,6 +242,14 @@ describe("Admin GDPR register", () => {
     expect(consentFind.mock.calls.at(-1)?.[0]).not.toHaveProperty("consentType");
   });
 
+  it("GET /api/admin/gdpr/consent filters by the cookie banner's per-category types", async () => {
+    const { GET } = await import("@/app/api/admin/gdpr/consent/route");
+    for (const type of ["cookies.preferences", "cookies.media"]) {
+      await GET(new NextRequest(`http://localhost:3000/api/admin/gdpr/consent?type=${type}`), { params: Promise.resolve({}) });
+      expect(consentFind).toHaveBeenLastCalledWith(expect.objectContaining({ consentType: type }));
+    }
+  });
+
   it("GET /api/admin/gdpr/consent finds a user's rows by e-mail", async () => {
     const { GET } = await import("@/app/api/admin/gdpr/consent/route");
     await GET(new NextRequest("http://localhost:3000/api/admin/gdpr/consent?search=sara%40example"), { params: Promise.resolve({}) });
@@ -232,6 +257,92 @@ describe("Admin GDPR register", () => {
     expect(userFind).toHaveBeenCalledWith({ email: { $regex: "sara@example", $options: "i" } });
     const filter = consentFind.mock.calls.at(-1)?.[0] as { $or: unknown[] };
     expect(filter.$or).toContainEqual({ userId: { $in: ["64d000000000000000000003"] } });
+  });
+
+  it("GET /api/admin/gdpr/consent returns each row's choice reference, or null when it has none", async () => {
+    consentFind.mockImplementationOnce(() => chain([
+      { ...consentDoc, _id: "64d0000000000000000000a1", consentType: "cookies.preferences", receiptId: CHOICE_REF },
+      consentDoc,
+    ]));
+    const { GET } = await import("@/app/api/admin/gdpr/consent/route");
+    const res = await GET(new NextRequest("http://localhost:3000/api/admin/gdpr/consent?page=1&limit=10"), { params: Promise.resolve({}) });
+    const payload = await res.json();
+
+    expect(payload.items.map((i: { receiptId: string | null }) => i.receiptId)).toEqual([CHOICE_REF, null]);
+  });
+
+  it("GET /api/admin/gdpr/consent matches a full choice reference typed into the search box, next to the usual matches", async () => {
+    const { GET } = await import("@/app/api/admin/gdpr/consent/route");
+    await GET(new NextRequest(`http://localhost:3000/api/admin/gdpr/consent?search=${CHOICE_REF}`), { params: Promise.resolve({}) });
+
+    const filter = consentFind.mock.calls.at(-1)?.[0] as { $or: unknown[] };
+    expect(filter.$or).toContainEqual({ receiptId: CHOICE_REF });
+    // The name, type and e-mail matches stay.
+    expect(filter.$or).toContainEqual({ userName: { $regex: CHOICE_REF, $options: "i" } });
+    expect(filter.$or).toContainEqual({ consentType: { $regex: CHOICE_REF, $options: "i" } });
+    expect(filter.$or).toContainEqual({ userId: { $in: ["64d000000000000000000003"] } });
+  });
+
+  it("GET /api/admin/gdpr/consent finds a reference typed in upper case: ids are written lower-case, so it is lower-cased first", async () => {
+    const { GET } = await import("@/app/api/admin/gdpr/consent/route");
+    await GET(new NextRequest(`http://localhost:3000/api/admin/gdpr/consent?search=${CHOICE_REF.toUpperCase()}`), { params: Promise.resolve({}) });
+
+    const filter = consentFind.mock.calls.at(-1)?.[0] as { $or: Array<Record<string, unknown>> };
+    expect(filter.$or).toContainEqual({ receiptId: CHOICE_REF });
+    expect(filter.$or).not.toContainEqual({ receiptId: CHOICE_REF.toUpperCase() });
+  });
+
+  it("GET /api/admin/gdpr/consent trims the typed reference before matching it", async () => {
+    const { GET } = await import("@/app/api/admin/gdpr/consent/route");
+    await GET(new NextRequest(`http://localhost:3000/api/admin/gdpr/consent?search=%20${CHOICE_REF}%20`), { params: Promise.resolve({}) });
+
+    const filter = consentFind.mock.calls.at(-1)?.[0] as { $or: unknown[] };
+    expect(filter.$or).toContainEqual({ receiptId: CHOICE_REF });
+  });
+
+  it.each([
+    ["the start of a reference", CHOICE_REF.slice(0, 8)],
+    ["a name", "sara"],
+    ["a Mongo operator", "$ne"],
+  ])("GET /api/admin/gdpr/consent adds no reference match for %s", async (_label, search) => {
+    const { GET } = await import("@/app/api/admin/gdpr/consent/route");
+    await GET(new NextRequest(`http://localhost:3000/api/admin/gdpr/consent?search=${encodeURIComponent(search)}`), { params: Promise.resolve({}) });
+
+    const filter = consentFind.mock.calls.at(-1)?.[0] as { $or: Array<Record<string, unknown>> };
+    expect(filter.$or.some((clause) => "receiptId" in clause)).toBe(false);
+  });
+
+  it("GET /api/admin/gdpr/consent never sends an IP address (still stored on sign-up and terms rows)", async () => {
+    const { GET } = await import("@/app/api/admin/gdpr/consent/route");
+    const res = await GET(new NextRequest("http://localhost:3000/api/admin/gdpr/consent?page=1&limit=10"), { params: Promise.resolve({}) });
+    const text = await res.text();
+
+    expect(text).not.toContain("10.0.0.1");
+    expect(JSON.parse(text).items[0]).not.toHaveProperty("ipAddress");
+  });
+
+  it("GET /api/admin/gdpr/consent lists only the consents that are not cookie choices when asked for the other consents", async () => {
+    const { GET } = await import("@/app/api/admin/gdpr/consent/route");
+    await GET(new NextRequest("http://localhost:3000/api/admin/gdpr/consent?type=other"), { params: Promise.resolve({}) });
+
+    expect(consentFind).toHaveBeenLastCalledWith(expect.objectContaining({
+      consentType: { $nin: ["cookies.preferences", "cookies.media"] },
+    }));
+  });
+
+  it.each([
+    ["the consent list", "@/app/api/admin/gdpr/consent/route", "consent", consentFind],
+    ["the request list", "@/app/api/admin/gdpr/route", "", gdprFind],
+  ])("GET %s gives a 100-row page (the largest rows-per-page option) and no more", async (_label, mod, path, find) => {
+    const { GET } = (await import(mod)) as { GET: (req: NextRequest, ctx: unknown) => Promise<Response> };
+    const q = chain([]);
+    (find as jest.Mock).mockImplementation(() => q);
+    await GET(new NextRequest(`http://localhost:3000/api/admin/gdpr/${path}?page=2&limit=100`), { params: Promise.resolve({}) });
+    expect(q.limit).toHaveBeenLastCalledWith(100);
+    expect(q.skip).toHaveBeenLastCalledWith(100);
+
+    await GET(new NextRequest(`http://localhost:3000/api/admin/gdpr/${path}?page=1&limit=500`), { params: Promise.resolve({}) });
+    expect(q.limit).toHaveBeenLastCalledWith(100);
   });
 
   it("PATCH /api/admin/gdpr/[id] moves a pending request to in_progress and records the handler", async () => {
@@ -253,13 +364,13 @@ describe("Admin GDPR register", () => {
     gdprFindById.mockResolvedValue({ ...requestDoc, status: "in_progress", save });
     const { PATCH } = await import("@/app/api/admin/gdpr/[id]/route");
 
-    const res = await PATCH(patchReq(REQUEST_ID, { status: "completed", notes: "Export sent" }), { params: Promise.resolve({ id: REQUEST_ID }) });
+    const res = await PATCH(patchReq(REQUEST_ID, { status: "completed", outcome: "Export sent" }), { params: Promise.resolve({ id: REQUEST_ID }) });
     const payload = await res.json();
 
     expect(res.status).toBe(200);
     expect(payload.request.status).toBe("completed");
     expect(payload.request.completedAt).toBeTruthy();
-    expect(payload.request.notes).toBe("Export sent");
+    expect(payload.request.outcome).toBe("Export sent");
   });
 
   it("PATCH refuses to reopen a completed request", async () => {

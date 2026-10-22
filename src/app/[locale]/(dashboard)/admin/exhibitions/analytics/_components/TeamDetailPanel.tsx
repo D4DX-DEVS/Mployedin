@@ -100,7 +100,7 @@ export function TeamDetailPanel({
 
   return (
     <Dialog open={!!subject} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent side="end" overlayClassName="!bg-black/20 backdrop-blur-0" className="flex flex-col gap-0 p-0 sm:max-w-[640px]">
+      <DialogContent side="end" className="flex flex-col gap-0 p-0 sm:max-w-[640px]">
         {subject && (
           <>
             <DialogHeader className="space-y-0.5 border-b px-5 py-4 pe-14 text-start">

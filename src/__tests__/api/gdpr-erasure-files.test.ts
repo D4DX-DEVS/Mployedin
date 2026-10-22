@@ -18,7 +18,7 @@ jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(u
 jest.mock("@/lib/audit/log", () => ({ actorFromCtx: jest.fn(() => ({})), logActivity: jest.fn().mockResolvedValue(undefined) }));
 
 const deleteFile = jest.fn().mockResolvedValue(undefined);
-jest.mock("@/lib/storage/spaces", () => ({ deleteFile: (...a: unknown[]) => deleteFile(...a) }));
+jest.mock("@/lib/storage/spaces", () => ({ deleteFile: (...a: unknown[]) => deleteFile(...a), urlToKey: (u: string) => u }));
 
 const lean = (value: unknown) => ({
   select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(value) }),
@@ -46,9 +46,10 @@ const userFindById = jest.fn((..._a: unknown[]) => lean({ phone: "971501234567",
 jest.mock("@/models/User", () => ({
   __esModule: true,
   // updateOne: eraseWhatsAppData clears the whatsapp subdocument.
-  default: { findById: (...a: unknown[]) => userFindById(...a), findByIdAndUpdate: jest.fn().mockResolvedValue(undefined), updateOne: jest.fn().mockResolvedValue({}) },
+  default: { findById: (...a: unknown[]) => userFindById(...a), findByIdAndUpdate: jest.fn(() => lean(null)), updateOne: jest.fn().mockResolvedValue({}) },
 }));
 jest.mock("@/models/Interview", () => ({ __esModule: true, default: { find: jest.fn() } }));
+jest.mock("@/models/ConsentLog", () => ({ __esModule: true, default: { updateMany: jest.fn().mockResolvedValue({}) } }));
 jest.mock("@/models/Notification", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
 const waDeleteMany = jest.fn((..._a: unknown[]) => Promise.resolve(undefined));
 jest.mock("@/models/WhatsAppMessageLog", () => ({ __esModule: true, default: { deleteMany: (...a: unknown[]) => waDeleteMany(...a) } }));

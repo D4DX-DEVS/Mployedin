@@ -2,16 +2,28 @@
 
 import { useRef, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import type { RowAction } from "@/components/shared/RowActions";
 import { formatDateTime } from "@/lib/ui/intlFormat";
+import { RequestStatusBadge } from "./RequestStatusBadge";
 import { useGdprLabels } from "./useGdprLabels";
-import type { GdprRequestRow } from "./types";
+import type { GdprRequestRow, GdprRequestType } from "./types";
+
+/**
+ * What each kind of request asks for. Static keys, not t(`asked_${type}`): a
+ * type stored before a rename shows no line instead of a missing-message error.
+ */
+const ASKED_KEYS: Partial<Record<GdprRequestType, "detailsAskedExport" | "detailsAskedDelete" | "detailsAskedRectification" | "detailsAskedRestrict">> = {
+  export: "detailsAskedExport",
+  delete: "detailsAskedDelete",
+  rectification: "detailsAskedRectification",
+  restrict: "detailsAskedRestrict",
+};
 
 /** "Oct 01, 2026, 3:48 PM" — the list's date plus the minute; seconds are noise here. */
 const WHEN: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" };
@@ -30,11 +42,29 @@ interface GdprRequestDetailsDialogProps {
   actions: RowAction[];
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
   return (
-    <div className="min-w-0">
+    <div className={wide ? "col-span-2 min-w-0" : "min-w-0"}>
       <dt className="font-medium text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 break-words text-foreground">{children}</dd>
+    </div>
+  );
+}
+
+/** One block of free text (the user's words, or what the team wrote). Only rendered when there is something to show. */
+function TextBlock({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    <div>
+      <p className="flex flex-wrap items-center gap-x-2 text-sm font-medium text-muted-foreground">
+        <span>{label}</span>
+        {hint && (
+          <span className="inline-flex items-center gap-1 text-xs font-normal">
+            <Lock className="size-3" aria-hidden="true" />
+            <span>{hint}</span>
+          </span>
+        )}
+      </p>
+      <div className="mt-1 whitespace-pre-wrap break-words rounded-lg border bg-muted/50 text-sm card-pad">{children}</div>
     </div>
   );
 }
@@ -71,10 +101,20 @@ export function GdprRequestDetailsDialog({ request, open, onClose, actions }: Gd
   };
 
   // An export's "response time" is the second it took to download, which says
-  // nothing about how fast admins answer.
-  const responseMs = request && request.requestType !== "export" && request.status === "completed" && request.completedAt
+  // nothing about how fast admins answer. A refusal is an answer: completedAt is its decision date.
+  const decided = request?.status === "completed" || request?.status === "rejected";
+  const responseMs = request && request.requestType !== "export" && decided && request.completedAt
     ? new Date(request.completedAt).getTime() - new Date(request.createdAt).getTime()
     : null;
+
+  // What the team recorded. Blank text is the same as none, and none is not shown.
+  const outcome = request?.outcome?.trim();
+  const outcomeReason = request?.outcomeReason?.trim();
+  const adminNotes = request?.adminNotes?.trim();
+  const userReason = request?.notes?.trim();
+  // An export no admin handled: the user downloaded it themselves. The data itself is never offered here.
+  const selfServiceExport = request?.requestType === "export" && request.status === "completed" && !outcome && !request.handledByName;
+  const askedKey = request ? ASKED_KEYS[request.requestType] : undefined;
 
   return (
     <Dialog open={open && request !== null} onOpenChange={(next) => { if (!next) onClose(); }}>
@@ -95,10 +135,11 @@ export function GdprRequestDetailsDialog({ request, open, onClose, actions }: Gd
             </div>
 
             <dl className="grid grid-cols-2 gap-4 text-sm">
+              {askedKey && <Field label={t("detailsAskedLabel")} wide>{t(askedKey)}</Field>}
               <Field label={t("requestTypeColumnHeader")}>{typeLabel(request.requestType)}</Field>
-              <Field label={t("statusColumnHeader")}><StatusBadge status={request.status} /></Field>
+              <Field label={t("statusColumnHeader")}><RequestStatusBadge status={request.status} /></Field>
               <Field label={t("submittedColumnHeader")}>{formatDateTime(request.createdAt, WHEN, locale)}</Field>
-              <Field label={t("completedColumnHeader")}>
+              <Field label={request.status === "rejected" ? t("detailsRefusedOnLabel") : t("completedColumnHeader")}>
                 {request.completedAt ? formatDateTime(request.completedAt, WHEN, locale) : "—"}
               </Field>
               {responseMs !== null && (
@@ -107,13 +148,19 @@ export function GdprRequestDetailsDialog({ request, open, onClose, actions }: Gd
               <Field label={t("detailsHandledByLabel")}>{handledBy(request)}</Field>
             </dl>
 
-            {(request.requestType === "delete" || request.notes) && (
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">{t("detailsReasonLabel")}</p>
-                <p className="mt-1 whitespace-pre-wrap break-words rounded-lg border bg-muted/50 text-sm card-pad">
-                  {request.notes || t("detailsNoReason")}
-                </p>
-              </div>
+            {userReason && <TextBlock label={t("detailsReasonLabel")}>{userReason}</TextBlock>}
+            {outcome && <TextBlock label={t("detailsDoneLabel")}>{outcome}</TextBlock>}
+            {selfServiceExport && (
+              <TextBlock label={t("detailsDoneLabel")}>
+                <span className="block">{t("detailsSelfServiceDone")}</span>
+                {request.completedAt && (
+                  <span className="mt-1 block text-xs text-muted-foreground">{formatDateTime(request.completedAt, WHEN, locale)}</span>
+                )}
+              </TextBlock>
+            )}
+            {outcomeReason && <TextBlock label={t("detailsNotDoneLabel")}>{outcomeReason}</TextBlock>}
+            {adminNotes && (
+              <TextBlock label={t("detailsInternalNotesLabel")} hint={t("detailsInternalNotesHint")}>{adminNotes}</TextBlock>
             )}
           </div>
         )}

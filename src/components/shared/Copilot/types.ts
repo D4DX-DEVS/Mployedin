@@ -16,6 +16,8 @@ export type CopilotStreamFrame =
       preview?: { summary: string; rows?: Array<{ name: string; score: number | null; note?: string }> };
     }
   | { type: "error"; message: string }
+  /** Drop the reply text streamed so far: the server is asking the model again. */
+  | { type: "retract" }
   | { type: "done" };
 
 export type ProposalStatus = "pending" | "confirming" | "executed" | "cancelling" | "cancelled" | "failed" | "expired";

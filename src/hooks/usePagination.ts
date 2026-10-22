@@ -39,16 +39,29 @@ export interface UsePaginationReturn extends PaginationState {
   paginationParams: () => URLSearchParams;
 }
 
+export interface UsePaginationOptions {
+  /**
+   * URL keys for the page and the page size. Default "page" / "limit". A second
+   * list on the same page passes its own (e.g. "choicesPage" / "choicesLimit")
+   * so the two never share a page number.
+   */
+  pageKey?: string;
+  limitKey?: string;
+}
+
 // Keeps page/limit mirrored into the URL (?page=&limit=) so browser back/forward
 // after visiting a detail page restores the list to the page the user was on,
 // instead of always reopening at page 1.
-export function usePagination(initialLimit: number = DEFAULT_PAGE_SIZE): UsePaginationReturn {
+export function usePagination(
+  initialLimit: number = DEFAULT_PAGE_SIZE,
+  { pageKey = "page", limitKey = "limit" }: UsePaginationOptions = {},
+): UsePaginationReturn {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const safeInitialLimit = readPageSize(String(initialLimit), DEFAULT_PAGE_SIZE);
-  const [page, setPageRaw] = useState(() => readPositiveInteger(searchParams.get("page"), 1));
-  const [limit, setLimitRaw] = useState(() => readPageSize(searchParams.get("limit"), safeInitialLimit));
+  const [page, setPageRaw] = useState(() => readPositiveInteger(searchParams.get(pageKey), 1));
+  const [limit, setLimitRaw] = useState(() => readPageSize(searchParams.get(limitKey), safeInitialLimit));
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -57,10 +70,10 @@ export function usePagination(initialLimit: number = DEFAULT_PAGE_SIZE): UsePagi
   // has not necessarily applied it yet when this runs.
   const syncUrl = useCallback((nextPage: number, nextLimit: number) => {
     const params = readQuery();
-    if (nextPage > 1) params.set("page", String(nextPage)); else params.delete("page");
-    if (nextLimit !== DEFAULT_PAGE_SIZE) params.set("limit", String(nextLimit)); else params.delete("limit");
+    if (nextPage > 1) params.set(pageKey, String(nextPage)); else params.delete(pageKey);
+    if (nextLimit !== DEFAULT_PAGE_SIZE) params.set(limitKey, String(nextLimit)); else params.delete(limitKey);
     writeQuery(params, (href) => router.replace(href, { scroll: false }));
-  }, [router]);
+  }, [router, pageKey, limitKey]);
 
   const setPage = useCallback((p: number) => {
     const next = Math.max(1, p);

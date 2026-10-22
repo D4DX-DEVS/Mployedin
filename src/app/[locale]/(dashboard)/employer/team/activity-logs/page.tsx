@@ -28,6 +28,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { FALLBACK_CLIENT } from "@/lib/security/clientIp";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
@@ -526,7 +527,7 @@ export default function TeamActivityLogsPage() {
                             : "—"}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground font-mono">
-                        {log.ipAddress !== "unknown" ? log.ipAddress : "—"}
+                        {log.ipAddress && log.ipAddress !== "unknown" && log.ipAddress !== FALLBACK_CLIENT ? log.ipAddress : "—"}
                       </TableCell>
                     </TableRow>
                   );

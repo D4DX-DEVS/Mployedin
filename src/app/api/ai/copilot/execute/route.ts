@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { copilotExecuteSchema } from "@/lib/validators/ai";
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     const permissionMode = ((session.user as unknown as { permissionMode?: PermissionMode }).permissionMode) ?? "role_default";
     const customPermissions = (session.user as unknown as { customPermissions?: CustomPermissions }).customPermissions;
 
-    const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+    const ip = getClientIp(req.headers);
     const { allowed, resetAt } = await checkRateLimit(`ai-copilot-execute:${userId ?? ip}`, RATE_LIMIT_CONFIGS.ai);
     if (!allowed) {
       return NextResponse.json(

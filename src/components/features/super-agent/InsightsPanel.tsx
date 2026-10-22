@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useConfirm } from "@/hooks/useConfirm";
+import { prefStorage } from "@/lib/consent/prefStorage";
+import { LEGACY_SA_INSIGHTS_DISMISSED_KEY } from "@/lib/consent/legacyKeys";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 /* ────────────────────────────────────────────────────────
@@ -36,7 +38,8 @@ interface Insight {
   actionPayload?: Record<string, unknown>;
 }
 
-const DISMISSED_KEY = "sa_insights_dismissed";
+// A UI preference (ui:*); older builds stored it under the unprefixed name (lib/consent/legacyKeys).
+const DISMISSED_KEY = "ui:sa_insights_dismissed";
 
 /* ────────────────────────────────────────────────────────
    Icon + Tone maps
@@ -108,7 +111,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
-      const stored = localStorage.getItem(DISMISSED_KEY);
+      const stored = prefStorage.getWithLegacy(DISMISSED_KEY, LEGACY_SA_INSIGHTS_DISMISSED_KEY);
       return stored ? new Set(JSON.parse(stored)) : new Set();
     } catch { return new Set(); }
   });
@@ -118,7 +121,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const persistDismissed = useCallback((ids: Set<string>) => {
-    try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids])); } catch { /* noop */ }
+    prefStorage.set(DISMISSED_KEY, JSON.stringify([...ids]));
   }, []);
 
   const dismissInsight = useCallback((id: string) => {
@@ -503,7 +506,7 @@ export function SuperAgentInsightsPanel({ defaultExpanded = false, asDialog = fa
             </DialogHeader>
             {/* Restore + refresh belong here too. Without them a dismissed
                 insight could not be brought back from this page at all —
-                dismissals persist in localStorage. */}
+                dismissals persist on this device (prefStorage). */}
             <div className="-mt-1 flex items-center justify-end gap-3">
               {dismissedCount > 0 && (
                 <button

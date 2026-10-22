@@ -29,6 +29,7 @@ import {
   SuperAgentEmptyState,
 } from "@/components/features/super-agent/WorkspacePage";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { SuperAgentReportTabs } from "@/components/features/super-agent/SuperAgentReportTabs";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -217,6 +218,7 @@ export default function SuperAgentCommissionsReportPage() {
 
   return (
     <div className="page-container">
+      <SuperAgentReportTabs />
       {/* ── Hero Section ──
           Four metrics, not five: every other super-agent header runs a single
           row of four (188px desktop / ~150px phone), and a fifth wrapped this

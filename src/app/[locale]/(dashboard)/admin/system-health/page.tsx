@@ -44,6 +44,8 @@ interface SystemHealth {
     jobSeeker: { activePlans: number; hasDefault: boolean };
   };
   process: { uptimeSeconds: number; memoryUsedMb: number; memoryTotalMb: number };
+  /** Deploy configuration. `clientIp.status` is "critical" in production with no trusted client-IP source. */
+  deployment?: { clientIp: { status: string; source: string } };
 }
 
 /* ------------------------------------------------------------------ */
@@ -107,7 +109,13 @@ export default function AdminSystemHealthPage() {
   /* The worst of the four measured statuses, so the header chip cannot read
      "operational" while a component underneath is critical. */
   const overallStatus = health
-    ? [health.database.status, health.integrations.status, health.support.status, health.subscriptionPlans.status]
+    ? [
+        health.database.status,
+        health.integrations.status,
+        health.support.status,
+        health.subscriptionPlans.status,
+        health.deployment?.clientIp.status ?? "healthy",
+      ]
         .reduce((worst, status) => {
           if (worst === "critical" || status === "critical") return "critical";
           if (worst === "warning" || status === "warning") return "warning";
@@ -169,6 +177,19 @@ export default function AdminSystemHealthPage() {
         </section>
       ) : health ? (
         <>
+          {/* Deploy safety: the server also logs this as an error at start-up (instrumentation.ts). */}
+          {health.deployment?.clientIp.status === "critical" && (
+            <div role="alert" className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+              <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="font-semibold">{t("clientIpUnsetTitle")}</p>
+                <p className="mt-1 break-words">
+                  {t("clientIpUnsetBody", { setting: "TRUSTED_CLIENT_IP_HEADER=do-connecting-ip" })}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Core Services — measured infrastructure */}
           <section className="workspace-panel-surface rounded-2xl panel-body">
             <h2 className="heading-label mb-4 font-semibold uppercase tracking-wider text-muted-foreground">{t("coreServicesHeading")}</h2>

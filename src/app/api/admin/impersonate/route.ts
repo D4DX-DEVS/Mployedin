@@ -9,6 +9,7 @@ import { impersonateSchema } from "@/lib/validators/admin";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { checkRateLimit } from "@/lib/security/rateLimit";
+import { getClientIp } from "@/lib/security/clientIp";
 import { signTenantCookie, TENANT_COOKIE_NAME } from "@/lib/security/tenantCookie";
 
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -130,10 +131,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       ? companyNameRaw.slice(0, MAX_COOKIE_COMPANY_NAME) + "…"
       : companyNameRaw;
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  const ipAddress =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
+  const ipAddress = getClientIp(req.headers);
 
   // One active session per actor — entering a second account replaces the first.
   await TenantViewSession.findOneAndUpdate(

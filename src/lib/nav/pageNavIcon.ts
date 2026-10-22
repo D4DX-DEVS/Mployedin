@@ -22,7 +22,12 @@ export function resolvePageNavIcon(navGroups: readonly NavGroup[], pathname: str
   for (const item of navGroups.flatMap((group) => flatten(group.items))) {
     const href = item.href.split(/[?#]/)[0];
     const isRoot = href.split("/").filter(Boolean).length <= 2;
-    const owns = pathname === href || (!isRoot && pathname.startsWith(`${href}/`));
+    // A row whose tab strip spans other routes (the report rows) owns those
+    // pages as well; they no longer have a nav entry of their own.
+    const owns =
+      pathname === href ||
+      (!isRoot && pathname.startsWith(`${href}/`)) ||
+      (item.activePaths ?? []).some((path) => pathname === path.split(/[?#]/)[0]);
     if (owns && href.length >= bestLength) {
       best = item.icon;
       bestLength = href.length;

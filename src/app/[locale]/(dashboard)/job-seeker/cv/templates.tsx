@@ -10,6 +10,7 @@ import {
   getLineHeight, getSectionOrder, getColumnOrder, formatDateValue, normalizeUrl,
 } from "./types";
 import { sanitizeHtml, isHtml } from "./rich-text";
+import { toSafeImageSrc } from "@/lib/images/externalAvatar";
 
 /* ── Shared helpers ── */
 
@@ -152,7 +153,7 @@ function PhotoCircle({
   return (
      
     <img
-      src={src}
+      src={toSafeImageSrc(src)}
       alt=""
       style={{
         width: size,

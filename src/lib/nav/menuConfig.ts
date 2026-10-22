@@ -1,7 +1,7 @@
 import type { UserRole } from "@/models/User";
 import type { ICompanyUserPermissions, PermissionFlag } from "@/lib/permissions/companyRoles";
 import type { IconName } from "./iconRegistry";
-import { ADMIN_REPORT_TABS } from "./reportRoutes";
+import { ADMIN_REPORT_TABS, SUPER_AGENT_REPORT_TABS } from "./reportRoutes";
 
 /** Resources in the system */
 export type Resource = string;
@@ -590,6 +590,11 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
       },
     ],
 
+    // Eight rows, in the order a super agent's week runs: the team, the hiring
+    // it produces, the money it earns, then the reports. The middle three used
+    // to be one fourteen-entry "Overview" group — jobs next to invoices next
+    // to an AI market search — so nothing in it could be found by name.
+    // Reports is one row with a tab strip at the destination, like admin's.
     super_agent: [
       {
         items: [
@@ -634,6 +639,14 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "أصحاب العمل في منطقتك",
               },
               {
+                title: "Job Seekers",
+                titleAr: "الباحثون عن عمل",
+                href: p("/super-agent/job-seekers"),
+                icon: "UserSearch",
+                description: "Regional candidate directory",
+                descriptionAr: "دليل المرشحين الإقليمي",
+              },
+              {
                 title: "Referral Links",
                 titleAr: "روابط الإحالة",
                 href: p("/super-agent/referral-links"),
@@ -642,22 +655,22 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "إدارة جميع روابط الإحالة",
               },
               {
-                title: "Job Seekers",
-                titleAr: "الباحثون عن عمل",
-                href: p("/super-agent/job-seekers"),
-                icon: "UserSearch",
-                description: "Regional candidate directory",
-                descriptionAr: "دليل المرشحين الإقليمي",
+                title: "Territory",
+                titleAr: "المنطقة",
+                href: p("/super-agent/territory"),
+                icon: "MapPin",
+                description: "Where your agents, employers and jobs are",
+                descriptionAr: "أماكن وكلائك وأصحاب العمل والوظائف",
               },
             ],
           },
           {
-            title: "Overview",
-            titleAr: "نظرة عامة",
-            href: p("/super-agent/placements"),
-            icon: "BarChart2",
-            description: "Performance & finance",
-            descriptionAr: "الأداء والمالية",
+            title: "Hiring",
+            titleAr: "التوظيف",
+            href: p("/super-agent/jobs"),
+            icon: "Briefcase",
+            description: "Your team's hiring pipeline",
+            descriptionAr: "مسار توظيف فريقك",
             children: [
               {
                 title: "Jobs",
@@ -699,14 +712,24 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 description: "Checks across your region",
                 descriptionAr: "عمليات التحقق في منطقتك",
               },
+            ],
+          },
+          {
+            title: "Finance",
+            titleAr: "المالية",
+            href: p("/super-agent/commissions"),
+            icon: "DollarSign",
+            description: "Commissions, invoices and profit targets",
+            descriptionAr: "العمولات والفواتير وأهداف الربح",
+            children: [
               {
                 title: "Commissions",
                 titleAr: "العمولات",
                 href: p("/super-agent/commissions"),
                 icon: "DollarSign",
                 badgeKey: "pendingCommissionApprovals",
-                description: "Team commission tracking",
-                descriptionAr: "تتبع عمولات الفريق",
+                description: "Approve and track team commissions",
+                descriptionAr: "اعتماد عمولات الفريق وتتبعها",
               },
               {
                 title: "Invoices",
@@ -717,62 +740,23 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 descriptionAr: "تتبع فواتير الفريق",
               },
               {
-                title: "Market",
-                titleAr: "السوق",
-                href: p("/super-agent/market"),
-                icon: "TrendingUp",
-                description: "Market insights & trends",
-                descriptionAr: "رؤى واتجاهات السوق",
-              },
-              {
-                title: "Insights",
-                titleAr: "الرؤى",
-                href: p("/super-agent/insights"),
-                icon: "Lightbulb",
-                description: "AI alerts & opportunities",
-                descriptionAr: "تنبيهات وفرص مدعومة بالذكاء الاصطناعي",
-              },
-              {
-                title: "Reports",
-                titleAr: "التقارير",
-                href: p("/super-agent/reports"),
-                icon: "BarChart2",
-                description: "Performance reports",
-                descriptionAr: "تقارير الأداء",
-              },
-              {
                 title: "Profit Targets",
                 titleAr: "أهداف الربح",
                 href: p("/super-agent/target-management"),
                 icon: "Target",
-                description: "Unified target profiles & team tracking",
-                descriptionAr: "ملفات الأهداف الموحدة وتتبع الفريق",
-              },
-              {
-                title: "Profit Report",
-                titleAr: "تقرير الأرباح",
-                href: p("/super-agent/target-report"),
-                icon: "FileText",
-                description: "Team target performance report",
-                descriptionAr: "تقرير أداء أهداف الفريق",
-              },
-              {
-                title: "Commission Report",
-                titleAr: "تقرير العمولات",
-                href: p("/super-agent/commissions-report"),
-                icon: "BarChart2",
-                description: "Override commissions & team earnings report",
-                descriptionAr: "تقرير عمولات التجاوز وأرباح الفريق",
-              },
-              {
-                title: "Territory",
-                titleAr: "المنطقة",
-                href: p("/super-agent/territory"),
-                icon: "MapPin",
-                description: "Territory visualization",
-                descriptionAr: "عرض المنطقة",
+                description: "Set and share out your team's targets",
+                descriptionAr: "تحديد أهداف الفريق وتوزيعها",
               },
             ],
+          },
+          {
+            title: "Reports",
+            titleAr: "التقارير",
+            href: p("/super-agent/reports"),
+            activePaths: SUPER_AGENT_REPORT_TABS.map((tab) => p(tab.path)),
+            icon: "BarChart2",
+            description: "Team, targets, commissions and market",
+            descriptionAr: "الفريق والأهداف والعمولات والسوق",
           },
           {
             title: "Agent Tasks",
@@ -783,31 +767,41 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "تعيين ومراجعة مهام الفريق",
           },
           {
-            title: "Exhibition Requests",
-            titleAr: "طلبات المعارض",
+            title: "Exhibitions",
+            titleAr: "المعارض",
             href: p("/super-agent/exhibitions"),
             icon: "CalendarDays",
-            // The only approval this role performs alone. Without a count it was
-            // a menu entry you had to remember to open.
-            badgeKey: "pendingExhibitionReviews",
-            description: "Review & approve exhibition requests",
-            descriptionAr: "مراجعة واعتماد طلبات المعارض",
-          },
-          {
-            title: "Exhibition Analytics",
-            titleAr: "تحليلات المعارض",
-            href: p("/super-agent/exhibitions/analytics"),
-            icon: "BarChart2",
-            description: "Team exhibition performance",
-            descriptionAr: "أداء معارض الفريق",
-          },
-          {
-            title: "Resource Downloads",
-            titleAr: "تحميل الموارد",
-            href: p("/super-agent/resources"),
-            icon: "FolderOpen",
-            description: "Download exhibition resources",
-            descriptionAr: "تحميل موارد المعارض",
+            description: "Requests, results and resources",
+            descriptionAr: "الطلبات والنتائج والموارد",
+            children: [
+              {
+                title: "Exhibition Requests",
+                titleAr: "طلبات المعارض",
+                href: p("/super-agent/exhibitions"),
+                icon: "CalendarDays",
+                // The only approval this role performs alone. Without a count it was
+                // a menu entry you had to remember to open; the rail row sums it.
+                badgeKey: "pendingExhibitionReviews",
+                description: "Review & approve exhibition requests",
+                descriptionAr: "مراجعة واعتماد طلبات المعارض",
+              },
+              {
+                title: "Exhibition Analytics",
+                titleAr: "تحليلات المعارض",
+                href: p("/super-agent/exhibitions/analytics"),
+                icon: "BarChart2",
+                description: "Team exhibition performance",
+                descriptionAr: "أداء معارض الفريق",
+              },
+              {
+                title: "Resource Downloads",
+                titleAr: "تحميل الموارد",
+                href: p("/super-agent/resources"),
+                icon: "FolderOpen",
+                description: "Download exhibition resources",
+                descriptionAr: "تحميل موارد المعارض",
+              },
+            ],
           },
           {
             title: "Messages",

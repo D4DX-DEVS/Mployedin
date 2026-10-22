@@ -9,6 +9,7 @@ import { Building2, MapPin, Globe, Users, Briefcase, CheckCircle2, Calendar, Ext
 import RelativeDate from "@/components/shared/RelativeDate";
 import CompanyReviews from "@/components/features/public/CompanyReviews";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { PublicImage } from "@/components/shared/PublicImage";
 import { normalizeWebsiteUrl } from "@/lib/validators/website";
 
 interface PageProps {
@@ -66,13 +67,16 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
       {/* Company Header */}
       <div className="bg-card border border-border rounded-xl p-6 md:p-8 mb-8">
         <div className="flex items-start gap-6">
-          {employer.logo ? (
-            <img src={employer.logo as string} alt="" className="w-20 h-20 rounded-xl object-cover border border-border" />
-          ) : (
-            <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center">
-              <Building2 className="w-8 h-8 text-muted-foreground" />
-            </div>
-          )}
+          <PublicImage
+            src={employer.logo as string | undefined}
+            alt=""
+            className="w-20 h-20 rounded-xl object-cover border border-border"
+            fallback={
+              <div className="w-20 h-20 rounded-xl bg-muted flex items-center justify-center">
+                <Building2 className="w-8 h-8 text-muted-foreground" />
+              </div>
+            }
+          />
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-bold text-foreground">{employer.companyName as string}</h1>

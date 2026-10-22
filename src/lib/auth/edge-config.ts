@@ -6,6 +6,7 @@
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
 import type { UserRole } from "@/types/user";
+import { SESSION_MAX_AGE_S } from "@/lib/auth/sessionMaxAge";
 
 const edgeAuthConfig: NextAuthConfig = {
   /**
@@ -14,7 +15,9 @@ const edgeAuthConfig: NextAuthConfig = {
    */
   providers: [],
   trustHost: true,
-  session: { strategy: "jwt" },
+  // The same lifetime as the Node config: the proxy re-issues the session cookie with it (default would be 30 days).
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_S },
+  jwt: { maxAge: SESSION_MAX_AGE_S },
   pages: {
     signIn: "/en/login",
     error: "/en/login",

@@ -79,6 +79,17 @@ describe("Self-service GDPR actions are recorded in the admin register", () => {
     }));
   });
 
+  it("GET /api/gdpr/export leaves the team's internal notes out of the user's own request history", async () => {
+    const GdprRequest = (await import("@/models/GdprRequest")).default as unknown as { find: jest.Mock };
+    GdprRequest.find.mockClear();
+    const { GET } = await import("@/app/api/gdpr/export/route");
+    await GET(new NextRequest("http://localhost:3000/api/gdpr/export"), { params: Promise.resolve({}) });
+
+    expect(GdprRequest.find).toHaveBeenCalledWith({ userId: USER_ID });
+    const query = GdprRequest.find.mock.results[0].value as { select: jest.Mock };
+    expect(query.select).toHaveBeenCalledWith("-adminNotes");
+  });
+
   it("DELETE /api/gdpr/export opens a pending deletion request for an admin to complete", async () => {
     const { DELETE } = await import("@/app/api/gdpr/export/route");
     const res = await DELETE(new NextRequest("http://localhost:3000/api/gdpr/export", { method: "DELETE" }), { params: Promise.resolve({}) });

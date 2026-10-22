@@ -518,7 +518,7 @@ export default function SuperAgentJobSeekersPage() {
 
       {/* A seeker's profile, docked beside the list (full width on phones). */}
       <Dialog open={selectedSeekerId !== null && !cvSeeker} onOpenChange={(open) => { if (!open) setSelectedSeekerId(null); }}>
-        <DialogContent side="end" overlayClassName="!bg-black/20 backdrop-blur-0" className="flex flex-col gap-0 p-0 sm:max-w-xl" aria-describedby={undefined}>
+        <DialogContent side="end" className="flex flex-col gap-0 p-0 sm:max-w-xl" aria-describedby={undefined}>
           <DialogTitle className="sr-only">{t("viewProfile")}</DialogTitle>
           <SeekerDetailPanel seekerId={selectedSeekerId} context={seekers.find((row) => row._id === selectedSeekerId)} onViewCv={setCvSeeker} />
         </DialogContent>

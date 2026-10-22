@@ -23,6 +23,7 @@ import { useConversations, useDmUnreadTotal, conversationKeys } from "@/hooks/us
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Conversation } from "@/hooks/useConversations";
+import { toSafeImageSrc } from "@/lib/images/externalAvatar";
 
 const ROLE_ICONS: Record<string, React.ReactNode> = {
   admin: <Shield className="h-3 w-3" />,
@@ -545,7 +546,7 @@ export function UnifiedMessagesPage({
                     <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
                       {other?.avatar ? (
                         <img
-                          src={other.avatar}
+                          src={toSafeImageSrc(other.avatar)}
                           alt=""
                           className="w-full h-full object-cover"
                         />

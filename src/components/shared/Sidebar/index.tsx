@@ -140,18 +140,6 @@ export function Sidebar({
 
   const rootItem = (title: string) =>
     allMainItems.find((item) => item.title === title);
-  const standaloneAsChild = (title: string, group?: string, groupAr?: string) => {
-    const item = rootItem(title);
-    return item ? { ...item, group, groupAr } : undefined;
-  };
-  const compactChildren = (
-    items: Array<NavItem | undefined>,
-    group?: string,
-    groupAr?: string
-  ) =>
-    items
-      .filter((item): item is NavItem => Boolean(item))
-      .map((item) => ({ ...item, group: item.group ?? group, groupAr: item.groupAr ?? groupAr }));
 
   const adminGroupedItems: NavItem[] = adminSections
     .flatMap((section) => section.titles.map(rootItem))
@@ -164,63 +152,11 @@ export function Sidebar({
   // Hiring mirroring the employer's), so the drawer renders the same tree as
   // the desktop rail. Re-deriving it here would only be able to go stale again.
 
-  const superOverview = rootItem("Overview")?.children ?? [];
-  const findSuperOverview = (title: string) =>
-    superOverview.find((item) => item.title === title);
-  const superAgentMobileItems: NavItem[] = [
-    rootItem("Dashboard"),
-    rootItem("Team"),
-    {
-      title: "Hiring",
-      titleAr: "التوظيف",
-      href: `/${locale}/super-agent/jobs`,
-      icon: "Briefcase",
-      description: "Team hiring pipeline",
-      descriptionAr: "مسار توظيف الفريق",
-      children: compactChildren(
-        ["Jobs", "Applications", "Interviews", "Placements"].map(findSuperOverview)
-      ),
-    },
-    {
-      title: "Performance",
-      titleAr: "الأداء",
-      href: `/${locale}/super-agent/reports`,
-      icon: "BarChart2",
-      description: "Team performance, finance and insights",
-      descriptionAr: "أداء الفريق والمالية والرؤى",
-      children: [
-        ...compactChildren(
-          ["Reports", "Targets", "Target Report", "Territory"].map(findSuperOverview),
-          "Performance",
-          "الأداء"
-        ),
-        ...compactChildren(
-          ["Commissions", "Commission Report", "Invoices"].map(findSuperOverview),
-          "Finance",
-          "المالية"
-        ),
-        ...compactChildren(
-          ["Market", "Insights"].map(findSuperOverview),
-          "Insights",
-          "الرؤى"
-        ),
-      ],
-    },
-    rootItem("Messages"),
-    {
-      title: "More",
-      titleAr: "المزيد",
-      href: `/${locale}/super-agent/exhibitions`,
-      icon: "Grid3x3",
-      description: "Exhibitions and resources",
-      descriptionAr: "المعارض والموارد",
-      children: compactChildren([
-        standaloneAsChild("Exhibition Requests"),
-        standaloneAsChild("Exhibition Analytics"),
-        standaloneAsChild("Resource Downloads"),
-      ]),
-    },
-  ].filter((item): item is NavItem => Boolean(item));
+  // The super-agent drawer was hand-built here too, by looking children up by
+  // title — and two of its titles ("Targets", "Target Report") matched no
+  // entry, so both pages silently vanished from phones, and Agent Tasks was
+  // never listed at all. The rail is grouped properly now (Team / Hiring /
+  // Finance / Reports / Exhibitions), so the drawer renders that same tree.
 
   /* Admin carries many top-level entries and fifty-two children — by far the
      heaviest workspace in the product. Keep task-oriented destinations visible
@@ -228,11 +164,7 @@ export function Sidebar({
      is used at both breakpoints. */
   const navigationMainItems = mobileOpen
     ? withoutBottomTabItems(
-        effectiveRole === "admin"
-          ? adminGroupedItems
-          : effectiveRole === "super_agent"
-            ? superAgentMobileItems
-            : allMainItems,
+        effectiveRole === "admin" ? adminGroupedItems : allMainItems,
         effectiveRole,
         locale
       )
@@ -382,15 +314,9 @@ export function Sidebar({
     };
   }, [mobileOpen, submenuExpanded, usesDualTierLayout]);
 
-  const compactRootTitles = navigationMainItems.map((item) => item.title);
-  const resolvedActiveMainTitle =
-    mobileOpen && effectiveRole === "super_agent" && !compactRootTitles.includes(activeMainTitle)
-      ? superAgentMobileItems.find((item) =>
-          item.children?.some((child) =>
-            pathname === child.href || pathname.startsWith(`${child.href}/`)
-          )
-        )?.title ?? activeMainTitle
-      : activeMainTitle;
+  // The drawer renders the rail's own tree, so the rail's active row is valid
+  // there too (the super-agent drawer used different roots and remapped here).
+  const resolvedActiveMainTitle = activeMainTitle;
   const activeMainItem = navigationMainItems.find((item) => item.title === resolvedActiveMainTitle);
   const hasSubmenu = Boolean(activeMainItem?.children?.length);
   const submenuId = activeMainItem

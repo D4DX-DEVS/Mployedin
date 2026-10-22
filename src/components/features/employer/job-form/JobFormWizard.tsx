@@ -182,7 +182,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   // A draft found in local storage, waiting for the employer to accept it.
   const [pendingDraft, setPendingDraft] = useState<StoredDraft | null>(null);
 
-  // Track whether AI prefill has been applied to prevent localStorage draft from overwriting it
+  // Track whether AI prefill has been applied to prevent the local draft from overwriting it
   const aiPrefillApplied = useRef(false);
   // Carries extractionDraftId + extractionDraftIndex when this form session is
   // editing a job from a persisted AI extraction (Edit & Post path). Forwarded
@@ -192,7 +192,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
     extractionDraftIndex: number;
   } | null>(null);
 
-  // Restore draft from localStorage on mount
+  // Offer the tab's local draft (sessionStorage) on mount
   useEffect(() => {
     // If AI prefill was already applied, skip any further resets from this effect
     if (aiPrefillApplied.current) return;
@@ -244,7 +244,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
     setPendingDraft(null);
   }
 
-  // Debounced auto-save to localStorage (1500ms) — uses the draft hook's shared
+  // Debounced auto-save to the tab's sessionStorage (1500ms) — uses the draft hook's shared
   // storage key so a reload can actually restore what was typed.
   const debouncedAutoSave = useDebounce(
     useCallback(

@@ -11,7 +11,8 @@ jest.mock("@/lib/logger", () => ({ __esModule: true, default: { error: jest.fn()
 jest.mock("@/lib/auth/withAuth", () => ({
   withAuth: (handler: (req: unknown, ctx: unknown) => Promise<Response>) => (req: unknown) => handler(req, { userId: "64b000000000000000000001", role: "job_seeker", locale: "en" }),
 }));
-const userUpdate = jest.fn().mockResolvedValue(undefined);
+// findByIdAndUpdate(...).select("avatar").lean(): the pre-update account, here with no photo.
+const userUpdate = jest.fn((..._a: unknown[]) => ({ select: () => ({ lean: async () => null }) }));
 const userUpdateOne = jest.fn((..._a: unknown[]) => Promise.resolve({ modifiedCount: 1 }));
 // What `User.findById(id).select(...).lean()` resolves to; each test sets the subject it needs.
 let subject: { phone?: string | null; whatsapp?: { waId?: string } } | null = null;
@@ -70,6 +71,8 @@ jest.mock("@/models/JobSeeker", () => ({
   default: { findOneAndUpdate: () => ({ select: () => ({ lean: async () => null }) }) },
 }));
 jest.mock("@/models/Application", () => ({ __esModule: true, default: { find: () => ({ lean: async () => [] }), updateMany: jest.fn().mockResolvedValue(undefined) } }));
+// The consent rows are anonymised by the erasure (erasureCompleteness.test.ts).
+jest.mock("@/models/ConsentLog", () => ({ __esModule: true, default: { updateMany: jest.fn().mockResolvedValue({}) } }));
 jest.mock("@/models/Notification", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
 const waDeleteMany = jest.fn((..._a: unknown[]) => Promise.resolve({ deletedCount: 3 }));
 jest.mock("@/models/WhatsAppMessageLog", () => ({ __esModule: true, default: { deleteMany: (...a: unknown[]) => waDeleteMany(...a) } }));
@@ -96,8 +99,8 @@ describe("GDPR erasure covers WhatsApp data", () => {
     await eraseUserPersonalData(USER_ID);
     expect(waDeleteMany).toHaveBeenCalledWith({ userId: USER_ID });
     expect(userUpdateOne).toHaveBeenCalledWith({ _id: USER_ID }, { $unset: { whatsapp: 1 } });
-    const update = userUpdate.mock.calls[0][1] as Record<string, unknown>;
-    expect(update.phone).toBeNull();
+    const update = userUpdate.mock.calls[0][1] as { $set: Record<string, unknown> };
+    expect(update.$set.phone).toBeNull();
   });
 
   describe("log rows that carry the subject's number under another user's id", () => {

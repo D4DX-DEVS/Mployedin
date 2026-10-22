@@ -7,18 +7,32 @@ import { strongPasswordSchema } from "@/lib/security/passwordPolicy";
 describe("security remediations", () => {
   const originalVercel = process.env.VERCEL;
   const originalTrustedProxyHops = process.env.TRUSTED_PROXY_HOPS;
+  const originalTrustedClientIpHeader = process.env.TRUSTED_CLIENT_IP_HEADER;
 
   afterEach(() => {
     if (originalVercel === undefined) delete process.env.VERCEL;
     else process.env.VERCEL = originalVercel;
     if (originalTrustedProxyHops === undefined) delete process.env.TRUSTED_PROXY_HOPS;
     else process.env.TRUSTED_PROXY_HOPS = originalTrustedProxyHops;
+    if (originalTrustedClientIpHeader === undefined) delete process.env.TRUSTED_CLIENT_IP_HEADER;
+    else process.env.TRUSTED_CLIENT_IP_HEADER = originalTrustedClientIpHeader;
   });
 
   test("ignores spoofed proxy headers by default", () => {
     delete process.env.VERCEL;
     delete process.env.TRUSTED_PROXY_HOPS;
+    delete process.env.TRUSTED_CLIENT_IP_HEADER;
     expect(getClientIp(new Headers({ "x-forwarded-for": "203.0.113.50" }))).toBe("direct");
+    expect(getClientIp(new Headers({ "cf-connecting-ip": "203.0.113.50" }))).toBe("direct");
+  });
+
+  test("trusts cf-connecting-ip only when TRUSTED_CLIENT_IP_HEADER names it", () => {
+    delete process.env.VERCEL;
+    delete process.env.TRUSTED_PROXY_HOPS;
+    process.env.TRUSTED_CLIENT_IP_HEADER = "do-connecting-ip";
+    expect(getClientIp(new Headers({ "cf-connecting-ip": "203.0.113.50" }))).toBe("direct");
+    process.env.TRUSTED_CLIENT_IP_HEADER = "cf-connecting-ip";
+    expect(getClientIp(new Headers({ "cf-connecting-ip": "203.0.113.50" }))).toBe("203.0.113.50");
   });
 
   test("uses the right-most untrusted address behind an explicitly trusted proxy", () => {
