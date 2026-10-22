@@ -155,7 +155,12 @@ test.describe("the receipt", () => {
       await expect.poll(() => visitor.receipts.length, { timeout: 15_000 }).toBe(3);
     }
     expect(visitor.receipts[2]).toEqual(visitor.receipts[0]);
-    await expect.poll(() => visitor.page.evaluate(() => sessionStorage.getItem("mpl_receipt_pending"))).toBeNull();
+    // Coming back online can make the App Router load the page again (a document GET of the
+    // same URL, seen in the trace); an evaluate that lands mid-load throws "Execution context
+    // was destroyed". toPass retries after the load, when the marker must still be gone.
+    await expect(async () => {
+      expect(await visitor.page.evaluate(() => sessionStorage.getItem("mpl_receipt_pending"))).toBeNull();
+    }).toPass({ timeout: 15_000 });
     await visitor.close();
   });
 });
@@ -428,7 +433,9 @@ test("the footer Cookie Policy link reaches the Cookie Policy page", async ({ br
   const link = visitor.page.locator("footer").getByRole("link", { name: "Cookies", exact: true }).first();
   await link.click();
   await visitor.page.waitForURL(/\/en\/cookies/, { timeout: 15_000 });
-  await expect(visitor.page.locator("h1").first()).toBeVisible();
+  // LegalPage shows a skeleton until /api/public/pages/cookies answers; the shared staging
+  // database can take longer than the 5 s default, so the heading gets the page's own budget.
+  await expect(visitor.page.locator("h1").first()).toBeVisible({ timeout: 30_000 });
   // Content is the CMS copy until the owner runs update-legal-content --apply; only the page is checked here.
   await visitor.close();
 });

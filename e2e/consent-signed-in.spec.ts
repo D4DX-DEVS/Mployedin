@@ -163,6 +163,8 @@ async function probe(browser: Browser, account: Role): Promise<string | null> {
 
 test.beforeAll(async ({ browser }, testInfo) => {
   if (!OPT_IN || testInfo.project.name !== "desktop-chromium") return;
+  // Five sign-in probes in a row against the shared staging database; the 30 s hook default is not enough.
+  test.setTimeout(240_000);
   baseURL = (testInfo.project.use.baseURL as string | undefined) ?? "http://localhost:3888";
   for (const account of ROLES) await probe(browser, account);
 });

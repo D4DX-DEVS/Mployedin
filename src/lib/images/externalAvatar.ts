@@ -49,20 +49,22 @@ export function toSafeImageSrc(src: string | null | undefined): string | undefin
 const OWN_STORAGE_SUFFIX = "digitaloceanspaces.com";
 
 /**
- * The configured bucket or CDN host, when the deployment names it. Must be a NEXT_PUBLIC_ variable: the
- * server and the browser both run this check while rendering, and a value only the server can see would
- * make them disagree (a hydration mismatch). When unset, any Spaces host is accepted, as /api/image-proxy
- * does without SPACES_PUBLIC_HOST.
+ * The configured bucket and/or CDN host(s), when the deployment names them: a comma list, read the same way
+ * as lib/storage/storageHosts.ts. Must be a NEXT_PUBLIC_ variable: the server and the browser both run this
+ * check while rendering, and a value only the server can see would make them disagree (a hydration
+ * mismatch). When unset, any Spaces host is accepted, as /api/image-proxy does without SPACES_PUBLIC_HOST.
  */
-function pinnedStorageHost(): string | undefined {
-  const pinned = process.env.NEXT_PUBLIC_SPACES_PUBLIC_HOST?.trim().toLowerCase();
-  return pinned || undefined;
+function pinnedStorageHosts(): string[] {
+  return (process.env.NEXT_PUBLIC_SPACES_PUBLIC_HOST ?? "")
+    .split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 function isOwnStorageHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  const pinned = pinnedStorageHost();
-  if (pinned) return host === pinned;
+  const pinned = pinnedStorageHosts();
+  if (pinned.length > 0) return pinned.includes(host);
   // Any bucket on Spaces (a real subdomain: "digitaloceanspaces.com.evil.com" is not one).
   return host !== OWN_STORAGE_SUFFIX && matchesHostOrSubdomain(host, [OWN_STORAGE_SUFFIX]);
 }
