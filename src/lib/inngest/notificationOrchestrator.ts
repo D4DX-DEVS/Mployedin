@@ -13,6 +13,7 @@
 
 import { inngest } from "./client";
 import { connectDB } from "@/lib/db/mongoose";
+import logger from "@/lib/logger";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
 import {
@@ -138,11 +139,15 @@ export const notificationOrchestrator = inngest.createFunction(
     // Only this delivery link is localized: dedup above matches the stored one.
     const deliveryLink = localizeActionUrl(link, recipient?.locale === "ar" ? "ar" : "en") ?? undefined;
 
-    // 4. Email delivery
+    // 4. Email delivery. The step reports whether it actually sent: it used to
+    // return early for a missing recipient and the run still listed "email" as
+    // delivered — which is how a split database (this run unable to see the
+    // user the app had just notified) read as success on 2026-10-27.
     const shouldEmail = wantEmail && categoryPref.channels.includes("email");
+    let emailSkipReason: string | undefined;
     if (shouldEmail) {
-      await step.run("send-email", async () => {
-        if (!recipient?.email) return;
+      const emailSent = await step.run("send-email", async () => {
+        if (!recipient?.email) return false;
 
         await sendEmail({
           to: recipient.email,
@@ -157,8 +162,14 @@ export const notificationOrchestrator = inngest.createFunction(
           source: "orchestrator",
           category,
         });
+        return true;
       });
-      deliveredChannels.push("email");
+      if (emailSent) {
+        deliveredChannels.push("email");
+      } else {
+        emailSkipReason = recipient ? "no email address" : "recipient not found";
+        logger.warn({ userId, type }, `[orchestrator] email skipped: ${emailSkipReason}`);
+      }
     }
 
     // 5. WhatsApp delivery — approved template outside the 24 h window, free
@@ -180,7 +191,12 @@ export const notificationOrchestrator = inngest.createFunction(
       deliveredChannels.push("push");
     }
 
-    return { delivered: deliveredChannels, type, userId };
+    return {
+      delivered: deliveredChannels,
+      type,
+      userId,
+      ...(emailSkipReason ? { skipped_channels: ["email"], reason: emailSkipReason } : {}),
+    };
   },
 );
 

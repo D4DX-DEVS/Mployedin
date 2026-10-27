@@ -124,18 +124,21 @@ export const reEngagementCron = inngest.createFunction(
       return jobs.map((j) => toCandidateJob(j as unknown as Record<string, unknown>));
     });
 
+    // Counted from what each step returns. Inngest replays memoized steps
+    // without running their bodies, so a counter bumped inside a step only
+    // counted the last invocation's work (`sent: 3` for 25 real sends).
     let sent = 0;
 
     // Process each inactive user
     for (const user of inactiveUsers.slice(0, 100)) {
       // Cap at 100 per run
       try {
-        await step.run(`re-engage-${user._id}`, async () => {
+        const wasSent = await step.run(`re-engage-${user._id}`, async () => {
           const seeker = await JobSeeker.findOne({ userId: user._id })
             .select(SEEKER_MATCH_FIELDS)
             .lean();
 
-          if (!seeker) return;
+          if (!seeker) return false;
 
           // Effective profile (base + confirmed skills), as every surface uses.
           const seekerProfile = await effectiveSeekerProfile(String(user._id), seeker);
@@ -146,7 +149,7 @@ export const reEngagementCron = inngest.createFunction(
           // profile-completion cron below, not to a "jobs waiting for you"
           // mail. The daily digest has applied this gate for a while; this
           // surface never did.
-          if (profileSignalCount(seekerProfile) < MIN_PROFILE_SIGNALS) return;
+          if (profileSignalCount(seekerProfile) < MIN_PROFILE_SIGNALS) return false;
 
           // Find matching jobs through the shared pipeline. This used to score
           // inline at a floor of 40 — below the level at which a profile that
@@ -168,7 +171,7 @@ export const reEngagementCron = inngest.createFunction(
           }));
 
           // Only send if there are matching jobs to show
-          if (matchedJobs.length === 0) return;
+          if (matchedJobs.length === 0) return false;
 
           const daysSinceLogin = user.lastLogin
             ? Math.floor(
@@ -210,8 +213,9 @@ export const reEngagementCron = inngest.createFunction(
             { upsert: true },
           );
 
-          sent++;
+          return true;
         });
+        if (wasSent) sent++;
       } catch (err) {
         logger.error({ err, userId: user._id }, "[re-engagement] Error processing user");
       }
@@ -327,21 +331,22 @@ export const profileCompletionCron = inngest.createFunction(
       },
     );
 
+    // Counted from each step's return value — see the re-engagement loop above.
     let sent = 0;
 
     for (const seeker of incompleteSeekers.slice(0, 50)) {
       try {
-        await step.run(
+        const wasSent = await step.run(
           `profile-reminder-${seeker.userId}`,
           async () => {
             const user = await User.findById(seeker.userId)
               .select("name email locale")
               .lean();
-            if (!user?.email) return;
+            if (!user?.email) return false;
             // sendEmail throws on reserved domains, which Inngest would retry.
             // Skip seed accounts here so a permanent failure never becomes a
             // retry loop. (Same guard as the daily digest producer.)
-            if (isUndeliverableAddress(user.email)) return;
+            if (isUndeliverableAddress(user.email)) return false;
 
             const isAr = user.locale === "ar";
             const baseUrl =
@@ -379,9 +384,10 @@ export const profileCompletionCron = inngest.createFunction(
               { upsert: true },
             );
 
-            sent++;
+            return true;
           },
         );
+        if (wasSent) sent++;
       } catch (err) {
         logger.error({ err }, "[profile-completion] Error processing seeker");
       }
