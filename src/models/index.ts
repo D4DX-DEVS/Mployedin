@@ -49,6 +49,7 @@ export { MatchingWeightTemplate } from "./MatchingWeightTemplate";
 
 // ── Job Seeker Dashboard ──────────────────────────────────────────────────────
 export { ProfileView } from "./ProfileView";
+export { SavedJob } from "./SavedJob";
 
 // ── Subscription ─────────────────────────────────────────────────────────────
 export { SubscriptionPlan } from "./SubscriptionPlan";

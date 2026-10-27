@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { d1LogMirror } from "@/lib/logs/logStore";
 
 /**
  * Consent history — one row per change of a consent flag, so the admin GDPR
@@ -55,6 +56,9 @@ ConsentLogSchema.index(
   { userId: 1, receiptId: 1, consentType: 1 },
   { unique: true, partialFilterExpression: { receiptId: { $type: "string" } } },
 );
+
+// LOGS_STORE=dual: every insert is also copied to D1 (lib/logs/logStore.ts).
+ConsentLogSchema.plugin(d1LogMirror("consent_log"));
 
 export const ConsentLog =
   mongoose.models.ConsentLog || mongoose.model<IConsentLog>("ConsentLog", ConsentLogSchema);

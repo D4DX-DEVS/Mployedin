@@ -22,11 +22,12 @@ const AvatarImage = React.forwardRef<
 >(({ className, src, ...props }, ref) => (
   // A Google or LinkedIn photo is loaded through our own proxy, so the
   // visitor's browser never contacts the provider (see lib/images/externalAvatar).
+  // 256 px covers the largest avatar (about 96 CSS px) on high-density screens.
   <AvatarPrimitive.Image
     ref={ref}
     className={cn("aspect-square h-full w-full", className)}
     {...props}
-    src={typeof src === "string" ? toSafeImageSrc(src) : src}
+    src={typeof src === "string" ? toSafeImageSrc(src, { width: 256 }) : src}
   />
 ))
 AvatarImage.displayName = AvatarPrimitive.Image.displayName

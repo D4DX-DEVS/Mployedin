@@ -1,6 +1,6 @@
 /**
  * Re-host external OAuth provider avatars (Google / LinkedIn) onto our own
- * DigitalOcean Spaces bucket so the URL never expires.
+ * storage (Spaces or R2, lib/storage/spaces.ts) so the URL never expires.
  *
  * LinkedIn avatar URLs (`media.licdn.com/...?e=<expiry>&t=<sig>`) are signed and
  * expire after a few weeks, after which they return HTTP 403 and the image
@@ -11,6 +11,7 @@
  * caller keeps the original provider URL. It must NEVER throw into the login flow.
  */
 import { uploadBuffer } from "./spaces";
+import { isOwnR2Address } from "./storageConfig";
 import logger from "@/lib/logger";
 import { safeFetch } from "@/lib/security/ssrf";
 
@@ -28,7 +29,7 @@ export async function rehostExternalAvatar(
 ): Promise<string | null> {
   if (!url || !/^https?:\/\//i.test(url)) return null;
   // Already on our own storage — nothing to do.
-  if (/digitaloceanspaces\.com/i.test(url)) return null;
+  if (/digitaloceanspaces\.com/i.test(url) || isOwnR2Address(url)) return null;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);

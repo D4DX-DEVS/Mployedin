@@ -57,6 +57,9 @@ export const REGISTRY: RegistryItem[] = [
   { name: "serwist-expiration", kind: "indexedDB", category: "necessary", basis: "user-action", party: "first", duration: "with SW", owner: "pwa", purposeKey: "offline" },
   // first-party hosts the browser contacts (no cookies)
   { name: "*.digitaloceanspaces.com", kind: "thirdPartyHost", category: "necessary", basis: "strictly-necessary", party: "first", duration: "n/a", owner: "storage", purposeKey: "files" },
+  // Cloudflare R2 (STORAGE_PROVIDER=r2): the public bucket's r2.dev address and the API host private files are presigned on.
+  { name: "*.r2.dev", kind: "thirdPartyHost", category: "necessary", basis: "strictly-necessary", party: "first", duration: "n/a", owner: "storage", purposeKey: "files" },
+  { name: "*.r2.cloudflarestorage.com", kind: "thirdPartyHost", category: "necessary", basis: "strictly-necessary", party: "first", duration: "n/a", owner: "storage", purposeKey: "files" },
   // Cloudinary: still in the CSP img-src and images.remotePatterns, but no public page loads it (lib/images/externalAvatar
   // refuses it: the host is shared by every Cloudinary account, and Spaces replaced it). Kept until the owner has checked
   // whether any stored image URL still points here; then remove this row, the CSP entry and the remotePattern together.

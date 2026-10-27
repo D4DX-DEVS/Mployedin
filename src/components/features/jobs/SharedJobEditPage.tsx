@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Lightbulb, Sparkles, Plus, X, ChevronDown, ChevronUp,
+  ArrowLeft, Lightbulb, Plus, X, ChevronDown, ChevronUp,
   Briefcase, MapPin, DollarSign, Settings2, Tags,
   Globe, Users, Eye, CheckCircle2, AlertCircle, Loader2,
   Search, SearchX, Rocket, ClipboardList, GripVertical, Trash2,
@@ -33,6 +33,10 @@ import { formatCount } from "@/lib/ui/intlFormat";
 import { useFieldHighlight } from "@/hooks/useFieldHighlight";
 import { KnockoutEditor, hasKnockoutProblem } from "@/components/features/employer/job-form/KnockoutEditor";
 import { KNOCKOUT_NUMBER_TYPES, KNOCKOUT_OPTION_TYPES } from "@/lib/matching/knockouts";
+import { assistChangesToEditPatch, EDIT_ASSIST_FIELDS, editFormToAssistDraft, mergeEditPatch } from "./editJobAssist";
+import { useJobAssistant } from "./ai-assistant/useJobAssistant";
+import { useJobAssistantErrorText, useJobAssistantQuickActions } from "./ai-assistant/useQuickActions";
+import { JobAssistantAskButton, JobAssistantInline, JobAssistantOpenButton, JobAssistantProvider } from "./ai-assistant/JobAssistantDock";
 
 const KNOCKOUT_TYPES = new Set<string>([...KNOCKOUT_OPTION_TYPES, ...KNOCKOUT_NUMBER_TYPES]);
 
@@ -379,9 +383,27 @@ export function SharedJobEditPage({
   const [submitState, setSubmitState] = useState<"idle" | "saving" | "publishing" | "saved" | "error">("idle");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [globalError, setGlobalError] = useState("");
-  const [aiState, setAiState] = useState<"idle" | "generating" | "done">("idle");
-  const [aiSuggestion, setAiSuggestion] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // The job's one AI assistant (client 2026-10-27: "no text/command input
+  // option for generating details" when editing). It reads the form as it is
+  // and writes its answer back field by field, each answer with an Undo.
+  const tAssistQuick = useTranslations("jobAssistant.quick");
+  const formRef = useRef(form);
+  formRef.current = form;
+  const assistant = useJobAssistant(
+    {
+      getJob: useCallback(() => editFormToAssistDraft(formRef.current), []),
+      applyChanges: useCallback((changes) => {
+        const { patch, revert } = assistChangesToEditPatch(formRef.current, changes);
+        setForm((f) => mergeEditPatch(f, patch));
+        return () => setForm((f) => mergeEditPatch(f, revert(f)));
+      }, []),
+      supportedFields: EDIT_ASSIST_FIELDS,
+    },
+    useJobAssistantErrorText(),
+  );
+  const assistantQuickActions = useJobAssistantQuickActions();
 
   // Country search
   const [countryQuery, setCountryQuery] = useState("");
@@ -602,43 +624,6 @@ export function SharedJobEditPage({
     }
   }, [afterSaveHref, form, id, router, updateJob]);
 
-  async function generateDescription() {
-    if (!form.title.trim()) {
-      setFieldErrors((p) => ({ ...p, title: t("errorAiTitle") }));
-      return;
-    }
-    setAiState("generating");
-    setAiSuggestion("");
-    try {
-      const locationLabel = [form.location.city, form.location.country].filter(Boolean).join(", ") || "the job's target market";
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{
-            role: "user",
-            content: `Write a professional job description for "${form.title}" based in ${locationLabel} (${form.category || "general"} sector). ${form.requirements.skills.length ? "Required skills: " + form.requirements.skills.join(", ") + "." : ""} ${form.salary.min ? "Salary: " + formatSalary(form.salary.min, form.salary.currency, form.salary.period) + " – " + formatSalary(form.salary.max, form.salary.currency, form.salary.period) + "." : ""} Include key responsibilities, required qualifications, and what makes this role exciting. Use clear bullet points. Max 350 words.`,
-          }],
-          context: "employer_assist",
-        }),
-      });
-      if (res.ok && res.body) {
-        let text = "";
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          text += decoder.decode(value);
-          setAiSuggestion(text);
-        }
-        setAiState("done");
-      }
-    } catch {
-      setAiState("idle");
-    }
-  }
-
   if (loading) {
     return (
       <div className="page-container max-w-6xl">
@@ -682,6 +667,7 @@ export function SharedJobEditPage({
   const isSubmitting = submitState === "saving" || submitState === "publishing";
 
   return (
+    <JobAssistantProvider assistant={assistant} quickActions={assistantQuickActions}>
     <div className="page-container max-w-6xl">
       {/* Back nav */}
       <button
@@ -698,7 +684,8 @@ export function SharedJobEditPage({
           <h1 className="text-xl font-bold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("description")}</p>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex flex-wrap gap-2 flex-shrink-0">
+          <JobAssistantOpenButton />
           <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[110px]">
             {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("saving")}</>
               : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />{t("saved")}</>
@@ -958,32 +945,10 @@ export function SharedJobEditPage({
                 <span className={cn("text-xs", form.description.length < 20 ? "text-destructive" : "text-muted-foreground")}>
                   {t("charCount", { count: form.description.length })}
                 </span>
-                <Button type="button" size="sm" variant="outline" onClick={generateDescription}
-                  disabled={aiState === "generating"} className="h-7 text-xs gap-1.5">
-                  <Sparkles className="w-3 h-3 text-primary" />
-                  {aiState === "generating" ? t("generating") : t("generateAi")}
-                </Button>
+                {/* A shortcut into the job's one AI assistant. */}
+                <JobAssistantAskButton label={tAssistQuick("description.label")} instruction={tAssistQuick("description.instruction")} />
               </div>
             </Field>
-            {(aiState === "generating" || aiState === "done") && aiSuggestion && (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 space-y-3 card-pad">
-                <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> {t("aiSuggestion")}
-                  {aiState === "generating" && <Loader2 className="w-3 h-3 animate-spin ms-1" />}
-                </p>
-                <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{aiSuggestion}</p>
-                {aiState === "done" && (
-                  <div className="flex gap-2">
-                    <Button type="button" size="sm" className="h-7 text-xs" onClick={() => { setField("description", aiSuggestion); setAiState("idle"); setAiSuggestion(""); }}>
-                      <CheckCircle2 className="w-3 h-3 me-1.5" /> {t("useDescription")}
-                    </Button>
-                    <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAiState("idle"); setAiSuggestion(""); }}>
-                      {t("dismiss")}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
           </Section>
 
           {/* ④ Requirements */}
@@ -1344,16 +1309,23 @@ export function SharedJobEditPage({
               </p>
             ) : null}
             {form.screeningQuestions.length < 20 && (
-              <Button
-                type="button" variant="outline" size="sm"
-                onClick={() => setField("screeningQuestions", [
-                  ...form.screeningQuestions,
-                  { id: generateQuestionId(), label: "", type: "text", required: false, options: [], placeholder: "" },
-                ])}
-                className="gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" /> {t("addQuestion")}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button" variant="outline" size="sm"
+                  onClick={() => setField("screeningQuestions", [
+                    ...form.screeningQuestions,
+                    { id: generateQuestionId(), label: "", type: "text", required: false, options: [], placeholder: "" },
+                  ])}
+                  className="gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" /> {t("addQuestion")}
+                </Button>
+                <JobAssistantAskButton
+                  label={tAssistQuick("questions.label")}
+                  instruction={tAssistQuick("questions.instruction")}
+                  className="h-9"
+                />
+              </div>
             )}
             {form.screeningQuestions.length === 0 && (
               <p className="text-xs text-muted-foreground">{t("noQuestions")}</p>
@@ -1415,9 +1387,10 @@ export function SharedJobEditPage({
           </div>
         </div>
 
-        {/* ── Right: live preview ──────────────────────────────── */}
+        {/* ── Right: AI assistant + live preview ───────────────── */}
         <div className="hidden xl:block">
           <div className="sticky top-6 space-y-3">
+            <JobAssistantInline />
             <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
               <div className="bg-muted/30 border-b border-border/40 flex items-center gap-2 panel-head">
                 <Eye className="w-3.5 h-3.5 text-primary" />
@@ -1508,5 +1481,6 @@ export function SharedJobEditPage({
         </div>
       </div>
     </div>
+    </JobAssistantProvider>
   );
 }

@@ -411,8 +411,6 @@ export default function AgentJobSeekersPage() {
           value={search}
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
-          // Phones: narrow enough that Filter and the data notice share its line.
-          className="max-sm:flex-[1_1_7rem]"
         />
         {/* Dashboard deep-link chips: the metric links here with ?onboarded=1 /
             ?premium=1, so the active filter must be visible and removable. */}

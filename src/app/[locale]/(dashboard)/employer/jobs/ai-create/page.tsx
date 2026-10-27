@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { useJobPostingTarget } from "@/components/features/jobs/jobPostingTarget";
+import { BulkJobReview, isReadyToSave, type BulkJobStatus } from "@/components/features/jobs/bulk-review/BulkJobReview";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 function hasMalayalam(text: string): boolean {
   return /[\u0D00-\u0D7F]/.test(text);
@@ -117,8 +119,18 @@ function normalizeScreeningQuestions(list: ExtractedScreeningQuestion[] | undefi
 const AI_PREFILL_STORAGE_KEY = "job-ai-prefill";
 const AI_CHAT_STORAGE_KEY = "job-ai-chat-session";
 
+interface ChatSession {
+  messages?: Message[];
+  extractedJob?: ExtractedJob | null;
+  extractedBulkJobs?: ExtractedJob[];
+  /** The bulk review as the poster left it: edits, saved jobs and ticks, by index. */
+  bulkEdits?: Record<string, Partial<JobFormValues>>;
+  bulkStatuses?: Record<string, BulkJobStatus>;
+  bulkSelected?: number[];
+}
+
 /** Read the persisted AI chat session (conversation + extracted draft). */
-function readChatSession(): { messages?: Message[]; extractedJob?: ExtractedJob | null; extractedBulkJobs?: ExtractedJob[] } | null {
+function readChatSession(): ChatSession | null {
   if (typeof window === "undefined") return null;
   try {
     const saved = sessionStorage.getItem(AI_CHAT_STORAGE_KEY);
@@ -318,11 +330,26 @@ export default function EmployerAIJobCreatePage() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [extractedJob, setExtractedJob] = useState<ExtractedJob | null>(null);
-  const [extractedBulkJobs, setExtractedBulkJobs] = useState<ExtractedJob[]>([]);
+  const [extractedBulkJobs, setExtractedBulkJobsRaw] = useState<ExtractedJob[]>([]);
   const [creatingBulk, setCreatingBulk] = useState(false);
+  // Bulk review (client 2026-10-27): each job can be edited or filled in by the
+  // AI assistant before the checked ones are saved as drafts.
+  const [bulkEdits, setBulkEdits] = useState<Record<number, Partial<JobFormValues>>>({});
+  const [bulkSelected, setBulkSelected] = useState<Set<number>>(new Set());
+  const [bulkStatuses, setBulkStatuses] = useState<Record<number, BulkJobStatus>>({});
+  /** Bumped with each new list, so the review starts fresh. */
+  const [bulkBatch, setBulkBatch] = useState(0);
+  /** A new list of jobs starts a new review: nothing edited, everything checked. */
+  const setExtractedBulkJobs = useCallback((jobs: ExtractedJob[]) => {
+    setExtractedBulkJobsRaw(jobs);
+    setBulkEdits({});
+    setBulkStatuses({});
+    setBulkSelected(new Set(jobs.map((_, i) => i)));
+    setBulkBatch((b) => b + 1);
+  }, []);
+  const bulkReviewJobs = extractedBulkJobs.map((job, i) => bulkEdits[i] ?? buildPrefill(job));
   // Which of "Save as draft" / "Post job" is running for the single drafted job.
   const [savingAs, setSavingAs] = useState<"draft" | "active" | null>(null);
-  const [bulkProgress, setBulkProgress] = useState<{ created: number; total: number; errors: string[] } | null>(null);
   const [voiceLanguage, setVoiceLanguage] = useState("auto");
   const [showLangPicker, setShowLangPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -377,9 +404,18 @@ export default function EmployerAIJobCreatePage() {
     const restored = saved.messages ? dropUnfinishedReplies(saved.messages) : [];
     if (restored.length > 0) setMessages(restored);
     if (saved.extractedJob) setExtractedJob(saved.extractedJob);
-    if (saved.extractedBulkJobs && saved.extractedBulkJobs.length > 0) setExtractedBulkJobs(saved.extractedBulkJobs);
-     
-  }, []);
+    if (saved.extractedBulkJobs && saved.extractedBulkJobs.length > 0) {
+      setExtractedBulkJobs(saved.extractedBulkJobs);
+      const byIndex = <V,>(record: Record<string, V> | undefined) =>
+        Object.fromEntries(Object.entries(record ?? {}).map(([k, v]) => [Number(k), v])) as Record<number, V>;
+      setBulkEdits(byIndex(saved.bulkEdits));
+      // A save cut off by the refresh is unknown, not saved: leave it to retry.
+      setBulkStatuses(Object.fromEntries(
+        Object.entries(byIndex(saved.bulkStatuses)).filter(([, v]) => v === "saved" || v === "error"),
+      ));
+      if (saved.bulkSelected) setBulkSelected(new Set(saved.bulkSelected));
+    }
+  }, [setExtractedBulkJobs]);
 
   // Persist the conversation + draft so an accidental remount or navigation
   // (back from the form, tab switch, dev Fast Refresh) doesn't discard the
@@ -390,12 +426,19 @@ export default function EmployerAIJobCreatePage() {
     try {
       sessionStorage.setItem(
         AI_CHAT_STORAGE_KEY,
-        JSON.stringify({ messages, extractedJob, extractedBulkJobs }),
+        JSON.stringify({
+          messages,
+          extractedJob,
+          extractedBulkJobs,
+          bulkEdits,
+          bulkStatuses,
+          bulkSelected: Array.from(bulkSelected),
+        } satisfies ChatSession),
       );
     } catch {
       /* quota / serialization — non-critical */
     }
-  }, [messages, extractedJob, extractedBulkJobs]);
+  }, [messages, extractedJob, extractedBulkJobs, bulkEdits, bulkStatuses, bulkSelected]);
 
   // ── Cross-session resume (Scenario: close tab / next day / logout) ──────
   // ?resume=<threadId> on the URL → fetch the persisted ConversationThread
@@ -635,43 +678,68 @@ export default function EmployerAIJobCreatePage() {
     }
   };
 
+  /** Saves the checked jobs as drafts; nothing is published from here. */
   const createBulkJobDrafts = async () => {
-    if (extractedBulkJobs.length === 0) return;
+    const indices = bulkReviewJobs.map((_, i) => i).filter((i) => bulkSelected.has(i) && bulkStatuses[i] !== "saved" && isReadyToSave(bulkReviewJobs[i]));
+    if (indices.length === 0) return;
     setCreatingBulk(true);
-    setBulkProgress({ created: 0, total: extractedBulkJobs.length, errors: [] });
-    const errors: string[] = [];
+    const statuses = { ...bulkStatuses };
     let created = 0;
+    let failed = 0;
 
-    for (const job of extractedBulkJobs) {
+    for (const index of indices) {
+      statuses[index] = "saving";
+      setBulkStatuses({ ...statuses });
       try {
-        const sanitized = buildPrefill(job);
-        const res = await fetch("/api/jobs", {
+        const res = await csrfFetch("/api/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...sanitized, ...forEmployer, status: "draft" }),
+          body: JSON.stringify({ ...bulkReviewJobs[index], ...forEmployer, status: "draft" }),
         });
-        if (res.ok) {
-          created++;
-        } else {
-          const err = await res.json().catch(() => ({}));
-          errors.push(`${job.title ?? "Unknown"}: ${(err as { error?: string }).error ?? "Failed"}`);
-        }
+        statuses[index] = res.ok ? "saved" : "error";
+        if (res.ok) created++;
+        else failed++;
       } catch {
-        errors.push(`${job.title ?? "Unknown"}: Network error`);
+        statuses[index] = "error";
+        failed++;
       }
-      setBulkProgress({ created, total: extractedBulkJobs.length, errors });
+      setBulkStatuses({ ...statuses });
     }
 
     setCreatingBulk(false);
-    if (errors.length === 0) {
-      toast.success(t("bulkSuccess", { count: created }));
+    const allSaved = bulkReviewJobs.every((_, i) => statuses[i] === "saved");
+    if (failed === 0 && created > 0) toast.success(t("bulkSuccess", { count: created }));
+    if (failed > 0) toast.error(t("bulkPartial", { created, total: indices.length, failed }));
+    if (allSaved) {
       setExtractedBulkJobs([]);
-      setBulkProgress(null);
       setTimeout(() => {
         router.push(target.jobsHref);
       }, 1500);
-    } else {
-      toast.error(t("bulkPartial", { created, total: extractedBulkJobs.length, failed: errors.length }));
+    }
+  };
+
+  /** Drops one job from the review and shifts the per-index state after it. */
+  const removeBulkJob = (index: number) => {
+    const shift = <V,>(record: Record<number, V>): Record<number, V> =>
+      Object.fromEntries(
+        Object.entries(record)
+          .map(([k, v]) => [Number(k), v] as [number, V])
+          .filter(([i]) => i !== index)
+          .map(([i, v]) => [i > index ? i - 1 : i, v]),
+      );
+    setExtractedBulkJobsRaw((prev) => prev.filter((_, i) => i !== index));
+    setBulkEdits((prev) => shift(prev));
+    setBulkStatuses((prev) => shift(prev));
+    setBulkSelected((prev) => new Set(Array.from(prev).filter((i) => i !== index).map((i) => (i > index ? i - 1 : i))));
+  };
+
+  /** Opens one job of the bulk list in the full form (with its AI assistant). */
+  const openBulkJobInForm = (index: number) => {
+    try {
+      sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify({ ...bulkReviewJobs[index], ...forEmployer }));
+      router.push(target.withEmployer(`${target.jobsHref}/new?mode=manual&prefill=ai`));
+    } catch {
+      toast.error(t("jobCreator.failedOpenForm"));
     }
   };
 
@@ -1114,32 +1182,27 @@ export default function EmployerAIJobCreatePage() {
             {extractedBulkJobs.length > 0 && (
               <div className="space-y-3 text-xs">
                 <p className="font-medium text-sm">{t("bulkPreview", { count: extractedBulkJobs.length })}</p>
-                {extractedBulkJobs.map((job, idx) => (
-                  <div key={idx} className="rounded-lg border border-border/60 space-y-1 chip-pad">
-                    <p className="font-semibold text-foreground">{job.title ?? "Untitled"}</p>
-                    <p className="text-muted-foreground">{typeof job.location === "string" ? job.location : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || "—"}</p>
-                    <p className="text-muted-foreground">{job.employmentType ? job.employmentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—"} · {job.workMode ? job.workMode.replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>
-                    {extractSkills(job.requirements).length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {extractSkills(job.requirements).slice(0, 5).map((s, si) => (
-                          <span key={si} className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">{s}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {bulkProgress && (
-                  <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs">
-                    <p>{t("bulkPartial", { created: bulkProgress.created, total: bulkProgress.total, failed: bulkProgress.errors.length })}</p>
-                  </div>
-                )}
-                <Button onClick={createBulkJobDrafts} disabled={creatingBulk} className="w-full gap-2 text-xs">
-                  {creatingBulk ? <Loader2 className="h-4 w-4 animate-spin" /> : <WandSparkles className="h-4 w-4" />}
-                  {creatingBulk ? `Creating... (${bulkProgress?.created ?? 0}/${extractedBulkJobs.length})` : t("jobCreator.createAllDrafts", { count: extractedBulkJobs.length })}
-                </Button>
-                <p className="rounded-lg bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
-                  {t("jobCreator.nothingSavedYet")}
-                </p>
+                <BulkJobReview
+                  key={bulkBatch}
+                  jobs={bulkReviewJobs}
+                  selected={bulkSelected}
+                  statuses={bulkStatuses}
+                  saving={creatingBulk}
+                  onToggle={(index) => setBulkSelected((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(index)) next.delete(index);
+                    else next.add(index);
+                    return next;
+                  })}
+                  onToggleAll={() => {
+                    const pending = bulkReviewJobs.map((_, i) => i).filter((i) => bulkStatuses[i] !== "saved" && isReadyToSave(bulkReviewJobs[i]));
+                    setBulkSelected(pending.every((i) => bulkSelected.has(i)) ? new Set() : new Set(pending));
+                  }}
+                  onChange={(index, next) => setBulkEdits((prev) => ({ ...prev, [index]: next }))}
+                  onRemove={removeBulkJob}
+                  onSaveSelected={createBulkJobDrafts}
+                  onOpenInForm={openBulkJobInForm}
+                />
               </div>
             )}
           </div>

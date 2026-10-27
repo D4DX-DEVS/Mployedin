@@ -7,10 +7,8 @@ import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
 import Lead from "@/models/Lead";
 import Placement from "@/models/Placement";
-import Commission from "@/models/Commission";
-import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { BriefcaseBusiness, Building2, Goal, Wallet } from "lucide-react";
+import { BriefcaseBusiness, Building2, Crown, Handshake, Users } from "lucide-react";
 import type { WorkspaceMetric } from "@/components/shared/WorkspaceHeader";
 import { AgentTodayQueue, type AgentTodayQueueLabels } from "@/components/features/agent/AgentTodayQueue";
 import {
@@ -28,9 +26,7 @@ import { loadSuperAgentContact } from "@/lib/agents/superAgentContact";
 import { loadAssignedAccounts } from "@/lib/agents/assignedAccounts";
 import { getAgentEmployerIds, getAgentSeekerArea, seekerRegionMatch } from "@/lib/auth/agentRestrictions";
 import { buildBroughtInFilter } from "@/lib/jobseekers/onboarded";
-import { calculateMonthlyAchievements } from "@/lib/targets/profileAchievementCalculator";
-import { fromStoredPeriods, monthlyTargets } from "@/lib/targets/schedule";
-import { formatCurrency } from "@/lib/currency";
+import { leadPeriodFilter } from "@/lib/leads/period";
 import { isValidTimeZone } from "@/lib/datetime/zone";
 import { localHourIn } from "@/lib/datetime/countryZone";
 
@@ -116,6 +112,8 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   let offerRate = 0;
   let leadsGenerated = 0;
   let leadsConverted = 0;
+  let leadsConvertedToday = 0;
+  let activeLeadsThisWeek = 0;
   let placementsCount = 0;
   let onboardedSeekers = 0;
   let premiumCandidates = 0;
@@ -164,11 +162,14 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
         .lean<SpotlightSeekerDoc[]>();
     let onboardedDocs: SpotlightSeekerDoc[];
     let premiumDocs: SpotlightSeekerDoc[];
-    [activeJobs, vacanciesPosted, leadsGenerated, leadsConverted, placementsCount, onboardedSeekers, premiumCandidates, onboardedPremium, onboardedDocs, premiumDocs] = await Promise.all([
+    [activeJobs, vacanciesPosted, leadsGenerated, leadsConverted, leadsConvertedToday, activeLeadsThisWeek, placementsCount, onboardedSeekers, premiumCandidates, onboardedPremium, onboardedDocs, premiumDocs] = await Promise.all([
       Job.countDocuments({ ...jobFilter, status: "active" }),
       Job.countDocuments(jobFilter),
       Lead.countDocuments({ agentId }),
       Lead.countDocuments({ agentId, status: "converted" }),
+      // Same query /api/leads?period= runs, in the agent's own day and week.
+      Lead.countDocuments({ agentId, ...leadPeriodFilter("converted_today", timeZone, now) }),
+      Lead.countDocuments({ agentId, ...leadPeriodFilter("active_week", timeZone, now) }),
       Placement.countDocuments(portfolioFilter),
       JobSeeker.countDocuments(broughtIn),
       JobSeeker.countDocuments({ ...seekerScope, badges: "premium" }),
@@ -252,43 +253,6 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       .slice(0, 3);
   }
 
-  // ── This month: the target the super-agent split to this agent, and the
-  // commission booked against it. "This month" is the server's calendar month
-  // because the target report and the commissions page both count that way,
-  // and each card must equal the page it opens.
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const monthFrom = `${year}-${pad(month)}-01`;
-  const monthTo = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`;
-  let targetProgress: number | null = null;
-  let commissionThisMonth = 0;
-  if (agentId) {
-    // /api/commissions reads ?dateFrom/?dateTo exactly like this.
-    const commissionFrom = new Date(monthFrom);
-    const commissionTo = new Date(monthTo);
-    commissionTo.setHours(23, 59, 59, 999);
-    const [targetProfile, commissionRows] = await Promise.all([
-      // The same profile /api/agent/target-report reads.
-      TargetProfile.findOne({ ...PROFIT_TARGET_FILTER, assigneeId: session.user.id, assigneeRole: "agent", year, status: "active" })
-        .select("periods currency")
-        .lean<{ periods?: { startDate: Date; endDate: Date; profitTarget: number }[]; currency?: string } | null>(),
-      // Pending + approved + paid: the three cards on the commissions page.
-      // Override lines carry only superAgentId, so agentId is this agent's own.
-      Commission.aggregate<{ total: number }>([
-        { $match: { agentId, createdAt: { $gte: commissionFrom, $lte: commissionTo }, status: { $in: ["pending", "approved", "paid"] } } },
-        { $group: { _id: null, total: { $sum: "$amount" } } },
-      ]),
-    ]);
-    commissionThisMonth = commissionRows[0]?.total ?? 0;
-    // What the schedule carries for this month, whether it is cut by week, quarter or year.
-    const monthTarget = { month, profitTarget: monthlyTargets(fromStoredPeriods(targetProfile?.periods))[month - 1] ?? 0 };
-    if (monthTarget.profitTarget > 0) {
-      const [achievement] = await calculateMonthlyAchievements(String(session.user.id), "agent", year, [monthTarget], targetProfile?.currency);
-      targetProgress = achievement?.profitProgress ?? 0;
-    }
-  }
-
   // The queue replaces a three-branch guess ("any applications at all? review
   // candidates") with what is actually late. Both reads go through the same
   // module the nav badges use, so the badge and this list always agree.
@@ -349,12 +313,9 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     emptyDescription: tQueue("empty.description"),
   };
 
-  // At-a-glance figures the queue and the funnel do not already print: the
-  // size of the book, the live roles, this month's target and commission.
-  // (The two candidate conversion rates used to sit here too, repeating the
-  // pipeline's "25% of applicants".) Each opens the list it counts. Talent
-  // rides its own card below the queue — seven slim tiles truncated every
-  // label ("Onboarded job se…"); employer conversion is the pipeline's Leads row.
+  // At-a-glance figures the queue and the funnel do not already print. Each
+  // opens the list it counts. Target and commission are header links with no
+  // figure (client feedback 2026-10-23: no money or target numbers on home).
   const metrics: WorkspaceMetric[] = [
     {
       label: t("overview.activeAccounts"),
@@ -377,24 +338,32 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       ariaLabel: `${t("overview.liveRoles")}: ${activeJobs}`,
     },
     {
-      label: t("overview.targetThisMonth"),
-      shortLabel: t("overview.targetShort"),
-      value: targetProgress === null ? "—" : `${targetProgress}%`,
-      href: `/${locale}/agent/target-report`,
-      icon: Goal,
-      tone: "warning",
-      ariaLabel: targetProgress === null
-        ? `${t("overview.targetThisMonth")}: ${t("overview.targetNotSet")}`
-        : `${t("overview.targetThisMonth")}: ${targetProgress}%`,
+      label: t("overview.leadsConvertedToday"),
+      shortLabel: t("overview.leadsConvertedTodayShort"),
+      value: leadsConvertedToday,
+      href: `/${locale}/agent/leads?period=converted_today`,
+      icon: Handshake,
+      tone: "success",
+      ariaLabel: `${t("overview.leadsConvertedToday")}: ${leadsConvertedToday}`,
     },
     {
-      label: t("overview.commissionThisMonth"),
-      shortLabel: t("overview.commissionShort"),
-      value: formatCurrency(commissionThisMonth, agentDoc?.currencyCode ?? "AED"),
-      href: `/${locale}/agent/commissions?dateFrom=${monthFrom}&dateTo=${monthTo}`,
-      icon: Wallet,
+      label: t("overview.activeLeadsWeek"),
+      shortLabel: t("overview.activeLeadsWeekShort"),
+      value: activeLeadsThisWeek,
+      href: `/${locale}/agent/leads?period=active_week`,
+      icon: Users,
       tone: "info",
-      ariaLabel: `${t("overview.commissionThisMonth")}: ${formatCurrency(commissionThisMonth, agentDoc?.currencyCode ?? "AED")}`,
+      ariaLabel: `${t("overview.activeLeadsWeek")}: ${activeLeadsThisWeek}`,
+    },
+    {
+      label: t("overview.premiumCandidates"),
+      shortLabel: t("overview.premiumCandidatesShort"),
+      // The Talent card's Premium count and the list it opens.
+      value: premiumCandidates,
+      href: `/${locale}/agent/job-seekers?premium=1`,
+      icon: Crown,
+      tone: "warning",
+      ariaLabel: `${t("overview.premiumCandidates")}: ${premiumCandidates}`,
     },
   ];
 

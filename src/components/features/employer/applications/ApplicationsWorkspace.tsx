@@ -104,6 +104,7 @@ import {
   type QualificationItem,
   type RequirementsStatus,
 } from "@/components/features/employer/applications/RequirementsChecklist";
+import { ScreeningAnswers } from "@/components/features/employer/applications/ScreeningAnswers";
 import {
   matchBreakdownRows,
   type BreakdownRowState,
@@ -221,7 +222,7 @@ export interface Applicant {
   /** Set once the ATS scoring (checklist included) has run for this row. */
   scoredAt?: string;
   otherApplicationsCount?: number;
-  screeningAnswers?: { questionId: string; questionLabel: string; answer: string | string[] | boolean }[];
+  screeningAnswers?: { questionId: string; questionLabel: string; answer: string | string[] | boolean | number | null }[];
   documents?: { name: string; url: string; type: string }[];
   /** Most recent background / reference check, when one has been raised. */
   latestCheck?: CandidateCheck;
@@ -2868,17 +2869,23 @@ function ApplicationDetailsPanel({
                     </span>
                   ) : null}
                 </div>
-                <p className="truncate text-sm font-medium text-foreground/80">{currentRole || t("roleNotSpecified")}</p>
+                {/* Phones wrap these lines instead of cutting them to "…". */}
+                <p className="break-words text-sm font-medium text-foreground/80 sm:truncate">{currentRole || t("roleNotSpecified")}</p>
                 {app.jobId?.title ? (
-                  <p className="truncate text-xs text-muted-foreground">{t("appliedForJob", { title: app.jobId.title })}</p>
+                  <p className="break-words text-xs text-muted-foreground sm:truncate">{t("appliedForJob", { title: app.jobId.title })}</p>
                 ) : null}
-                <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                  <MapPin className="h-3 w-3 shrink-0" />
-                  <span className="truncate">
+                <p className="mt-0.5 flex items-start gap-1 text-xs text-muted-foreground sm:items-center">
+                  <MapPin className="mt-0.5 h-3 w-3 shrink-0 sm:mt-0" />
+                  <span className="min-w-0 break-words sm:truncate">
                     {app.jobSeekerId?.currentLocation ?? t("notSpecified")}
                     {candidateExperienceYears != null ? ` • ${t("yearsExp", { count: candidateExperienceYears })}` : ""}
                   </span>
                 </p>
+                {/* On a phone the badge sits here: beside the score it took half
+                    the row and cut the name to "Shaf…" (client 2026-10-27). */}
+                {app.requirementsStatus === "not_met" ? (
+                  <RequirementsBadge status={app.requirementsStatus} className="mt-1.5 sm:hidden" />
+                ) : null}
               </div>
             </div>
             <div className="flex shrink-0 items-start gap-2">
@@ -2888,7 +2895,7 @@ function ApplicationDetailsPanel({
                 {/* The score says how good a fit; this says whether they qualify —
                     shown beside it so a good score can't hide a failed requirement. */}
                 {app.requirementsStatus === "not_met" ? (
-                  <RequirementsBadge status={app.requirementsStatus} className="mt-1.5" />
+                  <RequirementsBadge status={app.requirementsStatus} className="mt-1.5 hidden sm:inline-flex" />
                 ) : null}
               </div>
               <Button ref={closeButtonRef} variant="ghost" size="dense" className="w-8 rounded-full p-0 text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500" onClick={onClose} aria-label={t("closeCandidateDetails")}>
@@ -3173,6 +3180,9 @@ function ApplicationDetailsPanel({
               missingSkills={app.missingSkills}
               weightsApplied={app.weightsApplied}
             />
+
+            {/* Every answer this candidate gave, open questions included. */}
+            <ScreeningAnswers answers={app.screeningAnswers} checks={app.qualifications} />
 
             {/* Resume lives in its own tab — no duplicate quick card here. */}
 

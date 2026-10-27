@@ -35,7 +35,7 @@ describe("refresh-match-embeddings cron", () => {
 
   it("is off without an OpenRouter key", async () => {
     delete process.env.OPENROUTER_API_KEY;
-    expect(await fn.handler({ step })).toEqual({ skipped: "no OpenRouter key" });
+    expect(await fn.handler({ step })).toEqual({ skipped: "no OpenRouter key", departed: { skipped: "VECTOR_STORE is atlas" } });
   });
 
   it("sweeps changed and never-processed jobs and seekers", async () => {

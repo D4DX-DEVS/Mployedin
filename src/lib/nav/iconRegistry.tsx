@@ -5,6 +5,7 @@
  */
 import {
   LayoutDashboard,
+  Bookmark,
   Briefcase,
   Users,
   UserCheck,
@@ -82,6 +83,7 @@ import type { FC } from "react";
 
 export type IconName =
   | "LayoutDashboard"
+  | "Bookmark"
   | "Briefcase"
   | "Users"
   | "UserCheck"
@@ -155,6 +157,7 @@ export type IconName =
 
 const ICON_MAP: Record<IconName, FC<LucideProps>> = {
   LayoutDashboard,
+  Bookmark,
   Briefcase,
   Users,
   UserCheck,

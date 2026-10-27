@@ -356,6 +356,26 @@
     "purposeKey": "files"
   },
   {
+    "name": "*.r2.dev",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "n/a",
+    "owner": "storage",
+    "purposeKey": "files"
+  },
+  {
+    "name": "*.r2.cloudflarestorage.com",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "strictly-necessary",
+    "party": "first",
+    "duration": "n/a",
+    "owner": "storage",
+    "purposeKey": "files"
+  },
+  {
     "name": "res.cloudinary.com",
     "kind": "thirdPartyHost",
     "category": "necessary",

@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { d1LogMirror } from "@/lib/logs/logStore";
 
 export interface IAuditLog extends Document {
   _id: mongoose.Types.ObjectId;
@@ -55,6 +56,9 @@ AuditLogSchema.index({ action: 1 });
 AuditLogSchema.index({ resource: 1, resourceId: 1 });
 AuditLogSchema.index({ country: 1 });
 AuditLogSchema.index({ createdAt: -1 });
+
+// LOGS_STORE=dual: every insert is also copied to D1 (lib/logs/logStore.ts).
+AuditLogSchema.plugin(d1LogMirror("audit_log"));
 
 export const AuditLog =
   mongoose.models.AuditLog ||

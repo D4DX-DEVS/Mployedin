@@ -108,7 +108,8 @@ export function getLocalizedCountryName(
     return options.remoteGlobalLabel ?? trimmed;
   }
 
-  const regionCode = getRegionCodeForCountryName(trimmed);
+  // Some profiles store the ISO code itself ("GB") rather than a name.
+  const regionCode = getRegionCodeForCountryName(trimmed) ?? (/^[A-Za-z]{2}$/.test(trimmed) && trimmed.toUpperCase() !== "ZZ" ? trimmed.toUpperCase() : null);
   if (!regionCode) return trimmed;
 
   return new Intl.DisplayNames([locale], { type: "region" }).of(regionCode) ?? trimmed;

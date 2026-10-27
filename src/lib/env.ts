@@ -6,6 +6,9 @@
  * request handler when a required secret is missing or malformed.
  */
 
+import { R2_REQUIRED_ENV, firstEnv, r2ApiHost, r2PublicHost, storageProvider } from "@/lib/storage/storageConfig";
+import { dataWorkerConfigured } from "@/lib/cloudflare/dataWorkerClient";
+
 interface EnvCheck {
   name: string;
   required: boolean;
@@ -45,8 +48,9 @@ const CHECKS: EnvCheck[] = [
   // Storage creds: spaces.ts falls back to "" so a missing key only surfaces as
   // runtime upload failures deep in request handlers. Required in production
   // (CV upload is a core flow); optional in dev where storage may be absent.
-  { name: "SPACES_ACCESS_KEY_ID", required: process.env.NODE_ENV === "production" },
-  { name: "SPACES_SECRET_ACCESS_KEY", required: process.env.NODE_ENV === "production" },
+  // With STORAGE_PROVIDER=r2 the R2 group below is required instead.
+  { name: "SPACES_ACCESS_KEY_ID", required: process.env.NODE_ENV === "production" && storageProvider() === "spaces" },
+  { name: "SPACES_SECRET_ACCESS_KEY", required: process.env.NODE_ENV === "production" && storageProvider() === "spaces" },
   // Rate limiting silently degrades to a per-instance in-memory store when
   // Upstash is unset — fine for dev/test, but in production that means login
   // and API throttles reset on every instance and never apply across replicas.
@@ -93,9 +97,61 @@ function sesGroupWarnings(env: Record<string, string | undefined>): string[] {
   );
 }
 
+/**
+ * STORAGE_PROVIDER=r2 with an R2 value missing would send every upload to a
+ * bucket named "" (or an unreachable endpoint): fail at boot instead.
+ */
+function r2GroupErrors(env: Record<string, string | undefined>): string[] {
+  if (env.STORAGE_PROVIDER?.trim().toLowerCase() !== "r2") return [];
+  const errors: string[] = R2_REQUIRED_ENV.filter((names) => !firstEnv(env, names)).map(
+    (names) => `STORAGE_PROVIDER=r2 but ${names.join(" / ")} is missing`,
+  );
+  if (firstEnv(env, R2_REQUIRED_ENV[0]) && !r2ApiHost(env)) {
+    errors.push("R2_ACCOUNT_ID (or CLOUDFLARE_ACCOUNT_ID) must be the 32-character hex account id from the Cloudflare dashboard");
+  }
+  const host = firstEnv(env, R2_REQUIRED_ENV[4]);
+  if (host && !r2PublicHost(host)) {
+    errors.push("NEXT_PUBLIC_R2_PUBLIC_HOST / R2_PUBLIC_ENDPOINT must be the public bucket's host, e.g. cdn.mployedin.com");
+  }
+  return errors;
+}
+
+function imageTransformWarnings(env: Record<string, string | undefined>): string[] {
+  if (env.NEXT_PUBLIC_IMAGE_TRANSFORMS?.trim().toLowerCase() !== "cloudflare") return [];
+  return r2PublicHost(firstEnv(env, R2_REQUIRED_ENV[4]))
+    ? []
+    : ["NEXT_PUBLIC_IMAGE_TRANSFORMS=cloudflare has no effect until NEXT_PUBLIC_R2_PUBLIC_HOST (or R2_PUBLIC_ENDPOINT) is set"];
+}
+
+/**
+ * The R2 public host is compiled into the build (next.config.ts env), and the
+ * browser, the image proxy pin and next/image read that compiled value. Set only
+ * at runtime, the server writes R2 URLs that those then refuse. `builtHost` is
+ * the compiled value: Next replaces the literal `process.env.NEXT_PUBLIC_…` at build.
+ */
+function r2BuildHostWarnings(
+  env: Record<string, string | undefined>,
+  builtHost: string | undefined = process.env.NEXT_PUBLIC_R2_PUBLIC_HOST,
+): string[] {
+  const runtimeHost = r2PublicHost(firstEnv(env, R2_REQUIRED_ENV[4]));
+  if (!runtimeHost || r2PublicHost(builtHost) === runtimeHost) return [];
+  return [
+    `The R2 public host (${runtimeHost}) differs from the one this build was made with (${r2PublicHost(builtHost) ?? "none"}): set NEXT_PUBLIC_R2_PUBLIC_HOST or R2_PUBLIC_ENDPOINT in the build environment and rebuild`,
+  ];
+}
+
+/** LOGS_STORE=dual quietly stays mongo-only without the Worker (lib/logs/logStore.ts): say so. */
+function logsStoreWarnings(env: Record<string, string | undefined>): string[] {
+  if (env.LOGS_STORE?.trim().toLowerCase() !== "dual" || dataWorkerConfigured(env)) return [];
+  return ["LOGS_STORE=dual has no effect until DATA_WORKER_URL and DATA_WORKER_SECRET (32+ characters) are set: logs stay in MongoDB only"];
+}
+
 /** Configuration gaps that do not stop the server; instrumentation logs them at boot. */
-export function collectEnvWarnings(env: Record<string, string | undefined> = process.env): string[] {
-  return sesGroupWarnings(env);
+export function collectEnvWarnings(
+  env: Record<string, string | undefined> = process.env,
+  builtR2Host: string | undefined = process.env.NEXT_PUBLIC_R2_PUBLIC_HOST,
+): string[] {
+  return [...sesGroupWarnings(env), ...imageTransformWarnings(env), ...logsStoreWarnings(env), ...r2BuildHostWarnings(env, builtR2Host)];
 }
 
 /** Every configuration problem, so misconfiguration is fixed in one pass. */
@@ -111,6 +167,7 @@ export function collectEnvErrors(env: Record<string, string | undefined> = proce
     if (msg) errors.push(msg);
   }
   errors.push(...whatsAppGroupErrors(env));
+  errors.push(...r2GroupErrors(env));
   return errors;
 }
 

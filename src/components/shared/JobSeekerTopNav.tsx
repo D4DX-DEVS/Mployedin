@@ -46,6 +46,8 @@ const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffec
 const PRIMARY_PATHS = [
   "/job-seeker",
   "/job-seeker/jobs",
+  // Saved jobs came back on the client's request (2026-10-27).
+  "/job-seeker/saved-jobs",
   "/job-seeker/applications",
   "/job-seeker/messages",
   "/job-seeker/companies",
@@ -86,6 +88,7 @@ const MORE_PATHS = [] as const;
  * them twice made the sheet read as a second account menu.
  */
 const MOBILE_MORE_PATHS = [
+  "/job-seeker/saved-jobs",
   "/job-seeker/messages",
   "/job-seeker/companies",
 ] as const;

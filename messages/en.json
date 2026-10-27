@@ -1,4 +1,52 @@
 {
+  "savedJobs": {
+    "title": "Saved jobs",
+    "description": "Jobs you bookmarked to come back to.",
+    "count": "{count, plural, =0 {No saved jobs yet} one {# saved job} other {# saved jobs}}",
+    "save": "Save",
+    "saved": "Saved",
+    "saveAria": "Save job",
+    "unsaveAria": "Remove from saved jobs",
+    "toastSaved": "Job saved. Find it under Saved jobs.",
+    "toastRemoved": "Removed from saved jobs.",
+    "errorClosed": "This job is no longer open, so it can't be saved.",
+    "errorGeneric": "We couldn't update your saved jobs. Try again.",
+    "emptyTitle": "No saved jobs yet",
+    "emptyDescription": "Tap the bookmark on any job to keep it here.",
+    "browseJobs": "Browse jobs",
+    "viewJob": "View job",
+    "closed": "No longer open",
+    "navLink": "Saved jobs"
+  },
+  "passwordRequirements": {
+    "title": "Your password needs",
+    "minLength": "At least {min} characters",
+    "uppercase": "An uppercase letter (A–Z)",
+    "lowercase": "A lowercase letter (a–z)",
+    "number": "A number (0–9)",
+    "symbol": "A symbol such as ! @ #",
+    "met": "done",
+    "notMet": "still needed",
+    "common": "This password is too common. Choose another one."
+  },
+  "changePasswordCard": {
+    "eyebrow": "Security",
+    "title": "Password",
+    "description": "Change the password you sign in with. We email you whenever it changes.",
+    "open": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "save": "Update password",
+    "cancel": "Cancel",
+    "success": "Your password has been changed.",
+    "mismatch": "The new passwords don't match.",
+    "sameAsCurrent": "Choose a password different from your current one.",
+    "wrongCurrent": "Your current password isn't right.",
+    "tooMany": "Too many attempts. Try again in an hour.",
+    "noPassword": "You sign in with Google, Apple or LinkedIn, so there is no password to change.",
+    "failed": "We couldn't change your password. Try again."
+  },
   "app": {
     "name": "MPLOYEDIN",
     "tagline": "AI-Powered Recruitment Platform"
@@ -1966,8 +2014,43 @@
       "title": "CV Builder",
       "description": "Create a professional CV with AI assistance, templates, and custom formatting"
     },
+    "assistant": {
+      "title": "AI assistant",
+      "description": "Ask for changes to your whole CV in your own words. You review each change before it goes in.",
+      "emptyHint": "Try one of these, or type your own request below.",
+      "suggestion": {
+        "improve": "Improve my whole CV: make the summary and every description sound more professional and achievement-focused.",
+        "grammar": "Fix spelling and grammar everywhere in my CV. Don't change anything else.",
+        "shorten": "Make my CV shorter and tighter without losing any facts."
+      },
+      "suggestionLabel": {
+        "improve": "Improve the whole CV",
+        "grammar": "Fix grammar everywhere",
+        "shorten": "Make it shorter",
+        "tailor": "Tailor to a job"
+      },
+      "suggestionTailorPrefix": "Tailor my CV to this job description: ",
+      "placeholder": "e.g. Rewrite my summary for a senior React role",
+      "inputLabel": "Message the AI assistant",
+      "send": "Send",
+      "thinking": "Working on your CV…",
+      "proposalReady": "Here are the changes I suggest.",
+      "changeSummary": "Summary",
+      "changeSkills": "Skills",
+      "changeExperience": "Experience: {role}",
+      "changeProject": "Project: {title}",
+      "apply": "Apply changes",
+      "discard": "Discard",
+      "applied": "Applied to your CV",
+      "undo": "Undo",
+      "discarded": "Not applied",
+      "errorBusy": "Too many requests right now. Wait a minute and try again.",
+      "errorGeneric": "The assistant couldn't answer. Try again.",
+      "privacyNote": "Your name, email and phone number are not sent to the assistant. Changes stay in the editor until you select Add to Profile."
+    },
     "tabs": {
-      "editor": "AI Editor",
+      "editor": "Editor",
+      "assistant": "AI Assistant",
       "templates": "Templates",
       "formatting": "Formatting"
     },
@@ -6337,6 +6420,10 @@
       "activeAccountsShort": "Employers",
       "liveRoles": "Live Roles",
       "liveRolesShort": "Roles",
+      "leadsConvertedToday": "Leads converted today",
+      "leadsConvertedTodayShort": "Won today",
+      "activeLeadsWeek": "Active leads this week",
+      "activeLeadsWeekShort": "Leads",
       "interviewRate": "Interview Rate",
       "interviewRateShort": "Interviews",
       "offerRate": "Offer Rate",
@@ -8696,11 +8783,11 @@
     "attachedFiles": "Attached files",
     "attachmentsHint": "Brochures, floor plans, invitations or quotes. PDF, Word or images, up to 10 files.",
     "attachmentsTitle": "Attachments",
-    "boardDragHint": "Drag a card one stage forward or back to move it. Each move asks for what that step needs.",
+    "boardDragHint": "Drag a card to the next stage to move it on. Each move asks for what that step needs. To return a request to the agent, open it and use Send Back.",
     "boardEmpty": "Nothing at this stage",
     "boardLive": "Live",
     "boardMore": "{count, plural, one {+# more in the table} other {+# more in the table}}",
-    "boardMoveNotAllowed": "A request moves one stage at a time. Drop it on the next or previous stage.",
+    "boardMoveNotAllowed": "A request only moves forward, one stage at a time. To return it to the agent, open it and use Send Back.",
     "boardView": "Board",
     "changePriority": "Change priority",
     "completeEventDescription": "Record how {name} went. Your super agent and the admin will see this report.",
@@ -9998,7 +10085,10 @@
     "viewAllJobs": "View All Jobs",
     "toastFormFailed": "We couldn't open job form",
     "toastDraftUnavailable": "This extraction draft is no longer available — it may have expired or been discarded.",
-    "removeJobLabel": "Remove {job}"
+    "removeJobLabel": "Remove {job}",
+    "reviewAndSave": "Check each position, fix or complete it, then save the ones you want as drafts.",
+    "toastSavedDrafts": "{count, plural, one {Saved # job as a draft.} other {Saved # jobs as drafts.}}",
+    "toastDraftsFailed": "{count, plural, one {# job couldn't be saved.} other {# jobs couldn't be saved.}}"
   },
   "employerJobDetail": {
     "loadError": "Couldn't load this job. Please try again.",
@@ -13538,7 +13628,7 @@
     "maintenanceModeDescription": "All outbound emails paused, all cron jobs skip",
     "scheduledEmailJobsTitle": "Scheduled Email Jobs",
     "dailyJobRecommendations": "Daily Job Recommendations",
-    "dailyJobSchedule": "9:00 AM UTC",
+    "dailyJobSchedule": "Hourly · 9:00 AM seeker local time",
     "dailyJobDesc": "Top 5 matching jobs to seekers",
     "dailyDigestWorkerLabel": "Daily Digest Worker",
     "dailyDigestSchedule": "Triggered by cron",
@@ -15387,6 +15477,9 @@
     "aiScoreLabel": "AI Score",
     "dueFollowUps": "Due follow-ups",
     "dueFollowUpsHint": "Leads whose follow-up date has passed",
+    "periodConvertedToday": "Converted today",
+    "periodActiveWeek": "Active this week",
+    "periodClear": "Showing: {period}. Clear this filter",
     "stageStep": "Step {step} of {total}",
     "loadMoreLeads": "{count, plural, one {Load # more lead} other {Load # more leads}}",
     "leadMovedToStage": "Lead moved to {stage}",
@@ -17857,7 +17950,10 @@
   "similarJobs": {
     "similarJobs": "Similar Jobs",
     "keepExploring": "Keep exploring",
-    "viewRole": "View role"
+    "viewRole": "View role",
+    "matchingSkills": "{count, plural, one {# matching skill} other {# matching skills}}",
+    "remote": "Remote",
+    "companyFallback": "Company"
   },
   "jobSeekerAiInsightsCard": {
     "noInsightsAvailable": "No AI insights available right now",
@@ -18968,7 +19064,14 @@
       "unreadable": "Couldn't read",
       "none": "Not sent"
     },
-    "requirementsNotMet": "Missing a must-have"
+    "requirementsNotMet": "Missing a must-have",
+    "screeningAnswers": {
+      "title": "Screening answers",
+      "count": "{count, plural, one {# question} other {# questions}}",
+      "noAnswer": "No answer",
+      "yes": "Yes",
+      "no": "No"
+    }
   },
   "assignedRegion": {
     "label": "Region",
@@ -20407,5 +20510,105 @@
     "targets": "Targets",
     "commissions": "Commissions",
     "market": "Market"
+  },
+  "jobAssistant": {
+    "title": "AI assistant",
+    "subtitle": "Tell it what to write or change. It fills in the form, and you check it before saving.",
+    "open": "AI assistant",
+    "emptyHint": "Ask in your own words, or start with one of these:",
+    "placeholder": "For example: add the benefits, health cover and an annual flight",
+    "inputLabel": "Message the AI assistant",
+    "send": "Send",
+    "thinking": "Working on it…",
+    "undo": "Undo",
+    "updated": "Updated: {fields}",
+    "doneNoReply": "Done.",
+    "noChange": "Nothing was changed.",
+    "fields": {
+      "title": "Title",
+      "employmentType": "Employment type",
+      "workMode": "Work mode",
+      "duration": "Duration",
+      "location": "Location",
+      "description": "Description",
+      "responsibilities": "Responsibilities",
+      "qualifications": "Qualifications",
+      "skills": "Skills",
+      "preferredSkills": "Nice-to-have skills",
+      "experienceMin": "Minimum experience",
+      "experienceMax": "Maximum experience",
+      "education": "Education",
+      "benefits": "Benefits",
+      "learningOutcomes": "Learning outcomes",
+      "salary": "Salary",
+      "vacancies": "Openings",
+      "addScreeningQuestions": "Screening questions"
+    },
+    "quick": {
+      "fillMissing": {
+        "label": "Fill in what's missing",
+        "instruction": "Fill in what this job is still missing so it is ready to publish: write the description if it is empty, then the responsibilities, qualifications, skills and benefits you can work out from the details so far. Don't make up a salary or a location; ask me for them instead."
+      },
+      "description": {
+        "label": "Write the description",
+        "instruction": "Write a clear job description for this role from the details so far, and fill in the responsibilities and qualifications."
+      },
+      "questions": {
+        "label": "Suggest screening questions",
+        "instruction": "Suggest 3 to 5 screening questions for this job. Include at least one that checks how well the candidate communicates."
+      },
+      "wording": {
+        "label": "Improve the wording",
+        "instruction": "Make the title and description clearer and more inclusive. Keep every fact as it is."
+      }
+    },
+    "errors": {
+      "gated": "Your plan doesn't include the AI assistant, or your AI allowance has run out for now.",
+      "rate_limited": "Too many requests. Wait a minute, then try again.",
+      "failed": "The AI assistant couldn't answer just now. Try again."
+    }
+  },
+  "jobBulkReview": {
+    "intro": "Nothing is saved yet. Check each job, fix it here or let the AI assistant fill in what's missing.",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "untitled": "Untitled job",
+    "includeJob": "Include {title}",
+    "removeJob": "Remove {title}",
+    "savedAsDraft": "Saved as draft",
+    "saving": "Saving",
+    "notSaved": "Not saved",
+    "missing": "Add before saving: {fields}",
+    "edit": "Edit here",
+    "doneEditing": "Done",
+    "improveWithAi": "Fill in with AI",
+    "improving": "Working on it…",
+    "openFullForm": "Open full form",
+    "choose": "Choose",
+    "skillsHint": "Separate skills with commas.",
+    "saveSelected": "{count, plural, one {Save # job as a draft} other {Save # jobs as drafts}}",
+    "savingDrafts": "Saving drafts…",
+    "draftNote": "Drafts stay private. Publish each one from its own page when it's ready.",
+    "fields": {
+      "title": "Title",
+      "description": "Description",
+      "country": "Country",
+      "city": "City",
+      "employmentType": "Employment type",
+      "workMode": "Work mode",
+      "skills": "Skills"
+    },
+    "employmentTypes": {
+      "full_time": "Full-time",
+      "part_time": "Part-time",
+      "contract": "Contract",
+      "internship": "Internship",
+      "freelance": "Freelance"
+    },
+    "workModes": {
+      "onsite": "On-site",
+      "hybrid": "Hybrid",
+      "remote": "Remote"
+    }
   }
 }

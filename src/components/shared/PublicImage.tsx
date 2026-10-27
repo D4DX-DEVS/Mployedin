@@ -21,7 +21,8 @@ interface PublicImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "sr
  */
 export function PublicImage({ src, fallback = null, alt = "", onError, ...rest }: PublicImageProps) {
   const [failedSrc, setFailedSrc] = useState<string | undefined>();
-  const resolved = toPublicImageSrc(src);
+  // A numeric width attribute sizes the CDN copy (2× for high-density screens).
+  const resolved = toPublicImageSrc(src, { width: typeof rest.width === "number" ? rest.width * 2 : undefined });
   if (!resolved || failedSrc === resolved) return <>{fallback}</>;
   return (
     <img

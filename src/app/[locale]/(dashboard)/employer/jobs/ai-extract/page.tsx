@@ -9,25 +9,17 @@ import {
   FileImage,
   Loader2,
   Sparkles,
-  Check,
-  Briefcase,
-  MapPin,
-  DollarSign,
   Users,
   ArrowRight,
-  Trash2,
-  Edit,
-  Send,
   FileText,
-  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { cn } from "@/lib/utils";
 import type { JobFormValues } from "@/components/features/employer/job-form/jobFormSchema";
-import { formatCount } from "@/lib/ui/intlFormat";
-import { WordingWarning } from "@/components/features/employer/job-form/WordingWarning";
 import { useJobPostingTarget } from "@/components/features/jobs/jobPostingTarget";
+import { BulkJobReview, isReadyToSave } from "@/components/features/jobs/bulk-review/BulkJobReview";
+import { csrfFetch } from "@/lib/security/csrf-client";
 
 interface ExtractedJob {
   title: string;
@@ -66,6 +58,8 @@ interface SessionSnapshot {
   companyName: string;
   selectedIndices: number[];
   postingStatuses: Record<string, PostingStatus>;
+  /** Jobs changed in the review list (by hand or by the AI assistant), by index. */
+  edits?: Record<string, Partial<JobFormValues>>;
   savedAt: number;
 }
 
@@ -136,39 +130,45 @@ export default function AIJobExtractPage() {
   //    mirroring the working `ai-create` page pattern (see repo memory).
   // 3. Empty — fresh upload.
   const draftIdFromUrl = searchParams?.get("draft") ?? null;
-  const sessionSnapshot = readSessionSnapshot();
 
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
+  // Everything starts empty and is restored after mount: sessionStorage can't
+  // be read during SSR without a hydration mismatch (same as ai-create).
   const [restoringDraft, setRestoringDraft] = useState(Boolean(draftIdFromUrl));
-  const [draftId, setDraftId] = useState<string | null>(
-    draftIdFromUrl ?? sessionSnapshot?.draftId ?? null
-  );
-  const [fileName, setFileName] = useState<string | null>(
-    sessionSnapshot?.fileName ?? null
-  );
-  const [extractedJobs, setExtractedJobs] = useState<ExtractedJob[]>(
-    sessionSnapshot?.jobs ?? []
-  );
-  const [companyName, setCompanyName] = useState<string>(
-    sessionSnapshot?.companyName ?? ""
-  );
-  const [selectedJobs, setSelectedJobs] = useState<Set<number>>(
-    new Set(sessionSnapshot?.selectedIndices ?? [])
-  );
-  const [postingStatuses, setPostingStatuses] = useState<Map<number, PostingStatus>>(
-    new Map(Object.entries(sessionSnapshot?.postingStatuses ?? {}).map(
-      ([k, v]) => [Number(k), v as PostingStatus]
-    ))
-  );
+  const [draftId, setDraftId] = useState<string | null>(draftIdFromUrl);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [extractedJobs, setExtractedJobs] = useState<ExtractedJob[]>([]);
+  const [companyName, setCompanyName] = useState<string>("");
+  const [selectedJobs, setSelectedJobs] = useState<Set<number>>(new Set());
+  const [postingStatuses, setPostingStatuses] = useState<Map<number, PostingStatus>>(new Map());
   const [bulkPosting, setBulkPosting] = useState(false);
+  const [edits, setEdits] = useState<Record<number, Partial<JobFormValues>>>({});
+  /** Each job as the review list shows it: the poster's edits, else the extraction. */
+  const reviewJobs = extractedJobs.map((job, i) => edits[i] ?? buildPrefill(job));
+  /** Bumped when a new list replaces the old one, so the review starts fresh. */
+  const [reviewBatch, setReviewBatch] = useState(0);
 
-  // ── Cross-session resume: fetch the draft when arriving via ?draft=<id> ──
-  // Covers Scenario 1 & 2 (closed tab / new day). The sessionSnapshot only
-  // handles within-tab Back/refresh; the API fetch handles across-session.
+  // ── Restore: this tab's snapshot first, else the draft in ?draft=<id> ──
+  // The snapshot covers Back/refresh in the same tab; for the same draft it is
+  // newer than the server copy (it has the review edits and removed jobs).
+  // The API fetch covers Scenario 1 & 2 (closed tab / new day).
   useEffect(() => {
+    const snapshot = readSessionSnapshot();
+    if (snapshot && (!draftIdFromUrl || snapshot.draftId === draftIdFromUrl)) {
+      setDraftId(snapshot.draftId);
+      setFileName(snapshot.fileName);
+      setExtractedJobs(snapshot.jobs);
+      setCompanyName(snapshot.companyName ?? "");
+      setSelectedJobs(new Set(snapshot.selectedIndices ?? []));
+      setPostingStatuses(new Map(Object.entries(snapshot.postingStatuses ?? {}).map(([k, v]) => [Number(k), v])));
+      setEdits(Object.fromEntries(Object.entries(snapshot.edits ?? {}).map(([k, v]) => [Number(k), v])));
+      setReviewBatch((b) => b + 1);
+      setRestoringDraft(false);
+      return;
+    }
     if (!draftIdFromUrl) return;
     let cancelled = false;
     (async () => {
@@ -203,11 +203,13 @@ export default function AIJobExtractPage() {
           if (j.status === "posted") statuses.set(j.index, "posted");
         }
         setExtractedJobs(jobs);
+        setEdits({});
         setCompanyName(draft.companyName ?? "");
         setFileName(draft.fileName);
         setDraftId(draftIdFromUrl);
         setPostingStatuses(statuses);
         setSelectedJobs(new Set(draft.selectedIndices ?? jobs.map((_, i) => i)));
+        setReviewBatch((b) => b + 1);
       } catch {
         if (!cancelled) toast.error(t("toastDraftUnavailable"));
       } finally {
@@ -217,14 +219,24 @@ export default function AIJobExtractPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [draftIdFromUrl]);
 
   // ── Persist snapshot to sessionStorage on every change (Tier 1) ──────────
   // Same shape + clear-on-consume contract as `ai-create`'s chat session.
+  const hadJobs = useRef(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (extractedJobs.length === 0) return; // never clobber with the empty state
+    if (extractedJobs.length === 0) {
+      // Never clobber with the empty state on load; but once the poster has
+      // removed every job (or started a new upload) there is nothing to resume.
+      if (hadJobs.current) {
+        try { sessionStorage.removeItem(AI_EXTRACT_SNAPSHOT_KEY); } catch { /* noop */ }
+      }
+      hadJobs.current = false;
+      return;
+    }
+    hadJobs.current = true;
     try {
       sessionStorage.setItem(
         AI_EXTRACT_SNAPSHOT_KEY,
@@ -235,6 +247,7 @@ export default function AIJobExtractPage() {
           companyName,
           selectedIndices: Array.from(selectedJobs),
           postingStatuses: Object.fromEntries(postingStatuses),
+          edits,
           savedAt: Date.now(),
         })
       );
@@ -248,7 +261,7 @@ export default function AIJobExtractPage() {
         postingStatuses.size === extractedJobs.length) {
       try { sessionStorage.removeItem(AI_EXTRACT_SNAPSHOT_KEY); } catch { /* noop */ }
     }
-  }, [extractedJobs, companyName, selectedJobs, postingStatuses, draftId, fileName]);
+  }, [extractedJobs, companyName, selectedJobs, postingStatuses, draftId, fileName, edits]);
 
   const handleFile = useCallback((f: File) => {
     const allowedTypes = [
@@ -268,6 +281,7 @@ export default function AIJobExtractPage() {
     }
     setFile(f);
     setExtractedJobs([]);
+    setEdits({});
     setSelectedJobs(new Set());
     setPostingStatuses(new Map());
     // New upload → new extraction: forget any prior draft so we don't
@@ -314,11 +328,13 @@ export default function AIJobExtractPage() {
 
       const data = await res.json();
       setExtractedJobs(data.jobs);
+      setEdits({});
       setCompanyName(data.companyName ?? "");
       setFileName(file.name);
       if (data.draftId) setDraftId(data.draftId);
       // Select all jobs by default
       setSelectedJobs(new Set(data.jobs.map((_: ExtractedJob, i: number) => i)));
+      setReviewBatch((b) => b + 1);
       toast.success(t("toastExtracted", { count: data.totalJobs }));
     } catch {
       toast.error(t("toastProcessFailed"));
@@ -336,12 +352,14 @@ export default function AIJobExtractPage() {
     });
   };
 
-  const editInForm = (job: ExtractedJob, index: number) => {
+  const editInForm = (index: number) => {
     try {
       // Carry the ExtractionDraft id + index in the same payload so JobFormWizard
       // can forward them to POST /api/jobs and the draft entry gets stamped.
+      // The form opens with the job's AI assistant beside it, so whatever the
+      // poster did not say can be added by chatting (client 2026-10-27).
       const prefill = {
-        ...buildPrefill(job),
+        ...reviewJobs[index],
         ...forEmployer,
         ...(draftId ? { extractionDraftId: draftId, extractionDraftIndex: index } : {}),
       };
@@ -352,40 +370,13 @@ export default function AIJobExtractPage() {
     }
   };
 
-  const postSingleJob = async (index: number) => {
-    const job = extractedJobs[index];
-    setPostingStatuses((prev) => new Map(prev).set(index, "posting"));
-
-    try {
-      const payload = {
-        ...buildPrefill(job),
-        ...forEmployer,
-        status: "active",
-        // Write-back hooks: tell /api/jobs which extraction draft entry to
-        // stamp as "posted" + record the new jobId.
-        ...(draftId ? { extractionDraftId: draftId, extractionDraftIndex: index } : {}),
-      };
-
-      const res = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        setPostingStatuses((prev) => new Map(prev).set(index, "posted"));
-      } else {
-        const err = await res.json();
-        toast.error(t("toastSinglePostFailed", { title: job.title, error: err.error ?? t("unknownError") }));
-        setPostingStatuses((prev) => new Map(prev).set(index, "error"));
-      }
-    } catch {
-      setPostingStatuses((prev) => new Map(prev).set(index, "error"));
-    }
-  };
-
-  const handleBulkPost = async () => {
-    const selectedIndices = Array.from(selectedJobs);
+  /**
+   * Saves the checked jobs as drafts. Quick Post and publishing several jobs
+   * at once are gone (client 2026-10-27): each draft is published from its
+   * own page once it has been reviewed.
+   */
+  const saveSelectedAsDrafts = async () => {
+    const selectedIndices = Array.from(selectedJobs).filter((i) => isReadyToSave(reviewJobs[i] ?? {})).sort((a, b) => a - b);
     if (selectedIndices.length === 0) {
       toast.error(t("toastSelectOne"));
       return;
@@ -401,15 +392,16 @@ export default function AIJobExtractPage() {
       setPostingStatuses((prev) => new Map(prev).set(index, "posting"));
 
       try {
-        const job = extractedJobs[index];
         const payload = {
-          ...buildPrefill(job),
+          ...reviewJobs[index],
           ...forEmployer,
-          status: "active",
+          status: "draft",
+          // Write-back hooks: tell /api/jobs which extraction draft entry to
+          // stamp as done + record the new jobId.
           ...(draftId ? { extractionDraftId: draftId, extractionDraftIndex: index } : {}),
         };
 
-        const res = await fetch("/api/jobs", {
+        const res = await csrfFetch("/api/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -431,23 +423,27 @@ export default function AIJobExtractPage() {
     setBulkPosting(false);
 
     if (successCount > 0) {
-      toast.success(t("toastPosted", { count: successCount }));
+      toast.success(t("toastSavedDrafts", { count: successCount }));
     }
     if (failCount > 0) {
-      toast.error(t("toastPostFailed", { count: failCount }));
+      toast.error(t("toastDraftsFailed", { count: failCount }));
     }
   };
 
+  /** Drops one job and shifts every per-index record after it down by one. */
   const removeJob = (index: number) => {
-    setExtractedJobs((prev) => prev.filter((_, i) => i !== index));
-    setSelectedJobs((prev) => {
-      const next = new Set<number>();
-      for (const i of prev) {
-        if (i < index) next.add(i);
-        else if (i > index) next.add(i - 1);
+    const shift = <V,>(entries: Iterable<[number, V]>): Array<[number, V]> => {
+      const out: Array<[number, V]> = [];
+      for (const [i, v] of entries) {
+        if (i < index) out.push([i, v]);
+        else if (i > index) out.push([i - 1, v]);
       }
-      return next;
-    });
+      return out;
+    };
+    setExtractedJobs((prev) => prev.filter((_, i) => i !== index));
+    setSelectedJobs((prev) => new Set(shift(Array.from(prev, (i) => [i, true] as [number, boolean])).map(([i]) => i)));
+    setPostingStatuses((prev) => new Map(shift(prev.entries())));
+    setEdits((prev) => Object.fromEntries(shift(Object.entries(prev).map(([k, v]) => [Number(k), v] as [number, Partial<JobFormValues>]))));
   };
 
   const postedCount = Array.from(postingStatuses.values()).filter((s) => s === "posted").length;
@@ -586,236 +582,36 @@ export default function AIJobExtractPage() {
       {/* Extracted Jobs */}
       {extractedJobs.length > 0 && (
         <section className="space-y-3 sm:space-y-4">
-          {/* Header with bulk actions */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <h2 className="heading-section font-semibold text-foreground">
-                {t("extractedJobs", { count: extractedJobs.length })}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {companyName && <span className="font-medium">{companyName}</span>}
-                {companyName && " • "}
-                {t("reviewAndPost")}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (selectedJobs.size === extractedJobs.length) {
-                    setSelectedJobs(new Set());
-                  } else {
-                    setSelectedJobs(new Set(extractedJobs.map((_, i) => i)));
-                  }
-                }}
-              >
-                {selectedJobs.size === extractedJobs.length ? t("deselectAll") : t("selectAll")}
-              </Button>
-              <Button
-                onClick={handleBulkPost}
-                disabled={selectedJobs.size === 0 || bulkPosting || allPosted}
-                className="gap-2"
-              >
-                {bulkPosting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {t("posting")}
-                  </>
-                ) : allPosted ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    {t("allPosted")}
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4" />
-                    {t("postSelected", { count: selectedJobs.size })}
-                  </>
-                )}
-              </Button>
-            </div>
+          <div>
+            <h2 className="heading-section font-semibold text-foreground">
+              {t("extractedJobs", { count: extractedJobs.length })}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {companyName && <span className="font-medium">{companyName}</span>}
+              {companyName && " • "}
+              {t("reviewAndSave")}
+            </p>
           </div>
 
-          {/* Job Cards */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {extractedJobs.map((job, index) => {
-              const status = postingStatuses.get(index) ?? "idle";
-              const isSelected = selectedJobs.has(index);
-
-              return (
-                <div
-                  key={index}
-                  className={cn(
-                    "relative rounded-2xl border p-5 transition-all",
-                    status === "posted"
-                      ? "border-green-300 bg-green-50/50"
-                      : status === "error"
-                        ? "border-destructive/30 bg-destructive/5"
-                        : isSelected
-                          ? "border-primary/40 bg-primary/[0.02] shadow-sm"
-                          : "border-border/70 bg-background hover:border-border"
-                  )}
-                >
-                  {/* Selection checkbox */}
-                  {status !== "posted" && (
-                    <button
-                      type="button"
-                      onClick={() => toggleJobSelection(index)}
-                      className={cn(
-                        "absolute top-3 left-3 h-5 w-5 rounded-md border-2 flex items-center justify-center transition-colors",
-                        isSelected
-                          ? "border-primary bg-primary text-white"
-                          : "border-border hover:border-primary"
-                      )}
-                    >
-                      {isSelected && <Check className="h-3 w-3" />}
-                    </button>
-                  )}
-
-                  {/* Status badge */}
-                  {status === "posted" && (
-                    <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">
-                      <Check className="h-3 w-3" />
-                      {t("posted")}
-                    </div>
-                  )}
-                  {status === "posting" && (
-                    <div className="absolute top-3 right-3">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    </div>
-                  )}
-                  {status === "error" && (
-                    <div className="absolute top-3 right-3 flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">
-                      <AlertCircle className="h-3 w-3" />
-                      {t("failed")}
-                    </div>
-                  )}
-
-                  <div className="ml-7 space-y-3">
-                    {/* Title */}
-                    <div>
-                      <h3 className="heading-label font-semibold text-foreground line-clamp-2">
-                        {job.title}
-                      </h3>
-                      {job.category && (
-                        <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                          {job.category}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Details */}
-                    <div className="space-y-1.5 text-xs text-muted-foreground">
-                      {(job.location?.city || job.location?.country) && (
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="h-3 w-3 flex-shrink-0" />
-                          <span>
-                            {[job.location.city, job.location.country].filter(Boolean).join(", ")}
-                            {job.location.isRemote && t("remoteSuffix")}
-                          </span>
-                        </div>
-                      )}
-                      {((job.salary?.min ?? 0) > 0 || (job.salary?.max ?? 0) > 0) && (
-                        <div className="flex items-center gap-1.5">
-                          <DollarSign className="h-3 w-3 flex-shrink-0" />
-                          <span>
-                            {job.salary?.currency ?? "USD"} {formatCount(job.salary?.min)}–{formatCount(job.salary?.max)}/{job.salary?.period ?? "mo"}
-                          </span>
-                        </div>
-                      )}
-                      {(job.vacancies ?? 0) > 1 && (
-                        <div className="flex items-center gap-1.5">
-                          <Users className="h-3 w-3 flex-shrink-0" />
-                          <span>{t("openingsCount", { count: job.vacancies ?? 0 })}</span>
-                        </div>
-                      )}
-                      {job.employmentType && (
-                        <div className="flex items-center gap-1.5">
-                          <Briefcase className="h-3 w-3 flex-shrink-0" />
-                          <span className="capitalize">{job.employmentType.replace("_", "-")}</span>
-                          {job.workMode && <span> • {job.workMode}</span>}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Skills */}
-                    {job.requirements?.skills && job.requirements.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {job.requirements.skills.slice(0, 5).map((skill) => (
-                          <span
-                            key={skill}
-                            className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                        {job.requirements.skills.length > 5 && (
-                          <span className="text-[11px] text-muted-foreground">
-                            +{job.requirements.skills.length - 5}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* An uploaded advert's own wording is reproduced verbatim, so it
-                        is checked here — Quick Post otherwise reaches publish
-                        without ever passing the wizard's wording panel. */}
-                    {status !== "posted" && (
-                      <WordingWarning
-                        advert={{
-                          title: job.title,
-                          description: job.description,
-                          responsibilities: job.responsibilities,
-                          qualifications: job.qualifications,
-                          benefits: job.benefits,
-                        }}
-                        className="mt-2"
-                      />
-                    )}
-
-                    {/* Actions */}
-                    {status !== "posted" && (
-                      <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs gap-1"
-                          onClick={() => editInForm(job, index)}
-                        >
-                          <Edit className="h-3 w-3" />
-                          {t("editAndPost")}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs gap-1"
-                          onClick={() => postSingleJob(index)}
-                          disabled={status === "posting"}
-                        >
-                          {status === "posting" ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <ArrowRight className="h-3 w-3" />
-                          )}
-                          {t("quickPost")}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs gap-1 text-destructive hover:text-destructive ml-auto"
-                          onClick={() => removeJob(index)}
-                          aria-label={t("removeJobLabel", { job: job.title })}
-                        >
-                          <Trash2 className="h-3 w-3" aria-hidden="true" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <BulkJobReview
+            key={reviewBatch}
+            jobs={reviewJobs}
+            selected={selectedJobs}
+            statuses={Object.fromEntries(
+              Array.from(postingStatuses, ([i, s]) => [i, s === "posted" ? "saved" : s === "posting" ? "saving" : s === "error" ? "error" : "idle"] as const)
+            )}
+            saving={bulkPosting}
+            onToggle={toggleJobSelection}
+            onToggleAll={() => {
+              const pending = reviewJobs.map((_, i) => i).filter((i) => postingStatuses.get(i) !== "posted" && isReadyToSave(reviewJobs[i]));
+              const all = pending.every((i) => selectedJobs.has(i));
+              setSelectedJobs(all ? new Set() : new Set(pending));
+            }}
+            onChange={(index, next) => setEdits((prev) => ({ ...prev, [index]: next }))}
+            onRemove={removeJob}
+            onSaveSelected={saveSelectedAsDrafts}
+            onOpenInForm={editInForm}
+          />
 
           {/* Navigate to jobs list after all posted */}
           {allPosted && (

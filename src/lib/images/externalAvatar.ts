@@ -10,19 +10,30 @@
  */
 
 import { PROVIDER_AVATAR_HOSTS, isProviderAvatarHost, matchesHostOrSubdomain } from "./providerAvatarHosts.mjs";
+import { cdnImageUrl, type CdnImageOptions } from "./cdnImage";
+import { r2PublicHost } from "@/lib/storage/storageConfig";
 
 export { PROVIDER_AVATAR_HOSTS, isProviderAvatarHost };
 
 /** Same-origin path the browser loads a provider avatar from. */
 export const AVATAR_PROXY_PATH = "/api/proxy-image";
 
+export interface ImageSrcOptions extends CdnImageOptions {
+  /**
+   * false: never rewrite to a CDN transformation URL. For consumers that cannot
+   * take AVIF/WebP, such as the CV PDF renderer (JPEG and PNG only).
+   */
+  transform?: boolean;
+}
+
 /**
  * The address a browser should load for an image URL that may be a provider
- * avatar: our own proxy for a Google or LinkedIn https URL, the input unchanged
- * for everything else (our storage, relative paths, data: and blob: URLs, any
- * other host), undefined for nothing.
+ * avatar: our own proxy for a Google or LinkedIn https URL; for an image on our
+ * R2 CDN, its resized/converted CDN address when transformations are on
+ * (lib/images/cdnImage.ts); the input unchanged for everything else (relative
+ * paths, data: and blob: URLs, any other host); undefined for nothing.
  */
-export function toSafeImageSrc(src: string | null | undefined): string | undefined {
+export function toSafeImageSrc(src: string | null | undefined, opts: ImageSrcOptions = {}): string | undefined {
   const value = src?.trim();
   if (!value) return undefined;
 
@@ -36,33 +47,36 @@ export function toSafeImageSrc(src: string | null | undefined): string | undefin
   } catch {
     return value;
   }
-  if (!isProviderAvatarHost(parsed.hostname)) return value;
+  if (!isProviderAvatarHost(parsed.hostname)) return opts.transform === false ? value : cdnImageUrl(value, opts);
 
   return `${AVATAR_PROXY_PATH}?url=${encodeURIComponent(absolute)}`;
 }
 
 /**
- * Our own storage: DigitalOcean Spaces and its CDN (the CSP img-src lists them). Cloudinary is not here:
- * res.cloudinary.com is one host shared by every Cloudinary account, so allowing it would let any
- * account's images through, and Spaces replaced it (lib/storage/spaces.ts).
+ * Our own storage: DigitalOcean Spaces and its CDN, and the R2 public CDN host when configured (the CSP
+ * img-src lists them). Cloudinary is not here: res.cloudinary.com is one host shared by every Cloudinary
+ * account, so allowing it would let any account's images through, and Spaces replaced it (lib/storage/spaces.ts).
  */
 const OWN_STORAGE_SUFFIX = "digitaloceanspaces.com";
 
 /**
- * The configured bucket or CDN host, when the deployment names it. Must be a NEXT_PUBLIC_ variable: the
- * server and the browser both run this check while rendering, and a value only the server can see would
- * make them disagree (a hydration mismatch). When unset, any Spaces host is accepted, as /api/image-proxy
- * does without SPACES_PUBLIC_HOST.
+ * The configured bucket and/or CDN host(s), when the deployment names them: a comma list, read the same way
+ * as lib/storage/storageHosts.ts. Must be a NEXT_PUBLIC_ variable: the server and the browser both run this
+ * check while rendering, and a value only the server can see would make them disagree (a hydration
+ * mismatch). When unset, any Spaces host is accepted, as /api/image-proxy does without SPACES_PUBLIC_HOST.
  */
-function pinnedStorageHost(): string | undefined {
-  const pinned = process.env.NEXT_PUBLIC_SPACES_PUBLIC_HOST?.trim().toLowerCase();
-  return pinned || undefined;
+function pinnedStorageHosts(): string[] {
+  return (process.env.NEXT_PUBLIC_SPACES_PUBLIC_HOST ?? "")
+    .split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 function isOwnStorageHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  const pinned = pinnedStorageHost();
-  if (pinned) return host === pinned;
+  if (host === r2PublicHost()) return true;
+  const pinned = pinnedStorageHosts();
+  if (pinned.length > 0) return pinned.includes(host);
   // Any bucket on Spaces (a real subdomain: "digitaloceanspaces.com.evil.com" is not one).
   return host !== OWN_STORAGE_SUFFIX && matchesHostOrSubdomain(host, [OWN_STORAGE_SUFFIX]);
 }
@@ -80,14 +94,15 @@ const SAME_ORIGIN = "https://same-origin.invalid";
  *     scheme: "/\host", "\\host" and "/<TAB>/host" are protocol-relative URLs
  *     to a browser), data:image and blob: URLs, unchanged;
  *   - Google and LinkedIn photos, through our proxy (our server fetches);
- *   - our own storage (Spaces and its CDN) over https, unchanged;
+ *   - our own storage (Spaces and its CDN, the R2 CDN) over https: unchanged, or
+ *     its CDN transformation address for an R2 image (lib/images/cdnImage.ts);
  * and undefined for everything else (the caller shows its initials or placeholder).
  *
  * There is deliberately no proxy for arbitrary hosts: that would be an open
  * relay (SSRF). Hosts that should show must be added above, to the CSP and to
  * next.config images.remotePatterns together.
  */
-export function toPublicImageSrc(src: string | null | undefined): string | undefined {
+export function toPublicImageSrc(src: string | null | undefined, opts: ImageSrcOptions = {}): string | undefined {
   const value = src?.trim();
   if (!value) return undefined;
   if (UNSAFE_IN_URL.test(value)) return undefined;
@@ -112,6 +127,6 @@ export function toPublicImageSrc(src: string | null | undefined): string | undef
   }
   if (parsed.username || parsed.password || parsed.port) return undefined;
   if (isProviderAvatarHost(parsed.hostname)) return `${AVATAR_PROXY_PATH}?url=${encodeURIComponent(absolute)}`;
-  if (isOwnStorageHost(parsed.hostname)) return value;
+  if (isOwnStorageHost(parsed.hostname)) return opts.transform === false ? value : cdnImageUrl(value, opts);
   return undefined;
 }

@@ -280,6 +280,8 @@ export interface IJobSeeker extends Document {
   }[];
   // Vector search embedding
   searchEmbedding?: number[];
+  /** When the search vector was stored in Vectorize instead (SEARCH_VECTOR_STORE=vectorize, src/lib/ai/searchVectors.ts). */
+  searchVectorAt?: Date;
   /** Matching vector (1024-d) and what it was built from; see src/lib/matching/matchEmbeddings.ts. */
   matchEmbedding?: number[];
   matchEmbeddingAt?: Date;
@@ -605,6 +607,8 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     ],
     // Vector search embedding (auto-generated from profile text)
     searchEmbedding: { type: [Number], select: false },
+    // Set when the search vector lives in Cloudflare Vectorize instead (src/lib/ai/searchVectors.ts).
+    searchVectorAt: { type: Date, select: false },
     // Matching vector (1024-d, OpenRouter). Written only by refreshMatchEmbeddings,
     // with timestamps off so the write doesn't count as a profile change.
     matchEmbedding: { type: [Number], select: false },

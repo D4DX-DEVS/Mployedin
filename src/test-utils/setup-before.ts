@@ -27,3 +27,32 @@ if (typeof diagnosticsChannel.tracingChannel !== "function") {
     },
   });
 }
+
+/**
+ * The Cloudflare storage switches come from the developer's .env (next/jest
+ * loads it): with them set, the CSP gains R2 hosts and log writes would try to
+ * reach the real data Worker. Every test file starts with them unset, so the
+ * suite gives the same result whatever .env holds; a test that needs one sets it.
+ */
+for (const name of [
+  "STORAGE_PROVIDER",
+  "R2_ACCOUNT_ID",
+  "CLOUDFLARE_ACCOUNT_ID",
+  "R2_ENDPOINT",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_PUBLIC_BUCKET",
+  "R2_BUCKET_NAME",
+  "R2_PRIVATE_BUCKET",
+  "R2_PUBLIC_ENDPOINT",
+  "R2_JURISDICTION",
+  "NEXT_PUBLIC_R2_PUBLIC_HOST",
+  "NEXT_PUBLIC_IMAGE_TRANSFORMS",
+  "DATA_WORKER_URL",
+  "DATA_WORKER_SECRET",
+  "LOGS_STORE",
+  "VECTOR_STORE",
+  "SEARCH_VECTOR_STORE",
+]) {
+  delete process.env[name];
+}

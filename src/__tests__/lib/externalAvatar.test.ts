@@ -127,6 +127,16 @@ describe("toPublicImageSrc (public pages: the browser may only talk to our origi
       const url = "https://D4DX-Storage.blr1.cdn.digitaloceanspaces.com/a.jpg";
       expect(toPublicImageSrc(url)).toBe(url);
     });
+
+    it("accepts a comma list (bucket host and its CDN host), as DEPLOYMENT.md and /api/image-proxy allow", () => {
+      process.env.NEXT_PUBLIC_SPACES_PUBLIC_HOST =
+        " d4dx-storage.blr1.digitaloceanspaces.com , d4dx-storage.blr1.cdn.digitaloceanspaces.com ";
+      const bucket = "https://d4dx-storage.blr1.digitaloceanspaces.com/avatars/a.jpg";
+      const cdn = "https://d4dx-storage.blr1.cdn.digitaloceanspaces.com/avatars/a.jpg";
+      expect(toPublicImageSrc(bucket)).toBe(bucket);
+      expect(toPublicImageSrc(cdn)).toBe(cdn);
+      expect(toPublicImageSrc("https://someone-elses-bucket.nyc3.digitaloceanspaces.com/a.jpg")).toBeUndefined();
+    });
   });
 
   it("refuses a URL with a port, even on our own host", () => {

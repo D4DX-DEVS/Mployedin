@@ -1,0 +1,32 @@
+{
+  "test1": {
+    "error": "page.innerText: selector: expected string, got undefined"
+  },
+  "test2": {
+    "error": "Login failed"
+  },
+  "test3": {
+    "error": "Login failed"
+  },
+  "test4": {
+    "error": "Login failed"
+  },
+  "test5": {
+    "error": "Login failed"
+  },
+  "test6": {
+    "error": "Login failed"
+  },
+  "test7": {
+    "error": "Login failed"
+  },
+  "test8": {
+    "error": "Login failed"
+  },
+  "test11": {
+    "error": "Login failed"
+  },
+  "test19": {
+    "error": "Login failed"
+  }
+}

@@ -10,6 +10,10 @@ import { redactUserMessages } from "@/lib/gdpr/redactMessages";
 import { deleteCvRecordsOfSeeker } from "@/lib/cv/cvDocuments";
 import { toWaRecipient } from "@/lib/communications/whatsapp/phone";
 import logger from "@/lib/logger";
+import { isOwnR2Address } from "@/lib/storage/storageConfig";
+import { mirrorLogErase } from "@/lib/logs/logStore";
+import { eraseMatchVectors } from "@/lib/matching/vectorStore";
+import { eraseSearchVector } from "@/lib/ai/searchVectors";
 
 /**
  * The WhatsApp part of an erasure, shared by the admin erasure below and the
@@ -44,6 +48,9 @@ export async function eraseWhatsAppData(userId: string): Promise<void> {
   // The scan by `to` uses the { to, sentAt } index (the per-number daily cap's).
   if (numbers.size) await WhatsAppMessageLog.deleteMany({ to: { $in: [...numbers] } });
   await WhatsAppMessageLog.deleteMany({ userId });
+  // LOGS_STORE=dual: the same rows in D1 (throws, so the erasure is not reported done).
+  await mirrorLogErase("whatsapp_log", "to_number", [...numbers]);
+  await mirrorLogErase("whatsapp_log", "user_id", [userId]);
   await deleteLiftedSuppressions([...numbers]);
   await User.updateOne({ _id: userId }, { $unset: { whatsapp: 1 } });
 }
@@ -84,7 +91,7 @@ export async function eraseStoredAvatar(avatar: string | null | undefined, userI
   const { deleteFile, urlToKey } = await import("@/lib/storage/spaces");
   // urlToKey strips our bucket's CDN base; an address it leaves unchanged is someone else's.
   if (urlToKey(avatar) === avatar) {
-    if (/digitaloceanspaces\.com/i.test(avatar)) {
+    if (/digitaloceanspaces\.com|r2\.cloudflarestorage\.com/i.test(avatar) || isOwnR2Address(avatar)) {
       logger.warn({ userId, avatar }, "[gdpr] erasure left a profile photo on another storage host; delete it by hand");
     }
     return;
@@ -105,6 +112,7 @@ export async function eraseStoredAvatar(avatar: string | null | undefined, userI
  */
 export async function anonymiseConsentLogs(userId: string): Promise<void> {
   await ConsentLog.updateMany({ userId }, { $set: { userName: "Deleted User" }, $unset: { ipAddress: 1, userAgent: 1 } });
+  await mirrorLogErase("consent_log", "user_id", [userId]);
 }
 
 /**
@@ -157,6 +165,12 @@ export async function eraseUserPersonalData(userId: string): Promise<{ anonymize
           bankAccountNumber: 1,
           iban: 1,
           documents: 1,
+          // Vectors computed from the profile text: matching and admin search.
+          matchEmbedding: 1,
+          matchEmbeddingAt: 1,
+          matchEmbeddingModel: 1,
+          searchEmbedding: 1,
+          searchVectorAt: 1,
         },
       },
     ).select("cv documents").lean<{ _id?: unknown; cv?: { originalUrl?: string }; documents?: { url?: string }[] } | null>(),
@@ -210,6 +224,10 @@ export async function eraseUserPersonalData(userId: string): Promise<{ anonymize
     } catch (err) {
       logger.error({ err, userId }, "[gdpr] erasure could not delete CV records");
     }
+    // The Vectorize copy of the matching vector. Not caught, like the consent
+    // step: a failure leaves the request in progress for the admin to retry.
+    await eraseMatchVectors("seeker", [String(seekerBefore._id)]);
+    await eraseSearchVector(String(seekerBefore._id));
   }
 
   return { anonymizedEmail };

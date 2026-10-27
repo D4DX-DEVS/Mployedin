@@ -45,6 +45,7 @@ import { inngest } from "./client";
 import { isDigestHourFor } from "@/lib/datetime/countryZone";
 import { connectDB } from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
+import { mirrorLogWrites } from "@/lib/logs/logStore";
 import User from "@/models/User";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
@@ -75,11 +76,13 @@ import {
 } from "@/lib/jobSeeker/profileCompleteness";
 import {
   isCronEnabled,
+  getSystemConfig,
   updateCronRunStatus,
   resolveMatchThreshold,
   isAiRerankEnabled,
   resolveDefaultDigestCadence,
 } from "@/models/SystemConfig";
+import { ADMIN_DISABLED_SKIP_MESSAGE, detectCronDrift, type CronDrift } from "./cronDrift";
 import { RECOMMENDATION_COOLDOWN_DAYS } from "@/lib/matching/constants";
 import {
   digestGateFor,
@@ -91,6 +94,24 @@ import { notify } from "@/lib/notifications/trigger";
 
 const BATCH_SIZE = 50;
 const TOP_JOBS_COUNT = MAX_RECOMMENDATIONS;
+
+/**
+ * Record this run in Admin → Cron Jobs. Best-effort: a status write that fails
+ * (a full cluster blocks writes) must never stop or fail a run that is mailing
+ * people. A run that arrived long after the previous one is recorded as an
+ * error so the admin page shows it — the digest itself still went out.
+ */
+async function recordRun(drift: CronDrift | null, summary: string): Promise<void> {
+  try {
+    if (drift?.drifted) {
+      await updateCronRunStatus("dailyRecommendations", "error", `${drift.message} ${summary}`);
+    } else {
+      await updateCronRunStatus("dailyRecommendations", "success", summary);
+    }
+  } catch (err) {
+    logger.warn({ err }, "[daily-recommendations] couldn't record the run status");
+  }
+}
 
 export const dailyRecommendationsCron = inngest.createFunction(
   {
@@ -112,8 +133,26 @@ export const dailyRecommendationsCron = inngest.createFunction(
     // Check if admin has enabled this cron
     const enabled = await step.run("check-enabled", () => isCronEnabled("dailyRecommendations"));
     if (!enabled) {
-      await step.run("log-skipped", () => updateCronRunStatus("dailyRecommendations", "success", "Skipped — disabled by admin"));
+      await step.run("log-skipped", () => updateCronRunStatus("dailyRecommendations", "success", ADMIN_DISABLED_SKIP_MESSAGE));
       return { skipped: true, reason: "disabled by admin" };
+    }
+
+    // The 9am-local gate below only works if this fires every hour, and the
+    // trigger that actually fires is Inngest's synced copy, not the one in this
+    // file. Compare with the previous run so a stale sync shows up in the admin
+    // page within a day instead of silently mailing nobody (issue #11). Only
+    // ever a warning: it never holds a digest back.
+    const drift = await step.run("check-schedule", async () => {
+      try {
+        const config = await getSystemConfig();
+        return detectCronDrift(config.cronJobs?.dailyRecommendations, new Date());
+      } catch (err) {
+        logger.warn({ err }, "[daily-recommendations] couldn't read the previous run");
+        return null;
+      }
+    });
+    if (drift?.drifted) {
+      logger.warn({ gapHours: drift.gapHours }, `[daily-recommendations] ${drift.message}`);
     }
 
     // Resolve, per seeker, which halves of the digest they still want. A seeker
@@ -197,6 +236,7 @@ export const dailyRecommendationsCron = inngest.createFunction(
     });
 
     if (gates.length === 0) {
+      await step.run("log-run", () => recordRun(drift, "No seekers due this hour."));
       return { processed: 0, reason: "no eligible seekers" };
     }
 
@@ -483,9 +523,19 @@ export const dailyRecommendationsCron = inngest.createFunction(
               // Mark profile views as notified
               if (recentViews.length > 0) {
                 const viewIds = recentViews.map((v) => v._id);
+                const notifiedAt = new Date();
                 await ProfileView.updateMany(
                   { _id: { $in: viewIds } },
-                  { $set: { notifiedAt: new Date() } },
+                  { $set: { notifiedAt } },
+                );
+                await mirrorLogWrites(
+                  "profile_view",
+                  viewIds.map((id) => ({
+                    table: "profile_view" as const,
+                    op: "update" as const,
+                    where: { id: String(id) },
+                    row: { notified_at: notifiedAt.getTime() },
+                  })),
                 );
               }
 
@@ -501,6 +551,13 @@ export const dailyRecommendationsCron = inngest.createFunction(
 
       totalEmitted += batchResult;
     }
+
+    await step.run("log-run", () =>
+      recordRun(
+        drift,
+        `${gates.length} seeker${gates.length === 1 ? "" : "s"} due, ${totalEmitted} digest${totalEmitted === 1 ? "" : "s"} queued.`,
+      ),
+    );
 
     return {
       processed: gates.length,

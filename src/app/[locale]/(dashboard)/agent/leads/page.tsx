@@ -18,10 +18,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  AlertCircle, AlertTriangle, Building2, Calendar, Check, Copy,
+  AlertCircle, AlertTriangle, Building2, Calendar, CalendarClock, Check, Copy,
   Flame, Gauge, Inbox, LayoutGrid, List,
   Mail, MapPin, MessageSquare, PanelRightOpen, Pencil, Plus,
-  Trash2,
+  Trash2, X,
 } from "lucide-react";
 import {
   DndContext, DragOverlay, closestCorners, useSensor, useSensors,
@@ -243,6 +243,8 @@ export default function AgentLeadsPage() {
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
   const [exhibitionFilter, setExhibitionFilter] = useUrlFilter("exhibitionId", "all");
   const [followUpFilter, setFollowUpFilter] = useUrlFilter("followUp", "all");
+  // Set only by the agent home's cards ("converted today", "active this week").
+  const [periodFilter, setPeriodFilter] = useUrlFilter("period", "all");
   const [updating, setUpdating] = useState<string | null>(null);
   // `?new=1` gives the create dialog an address, so the Create menu, the
   // command palette and /agent/leads/new all open this one form.
@@ -407,8 +409,9 @@ export default function AgentLeadsPage() {
     if (search.trim()) params.set("search", search.trim());
     if (exhibitionFilter !== "all") params.set("exhibitionId", exhibitionFilter);
     if (followUpFilter !== "all") params.set("followUp", followUpFilter);
+    if (periodFilter !== "all") params.set("period", periodFilter);
     return params;
-  }, [search, exhibitionFilter, followUpFilter]);
+  }, [search, exhibitionFilter, followUpFilter, periodFilter]);
 
   const visibleStages = useMemo(
     () => STAGES.filter((st) => statusFilter === "all" || st === statusFilter),
@@ -502,7 +505,7 @@ export default function AgentLeadsPage() {
   }, [viewMode, fetchBoard, fetchLeads]);
   // Back to page 1 when a filter actually changes. Running this on load as
   // well dropped a ?page= from the URL, so back/forward never restored it.
-  const filterKey = [search, statusFilter, exhibitionFilter, followUpFilter].join("|");
+  const filterKey = [search, statusFilter, exhibitionFilter, followUpFilter, periodFilter].join("|");
   const lastFilterKeyRef = useRef(filterKey);
   useEffect(() => {
     if (lastFilterKeyRef.current === filterKey) return;
@@ -598,7 +601,7 @@ export default function AgentLeadsPage() {
 
   // BUG-11: filtered-to-zero must not show first-use copy.
   const hasActiveFilters =
-    search.trim().length > 0 || statusFilter !== "all" || exhibitionFilter !== "all" || followUpFilter !== "all";
+    search.trim().length > 0 || statusFilter !== "all" || exhibitionFilter !== "all" || followUpFilter !== "all" || periodFilter !== "all";
 
   // BUG-06: table export resolves the full filtered set, not just the page.
   const fetchAllLeads = useCallback(async () => {
@@ -792,11 +795,12 @@ export default function AgentLeadsPage() {
         onExportCsv={viewMode === "board" ? () => void exportBoard("csv") : handleExportCsv}
         onExportExcel={viewMode === "board" ? () => void exportBoard("excel") : handleExportExcel}
         onExportPdf={viewMode === "board" ? () => void exportBoard("pdf") : handleExportPdf}
-        onClear={search || statusFilter !== "all" || exhibitionFilter !== "all" || followUpFilter !== "all" ? () => {
+        onClear={search || statusFilter !== "all" || exhibitionFilter !== "all" || followUpFilter !== "all" || periodFilter !== "all" ? () => {
           setSearch("");
           setStatusFilter("all");
           setExhibitionFilter("all");
           setFollowUpFilter("all");
+          setPeriodFilter("all");
         } : undefined}
       >
         <InlineFilterSearch
@@ -840,6 +844,19 @@ export default function AgentLeadsPage() {
           <AlertTriangle className="h-3.5 w-3.5" />
           {t("dueFollowUps")}
         </button>
+        {(periodFilter === "converted_today" || periodFilter === "active_week") && (
+          <button
+            type="button"
+            onClick={() => { setPeriodFilter("all"); pagination.resetPage(); }}
+            aria-pressed="true"
+            aria-label={t("periodClear", { period: t(periodFilter === "converted_today" ? "periodConvertedToday" : "periodActiveWeek") })}
+            className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg border border-primary/30 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-9"
+          >
+            <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+            {t(periodFilter === "converted_today" ? "periodConvertedToday" : "periodActiveWeek")}
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        )}
       </InlineFilterBar>
 
       {/* ──── Content Area ──── */}

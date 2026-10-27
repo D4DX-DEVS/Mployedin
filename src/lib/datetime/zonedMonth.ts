@@ -61,3 +61,17 @@ export function recentMonthKeys(timeZone: string, now: Date, count: number): str
   }
   return keys;
 }
+
+/** The instant local midnight falls on the day `now` is in, `daysBack` days earlier (0 = today). */
+export function dayStartInZone(timeZone: string, now: Date, daysBack = 0): Date {
+  const p = zonedParts(now, timeZone);
+  const localMidnight = new Date(Date.UTC(p.year, p.month - 1, p.day - daysBack));
+  return new Date(localMidnight.getTime() - zoneOffsetMs(localMidnight, timeZone));
+}
+
+/** Local midnight on the Monday of the week `now` is in. */
+export function weekStartInZone(timeZone: string, now: Date): Date {
+  const p = zonedParts(now, timeZone);
+  const weekday = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay(); // 0 = Sunday
+  return dayStartInZone(timeZone, now, (weekday + 6) % 7);
+}

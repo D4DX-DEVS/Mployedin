@@ -201,7 +201,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const employerIdFilter = OBJECT_ID_PATTERN.test(employerIdParam) ? employerIdParam : "";
 
   const [sortMode, setSortMode] = useState<SortMode>("match");
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
   const [applyJob, setApplyJob] = useState<FeedJob | null>(null);
   const [poolPage, setPoolPage] = useState(1);
@@ -346,7 +345,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const hasMorePoolPages = poolPage < totalPoolPages;
 
   const visibleJobs = allJobs
-    .filter((j) => !hidden.has(j._id))
     .filter((j) => passesFilters(j, filters, false));
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -531,7 +529,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
               {!searchLoading &&
                 searchData?.jobs
-                  .filter((j) => !hidden.has(j._id))
                   .filter((j) => passesFilters(j, filters, true))
                   .map((job) => (
                     <JobFeedCard
@@ -539,10 +536,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
                       job={job}
                       isApplied={appliedIds.has(job._id)}
                       onApply={() => handleApply(job)}
-                      onHide={() => {
-                        setHidden((s) => new Set([...s, job._id]));
-                        toast.success(t("toast.jobHidden"));
-                      }}
                       locale={locale}
                       showMatchScore={false}
                     />
@@ -662,10 +655,6 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     job={job}
                     isApplied={appliedIds.has(job._id)}
                     onApply={() => handleApply(job)}
-                    onHide={() => {
-                      setHidden((s) => new Set([...s, job._id]));
-                      toast.success(t("toast.jobHidden"));
-                    }}
                     locale={locale}
                   />
                 );

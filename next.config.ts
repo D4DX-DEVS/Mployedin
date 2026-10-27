@@ -5,6 +5,15 @@ import { canonicalProjectRoot } from "./src/lib/config/projectRoot";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+// R2 public bucket host (lib/storage/storageConfig.ts), under either env name. The
+// Cloudflare .env calls it R2_PUBLIC_ENDPOINT; browser code can only read a value
+// Next inlines, so `env` below publishes it as NEXT_PUBLIC_R2_PUBLIC_HOST.
+const r2PublicHost = (process.env.NEXT_PUBLIC_R2_PUBLIC_HOST || process.env.R2_PUBLIC_ENDPOINT || "")
+  .trim()
+  .toLowerCase()
+  .replace(/^https?:\/\//, "")
+  .replace(/\/+$/, "");
+
 // Only load Serwist for production builds — its webpack plugin
 // conflicts with Turbopack used in development.
 let withSerwist: (config: NextConfig) => NextConfig;
@@ -25,6 +34,7 @@ if (process.env.NODE_ENV === "production") {
 
 const nextConfig: NextConfig = {
   compress: true,
+  env: r2PublicHost ? { NEXT_PUBLIC_R2_PUBLIC_HOST: r2PublicHost } : {},
   poweredByHeader: false,
   // `.next` unless NEXT_DIST_DIR is set. The cookie-consent E2E builds and serves
   // its production copy from `.next-e2e`, so it never overwrites the `.next`
@@ -90,6 +100,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "media.licdn.com" },
       // DigitalOcean Spaces CDN
       { protocol: "https", hostname: "*.digitaloceanspaces.com" },
+      // Cloudflare R2 public bucket (lib/storage/storageConfig.ts), when configured
+      ...(r2PublicHost ? [{ protocol: "https" as const, hostname: r2PublicHost }] : []),
     ],
   },
   async redirects() {

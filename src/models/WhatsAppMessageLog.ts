@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 import logger from "@/lib/logger";
+import { d1LogMirror } from "@/lib/logs/logStore";
 
 /**
  * WhatsAppMessageLog — one row per outbound WhatsApp message (or a deliberate
@@ -87,6 +88,9 @@ export async function logWhatsAppDelivery(data: WhatsAppLogInput): Promise<void>
     logger.error({ err }, "[whatsapp-log] could not record message");
   }
 }
+
+// LOGS_STORE=dual: every insert is also copied to D1 (lib/logs/logStore.ts).
+WhatsAppMessageLogSchema.plugin(d1LogMirror("whatsapp_log"));
 
 export const WhatsAppMessageLog =
   mongoose.models.WhatsAppMessageLog ||

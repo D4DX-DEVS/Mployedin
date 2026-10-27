@@ -17,6 +17,14 @@ jest.mock("@/lib/matching/jobSkillExtraction", () => ({
 }));
 jest.mock("@/lib/ai/gemini", () => ({ generateText: jest.fn(), GEMINI_MODELS: {} }));
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn(async () => undefined) }));
+const syncMatchVectors = jest.fn(async () => undefined);
+const removeMatchVectors = jest.fn(async () => undefined);
+let syncEnabled = false;
+jest.mock("@/lib/matching/vectorStore", () => ({
+  vectorSyncEnabled: () => syncEnabled,
+  syncMatchVectors: (...a: unknown[]) => syncMatchVectors(...(a as [])),
+  removeMatchVectors: (...a: unknown[]) => removeMatchVectors(...(a as [])),
+}));
 
 function chain<T>(result: T) {
   const c: Record<string, jest.Mock> = {};
@@ -51,6 +59,36 @@ beforeEach(() => {
 });
 
 describe("refreshMatchEmbeddings", () => {
+  it("hands Vectorize the new vectors and the emptied ids (VECTOR_STORE decides whether they go)", async () => {
+    seekerDocs = [
+      { _id: "s2", skills: ["Vue"], matchTextHash: "old" },
+      { _id: "s3", matchTextHash: "old" },
+    ];
+    await refreshMatchEmbeddings("seeker", {}, { limit: 50 });
+    expect(removeMatchVectors).toHaveBeenCalledWith("seeker", ["s3"]);
+    expect(syncMatchVectors).toHaveBeenCalledWith("seeker", [{ id: "s2", values: vec() }]);
+  });
+
+  it("re-copies an unchanged document's stored vector when Vectorize is kept in step (a reopened job)", async () => {
+    const doc = { _id: "s1", skills: ["React"] };
+    seekerDocs = [{ ...doc, matchTextHash: seekerMatchText(doc).hash, matchEmbedding: vec(), matchEmbeddingModel: "qwen/qwen3-embedding-8b" }];
+    await refreshMatchEmbeddings("seeker", {}, { limit: 50 });
+    expect(syncMatchVectors).not.toHaveBeenCalled();
+
+    syncEnabled = true;
+    await refreshMatchEmbeddings("seeker", {}, { limit: 50 });
+    expect(syncMatchVectors).toHaveBeenCalledWith("seeker", [{ id: "s1", values: vec() }]);
+    expect(embedForMatching).not.toHaveBeenCalled();
+    syncEnabled = false;
+  });
+
+  it("touches Vectorize with nothing on a dry run", async () => {
+    seekerDocs = [{ _id: "s2", skills: ["Vue"], matchTextHash: "old" }];
+    await refreshMatchEmbeddings("seeker", {}, { limit: 50, dryRun: true });
+    expect(syncMatchVectors).not.toHaveBeenCalled();
+    expect(removeMatchVectors).toHaveBeenCalledWith("seeker", []);
+  });
+
   it("embeds changed seekers and skips the ones whose text is unchanged", async () => {
     const unchanged = { _id: "s1", skills: ["React"] };
     seekerDocs = [
