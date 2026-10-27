@@ -104,7 +104,9 @@ export function JobMatches({ jobId, role, applicantsHref, emptyAction, onViewPro
               <li key={candidate.jobSeekerId}>
                 <MatchCandidateCard
                   candidate={candidate}
-                  rank={(page - 1) * pageSize + i + 1}
+                  // From the page the data came from: while the next page
+                  // loads, the previous one stays on screen with its own ranks.
+                  rank={(data.page - 1) * data.pageSize + i + 1}
                   canInvite={jobActive}
                   onInvite={() => setInviting(candidate)}
                   onViewProfile={onViewProfile ? () => onViewProfile(candidate) : undefined}
