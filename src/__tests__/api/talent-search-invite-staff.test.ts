@@ -31,7 +31,7 @@ jest.mock("@/lib/auth/withAuth", () => ({
     }
   },
 }));
-jest.mock("@/lib/auth/agentRestrictions", () => ({ getSuperAgentEmployerIds: jest.fn().mockResolvedValue([]) }));
+jest.mock("@/lib/auth/agentRestrictions", () => ({ getSuperAgentBook: jest.fn().mockResolvedValue(null) }));
 
 const lean = (value: unknown) => {
   const c: Record<string, unknown> = {};
@@ -55,9 +55,10 @@ jest.mock("@/models/Agent", () => ({
   __esModule: true,
   default: { findOne: jest.fn(() => lean({ _id: AGENT_ID, assignedEmployerIds: assigned })) },
 }));
+let seekerVisibility = "visible";
 jest.mock("@/models/JobSeeker", () => ({
   __esModule: true,
-  default: { findById: jest.fn(() => lean({ _id: SEEKER_ID, userId: SEEKER_USER, profileVisibility: "visible" })) },
+  default: { findById: jest.fn(() => lean({ _id: SEEKER_ID, userId: SEEKER_USER, profileVisibility: seekerVisibility })) },
 }));
 let applied = false;
 jest.mock("@/models/Application", () => ({ __esModule: true, default: { exists: jest.fn(async () => applied) } }));
@@ -68,7 +69,8 @@ jest.mock("@/lib/jobs/jobInvites", () => ({
   claimJobInvite: (...a: unknown[]) => claimJobInvite(...(a as [])),
   releaseJobInvite: (...a: unknown[]) => releaseJobInvite(...(a as [])),
 }));
-jest.mock("@/lib/security/rateLimit", () => ({ checkRateLimitDual: jest.fn().mockResolvedValue({ allowed: true, resetAt: 0 }) }));
+let rateAllowed = true;
+jest.mock("@/lib/security/rateLimit", () => ({ checkRateLimitDual: jest.fn(async () => ({ allowed: rateAllowed, resetAt: Date.now() + 30_000 })) }));
 
 import { POST } from "@/app/api/employer/talent-search/invite/route";
 
@@ -90,6 +92,8 @@ beforeEach(() => {
   ownEmployer = null;
   applied = false;
   alreadyInvited = false;
+  seekerVisibility = "visible";
+  rateAllowed = true;
   jobDoc = { _id: JOB_ID, title: "Staff Nurse", employerId: EMPLOYER_ID, agentId: null, status: "active" };
 });
 
@@ -152,4 +156,42 @@ it("keeps the employer rule: their own job only", async () => {
 it("refuses an inactive job", async () => {
   jobDoc = { ...jobDoc, status: "draft" };
   expect((await post()).status).toBe(400);
+});
+
+describe("employer — Suitable profiles tab", () => {
+  beforeEach(() => {
+    role = "employer";
+    ownEmployer = { _id: EMPLOYER_ID, companyName: "Gulf Care Clinic" };
+  });
+
+  it("sends the invite in the company's own name, as an in-app notification plus email", async () => {
+    expect((await post()).status).toBe(200);
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({ sendEmail: true, metadata: expect.objectContaining({ companyName: "Gulf Care Clinic" }) }),
+    );
+    expect(claimJobInvite).toHaveBeenCalledWith(expect.objectContaining({ invitedByRole: "employer" }));
+  });
+
+  it("refuses a candidate who does not allow employers to find them", async () => {
+    seekerVisibility = "hidden";
+    expect((await post()).status).toBe(400);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("does not invite a candidate an agent already invited to the same job", async () => {
+    alreadyInvited = true;
+    expect((await post()).status).toBe(409);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("caps the send rate", async () => {
+    rateAllowed = false;
+    expect((await post()).status).toBe(429);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("404s an employer account with no company profile", async () => {
+    ownEmployer = null;
+    expect((await post()).status).toBe(404);
+  });
 });

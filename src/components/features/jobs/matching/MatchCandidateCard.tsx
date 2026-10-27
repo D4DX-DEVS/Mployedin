@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Briefcase, Check, CircleAlert, MapPin, Send } from "lucide-react";
+import { Briefcase, Check, CircleAlert, Eye, MapPin, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,11 @@ interface MatchCandidateCardProps {
   rank: number;
   canInvite: boolean;
   onInvite: () => void;
+  /**
+   * Super agents: open the full profile. Offered only when the server said the
+   * candidate is in their team or territory (`canViewProfile`).
+   */
+  onViewProfile?: () => void;
 }
 
 function scoreTone(score: number): string {
@@ -23,7 +28,7 @@ function scoreTone(score: number): string {
 }
 
 /** One ranked candidate: who they are, the score and what it is made of, and the invite action. */
-export function MatchCandidateCard({ candidate, rank, canInvite, onInvite }: MatchCandidateCardProps) {
+export function MatchCandidateCard({ candidate, rank, canInvite, onInvite, onViewProfile }: MatchCandidateCardProps) {
   const t = useTranslations("agentJobMatches");
   const { breakdown } = candidate;
 
@@ -148,6 +153,20 @@ export function MatchCandidateCard({ candidate, rank, canInvite, onInvite }: Mat
       )}
 
       <div className="flex flex-col-reverse gap-2 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-end">
+        {onViewProfile && candidate.canViewProfile ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onViewProfile}
+            className="min-h-11 gap-2 rounded-xl sm:min-h-9"
+            aria-label={t("viewProfileAria", { name: candidate.name })}
+          >
+            <Eye className="h-4 w-4" aria-hidden />
+            {t("viewProfile")}
+          </Button>
+        ) : onViewProfile ? (
+          <span className="text-center text-xs text-muted-foreground sm:me-auto sm:text-start">{t("profileOutsideTerritory")}</span>
+        ) : null}
         {candidate.invited ? (
           <span className="inline-flex min-h-11 items-center justify-center gap-1.5 text-sm font-medium text-status-selected sm:min-h-9">
             <Check className="h-4 w-4" aria-hidden />

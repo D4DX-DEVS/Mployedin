@@ -26,6 +26,8 @@ export interface MatchingCandidate {
   preferenceMismatch: "country" | "work_mode" | "salary" | null;
   latestRole?: { title?: string; company?: string };
   invited: boolean;
+  /** Super agents only: whether their team or territory lets them open the full profile. */
+  canViewProfile?: boolean;
 }
 
 export interface MatchingCandidatesPage {
@@ -79,12 +81,16 @@ export class InviteError extends Error {
   }
 }
 
+/** Where each role sends an invite: super agents have their own route (see /api/super-agent/invite). */
+export const EMPLOYER_INVITE_ENDPOINT = "/api/employer/talent-search/invite";
+export const SUPER_AGENT_INVITE_ENDPOINT = "/api/super-agent/invite";
+
 /** Invite one candidate to apply; refreshes the list so the row reads "Invited". */
-export function useInviteMatchedCandidate(jobId: string) {
+export function useInviteMatchedCandidate(jobId: string, endpoint: string = EMPLOYER_INVITE_ENDPOINT) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ jobSeekerId, message }: { jobSeekerId: string; message?: string }) => {
-      const res = await csrfFetch("/api/employer/talent-search/invite", {
+      const res = await csrfFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobSeekerId, jobId, ...(message?.trim() ? { message: message.trim() } : {}) }),

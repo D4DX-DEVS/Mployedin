@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ensureIndexes } from "./indexes";
+import { describeDbTarget, isDefaultDatabase } from "./dbTarget";
 import logger from "@/lib/logger";
 
 // Validated lazily inside connectDB so module evaluation doesn't throw
@@ -54,7 +55,16 @@ export async function connectDB(): Promise<typeof mongoose> {
     cached.promise = mongoose
       .connect(MONGODB_URI, opts)
       .then((mongooseInstance) => {
-        logger.info("MongoDB connected");
+        // Say where: two deployments on two clusters looked identical in the
+        // logs until this was added (see dbTarget.ts).
+        const db = describeDbTarget(mongooseInstance.connection);
+        logger.info({ db }, "MongoDB connected");
+        if (isDefaultDatabase(mongooseInstance.connection?.name)) {
+          logger.warn(
+            { db },
+            "[DB] Connected to the default database: MONGODB_URI names no database, so this process may not see the app's data",
+          );
+        }
         // Reconcile in the background: it takes ~17s against the hosted DB and
         // used to hold every request after a deploy for that long. Indexes
         // persist in MongoDB, so requests don't need to wait for the check.

@@ -52,6 +52,7 @@ import {
   CheckCircle2,
   ArrowRight,
   Share2,
+  UserSearch,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -922,6 +923,7 @@ export default function SuperAgentJobsPage() {
                         quick={[
                           { key: "view", label: t("viewJobDetailsButton"), icon: Eye, iconOnly: true, onSelect: () => openDetail(job._id) },
                           ...(job.status === "active" ? [{ key: "share", label: t("shareJobButton"), icon: Share2, iconOnly: true, onSelect: () => setShareJob(job) }] : []),
+                          { key: "matches", label: t("findCandidatesButton"), icon: UserSearch, iconOnly: true, onSelect: () => router.push(`/${locale}/super-agent/jobs/${job._id}/matches`) },
                         ]}
                       />
                     </TableCell>

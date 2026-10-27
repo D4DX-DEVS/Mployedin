@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { InviteError, useInviteMatchedCandidate, type MatchingCandidate } from "@/hooks/useJobMatchingCandidates";
+import type { MatchingRole } from "./JobMatches";
 
 const MAX_MESSAGE = 1000;
 
@@ -17,17 +18,22 @@ interface InviteCandidateDialogProps {
   /** The candidate being invited; null closes the dialog. */
   candidate: MatchingCandidate | null;
   onClose: () => void;
+  role: MatchingRole;
+  /** The route this role invites through. */
+  endpoint: string;
 }
 
 /**
  * Confirm an invite to apply. The candidate gets an in-app notification and an
  * email linking to the job; applying stays their decision.
  */
-export function InviteCandidateDialog({ jobId, jobTitle, candidate, onClose }: InviteCandidateDialogProps) {
+export function InviteCandidateDialog({ jobId, jobTitle, candidate, onClose, role, endpoint }: InviteCandidateDialogProps) {
   const t = useTranslations("agentJobMatches");
   const messageId = useId();
   const [message, setMessage] = useState("");
-  const invite = useInviteMatchedCandidate(jobId);
+  const invite = useInviteMatchedCandidate(jobId, endpoint);
+  // Literal keys only — a template-literal key escapes the missing-key checks.
+  const forbiddenText = role === "employer" ? t("employer.inviteForbidden") : role === "super_agent" ? t("superAgent.inviteForbidden") : t("inviteForbidden");
 
   useEffect(() => {
     if (candidate) setMessage("");
@@ -47,7 +53,8 @@ export function InviteCandidateDialog({ jobId, jobTitle, candidate, onClose }: I
           const description =
             status === 409 ? t("inviteConflict")
               : status === 400 ? t("inviteUnavailable")
-                : status === 403 ? t("inviteForbidden")
+                : status === 403 ? forbiddenText
+                  : status === 429 ? t("inviteTooMany")
                   : t("inviteRetry");
           toast.error(t("inviteError"), { description });
         },
