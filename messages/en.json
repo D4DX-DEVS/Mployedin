@@ -14348,7 +14348,8 @@
     "removeDateFilter": "Remove date filter",
     "removeSearchFilter": "Remove search filter",
     "loadJobsError": "We couldn't load jobs. Please try again.",
-    "shareJobButton": "Share job"
+    "shareJobButton": "Share job",
+    "findCandidatesButton": "Find candidates"
   },
   "superAgentLeads": {
     "columnActions": "Actions",
@@ -18813,7 +18814,9 @@
     "resultDone": "Completed",
     "resultCancelled": "Cancelled",
     "journeyCheckRequest": "Request check",
-    "journeyCheckView": "View check"
+    "journeyCheckView": "View check",
+    "tabMatches": "Suitable profiles",
+    "matchesHeading": "Suitable profiles for this job"
   },
   "formErrors": {
     "fallback": "We couldn't save your changes. Nothing was changed. Review the fields and try again.",
@@ -19539,7 +19542,23 @@
     "inviteForbidden": "You can invite candidates only for employers assigned to you.",
     "inviteRetry": "Check your connection and try again.",
     "forbiddenTitle": "This job's employer isn't assigned to you",
-    "forbiddenDescription": "You can find and invite candidates only for employers assigned to you. Ask your super agent if you should be working this account."
+    "forbiddenDescription": "You can find and invite candidates only for employers assigned to you. Ask your super agent if you should be working this account.",
+    "employer": {
+      "howBody": "Candidates in the database who allow employers to find them, ranked by how well they fit this job. The percentage is the same job-fit score you see when a candidate applies. Contact details and CVs stay private until a candidate applies.",
+      "forbiddenTitle": "This job isn't one of yours",
+      "forbiddenDescription": "You can see suitable profiles only for your company's own jobs.",
+      "inviteForbidden": "You can invite candidates only to your company's own jobs."
+    },
+    "superAgent": {
+      "forbiddenTitle": "This job isn't in your book",
+      "forbiddenDescription": "You can find candidates only for jobs from employers your team manages.",
+      "inviteForbidden": "You can invite candidates only to jobs from employers your team manages.",
+      "backToJobs": "Back to jobs"
+    },
+    "viewProfile": "View profile",
+    "viewProfileAria": "View {name}'s profile",
+    "profileOutsideTerritory": "Profile outside your team and territory",
+    "inviteTooMany": "You've sent a lot of invites in a short time. Wait a minute and try again."
   },
   "adminWhatsApp": {
     "pageTitle": "WhatsApp",

@@ -191,6 +191,9 @@ export default function JobWorkspaceLayout({ children }: { children: ReactNode }
     // tabs alongside Posting and Setup rather than between Interviews and
     // Offers. Count is the checks still open.
     { key: "background-checks", label: t("tabChecks"), href: `${jobHref}/background-checks`, count: countOrNone(summary?.checks.inProgress) },
+    // Sourcing, beside Posting: both bring candidates to the job. No count —
+    // ranking the pool is the expensive part, done only when the tab opens.
+    { key: "matches", label: t("tabMatches"), href: `${jobHref}/matches` },
     { key: "posting", label: t("tabPosting"), href: `${jobHref}/posting` },
     { key: "setup", label: t("tabSetup"), href: `${jobHref}/setup`, hideOnPhone: true },
   ];

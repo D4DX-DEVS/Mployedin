@@ -66,18 +66,47 @@ export async function canStaffAccessSeeker(
   }
 
   if (ctx.role === "super_agent") {
-    const [scope, sa] = await Promise.all([
-      getSuperAgentScope(ctx.userId),
-      SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean<{ _id: unknown } | null>(),
-    ]);
-    const team = scope?.effectiveAgentIds ?? [];
-    const owns =
-      within(seeker.agentId, team) ||
-      within(seeker.referral?.agentId, team) ||
-      same(seeker.referral?.superAgentId, sa?._id);
+    const rule = await superAgentSeekerRule(ctx.userId);
+    const owns = rule.owns(seeker);
     if (owns || access !== "view" || seeker.roleArchivedAt) return owns;
-    return seekerInRegion(seeker, await getSuperAgentTerritory(ctx.userId, scope));
+    return seekerInRegion(seeker, await rule.territory());
   }
 
   return false;
+}
+
+/**
+ * The super-agent half of canStaffAccessSeeker, resolved once so a list can
+ * test many seekers without re-reading the scope for each. The territory is
+ * read only when a seeker is not already owned.
+ */
+async function superAgentSeekerRule(userId: string) {
+  const [scope, sa] = await Promise.all([
+    getSuperAgentScope(userId),
+    SuperAgent.findOne({ userId }).select("_id").lean<{ _id: unknown } | null>(),
+  ]);
+  const team = scope?.effectiveAgentIds ?? [];
+  let territory: ReturnType<typeof getSuperAgentTerritory> | undefined;
+  return {
+    owns: (seeker: SeekerOwnership): boolean =>
+      within(seeker.agentId, team) ||
+      within(seeker.referral?.agentId, team) ||
+      same(seeker.referral?.superAgentId, sa?._id),
+    territory: () => (territory ??= getSuperAgentTerritory(userId, scope)),
+  };
+}
+
+/**
+ * Which of these seekers a super agent may open with "view" — the same answer
+ * canStaffAccessSeeker gives one at a time, for a whole page of a list.
+ */
+export async function seekersSuperAgentCanView(userId: string, seekers: readonly SeekerOwnership[]): Promise<Set<string>> {
+  const rule = await superAgentSeekerRule(userId);
+  const viewable = new Set<string>();
+  for (const seeker of seekers) {
+    if (rule.owns(seeker) || (!seeker.roleArchivedAt && seekerInRegion(seeker, await rule.territory()))) {
+      viewable.add(String(seeker._id));
+    }
+  }
+  return viewable;
 }
