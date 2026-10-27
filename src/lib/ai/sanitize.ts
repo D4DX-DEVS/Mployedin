@@ -25,8 +25,10 @@ export function sanitizeAIInput(input: string, maxLength = 4000): string {
     .replace(/\b(do\s+anything\s+now|developer\s+mode|jailbreak)\b/gi, "[filtered]")
     // Strip faked conversation turns at line starts (system:/assistant: markers)
     .replace(/(^|\n)\s*\[?(system|assistant|inst|sys)\]?\s*:/gi, "$1[filtered]:")
-    // Strip residual system prompt override tags anywhere
-    .replace(/\[?(SYSTEM|INST|SYS|\/INST)\]?\s*:?\s*/gi, "");
+    // Strip residual prompt-template tags anywhere: [INST], [/INST], [SYSTEM],
+    // <<SYS>>. Brackets required — the bare words used to be stripped too,
+    // which turned "Install" into "all" and "Systems engineer" into "s engineer".
+    .replace(/\[\/?(?:SYSTEM|INST|SYS)\]\s*:?\s*|<<\/?SYS>>\s*/gi, "");
 
   // Enforce max length
   if (cleaned.length > maxLength) {

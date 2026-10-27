@@ -48,8 +48,14 @@ describe("changedFields", () => {
 });
 
 describe("Edit Job page", () => {
+  // The page is large; compiling it on first import can pass 5s when the
+  // whole suite runs in parallel, which is load, not a failing behaviour.
+  let SharedJobEditPage: typeof import("@/components/features/jobs/SharedJobEditPage").SharedJobEditPage;
+  beforeAll(async () => {
+    ({ SharedJobEditPage } = await import("@/components/features/jobs/SharedJobEditPage"));
+  }, 30000);
+
   it("sends only the title when only the title changed", async () => {
-    const { SharedJobEditPage } = await import("@/components/features/jobs/SharedJobEditPage");
     render(<SharedJobEditPage id={JOB._id} backHref="/en/employer/jobs" afterSaveHref="/en/employer/jobs" />);
 
     const title = await screen.findByDisplayValue("Senior Accountant");

@@ -30,6 +30,10 @@ import { MatchPreviewPanel } from "./MatchPreviewPanel";
 import { StickyActionBar } from "./StickyActionBar";
 import { OnBehalfEmployerPicker } from "./OnBehalfEmployerPicker";
 import { JobFormBasePathProvider } from "./jobFormContext";
+import { applyAssistToWizard, wizardToAssistDraft } from "./jobFormAssist";
+import { useJobAssistant } from "@/components/features/jobs/ai-assistant/useJobAssistant";
+import { useJobAssistantErrorText, useJobAssistantQuickActions } from "@/components/features/jobs/ai-assistant/useQuickActions";
+import { JobAssistantInline, JobAssistantOpenButton, JobAssistantProvider } from "@/components/features/jobs/ai-assistant/JobAssistantDock";
 
 interface Suggestions {
   titles: string[];
@@ -176,6 +180,17 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
 
   const { watch, trigger, handleSubmit, reset, formState } = methods;
   const formValues = watch();
+
+  // The job's one AI assistant (client 2026-10-27): it reads the form as it
+  // stands and writes its answer back into the fields, with an Undo.
+  const assistant = useJobAssistant(
+    {
+      getJob: useCallback(() => wizardToAssistDraft(methods.getValues()), [methods]),
+      applyChanges: useCallback((changes) => applyAssistToWizard(changes, methods.getValues, methods.setValue), [methods]),
+    },
+    useJobAssistantErrorText(),
+  );
+  const assistantQuickActions = useJobAssistantQuickActions();
 
   const { draftId, savedIndicator, saveDraft, loadDraft, autosaveLocal, clearDraft } = useJobFormDraft(locale);
 
@@ -570,6 +585,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   }, []);
 
   return (
+    <JobAssistantProvider assistant={assistant} quickActions={assistantQuickActions}>
     <div className="flex h-full flex-col">
     <div className="flex-1 overflow-y-auto">
     <div className="page-container">
@@ -584,6 +600,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
               <span className="hidden rounded-full border border-border/70 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground md:inline-flex">
                 {t("autoSaves")}
               </span>
+              <JobAssistantOpenButton className="min-h-9 bg-background/90 text-sm" />
               {/* Job templates belong to the employer's account; an agent sees the picked employer's. */}
               {(basePath === "employer" || (basePath === "agent" && templateOwner)) && (
                 <Button
@@ -810,6 +827,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
 
             {/* Right sidebar — smart panels */}
             <div className="w-full space-y-3 xl:sticky xl:top-4 xl:self-start">
+              <JobAssistantInline />
               <JobQualityScore values={formValues} />
               <InclusiveWordingPanel values={formValues} />
               <MatchPreviewPanel
@@ -842,5 +860,6 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
         canSubmit={!submitting}
       />
     </div>
+    </JobAssistantProvider>
   );
 }

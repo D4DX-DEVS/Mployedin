@@ -8783,11 +8783,11 @@
     "attachedFiles": "الملفات المرفقة",
     "attachmentsHint": "كتيبات أو مخططات أو دعوات أو عروض أسعار. PDF أو Word أو صور، حتى 10 ملفات.",
     "attachmentsTitle": "المرفقات",
-    "boardDragHint": "اسحب البطاقة مرحلة واحدة للأمام أو للخلف لنقلها. كل نقل يطلب ما تحتاجه تلك الخطوة.",
+    "boardDragHint": "اسحب البطاقة إلى المرحلة التالية لنقلها. كل نقل يطلب ما تحتاجه تلك الخطوة. لإعادة الطلب إلى الوكيل، افتحه واستخدم «إرسال للخلف».",
     "boardEmpty": "لا شيء في هذه المرحلة",
     "boardLive": "جارية",
     "boardMore": "{count, plural, zero {لا مزيد} one {+# آخر في الجدول} two {+# آخران في الجدول} few {+# أخرى في الجدول} many {+# أخرى في الجدول} other {+# أخرى في الجدول}}",
-    "boardMoveNotAllowed": "ينتقل الطلب مرحلة واحدة في كل مرة. أفلته على المرحلة التالية أو السابقة.",
+    "boardMoveNotAllowed": "ينتقل الطلب للأمام فقط، مرحلة واحدة في كل مرة. لإعادته إلى الوكيل، افتحه واستخدم «إرسال للخلف».",
     "boardView": "اللوحة",
     "changePriority": "تغيير الأولوية",
     "completeEventDescription": "سجّل كيف سارت {name}. سيرى المشرف والمسؤول هذا التقرير.",
@@ -10085,7 +10085,10 @@
     "viewAllJobs": "عرض جميع الوظائف",
     "toastFormFailed": "تعذر فتح نموذج الوظيفة",
     "toastDraftUnavailable": "مسودة الاستخراج هذه لم تعد متاحة — ربما انتهت صلاحيتها أو تم تجاهلها.",
-    "removeJobLabel": "إزالة {job}"
+    "removeJobLabel": "إزالة {job}",
+    "reviewAndSave": "راجع كل وظيفة، صحّحها أو أكملها، ثم احفظ ما تريد منها كمسودات.",
+    "toastSavedDrafts": "{count, plural, one {تم حفظ وظيفة واحدة كمسودة.} other {تم حفظ # وظائف كمسودات.}}",
+    "toastDraftsFailed": "{count, plural, one {تعذر حفظ وظيفة واحدة.} other {تعذر حفظ # وظائف.}}"
   },
   "employerJobDetail": {
     "loadError": "تعذر تحميل هذه الوظيفة. يرجى المحاولة مرة أخرى.",
@@ -13625,7 +13628,7 @@
     "maintenanceModeDescription": "جميع رسائل البريد الإلكتروني الصادرة معلقة وجميع وظائف cron تخطيها",
     "scheduledEmailJobsTitle": "وظائف البريد الإلكتروني المجدولة",
     "dailyJobRecommendations": "توصيات الوظائف اليومية",
-    "dailyJobSchedule": "9:00 صباحًا بالتوقيت العالمي",
+    "dailyJobSchedule": "كل ساعة · 9:00 صباحًا بالتوقيت المحلي للباحث",
     "dailyJobDesc": "أفضل 5 وظائف مطابقة للباحثين عن عمل",
     "dailyDigestWorkerLabel": "عامل الخلاصة اليومية",
     "dailyDigestSchedule": "يتم تفعيله بواسطة cron",
@@ -19061,7 +19064,14 @@
       "unreadable": "تعذّرت القراءة",
       "none": "لم تُرسل"
     },
-    "requirementsNotMet": "ينقصه شرط أساسي"
+    "requirementsNotMet": "ينقصه شرط أساسي",
+    "screeningAnswers": {
+      "title": "إجابات أسئلة الفرز",
+      "count": "{count, plural, zero {لا أسئلة} one {سؤال واحد} two {سؤالان} few {# أسئلة} many {# سؤالًا} other {# سؤال}}",
+      "noAnswer": "لا توجد إجابة",
+      "yes": "نعم",
+      "no": "لا"
+    }
   },
   "assignedRegion": {
     "label": "المنطقة",
@@ -20500,5 +20510,105 @@
     "targets": "الأهداف",
     "commissions": "العمولات",
     "market": "السوق"
+  },
+  "jobAssistant": {
+    "title": "المساعد الذكي",
+    "subtitle": "أخبره بما تريد كتابته أو تغييره. يملأ النموذج، وتراجعه أنت قبل الحفظ.",
+    "open": "المساعد الذكي",
+    "emptyHint": "اكتب طلبك بكلماتك، أو ابدأ بأحد هذه:",
+    "placeholder": "مثال: أضف المزايا، تأمين صحي وتذكرة سفر سنوية",
+    "inputLabel": "راسل المساعد الذكي",
+    "send": "إرسال",
+    "thinking": "جارٍ العمل…",
+    "undo": "تراجع",
+    "updated": "تم التحديث: {fields}",
+    "doneNoReply": "تم.",
+    "noChange": "لم يتغير شيء.",
+    "fields": {
+      "title": "المسمى",
+      "employmentType": "نوع التوظيف",
+      "workMode": "نمط العمل",
+      "duration": "المدة",
+      "location": "الموقع",
+      "description": "الوصف",
+      "responsibilities": "المسؤوليات",
+      "qualifications": "المؤهلات",
+      "skills": "المهارات",
+      "preferredSkills": "مهارات مفضلة",
+      "experienceMin": "أدنى خبرة",
+      "experienceMax": "أقصى خبرة",
+      "education": "التعليم",
+      "benefits": "المزايا",
+      "learningOutcomes": "مخرجات التعلم",
+      "salary": "الراتب",
+      "vacancies": "الشواغر",
+      "addScreeningQuestions": "أسئلة الفرز"
+    },
+    "quick": {
+      "fillMissing": {
+        "label": "أكمل ما ينقص",
+        "instruction": "أكمل ما ينقص هذه الوظيفة لتصبح جاهزة للنشر: اكتب الوصف إن كان فارغًا، ثم المسؤوليات والمؤهلات والمهارات والمزايا التي يمكنك استنتاجها من التفاصيل الحالية. لا تخترع راتبًا أو موقعًا؛ اسألني عنهما بدلًا من ذلك."
+      },
+      "description": {
+        "label": "اكتب الوصف",
+        "instruction": "اكتب وصفًا واضحًا لهذه الوظيفة من التفاصيل الحالية، وأكمل المسؤوليات والمؤهلات."
+      },
+      "questions": {
+        "label": "اقترح أسئلة فرز",
+        "instruction": "اقترح من 3 إلى 5 أسئلة فرز لهذه الوظيفة، منها سؤال واحد على الأقل يختبر مهارات التواصل لدى المرشح."
+      },
+      "wording": {
+        "label": "حسّن الصياغة",
+        "instruction": "اجعل المسمى والوصف أوضح وأكثر شمولًا للجميع، مع الإبقاء على كل الحقائق كما هي."
+      }
+    },
+    "errors": {
+      "gated": "خطتك لا تشمل المساعد الذكي، أو نفد رصيد الذكاء الاصطناعي حالياً.",
+      "rate_limited": "طلبات كثيرة. انتظر دقيقة ثم حاول مرة أخرى.",
+      "failed": "تعذر على المساعد الذكي الرد الآن. حاول مرة أخرى."
+    }
+  },
+  "jobBulkReview": {
+    "intro": "لم يُحفظ شيء بعد. راجع كل وظيفة، وصحّحها هنا أو دع المساعد الذكي يكمل ما ينقص.",
+    "selectAll": "تحديد الكل",
+    "deselectAll": "إلغاء تحديد الكل",
+    "untitled": "وظيفة بلا عنوان",
+    "includeJob": "تضمين {title}",
+    "removeJob": "إزالة {title}",
+    "savedAsDraft": "حُفظت كمسودة",
+    "saving": "جارٍ الحفظ",
+    "notSaved": "لم تُحفظ",
+    "missing": "أضف قبل الحفظ: {fields}",
+    "edit": "تعديل هنا",
+    "doneEditing": "تم",
+    "improveWithAi": "أكمل بالذكاء الاصطناعي",
+    "improving": "جارٍ العمل…",
+    "openFullForm": "فتح النموذج الكامل",
+    "choose": "اختر",
+    "skillsHint": "افصل المهارات بفواصل.",
+    "saveSelected": "{count, plural, one {احفظ وظيفة واحدة كمسودة} other {احفظ # وظائف كمسودات}}",
+    "savingDrafts": "جارٍ حفظ المسودات…",
+    "draftNote": "المسودات خاصة. انشر كل واحدة من صفحتها عندما تكون جاهزة.",
+    "fields": {
+      "title": "المسمى",
+      "description": "الوصف",
+      "country": "الدولة",
+      "city": "المدينة",
+      "employmentType": "نوع التوظيف",
+      "workMode": "نمط العمل",
+      "skills": "المهارات"
+    },
+    "employmentTypes": {
+      "full_time": "دوام كامل",
+      "part_time": "دوام جزئي",
+      "contract": "عقد",
+      "internship": "تدريب",
+      "freelance": "عمل حر"
+    },
+    "workModes": {
+      "onsite": "في الموقع",
+      "hybrid": "هجين",
+      "remote": "عن بُعد"
+    }
   }
 }

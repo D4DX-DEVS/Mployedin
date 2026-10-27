@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { checkWording, SCREENING_QUESTION_RULES } from "@/lib/compliance/inclusiveWording";
+import { JobAssistantAskButton } from "@/components/features/jobs/ai-assistant/JobAssistantDock";
 import type { JobFormValues } from "./jobFormSchema";
 import { KnockoutEditor, type KnockoutPatch } from "./KnockoutEditor";
 import { KNOCKOUT_NUMBER_TYPES, KNOCKOUT_OPTION_TYPES } from "@/lib/matching/knockouts";
@@ -48,6 +49,7 @@ export function Step5ScreeningQuestions() {
   const tCompliance = useTranslations("employerCompliance.wording");
   const tChar = useTranslations("employerCompliance.characteristics");
   const tSuggest = useTranslations("employerCompliance.suggestions");
+  const tAssist = useTranslations("jobAssistant.quick.questions");
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const maxQuestionsLabel = (20).toLocaleString(numberLocale);
@@ -138,7 +140,7 @@ export function Step5ScreeningQuestions() {
             {t("description")}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge
             variant="secondary"
             className="rounded-full px-3 py-1 text-xs"
@@ -149,6 +151,10 @@ export function Step5ScreeningQuestions() {
               max: maxQuestionsLabel,
             })}
           </Badge>
+          {/* Client 2026-10-27: help building questions every time, through the job's AI assistant. */}
+          {questions.length < 20 && (
+            <JobAssistantAskButton label={tAssist("label")} instruction={tAssist("instruction")} className="min-h-9" />
+          )}
         </div>
       </div>
 

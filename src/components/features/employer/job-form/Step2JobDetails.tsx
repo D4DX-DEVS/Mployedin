@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { motion } from "framer-motion";
-import { Sparkles, Loader2, AlertCircle, Plus, X } from "lucide-react";
+import { AlertCircle, Plus, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { JobAssistantAskButton } from "@/components/features/jobs/ai-assistant/JobAssistantDock";
 import type { JobFormValues } from "./jobFormSchema";
 
 const MIN_CHARS = 20;
@@ -23,13 +24,6 @@ const DESCRIPTION_SECTION_KEYS = [
 ] as const;
 
 type DescriptionSectionKey = (typeof DESCRIPTION_SECTION_KEYS)[number];
-
-interface GeneratedDescription {
-  full: string;
-  responsibilities: string;
-  requirements: string;
-  niceToHave: string;
-}
 
 interface DescriptionSection {
   key: DescriptionSectionKey;
@@ -141,10 +135,7 @@ export function Step2JobDetails() {
     formState: { errors },
   } = useFormContext<JobFormValues>();
 
-  const title = watch("title");
-  const category = watch("category");
-  const locationCountry = watch("location.country");
-  const skills = watch("requirements.skills");
+  const tAssist = useTranslations("jobAssistant.quick.description");
   const description = watch("description");
 
   const charCount = description?.length ?? 0;
@@ -153,11 +144,6 @@ export function Step2JobDetails() {
     : charCount >= 250
       ? t("strength.good")
       : t("strength.needsDetail");
-
-  const [generating, setGenerating] = useState(false);
-  const [aiError, setAiError] = useState("");
-  const [generated, setGenerated] = useState<GeneratedDescription | null>(null);
-  const [aiPrompt, setAiPrompt] = useState("");
 
   const descriptionSections: DescriptionSection[] = DESCRIPTION_SECTION_KEYS.map((key) => ({
     key,
@@ -175,43 +161,6 @@ export function Step2JobDetails() {
       : section.content;
 
     setValue("description", nextValue, { shouldValidate: true });
-  }
-
-  async function generateDescription() {
-    if (!title) {
-      setAiError(t("enterTitleFirst"));
-      return;
-    }
-    setGenerating(true);
-    setAiError("");
-
-    try {
-      const res = await fetch("/api/ai/job-description", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          category,
-          location: locationCountry,
-          skills: skills?.slice(0, 10) ?? [],
-          prompt: aiPrompt.trim() || undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = (await res.json()) as { error?: string };
-        setAiError(locale === "ar" ? t("generationFailed") : err.error ?? t("generationFailed"));
-        return;
-      }
-
-      const data = (await res.json()) as { description: GeneratedDescription };
-      setGenerated(data.description);
-      setValue("description", data.description.full, { shouldValidate: true });
-    } catch {
-      setAiError(t("networkError"));
-    } finally {
-      setGenerating(false);
-    }
   }
 
   return (
@@ -253,47 +202,8 @@ export function Step2JobDetails() {
                 {t("descriptionHint")}
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="dense"
-              onClick={generateDescription}
-              disabled={generating}
-              className="gap-1.5 text-xs"
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  {t("generating")}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  {t("generateWithAi")}
-                </>
-              )}
-            </Button>
-          </div>
-
-          <div className="rounded-xl border border-dashed border-primary/30 bg-primary/[0.02] chip-pad">
-            <Label htmlFor="ai-prompt" className="text-xs font-medium text-primary">
-              {t("aiPromptLabel")}
-            </Label>
-            <Input
-              id="ai-prompt"
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder={t("aiPromptPlaceholder")}
-              className="mt-1.5 h-9 text-xs border-primary/20 bg-background"
-              maxLength={300}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void generateDescription();
-                }
-              }}
-            />
-            <p className="mt-1 text-[11px] text-muted-foreground">{t("aiPromptHint")}</p>
+            {/* A shortcut into the job's one AI assistant, not an AI of its own. */}
+            <JobAssistantAskButton label={tAssist("label")} instruction={tAssist("instruction")} />
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -309,37 +219,19 @@ export function Step2JobDetails() {
             ))}
           </div>
 
-          {generating && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-2 rounded-xl border border-border bg-muted/30 card-pad"
-            >
-              {[80, 65, 90, 70, 55].map((w, i) => (
-                <div
-                  key={i}
-                  className="h-3 animate-pulse rounded bg-muted"
-                  style={{ width: `${w}%` }}
-                />
-              ))}
-            </motion.div>
-          )}
-
-          {!generating && (
-            <Textarea
-              id="description"
-              {...register("description")}
-              maxLength={MAX_CHARS}
-              placeholder={t("placeholder")}
-              rows={10}
-              className={cn(
-                "min-h-[260px] resize-y text-sm leading-6",
-                errors.description && "border-destructive"
-              )}
-              aria-invalid={!!errors.description}
-              aria-describedby={errors.description ? "description-error" : undefined}
-            />
-          )}
+          <Textarea
+            id="description"
+            {...register("description")}
+            maxLength={MAX_CHARS}
+            placeholder={t("placeholder")}
+            rows={10}
+            className={cn(
+              "min-h-[260px] resize-y text-sm leading-6",
+              errors.description && "border-destructive"
+            )}
+            aria-invalid={!!errors.description}
+            aria-describedby={errors.description ? "description-error" : undefined}
+          />
 
           <div className="flex items-center justify-between gap-3">
             {errors.description ? (
@@ -380,47 +272,8 @@ export function Step2JobDetails() {
               </div>
             </div>
           </div>
-
-          {generated && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 shadow-sm card-pad"
-            >
-              <div className="flex items-center gap-2 text-sm font-medium text-primary">
-                <Sparkles className="w-4 h-4" />
-                {t("aiDraftSections")}
-              </div>
-              <div className="space-y-2 text-xs">
-                {[
-                  { label: t("generatedLabels.responsibilities"), content: generated.responsibilities },
-                  { label: t("generatedLabels.requirements"), content: generated.requirements },
-                  { label: t("generatedLabels.niceToHave"), content: generated.niceToHave },
-                ].map(({ label, content }) => (
-                  <div key={label} className="rounded-xl border border-border/70 bg-background chip-pad">
-                    <p className="font-semibold text-foreground">{label}</p>
-                    <p className="mt-1 line-clamp-3 text-muted-foreground">{content}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t("aiDraftApplied")}
-              </p>
-            </motion.div>
-          )}
         </div>
       </div>
-
-      {aiError && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex items-center gap-1.5 rounded-xl border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad"
-        >
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {aiError}
-        </motion.p>
-      )}
 
       {/* Structured optional fields */}
       <ListField
