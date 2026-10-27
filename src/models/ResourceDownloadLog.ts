@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { d1LogMirror } from "@/lib/logs/logStore";
 
 export interface IResourceDownloadLog extends Document {
   _id: mongoose.Types.ObjectId;
@@ -22,6 +23,9 @@ const ResourceDownloadLogSchema = new Schema<IResourceDownloadLog>(
 
 ResourceDownloadLogSchema.index({ resourceId: 1, downloadedAt: -1 });
 ResourceDownloadLogSchema.index({ userId: 1, downloadedAt: -1 });
+
+// LOGS_STORE=dual: every insert is also copied to D1 (lib/logs/logStore.ts).
+ResourceDownloadLogSchema.plugin(d1LogMirror("resource_download"));
 
 export default mongoose.models.ResourceDownloadLog ??
   mongoose.model<IResourceDownloadLog>("ResourceDownloadLog", ResourceDownloadLogSchema);

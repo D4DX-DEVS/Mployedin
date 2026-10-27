@@ -75,6 +75,7 @@
 import type { Types } from "mongoose";
 import { parsePhoneNumberFromString } from "libphonenumber-js/min";
 import logger from "@/lib/logger";
+import { mirrorLogWrites } from "@/lib/logs/logStore";
 import User from "@/models/User";
 import NotificationPreference, { CATEGORY_KEYS, getOrCreatePreferences } from "@/models/NotificationPreference";
 import ConsentLog from "@/models/ConsentLog";
@@ -135,6 +136,16 @@ export async function applyStatusEvent(ev: StatusEvent): Promise<void> {
   if (ev.errorMessage) $set.errorMessage = ev.errorMessage;
   if (ev.conversationCategory) $set.conversationCategory = ev.conversationCategory;
   await WhatsAppMessageLog.updateOne({ waMessageId: ev.waMessageId, status: { $in: lower } }, { $set });
+  // LOGS_STORE=dual: the same forward-only change on the D1 copy. No lower status
+  // (the lowest one, or an unranked one): Mongo's $in: [] matched nothing either.
+  if (lower.length === 0) return;
+  const row: Record<string, unknown> = { status: ev.status, status_at: ev.timestamp.getTime() };
+  if ($set.errorCode !== undefined) Object.assign(row, { error_code: $set.errorCode, error_kind: $set.errorKind });
+  if (ev.errorMessage) row.error_message = ev.errorMessage;
+  if (ev.conversationCategory) row.conversation_category = ev.conversationCategory;
+  await mirrorLogWrites("whatsapp_log", [
+    { table: "whatsapp_log", op: "update", where: { wa_message_id: ev.waMessageId }, row, onlyIf: { status: lower } },
+  ]);
 }
 
 interface LeanUser {

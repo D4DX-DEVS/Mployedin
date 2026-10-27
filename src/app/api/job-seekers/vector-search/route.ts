@@ -12,6 +12,7 @@ import User from "@/models/User";
 import type { UserRole } from "@/models/User";
 import { generateEmbedding, cosineSimilarity, buildProfileText } from "@/lib/ai/embeddings";
 import { atlasVectorSearch } from "@/lib/ai/atlasVectorSearch";
+import { missingSearchVectorFilter, saveSearchVectors, searchSeekerVectors, searchVectorStore } from "@/lib/ai/searchVectors";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 
@@ -80,13 +81,27 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     );
   }
 
-  // Phase 1 — Atlas $vectorSearch (index-backed ANN, preferred). Falls back to
-  // a bounded in-memory cosine scan when the vector index is unavailable.
-  let mode: "atlas-vector" | "vector" = "atlas-vector";
-  let scored: { id: unknown; score: number }[] | null = await atlasVectorSearch(queryEmbedding, {
-    limit: Math.min(MAX_RESULTS * 4, 200),
-    minCosine: MIN_SIMILARITY,
-  });
+  // Phase 1 — SEARCH_VECTOR_STORE=vectorize: Cloudflare Vectorize (the vectors no
+  // longer live in Mongo, so there is no in-memory fallback). Otherwise Atlas
+  // $vectorSearch, falling back to a bounded in-memory cosine scan.
+  const store = searchVectorStore();
+  let mode: "atlas-vector" | "vector" | "vectorize" = store === "vectorize" ? "vectorize" : "atlas-vector";
+  let scored: { id: unknown; score: number }[] | null;
+  if (store === "vectorize") {
+    try {
+      scored = await searchSeekerVectors(queryEmbedding, MIN_SIMILARITY);
+    } catch {
+      return NextResponse.json(
+        { error: "Semantic search is unavailable right now. Try again in a minute." },
+        { status: 503 }
+      );
+    }
+  } else {
+    scored = await atlasVectorSearch(queryEmbedding, {
+      limit: Math.min(MAX_RESULTS * 4, 200),
+      minCosine: MIN_SIMILARITY,
+    });
+  }
 
   if (scored === null) {
     mode = "vector";
@@ -113,11 +128,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
   }
 
-  // The Atlas index is not scope-aware, so drop out-of-scope hits before they
-  // reach paging or the total count.
-  if (Object.keys(scopeFilter).length > 0 && scored.length > 0) {
+  // The vector indexes are not scope-aware (and Vectorize holds deleted
+  // profiles until erasure), so drop those hits before paging or the total.
+  if ((Object.keys(scopeFilter).length > 0 || mode === "vectorize") && scored.length > 0) {
     const allowedRows = await JobSeeker.find({
       _id: { $in: scored.map((s) => s.id) },
+      status: { $ne: "deleted" },
       ...scopeFilter,
     })
       .select({ _id: 1 })
@@ -131,7 +147,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   // without ever firing an unbounded number of synchronous embedding calls.
   const missing = await JobSeeker.find({
     status: { $ne: "deleted" },
-    "searchEmbedding.0": { $exists: false },
+    ...missingSearchVectorFilter(),
     ...scopeFilter,
   })
     .select(BACKFILL_FIELDS)
@@ -142,11 +158,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     try {
       const profileText = buildProfileText(js as unknown as Record<string, unknown>);
       const embedding = await generateEmbedding(profileText);
-      // Persist for future searches (fire-and-forget).
-      JobSeeker.updateOne(
-        { _id: js._id },
-        { $set: { searchEmbedding: embedding } }
-      ).exec().catch(() => { /* ignore */ });
+      // Persist for future searches (fire-and-forget), in whichever store is active.
+      saveSearchVectors([{ id: js._id, embedding }]).catch(() => { /* ignore */ });
 
       const score = cosineSimilarity(queryEmbedding, embedding);
       if (score >= MIN_SIMILARITY) {

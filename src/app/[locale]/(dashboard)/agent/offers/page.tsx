@@ -405,9 +405,13 @@ export default function AgentOffersPage() {
                       <TableCell>
                         <p className="font-medium text-foreground">{o.candidateName}</p>
                         {o.candidateEmail && <p className="text-xs text-muted-foreground">{o.candidateEmail}</p>}
-                        <Badge variant={getStatusBadgeVariant(o.status)}>
-                          {isExpired(o) ? t("status.expired") : statusLabel(o.status)}
-                        </Badge>
+                        {/* Its own line: inline, the phone card put the badge
+                            after the email or under it depending on length. */}
+                        <div className="basis-full">
+                          <Badge variant={getStatusBadgeVariant(o.status)}>
+                            {isExpired(o) ? t("status.expired") : statusLabel(o.status)}
+                          </Badge>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <p className="text-sm">{o.jobTitle}</p>

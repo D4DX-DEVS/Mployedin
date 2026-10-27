@@ -17,6 +17,7 @@ import JobSeeker from "@/models/JobSeeker";
 import { connectDB } from "@/lib/db/mongoose";
 import { embedForMatching, matchEmbeddingModel } from "@/lib/ai/openRouterEmbeddings";
 import { extractJobSkills } from "@/lib/matching/jobSkillExtraction";
+import { removeMatchVectors, syncMatchVectors, vectorSyncEnabled } from "@/lib/matching/vectorStore";
 import {
   jobMatchText,
   seekerMatchText,
@@ -64,6 +65,24 @@ async function addSkills(job: Doc): Promise<boolean> {
   return true;
 }
 
+/**
+ * A document can come back into the pool with the same text (a paused job
+ * reopened, a seeker un-archived), or have missed an earlier Vectorize write.
+ * Its hash says unchanged, so it is never re-embedded: copy its stored vector
+ * to Vectorize again. Only when Vectorize is kept in step, and only for the
+ * documents this run already loaded (recently changed ones).
+ */
+async function resyncUnchanged(Model: Model<Doc>, kind: MatchKind, ids: string[]): Promise<void> {
+  if (!vectorSyncEnabled() || ids.length === 0) return;
+  const rows = (await Model.find({ _id: { $in: ids }, matchEmbeddingModel: matchEmbeddingModel() })
+    .select("+matchEmbedding")
+    .lean()) as unknown as Array<{ _id: unknown; matchEmbedding?: number[] }>;
+  await syncMatchVectors(
+    kind,
+    rows.filter((r) => r.matchEmbedding?.length).map((r) => ({ id: String(r._id), values: r.matchEmbedding as number[] })),
+  );
+}
+
 export async function refreshMatchEmbeddings(
   kind: MatchKind,
   filter: Record<string, unknown>,
@@ -80,16 +99,20 @@ export async function refreshMatchEmbeddings(
 
   const result: RefreshResult = { scanned: docs.length, embedded: 0, unchanged: 0, emptied: 0, skillsExtracted: 0 };
   const toEmbed: Array<{ doc: Doc; text: string; hash: string }> = [];
+  const emptiedIds: string[] = [];
+  const unchangedIds: string[] = [];
 
   for (const doc of docs) {
     if (kind === "job" && !opts.dryRun && needsSkills(doc) && (await addSkills(doc))) result.skillsExtracted++;
     const { text, hash } = kind === "job" ? jobMatchText(doc as JobTextSource) : seekerMatchText(doc as SeekerTextSource);
     if (hash === doc.matchTextHash) {
       result.unchanged++;
+      unchangedIds.push(String(doc._id));
     } else if (!text) {
       result.emptied++;
       if (!opts.dryRun) {
         await Model.updateOne({ _id: doc._id }, { $set: { matchTextHash: hash }, $unset: UNSET_VECTOR }, { timestamps: false });
+        emptiedIds.push(String(doc._id));
       }
     } else {
       toEmbed.push({ doc, text, hash });
@@ -97,6 +120,9 @@ export async function refreshMatchEmbeddings(
   }
 
   result.embedded = toEmbed.length;
+  // VECTOR_STORE=shadow|vectorize: the copy in Vectorize follows (lib/matching/vectorStore.ts).
+  await removeMatchVectors(kind, emptiedIds);
+  if (!opts.dryRun) await resyncUnchanged(Model, kind, unchangedIds);
   if (opts.dryRun || toEmbed.length === 0) return result;
 
   const vectors = await embedForMatching(toEmbed.map((e) => e.text));
@@ -109,5 +135,9 @@ export async function refreshMatchEmbeddings(
       { timestamps: false },
     );
   }
+  await syncMatchVectors(
+    kind,
+    toEmbed.map((e, i) => ({ id: String(e.doc._id), values: vectors[i] })),
+  );
   return result;
 }

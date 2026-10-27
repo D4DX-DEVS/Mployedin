@@ -1,8 +1,9 @@
 /**
- * DigitalOcean Spaces file storage
- * Drop-in replacement for Cloudinary. Uses the S3-compatible API.
+ * Object storage: DigitalOcean Spaces (default) or Cloudflare R2, both through
+ * the S3-compatible API. STORAGE_PROVIDER picks one; lib/storage/storageConfig.ts
+ * documents the R2 env and the bucket layout.
  *
- * Env vars required:
+ * Spaces env:
  *   SPACES_ACCESS_KEY_ID
  *   SPACES_SECRET_ACCESS_KEY
  *   SPACES_BUCKET_NAME
@@ -25,10 +26,41 @@ import path from "path";
 import { validateUploadedFile, ALLOWED_FILE_TYPES, validateMagicBytes, MAX_FILE_SIZES } from "@/lib/security/file-validation";
 import { scanForMalware, MalwareDetectedError } from "@/lib/security/malware-scan";
 import { FileValidationError } from "@/lib/storage/uploadErrors";
+import {
+  R2_PRIVATE_PREFIX,
+  r2ApiHost,
+  r2PrivateBucket,
+  r2PublicBucket,
+  r2UrlForKey,
+  storageProvider,
+} from "@/lib/storage/storageConfig";
+import {
+  AVATAR_MAX_EDGE,
+  DEFAULT_MAX_EDGE,
+  imageOptimizationEnabled,
+  isOptimizableImage,
+  optimizeImage,
+} from "@/lib/storage/optimizeImage";
 
 // ─── Client singleton ────────────────────────────────────────────────────────
 
 function getClient(): S3Client {
+  if (storageProvider() === "r2") {
+    return new S3Client({
+      region: "auto",
+      endpoint: `https://${r2ApiHost() ?? "r2-not-configured.invalid"}`,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
+      },
+      // Path style keeps every presigned URL on the one API host the CSP lists.
+      forcePathStyle: true,
+      // Newer SDKs add CRC checksums (trailing ones on multipart streams) by
+      // default; R2 has refused some of them. Send only what R2 requires.
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
+    });
+  }
   const endpoint = process.env.SPACES_ENDPOINT ?? "blr1.digitaloceanspaces.com";
   return new S3Client({
     region: endpoint.split(".")[0], // "blr1"
@@ -59,6 +91,39 @@ function cdnBase(): string {
   const bucket = getBucket();
   return `https://${bucket}.${endpoint}`;
 }
+
+// ─── Provider-aware bucket / key / URL ───────────────────────────────────────
+
+/** The bucket holding `key`. On R2 the `private/` key prefix selects the private bucket. */
+function bucketForKey(key: string): string {
+  if (storageProvider() !== "r2") return getBucket();
+  return key.startsWith(R2_PRIVATE_PREFIX) ? r2PrivateBucket() : r2PublicBucket();
+}
+
+function newKey(folder: UploadFolder, ext: string, isPrivate: boolean): string {
+  const name = `${folder}/${randomUUID()}${ext}`;
+  if (storageProvider() === "r2") return isPrivate ? `${R2_PRIVATE_PREFIX}${name}` : name;
+  const prefix = getPrefix();
+  return prefix ? `${prefix}/${name}` : name;
+}
+
+/**
+ * Base every stored URL of this provider starts with. R2 private objects get the
+ * API endpoint address: it never serves without a signature, as Spaces' CDN URL
+ * of a private object never did.
+ */
+function urlBases(): string[] {
+  if (storageProvider() !== "r2") return [cdnBase() + "/"];
+  return [r2UrlForKey(""), r2UrlForKey(R2_PRIVATE_PREFIX).slice(0, -R2_PRIVATE_PREFIX.length)];
+}
+
+/**
+ * Browser/CDN caching for public R2 objects. Keys are random and never
+ * rewritten, so a year would be safe for freshness, but a GDPR erasure deletes
+ * the object without purging caches: one day bounds how long an erased photo
+ * (and each resized CDN copy of it) can still be served.
+ */
+const PUBLIC_CACHE = "public, max-age=86400";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,17 +177,16 @@ export async function uploadBuffer(
   } = {}
 ): Promise<UploadResult> {
   const client = getClient();
-  const bucket = getBucket();
 
   // A plain short extension only: the key is stored (max 500 chars) and served.
   const rawExt = options.fileName ? path.extname(options.fileName) : "";
-  const ext = /^\.[a-z0-9]{1,10}$/i.test(rawExt) ? rawExt.toLowerCase() : "";
-  const prefix = getPrefix();
+  let ext = /^\.[a-z0-9]{1,10}$/i.test(rawExt) ? rawExt.toLowerCase() : "";
   const folder = options.folder ?? "other";
-  const key = prefix ? `${prefix}/${folder}/${randomUUID()}${ext}` : `${folder}/${randomUUID()}${ext}`;
+  const isPrivate = options.private ?? PRIVATE_FOLDERS.has(folder);
 
-  const body = buffer instanceof Blob ? Buffer.from(await buffer.arrayBuffer()) : buffer;
-  const size = body.byteLength;
+  let body = buffer instanceof Blob ? Buffer.from(await buffer.arrayBuffer()) : buffer;
+  let contentType = options.contentType ?? "application/octet-stream";
+  let fileName = options.fileName;
 
   // File security validation (magic bytes + size + MIME whitelist)
   if (options.validateAs) {
@@ -143,24 +207,41 @@ export async function uploadBuffer(
     }
   }
 
+  // Public images are cleaned once here (metadata stripped, size capped). Private
+  // ones (ID scans, CV photos) are evidence and are stored byte for byte.
+  if (!isPrivate && imageOptimizationEnabled() && isOptimizableImage(contentType)) {
+    const optimized = await optimizeImage(body, folder === "avatars" ? AVATAR_MAX_EDGE : DEFAULT_MAX_EDGE);
+    if (optimized) {
+      body = optimized.buffer;
+      contentType = optimized.contentType;
+      ext = optimized.ext;
+      if (fileName) fileName = `${path.parse(fileName).name}${optimized.ext}`;
+    }
+  }
+
+  const key = newKey(folder, ext, isPrivate);
+  const bucket = bucketForKey(key);
+  const r2 = storageProvider() === "r2";
+
   const params: PutObjectCommandInput = {
     Bucket: bucket,
     Key: key,
     Body: body,
-    ContentType: options.contentType ?? "application/octet-stream",
-    ACL: (options.private ?? PRIVATE_FOLDERS.has(folder)) ? "private" : "public-read",
+    ContentType: contentType,
+    // R2 has no object ACLs: the bucket decides who can read.
+    ...(r2 ? (isPrivate ? {} : { CacheControl: PUBLIC_CACHE }) : { ACL: isPrivate ? "private" : "public-read" }),
     // Header values must be Latin-1: an Arabic file name used to throw here.
-    ...(options.fileName && { ContentDisposition: contentDisposition("inline", options.fileName) }),
+    ...(fileName && { ContentDisposition: contentDisposition("inline", fileName) }),
   };
 
   await client.send(new PutObjectCommand(params));
 
   return {
-    url: `${cdnBase()}/${key}`,
+    url: keyToUrl(key),
     key,
     bucket,
-    size,
-    contentType: options.contentType ?? "application/octet-stream",
+    size: body.byteLength,
+    contentType,
   };
 }
 
@@ -187,12 +268,12 @@ export async function uploadLarge(
   } = {}
 ): Promise<UploadResult> {
   const client = getClient();
-  const bucket = getBucket();
 
   const ext = options.fileName ? path.extname(options.fileName) : "";
-  const prefix = getPrefix();
   const folder = options.folder ?? "other";
-  const key = prefix ? `${prefix}/${folder}/${randomUUID()}${ext}` : `${folder}/${randomUUID()}${ext}`;
+  const isPrivate = options.private ?? PRIVATE_FOLDERS.has(folder);
+  const key = newKey(folder, ext, isPrivate);
+  const bucket = bucketForKey(key);
 
   // For Buffer input, validate magic bytes and size upfront
   if (Buffer.isBuffer(stream)) {
@@ -226,7 +307,9 @@ export async function uploadLarge(
       Key: key,
       Body: stream as any,
       ContentType: options.contentType ?? "application/octet-stream",
-      ACL: (options.private ?? PRIVATE_FOLDERS.has(folder)) ? "private" : "public-read",
+      ...(storageProvider() === "r2"
+        ? (isPrivate ? {} : { CacheControl: PUBLIC_CACHE })
+        : { ACL: isPrivate ? "private" : "public-read" }),
     },
   });
 
@@ -236,7 +319,7 @@ export async function uploadLarge(
   const size = Buffer.isBuffer(stream) ? stream.byteLength : 0;
 
   return {
-    url: `${cdnBase()}/${key}`,
+    url: keyToUrl(key),
     key,
     bucket,
     size,
@@ -280,17 +363,13 @@ export async function uploadFile(
 // ─── Delete ───────────────────────────────────────────────────────────────────
 
 /**
- * Delete an object from Spaces by key or full URL.
+ * Delete a stored object by key or full URL.
  */
 export async function deleteFile(keyOrUrl: string): Promise<void> {
   const client = getClient();
-  const bucket = getBucket();
-
-  // If a full URL was passed, strip the CDN base to get the key
-  const base = cdnBase() + "/";
-  const key = keyOrUrl.startsWith(base) ? keyOrUrl.slice(base.length) : keyOrUrl;
-
-  await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+  // If a full URL was passed, strip the base to get the key
+  const key = urlToKey(keyOrUrl);
+  await client.send(new DeleteObjectCommand({ Bucket: bucketForKey(key), Key: key }));
 }
 
 // ─── Existence check ──────────────────────────────────────────────────────────
@@ -299,7 +378,7 @@ export async function deleteFile(keyOrUrl: string): Promise<void> {
 export async function fileExists(key: string): Promise<boolean> {
   const client = getClient();
   try {
-    await client.send(new HeadObjectCommand({ Bucket: getBucket(), Key: key }));
+    await client.send(new HeadObjectCommand({ Bucket: bucketForKey(key), Key: key }));
     return true;
   } catch {
     return false;
@@ -328,7 +407,7 @@ export async function getPresignedUrl(
     ? attachmentDisposition(opts.downloadName)
     : opts?.inline ? "inline" : undefined;
   const command = new GetObjectCommand({
-    Bucket: getBucket(),
+    Bucket: bucketForKey(key),
     Key: key,
     ...(disposition && { ResponseContentDisposition: disposition }),
     ...(opts?.contentType && { ResponseContentType: opts.contentType }),
@@ -339,13 +418,13 @@ export async function getPresignedUrl(
 // ─── Download (raw bytes) ─────────────────────────────────────────────────────
 
 /**
- * Download an object's raw bytes from Spaces.
- * Accepts either an object key or a full CDN/Spaces URL.
+ * Download an object's raw bytes.
+ * Accepts either an object key or a full stored URL.
  */
 export async function downloadBuffer(keyOrUrl: string): Promise<Buffer> {
   const client = getClient();
   const key = urlToKey(keyOrUrl);
-  const res = await client.send(new GetObjectCommand({ Bucket: getBucket(), Key: key }));
+  const res = await client.send(new GetObjectCommand({ Bucket: bucketForKey(key), Key: key }));
   if (!res.Body) {
     throw new Error("Object body is empty");
   }
@@ -369,13 +448,13 @@ function contentDisposition(type: "inline" | "attachment", fileName: string): st
   return `${type}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
-/** Convert a Spaces URL back to its object key */
+/** Convert a stored URL back to its object key (anything else is returned unchanged) */
 export function urlToKey(url: string): string {
-  const base = cdnBase() + "/";
-  return url.startsWith(base) ? url.slice(base.length) : url;
+  const base = urlBases().find((b) => url.startsWith(b));
+  return base ? url.slice(base.length) : url;
 }
 
-/** Build the public URL for a known key */
+/** Build the stored URL for a known key */
 export function keyToUrl(key: string): string {
-  return `${cdnBase()}/${key}`;
+  return storageProvider() === "r2" ? r2UrlForKey(key) : `${cdnBase()}/${key}`;
 }

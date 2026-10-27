@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { d1LogMirror } from "@/lib/logs/logStore";
 
 /**
  * EmailLog — tracks every email sent through the platform.
@@ -76,6 +77,9 @@ export async function logEmailDelivery(data: {
     console.error("[email-log] Failed to log email delivery");
   }
 }
+
+// LOGS_STORE=dual: every insert is also copied to D1 (lib/logs/logStore.ts).
+EmailLogSchema.plugin(d1LogMirror("email_log"));
 
 export const EmailLog =
   mongoose.models.EmailLog ||

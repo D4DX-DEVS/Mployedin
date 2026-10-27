@@ -11,6 +11,8 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { calculateLeadScore, deriveQualification } from "@/lib/leads/scoring";
 import { autoRouteLead } from "@/lib/leads/autoRouter";
+import { isLeadPeriod, leadPeriodFilter } from "@/lib/leads/period";
+import { isValidTimeZone } from "@/lib/datetime/zone";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
@@ -26,14 +28,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const followUp = searchParams.get("followUp");
   const followUpFrom = searchParams.get("followUpFrom");
   const followUpTo = searchParams.get("followUpTo");
+  // The agent home's "converted today" / "active this week" cards link here.
+  const period = searchParams.get("period");
 
   const filter: Record<string, unknown> = {};
+  let timeZone = "Asia/Dubai";
 
   // Agents see only their leads — resolve Agent doc from userId
   if (ctx.role === "agent") {
-    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+    const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id timezone").lean();
     if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
     filter.agentId = agentDoc._id;
+    if (isValidTimeZone(agentDoc.timezone)) timeZone = agentDoc.timezone as string;
   } else if (ctx.role === "super_agent") {
     // Super-agents are scoped to their own team/region — never the whole platform.
     // Match leads routed to this SA, or owned by any agent in their effective scope.
@@ -60,6 +66,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     if (followUpFrom) range.$gte = new Date(followUpFrom);
     if (followUpTo) range.$lte = new Date(followUpTo);
     filter.followUpAt = range;
+  }
+  if (isLeadPeriod(period)) {
+    // Its own $and entry: it carries a status and an $or of its own, which
+    // must narrow the stage filter and the search rather than replace them.
+    filter.$and = [...((filter.$and as unknown[]) ?? []), leadPeriodFilter(period, timeZone, new Date())];
   }
   if (search) {
     const safe = escapeRegex(search);

@@ -21,6 +21,10 @@
 
 import { type Types } from "mongoose";
 import logger from "@/lib/logger";
+import { mirrorLogErase } from "@/lib/logs/logStore";
+import { eraseMatchVectors } from "@/lib/matching/vectorStore";
+import { eraseSearchVector } from "@/lib/ai/searchVectors";
+import { dataWorkerConfigured } from "@/lib/cloudflare/dataWorkerClient";
 import { connectDB } from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
 import JobSeeker from "@/models/JobSeeker";
@@ -36,6 +40,7 @@ import Lead from "@/models/Lead";
 import Job from "@/models/Job";
 import JobTemplate from "@/models/JobTemplate";
 import Notification from "@/models/Notification";
+import SavedJob from "@/models/SavedJob";
 
 export type CascadeSummary = Record<string, number>;
 
@@ -139,7 +144,14 @@ export async function cascadeDeleteEmployer(
     await track(summary, "interviews", Interview.deleteMany({ employerId: empId }));
     await track(summary, "applications", Application.deleteMany({ employerId: empId }));
     await track(summary, "jobTemplates", JobTemplate.deleteMany({ employerId: empId }));
+    // Their matching vectors in Vectorize go with them (looked up first: the rows are about to go).
+    const jobIds = dataWorkerConfigured() ? ((await Job.distinct("_id", { employerId: empId })) as unknown[]).map(String) : [];
     await track(summary, "jobs", Job.deleteMany({ employerId: empId }));
+    try {
+      await eraseMatchVectors("job", jobIds);
+    } catch (err) {
+      logger.error({ err, operation: "job vectors (Vectorize)" }, "[cascade] operation failed");
+    }
 
     for (const [label, load, exportName] of EMPLOYER_OWNED) {
       try {
@@ -149,6 +161,12 @@ export async function cascadeDeleteEmployer(
       } catch (err) {
         logger.error({ err, operation: label }, "[cascade] operation failed");
       }
+    }
+    // LOGS_STORE=dual: the D1 copy of the employer's page views goes too.
+    try {
+      await mirrorLogErase("company_profile_view", "employer_id", [String(empId)]);
+    } catch (err) {
+      logger.error({ err, operation: "companyProfileViews (D1)" }, "[cascade] operation failed");
     }
 
     // Detach from agent assignments and converted-lead links.
@@ -209,6 +227,13 @@ export async function cascadeDeleteJobSeeker(
     await track(summary, "offers", Offer.deleteMany({ jobSeekerId: jsId }));
     await track(summary, "interviews", Interview.deleteMany({ jobSeekerId: jsId }));
     await track(summary, "applications", Application.deleteMany({ jobSeekerId: jsId }));
+    await track(summary, "savedJobs", SavedJob.deleteMany({ jobSeekerId: jsId }));
+    try {
+      await eraseMatchVectors("seeker", [String(jsId)]);
+      await eraseSearchVector(String(jsId));
+    } catch (err) {
+      logger.error({ err, operation: "seeker vector (Vectorize)" }, "[cascade] operation failed");
+    }
   }
 
   // References User._id directly.

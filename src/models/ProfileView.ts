@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { d1LogMirror } from "@/lib/logs/logStore";
 
 export interface IProfileView extends Document {
   _id: mongoose.Types.ObjectId;
@@ -37,6 +38,9 @@ ProfileViewSchema.index(
   { jobSeekerId: 1, viewerId: 1, viewedAt: -1 },
   { name: "dedup_lookup" }
 );
+
+// LOGS_STORE=dual: every insert is also copied to D1 (lib/logs/logStore.ts).
+ProfileViewSchema.plugin(d1LogMirror("profile_view"));
 
 export const ProfileView =
   mongoose.models.ProfileView ||

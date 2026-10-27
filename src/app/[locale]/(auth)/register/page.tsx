@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RequiredMark } from "@/components/ui/required-mark";
 import { FieldError } from "@/components/shared/FieldError";
+import { PasswordRequirements } from "@/components/shared/PasswordRequirements";
 import { CookiesDisabledNotice } from "@/components/shared/CookiesDisabledNotice";
 import { BriefcaseBusiness, Handshake, Loader2, UserRoundSearch } from "lucide-react";
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
@@ -418,10 +419,13 @@ export default function RegisterPage() {
             required
             autoComplete="new-password"
             aria-invalid={fieldErrors.password ? true : undefined}
-            aria-describedby={fieldErrors.password ? "password-error" : undefined}
+            aria-describedby={fieldErrors.password ? "password-rules password-error" : "password-rules"}
             className="h-12 px-4 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/25 focus-visible:border-primary/40 focus-visible:ring-0"
           />
           <FieldError id="password-error" message={fieldErrors.password} />
+          {/* The rules up front, ticked off while typing — they used to
+              appear only as an error after a failed submit. */}
+          <PasswordRequirements id="password-rules" password={password} className="mt-2" />
         </div>
 
         <div className="field">

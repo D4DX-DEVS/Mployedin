@@ -142,6 +142,11 @@ const translations: Record<string, unknown> = {
   },
 };
 
+// The save toggle reads react-query; this suite is about the page's layout.
+jest.mock("@/components/features/job-seeker/saved/SaveJobButton", () => ({
+  SaveJobButton: ({ jobId }: { jobId: string }) => <button type="button" data-testid={`save-${jobId}`} />,
+}));
+
 jest.mock("next/link", () => ({
   __esModule: true,
   default: ({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (

@@ -7,6 +7,8 @@
  * (hydration, RSC payload, etc.).  API responses use the static headers.
  */
 
+import { r2CspOrigins } from "@/lib/storage/storageConfig";
+
 const SHARED_HEADERS: Record<string, string> = {
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
@@ -35,6 +37,7 @@ const SHARED_HEADERS: Record<string, string> = {
  */
 export function getSecurityHeaders(nonce: string): Record<string, string> {
   const isDev = process.env.NODE_ENV === "development";
+  const r2 = storageCspSuffix();
   return {
     "Content-Security-Policy": [
       "default-src 'self'",
@@ -72,7 +75,7 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       // Google and LinkedIn profile photos are not listed: they load through
       // /api/proxy-image (lib/images/externalAvatar), so the browser never
       // contacts the provider. A render site that forgets fails here, loudly.
-      "img-src 'self' data: blob: https://res.cloudinary.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
+      `img-src 'self' data: blob: https://res.cloudinary.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com${r2}`,
       // Fonts and stylesheets come from our own origin (next/font self-hosts them); Google Fonts,
       // Pusher and the AI providers are no longer listed because no client code calls them.
       "font-src 'self' data:",
@@ -86,7 +89,7 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       // from the page context; without it every quick-apply "Send code" logged CSP
       // violations (the token was still minted, the console was not clean).
       // No *.firebaseio.com: nothing imports firebase/database (Auth only).
-      "connect-src 'self' data: blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google.com/recaptcha/",
+      `connect-src 'self' data: blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com${r2} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google.com/recaptcha/`,
       "worker-src 'self' blob:",
       // blob: lets the candidate CV viewer frame an in-memory PDF. The proxied
       // CV response sets X-Frame-Options: DENY / frame-ancestors 'none', so it
@@ -95,11 +98,11 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
       // youtube.com host is not framed, so a stray embed of it is blocked rather than sent to Google.
       // www.google.com/recaptcha/ + recaptcha.google.com/recaptcha/: the two frame hosts Google's reCAPTCHA FAQ
       // lists for CSP, each limited to its /recaptcha/ path.
-      "frame-src 'self' blob: https://*.firebaseapp.com https://accounts.google.com https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://www.youtube-nocookie.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
+      `frame-src 'self' blob: https://*.firebaseapp.com https://accounts.google.com https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ https://www.youtube-nocookie.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com${r2}`,
       // object-src is required so the resource/document PDF preview <embed> can
       // load from our own Spaces CDN. Without it, <embed> falls back to
       // default-src 'self' and the preview renders blank.
-      "object-src 'self' blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com",
+      `object-src 'self' blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com${r2}`,
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",
@@ -108,10 +111,20 @@ export function getSecurityHeaders(nonce: string): Record<string, string> {
   };
 }
 
+/**
+ * " https://<r2 public host> https://<r2 api host>" when R2 is configured
+ * (lib/storage/storageConfig.ts), "" otherwise: the policy is unchanged on Spaces.
+ */
+function storageCspSuffix(): string {
+  return r2CspOrigins().map((origin) => ` ${origin}`).join("");
+}
+
+const R2_CSP = storageCspSuffix();
+
 /** Static headers for API routes (no inline scripts, no nonce needed). */
 export const SECURITY_HEADERS: Record<string, string> = {
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://res.cloudinary.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data: blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; object-src 'self' blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://res.cloudinary.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com${R2_CSP}; font-src 'self' data:; media-src 'self' data:; connect-src 'self' data: blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com${R2_CSP} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com${R2_CSP}; object-src 'self' blob: https://*.digitaloceanspaces.com https://*.cdn.digitaloceanspaces.com${R2_CSP}; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`,
   ...SHARED_HEADERS,
 };
 

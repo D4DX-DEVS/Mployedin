@@ -45,6 +45,7 @@ import { inngest } from "./client";
 import { isDigestHourFor } from "@/lib/datetime/countryZone";
 import { connectDB } from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
+import { mirrorLogWrites } from "@/lib/logs/logStore";
 import User from "@/models/User";
 import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
@@ -483,9 +484,19 @@ export const dailyRecommendationsCron = inngest.createFunction(
               // Mark profile views as notified
               if (recentViews.length > 0) {
                 const viewIds = recentViews.map((v) => v._id);
+                const notifiedAt = new Date();
                 await ProfileView.updateMany(
                   { _id: { $in: viewIds } },
-                  { $set: { notifiedAt: new Date() } },
+                  { $set: { notifiedAt } },
+                );
+                await mirrorLogWrites(
+                  "profile_view",
+                  viewIds.map((id) => ({
+                    table: "profile_view" as const,
+                    op: "update" as const,
+                    where: { id: String(id) },
+                    row: { notified_at: notifiedAt.getTime() },
+                  })),
                 );
               }
 

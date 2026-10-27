@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
+import { PasswordRequirements } from "@/components/shared/PasswordRequirements";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -181,6 +182,7 @@ export default function ResetPasswordPage() {
               required
               minLength={12}
               autoComplete="new-password"
+              aria-describedby="password-rules"
               className="h-11 px-4 pr-11 bg-transparent transition-all focus-visible:ring-0 focus-visible:border-primary/40 rounded-lg"
             />
             <button
@@ -213,6 +215,7 @@ export default function ResetPasswordPage() {
               </p>
             </div>
           )}
+          <PasswordRequirements id="password-rules" password={password} className="mt-2" />
         </div>
 
         <div className="field">

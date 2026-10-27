@@ -43,6 +43,10 @@ jest.mock("@/models/JobSeeker", () => ({
 }));
 jest.mock("@/models/Application", () => ({ __esModule: true, default: { find: jest.fn(() => leanChain([])) } }));
 jest.mock("@/models/Interview", () => ({ __esModule: true, default: { find: jest.fn(() => leanChain([])) } }));
+jest.mock("@/models/SavedJob", () => ({
+  __esModule: true,
+  default: { find: jest.fn(() => ({ populate: () => leanChain([]) })) },
+}));
 jest.mock("@/models/Notification", () => ({
   __esModule: true,
   default: { find: jest.fn(() => leanChain([])), deleteMany: jest.fn().mockResolvedValue(undefined) },

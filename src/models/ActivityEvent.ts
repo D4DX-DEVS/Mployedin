@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { d1LogMirror } from "@/lib/logs/logStore";
 
 export type ActivityEventType =
   | "job_match"
@@ -38,6 +39,9 @@ const ActivityEventSchema = new Schema<IActivityEvent>(
 
 ActivityEventSchema.index({ jobSeekerId: 1, createdAt: -1 });
 ActivityEventSchema.index({ jobSeekerId: 1, priority: -1, createdAt: -1 });
+
+// LOGS_STORE=dual: every insert is also copied to D1 (lib/logs/logStore.ts).
+ActivityEventSchema.plugin(d1LogMirror("activity_event"));
 
 export const ActivityEvent =
   mongoose.models.ActivityEvent ||

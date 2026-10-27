@@ -1,5 +1,7 @@
 import { inngest } from "@/lib/inngest/client";
 import { refreshMatchEmbeddings } from "@/lib/matching/matchEmbeddings";
+import { pruneDepartedVectors } from "@/lib/matching/vectorDepartures";
+import { vectorSyncEnabled } from "@/lib/matching/vectorStore";
 
 /** Looks back a little further than the 15-minute schedule so a late run misses nothing. */
 const CHANGED_WINDOW_MS = 20 * 60 * 1000;
@@ -24,9 +26,16 @@ export const refreshMatchEmbeddingsCron = inngest.createFunction(
   },
   async ({ step }) => {
     if (process.env.MATCH_EMBEDDINGS !== "on") return { skipped: "MATCH_EMBEDDINGS is not on" };
-    if (!process.env.OPENROUTER_API_KEY) return { skipped: "no OpenRouter key" };
-
     const since = new Date(Date.now() - CHANGED_WINDOW_MS);
+
+    // VECTOR_STORE=shadow|vectorize: jobs that closed and seekers that archived
+    // since the last run leave Vectorize (Atlas filters them at query time
+    // instead). First, so an embedding failure below cannot skip it.
+    const departed = vectorSyncEnabled()
+      ? await step.run("vector-departures", () => pruneDepartedVectors(since))
+      : { skipped: "VECTOR_STORE is atlas" };
+    if (!process.env.OPENROUTER_API_KEY) return { skipped: "no OpenRouter key", departed };
+
     const changedJobs = await step.run("changed-jobs", () =>
       refreshMatchEmbeddings("job", { ...LIVE_JOBS, updatedAt: { $gte: since } }, { limit: CHANGED_PER_RUN }),
     );
@@ -39,6 +48,6 @@ export const refreshMatchEmbeddingsCron = inngest.createFunction(
     const missingSeekers = await step.run("missing-seekers", () =>
       refreshMatchEmbeddings("seeker", { ...LIVE_SEEKERS, matchTextHash: { $exists: false } }, { limit: MISSING_PER_RUN }),
     );
-    return { changedJobs, missingJobs, changedSeekers, missingSeekers };
+    return { changedJobs, missingJobs, changedSeekers, missingSeekers, departed };
   },
 );

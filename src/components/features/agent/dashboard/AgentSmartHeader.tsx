@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { BriefcaseBusiness, Target } from "lucide-react";
+import { BriefcaseBusiness, Goal, Target, Wallet } from "lucide-react";
 import { WorkspaceHeader, type WorkspaceMetric } from "@/components/shared/WorkspaceHeader";
 import type { AgentActionCounts } from "@/lib/agents/workQueue";
 import type { AssignedRegion } from "@/lib/agents/assignedRegion";
@@ -17,14 +17,16 @@ interface AgentSmartHeaderProps {
   regions: readonly AssignedRegion[];
   /** The super agent the agent reports to; no pill when there is none. */
   superAgent?: SuperAgentContact | null;
-  /** The four at-a-glance figures, on the header's own metric strip. */
+  /** The at-a-glance figures, on the header's own metric strip. */
   metrics: readonly WorkspaceMetric[];
   locale: string;
 }
 
 /**
  * The agent home header, on the same `WorkspaceHeader` the employer home uses:
- * greeting, one context line, the two things an agent creates, Copilot.
+ * greeting, one context line, the two things an agent creates, and links to
+ * the target report and commissions — links only: the client asked for no
+ * target or money figures on the home (2026-10-23).
  *
  * The context line names the single most urgent thing in the queue — the
  * sentence form of the employer's "N new applications are ready for review" —
@@ -36,6 +38,7 @@ interface AgentSmartHeaderProps {
  */
 export function AgentSmartHeader({ greeting, counts, activeJobs, regions, superAgent = null, metrics, locale }: AgentSmartHeaderProps) {
   const t = useTranslations("agentDashboard.smartHeader");
+  const tOverview = useTranslations("agentDashboard.overview");
 
   // Same order the queue ranks its kinds: a cooling lead outranks an unlogged
   // interview outcome, which outranks an unanswered offer.
@@ -90,6 +93,14 @@ export function AgentSmartHeader({ greeting, counts, activeJobs, regions, superA
           <Link href={`/${locale}/agent/leads?new=1`} aria-label={t("addLead")} className={buttonClass}>
             <Target className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">{t("addLead")}</span>
+          </Link>
+          <Link href={`/${locale}/agent/target-report`} aria-label={tOverview("targetShort")} className={buttonClass}>
+            <Goal className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">{tOverview("targetShort")}</span>
+          </Link>
+          <Link href={`/${locale}/agent/commissions`} aria-label={tOverview("commissionShort")} className={buttonClass}>
+            <Wallet className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">{tOverview("commissionShort")}</span>
           </Link>
         </>
       }

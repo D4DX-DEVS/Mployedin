@@ -35,13 +35,15 @@ jest.mock("framer-motion", () => ({
 }));
 
 describe("splitSeekerNav", () => {
-  it("promotes the five job-board tabs", () => {
+  it("promotes the six job-board tabs", () => {
     const groups = getNavGroups("job_seeker", "en");
     const { primary } = splitSeekerNav(groups, "en");
 
     expect(primary.map((i) => i.href)).toEqual([
       "/en/job-seeker",
       "/en/job-seeker/jobs",
+      // Saved jobs, restored on the client's request (2026-10-27).
+      "/en/job-seeker/saved-jobs",
       "/en/job-seeker/applications",
       "/en/job-seeker/messages",
       "/en/job-seeker/companies",

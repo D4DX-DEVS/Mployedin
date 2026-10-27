@@ -24,6 +24,7 @@ import { getLocalizedCountryName } from "@/lib/i18n/locations";
 import { cn } from "@/lib/utils";
 import { DashboardNextAction } from "@/components/shared/DashboardOverview";
 import { JobSummaryCard } from "@/components/features/job-seeker/JobSummaryCard";
+import { SaveJobButton } from "@/components/features/job-seeker/saved/SaveJobButton";
 
 /**
  * The seeker's home page.
@@ -582,12 +583,15 @@ export function JobSeekerHomePage({
                       : null,
                   }}
                   actions={
-                    <Button asChild size="sm" className="min-h-11 rounded-xl px-4">
-                      <Link href={`/${locale}/job-seeker/jobs/${job._id}`}>
-                        {tCard("viewJob")}
-                        <ArrowRight className="ms-1.5 h-4 w-4" aria-hidden />
-                      </Link>
-                    </Button>
+                    <>
+                      <SaveJobButton jobId={job._id} />
+                      <Button asChild size="sm" className="min-h-11 rounded-xl px-4">
+                        <Link href={`/${locale}/job-seeker/jobs/${job._id}`}>
+                          {tCard("viewJob")}
+                          <ArrowRight className="ms-1.5 h-4 w-4" aria-hidden />
+                        </Link>
+                      </Button>
+                    </>
                   }
                 />
               </Fragment>

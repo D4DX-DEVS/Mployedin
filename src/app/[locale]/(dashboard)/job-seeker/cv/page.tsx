@@ -40,7 +40,7 @@ import {
 } from "./types";
 import { TemplateRenderer } from "./templates";
 import { TemplatePicker, FormattingPanel } from "./template-picker";
-import { AIToolbar } from "./ai-toolbar";
+import { CvAssistant } from "./cv-assistant";
 import { RichTextEditor } from "./rich-text-editor";
 import { TipsDrawer, type TipKey } from "./tips-drawer";
 import { SortableList, SortableItem } from "./sortable";
@@ -613,16 +613,20 @@ export default function CVBuilderPage() {
         <div className={`transition-all duration-300 ${previewExpanded ? "hidden" : previewHidden ? "w-full" : "w-full lg:w-[55%]"}`}>
           <Tabs defaultValue="editor" className="w-full">
             <div className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <TabsList className="w-full min-w-0 sm:w-auto">
-                <TabsTrigger value="editor" className="gap-1.5">
+              <TabsList className="w-full min-w-0 sm:w-auto max-sm:!grid max-sm:grid-cols-4 max-sm:!overflow-visible">
+                <TabsTrigger value="editor" className="gap-1.5 max-sm:flex-col max-sm:!gap-0.5 max-sm:!px-1 max-sm:text-xs max-sm:!whitespace-normal">
                   <Pencil className="w-3.5 h-3.5" />
                   {t("tabs.editor")}
                 </TabsTrigger>
-                <TabsTrigger value="templates" className="gap-1.5">
+                <TabsTrigger value="assistant" className="gap-1.5 max-sm:flex-col max-sm:!gap-0.5 max-sm:!px-1 max-sm:text-xs max-sm:!whitespace-normal">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {t("tabs.assistant")}
+                </TabsTrigger>
+                <TabsTrigger value="templates" className="gap-1.5 max-sm:flex-col max-sm:!gap-0.5 max-sm:!px-1 max-sm:text-xs max-sm:!whitespace-normal">
                   <LayoutTemplate className="w-3.5 h-3.5" />
                   {t("tabs.templates")}
                 </TabsTrigger>
-                <TabsTrigger value="formatting" className="gap-1.5">
+                <TabsTrigger value="formatting" className="gap-1.5 max-sm:flex-col max-sm:!gap-0.5 max-sm:!px-1 max-sm:text-xs max-sm:!whitespace-normal">
                   <Paintbrush className="w-3.5 h-3.5" />
                   {t("tabs.formatting")}
                 </TabsTrigger>
@@ -747,12 +751,6 @@ export default function CVBuilderPage() {
                         rows={3}
                         className="resize-none"
                       />
-                      <AIToolbar
-                        section="summary"
-                        seed={form.headline}
-                        context={{ skills: form.skills.join(", ") }}
-                        onResult={(text) => setForm((f) => ({ ...f, headline: text }))}
-                      />
                       <p className="text-[0.65rem] text-muted-foreground text-right">{form.headline.length}/1000</p>
                     </div>
                     <FormField label="LinkedIn" value={form.linkedin}
@@ -782,7 +780,6 @@ export default function CVBuilderPage() {
                 <SectionCard
                   title={t("sections.workExperience", { count: form.experience.length })}
                   icon={<Briefcase className="w-4 h-4" />}
-                  badge={<span className="text-[0.6rem] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Sparkles className="w-2.5 h-2.5" />{t("badges.aiPowered")}</span>}
                   action={<Button variant="outline" size="sm" onClick={addExperience} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> {t("actions.add")}</Button>}
                   sectionKey="experience" hidden={hiddenSections.has("experience")} onToggle={() => toggleSection("experience")}
                 >
@@ -832,12 +829,6 @@ export default function CVBuilderPage() {
                             onChange={(html) => updateExperience(i, "description", html)}
                             placeholder={t("placeholders.experienceDescription")}
                             ariaLabel={t("fields.description")}
-                          />
-                          <AIToolbar
-                            section="experience_description"
-                            seed={htmlToPlainText(exp.description)}
-                            context={{ jobTitle: exp.jobTitle, company: exp.company }}
-                            onResult={(text) => updateExperience(i, "description", plainTextToHtml(text))}
                           />
                         </div>
                       </div>
@@ -901,7 +892,6 @@ export default function CVBuilderPage() {
                 <SectionCard
                   title={t("sections.projects", { count: form.projects.length })}
                   icon={<FolderKanban className="w-4 h-4" />}
-                  badge={<span className="text-[0.6rem] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"><Sparkles className="w-2.5 h-2.5" />{t("badges.aiPowered")}</span>}
                   action={<Button variant="outline" size="sm" onClick={addProject} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> {t("actions.add")}</Button>}
                   sectionKey="projects" hidden={hiddenSections.has("projects")} onToggle={() => toggleSection("projects")}
                 >
@@ -929,12 +919,6 @@ export default function CVBuilderPage() {
                               onChange={(html) => updateProject(i, "description", html)}
                               placeholder={t("placeholders.projectDescription")}
                               ariaLabel={t("fields.description")}
-                            />
-                            <AIToolbar
-                              section="project_description"
-                              seed={htmlToPlainText(proj.description)}
-                              context={{ projectTitle: proj.title, techStack: proj.techStack.join(", ") }}
-                              onResult={(text) => updateProject(i, "description", plainTextToHtml(text))}
                             />
                           </div>
                           <div className="md:col-span-2 field">
@@ -1008,6 +992,14 @@ export default function CVBuilderPage() {
                   </div>
                 </SectionCard>
               </div>
+            </TabsContent>
+
+            {/* ──── TAB: AI ASSISTANT ──── one chat for the whole CV; it replaced
+                the Improve / Suggest / Grammar / Shorten chips under each field. */}
+            {/* Kept mounted: switching to Editor to check a change must not
+                throw away the conversation and its Undo. */}
+            <TabsContent value="assistant" forceMount className="data-[state=inactive]:hidden">
+              <CvAssistant form={form} onChange={setForm} />
             </TabsContent>
 
             {/* ──── TAB: TEMPLATES ──── */}

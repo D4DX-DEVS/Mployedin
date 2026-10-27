@@ -173,7 +173,8 @@ describe("provider avatar render sites", () => {
   it("ui/avatar.tsx rewrites inside AvatarImage", () => {
     const source = read("components/ui/avatar.tsx");
     expect(source).toContain('from "@/lib/images/externalAvatar"');
-    expect(source).toMatch(/src=\{[^}]*toSafeImageSrc\(src\)[^}]*\}/);
+    // An options object ({ width }) may follow `src`; the photo itself still goes through the rewrite.
+    expect(source).toMatch(/src=\{[^}]*toSafeImageSrc\(src(?:, \{ [^{}]* \})?\)[^}]*\}/);
   });
 
   it.each(RAW_IMG_AVATAR_SITES.map((site) => [site.file, site] as const))(
@@ -194,7 +195,7 @@ describe("provider avatar render sites", () => {
     const source = read("app/[locale]/(dashboard)/job-seeker/cv/pdf/shared.tsx");
     expect(source).toContain('from "@/lib/images/externalAvatar"');
     const body = /export function safePhoto\([^)]*\)[^{]*\{([\s\S]*?)\n\}/.exec(source)?.[1] ?? "";
-    expect(body).toMatch(/return toSafeImageSrc\(src\)/);
+    expect(body).toMatch(/return toSafeImageSrc\(src(?:, \{ [^{}]* \})?\)/);
     expect(body).not.toMatch(/return src\b/);
   });
 

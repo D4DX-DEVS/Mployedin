@@ -1,4 +1,52 @@
 {
+  "savedJobs": {
+    "title": "Saved jobs",
+    "description": "Jobs you bookmarked to come back to.",
+    "count": "{count, plural, =0 {No saved jobs yet} one {# saved job} other {# saved jobs}}",
+    "save": "Save",
+    "saved": "Saved",
+    "saveAria": "Save job",
+    "unsaveAria": "Remove from saved jobs",
+    "toastSaved": "Job saved. Find it under Saved jobs.",
+    "toastRemoved": "Removed from saved jobs.",
+    "errorClosed": "This job is no longer open, so it can't be saved.",
+    "errorGeneric": "We couldn't update your saved jobs. Try again.",
+    "emptyTitle": "No saved jobs yet",
+    "emptyDescription": "Tap the bookmark on any job to keep it here.",
+    "browseJobs": "Browse jobs",
+    "viewJob": "View job",
+    "closed": "No longer open",
+    "navLink": "Saved jobs"
+  },
+  "passwordRequirements": {
+    "title": "Your password needs",
+    "minLength": "At least {min} characters",
+    "uppercase": "An uppercase letter (A–Z)",
+    "lowercase": "A lowercase letter (a–z)",
+    "number": "A number (0–9)",
+    "symbol": "A symbol such as ! @ #",
+    "met": "done",
+    "notMet": "still needed",
+    "common": "This password is too common. Choose another one."
+  },
+  "changePasswordCard": {
+    "eyebrow": "Security",
+    "title": "Password",
+    "description": "Change the password you sign in with. We email you whenever it changes.",
+    "open": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "save": "Update password",
+    "cancel": "Cancel",
+    "success": "Your password has been changed.",
+    "mismatch": "The new passwords don't match.",
+    "sameAsCurrent": "Choose a password different from your current one.",
+    "wrongCurrent": "Your current password isn't right.",
+    "tooMany": "Too many attempts. Try again in an hour.",
+    "noPassword": "You sign in with Google, Apple or LinkedIn, so there is no password to change.",
+    "failed": "We couldn't change your password. Try again."
+  },
   "app": {
     "name": "MPLOYEDIN",
     "tagline": "AI-Powered Recruitment Platform"
@@ -1966,8 +2014,43 @@
       "title": "CV Builder",
       "description": "Create a professional CV with AI assistance, templates, and custom formatting"
     },
+    "assistant": {
+      "title": "AI assistant",
+      "description": "Ask for changes to your whole CV in your own words. You review each change before it goes in.",
+      "emptyHint": "Try one of these, or type your own request below.",
+      "suggestion": {
+        "improve": "Improve my whole CV: make the summary and every description sound more professional and achievement-focused.",
+        "grammar": "Fix spelling and grammar everywhere in my CV. Don't change anything else.",
+        "shorten": "Make my CV shorter and tighter without losing any facts."
+      },
+      "suggestionLabel": {
+        "improve": "Improve the whole CV",
+        "grammar": "Fix grammar everywhere",
+        "shorten": "Make it shorter",
+        "tailor": "Tailor to a job"
+      },
+      "suggestionTailorPrefix": "Tailor my CV to this job description: ",
+      "placeholder": "e.g. Rewrite my summary for a senior React role",
+      "inputLabel": "Message the AI assistant",
+      "send": "Send",
+      "thinking": "Working on your CV…",
+      "proposalReady": "Here are the changes I suggest.",
+      "changeSummary": "Summary",
+      "changeSkills": "Skills",
+      "changeExperience": "Experience: {role}",
+      "changeProject": "Project: {title}",
+      "apply": "Apply changes",
+      "discard": "Discard",
+      "applied": "Applied to your CV",
+      "undo": "Undo",
+      "discarded": "Not applied",
+      "errorBusy": "Too many requests right now. Wait a minute and try again.",
+      "errorGeneric": "The assistant couldn't answer. Try again.",
+      "privacyNote": "Your name, email and phone number are not sent to the assistant. Changes stay in the editor until you select Add to Profile."
+    },
     "tabs": {
-      "editor": "AI Editor",
+      "editor": "Editor",
+      "assistant": "AI Assistant",
       "templates": "Templates",
       "formatting": "Formatting"
     },
@@ -6337,6 +6420,10 @@
       "activeAccountsShort": "Employers",
       "liveRoles": "Live Roles",
       "liveRolesShort": "Roles",
+      "leadsConvertedToday": "Leads converted today",
+      "leadsConvertedTodayShort": "Won today",
+      "activeLeadsWeek": "Active leads this week",
+      "activeLeadsWeekShort": "Leads",
       "interviewRate": "Interview Rate",
       "interviewRateShort": "Interviews",
       "offerRate": "Offer Rate",
@@ -15387,6 +15474,9 @@
     "aiScoreLabel": "AI Score",
     "dueFollowUps": "Due follow-ups",
     "dueFollowUpsHint": "Leads whose follow-up date has passed",
+    "periodConvertedToday": "Converted today",
+    "periodActiveWeek": "Active this week",
+    "periodClear": "Showing: {period}. Clear this filter",
     "stageStep": "Step {step} of {total}",
     "loadMoreLeads": "{count, plural, one {Load # more lead} other {Load # more leads}}",
     "leadMovedToStage": "Lead moved to {stage}",
@@ -17857,7 +17947,10 @@
   "similarJobs": {
     "similarJobs": "Similar Jobs",
     "keepExploring": "Keep exploring",
-    "viewRole": "View role"
+    "viewRole": "View role",
+    "matchingSkills": "{count, plural, one {# matching skill} other {# matching skills}}",
+    "remote": "Remote",
+    "companyFallback": "Company"
   },
   "jobSeekerAiInsightsCard": {
     "noInsightsAvailable": "No AI insights available right now",

@@ -95,8 +95,9 @@ export function safePhoto(src: string | undefined): string | null {
   if (!src) return null;
   if (!/^(https?:|data:image\/)/i.test(src)) return null;
   // The PDF fetches the photo from the browser, so a Google or LinkedIn photo
-  // goes through our own proxy like every other render site.
-  return toSafeImageSrc(src) ?? null;
+  // goes through our own proxy like every other render site. No CDN transform:
+  // react-pdf renders JPEG and PNG only, never the AVIF/WebP it would send.
+  return toSafeImageSrc(src, { transform: false }) ?? null;
 }
 
 /**

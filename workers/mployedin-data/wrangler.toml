@@ -1,0 +1,44 @@
+# mployedin-data Worker. Setup steps: README.md.
+# database_id below = the D1 `mployedin` database (D1_DATABASE_ID in the app .env).
+
+name = "mployedin-data"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# Nightly at 02:30 UTC: archive old log rows to R2, rebuild rollups (src/retention.ts).
+[triggers]
+crons = ["30 2 * * *"]
+
+[observability]
+enabled = true
+
+# One D1 database for every log table (src/tables.ts). database_id = D1_DATABASE_ID in the app .env.
+[[d1_databases]]
+binding = "DB_LOGS"
+database_name = "mployedin"
+database_id = "c839c821-65af-4137-92fd-f0c3bb9f36ff"
+migrations_dir = "migrations/logs"
+
+[[vectorize]]
+binding = "VEC_JOBS"
+index_name = "jobs-1024"
+
+[[vectorize]]
+binding = "VEC_SEEKERS"
+index_name = "seekers-1024"
+
+# Admin semantic search over seekers (768-d, see src/vectors.ts SEARCH_DIMENSIONS).
+[[vectorize]]
+binding = "VEC_SEARCH"
+index_name = "seeker-search-768"
+
+# Archived log rows: the PRIVATE bucket (never the public one), under log-archive/.
+[[r2_buckets]]
+binding = "ARCHIVE"
+bucket_name = "mployedin-private"
+
+# Secrets (never in this file):
+#   wrangler secret put DATA_WORKER_SECRET      same value as the app's DATA_WORKER_SECRET (>= 32 chars)
+# Optional:
+#   [vars] RETENTION_DAYS = '{"email_log": 180}'  per-table override, days (minimum 30)

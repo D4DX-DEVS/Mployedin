@@ -10,6 +10,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
 import type { UserRole } from "@/models/User";
 import { generateEmbeddingBatch, buildProfileText } from "@/lib/ai/embeddings";
+import { missingSearchVectorFilter, saveSearchVectors, searchVectorStore } from "@/lib/ai/searchVectors";
 import logger from "@/lib/logger";
 
 const ALLOWED_ROLES: UserRole[] = ["admin", "super_agent"];
@@ -25,9 +26,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const forceAll = body.forceAll === true;
 
   // Find candidates that need embeddings
+  // In whichever store SEARCH_VECTOR_STORE names (lib/ai/searchVectors.ts).
   const filter = forceAll
     ? {}
-    : { $or: [{ searchEmbedding: { $exists: false } }, { searchEmbedding: { $size: 0 } }] };
+    : searchVectorStore() === "vectorize"
+      ? missingSearchVectorFilter()
+      : { $or: [{ searchEmbedding: { $exists: false } }, { searchEmbedding: { $size: 0 } }] };
 
   const candidates = await JobSeeker.find(filter)
     .populate("userId", "name email")
@@ -45,13 +49,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       const embeddings = await generateEmbeddingBatch(texts);
 
       // Store embeddings
-      const updates = batch.map((js, idx) =>
-        JobSeeker.updateOne(
-          { _id: js._id },
-          { $set: { searchEmbedding: embeddings[idx] } }
-        )
-      );
-      await Promise.all(updates);
+      await saveSearchVectors(batch.map((js, idx) => ({ id: js._id, embedding: embeddings[idx] })));
       generated += batch.length;
     } catch (err) {
       logger.error({ err, batchStart: i }, "Embedding batch failed");

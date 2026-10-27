@@ -15,6 +15,7 @@ import RelativeDate from "@/components/shared/RelativeDate";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { getLocalizedCountryName } from "@/lib/i18n/locations";
 import { closesInDays, isPastClosingDate } from "@/lib/jobs/expiry";
 
 interface PageProps {
@@ -91,6 +92,9 @@ function salaryLabel(
 export default async function JobDetailPage({ params }: PageProps) {
   const { locale, id } = await params;
   const t = await getTranslations("publicJobDetail");
+  // Employers store the industry as a key ("human_resources"); the register
+  // form's list holds its label.
+  const tIndustry = await getTranslations("employerRegister.industries");
 
   await connectDB();
   const job = await Job.findById(id)
@@ -343,11 +347,16 @@ export default async function JobDetailPage({ params }: PageProps) {
                 <h3 className="heading-label font-semibold text-foreground">{t("aboutTheEmployer")}</h3>
                 <div className="space-y-2 text-sm text-muted-foreground">
                   <p className="font-medium text-foreground">{employer?.companyName}</p>
-                  {employer?.industry && <p>{t("industry")}: {employer.industry}</p>}
+                  {employer?.industry && (
+                    <p>
+                      {t("industry")}:{" "}
+                      {tIndustry.has(employer.industry) ? tIndustry(employer.industry) : employer.industry.replace(/_/g, " ")}
+                    </p>
+                  )}
                   {employer?.country && (
                     <p className="flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5" />
-                      {employer.city ? `${employer.city}, ` : ""}{employer.country}
+                      {employer.city ? `${employer.city}, ` : ""}{getLocalizedCountryName(employer.country, locale)}
                     </p>
                   )}
                   {employer?.website && (

@@ -7,6 +7,8 @@ import Employer from "@/models/Employer";
 import Application from "@/models/Application";
 import Interview from "@/models/Interview";
 import Notification from "@/models/Notification";
+import SavedJob from "@/models/SavedJob";
+import type { Types } from "mongoose";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import GdprRequest from "@/models/GdprRequest";
@@ -63,12 +65,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const seekerProfile = await JobSeeker.findOne({ userId: ctx.userId }).lean<{ _id: unknown } | null>();
   const employerProfile = ctx.role === "employer" ? await Employer.findOne({ userId: ctx.userId }).lean() : null;
 
-  const [user, applications, interviews, notifications, consentLogs, gdprRequests] = await Promise.all([
+  const [user, applications, interviews, savedJobs, notifications, consentLogs, gdprRequests] = await Promise.all([
     User.findById(ctx.userId).select("-passwordHash").lean(),
     seekerProfile
       ? Application.find({ jobSeekerId: seekerProfile._id }).populate("jobId", "title location").lean()
       : [],
     seekerProfile ? Interview.find({ jobSeekerId: seekerProfile._id }).lean() : [],
+    seekerProfile ? SavedJob.find({ jobSeekerId: seekerProfile._id as Types.ObjectId }).populate("jobId", "title").lean() : [],
     Notification.find({ userId: ctx.userId }).lean(),
     ConsentLog.find({ userId: ctx.userId }).lean(),
     // The team's internal notes about a request stay out of the user's file.
@@ -92,6 +95,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     employerProfile,
     applications,
     interviews,
+    savedJobs,
     notifications,
     consentLogs,
     gdprRequests,

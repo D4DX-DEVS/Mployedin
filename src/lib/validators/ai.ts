@@ -69,6 +69,45 @@ export const aiEnhanceTextSchema = z.object({
   mode: z.enum(["improve", "shorten", "grammar", "suggest"]).optional(),
 });
 
+/**
+ * POST /api/ai/cv-assistant — one chat turn over the whole CV. Only the
+ * wording the assistant may change travels, plus facts for context; contact
+ * details never leave the browser.
+ */
+const cvText = (max: number) => z.string().max(max).default("");
+export const aiCvAssistantSchema = z.object({
+  instruction: z.string().trim().min(1).max(4000),
+  history: z
+    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(2000) }))
+    .max(8)
+    .default([]),
+  cv: z.object({
+    summary: cvText(1000),
+    skills: z.array(z.string().max(80)).max(50).default([]),
+    experience: z
+      .array(z.object({
+        jobTitle: cvText(150),
+        company: cvText(150),
+        startDate: cvText(10),
+        endDate: cvText(10),
+        isCurrent: z.boolean().default(false),
+        description: cvText(4000),
+      }))
+      .max(20)
+      .default([]),
+    projects: z
+      .array(z.object({ title: cvText(150), description: cvText(4000), techStack: z.array(z.string().max(60)).max(20).default([]) }))
+      .max(15)
+      .default([]),
+    education: z
+      .array(z.object({ degree: cvText(150), institution: cvText(150), field: cvText(150) }))
+      .max(10)
+      .default([]),
+    certifications: z.array(z.string().max(200)).max(30).default([]),
+  }),
+});
+export type AiCvAssistantInput = z.infer<typeof aiCvAssistantSchema>;
+
 /** POST /api/ai/profile-fill */
 export const aiProfileFillSchema = z.object({
   section: z.enum(["summary", "skills", "experience", "education", "languages"]),

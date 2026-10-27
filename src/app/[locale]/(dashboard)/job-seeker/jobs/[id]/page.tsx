@@ -15,6 +15,7 @@ import { SkillInsights } from "@/components/features/job-seeker/skills/SkillInsi
 import { JobMatchCard } from "@/components/features/job-seeker/skills/JobMatchCard";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { ShareJob } from "@/components/shared/ShareJob";
+import { SaveJobButton } from "@/components/features/job-seeker/saved/SaveJobButton";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { closesInDays, isPastClosingDate } from "@/lib/jobs/expiry";
@@ -243,6 +244,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                         {t("verifiedEmployer")}
                       </span>
                     )}
+                    <SaveJobButton jobId={String(job._id)} />
                     <ShareJob
                       jobId={String(job._id)}
                       jobTitle={job.title}

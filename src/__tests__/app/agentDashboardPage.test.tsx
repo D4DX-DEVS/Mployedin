@@ -146,44 +146,9 @@ jest.mock("@/models/Placement", () => ({
   },
 }));
 
-// This month's target and commission, the two header figures that replaced
-// the conversion rates (which repeated the pipeline's "% of applicants").
-const targetFindOneMock = jest.fn();
-const commissionAggregateMock = jest.fn();
-const monthlyAchievementsMock = jest.fn();
-
-jest.mock("@/models/TargetProfile", () => ({
-  __esModule: true,
-  PROFIT_TARGET_FILTER: { targetType: "profit" },
-  default: { findOne: (...args: unknown[]) => targetFindOneMock(...args) },
-}));
-jest.mock("@/models/Commission", () => ({
-  __esModule: true,
-  default: { aggregate: (...args: unknown[]) => commissionAggregateMock(...args) },
-}));
-jest.mock("@/lib/targets/profileAchievementCalculator", () => ({
-  calculateMonthlyAchievements: (...args: unknown[]) => monthlyAchievementsMock(...args),
-}));
-
-const THIS_MONTH = new Date().getMonth() + 1;
-const THIS_YEAR = new Date().getFullYear();
 
 describe("AgentDashboard", () => {
   beforeEach(() => {
-    targetFindOneMock.mockReset();
-    targetFindOneMock.mockReturnValue({
-      select: () => ({
-        lean: async () => ({
-          currency: "AED",
-          // An annual target: the tile reads this month's share of it by days.
-          periods: [{ startDate: new Date(Date.UTC(THIS_YEAR, 0, 1)), endDate: new Date(Date.UTC(THIS_YEAR, 11, 31)), profitTarget: 75000 }],
-        }),
-      }),
-    });
-    commissionAggregateMock.mockReset();
-    commissionAggregateMock.mockResolvedValue([{ total: 1500 }]);
-    monthlyAchievementsMock.mockReset();
-    monthlyAchievementsMock.mockResolvedValue([{ month: THIS_MONTH, profitProgress: 42 }]);
     authMock.mockReset();
     redirectMock.mockReset();
     connectDBMock.mockReset();
@@ -223,7 +188,8 @@ describe("AgentDashboard", () => {
     jobCountDocumentsMock.mockResolvedValueOnce(1).mockResolvedValueOnce(4);
     // First call counts every lead, second the converted ones.
     leadCountDocumentsMock.mockReset();
-    leadCountDocumentsMock.mockResolvedValueOnce(6).mockResolvedValueOnce(3);
+    // All leads, won, won today, active this week.
+    leadCountDocumentsMock.mockResolvedValueOnce(6).mockResolvedValueOnce(3).mockResolvedValueOnce(2).mockResolvedValueOnce(4);
     placementCountDocumentsMock.mockReset();
     placementCountDocumentsMock.mockResolvedValue(1);
 
@@ -312,8 +278,8 @@ describe("AgentDashboard", () => {
     expect(screen.getByText(/3 days late/i)).toBeInTheDocument();
 
     // At-a-glance figures ride the header's metric strip (no section of their
-    // own): book size, live roles, this month's target and commission —
-    // nothing the queue or the pipeline already prints. Each is a link.
+    // own): book size, live roles, leads won today, active leads, premium
+    // seekers — nothing the queue or the pipeline already prints. Each is a link.
     expect(screen.queryByRole("heading", { name: /at a glance/i })).toBeNull();
     // Assigned employers with an active login, and the tile opens that same list.
     expect(screen.getByRole("link", { name: "Active employers: 6" }).closest("section")).toHaveClass("workspace-header");
@@ -331,17 +297,20 @@ describe("AgentDashboard", () => {
     expect(gulf).toHaveTextContent("Hires1");
     expect(within(accounts).getByRole("link", { name: /view all/i })).toHaveAttribute("href", "/en/agent/employers?view=assigned");
     expect(screen.getByRole("link", { name: "Live Roles: 1" })).toHaveAttribute("href", "/en/agent/jobs?status=active");
-    expect(screen.getByRole("link", { name: "Target this month: 42%" })).toHaveAttribute("href", "/en/agent/target-report");
-    expect(targetFindOneMock).toHaveBeenCalledWith(expect.objectContaining({ targetType: "profit", assigneeId: "user-1", assigneeRole: "agent", status: "active" }));
-    expect(monthlyAchievementsMock).toHaveBeenCalledWith("user-1", "agent", new Date().getFullYear(), [
-      expect.objectContaining({ month: THIS_MONTH }),
-    ], "AED");
-    const commission = screen.getByRole("link", { name: /^Commission this month: / });
-    expect(commission).toHaveTextContent("1,500");
-    expect(commission.getAttribute("href")).toMatch(/^\/en\/agent\/commissions\?dateFrom=\d{4}-\d{2}-01&dateTo=\d{4}-\d{2}-\d{2}$/);
-    // The agent's own lines, the three statuses the commissions page sums.
-    const [pipelineArg] = commissionAggregateMock.mock.calls[0] as [{ $match?: Record<string, unknown> }[]];
-    expect(pipelineArg[0].$match).toMatchObject({ agentId: "agent-1", status: { $in: ["pending", "approved", "paid"] } });
+    // Client feedback 2026-10-23: converted today, active this week and
+    // premium seekers as cards; each opens the list it counts.
+    expect(screen.getByRole("link", { name: "Leads converted today: 2" })).toHaveAttribute("href", "/en/agent/leads?period=converted_today");
+    expect(screen.getByRole("link", { name: "Active leads this week: 4" })).toHaveAttribute("href", "/en/agent/leads?period=active_week");
+    expect(screen.getByRole("link", { name: "Premium candidates: 0" })).toHaveAttribute("href", "/en/agent/job-seekers?premium=1");
+    // The cards run the list's own period query, in the agent's day and week.
+    expect(leadCountDocumentsMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ agentId: "agent-1", status: "converted", convertedAt: { $gte: expect.any(Date) } }));
+    expect(leadCountDocumentsMock).toHaveBeenNthCalledWith(4, expect.objectContaining({ agentId: "agent-1", status: { $in: ["new", "contacted", "interested", "negotiating"] } }));
+    // Target and commission are links with no figure on the home.
+    expect(screen.getByRole("link", { name: "Target" })).toHaveAttribute("href", "/en/agent/target-report");
+    expect(screen.getByRole("link", { name: "Commission" })).toHaveAttribute("href", "/en/agent/commissions");
+    expect(screen.queryByText(/target this month/i)).toBeNull();
+    expect(screen.queryByText(/commission this month/i)).toBeNull();
+    expect(view.container.textContent).not.toMatch(/AED|1,500/);
     // The rates now live only in the pipeline.
     expect(screen.queryByRole("link", { name: /interview rate/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /offer rate/i })).toBeNull();
@@ -379,7 +348,7 @@ describe("AgentDashboard", () => {
     expect(roleRow).toHaveTextContent("Applications2");
 
     // Nothing on the page repeats: each figure's label appears once.
-    for (const label of ["Active employers", "Live Roles", "Target this month", "Commission this month", "Follow-ups due"]) {
+    for (const label of ["Active employers", "Live Roles", "Leads converted today", "Active leads this week", "Follow-ups due"]) {
       expect(screen.getAllByText(label)).toHaveLength(1);
     }
 
@@ -402,14 +371,6 @@ describe("AgentDashboard", () => {
     expect(onboarded).toBeDefined();
   });
 
-  it("shows a dash, not 0%, when the super-agent has set no target this month", async () => {
-    targetFindOneMock.mockReturnValue({ select: () => ({ lean: async () => null }) });
-    render(await AgentDashboard({ params: Promise.resolve({ locale: "en" }) }));
-    const target = screen.getByRole("link", { name: "Target this month: no target set" });
-    expect(target).toHaveTextContent("—");
-    expect(monthlyAchievementsMock).not.toHaveBeenCalled();
-  });
-
   it("hides the whole chip row when nothing needs action", async () => {
     getAgentActionCountsMock.mockResolvedValue({
       overdueTasks: 0, dueFollowUps: 0, interviewsAwaitingOutcome: 0, offersAwaitingResponse: 0, newCandidates: 0,
@@ -427,7 +388,8 @@ describe("AgentDashboard", () => {
     unmount();
 
     jobCountDocumentsMock.mockResolvedValueOnce(1).mockResolvedValueOnce(4);
-    leadCountDocumentsMock.mockResolvedValueOnce(6).mockResolvedValueOnce(3);
+    // All leads, won, won today, active this week.
+    leadCountDocumentsMock.mockResolvedValueOnce(6).mockResolvedValueOnce(3).mockResolvedValueOnce(2).mockResolvedValueOnce(4);
     resolveAssignedRegionsMock.mockResolvedValueOnce([
       { id: "state-1", type: "state", name: "Kerala", parent: "India" },
       { id: "city-1", type: "city", name: "Tirur", parent: "Kerala, India" },

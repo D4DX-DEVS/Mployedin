@@ -6,6 +6,7 @@ import Link from "next/link";
 import { MapPin, Briefcase } from "lucide-react";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { cn } from "@/lib/utils";
+import { getLocalizedCountryName } from "@/lib/i18n/locations";
 
 interface SimilarJob {
   _id: string;
@@ -70,26 +71,27 @@ export function SimilarJobs({
             className="group block rounded-lg sm:rounded-3xl border border-border/70 bg-card transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_45px_-34px_rgba(37,99,235,0.18)] card-pad"
           >
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {job.overlap} matching skill{job.overlap !== 1 ? "s" : ""}
+              {t("matchingSkills", { count: job.overlap })}
             </div>
             <p className="mt-2 line-clamp-2 text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
               {job.title}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {job.employerId?.companyName ?? "Company"}
+              {job.employerId?.companyName ?? t("companyFallback")}
             </p>
 
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">
               <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
                 <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
                 {job.location?.isRemote
-                  ? "Remote"
-                  : job.location?.country ?? "—"}
+                  ? t("remote")
+                  : getLocalizedCountryName(job.location?.country, locale) || "—"}
               </span>
-              {job.salary?.min && job.salary?.max && (
+              {/* `min && max` printed a bare "0" when the minimum was 0. */}
+              {typeof job.salary?.min === "number" && (job.salary.max ?? 0) > 0 && (
                 <span className="inline-flex rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
                   {job.salary.currency ?? "AED"}{" "}
-                  {formatCount(job.salary.min)}–{formatCount(job.salary.max)}
+                  {formatCount(job.salary.min)}–{formatCount(job.salary.max!)}
                 </span>
               )}
             </div>

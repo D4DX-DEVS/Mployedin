@@ -2,9 +2,10 @@
 
 import { memo } from "react";
 import { useTranslations } from "next-intl";
-import { EyeOff, CheckCircle, Check, Zap } from "lucide-react";
+import { CheckCircle, Check, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ShareJob } from "@/components/shared/ShareJob";
+import { SaveJobButton } from "@/components/features/job-seeker/saved/SaveJobButton";
 import { JobSummaryCard, type JobSummary } from "@/components/features/job-seeker/JobSummaryCard";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -37,7 +38,6 @@ interface JobCardProps {
   job: FeedJob;
   isApplied: boolean;
   onApply: () => void;
-  onHide: () => void;
   locale: string;
   showMatchScore?: boolean;
 }
@@ -85,7 +85,6 @@ export const JobFeedCard = memo(function JobFeedCard({
   job,
   isApplied,
   onApply,
-  onHide,
   locale,
   showMatchScore = true,
 }: JobCardProps) {
@@ -120,14 +119,9 @@ export const JobFeedCard = memo(function JobFeedCard({
             locale={locale}
             variant="icon"
           />
-          <button
-            type="button"
-            onClick={onHide}
-            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary/80 px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <EyeOff className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("hide")}</span>
-          </button>
+          {/* Was "Hide" — a session-only dismiss the client asked to remove
+              (2026-10-27); a lasting Save takes its place. */}
+          <SaveJobButton jobId={job._id} />
           <button
             type="button"
             onClick={onApply}

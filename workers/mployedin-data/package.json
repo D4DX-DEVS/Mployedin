@@ -1,0 +1,15 @@
+{
+  "name": "mployedin-data",
+  "private": true,
+  "description": "Cloudflare Worker: the app's gateway to D1 (logs) and Vectorize (embeddings)",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json",
+    "migrate:local": "wrangler d1 migrations apply mployedin --local",
+    "migrate:remote": "wrangler d1 migrations apply mployedin --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
