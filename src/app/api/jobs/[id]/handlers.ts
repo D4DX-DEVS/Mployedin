@@ -67,6 +67,11 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     (job as Record<string, unknown>).viewerCanManage = Boolean(await agentPostingFor(ctx.userId, ownerId));
   }
 
+  // Whether the caller is the owning side, so the employer job workspace can
+  // say "not found" for another company's live job opened by URL instead of
+  // showing it with owner controls the server would refuse anyway.
+  (job as Record<string, unknown>).viewerIsOwner = isOwnerSide;
+
   if (!isOwnerSide) {
     stripPrivateJobFields(job as Record<string, unknown>);
   } else {

@@ -27,9 +27,10 @@ const distinct = jest.fn(async () => ["applied1"]);
 jest.mock("@/models/Application", () => ({ __esModule: true, default: { distinct: (...a: unknown[]) => distinct(...(a as [])) } }));
 jest.mock("@/models/User", () => ({ __esModule: true, default: {} }));
 
-const seekers = [
+const seekers: Array<Record<string, unknown>> = [
   { _id: "s1", fullName: "Asha", userId: { _id: "u1", name: "Asha", isActive: true }, skills: ["ICU"], experience: [{ jobTitle: "Nurse", company: "City Hospital", isCurrent: true }] },
-  { _id: "s2", fullName: "Bilal", userId: { _id: "u2", name: "Bilal", isActive: true }, skills: [] },
+  // No skill in common, but has done the same kind of work — still listed.
+  { _id: "s2", fullName: "Bilal", userId: { _id: "u2", name: "Bilal", isActive: true }, skills: [], experience: [{ jobTitle: "ICU Nurse", company: "Clinic" }] },
   { _id: "s3", fullName: "Gone", userId: { _id: "u3", isActive: false }, skills: ["ICU"] },
   { _id: "s4", fullName: "Orphan", userId: null, skills: ["ICU"] },
 ];
@@ -49,7 +50,7 @@ jest.mock("@/lib/matching/skillVectors", () => ({
 }));
 const scorePair = jest.fn();
 jest.mock("@/lib/matching/recommend", () => ({
-  toCandidateJob: (job: unknown) => ({ job }),
+  toCandidateJob: (job: { title: string }) => ({ job, profile: { title: job.title } }),
   scorePair: (...a: unknown[]) => scorePair(...a),
 }));
 jest.mock("@/lib/matching/seekerMatches", () => ({
@@ -72,9 +73,10 @@ jest.mock("@/lib/matching/vectorRetrieval", () => ({
 import { matchTalentPoolForJob } from "@/lib/matching/talentPoolMatches";
 
 beforeEach(() => {
-  scorePair.mockImplementation(async (profile: { skills: string[] }) =>
-    profile.skills.length ? { eligible: true, score: 70 } : { eligible: false, reason: "country", score: 30 },
-  );
+  scorePair.mockImplementation(async (profile: { skills: string[] }) => {
+    const breakdown = { matchedSkills: profile.skills.includes("ICU") ? ["ICU"] : [], requiredMatched: [] };
+    return profile.skills.length ? { eligible: true, score: 70, breakdown } : { eligible: false, reason: "country", score: 30, breakdown };
+  });
   computeApplicantMatch.mockImplementation(async ({ seeker }: { seeker: { _id: string } }) => ({
     aiMatchScore: seeker._id === "s1" ? 88 : 41,
     matchBreakdown: { skills: 90, role: 80, experience: 100, overall: 88 },
@@ -100,6 +102,28 @@ it("ranks only discoverable candidates who have not applied, with AI switched of
   expect(loadSkillVectors).toHaveBeenCalledWith(["ICU"], { allowEmbedding: false });
   for (const call of computeApplicantMatch.mock.calls) {
     expect(call[0]).toMatchObject({ engine: { useAi: false }, employerIndustry: "Healthcare", employerWeights: { skills: 50 } });
+  }
+});
+
+it("leaves out people with no skill and no role in common with the job, however strong their numbers", async () => {
+  // A journalist the engine would score highly on experience alone (client, 2026-10-28).
+  seekers.push({ _id: "s5", fullName: "Jo", userId: { _id: "u5", name: "Jo", isActive: true }, skills: ["Copywriting"], experience: [{ jobTitle: "Journalist", company: "Daily" }] });
+  visibleIds = [...visibleIds, "s5"];
+  scorePair.mockImplementation(async (profile: { skills: string[] }) => ({
+    eligible: true,
+    score: profile.skills.includes("Copywriting") ? 99 : 60,
+    breakdown: { matchedSkills: profile.skills.includes("ICU") ? ["ICU"] : [], requiredMatched: [] },
+  }));
+  try {
+    jobDoc.updatedAt = new Date("2026-10-03T00:00:00Z"); // its own cache key
+    const result = await matchTalentPoolForJob(JOB_ID);
+    expect(result!.poolSize).toBe(3);
+    expect(computeApplicantMatch.mock.calls.map((c) => (c[0] as { seeker: { _id: string } }).seeker._id)).not.toContain("s5");
+    expect(result!.candidates.map((c) => c.jobSeekerId).sort()).toEqual(["s1", "s2"]);
+  } finally {
+    seekers.pop();
+    visibleIds = visibleIds.filter((id) => id !== "s5");
+    jobDoc.updatedAt = new Date("2026-10-01T00:00:00Z");
   }
 });
 

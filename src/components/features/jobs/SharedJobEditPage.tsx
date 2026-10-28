@@ -420,13 +420,15 @@ export function SharedJobEditPage({
   const loadedPayloadRef = useRef<Record<string, unknown> | null>(null);
   const updateJob = useUpdateJob();
 
-  // null = the job doesn't exist or isn't the caller's (see useJobDetail).
-  const jobMissing = jobError || jobData === null;
+  // null = the job doesn't exist or isn't the caller's (see useJobDetail). A
+  // live job is public, so another company's one also arrives — flagged
+  // viewerIsOwner: false — and must not open in the editor either.
+  const jobMissing = jobError || jobData === null || jobData?.viewerIsOwner === false;
   const loading = jobLoading || (!formLoaded && !jobMissing);
 
   // Populate form when job data arrives
   useEffect(() => {
-    if (!jobData || formLoaded) return;
+    if (!jobData || formLoaded || jobData.viewerIsOwner === false) return;
 
     const job = jobData;
     let loc: FormData["location"] = { country: "", city: "", isRemote: false, remoteCountries: [] };

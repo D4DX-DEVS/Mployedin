@@ -39,7 +39,7 @@ export interface MatchingCandidatesPage {
   poolSize: number;
   alreadyApplied: number;
   scoredAt: string;
-  job: { _id: string; title: string; status: string };
+  job: { _id: string; title: string; status: string; listsSkills?: boolean };
 }
 
 export const jobMatchingKeys = {

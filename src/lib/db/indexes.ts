@@ -293,6 +293,14 @@ export async function ensureIndexes() {
     { key: { conversationId: 1, createdAt: 1 } },
   ]);
 
+  // ── SavedJobs ──────────────────────────────────────────────────────────────
+  // Restored with saved jobs (2026-10-27). The unique pair is what stops a
+  // double-click saving the same job twice; without it here it never exists.
+  await safeCreateIndexes(db, "savedjobs", [
+    { key: { jobSeekerId: 1, jobId: 1 }, unique: true },
+    { key: { jobSeekerId: 1, savedAt: -1 } },
+  ]);
+
   // ── ImpersonationSessions ─────────────────────────────────────────────────
   await safeCreateIndexes(db, "impersonationsessions", [
     { key: { adminId: 1 } },

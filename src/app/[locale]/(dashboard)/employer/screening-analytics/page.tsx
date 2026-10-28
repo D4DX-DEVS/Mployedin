@@ -254,7 +254,7 @@ export default function ScreeningAnalyticsPage() {
               <>
                 <p className="text-sm font-semibold text-foreground">{t("noJobsYet")}</p>
                 <Button asChild className="mt-4 rounded-xl">
-                  <Link href={`/${locale}/employer/jobs/ai-create`}>{t("postAJob")}</Link>
+                  <Link href={`/${locale}/employer/jobs/new`}>{t("postAJob")}</Link>
                 </Button>
               </>
             ) : (

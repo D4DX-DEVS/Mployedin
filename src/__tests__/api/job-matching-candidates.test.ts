@@ -114,7 +114,8 @@ it("returns the ranked page in the list contract, with invited flags", async () 
   expect(body.data).toHaveLength(10);
   expect(body.data[0]).toMatchObject({ jobSeekerId: "s1", invited: false });
   expect(body.data[1]).toMatchObject({ jobSeekerId: "s2", invited: true });
-  expect(body.job).toEqual({ _id: JOB_ID, title: "Staff Nurse", status: "active" });
+  // No skills on the job: the empty state can say only titles were matched.
+  expect(body.job).toEqual({ _id: JOB_ID, title: "Staff Nurse", status: "active", listsSkills: false });
 });
 
 it("serves the second page", async () => {
@@ -210,6 +211,14 @@ describe("super agent — jobs in their book only", () => {
     expect(body.data).toEqual([]);
     expect(seekerFind).not.toHaveBeenCalled();
   });
+});
+
+it("lets an admin source for any job (the admin Find candidates page)", async () => {
+  role = "admin";
+  assigned = [];
+  const res = await get();
+  expect(res.status).toBe(200);
+  expect((await res.json()).data[0]).not.toHaveProperty("canViewProfile");
 });
 
 it("refuses job seekers", async () => {

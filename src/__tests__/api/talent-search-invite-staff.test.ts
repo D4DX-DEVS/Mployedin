@@ -158,6 +158,14 @@ it("refuses an inactive job", async () => {
   expect((await post()).status).toBe(400);
 });
 
+it("lets an admin invite for any job, in the job's employer's name", async () => {
+  role = "admin";
+  assigned = [];
+  expect((await post()).status).toBe(200);
+  expect(notify).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ companyName: "Gulf Care Clinic" }) }));
+  expect(claimJobInvite).toHaveBeenCalledWith(expect.objectContaining({ invitedByRole: "admin" }));
+});
+
 describe("employer — Suitable profiles tab", () => {
   beforeEach(() => {
     role = "employer";

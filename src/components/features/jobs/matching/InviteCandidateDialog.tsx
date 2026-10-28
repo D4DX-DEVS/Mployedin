@@ -33,7 +33,11 @@ export function InviteCandidateDialog({ jobId, jobTitle, candidate, onClose, rol
   const [message, setMessage] = useState("");
   const invite = useInviteMatchedCandidate(jobId, endpoint);
   // Literal keys only — a template-literal key escapes the missing-key checks.
-  const forbiddenText = role === "employer" ? t("employer.inviteForbidden") : role === "super_agent" ? t("superAgent.inviteForbidden") : t("inviteForbidden");
+  const forbiddenText =
+    role === "employer" ? t("employer.inviteForbidden")
+      : role === "super_agent" ? t("superAgent.inviteForbidden")
+        : role === "admin" ? t("admin.inviteForbidden")
+          : t("inviteForbidden");
 
   useEffect(() => {
     if (candidate) setMessage("");

@@ -22,7 +22,7 @@ import { MatchCandidateCard } from "./MatchCandidateCard";
 import { InviteCandidateDialog } from "./InviteCandidateDialog";
 
 /** Who is looking: decides the wording, the invite route and the profile action. */
-export type MatchingRole = "agent" | "employer" | "super_agent";
+export type MatchingRole = "agent" | "employer" | "super_agent" | "admin";
 
 interface JobMatchesProps {
   jobId: string;
@@ -40,8 +40,9 @@ interface JobMatchesProps {
 /**
  * The database's discoverable candidates ranked for one job, with the reasons
  * behind each score and an invite to apply — the same list for the agent's
- * matches page, the employer's "Suitable profiles" tab and the super agent's
- * matches page. Who may see it, and invite from it, is decided on the server.
+ * matches page, the employer's "Suitable profiles" tab, the super agent's and
+ * the admin's matches pages. Who may see it, and invite from it, is decided on
+ * the server.
  */
 export function JobMatches({ jobId, role, applicantsHref, emptyAction, onViewProfile, header }: JobMatchesProps) {
   const t = useTranslations("agentJobMatches");
@@ -60,7 +61,9 @@ export function JobMatches({ jobId, role, applicantsHref, emptyAction, onViewPro
       ? { how: t("employer.howBody"), forbiddenTitle: t("employer.forbiddenTitle"), forbiddenDescription: t("employer.forbiddenDescription") }
       : role === "super_agent"
         ? { how: t("howBody"), forbiddenTitle: t("superAgent.forbiddenTitle"), forbiddenDescription: t("superAgent.forbiddenDescription") }
-        : { how: t("howBody"), forbiddenTitle: t("forbiddenTitle"), forbiddenDescription: t("forbiddenDescription") };
+        : role === "admin"
+          ? { how: t("howBody"), forbiddenTitle: t("admin.forbiddenTitle"), forbiddenDescription: t("admin.forbiddenDescription") }
+          : { how: t("howBody"), forbiddenTitle: t("forbiddenTitle"), forbiddenDescription: t("forbiddenDescription") };
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -96,7 +99,12 @@ export function JobMatches({ jobId, role, applicantsHref, emptyAction, onViewPro
       ) : isError ? (
         <ErrorState title={t("errorTitle")} description={t("errorDescription")} onRetry={() => refetch()} retryLabel={t("retry")} />
       ) : !data || data.data.length === 0 ? (
-        <EmptyState icon={UserSearch} title={t("emptyTitle")} description={t("emptyDescription")} action={emptyAction} />
+        <EmptyState
+          icon={UserSearch}
+          title={t("emptyTitle")}
+          description={data?.job.listsSkills === false ? t("emptyNoSkills") : t("emptyDescription")}
+          action={emptyAction}
+        />
       ) : (
         <>
           <ul className="space-y-3" aria-label={t("listLabel")}>

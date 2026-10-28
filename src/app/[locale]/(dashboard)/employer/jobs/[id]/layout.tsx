@@ -150,7 +150,10 @@ export default function JobWorkspaceLayout({ children }: { children: ReactNode }
     );
   }
 
-  if (!job) {
+  // A live job is public, so another company's job opened here by URL used to
+  // load with Edit / Pause / Share (all refused by the server). It is not this
+  // workspace's job: say so, as for one that does not exist.
+  if (!job || job.viewerIsOwner === false) {
     return (
       <div className="page-container">
         <div className="card-base p-8 py-20 text-center">

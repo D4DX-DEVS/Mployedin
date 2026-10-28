@@ -2,6 +2,7 @@
  * Ordering for an agent's "matching candidates" list.
  */
 import {
+  isRelevantToJob,
   preferenceMismatchOf,
   rankPoolCandidates,
   shortlistByPairScore,
@@ -31,6 +32,21 @@ describe("rankPoolCandidates", () => {
     ];
     rankPoolCandidates(rows);
     expect(rows[0].score).toBe(10);
+  });
+});
+
+describe("isRelevantToJob (client 2026-10-28: a journalist listed for a backend engineer)", () => {
+  const backend = "Senior Backend Engineer";
+  it("keeps anyone who shares a skill with the job", () => {
+    expect(isRelevantToJob(backend, { matchedSkills: ["Node.js"], roles: ["Journalist"] })).toBe(true);
+  });
+  it("keeps someone who held or wants a similar role, even when the job lists no skills", () => {
+    expect(isRelevantToJob(backend, { matchedSkills: [], roles: ["Backend Developer"] })).toBe(true);
+  });
+  it("drops people whose skills and roles have nothing to do with the job", () => {
+    expect(isRelevantToJob(backend, { matchedSkills: [], roles: ["Journalist"] })).toBe(false);
+    expect(isRelevantToJob(backend, { matchedSkills: [], roles: ["Quality Control Engineer"] })).toBe(false);
+    expect(isRelevantToJob(backend, { matchedSkills: [], roles: [] })).toBe(false);
   });
 });
 

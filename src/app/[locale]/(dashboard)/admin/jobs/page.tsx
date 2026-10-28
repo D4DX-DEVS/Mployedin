@@ -29,7 +29,7 @@ import type { ExportColumn } from "@/lib/export";
 import {
   Inbox, Sparkles, Briefcase, ShieldCheck, FileText, Users, Plus,
   Eye, Building2, MapPin, DollarSign, Clock, Calendar, Globe, UserCheck,
-  Wand2, CheckCircle, ArrowRight, Trash2, Edit2, ClipboardList, SlidersHorizontal, ChevronDown, ChevronUp, X,
+  Wand2, CheckCircle, ArrowRight, Trash2, Edit2, ClipboardList, SlidersHorizontal, ChevronDown, ChevronUp, X, UserSearch,
 } from "lucide-react";
 import { JobsFilterSheet } from "./_components/JobsFilterSheet";
 import { toUserFacingError } from "@/lib/errors/user-facing";
@@ -96,6 +96,13 @@ function getEmploymentTypeOptions(t: ReturnType<typeof useTranslations>): Filter
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
+
+// Cards and the drawer printed the raw DB value ("full time", "onsite"),
+// lowercase and English in Arabic, while the filters above them already
+// had the translated labels.
+function optionLabel(options: FilterOption[], value: string) {
+  return options.find((o) => o.value === value)?.label ?? value.replace(/_/g, " ");
+}
 
 function formatLocation(loc?: string | { isRemote?: boolean; city?: string; country?: string }) {
   if (!loc) return "—";
@@ -660,13 +667,18 @@ export default function AdminJobsPage() {
             const salaryLabel = formatSalary(job, t);
             const jobSummary = getJobSummary(job);
             const isExpanded = expandedJobs.has(job._id);
+            // A job without a vacancy count rendered "— / 0 capacity /
+            // applicants" plus a hint line on every card; show the applicant
+            // count alone until there is a capacity to measure against.
+            const hasCapacity = (job.vacancies ?? 0) > 0;
+            const applicantsLabel = job.applicantsCount == null ? "—" : formatCount(job.applicantsCount);
 
             return (
               <article
                 key={job._id}
                 className="job-listing-card rounded-2xl bg-card p-4 transition-colors hover:bg-muted/20 sm:p-5"
               >
-                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
+                <div className="grid gap-3 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
                   {/* Left: Job metadata */}
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -678,16 +690,20 @@ export default function AdminJobsPage() {
                           and showed the translated label. One job, two strings. */}
                       <StatusBadge status={job.status} />
                     </div>
-                    <dl className="mt-3 grid gap-x-4 gap-y-2 border-y border-border/60 py-2.5 sm:grid-cols-2 lg:grid-cols-4">
+                    {/* Two columns on phones too: one column stacked eight
+                        label/value rows and made each card a full screen tall. */}
+                    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-y border-border/60 py-2.5 lg:grid-cols-4">
                       <JobMeta label={t("employerLabel")} value={job.employerId?.companyName ?? getSourceLabel(job, t)} icon={Building2} />
                       <JobMeta label={t("location")} value={formatLocation(job.location)} icon={MapPin} />
-                      <JobMeta label={t("categoryLabel")} value={job.category ?? "—"} icon={Briefcase} />
+                      {/* Stored as "" on many jobs, which `??` let through as a
+                          label with nothing under it. */}
+                      {job.category?.trim() && <JobMeta label={t("categoryLabel")} value={job.category} icon={Briefcase} />}
                       <JobMeta label={t("salary")} value={salaryLabel ?? t("negotiable")} icon={DollarSign} />
                     </dl>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span>{t("posted", { date: posted })}</span>
-                      {job.employmentType && <span>{job.employmentType.replace(/_/g, " ")}</span>}
-                      {job.workMode && <span>{job.workMode.replace(/_/g, " ")}</span>}
+                      {job.employmentType && <span>{optionLabel(employmentTypeOptionsList, job.employmentType)}</span>}
+                      {job.workMode && <span>{optionLabel(workModeOptionsList, job.workMode)}</span>}
                     </div>
 
                     {(job.requirements?.skills?.length ?? 0) > 0 && (
@@ -705,39 +721,43 @@ export default function AdminJobsPage() {
                     <div className="mt-3 flex flex-wrap items-center gap-2" aria-label={t("jobStatsLabel", { title: job.title })}>
                       <span className="inline-flex items-baseline gap-1.5 rounded-lg bg-secondary/70 px-2.5 py-1.5 text-xs text-muted-foreground ring-1 ring-inset ring-border/60">
                         <span className="text-base font-semibold tabular-nums text-foreground">
-                          {job.vacancies == null ? "—" : formatCount(job.vacancies)} / {job.applicantsCount == null ? "—" : formatCount(job.applicantsCount)}
+                          {hasCapacity ? `${formatCount(job.vacancies!)} / ${applicantsLabel}` : applicantsLabel}
                         </span>
-                        <span>{t("capacityApplicants")}</span>
+                        <span>{hasCapacity ? t("capacityApplicants") : t("applicantsCountLabel")}</span>
                       </span>
-                      <span className="text-xs text-muted-foreground">{t("capacityApplicantsHint")}</span>
+                      {hasCapacity && <span className="text-xs text-muted-foreground max-sm:hidden">{t("capacityApplicantsHint")}</span>}
                     </div>
-                    <button
-                      type="button"
-                      aria-expanded={isExpanded}
-                      onClick={() => setExpandedJobs((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(job._id)) next.delete(job._id); else next.add(job._id);
-                        return next;
-                      })}
-                      aria-label={t(isExpanded ? "collapseJobDetails" : "expandJobDetails", { title: job.title })}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-muted/70 py-2 px-2 text-[11px] font-semibold text-muted-foreground sm:hidden"
-                    >
-                      <span>{isExpanded ? t("less") : t("more")}</span>
-                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                    </button>
                   </div>
 
                   {/* Right: Action panel */}
                   <div aria-label={t("actionsForJob", { title: job.title })} role="group" className="min-w-0 flex flex-col gap-1.5 lg:self-start lg:border-s lg:border-border/70 lg:ps-4">
-                      <Button
-                        size="sm"
-                        className="w-full justify-between gap-2 rounded-lg px-3 shadow-sm"
-                        onClick={() => setSelectedJob(job)}
-                      >
-                        <Eye className="h-4 w-4" />
-                        {t("viewDetails")}
-                        <ArrowRight className="ml-auto h-4 w-4" />
-                      </Button>
+                      {/* The phone-only More toggle sits beside View Details; it
+                          was a full-width bar of its own above it. */}
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          className="min-w-0 flex-1 justify-between gap-2 rounded-lg px-3 shadow-sm"
+                          onClick={() => setSelectedJob(job)}
+                        >
+                          <Eye className="h-4 w-4" />
+                          {t("viewDetails")}
+                          <ArrowRight className="ml-auto h-4 w-4" />
+                        </Button>
+                        <button
+                          type="button"
+                          aria-expanded={isExpanded}
+                          onClick={() => setExpandedJobs((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(job._id)) next.delete(job._id); else next.add(job._id);
+                            return next;
+                          })}
+                          aria-label={t(isExpanded ? "collapseJobDetails" : "expandJobDetails", { title: job.title })}
+                          className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg bg-muted/70 px-3 text-xs font-semibold text-muted-foreground sm:hidden"
+                        >
+                          <span>{isExpanded ? t("less") : t("more")}</span>
+                          {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
                       <div className={`grid grid-cols-2 gap-1 ${isExpanded ? "" : "max-sm:hidden"}`}>
                         <Button
                           size="dense"
@@ -754,6 +774,14 @@ export default function AdminJobsPage() {
                           onClick={() => router.push(`/${locale}/admin/applications?jobId=${job._id}`)}
                         >
                           <ClipboardList className="h-3.5 w-3.5" /> {t("applications")}
+                        </Button>
+                        <Button
+                          size="dense"
+                          variant="ghost"
+                          className="col-span-2 gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
+                          onClick={() => router.push(`/${locale}/admin/jobs/${job._id}/matches`)}
+                        >
+                          <UserSearch className="h-3.5 w-3.5" /> {t("findCandidates")}
                         </Button>
                         <Button
                           size="dense"
@@ -810,8 +838,8 @@ export default function AdminJobsPage() {
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                     <Fact icon={MapPin} label={t("location")} value={formatLocation(selectedJob.location)} />
                     <Fact icon={DollarSign} label={t("salary")} value={formatSalary(selectedJob, t) || "—"} />
-                    {selectedJob.employmentType && <Fact icon={Clock} label={t("type")} value={selectedJob.employmentType.replace(/_/g, " ")} />}
-                    {selectedJob.workMode && <Fact icon={Globe} label={t("workMode")} value={selectedJob.workMode.replace(/_/g, " ")} />}
+                    {selectedJob.employmentType && <Fact icon={Clock} label={t("type")} value={optionLabel(employmentTypeOptionsList, selectedJob.employmentType)} />}
+                    {selectedJob.workMode && <Fact icon={Globe} label={t("workMode")} value={optionLabel(workModeOptionsList, selectedJob.workMode)} />}
                     {(selectedJob.vacancies ?? 0) > 0 && <Fact icon={Users} label={t("vacancies")} value={String(selectedJob.vacancies)} />}
                     <Fact icon={Calendar} label={t("postedLabel")} value={formatListDate(new Date(selectedJob.createdAt), locale)} />
                     <Fact icon={UserCheck} label={t("source")} value={getSourceLabel(selectedJob, t)} />
@@ -890,7 +918,9 @@ function JobMeta({ label, value, icon: Icon }: { label: string; value: string; i
         <Icon className="h-3 w-3 shrink-0" />
         {label}
       </dt>
-      <dd className="mt-0.5 truncate text-xs font-medium text-foreground">{value}</dd>
+      {/* Half-width on phones: wrap to two lines there so "Dubai, United
+          Arab Emirates" isn't cut to "Dubai, United Ar…". */}
+      <dd className="mt-0.5 truncate text-xs font-medium text-foreground max-sm:line-clamp-2 max-sm:whitespace-normal max-sm:break-words" title={value}>{value}</dd>
     </div>
   );
 }

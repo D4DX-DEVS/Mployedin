@@ -2,6 +2,8 @@ import { cn } from "@/lib/utils";
 
 /** The id the Google buttons point `aria-describedby` at. */
 export const GOOGLE_WINDOW_NOTICE_ID = "google-window-notice";
+/** The hidden live region that announces a blocked window — one of several on a page (the password checklist has its own). */
+export const GOOGLE_WINDOW_ANNOUNCER_ID = "google-window-announcer";
 
 interface GoogleWindowNoticeProps {
   /** Shown normally: "Continue with Google opens a Google window". */
@@ -35,7 +37,7 @@ export function GoogleWindowNotice({ notice, blockedMessage, blocked, className 
       >
         {blocked ? blockedMessage : notice}
       </p>
-      <span className="sr-only" aria-live="polite" aria-atomic="true">
+      <span id={GOOGLE_WINDOW_ANNOUNCER_ID} className="sr-only" aria-live="polite" aria-atomic="true">
         {blocked ? blockedMessage : ""}
       </span>
     </>
