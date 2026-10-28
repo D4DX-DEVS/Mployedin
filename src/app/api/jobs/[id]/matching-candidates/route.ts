@@ -52,7 +52,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string
   }
 
   await connectDB();
-  const job = await Job.findOne({ _id: jobId, deletedAt: null }).select("employerId agentId title status").lean();
+  const job = await Job.findOne({ _id: jobId, deletedAt: null }).select("employerId agentId title status requirements.skills").lean();
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
   if (!(await canSourceForJob(ctx, job))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -77,7 +77,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string
     poolSize: result.poolSize,
     alreadyApplied: result.alreadyApplied,
     scoredAt: result.scoredAt,
-    job: { _id: String(job._id), title: job.title, status: job.status },
+    // Lets the empty state say why: a job without skills can only match on title.
+    job: { _id: String(job._id), title: job.title, status: job.status, listsSkills: (job.requirements?.skills ?? []).length > 0 },
   });
 }
 

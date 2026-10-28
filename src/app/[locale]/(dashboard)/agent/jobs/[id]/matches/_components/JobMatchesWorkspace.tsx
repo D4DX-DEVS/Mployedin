@@ -36,7 +36,7 @@ export function JobMatchesWorkspace({ locale, jobId }: JobMatchesWorkspaceProps)
             actions={
               <Link href={jobHref}>
                 <Button variant="outline" className="min-h-11 gap-2 rounded-xl">
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />
                   <span className="hidden sm:inline">{t("backToJob")}</span>
                 </Button>
               </Link>

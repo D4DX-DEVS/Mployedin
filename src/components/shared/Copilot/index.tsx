@@ -99,6 +99,26 @@ function AssistantMarkdown({ content, onInternalLink }: AssistantMarkdownProps) 
   );
 }
 
+/**
+ * The brand mark on the launcher and the empty chat. A dropped request (seen
+ * while a busy dev server lost /favicon.ico) is retried once; if that fails
+ * too, the assistant icon takes its place instead of a broken-image glyph.
+ */
+function CopilotMark() {
+  const [failures, setFailures] = useState(0);
+  if (failures > 1) return <Sparkles className="h-6 w-6 text-primary" aria-hidden />;
+  return (
+    <img
+      key={failures}
+      src={failures === 0 ? "/favicon.ico" : "/favicon.ico?retry=1"}
+      alt=""
+      className="h-8 w-8"
+      draggable={false}
+      onError={() => setFailures((n) => n + 1)}
+    />
+  );
+}
+
 interface CopilotProps {
   className?: string;
 }
@@ -603,7 +623,7 @@ export function Copilot({ className }: CopilotProps) {
         {!showHistory && !hasMessages && (
           <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center text-muted-foreground">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <img src="/favicon.ico" alt="" className="h-8 w-8" draggable={false} />
+              <CopilotMark />
             </div>
             <p className="text-sm font-medium text-foreground">{t("greeting")}</p>
             <p className="text-xs">{t("howCanIHelp")}</p>
@@ -738,7 +758,7 @@ export function Copilot({ className }: CopilotProps) {
           )}
           aria-label={t("openCopilot")}
         >
-          <img src="/favicon.ico" alt="" className="h-8 w-8" draggable={false} />
+          <CopilotMark />
         </button>
       )}
       {open && panel}

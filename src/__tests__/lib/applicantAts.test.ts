@@ -260,6 +260,12 @@ describe("employer-weighted ranking score", () => {
     expect(buildApplicantMatch({ pair, seeker: s, job: j, weights: industryOnly }).aiMatchScore).toBe(90);
   });
 
+  it("does not credit a past role that only shares a generic word like 'engineer'", () => {
+    const s = seeker({ preferredRoles: [], roleHistory: [{ title: "Quality Control Engineer", years: 6 }] });
+    const j = job({ title: "senior backend engineer" });
+    expect(buildApplicantMatch({ pair: pairFor(s, j), seeker: s, job: j, weights: null }).matchBreakdown.role).toBeLessThan(90);
+  });
+
   it("applies Jev's verdict within the same ±10 the engine allows", () => {
     const s = seeker({ skills: ["React"] });
     const j = job({ requiredEducationLevel: 0 });

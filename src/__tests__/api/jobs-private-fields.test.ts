@@ -8,6 +8,7 @@
  */
 
 import { NextRequest } from "next/server";
+import type { UserRole } from "@/models/User";
 
 const OWNER_EMPLOYER = "651000000000000000000001";
 const JOB_ID = "651000000000000000000003";
@@ -115,6 +116,36 @@ describe("GET /api/jobs/[id] — employer-only fields", () => {
     const { job } = await res.json();
 
     expect(job.applicantIds).toEqual([APPLICANT_A, APPLICANT_B]);
+  });
+});
+
+describe("GET /api/jobs/[id] — viewerIsOwner", () => {
+  // The employer job workspace and editor show "not found" when this is false:
+  // a live job is public, so another company's job used to open there by URL
+  // with Edit / Pause / Share the server then refused.
+  beforeEach(() => jest.clearAllMocks());
+
+  async function viewerIsOwner(role: UserRole, scope: string[] | null) {
+    const { getScopedEmployerIds } = await import("@/lib/auth/agentRestrictions");
+    (getScopedEmployerIds as jest.Mock).mockResolvedValue(scope);
+    mockAgentPostingFor.mockResolvedValue(null);
+    const { getHandler } = await import("@/app/api/jobs/[id]/handlers");
+    const req = new NextRequest(`http://localhost:3000/api/jobs/${JOB_ID}`);
+    const { job } = await (await getHandler(req, { userId: "u9", role, locale: "en" }, { id: JOB_ID })).json();
+    return job.viewerIsOwner;
+  }
+
+  it("is true for the owning employer", async () => {
+    expect(await viewerIsOwner("employer", [OWNER_EMPLOYER])).toBe(true);
+  });
+
+  it("is false for another company viewing the live job", async () => {
+    expect(await viewerIsOwner("employer", ["651000000000000000000002"])).toBe(false);
+  });
+
+  it("is false for a job seeker and true for an admin", async () => {
+    expect(await viewerIsOwner("job_seeker", [])).toBe(false);
+    expect(await viewerIsOwner("admin", null)).toBe(true);
   });
 });
 

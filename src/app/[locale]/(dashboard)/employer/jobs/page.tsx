@@ -381,7 +381,7 @@ export default function EmployerJobsPage() {
           <>
             {can("jobs", "create") ? (
               <Button
-                onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
+                onClick={() => router.push(`/${locale}/employer/jobs/new`)}
                 aria-label={t("postAJob")}
                 className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
               >
@@ -612,7 +612,7 @@ export default function EmployerJobsPage() {
             </Button>
           ) : (
             <Button
-              onClick={() => router.push(`/${locale}/employer/jobs/ai-create`)}
+              onClick={() => router.push(`/${locale}/employer/jobs/new`)}
               className="mt-6 h-10 gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:h-11"
             >
               <Plus className="h-4 w-4" />

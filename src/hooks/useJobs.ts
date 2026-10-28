@@ -50,6 +50,8 @@ export interface Job {
   employerId?: { _id?: string; companyName?: string; logo?: string; industry?: string };
   /** Agents only: the job's employer is assigned to them, so they can open it in employer view. */
   viewerCanManage?: boolean;
+  /** The caller is the owning side (their company's job, within their job scope). */
+  viewerIsOwner?: boolean;
   applicantIds?: string[];
   applicationCount?: number;
   createdAt: string;

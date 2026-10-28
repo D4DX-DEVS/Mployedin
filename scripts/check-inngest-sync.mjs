@@ -136,15 +136,33 @@ async function inngestRuns(from, to) {
   let truncated = 0;
   for (let t = from; t < to; t += 3_600_000) {
     for (const name of ["inngest/function.finished", "inngest/function.failed"]) {
-      const url = new URL("https://api.inngest.com/v1/events");
-      url.searchParams.set("name", name);
-      url.searchParams.set("limit", "100");
-      url.searchParams.set("received_after", new Date(t).toISOString());
-      url.searchParams.set("received_before", new Date(Math.min(t + 3_600_000, to)).toISOString());
-      const res = await fetch(url, { headers });
-      if (!res.ok) throw new Error(`Inngest events API answered ${res.status}`);
-      const data = (await res.json()).data ?? [];
-      if (data.length >= 100) truncated++;
+      // The API returns newest-first and silently stops short of `limit` when the
+      // events are large (2026-10-28: 51 of an hour's events, no cursor, so the
+      // 03:00 cron runs looked MISSING). Page backwards from the oldest event seen
+      // until a page brings nothing new.
+      const data = [];
+      const seen = new Set();
+      let before = Math.min(t + 3_600_000, to);
+      for (let page = 0; page < 50; page++) {
+        const url = new URL("https://api.inngest.com/v1/events");
+        url.searchParams.set("name", name);
+        url.searchParams.set("limit", "100");
+        url.searchParams.set("received_after", new Date(t).toISOString());
+        url.searchParams.set("received_before", new Date(before).toISOString());
+        const res = await fetch(url, { headers });
+        if (!res.ok) throw new Error(`Inngest events API answered ${res.status}`);
+        const batch = ((await res.json()).data ?? []).filter((e) => {
+          const id = e.internal_id ?? e.id;
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+        if (batch.length === 0) break;
+        data.push(...batch);
+        // +1 ms: events sharing the oldest timestamp are re-fetched and dropped above.
+        before = Math.min(...batch.map((e) => Date.parse(e.received_at))) + 1;
+        if (page === 49) truncated++;
+      }
       for (const e of data) {
         const fid = e.data?.function_id;
         if (!fid) continue;
@@ -217,7 +235,7 @@ for (const f of fns.filter((fn) => fn.cron)) {
 }
 
 console.log(`Inngest sync check — last ${HOURS}h, ${fns.length} functions in code, ${runs.size} seen running in Inngest.`);
-if (truncated > 0) console.log(`Note: ${truncated} hour-window(s) hit the 100-event page limit; counts there are a floor.`);
+if (truncated > 0) console.log(`Note: ${truncated} hour-window(s) still had events after 50 pages; counts there are a floor.`);
 if (unresolved.length > 0) console.log(`Note: couldn't resolve ${unresolved.join(", ")} from route.ts — check them by hand.`);
 printTable("STALE — runs in Inngest, not in the code", stale);
 printTable("MISSING — cron in the code, due in the window, never ran", missing);

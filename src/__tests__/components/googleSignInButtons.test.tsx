@@ -53,11 +53,13 @@ const NOTICE = "Continue with Google opens a Google window";
 
 /** The line under the button: its text is the notice, or the blocked message. */
 const noticeLine = () => document.getElementById("google-window-notice") as HTMLElement;
-/** What a screen reader is told: the text of the polite live region(s). */
-const announced = () =>
-  Array.from(document.querySelectorAll('[aria-live="polite"]'))
-    .map((node) => node.textContent)
-    .join("");
+/**
+ * The Google notice's own live region. Not "the first polite region on the
+ * page": the register form's password checklist is a live region too.
+ */
+const announcer = () => document.getElementById("google-window-announcer");
+/** What the Google notice tells a screen reader. */
+const announced = () => announcer()?.textContent ?? "";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -191,8 +193,9 @@ describe.each(cases)("$name page: the browser blocked the Google window", ({ ope
     getGoogleIdToken.mockRejectedValueOnce(new GooglePopupBlockedError());
     const button = open();
     // A screen reader only announces text added to a live region it already knows about.
-    const region = document.querySelector('[aria-live="polite"]');
+    const region = announcer();
     expect(region).not.toBeNull();
+    expect(region).toHaveAttribute("aria-live", "polite");
     expect(region).toBeEmptyDOMElement();
 
     await act(async () => {
@@ -200,7 +203,7 @@ describe.each(cases)("$name page: the browser blocked the Google window", ({ ope
     });
 
     await expectBlockedMessage();
-    expect(document.querySelector('[aria-live="polite"]')).toBe(region);
+    expect(announcer()).toBe(region);
     const message = noticeLine();
     expect(message.id).not.toBe("");
     expect(button.getAttribute("aria-describedby")).toBe(message.id);

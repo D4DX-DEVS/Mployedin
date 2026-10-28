@@ -8,6 +8,7 @@
  */
 import type { IneligibleReason } from "@/lib/matching/eligibility";
 import type { QualificationKey, RequirementsStatus } from "@/lib/matching/qualifications";
+import { sharesRole } from "@/lib/matching/roleMatch";
 
 /** Candidates scored in full per request, after a cheap first pass over the pool. */
 export const TALENT_POOL_SHORTLIST = 50;
@@ -34,6 +35,17 @@ export interface RankablePoolCandidate {
 export function rankPoolCandidates<T extends RankablePoolCandidate>(rows: readonly T[]): T[] {
   const tier = (row: T) => (row.preferenceMismatch ? 2 : 0) + (row.requirementsStatus === "not_met" ? 1 : 0);
   return [...rows].sort((a, b) => tier(a) - tier(b) || b.score - a.score);
+}
+
+/**
+ * Whether a candidate belongs on the list at all: they share at least one of
+ * the job's skills, or have held or want the same kind of role. Everyone else
+ * is left out, however many years they have — a list that always showed the
+ * best 50 put a journalist and a sales executive among the "suitable" profiles
+ * for a backend engineer (client, 2026-10-28).
+ */
+export function isRelevantToJob(jobTitle: string, candidate: { matchedSkills: readonly string[]; roles: readonly string[] }): boolean {
+  return candidate.matchedSkills.length > 0 || sharesRole(jobTitle, candidate.roles);
 }
 
 /** First pass: which of the pool get a full score. Eligible pairs lead. */

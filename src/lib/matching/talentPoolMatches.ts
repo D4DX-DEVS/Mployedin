@@ -15,6 +15,7 @@ import type { IneligibleReason } from "@/lib/matching/eligibility";
 import type { RequirementsStatus } from "@/lib/matching/qualifications";
 import {
   TALENT_POOL_SHORTLIST,
+  isRelevantToJob,
   preferenceMismatchOf,
   rankPoolCandidates,
   shortlistByPairScore,
@@ -163,10 +164,16 @@ async function rankPoolForJob(jobId: string, job: Lean): Promise<TalentPoolMatch
   const firstPass = await Promise.all(
     seekers.map(async (seeker, i) => {
       const pair = await scorePair(profiles[i], candidateJob, { threshold: engine.threshold, useAi: false, vectors });
-      return { seeker, eligible: pair.eligible, reason: pair.reason, score: pair.score };
+      const relevant = isRelevantToJob(candidateJob.profile.title ?? "", {
+        matchedSkills: [...pair.breakdown.matchedSkills, ...pair.breakdown.requiredMatched],
+        roles: [...(profiles[i].roleHistory ?? []).map((role) => role.title), ...(profiles[i].preferredRoles ?? [])],
+      });
+      return { seeker, eligible: pair.eligible, reason: pair.reason, score: pair.score, relevant };
     }),
   );
-  const shortlist = shortlistByPairScore(firstPass, TALENT_POOL_SHORTLIST);
+  // Only people with a skill or a role in common with the job are listed —
+  // filtered before the cap, so unrelated profiles never crowd out real ones.
+  const shortlist = shortlistByPairScore(firstPass.filter((row) => row.relevant), TALENT_POOL_SHORTLIST);
 
   // Pass 2 — the employer-side score for the shortlist.
   const employerWeights = (employer as { matchingWeights?: unknown } | null)?.matchingWeights;

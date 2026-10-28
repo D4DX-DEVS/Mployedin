@@ -50,7 +50,7 @@ export function SmartHeader({
     subtitleCount = 0;
   }
 
-  const newJobHref = `/${locale}/employer/jobs/ai-create`;
+  const newJobHref = `/${locale}/employer/jobs/new`;
   const activityLabel =
     lastActivityMinutes !== null
       ? t("lastActivity", { time: formatTimeAgo(lastActivityMinutes, t) })

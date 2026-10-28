@@ -95,7 +95,7 @@ export function PriorityActions({
     actions.push({
       icon: Briefcase,
       textKey: "postFirstJob",
-      href: `/${locale}/employer/jobs/ai-create`,
+      href: `/${locale}/employer/jobs/new`,
       priority: "urgent",
       actionLabelKey: "postAJob",
     });

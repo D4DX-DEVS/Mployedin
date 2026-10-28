@@ -17,7 +17,7 @@ export interface DbConnectionLike {
   name?: string | null;
 }
 
-/** `ac-pcc6abc-shard-00-01.alklmea.mongodb.net` → `ac-p…alklmea.mongodb.net`. */
+/** `ac-xyz9fix-shard-00-01.fx0test.mongodb.net` → `ac-x…fx0test.mongodb.net`. */
 export function maskDbHost(host: string | null | undefined): string {
   if (!host) return "unknown host";
   const dot = host.indexOf(".");
@@ -25,7 +25,7 @@ export function maskDbHost(host: string | null | undefined): string {
   return `${host.slice(0, Math.min(4, dot))}…${host.slice(dot + 1)}`;
 }
 
-/** `<masked host>/<database>`, e.g. `ac-p…alklmea.mongodb.net/mployedin`. */
+/** `<masked host>/<database>`, e.g. `ac-x…fx0test.mongodb.net/mployedin`. */
 export function describeDbTarget(connection: DbConnectionLike | null | undefined): string {
   return `${maskDbHost(connection?.host)}/${connection?.name || "(no database)"}`;
 }

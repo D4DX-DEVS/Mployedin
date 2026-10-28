@@ -10900,7 +10900,8 @@
     "less": "Less",
     "filterChipNoApplications": "No applications",
     "filterChipExpiringSoon": "Closing within 7 days",
-    "jobNotFound": "We couldn't find that job. It may have been deleted."
+    "jobNotFound": "We couldn't find that job. It may have been deleted.",
+    "findCandidates": "Find candidates"
   },
   "adminSettings": {
     "pageTitle": "Settings",
@@ -19483,8 +19484,8 @@
     "backToJob": "Back to job",
     "refreshing": "Refreshing…",
     "howTitle": "How this list works",
-    "howBody": "Candidates in the database who allow employers to find them, ranked by how well they fit this job. The percentage is the same job-fit score the employer sees once a candidate applies.",
-    "poolStats": "{pool} candidates checked · best {shown} listed · {applied} already applied.",
+    "howBody": "Candidates in the database who allow employers to find them and share at least one skill with this job, or have held or want a similar role — best fit first. The percentage is the same job-fit score the employer sees once a candidate applies.",
+    "poolStats": "{pool} candidates checked · {shown} fit this job · {applied} already applied.",
     "viewApplicants": "View applicants",
     "inviteNeedsActive": "This job is not published, so candidates cannot be invited yet. Publish it to send invites.",
     "errorTitle": "We couldn't load matching candidates",
@@ -19544,10 +19545,11 @@
     "forbiddenTitle": "This job's employer isn't assigned to you",
     "forbiddenDescription": "You can find and invite candidates only for employers assigned to you. Ask your super agent if you should be working this account.",
     "employer": {
-      "howBody": "Candidates in the database who allow employers to find them, ranked by how well they fit this job. The percentage is the same job-fit score you see when a candidate applies. Contact details and CVs stay private until a candidate applies.",
+      "howBody": "Candidates in the database who allow employers to find them and share at least one skill with this job, or have held or want a similar role — best fit first. The percentage is the same job-fit score you see when a candidate applies. Contact details and CVs stay private until a candidate applies.",
       "forbiddenTitle": "This job isn't one of yours",
       "forbiddenDescription": "You can see suitable profiles only for your company's own jobs.",
-      "inviteForbidden": "You can invite candidates only to your company's own jobs."
+      "inviteForbidden": "You can invite candidates only to your company's own jobs.",
+      "addSkills": "Add skills to this job"
     },
     "superAgent": {
       "forbiddenTitle": "This job isn't in your book",
@@ -19558,7 +19560,14 @@
     "viewProfile": "View profile",
     "viewProfileAria": "View {name}'s profile",
     "profileOutsideTerritory": "Profile outside your team and territory",
-    "inviteTooMany": "You've sent a lot of invites in a short time. Wait a minute and try again."
+    "inviteTooMany": "You've sent a lot of invites in a short time. Wait a minute and try again.",
+    "admin": {
+      "forbiddenTitle": "This job's candidates aren't available here",
+      "forbiddenDescription": "If you're viewing the site as an employer, go back to the admin view and open the job again.",
+      "inviteForbidden": "This invite wasn't allowed. If you're viewing the site as an employer, go back to the admin view and try again.",
+      "backToJobs": "Back to jobs"
+    },
+    "emptyNoSkills": "This job doesn't list any required skills, so only people with a similar job title can be found — and no one fits yet. Add the skills you need to the job to find more candidates."
   },
   "adminWhatsApp": {
     "pageTitle": "WhatsApp",

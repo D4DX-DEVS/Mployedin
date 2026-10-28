@@ -23,7 +23,8 @@
  */
 
 import { DEFAULT_WEIGHTS, type MatchingWeights } from "@/lib/ai/matchingWeights";
-import { flattenText, type JobProfile, type SeekerProfile } from "@/lib/matchScore";
+import type { JobProfile, SeekerProfile } from "@/lib/matchScore";
+import { roleWords, sharesRole } from "@/lib/matching/roleMatch";
 import { applyJev, type PairScore } from "@/lib/matching/recommend";
 import { evaluateKnockout } from "@/lib/matching/knockouts";
 import { LOCALITY_POINTS } from "@/lib/matching/locality";
@@ -62,30 +63,20 @@ export interface ApplicantMatch {
   weightsApplied: boolean;
 }
 
-const ROLE_STOPWORDS = new Set([
-  "senior", "junior", "lead", "principal", "staff", "chief", "head", "assistant",
-  "associate", "executive", "officer", "specialist", "trainee", "intern", "the", "and", "for", "with",
-]);
-
-function roleWords(title: string): Set<string> {
-  return new Set(flattenText(title).split(" ").filter((w) => w.length >= 3 && !ROLE_STOPWORDS.has(w)));
-}
-
 /**
  * Role experience for the employer: the better of "wants this role" (the
- * engine's role part) and "has done this role" — a past job title sharing a
- * significant word with this one. The engine only reads the former, which
- * scores a career QA engineer with no stated preferences as neutral for a QA
- * job.
+ * engine's role part) and "has done this role" — a past job title of the same
+ * kind of work (roleMatch.ts; a shared "engineer" alone is not). The engine
+ * only reads the former, which scores a career QA engineer with no stated
+ * preferences as neutral for a QA job.
  */
 function roleFit(seeker: SeekerProfile, job: JobProfile, engineRole: number): number {
-  const target = roleWords(job.title ?? "");
-  if (target.size === 0) return engineRole;
+  if (roleWords(job.title ?? "").size === 0) return engineRole;
   const history = seeker.roleHistory ?? [];
   // No wanted roles and no past ones: the engine's neutral 50 would rank
   // "told us nothing" alongside an honest partial fit.
   if (history.length === 0 && (seeker.preferredRoles ?? []).length === 0) return NOT_PROVIDED_PART;
-  const didIt = history.some((role) => [...roleWords(role.title)].some((w) => target.has(w)));
+  const didIt = sharesRole(job.title ?? "", history.map((role) => role.title));
   return didIt ? Math.max(engineRole, 90) : engineRole;
 }
 
