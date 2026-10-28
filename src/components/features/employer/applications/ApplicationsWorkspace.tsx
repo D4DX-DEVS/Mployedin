@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
@@ -251,7 +251,13 @@ interface EmployerAiSnapshot {
   statusFilter: string;
   scoreRange: [number, number];
   skillsFilter: string[];
+  requirementsFilter: RequirementsFilter;
 }
+
+/** The must-haves checklist roll-up the list can be narrowed to. */
+type RequirementsFilter = "all" | "met" | "not_met";
+const isRequirementsFilter = (value: unknown): value is RequirementsFilter =>
+  value === "all" || value === "met" || value === "not_met";
 
 /** Sentinel status filter meaning "shortlisted or any later stage". */
 const SHORTLIST_REACHED = "shortlisted+";
@@ -512,6 +518,11 @@ export function ApplicationsWorkspace({
     return [emin ? Number(emin) : null, emax ? Number(emax) : null];
   });
   const [skillsFilter, setSkillsFilter] = useState<string[]>(() => (searchParams.get("skills") ?? "").split(",").filter(Boolean));
+  const [requirementsFilter, setRequirementsFilter] = useState<RequirementsFilter>(() => {
+    const value = searchParams.get("requirements");
+    return isRequirementsFilter(value) ? value : "all";
+  });
+  const requirementsParam = requirementsFilter === "all" ? undefined : requirementsFilter;
 
   interface EmployerJob {
     _id: string;
@@ -585,6 +596,7 @@ export function ApplicationsWorkspace({
     experienceMin: debouncedExperienceRange[0] ?? undefined,
     experienceMax: debouncedExperienceRange[1] ?? undefined,
     skills: skillsFilter.length > 0 ? skillsFilter : undefined,
+    requirements: requirementsParam,
     sortBy,
     sortOrder,
     unreviewed: unreviewedOnly || undefined,
@@ -674,7 +686,7 @@ export function ApplicationsWorkspace({
     setPage(1);
     setSelected([]);
      
-  }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, sortOption, unreviewedOnly]);
+  }, [statusFilter, scoreRange, daysFilter, searchQuery, jobFilter, experienceRange, skillsFilter, requirementsFilter, sortOption, unreviewedOnly]);
 
   function updateApplicationStatus(id: string, status: string, reason?: string, acknowledgeOpenInterview?: boolean, stageId?: string) {
     return updateStatus.mutateAsync({ id, status, rejectionReason: reason, acknowledgeOpenInterview, stageId });
@@ -851,6 +863,7 @@ export function ApplicationsWorkspace({
         experienceMin: debouncedExperienceRange[0] ?? undefined,
         experienceMax: debouncedExperienceRange[1] ?? undefined,
         skills: skillsFilter.length > 0 ? skillsFilter : undefined,
+        requirements: requirementsParam,
         unreviewed: unreviewedOnly || undefined,
       });
     } catch {
@@ -1110,7 +1123,7 @@ export function ApplicationsWorkspace({
   const employerName = applications.find((app) => app.jobId?.employerId?.companyName)?.jobId?.employerId?.companyName ?? tw("yourCompany");
   const firstSelected = applications.find((app) => selected.includes(app._id));
   const previewCandidateName = firstSelected ? getCandidateName(firstSelected) : t("candidateFallback");
-  const hasActiveRefinement = statusFilter !== "all" || scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter !== null || searchQuery.trim().length > 0 || (!jobPinned && !!jobFilter) || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0;
+  const hasActiveRefinement = statusFilter !== "all" || scoreRange[0] > 0 || scoreRange[1] < 100 || daysFilter !== null || searchQuery.trim().length > 0 || (!jobPinned && !!jobFilter) || experienceRange[0] !== null || experienceRange[1] !== null || skillsFilter.length > 0 || requirementsFilter !== "all";
   // Everything the Filters panel holds, counted on its button so a closed panel
   // still says the list is narrowed. Sort orders the list; it filters nothing.
   const activeFilterCount = [
@@ -1119,22 +1132,28 @@ export function ApplicationsWorkspace({
     daysFilter !== null,
     experienceRange[0] !== null || experienceRange[1] !== null,
     skillsFilter.length > 0,
+    requirementsFilter !== "all",
     unreviewedOnly,
   ].filter(Boolean).length;
+  // Something on screen hides applicants, so an empty list means "no match",
+  // not "nobody applied" (rollout check 2026-10-28).
+  const listIsNarrowed = activeFilterCount > 0 || searchQuery.trim().length > 0;
 
   // Ask AI, from the search box. It fills the filters this list already has
-  // and replaces only the ones it understands (keyword, stage, score, skills);
+  // and replaces only the ones it understands (keyword, stage, score, skills,
+  // must-haves);
   // the job, sort and the rest of the panel stay. Dates, source and company
   // have no control here, so they are dropped rather than claimed.
   const tAi = useTranslations("aiFilterSearch");
   const ai = useAiFilterSearch<AiApplicationFilters, EmployerAiSnapshot>({
     endpoint: "/api/ai/application-search-filters",
-    snapshot: () => ({ searchQuery, statusFilter, scoreRange, skillsFilter }),
+    snapshot: () => ({ searchQuery, statusFilter, scoreRange, skillsFilter, requirementsFilter }),
     restore: (snap) => {
       setSearchQuery(snap.searchQuery);
       setStatusFilter(snap.statusFilter);
       setScoreRange(snap.scoreRange);
       setSkillsFilter(snap.skillsFilter);
+      setRequirementsFilter(snap.requirementsFilter);
     },
     apply: (f) => {
       const applied: string[] = [];
@@ -1142,6 +1161,8 @@ export function ApplicationsWorkspace({
       if (stage) applied.push(stage.label);
       const band = f.scoreBand ? AI_SCORE_BANDS[f.scoreBand] : undefined;
       if (band) applied.push(tAi("scoreRange", { min: band[0], max: band[1] }));
+      const nextRequirements: RequirementsFilter = f.requirements === "met" || f.requirements === "not_met" ? f.requirements : "all";
+      if (nextRequirements !== "all") applied.push(t(nextRequirements === "met" ? "mustHavesMet" : "mustHavesNotMet"));
       const nextSkills = f.skills ?? [];
       applied.push(...nextSkills);
       const keyword = f.search ?? "";
@@ -1150,6 +1171,7 @@ export function ApplicationsWorkspace({
       if (!stageLock) setStatusFilter(stage?.value ?? "all");
       setScoreRange(band ? [band[0], band[1]] : [0, 100]);
       setSkillsFilter(nextSkills);
+      setRequirementsFilter(nextRequirements);
       setSearchQuery(keyword);
       return applied;
     },
@@ -1171,8 +1193,15 @@ export function ApplicationsWorkspace({
     setDaysFilter(null);
     setExperienceRange([null, null]);
     setSkillsFilter([]);
+    setRequirementsFilter("all");
     if (unreviewedOnly) setUnreviewed(false);
     ai.dismiss();
+  }
+
+  /** Every filter plus the keyword — the empty list's way back to everyone. */
+  function clearAllFilters() {
+    resetPanelFilters();
+    setSearchQuery("");
   }
 
   async function handleBulkAction(
@@ -1547,8 +1576,26 @@ export function ApplicationsWorkspace({
             </Button>
           </div>
 
+          {/* Must-haves — the checklist roll-up each row's badge shows. Ask AI
+              sets it too ("candidates who meet the must-haves"). */}
+          <div className="col-span-2 min-w-0 space-y-1.5 sm:col-span-1">
+            <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("mustHavesLabel")}</label>
+            <SearchableSelect
+              className="h-11 w-full rounded-xl border-border bg-background/80 text-sm sm:h-10"
+              options={[
+                { value: "all", label: t("mustHavesAll") },
+                { value: "met", label: t("mustHavesMet") },
+                { value: "not_met", label: t("mustHavesNotMet") },
+              ]}
+              value={requirementsFilter}
+              onValueChange={(v) => setRequirementsFilter(isRequirementsFilter(v) ? v : "all")}
+              placeholder={t("mustHavesLabel")}
+              ariaLabel={t("mustHavesLabel")}
+            />
+          </div>
+
           {/* AI Score Range */}
-          <div className="col-span-2 space-y-1.5 sm:col-span-1 lg:col-span-2">
+          <div className="col-span-2 space-y-1.5 sm:col-span-1">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("aiScoreRange")}</label>
             <div className="flex items-center gap-2">
               <input type="number" min={0} max={100} value={scoreRange[0]}
@@ -1998,6 +2045,7 @@ export function ApplicationsWorkspace({
                 experienceMin: debouncedExperienceRange[0] ?? undefined,
                 experienceMax: debouncedExperienceRange[1] ?? undefined,
                 skills: skillsFilter.length > 0 ? skillsFilter : undefined,
+                requirements: requirementsParam,
                 sortBy,
                 sortOrder,
                 unreviewed: unreviewedOnly || undefined,
@@ -2008,8 +2056,13 @@ export function ApplicationsWorkspace({
           ) : (
             <TableView
               applications={filteredApplications}
-              emptyTitle={stageLock === "shortlisted" ? tw("shortlistEmpty") : undefined}
-              emptyDescription={stageLock === "shortlisted" ? tw("shortlistEmptyDesc") : undefined}
+              emptyTitle={listIsNarrowed ? t("noMatchingApplications") : stageLock === "shortlisted" ? tw("shortlistEmpty") : undefined}
+              emptyDescription={listIsNarrowed ? t("noMatchingApplicationsDesc") : stageLock === "shortlisted" ? tw("shortlistEmptyDesc") : undefined}
+              emptyAction={listIsNarrowed ? (
+                <Button type="button" variant="outline" className="min-h-11 rounded-xl sm:min-h-10" onClick={clearAllFilters}>
+                  {t("clearFilters")}
+                </Button>
+              ) : undefined}
               selected={selected}
               onToggle={canUpdate ? toggleSelect : undefined}
               onGenerateAiMatch={canUpdate ? handleGenerateAiMatch : undefined}
@@ -2203,7 +2256,7 @@ function CheckChip({ check }: { check: CandidateCheck }) {
 }
 
 function TableView({
-  applications, selected, onToggle, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOpenDetails, getCandidateName, onViewCv, hasActiveRefinement, compact, emptyTitle, emptyDescription, sortBy, sortOrder, onSort
+  applications, selected, onToggle, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOpenDetails, getCandidateName, onViewCv, hasActiveRefinement, compact, emptyTitle, emptyDescription, emptyAction, sortBy, sortOrder, onSort
 }: {
   applications: Applicant[];
   selected: string[];
@@ -2220,6 +2273,8 @@ function TableView({
    *  wrong on a Shortlist that simply has nobody in it yet. */
   emptyTitle?: string;
   emptyDescription?: string;
+  /** Shown under the empty message, e.g. Clear filters when filters hide everyone. */
+  emptyAction?: ReactNode;
   /** With onSort, the Match and Applied On headers sort the list. */
   sortBy?: "appliedAt" | "aiMatchScore";
   sortOrder?: "asc" | "desc";
@@ -2252,6 +2307,7 @@ function TableView({
         icon={Inbox}
         title={emptyTitle ?? t("noApplications")}
         description={emptyDescription ?? t("noApplicationsDesc")}
+        action={emptyAction}
       />
     );
   }

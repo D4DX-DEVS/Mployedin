@@ -424,6 +424,14 @@ export function SharedJobEditPage({
   // live job is public, so another company's one also arrives — flagged
   // viewerIsOwner: false — and must not open in the editor either.
   const jobMissing = jobError || jobData === null || jobData?.viewerIsOwner === false;
+  // What saving does depends on the job. A draft stays a draft until Publish;
+  // a live job's changes go live; a paused, closed or expired one keeps its
+  // status until Publish makes it live again. A live job used to say "Changes
+  // save as draft" beside "Save Draft" (rollout check 2026-10-28).
+  const isDraft = jobData?.status === "draft";
+  const isLive = jobData?.status === "active";
+  const saveLabel = isDraft ? t("saveDraft") : t("saveChanges");
+  const pageNote = isDraft ? t("description") : isLive ? t("liveDescription") : t("keepsStatusDescription");
   const loading = jobLoading || (!formLoaded && !jobMissing);
 
   // Populate form when job data arrives
@@ -605,7 +613,8 @@ export function SharedJobEditPage({
   }
 
   const submit = useCallback(async (publish: boolean) => {
-    if (!validate(publish)) return;
+    // Only a draft may be saved incomplete; the server checks anything else in full.
+    if (!validate(publish || !isDraft)) return;
     setSubmitState(publish ? "publishing" : "saving");
     setGlobalError("");
 
@@ -624,7 +633,7 @@ export function SharedJobEditPage({
       setSubmitState("error");
       setTimeout(() => setSubmitState("idle"), 3000);
     }
-  }, [afterSaveHref, form, id, router, updateJob]);
+  }, [afterSaveHref, form, id, isDraft, router, updateJob]);
 
   if (loading) {
     return (
@@ -684,7 +693,7 @@ export function SharedJobEditPage({
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-bold">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{t("description")}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{pageNote}</p>
         </div>
         <div className="flex flex-wrap gap-2 flex-shrink-0">
           <JobAssistantOpenButton />
@@ -692,13 +701,15 @@ export function SharedJobEditPage({
             {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("saving")}</>
               : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />{t("saved")}</>
               : submitState === "error" ? <><AlertCircle className="w-3.5 h-3.5 me-1.5 text-destructive" />{t("error")}</>
-              : t("saveDraft")}
+              : saveLabel}
           </Button>
-          <Button type="button" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(true)}
-            className="min-w-[130px] bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-sm">
-            {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("publishing")}</>
-              : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
-          </Button>
+          {!isLive && (
+            <Button type="button" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(true)}
+              className="min-w-[130px] bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-sm">
+              {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("publishing")}</>
+                : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1376,13 +1387,15 @@ export function SharedJobEditPage({
             <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[120px]">
               {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("saving")}</>
                 : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />{t("saved")}</>
-                : t("saveDraft")}
+                : saveLabel}
             </Button>
-            <Button type="button" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(true)}
-              className="min-w-[140px] bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white">
-              {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("publishing")}</>
-                : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
-            </Button>
+            {!isLive && (
+              <Button type="button" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(true)}
+                className="min-w-[140px] bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white">
+                {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("publishing")}</>
+                  : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
+              </Button>
+            )}
             <Button type="button" variant="ghost" onClick={() => router.push(backHref)}>
               {t("cancel")}
             </Button>

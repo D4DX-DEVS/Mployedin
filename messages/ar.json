@@ -5342,7 +5342,14 @@
     "bulkFailed": "تعذر تحديث هذه الطلبات: {details}",
     "bulkSkippedOpenInterview": "{count, plural, one {لم يُنقل مرشح واحد — لديه مقابلة محجوزة. ألغِها أو أكملها أولاً.} other {لم يُنقل # من المرشحين — لديهم مقابلات محجوزة. ألغِها أو أكملها أولاً.}}",
     "hiredNeedsOffer": "أرسل عرض عمل لهذا المرشح أولاً. ينتقل إلى «تم التوظيف» عند قبوله العرض.",
-    "bulkSkippedNoOffer": "{count, plural, one {لم يُنقل مرشح واحد إلى «تم التوظيف» — لم يقبل عرض عمل بعد.} other {لم يُنقل # من المرشحين إلى «تم التوظيف» — لم يقبلوا عرض عمل بعد.}}"
+    "bulkSkippedNoOffer": "{count, plural, one {لم يُنقل مرشح واحد إلى «تم التوظيف» — لم يقبل عرض عمل بعد.} other {لم يُنقل # من المرشحين إلى «تم التوظيف» — لم يقبلوا عرض عمل بعد.}}",
+    "mustHavesLabel": "الشروط الأساسية",
+    "mustHavesAll": "جميع المرشحين",
+    "mustHavesMet": "يستوفي الشروط الأساسية",
+    "mustHavesNotMet": "ينقصه شرط أساسي",
+    "noMatchingApplications": "لا توجد طلبات تطابق هذه الفلاتر",
+    "noMatchingApplicationsDesc": "غيّر الفلاتر أو امسحها لعرض بقية المرشحين.",
+    "clearFilters": "مسح الفلاتر"
   },
   "employerAnalytics": {
     "title": "مركز قيادة التحليلات",
@@ -8319,7 +8326,10 @@
     "postHeldDescription": "أضف اسم شركتك وبريدها الإلكتروني ومجال عملها قبل أن تظهر هذه الوظيفة على لوحة الوظائف العامة.",
     "completeCompanyProfile": "استكمال ملف الشركة",
     "publishBlockedProfile": "أضف اسم شركتك وبريدها الإلكتروني ومجال عملها قبل نشر هذه الوظيفة.",
-    "noAssignedEmployers": "لا يوجد أصحاب عمل مسندون إليك بعد. اطلب من الوكيل الرئيسي إسناد صاحب عمل قبل نشر وظيفة."
+    "noAssignedEmployers": "لا يوجد أصحاب عمل مسندون إليك بعد. اطلب من الوكيل الرئيسي إسناد صاحب عمل قبل نشر وظيفة.",
+    "draftSavedToast": "تم حفظ المسودة",
+    "fixBeforePosting": "بعض التفاصيل تحتاج إلى تصحيح قبل نشر هذه الوظيفة — راجع الخطوة {step}.",
+    "fixThisStep": "بعض التفاصيل في هذه الخطوة تحتاج إلى تصحيح قبل المتابعة."
   },
   "employerCommon": {
     "workspace": "مساحة عمل صاحب العمل",
@@ -9322,7 +9332,10 @@
     "exhibitionBudgetChangedTitle": "تغيّرت الميزانية المعتمدة",
     "exhibitionBudgetChangedBody": "تغيّرت الميزانية المعتمدة لـ \"{eventName}\" من {from} إلى {to}. السبب: {reason}",
     "targetTeamAtRiskTitle": "أحد الوكلاء متأخر عن هدفه",
-    "targetTeamAtRiskBody": "{agentName} عند {progress}% من هدف أرباحه مقابل وتيرة متوقعة {expectedProgress}%."
+    "targetTeamAtRiskBody": "{agentName} عند {progress}% من هدف أرباحه مقابل وتيرة متوقعة {expectedProgress}%.",
+    "applicationInviteTitle": "تمت دعوتك للتقديم",
+    "applicationInviteBody": "تدعوك {companyName} للتقديم على وظيفة \"{jobTitle}\".",
+    "applicationInviteBodyWithMessage": "تدعوك {companyName} للتقديم على وظيفة \"{jobTitle}\".\n\n\"{message}\""
   },
   "publicPages": {
     "jobsTitle": "البحث عن وظائف",
@@ -10309,7 +10322,10 @@
     "remoteScopeUnset": "غير محدد — حتى تختار، تُطابَق هذه الوظيفة مع المرشّحين في الدولة أعلاه فقط.",
     "placeholderRemoteCountry": "اكتب اسم دولة ثم اضغط Enter",
     "removeCountry": "إزالة {country}",
-    "advancedExpiryDesc": "تاريخ انتهاء الصلاحية"
+    "advancedExpiryDesc": "تاريخ انتهاء الصلاحية",
+    "saveChanges": "حفظ التغييرات",
+    "liveDescription": "هذه الوظيفة منشورة. تظهر التغييرات المحفوظة للمرشحين فورًا.",
+    "keepsStatusDescription": "الحفظ يُبقي الوظيفة على حالتها الحالية. اختر «نشر الوظيفة» لنشرها من جديد."
   },
   "employerPanel": {
     "title": "مراجعة لجنة التوظيف",

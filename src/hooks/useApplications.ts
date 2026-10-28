@@ -91,11 +91,15 @@ async function fetchApplicationsPage(filters: ApplicationsFilters): Promise<any>
   return res.json();
 }
 
-/** The filters Shortlist Top narrows by; stage, order and paging are its own. */
+/**
+ * The filters Shortlist Top narrows by; stage, order and paging are its own.
+ * The list's must-haves filter can only narrow the pool further: "met" leaves
+ * out candidates whose must-haves could not be checked, "not_met" leaves nobody.
+ */
 export type ShortlistPoolFilters = Omit<
   ApplicationsFilters,
   "page" | "limit" | "status" | "stageFrom" | "sortBy" | "sortOrder" | "requirements" | "scored" | "fetchJobs" | "fetchCounts"
->;
+> & { requirements?: "met" | "not_met" };
 
 /** Most applicants Shortlist Top can move at once — the hiring rule's own ceiling. */
 export const SHORTLIST_POOL_LIMIT = 100;
@@ -114,14 +118,19 @@ export async function fetchShortlistPool<T>(filters: ShortlistPoolFilters): Prom
   /** Qualifying applicants still waiting for a score, across the whole job. */
   unscoredTotal: number;
 }> {
-  const base = { ...filters, status: "applied", sortBy: "aiMatchScore", sortOrder: "desc" as const };
+  const { requirements: listRequirements, ...listFilters } = filters;
+  const base = { ...listFilters, status: "applied", sortBy: "aiMatchScore", sortOrder: "desc" as const };
+  // Never pick someone the list is hiding: a list of candidates who meet every
+  // must-have picks only from them, and a list of those missing one has nobody.
+  const qualifying = listRequirements === "met" ? "met" : "qualified";
+  const nobodyQualifies = listRequirements === "not_met";
   // The pool sorts the unscored last and stops at 100 rows, so once 100 are
   // scored it cannot see who is still waiting — count them separately. A score
   // range already leaves them out.
   const hasScoreRange = (filters.scoreMin ?? 0) > 0 || (filters.scoreMax ?? 100) < 100;
   const [pool, unscored, failing] = await Promise.all([
-    fetchApplicationsPage({ ...base, page: 1, limit: SHORTLIST_POOL_LIMIT, requirements: "qualified" }),
-    hasScoreRange ? null : fetchApplicationsPage({ ...base, page: 1, limit: 1, requirements: "qualified", scored: false }),
+    nobodyQualifies ? null : fetchApplicationsPage({ ...base, page: 1, limit: SHORTLIST_POOL_LIMIT, requirements: qualifying }),
+    hasScoreRange || nobodyQualifies ? null : fetchApplicationsPage({ ...base, page: 1, limit: 1, requirements: qualifying, scored: false }),
     fetchApplicationsPage({ ...base, page: 1, limit: 1, requirements: "not_met" }),
   ]);
   const poolTotal = Number(pool?.pagination?.total ?? 0);

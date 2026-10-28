@@ -194,7 +194,7 @@ export function AdvancedSettingsSection() {
                     type="number"
                     min={1}
                     max={10000}
-                    {...register("maxApplicants", { valueAsNumber: true, setValueAs: (v) => v === "" || isNaN(v) ? undefined : Number(v) })}
+                    {...register("maxApplicants", { setValueAs: (v) => (v === "" || v == null || Number.isNaN(Number(v)) ? undefined : Number(v)) })}
                     placeholder={t("noLimit")}
                     className="w-36"
                   />
