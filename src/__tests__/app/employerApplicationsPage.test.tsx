@@ -293,6 +293,74 @@ describe("EmployerApplicationsPage", () => {
     ));
   });
 
+  // Rollout check 2026-10-28: "candidates who meet the must-haves and know AWS"
+  // listed nobody — the phrase landed in the keyword box because the page had no
+  // must-haves filter for Ask AI to set.
+  it("lets Ask AI narrow the list to candidates who meet the must-haves, and Undo clears it", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ filters: { skills: ["AWS"], requirements: "met" }, degraded: false }),
+    } as Response);
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const user = userEvent.setup();
+    render(<ApplicationsWorkspace />);
+
+    const box = screen.getByRole("textbox", { name: /search/i });
+    await user.type(box, "candidates who meet the must-haves and know AWS");
+    await user.click(screen.getByRole("button", { name: /ask ai/i }));
+
+    await waitFor(() => expect(useApplicationsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ requirements: "met", skills: ["AWS"], search: undefined }),
+    ));
+    expect(box).toHaveValue("");
+    expect(screen.getByRole("status")).toHaveTextContent("Must-haves met");
+
+    await user.click(screen.getByRole("button", { name: /undo/i }));
+    await waitFor(() => expect(useApplicationsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ requirements: undefined }),
+    ));
+  });
+
+  it("filters by must-haves from the Filters panel, and Reset All Filters clears it", async () => {
+    const user = userEvent.setup();
+    render(<ApplicationsWorkspace jobId="job-1" embedded />);
+    await user.click(screen.getByRole("button", { name: /^filters$/i }));
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Must-haves" }), "met");
+    await waitFor(() => expect(useApplicationsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ requirements: "met" }),
+    ));
+    expect(screen.getByRole("button", { name: "Filters (1)" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /reset all filters/i }));
+    await waitFor(() => expect(useApplicationsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ requirements: undefined }),
+    ));
+  });
+
+  it("says no applications match while filters hide everyone, and Clear filters brings them back", async () => {
+    useApplicationsMock.mockReturnValue({
+      data: { applications: [], pagination: { total: 0, page: 1, limit: 10, totalPages: 0 } },
+      isLoading: false,
+    });
+    const user = userEvent.setup();
+    render(<ApplicationsWorkspace jobId="job-1" embedded />);
+    // No filter yet: the job really has no applications.
+    expect(screen.getByText("No applications yet")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^filters$/i }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Must-haves" }), "not_met");
+
+    expect(await screen.findByText("No applications match these filters")).toBeInTheDocument();
+    expect(screen.queryByText("No applications yet")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^clear filters$/i }));
+    await waitFor(() => expect(useApplicationsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ requirements: undefined }),
+    ));
+    expect(screen.getByText("No applications yet")).toBeInTheDocument();
+  });
+
   it("keeps the Needs review deep link in the URL after the filter reset (A26)", async () => {
     const user = userEvent.setup();
     render(<ApplicationsWorkspace jobId="job-1" embedded />);

@@ -5342,7 +5342,14 @@
     "bulkFailed": "We couldn't update these applications: {details}",
     "bulkSkippedOpenInterview": "{count, plural, one {# candidate wasn't moved — they have an interview booked. Cancel or complete it first.} other {# candidates weren't moved — they have interviews booked. Cancel or complete them first.}}",
     "hiredNeedsOffer": "Send this candidate an offer first. They move to Hired when they accept it.",
-    "bulkSkippedNoOffer": "{count, plural, one {# candidate wasn't moved to Hired — they haven't accepted an offer.} other {# candidates weren't moved to Hired — they haven't accepted an offer.}}"
+    "bulkSkippedNoOffer": "{count, plural, one {# candidate wasn't moved to Hired — they haven't accepted an offer.} other {# candidates weren't moved to Hired — they haven't accepted an offer.}}",
+    "mustHavesLabel": "Must-haves",
+    "mustHavesAll": "All candidates",
+    "mustHavesMet": "Must-haves met",
+    "mustHavesNotMet": "Missing a must-have",
+    "noMatchingApplications": "No applications match these filters",
+    "noMatchingApplicationsDesc": "Change or clear the filters to see the other candidates.",
+    "clearFilters": "Clear filters"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
@@ -8319,7 +8326,10 @@
     "postHeldDescription": "Add your company name, email and industry before this job can go on the public board.",
     "completeCompanyProfile": "Complete company profile",
     "publishBlockedProfile": "Add your company name, email and industry before publishing this job.",
-    "noAssignedEmployers": "No employers are assigned to you yet. Ask your super agent to assign one before posting a job."
+    "noAssignedEmployers": "No employers are assigned to you yet. Ask your super agent to assign one before posting a job.",
+    "draftSavedToast": "Draft saved",
+    "fixBeforePosting": "Some details need fixing before this job can be posted — check step {step}.",
+    "fixThisStep": "Some details on this step need fixing before you can continue."
   },
   "employerCommon": {
     "workspace": "Employer workspace",
@@ -9322,7 +9332,10 @@
     "exhibitionBudgetChangedTitle": "Approved budget changed",
     "exhibitionBudgetChangedBody": "The approved budget for \"{eventName}\" changed from {from} to {to}. Reason: {reason}",
     "targetTeamAtRiskTitle": "An agent is behind on their target",
-    "targetTeamAtRiskBody": "{agentName} is at {progress}% of their profit target against an expected pace of {expectedProgress}%."
+    "targetTeamAtRiskBody": "{agentName} is at {progress}% of their profit target against an expected pace of {expectedProgress}%.",
+    "applicationInviteTitle": "You've been invited to apply",
+    "applicationInviteBody": "{companyName} would like you to apply for \"{jobTitle}\".",
+    "applicationInviteBodyWithMessage": "{companyName} would like you to apply for \"{jobTitle}\".\n\n\"{message}\""
   },
   "publicPages": {
     "jobsTitle": "Find Jobs",
@@ -10309,7 +10322,10 @@
     "remoteScopeUnset": "Not set — until you choose, this job is only matched to candidates in the country above.",
     "placeholderRemoteCountry": "Type a country, then press Enter",
     "removeCountry": "Remove {country}",
-    "advancedExpiryDesc": "Expiry date"
+    "advancedExpiryDesc": "Expiry date",
+    "saveChanges": "Save changes",
+    "liveDescription": "This job is live. Saved changes show to candidates straight away.",
+    "keepsStatusDescription": "Saving keeps this job's current status. Select Publish Job to make it live again."
   },
   "employerPanel": {
     "title": "Hiring Panel Review",

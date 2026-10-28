@@ -22,6 +22,8 @@ export interface AiApplicationFilters {
   status?: string;
   source?: string;
   scoreBand?: string;
+  /** The job's must-haves: "met" or "not_met". */
+  requirements?: string;
   dateFrom?: string;
   dateTo?: string;
   skills?: string[];

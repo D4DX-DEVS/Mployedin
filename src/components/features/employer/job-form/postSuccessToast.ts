@@ -12,6 +12,17 @@ export interface PostSuccessToastInput {
 }
 
 /**
+ * Where the job form goes after a save or a post. Employers and agents have a
+ * page per job; admins do not — sending them to /admin/jobs/<id> showed "Page
+ * not found" after Save Draft (bug report 2026-10-28) — so they return to the
+ * jobs list, as the admin edit page already does.
+ */
+export function jobLandingHref(locale: string, basePath: string, jobId: string | undefined): string {
+  const jobs = `/${locale}/${basePath}/jobs`;
+  return jobId && basePath !== "admin" ? `${jobs}/${jobId}` : jobs;
+}
+
+/**
  * Options for the "Job posted" toast. Only the employer job page has the poster
  * maker; the admin link landed on a page that ignored it, so only employers get
  * the action.

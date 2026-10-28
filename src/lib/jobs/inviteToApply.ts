@@ -99,9 +99,16 @@ export async function inviteToApply(req: NextRequest, ctx: InviteCtx, authorize:
       actorId: ctx.userId,
       userId: String(seeker.userId),
       type: "application_invite",
+      // The English text is the fallback. The keys let the bell and the email
+      // speak the candidate's language, not the sender's (rollout check
+      // 2026-10-28: an agent working in Arabic sent an English speaker /ar/).
       title: "You've been invited to apply",
       message: `${companyName} would like you to apply for "${jobTitle}".${message ? `\n\n"${message}"` : ""}`,
-      link: `/${ctx.locale}/job-seeker/jobs/${jobId}`,
+      titleKey: "applicationInviteTitle",
+      bodyKey: message ? "applicationInviteBodyWithMessage" : "applicationInviteBody",
+      params: { companyName, jobTitle, ...(message ? { message } : {}) },
+      // No locale segment: the bell and the email put the reader's in front.
+      link: `/job-seeker/jobs/${jobId}`,
       sendEmail: true,
       metadata: { jobId, jobTitle, companyName },
     });

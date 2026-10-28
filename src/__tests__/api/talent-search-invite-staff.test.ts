@@ -16,6 +16,7 @@ const SEEKER_ID = "64a000000000000000000020";
 const SEEKER_USER = "64a000000000000000000021";
 
 let role = "agent";
+let senderLocale = "en";
 jest.mock("@/lib/db/mongoose", () => ({ __esModule: true, connectDB: jest.fn().mockResolvedValue(undefined), default: jest.fn() }));
 const logActivity = jest.fn().mockResolvedValue(undefined);
 jest.mock("@/lib/audit/log", () => ({ logActivity: (...a: unknown[]) => logActivity(...a), actorFromCtx: () => ({}) }));
@@ -24,7 +25,7 @@ jest.mock("@/lib/notifications/trigger", () => ({ notify: (...a: unknown[]) => n
 jest.mock("@/lib/auth/withAuth", () => ({
   withAuth: (handler: (req: NextRequest, ctx: unknown) => Promise<Response>) => async (req: NextRequest) => {
     try {
-      return await handler(req, { userId: USER, role, locale: "en" });
+      return await handler(req, { userId: USER, role, locale: senderLocale });
     } catch (err) {
       if (err instanceof NextResponse) return err;
       throw err;
@@ -88,6 +89,7 @@ function post() {
 beforeEach(() => {
   jest.clearAllMocks();
   role = "agent";
+  senderLocale = "en";
   assigned = [EMPLOYER_ID];
   ownEmployer = null;
   applied = false;
@@ -105,10 +107,26 @@ it("lets an agent invite for an assigned employer's job, in the employer's name"
       userId: SEEKER_USER,
       type: "application_invite",
       message: expect.stringContaining("Gulf Care Clinic would like you to apply for \"Staff Nurse\""),
-      link: `/en/job-seeker/jobs/${JOB_ID}`,
+      link: `/job-seeker/jobs/${JOB_ID}`,
     }),
   );
   expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "candidate.invite", resourceId: JOB_ID }));
+});
+
+// Rollout check 2026-10-28: an agent working in Arabic invited an English-
+// speaking candidate; the stored link carried the agent's /ar/ and the text
+// was English only. The candidate's own language must decide both.
+it("leaves the language to the candidate, not the sender", async () => {
+  senderLocale = "ar";
+  expect((await post()).status).toBe(200);
+  expect(notify).toHaveBeenCalledWith(
+    expect.objectContaining({
+      link: `/job-seeker/jobs/${JOB_ID}`,
+      titleKey: "applicationInviteTitle",
+      bodyKey: "applicationInviteBodyWithMessage",
+      params: { companyName: "Gulf Care Clinic", jobTitle: "Staff Nurse", message: "Your ICU years fit this well." },
+    }),
+  );
 });
 
 it("refuses an agent who is not assigned to the job's employer", async () => {

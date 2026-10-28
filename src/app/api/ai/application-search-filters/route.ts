@@ -15,12 +15,15 @@ const ALLOWED_ROLES: UserRole[] = ["admin", "super_agent", "agent", "employer"];
 const APP_STATUSES = new Set(["applied", "shortlisted", "interview_scheduled", "selected", "offer", "hired", "rejected", "withdrawn"]);
 const SOURCE_TYPES = new Set(["easy_apply", "full_form", "direct", "auto_apply"]);
 const SCORE_BANDS = new Set(["all", "excellent", "good", "average", "low"]);
+// The must-haves checklist roll-up the list filters on (`?requirements=`).
+const REQUIREMENT_STATES = new Set(["met", "not_met"]);
 
 interface RawAppSearchFilters {
   search?: unknown;
   status?: unknown;
   source?: unknown;
   scoreBand?: unknown;
+  requirements?: unknown;
   dateFrom?: unknown;
   dateTo?: unknown;
   skills?: unknown;
@@ -43,6 +46,9 @@ function normalizeAppSearchFilters(raw: RawAppSearchFilters) {
     : undefined;
   const scoreBand = typeof raw.scoreBand === "string" && SCORE_BANDS.has(raw.scoreBand)
     ? raw.scoreBand
+    : undefined;
+  const requirements = typeof raw.requirements === "string" && REQUIREMENT_STATES.has(raw.requirements)
+    ? raw.requirements
     : undefined;
   const skills = Array.isArray(raw.skills)
     ? raw.skills
@@ -69,6 +75,7 @@ function normalizeAppSearchFilters(raw: RawAppSearchFilters) {
     status,
     source,
     scoreBand,
+    requirements,
     dateFrom,
     dateTo,
     skills,
@@ -107,6 +114,7 @@ Return ONLY valid JSON with this exact shape:
   "status": "applied" | "shortlisted" | "interview_scheduled" | "selected" | "offer" | "hired" | "rejected" | "withdrawn" | null,
   "source": "easy_apply" | "full_form" | "direct" | "auto_apply" | null,
   "scoreBand": "excellent" | "good" | "average" | "low" | null,
+  "requirements": "met" | "not_met" | null,
   "dateFrom": "YYYY-MM-DD" | null,
   "dateTo": "YYYY-MM-DD" | null,
   "skills": string[],
@@ -116,7 +124,8 @@ Return ONLY valid JSON with this exact shape:
 
 Guidelines:
 - Extract filters only when the user clearly asked for them.
-- Put leftover name, keyword, or role intent into "search".
+- Put only a candidate name or a short keyword (e.g. a past job title) into "search". Never put words that describe the request itself ("candidates", "applicants", "people who", "who meet", "qualified") into "search"; use null when nothing is left.
+- Use "requirements" for the job's must-haves (hard requirements): "meet the must-haves", "meets all requirements", "fully qualified" → "met"; "missing a must-have", "doesn't meet the requirements" → "not_met".
 - Use "skills" only when the user explicitly asks for a skill/technology.
 - Use "scoreBand" for AI score intent: "excellent" = 80-100, "good" = 60-79, "average" = 40-59, "low" = 0-39.
 - Use "status" for pipeline stage references (e.g. "shortlisted", "in interview" → "interview_scheduled", "selected", "rejected").

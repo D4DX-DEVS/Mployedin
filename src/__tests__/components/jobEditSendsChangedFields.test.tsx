@@ -23,11 +23,12 @@ const JOB = {
   vacancies: 1,
   screeningQuestions: [],
 };
+let mockJob: typeof JOB = JOB;
 
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }) }));
 jest.mock("sonner", () => ({ toast: Object.assign(jest.fn(), { success: jest.fn(), error: jest.fn() }) }));
 jest.mock("@/hooks/useJobs", () => ({
-  useJobDetail: () => ({ data: JOB, isLoading: false, isError: false, refetch: jest.fn() }),
+  useJobDetail: () => ({ data: mockJob, isLoading: false, isError: false, refetch: jest.fn() }),
   useUpdateJob: () => ({ mutateAsync, isPending: false }),
 }));
 jest.mock("@/hooks/useJobCategories", () => ({ useJobCategoryOptions: () => [] }));
@@ -55,14 +56,53 @@ describe("Edit Job page", () => {
     ({ SharedJobEditPage } = await import("@/components/features/jobs/SharedJobEditPage"));
   }, 30000);
 
+  beforeEach(() => {
+    mockJob = JOB;
+    mutateAsync.mockClear();
+  });
+
   it("sends only the title when only the title changed", async () => {
     render(<SharedJobEditPage id={JOB._id} backHref="/en/employer/jobs" afterSaveHref="/en/employer/jobs" />);
 
     const title = await screen.findByDisplayValue("Senior Accountant");
     fireEvent.change(title, { target: { value: "Senior Accountant (IFRS)" } });
-    fireEvent.click(screen.getAllByRole("button", { name: /^Save Draft$/ })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^Save changes$/ })[0]);
 
     await waitFor(() => expect(mutateAsync).toHaveBeenCalled());
     expect(mutateAsync.mock.calls[0][0]).toEqual({ jobId: JOB._id, updates: { title: "Senior Accountant (IFRS)" } });
+  });
+
+  // Rollout check 2026-10-28: a live job's edit page said "Changes save as
+  // draft unless you publish" next to "Save Draft", yet saving kept it live.
+  describe("buttons and note follow the job's status", () => {
+    const renderPage = async () => {
+      render(<SharedJobEditPage id={JOB._id} backHref="/en/employer/jobs" afterSaveHref="/en/employer/jobs" />);
+      await screen.findByDisplayValue("Senior Accountant");
+    };
+
+    it("a live job saves its changes live, with nothing about drafts or publishing", async () => {
+      await renderPage();
+      expect(screen.getAllByRole("button", { name: /^Save changes$/ })).toHaveLength(2);
+      expect(screen.queryByRole("button", { name: /Save Draft/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Publish Job/ })).not.toBeInTheDocument();
+      expect(screen.getByText("This job is live. Saved changes show to candidates straight away.")).toBeInTheDocument();
+      expect(screen.queryByText(/save as draft/i)).not.toBeInTheDocument();
+    });
+
+    it("a draft keeps Save Draft and Publish Job", async () => {
+      mockJob = { ...JOB, status: "draft" };
+      await renderPage();
+      expect(screen.getAllByRole("button", { name: /^Save Draft$/ })).toHaveLength(2);
+      expect(screen.getAllByRole("button", { name: /Publish Job/ })).toHaveLength(2);
+      expect(screen.getByText("Changes save as draft unless you publish.")).toBeInTheDocument();
+    });
+
+    it("a paused job saves without going live, and Publish Job makes it live again", async () => {
+      mockJob = { ...JOB, status: "paused" };
+      await renderPage();
+      expect(screen.getAllByRole("button", { name: /^Save changes$/ })).toHaveLength(2);
+      expect(screen.getAllByRole("button", { name: /Publish Job/ })).toHaveLength(2);
+      expect(screen.getByText("Saving keeps this job's current status. Select Publish Job to make it live again.")).toBeInTheDocument();
+    });
   });
 });

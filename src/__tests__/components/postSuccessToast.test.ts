@@ -1,4 +1,4 @@
-import { postSuccessToastOptions } from "@/components/features/employer/job-form/postSuccessToast";
+import { jobLandingHref, postSuccessToastOptions } from "@/components/features/employer/job-form/postSuccessToast";
 
 const labels = {
   description: "Share it as a poster on LinkedIn & social media.",
@@ -34,5 +34,20 @@ describe("postSuccessToastOptions", () => {
   it("defaults to the feature flag", () => {
     const opts = postSuccessToastOptions({ basePath: "employer", posterHref: "x", push: jest.fn(), labels });
     expect(opts.description).toBe(labels.descriptionNoPoster);
+  });
+});
+
+describe("jobLandingHref (bug 2026-10-28: admin Save Draft landed on a 404)", () => {
+  it("sends employers and agents to the job's own page", () => {
+    expect(jobLandingHref("en", "employer", "6ae19fe9095dd7e184e1fe1b")).toBe("/en/employer/jobs/6ae19fe9095dd7e184e1fe1b");
+    expect(jobLandingHref("ar", "agent", "6ae19fe9095dd7e184e1fe1b")).toBe("/ar/agent/jobs/6ae19fe9095dd7e184e1fe1b");
+  });
+
+  it("sends admins to the jobs list — there is no admin job page", () => {
+    expect(jobLandingHref("en", "admin", "6ae19fe9095dd7e184e1fe1b")).toBe("/en/admin/jobs");
+  });
+
+  it("falls back to the jobs list when the save returned no id", () => {
+    expect(jobLandingHref("en", "employer", undefined)).toBe("/en/employer/jobs");
   });
 });

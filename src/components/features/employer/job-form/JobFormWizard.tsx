@@ -16,7 +16,8 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 import { jobFormSchema, JOB_FORM_STEPS, type JobFormValues } from "./jobFormSchema";
 import { useJobFormDraft, useDebounce } from "./useJobFormDraft";
 import type { StoredDraft } from "./jobDraftStorage";
-import { postSuccessToastOptions } from "./postSuccessToast";
+import { jobLandingHref, postSuccessToastOptions } from "./postSuccessToast";
+import { STEP_FIELDS, STEP_FOR_PATH, firstInvalidStep } from "./jobFormSteps";
 import { StepIndicator } from "./StepIndicator";
 import { Step1BasicInfo } from "./Step1BasicInfo";
 import { Step2JobDetails } from "./Step2JobDetails";
@@ -41,23 +42,6 @@ interface Suggestions {
   salary: { min: number; max: number; currency: string; period: string };
   experience: { min: number; max: number };
 }
-
-// Per-step fields used for partial validation
-const STEP_FIELDS: Record<number, (keyof JobFormValues)[]> = {
-  1: ["title", "location"],
-  2: ["description"],
-  3: ["requirements"],
-  4: ["salary", "vacancies"],
-  5: ["screeningQuestions"],
-};
-
-/** Server validation `details[].path` root → wizard step, so a rejected submit
- *  lands the user on the step that owns the bad field. */
-const STEP_FOR_PATH: Record<string, number> = Object.fromEntries(
-  Object.entries(STEP_FIELDS).flatMap(([step, fields]) =>
-    fields.map((f) => [f as string, Number(step)])
-  )
-);
 
 interface JobTemplateData {
   _id: string;
@@ -335,7 +319,13 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
       // Validate current step fields before advancing
       const fields = STEP_FIELDS[currentStep] ?? [];
       const isValid = await trigger(fields);
-      if (!isValid) return;
+      // Some fields (Advanced settings, the step 2 lists) show no message of
+      // their own, so a blocked Next must say why rather than do nothing.
+      if (!isValid) {
+        setSubmitError(t("fixThisStep"));
+        return;
+      }
+      setSubmitError("");
       setCompletedSteps((prev) => new Set([...prev, currentStep]));
     }
     setCurrentStep(step);
@@ -368,12 +358,8 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
       setSubmitError(t("draftSaveFailed"));
       return;
     }
-    // Navigate to the saved draft or jobs list after saving
-    if (savedId) {
-      router.push(`/${locale}/${basePath}/jobs/${savedId}`);
-    } else {
-      router.push(`/${locale}/${basePath}/jobs`);
-    }
+    toast.success(t("draftSavedToast"));
+    router.push(jobLandingHref(locale, basePath, savedId || undefined));
   }
 
   // ─── Submit ───────────────────────────────────────────────────────────────────
@@ -460,7 +446,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
             }),
           );
         }
-        router.push(`/${locale}/${basePath}/jobs/${jobId}`);
+        router.push(jobLandingHref(locale, basePath, jobId));
       } else {
         const err = (await res.json()) as {
           error?: string;
@@ -486,6 +472,12 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
     } finally {
       setSubmitting(false);
     }
+  }, (errors) => {
+    // Without this, a bad value on another step made "Post Job" do nothing:
+    // the field with the error was not on screen and nothing said why.
+    const step = firstInvalidStep(Object.keys(errors));
+    if (step) setCurrentStep(step);
+    setSubmitError(t("fixBeforePosting", { step: step ?? currentStep }));
   });
 
   // ─── Templates ───────────────────────────────────────────────────────────────

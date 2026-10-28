@@ -103,7 +103,7 @@ describe("who may invite", () => {
         type: "application_invite",
         sendEmail: true,
         message: expect.stringContaining("Gulf Care Clinic would like you to apply for \"Staff Nurse\""),
-        link: `/en/job-seeker/jobs/${JOB_ID}`,
+        link: `/job-seeker/jobs/${JOB_ID}`,
       }),
     );
     expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "candidate.invite", resourceId: JOB_ID }));
