@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { dateOfBirthProblem, latestAllowedDateOfBirth, MIN_SEEKER_AGE } from "@/lib/jobSeeker/minimumAge";
 import { useQueryClient } from "@tanstack/react-query";
 import { getSeekerJson, invalidateSeekerProfile, readSeekerProfile, seekerKeys } from "@/hooks/useSeekerCache";
 import { useLocale, useTranslations } from "next-intl";
@@ -86,11 +87,6 @@ const PROFICIENCY_OPTIONS = [
 ];
 
 // Max DOB: user must be at least 16 years old
-function maxDob(): string {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - 16);
-  return d.toISOString().split("T")[0];
-}
 
 // ─── Chip Group ───────────────────────────────────────────────────────────────
 
@@ -177,6 +173,7 @@ export default function PersonalDetailsPage() {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
+  const [dobError, setDobError] = useState<string | null>(null);
 
   const [genders, setGenders] = useState<LookupItem[]>([]);
   const [maritalStatuses, setMaritalStatuses] = useState<LookupItem[]>([]);
@@ -266,6 +263,10 @@ export default function PersonalDetailsPage() {
   // ── Save ─────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
+    // The server refuses it too (validators/job-seekers.ts); saying why here beats a bare "couldn't save".
+    const dobProblem = form.dateOfBirth ? dateOfBirthProblem(form.dateOfBirth) : null;
+    setDobError(dobProblem === "tooYoung" ? t("dobTooYoung", { age: MIN_SEEKER_AGE }) : dobProblem ? t("dobInvalid") : null);
+    if (dobProblem) return;
     setSaving(true);
     const payload = {
       genderId: form.genderId || undefined,
@@ -383,8 +384,9 @@ export default function PersonalDetailsPage() {
             label={t("dob")}
             value={form.dateOfBirth}
             onChange={(v) => setField("dateOfBirth", v)}
-            max={maxDob()}
+            max={latestAllowedDateOfBirth()}
           />
+          {dobError && <p role="alert" className="mt-1.5 text-sm text-destructive">{dobError}</p>}
         </Section>
 
         {/* ── Work Permit ──────────────────────────────────────────────────── */}

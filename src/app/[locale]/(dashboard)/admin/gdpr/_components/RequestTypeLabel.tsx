@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText, Trash2, XCircle, type LucideIcon } from "lucide-react";
+import { Download, FileText, MessageSquareWarning, Trash2, XCircle, type LucideIcon } from "lucide-react";
 import { useGdprLabels } from "./useGdprLabels";
 
 const TYPE_ICONS: Record<string, LucideIcon> = {
@@ -8,6 +8,7 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
   delete: Trash2,
   rectification: FileText,
   restrict: XCircle,
+  complaint: MessageSquareWarning,
 };
 
 /**

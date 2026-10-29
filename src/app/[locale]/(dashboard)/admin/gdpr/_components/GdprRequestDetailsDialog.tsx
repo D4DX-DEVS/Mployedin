@@ -10,6 +10,7 @@ import {
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import type { RowAction } from "@/components/shared/RowActions";
 import { formatDateTime } from "@/lib/ui/intlFormat";
+import { COMPLAINT_ACK_DAYS } from "@/lib/gdpr/complaintRules";
 import { RequestStatusBadge } from "./RequestStatusBadge";
 import { useGdprLabels } from "./useGdprLabels";
 import type { GdprRequestRow, GdprRequestType } from "./types";
@@ -18,11 +19,12 @@ import type { GdprRequestRow, GdprRequestType } from "./types";
  * What each kind of request asks for. Static keys, not t(`asked_${type}`): a
  * type stored before a rename shows no line instead of a missing-message error.
  */
-const ASKED_KEYS: Partial<Record<GdprRequestType, "detailsAskedExport" | "detailsAskedDelete" | "detailsAskedRectification" | "detailsAskedRestrict">> = {
+const ASKED_KEYS: Partial<Record<GdprRequestType, "detailsAskedExport" | "detailsAskedDelete" | "detailsAskedRectification" | "detailsAskedRestrict" | "detailsAskedComplaint">> = {
   export: "detailsAskedExport",
   delete: "detailsAskedDelete",
   rectification: "detailsAskedRectification",
   restrict: "detailsAskedRestrict",
+  complaint: "detailsAskedComplaint",
 };
 
 /** "Oct 01, 2026, 3:48 PM" — the list's date plus the minute; seconds are noise here. */
@@ -115,6 +117,10 @@ export function GdprRequestDetailsDialog({ request, open, onClose, actions }: Gd
   // An export no admin handled: the user downloaded it themselves. The data itself is never offered here.
   const selfServiceExport = request?.requestType === "export" && request.status === "completed" && !outcome && !request.handledByName;
   const askedKey = request ? ASKED_KEYS[request.requestType] : undefined;
+  // DUAA 2025: a complaint is acknowledged within 30 days. Marking it In progress is the acknowledgement.
+  const acknowledgeBy = request?.requestType === "complaint" && request.status === "pending"
+    ? new Date(new Date(request.createdAt).getTime() + COMPLAINT_ACK_DAYS * 86_400_000)
+    : null;
 
   return (
     <Dialog open={open && request !== null} onOpenChange={(next) => { if (!next) onClose(); }}>
@@ -146,9 +152,19 @@ export function GdprRequestDetailsDialog({ request, open, onClose, actions }: Gd
                 <Field label={t("detailsResponseTimeLabel")}>{responseTime(Math.max(0, responseMs))}</Field>
               )}
               <Field label={t("detailsHandledByLabel")}>{handledBy(request)}</Field>
+              {acknowledgeBy && (
+                <Field label={t("detailsAcknowledgeByLabel")} wide>
+                  <span className={acknowledgeBy.getTime() < Date.now() ? "font-medium text-destructive" : undefined}>
+                    {formatDateTime(acknowledgeBy.toISOString(), { day: "2-digit", month: "short", year: "numeric" }, locale)}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">{t("detailsAcknowledgeByHint")}</span>
+                </Field>
+              )}
             </dl>
 
-            {userReason && <TextBlock label={t("detailsReasonLabel")}>{userReason}</TextBlock>}
+            {userReason && (
+              <TextBlock label={request.requestType === "complaint" ? t("detailsComplaintLabel") : t("detailsReasonLabel")}>{userReason}</TextBlock>
+            )}
             {outcome && <TextBlock label={t("detailsDoneLabel")}>{outcome}</TextBlock>}
             {selfServiceExport && (
               <TextBlock label={t("detailsDoneLabel")}>

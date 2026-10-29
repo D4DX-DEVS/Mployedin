@@ -13,6 +13,7 @@ import { jevFillFunction } from "@/lib/inngest/jevFill";
 import { refreshMatchEmbeddingsCron } from "@/lib/inngest/matchEmbeddings";
 import { emailSequenceSenderCron } from "@/lib/inngest/emailSequenceSender";
 import { extractionDraftExpiryCron } from "@/lib/inngest/extractionDraftExpiry";
+import { applicationRetentionCron } from "@/lib/inngest/applicationRetention";
 import { aiChatDraftExpiryCron } from "@/lib/inngest/aiChatDraftExpiry";
 import { scheduledCronFunctions } from "@/lib/inngest/scheduledCrons";
 import { adminBroadcastSender } from "@/lib/inngest/adminBroadcast";
@@ -45,6 +46,7 @@ export const { GET, POST, PUT } = serve({
     emailSequenceSenderCron,
     // Expires abandoned AI extraction drafts after their 7-day window.
     extractionDraftExpiryCron,
+    applicationRetentionCron,
     // Expires abandoned AI job-creator chat drafts after their 7-day window.
     aiChatDraftExpiryCron,
     // Scheduled crons migrated off GitHub Actions (replaces scheduled-crons.yml)

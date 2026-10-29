@@ -1522,6 +1522,11 @@ function SecurityTab() {
 export default function SuperAgentSettingsPage() {
   const t = useTranslations("superAgentSettings");
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
+  // ?tab= opens a section directly (Data & Privacy links to ?tab=notifications). Read once, after hydration.
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab && NAV_ITEM_KEYS.some((item) => item.key === tab)) setActiveTab(tab as TabKey);
+  }, []);
   const navItems = getNavItems(t);
 
   return (

@@ -4,9 +4,8 @@
  * GET  /api/job-seekers/account  — Export all personal data as JSON (GDPR Art. 20)
  * DELETE /api/job-seekers/account — Anonymise / erase personal data (GDPR Art. 17)
  *
- * Erasure is implemented as pseudonymisation rather than hard deletion so that
- * anonymised audit logs and aggregate statistics remain intact.  All identifying
- * fields are overwritten with placeholder values and the account is deactivated.
+ * Erasure is eraseUserPersonalData, the admin path's own function: the account is
+ * anonymised and deactivated, the profile emptied, and files deleted.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -16,8 +15,7 @@ import { User } from "@/models/User";
 import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
 import logger from "@/lib/logger";
-import { deleteCvRecordsOfSeeker } from "@/lib/cv/cvDocuments";
-import { anonymiseConsentLogs, eraseStoredAvatar, eraseWhatsAppData } from "@/lib/gdpr/erasure";
+import { eraseUserPersonalData } from "@/lib/gdpr/erasure";
 
 // ── GET — data export ─────────────────────────────────────────────────────────
 
@@ -72,58 +70,13 @@ export const DELETE = withAuth(async (_req: NextRequest, ctx) => {
 
   await connectDB();
 
-  const anonymisedEmail = `deleted-${ctx.userId}@anon.mployedin`;
   const now = new Date();
 
   try {
-    // WhatsApp log rows and state, with the admin erasure's own helper. First: they are found by the phone
-    // nulled below. The number's STOP (suppression list) is kept while it is in force: it must outlive the account.
-    await eraseWhatsAppData(ctx.userId);
-
-    // Pseudonymise the User record. The pre-update document still has the photo address for the storage delete.
-    const userBefore = await User.findByIdAndUpdate(ctx.userId, {
-      name: "Deleted User",
-      email: anonymisedEmail,
-      phone: null,
-      avatar: null,
-      isActive: false,
-      passwordHash: null,
-      emailVerificationToken: null,
-      passwordResetToken: null,
-    }).select("avatar").lean<{ avatar?: string | null } | null>();
-    // The same as the admin erasure (lib/gdpr/erasure.ts): the consent rows keep the evidence, not the name or IP,
-    // and the photo object in our bucket is deleted (best effort).
-    await anonymiseConsentLogs(ctx.userId);
-    await eraseStoredAvatar(userBefore?.avatar, ctx.userId);
-
-    // Wipe all PII from the JobSeeker profile
-    const seekerBefore = await JobSeeker.findOneAndUpdate(
-      { userId: ctx.userId },
-      {
-        // Identity
-        nationality: null,
-        dateOfBirth: null,
-        gender: null,
-        maritalStatusId: null,
-        currentLocation: null,
-        permanentAddress: null,
-        hometown: null,
-        pincode: null,
-        // Encrypted PII
-        nationalId: null,
-        visaNumber: null,
-        passportNumber: null,
-        bankAccountNumber: null,
-        iban: null,
-        // CV and documents
-        "cv.originalUrl": null,
-        "cv.rawText": null,
-        documents: [],
-      }
-    ).select("_id").lean<{ _id?: unknown } | null>();
-
-    // Each CV's full text and reading live in its CV record.
-    if (seekerBefore?._id) await deleteCvRecordsOfSeeker(seekerBefore._id as string);
+    // The same erasure an admin completes for a deletion request (lib/gdpr/erasure.ts): one function, so the two
+    // paths can't drift apart again. This route once kept the name, skills and disability details and left the
+    // CV file in storage.
+    await eraseUserPersonalData(ctx.userId);
 
     logActivity({
       actorId: ctx.userId,

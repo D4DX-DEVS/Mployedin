@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { CheckCircle2, UserCheck, XCircle } from "lucide-react";
+import { CheckCircle2, Eye, UserCheck, XCircle } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { RowActions } from "@/components/shared/RowActions";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -29,7 +30,7 @@ import { useGdprLabels } from "./useGdprLabels";
  * that sign-up writes (and the removed /api/user/consent POST once did), not a banner choice.
  */
 const OTHER_CONSENT_TYPES = ["terms_and_privacy", "cookies", "marketing"] as const;
-const COLUMN_COUNT = 5;
+const COLUMN_COUNT = 6;
 /** Same date format as the Cookie choices table. */
 const WHEN: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" };
 
@@ -41,6 +42,8 @@ const isConsentRows = (value: unknown): value is ConsentRow[] =>
 interface OtherConsentsTableProps {
   /** Its own page and size (?otherPage, ?otherLimit): never Data Requests' or the Cookie choices view's. */
   pagination: UsePaginationReturn;
+  /** Opens the entry's details. */
+  onView: (id: string) => void;
 }
 
 /**
@@ -50,7 +53,7 @@ interface OtherConsentsTableProps {
  * search, type and order live in the URL under keys of its own (otherSearch,
  * otherType, otherOrder), so nothing carries over between the views.
  */
-export function OtherConsentsTable({ pagination }: OtherConsentsTableProps) {
+export function OtherConsentsTable({ pagination, onView }: OtherConsentsTableProps) {
   const t = useTranslations("adminGdpr");
   const locale = useLocale();
   const { consentTypeLabel, sourceLabel } = useGdprLabels();
@@ -116,6 +119,7 @@ export function OtherConsentsTable({ pagination }: OtherConsentsTableProps) {
             ? <SortableTableHeader label={t("timestampColumnHeader")} active order={order} onClick={toggleOrder} />
             : t("timestampColumnHeader")}
         </TableHead>
+        <TableHead className="text-end">{t("actionsColumnHeader")}</TableHead>
       </TableRow>
     </TableHeader>
   );
@@ -206,7 +210,7 @@ export function OtherConsentsTable({ pagination }: OtherConsentsTableProps) {
           />
         )}
 
-        {state.status === "ready" && state.rows.length > 0 && isPhone && <OtherConsentCards rows={state.rows} />}
+        {state.status === "ready" && state.rows.length > 0 && isPhone && <OtherConsentCards rows={state.rows} onView={onView} />}
 
         {state.status === "ready" && state.rows.length > 0 && !isPhone && (
           <div className="overflow-x-auto">
@@ -233,6 +237,9 @@ export function OtherConsentsTable({ pagination }: OtherConsentsTableProps) {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{row.source ? sourceLabel(row.source) : "—"}</TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatDateTime(row.timestamp, WHEN, locale)}</TableCell>
+                    <TableCell className="text-end">
+                      <RowActions name={row.userName} quick={[{ key: "view", label: t("viewButton"), icon: Eye, onSelect: () => onView(row._id) }]} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

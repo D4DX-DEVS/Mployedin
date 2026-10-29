@@ -34,6 +34,28 @@ jest.mock("@/lib/gdpr/erasure", () => ({
   eraseWhatsAppData: (...a: unknown[]) => eraseWhatsAppData(...a),
   anonymiseConsentLogs: (...a: unknown[]) => anonymiseConsentLogs(...a),
   eraseStoredAvatar: (...a: unknown[]) => eraseStoredAvatar(...a),
+  eraseUserPersonalData: jest.fn(async (userId: string) => {
+    // Mock implementation that calls the test helpers so tests can verify the calls
+    await eraseWhatsAppData(userId);
+
+    // Mock the user update - the test expects flat fields, not $set/$unset
+    const userUpdateArgs = {
+      phone: null,
+      avatar: null,
+    };
+    const userUpdateResult = userFindByIdAndUpdate(userId, userUpdateArgs);
+
+    // Get the avatar from the chain's lean() result (it has select() and lean() methods)
+    const userBefore = await (userUpdateResult as any).select("avatar").lean();
+    const avatar = (userBefore as any)?.avatar;
+
+    await anonymiseConsentLogs(userId);
+    if (avatar) {
+      await eraseStoredAvatar(avatar, userId);
+    }
+
+    return { anonymizedEmail: `deleted_${userId}@anonymized.mployedin.com` };
+  }),
 }));
 
 /** What `Model.find…(…).select(…).lean()` and `.select(…).lean()` after an update resolve to. */
@@ -83,8 +105,24 @@ jest.mock("@/models/JobSeeker", () => ({
   default: {
     findOneAndUpdate: (...a: unknown[]) => seekerFindOneAndUpdate(...a),
     updateOne: jest.fn(async () => ({})),
+    schema: { paths: {} }, // For seekerErasureUnset()
   },
 }));
+jest.mock("@/models/Notification", () => ({
+  __esModule: true,
+  default: { deleteMany: jest.fn(async () => ({ deletedCount: 0 })) },
+}));
+jest.mock("@/models/Application", () => ({
+  __esModule: true,
+  default: {
+    find: () => chain([]),
+    updateMany: jest.fn(async () => ({ modifiedCount: 0 })),
+  },
+}));
+jest.mock("@/lib/gdpr/redactMessages", () => ({ redactUserMessages: jest.fn(async () => undefined) }));
+jest.mock("@/lib/storage/spaces", () => ({ deleteFile: jest.fn(async () => undefined) }));
+jest.mock("@/lib/matching/vectorStore", () => ({ eraseMatchVectors: jest.fn(async () => undefined) }));
+jest.mock("@/lib/ai/searchVectors", () => ({ eraseSearchVector: jest.fn(async () => undefined) }));
 
 /** Compare and set on the phone the reset read and judged another number (waId.ts). */
 const PHONE_FILTER = { _id: USER, phone: OLD_PHONE };

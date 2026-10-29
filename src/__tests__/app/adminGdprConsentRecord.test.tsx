@@ -12,7 +12,7 @@ import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 
 import { ConsentLogsTab } from "@/app/[locale]/(dashboard)/admin/gdpr/_components/ConsentLogsTab";
-import { REF, api, calls, choicesTable, fail, fetchMock, installConsentFetch, ok, rowOf } from "../helpers/consentLogsTab";
+import { ENTRIES, REF, api, calls, choicesTable, fail, fetchMock, installConsentFetch, ok, rowOf } from "../helpers/consentLogsTab";
 
 const replaceMock = jest.fn((href: string) => window.history.replaceState(null, "", href));
 jest.mock("next/navigation", () => ({
@@ -124,6 +124,53 @@ describe("consent record dialog", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Consent record" });
     expect(await within(dialog).findByText("Replaced by a later choice")).toBeInTheDocument();
+  });
+});
+
+describe("other consent details", () => {
+  async function openEntry() {
+    render(<ConsentLogsTab />);
+    await choicesTable();
+    await userEvent.click(screen.getByRole("tab", { name: "Other consents" }));
+    await screen.findByText("Omar Khan");
+    const row = rowOf(screen.getAllByRole("table")[0], "Omar Khan");
+    await userEvent.click(within(row).getByRole("button", { name: /View/ }));
+    return screen.findByRole("dialog", { name: "Consent details" });
+  }
+
+  it("shows who, the consent and what it means, the answer, status, source and version", async () => {
+    const dialog = await openEntry();
+
+    await within(dialog).findByText("Replaced by a later answer");
+    expect(within(dialog).getByText("Omar Khan")).toBeInTheDocument();
+    expect(within(dialog).getByText("omar@example.com")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("Terms & Privacy Policy").length).toBeGreaterThan(0);
+    expect(within(dialog).getByText(/Agreement to the Terms of Service/)).toBeInTheDocument();
+    expect(within(dialog).getByText("Sign-up form")).toBeInTheDocument();
+    expect(within(dialog).getByText(/An older version/)).toBeInTheDocument();
+    expect(within(dialog).queryByText("10.0.0.1")).not.toBeInTheDocument();
+    expect(calls("/api/admin/gdpr/consent/entries/64d0000000000000000000b2")).toHaveLength(1);
+  });
+
+  it("lists the account's other answers of the same type, tagged Later or Earlier", async () => {
+    const dialog = await openEntry();
+    const history = await within(dialog).findByRole("table", { name: "Other answers of this type on this account" });
+
+    const [, later] = within(history).getAllByRole("row");
+    expect(later).toHaveTextContent("Later");
+    expect(later).toHaveTextContent("Yes");
+    expect(later).toHaveTextContent("Accepted updated terms");
+  });
+
+  it("says when the entry no longer exists", async () => {
+    const saved = ENTRIES["64d0000000000000000000b2"];
+    delete ENTRIES["64d0000000000000000000b2"];
+    try {
+      const dialog = await openEntry();
+      expect(await within(dialog).findByText("This consent entry no longer exists")).toBeInTheDocument();
+    } finally {
+      ENTRIES["64d0000000000000000000b2"] = saved;
+    }
   });
 });
 

@@ -17,6 +17,7 @@ import { ConsentRecordDialog } from "./ConsentRecordDialog";
 import { ConsentStatCards } from "./ConsentStatCards";
 import { CookieChoicePanel } from "./CookieChoicePanel";
 import type { CookieChoiceLookupRequest } from "./cookieChoice";
+import { OtherConsentDialog } from "./OtherConsentDialog";
 import { OtherConsentsTable } from "./OtherConsentsTable";
 import { TermsVersionCard } from "./TermsVersionCard";
 
@@ -51,11 +52,18 @@ export function ConsentLogsTab() {
   // The record in the dialog. Kept after closing so the dialog keeps its content while it animates out.
   const [recordRef, setRecordRef] = useState<string | null>(null);
   const [recordOpen, setRecordOpen] = useState(false);
+  // The Other consents entry in its dialog, kept after closing for the same reason.
+  const [entryId, setEntryId] = useState<string | null>(null);
+  const [entryOpen, setEntryOpen] = useState(false);
 
   const lookup = (reference: string) => setLookupRequest((prev) => ({ reference, nonce: (prev?.nonce ?? 0) + 1 }));
   const openRecord = (reference: string) => {
     setRecordRef(reference);
     setRecordOpen(true);
+  };
+  const openEntry = (id: string) => {
+    setEntryId(id);
+    setEntryOpen(true);
   };
   const changePeriod = (next: CookieChoicePeriod) => {
     setPeriod(String(next));
@@ -68,6 +76,7 @@ export function ConsentLogsTab() {
   return (
     <>
       <ConsentRecordDialog receiptId={recordRef} open={recordOpen} onClose={() => setRecordOpen(false)} />
+      <OtherConsentDialog entryId={entryId} open={entryOpen} onClose={() => setEntryOpen(false)} />
       <ConsentStatCards days={days} onDaysChange={changePeriod} />
       <TermsVersionCard />
       <CookieChoicePanel request={lookupRequest} onViewRecord={openRecord} />
@@ -96,7 +105,7 @@ export function ConsentLogsTab() {
           />
         </TabsContent>
         <TabsContent value="other" className="mt-0 flex min-w-0 flex-col" style={SECTION_GAP}>
-          <OtherConsentsTable pagination={otherPagination} />
+          <OtherConsentsTable pagination={otherPagination} onView={openEntry} />
         </TabsContent>
       </Tabs>
     </>

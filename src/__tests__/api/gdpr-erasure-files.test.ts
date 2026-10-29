@@ -30,7 +30,39 @@ const seekerUpdate = jest.fn((..._a: unknown[]) => lean({
   cv: { originalUrl: "https://s3/cvs/cv.pdf" },
   documents: [{ url: "https://s3/documents/passport.pdf" }],
 }));
-jest.mock("@/models/JobSeeker", () => ({ __esModule: true, default: { findOneAndUpdate: (...a: unknown[]) => seekerUpdate(...a) } }));
+jest.mock("@/models/JobSeeker", () => ({
+  __esModule: true,
+  default: {
+    findOneAndUpdate: (...a: unknown[]) => seekerUpdate(...a),
+    schema: {
+      paths: {
+        _id: {},
+        userId: {},
+        createdAt: {},
+        updatedAt: {},
+        __v: {},
+        fullName: {},
+        dateOfBirth: {},
+        gender: {},
+        nationalId: {},
+        visaNumber: {},
+        diversityInclusion: {},
+        profileCompleteness: {},
+        nationality: {},
+        currentLocation: {},
+        summary: {},
+        skills: {},
+        experience: {},
+        education: {},
+        languages: {},
+        linkedin: {},
+        socialLinks: {},
+        documents: {},
+        cv: {},
+      },
+    },
+  },
+}));
 
 const appFind = jest.fn((..._a: unknown[]) => lean([
   { _id: "app1", documents: [{ url: "https://s3/documents/cover.pdf" }] },
@@ -59,6 +91,14 @@ jest.mock("@/models/WhatsAppSuppression", () => ({ __esModule: true, deleteLifte
 jest.mock("@/models/GdprRequest", () => ({ __esModule: true, default: { create: jest.fn().mockResolvedValue({}) } }));
 const deleteCvRecordsOfSeeker = jest.fn().mockResolvedValue(undefined);
 jest.mock("@/lib/cv/cvDocuments", () => ({ deleteCvRecordsOfSeeker: (...a: unknown[]) => deleteCvRecordsOfSeeker(...a) }));
+jest.mock("@/models/DiversityResponse", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
+jest.mock("@/models/BackgroundCheck", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
+jest.mock("@/models/SavedJob", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
+jest.mock("@/models/ProfileView", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
+jest.mock("@/models/TalentPool", () => ({ __esModule: true, default: { updateMany: jest.fn().mockResolvedValue(undefined) } }));
+jest.mock("@/lib/matching/vectorStore", () => ({ eraseMatchVectors: jest.fn().mockResolvedValue(undefined) }));
+jest.mock("@/lib/ai/searchVectors", () => ({ eraseSearchVector: jest.fn().mockResolvedValue(undefined) }));
+jest.mock("@/lib/logs/logStore", () => ({ mirrorLogErase: jest.fn().mockResolvedValue(undefined) }));
 
 describe("eraseUserPersonalData removes every uploaded file", () => {
   it("unsets the document library and application attachments and deletes their objects", async () => {
@@ -70,7 +110,13 @@ describe("eraseUserPersonalData removes every uploaded file", () => {
     expect(update.$unset).toHaveProperty("documents");
 
     expect(appFind).toHaveBeenCalledWith({ jobSeekerId: SEEKER_ID });
-    expect(appUpdateMany).toHaveBeenCalledWith({ jobSeekerId: SEEKER_ID }, { $set: { documents: [] } });
+    const [, appUpdate] = appUpdateMany.mock.calls[0] as unknown as [unknown, { $set: Record<string, unknown>; $unset: Record<string, unknown> }];
+    expect(appUpdate.$set).toEqual({ documents: [], notes: [] });
+    // Check that sensitive application fields are unset (erased)
+    expect(Object.keys(appUpdate.$unset).length).toBeGreaterThan(0);
+    expect(appUpdate.$unset).toHaveProperty("coverLetter");
+    expect(appUpdate.$unset).toHaveProperty("agentNotes");
+    expect(appUpdate.$unset).toHaveProperty("screeningAnswers");
 
     const deleted = deleteFile.mock.calls.map((c) => c[0]).sort();
     expect(deleted).toEqual([

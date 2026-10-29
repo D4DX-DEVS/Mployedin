@@ -50,6 +50,8 @@ export const REGISTRY: RegistryItem[] = [
   { name: "recaptcha.google.com/recaptcha", kind: "thirdPartyHost", category: "necessary", basis: "user-action", party: "third", duration: "per Google", owner: "security", purposeKey: "recaptcha", legal: "pending" },
   // reCAPTCHA's api.js loads the rest of the widget from here.
   { name: "www.gstatic.com/recaptcha", kind: "thirdPartyHost", category: "necessary", basis: "user-action", party: "third", duration: "per Google", owner: "security", purposeKey: "recaptcha", legal: "pending" },
+  // The reCAPTCHA frame loads its own font from here (seen in the 2026-10-28 live test); our CSP doesn't govern Google's frame.
+  { name: "fonts.gstatic.com", kind: "thirdPartyHost", category: "necessary", basis: "user-action", party: "third", duration: "per Google", owner: "security", purposeKey: "recaptcha", legal: "pending" },
   { name: "_grecaptcha", kind: "localStorage", category: "necessary", basis: "user-action", party: "third", duration: "per Google", owner: "security", purposeKey: "recaptcha", legal: "pending" },
   { name: "mployedin-sw", kind: "serviceWorker", category: "necessary", basis: "user-action", party: "first", duration: "until uninstalled", owner: "pwa", purposeKey: "offline" },
   { name: "mployedin_sw_opt_in", kind: "localStorage", category: "necessary", basis: "user-action", party: "first", duration: "until notifications/app removed", owner: "pwa", purposeKey: "offline" },

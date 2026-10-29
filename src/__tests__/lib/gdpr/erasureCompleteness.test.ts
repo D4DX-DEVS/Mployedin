@@ -42,13 +42,53 @@ jest.mock("@/models/User", () => ({
     updateOne: jest.fn().mockResolvedValue({}),
   },
 }));
-jest.mock("@/models/JobSeeker", () => ({ __esModule: true, default: { findOneAndUpdate: () => chain(null) } }));
+jest.mock("@/models/JobSeeker", () => ({
+  __esModule: true,
+  default: {
+    findOneAndUpdate: () => chain(null),
+    schema: {
+      paths: {
+        _id: {},
+        userId: {},
+        createdAt: {},
+        updatedAt: {},
+        __v: {},
+        fullName: {},
+        dateOfBirth: {},
+        gender: {},
+        nationalId: {},
+        visaNumber: {},
+        diversityInclusion: {},
+        profileCompleteness: {},
+        nationality: {},
+        currentLocation: {},
+        summary: {},
+        skills: {},
+        experience: {},
+        education: {},
+        languages: {},
+        linkedin: {},
+        socialLinks: {},
+        documents: {},
+        cv: {},
+      },
+    },
+  },
+}));
 jest.mock("@/models/Application", () => ({ __esModule: true, default: { find: () => chain([]), updateMany: jest.fn() } }));
 jest.mock("@/models/Notification", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
 jest.mock("@/models/WhatsAppMessageLog", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
 jest.mock("@/models/WhatsAppSuppression", () => ({ __esModule: true, deleteLiftedSuppressions: jest.fn().mockResolvedValue(undefined) }));
 const consentUpdateMany = jest.fn((..._a: unknown[]) => Promise.resolve({ modifiedCount: 3 }));
 jest.mock("@/models/ConsentLog", () => ({ __esModule: true, default: { updateMany: (...a: unknown[]) => consentUpdateMany(...a) } }));
+jest.mock("@/models/DiversityResponse", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
+jest.mock("@/models/BackgroundCheck", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
+jest.mock("@/models/SavedJob", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
+jest.mock("@/models/ProfileView", () => ({ __esModule: true, default: { deleteMany: jest.fn().mockResolvedValue(undefined) } }));
+jest.mock("@/models/TalentPool", () => ({ __esModule: true, default: { updateMany: jest.fn().mockResolvedValue(undefined) } }));
+jest.mock("@/lib/matching/vectorStore", () => ({ eraseMatchVectors: jest.fn().mockResolvedValue(undefined) }));
+jest.mock("@/lib/ai/searchVectors", () => ({ eraseSearchVector: jest.fn().mockResolvedValue(undefined) }));
+jest.mock("@/lib/logs/logStore", () => ({ mirrorLogErase: jest.fn().mockResolvedValue(undefined) }));
 
 import { eraseUserPersonalData } from "@/lib/gdpr/erasure";
 

@@ -1,3 +1,4 @@
+import type { Types } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
 import JobSeeker from "@/models/JobSeeker";
@@ -116,8 +117,69 @@ export async function anonymiseConsentLogs(userId: string): Promise<void> {
 }
 
 /**
+ * What an erased job seeker profile keeps: the link to the (anonymised) account
+ * and its timestamps, so applications and counts still resolve to "Deleted User".
+ * Every other top-level field goes, read from the schema rather than listed, so a
+ * field added later is erased without anyone remembering this file. An explicit
+ * list once missed DOB, gender, address, national ID, visa number and disability.
+ */
+const SEEKER_KEPT_FIELDS = new Set(["_id", "userId", "createdAt", "updatedAt", "__v"]);
+
+export function seekerErasureUnset(): Record<string, 1> {
+  const topLevel = new Set(Object.keys(JobSeeker.schema.paths).map((path) => path.split(".")[0]));
+  return Object.fromEntries([...topLevel].filter((field) => !SEEKER_KEPT_FIELDS.has(field)).map((field) => [field, 1]));
+}
+
+/**
+ * Application fields that hold what the candidate wrote or what staff wrote about
+ * them. The rest (job, status, dates, score) stays so the employer's pipeline
+ * counts and reports don't change; with the profile erased it identifies no one.
+ */
+export const ERASED_APPLICATION_FIELDS = [
+  "coverLetter",
+  "screeningAnswers",
+  "employerNotes",
+  "agentNotes",
+  "rejectionReason",
+  "withdrawalNote",
+  "matchNotes",
+  "matchStrengths",
+  "matchGaps",
+  "behaviorSignals",
+  "automatedDecision.reviewNote",
+] as const;
+
+/**
+ * The records about a seeker outside their profile: diversity answers (special
+ * category data), background checks (with referees' details), saved jobs, who
+ * viewed the profile, and talent-pool memberships. Interviews, scorecards, offers
+ * and placements stay as the employer's hiring and commission records, linked
+ * only to the erased profile. [LEGAL] solicitor confirms that split.
+ */
+async function eraseSeekerRelatedRecords(seekerRef: unknown, userId: string, applicationIds: unknown[]): Promise<void> {
+  const seekerId = seekerRef as Types.ObjectId;
+  const [{ default: DiversityResponse }, { default: BackgroundCheck }, { default: SavedJob }, { default: ProfileView }, { default: TalentPool }] =
+    await Promise.all([
+      import("@/models/DiversityResponse"),
+      import("@/models/BackgroundCheck"),
+      import("@/models/SavedJob"),
+      import("@/models/ProfileView"),
+      import("@/models/TalentPool"),
+    ]);
+  await Promise.all([
+    applicationIds.length ? DiversityResponse.deleteMany({ applicationId: { $in: applicationIds } }) : null,
+    BackgroundCheck.deleteMany({ jobSeekerId: seekerId }),
+    SavedJob.deleteMany({ jobSeekerId: seekerId }),
+    // ProfileView.jobSeekerId holds the USER id (see the model).
+    ProfileView.deleteMany({ jobSeekerId: userId }),
+    TalentPool.updateMany({ "candidates.jobSeekerId": seekerId }, { $pull: { candidates: { jobSeekerId: seekerId } } }),
+  ]);
+}
+
+/**
  * Erase all personal data for a user — anonymize their account,
  * delete their profile, notifications, and uploaded files per GDPR.
+ * Both the admin-completed request and the seeker's own DELETE use this.
  * @param userId The user ID to erase
  * @returns The anonymized email address for the register
  * @throws On erasure failure
@@ -145,35 +207,12 @@ export async function eraseUserPersonalData(userId: string): Promise<{ anonymize
       },
       $unset: Object.fromEntries(ERASED_ACCOUNT_SECRETS.map((field) => [field, 1])),
     }).select("avatar").lean<{ avatar?: string | null } | null>(),
-    // Delete job seeker profile data. Field names MUST match the schema exactly
-    // or $unset silently no-ops: `cv` (holds originalUrl + parsed resume text)
-    // and `experience` were previously misnamed `cvUrl`/`workExperience`, so
-    // that PII survived "erasure". Also clear financial PII (bank/IBAN).
-    // findOneAndUpdate returns the PRE-update doc, so `seekerBefore` still
-    // carries cv.originalUrl for the storage hard-delete below.
-    JobSeeker.findOneAndUpdate(
-      { userId },
-      {
-        $unset: {
-          cv: 1,
-          skills: 1,
-          experience: 1,
-          education: 1,
-          languages: 1,
-          nationality: 1,
-          passportNumber: 1,
-          bankAccountNumber: 1,
-          iban: 1,
-          documents: 1,
-          // Vectors computed from the profile text: matching and admin search.
-          matchEmbedding: 1,
-          matchEmbeddingAt: 1,
-          matchEmbeddingModel: 1,
-          searchEmbedding: 1,
-          searchVectorAt: 1,
-        },
-      },
-    ).select("cv documents").lean<{ _id?: unknown; cv?: { originalUrl?: string }; documents?: { url?: string }[] } | null>(),
+    // Every profile field but the ids (seekerErasureUnset). findOneAndUpdate
+    // returns the PRE-update doc, so `seekerBefore` still carries cv.originalUrl
+    // for the storage hard-delete below.
+    JobSeeker.findOneAndUpdate({ userId }, { $unset: seekerErasureUnset() })
+      .select("cv documents")
+      .lean<{ _id?: unknown; cv?: { originalUrl?: string }; documents?: { url?: string }[] } | null>(),
     // Delete notifications
     Notification.deleteMany({ userId }),
   ]);
@@ -201,10 +240,17 @@ export async function eraseUserPersonalData(userId: string): Promise<{ anonymize
   ];
   if (seekerBefore?._id) {
     const applications = await Application.find({ jobSeekerId: seekerBefore._id })
-      .select("documents")
-      .lean<{ documents?: { url?: string }[] }[]>();
+      .select("_id documents")
+      .lean<{ _id: unknown; documents?: { url?: string }[] }[]>();
     fileUrls.push(...applications.flatMap((a) => (a.documents ?? []).map((d) => d.url)));
-    await Application.updateMany({ jobSeekerId: seekerBefore._id }, { $set: { documents: [] } });
+    await Application.updateMany(
+      { jobSeekerId: seekerBefore._id },
+      {
+        $set: { documents: [], notes: [] },
+        $unset: Object.fromEntries(ERASED_APPLICATION_FIELDS.map((field) => [field, 1])),
+      },
+    );
+    await eraseSeekerRelatedRecords(seekerBefore._id, userId, applications.map((a) => a._id));
   }
   const { deleteFile } = await import("@/lib/storage/spaces");
   for (const url of new Set(fileUrls.filter((u): u is string => Boolean(u)))) {

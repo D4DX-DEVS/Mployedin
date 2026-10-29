@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { dateOfBirthProblem, MIN_SEEKER_AGE } from "@/lib/jobSeeker/minimumAge";
 import { commonSchemas } from "./index";
 import { isLinkedInProfileUrl } from "@/lib/security/linkedin-url";
 import { cvDesignSchema } from "@/lib/jobSeeker/cvDesign";
@@ -49,7 +50,13 @@ export const jobSeekerProfileUpdateSchema = z
     cv: z.string().url().max(2048).optional(),
     avatar: z.string().url().max(2048).optional(),
     phone: commonSchemas.phone.optional().or(z.literal("")),
-    dateOfBirth: z.string().max(30).optional(),
+    // Must be 16 or over (lib/jobSeeker/minimumAge.ts). "" clears the field.
+    dateOfBirth: z
+      .string()
+      .max(30)
+      .refine((v) => v === "" || dateOfBirthProblem(v) !== "invalid", { message: "Enter a real date of birth." })
+      .refine((v) => v === "" || dateOfBirthProblem(v) !== "tooYoung", { message: `You must be ${MIN_SEEKER_AGE} or over to use Mployedin.` })
+      .optional(),
     preferredJobType: z.enum(["remote", "hybrid", "onsite", "any"]).optional(),
     preferredRoles: z.array(z.string().max(100).trim()).max(20).optional(),
     preferredCountries: z.array(z.string().max(100).trim()).max(20).optional(),

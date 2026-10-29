@@ -53,8 +53,10 @@ jest.mock("@/lib/matching/seekerMatches", () => ({
   storedBreakdown: jest.requireActual("@/lib/matching/seekerMatches").storedBreakdown,
 }));
 const mockNotifyStatusChange = jest.fn().mockResolvedValue(undefined);
+const mockNotifyAutomatedRejection = jest.fn().mockResolvedValue(undefined);
 jest.mock("@/lib/notifications/trigger", () => ({
   notifyStatusChange: (...a: unknown[]) => mockNotifyStatusChange(...a),
+  notifyAutomatedRejection: (...a: unknown[]) => mockNotifyAutomatedRejection(...a),
 }));
 jest.mock("@/lib/effectiveSeekerProfile", () => ({
   effectiveSeekerProfile: async (_userId: string, doc: unknown) => doc,
@@ -113,6 +115,7 @@ async function runWorker(eventData: Record<string, unknown> = {}) {
 describe("aiScreenApplication worker", () => {
   beforeEach(() => {
     mockNotifyStatusChange.mockClear();
+    mockNotifyAutomatedRejection.mockClear();
     score = 30;
     jobWorkflow = undefined;
     employerWorkflow = undefined;
@@ -169,6 +172,24 @@ describe("aiScreenApplication worker", () => {
       expect.objectContaining({ status: "rejected", note: "Auto-rejected by AI screening" }),
     ]);
     expect(result).toMatchObject({ autoRejected: true });
+  });
+
+  it("records an auto-reject as an automated decision and always tells the candidate", async () => {
+    // The employer turned candidate updates off: an automated rejection is still disclosed.
+    jobWorkflow = { customizedAt: new Date(), settings: { autoRejectEnabled: true, autoRejectBelow: 40, notifyOnStageChange: false } };
+    seekerDoc.userId = "seeker_user";
+    await runWorker();
+    expect(application.automatedDecision).toEqual(
+      expect.objectContaining({ kind: "auto_reject", score: 30, threshold: 40, decidedAt: expect.any(Date) }),
+    );
+    expect(mockNotifyAutomatedRejection).toHaveBeenCalledWith("seeker_user", "Accountant", APP_ID);
+  });
+
+  it("records no automated decision and sends no notice when nothing was rejected", async () => {
+    seekerDoc.userId = "seeker_user";
+    await runWorker();
+    expect(application.automatedDecision).toBeUndefined();
+    expect(mockNotifyAutomatedRejection).not.toHaveBeenCalled();
   });
 
   it("falls back to the employer rule when the job has none", async () => {

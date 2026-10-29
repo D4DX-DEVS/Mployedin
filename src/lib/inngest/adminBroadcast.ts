@@ -15,7 +15,9 @@ import { connectDB } from "@/lib/db/mongoose";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
 import { sendEmail } from "@/lib/communications/email";
-import { broadcastRecipientQuery } from "@/lib/communications/broadcastAudience";
+import { withIdRange } from "@/lib/communications/broadcastAudience";
+import { broadcastAudienceQuery } from "@/lib/communications/broadcastAudienceServer";
+import { emailFooter } from "@/lib/communications/emailLayout";
 import { sendWhatsAppToUsers, type AudienceUser } from "@/lib/communications/whatsapp/audienceSend";
 import logger from "@/lib/logger";
 import type { AdminBroadcastEvent } from "./events";
@@ -38,14 +40,28 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function broadcastHtml(title: string, message: string): string {
+function broadcastHtml(title: string, message: string, footer = ""): string {
   return `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#fff;border-radius:8px;border:1px solid #e5e7eb;">
     <div style="background:#0a2a6e;padding:20px 24px;border-radius:6px 6px 0 0;text-align:center;margin-bottom:24px;">
       <h1 style="color:#fff;margin:0;font-size:20px;letter-spacing:1px;">MPLOYEDIN</h1>
     </div>
     <h2 style="color:#0a2a6e;margin:0 0 16px;">${esc(title)}</h2>
     <p style="color:#374151;font-size:15px;line-height:1.6;white-space:pre-wrap;">${esc(message)}</p>
-  </div>`;
+  </div>${footer}`;
+}
+
+/** Marketing mail carries a one-click link that turns marketing off for this recipient. */
+function marketingFooter(userId: string, locale: string | undefined): string {
+  const isAr = locale === "ar";
+  return emailFooter({
+    locale: isAr ? "ar" : "en",
+    reason: isAr
+      ? "تتلقى هذا البريد لأنك وافقت على تلقي رسائل تسويقية من MPLOYEDIN."
+      : "You're receiving this because you agreed to marketing emails from MPLOYEDIN.",
+    unsubRef: "broadcast",
+    userId,
+    unsubCategory: "marketing",
+  });
 }
 
 export const adminBroadcastSender = inngest.createFunction(
@@ -60,15 +76,19 @@ export const adminBroadcastSender = inngest.createFunction(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async ({ event, step }: { event: AdminBroadcastEvent; step: any }) => {
     const { title, message, targetRoles, targetAll, channels, broadcastId, whatsapp } = event.data;
+    const purpose = event.data.purpose ?? "service";
+    const marketing = purpose === "marketing";
 
     await connectDB();
 
-    // Same audience the admin confirmed a count for (see broadcastAudience.ts).
-    const baseQuery = broadcastRecipientQuery(Boolean(targetAll), targetRoles);
+    // Same audience the admin confirmed a count for (see broadcastAudience.ts). Read in a step so a
+    // marketing opt-in list is fixed for the whole run instead of shifting between batches on replay.
+    const baseQuery: Record<string, unknown> = await step.run("audience", () =>
+      broadcastAudienceQuery(Boolean(targetAll), targetRoles, purpose));
     const needsEmail = channels.includes("email");
     const needsInApp = channels.includes("in_app");
     const needsWhatsApp = channels.includes("whatsapp") && Boolean(whatsapp);
-    const html = needsEmail ? broadcastHtml(title, message) : "";
+    const html = needsEmail && !marketing ? broadcastHtml(title, message) : "";
 
     let lastId: string | null = null;
     let batchIndex = 0;
@@ -82,12 +102,12 @@ export const adminBroadcastSender = inngest.createFunction(
     // recipient set. Each batch is a durable step; the loop replays deterministically.
     for (;;) {
       const result = await step.run(`batch-${batchIndex}`, async () => {
-        const q = { ...baseQuery, ...(lastId ? { _id: { $gt: lastId } } : {}) };
+        const q = lastId ? withIdRange(baseQuery, { $gt: lastId }) : baseQuery;
         const users = (await User.find(q)
           .sort({ _id: 1 })
           .limit(BATCH_SIZE)
-          .select(`_id${needsEmail ? " email name" : ""}`)
-          .lean()) as Array<{ _id: unknown; email?: string; name?: string }>;
+          .select(`_id${needsEmail ? " email name locale" : ""}`)
+          .lean()) as Array<{ _id: unknown; email?: string; name?: string; locale?: string }>;
 
         if (!users.length) return { done: true as const };
 
@@ -115,10 +135,10 @@ export const adminBroadcastSender = inngest.createFunction(
                 sendEmail({
                   to: u.email as string,
                   subject: title,
-                  html,
+                  html: marketing ? broadcastHtml(title, message, marketingFooter(String(u._id), u.locale)) : html,
                   userId: String(u._id),
                   source: "broadcast",
-                  category: "system",
+                  category: marketing ? "marketing" : "system",
                 }),
               ),
           );
@@ -147,12 +167,12 @@ export const adminBroadcastSender = inngest.createFunction(
         const from = lastId;
         const to = result.lastId;
         const wa: WhatsAppCounts = await step.run(`batch-${batchIndex}-wa`, async () => {
-          const range = { ...baseQuery, _id: { ...(from ? { $gt: from } : {}), $lte: to } };
+          const range = withIdRange(baseQuery, { ...(from ? { $gt: from } : {}), $lte: to });
           const users = (await User.find(range)
             .sort({ _id: 1 })
             .select("_id phone name role locale whatsapp")
             .lean()) as AudienceUser[];
-          return sendWhatsAppToUsers(users, whatsapp, { source: "broadcast", category: "system", broadcastId, tokens: { title, message } });
+          return sendWhatsAppToUsers(users, whatsapp, { source: "broadcast", category: marketing ? "marketing" : "system", broadcastId, tokens: { title, message } });
         });
         totalWhatsApp += wa.sent;
         totalWhatsAppFailed += wa.failed;

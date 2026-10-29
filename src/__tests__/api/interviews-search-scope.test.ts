@@ -140,3 +140,29 @@ describe("GET /api/interviews search cannot widen the caller's scope", () => {
     expect(find).not.toHaveBeenCalled();
   });
 });
+
+// The agent home's "Outcomes to record" opens ?outcome=pending. The list held
+// the right 7 rows but the header read "15 interviews": the status tiles drop
+// `status` before counting, and that is where the cancelled/rescheduled
+// exclusion lived, so cancelled interviews came back into the totals.
+describe("GET /api/interviews?outcome=pending", () => {
+  beforeEach(() => { find.mockClear(); aggregate.mockClear(); mockCurrentRole = "agent"; });
+
+  const excludesClosed = (q: Record<string, unknown>) =>
+    ((q.$and as Record<string, unknown>[] | undefined) ?? []).some(
+      (c) => JSON.stringify(c.status) === JSON.stringify({ $nin: ["cancelled", "rescheduled"] }),
+    );
+
+  it("keeps cancelled and rescheduled interviews out of the status counts", async () => {
+    await call("outcome=pending");
+    const match = (aggregate.mock.calls[0] as unknown as [{ $match: Record<string, unknown> }[]])[0][0].$match;
+    expect(excludesClosed(match)).toBe(true);
+  });
+
+  it("keeps a status filter instead of overwriting it", async () => {
+    await call("outcome=pending&status=completed");
+    const query = (find.mock.calls[0] as unknown as [Record<string, unknown>])[0];
+    expect(query.status).toBe("completed");
+    expect(excludesClosed(query)).toBe(true);
+  });
+});

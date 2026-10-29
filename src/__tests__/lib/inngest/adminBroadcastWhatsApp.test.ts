@@ -28,7 +28,21 @@ const insertMany = jest.fn().mockResolvedValue([]);
 jest.mock("@/models/Notification", () => ({ __esModule: true, default: { insertMany: (...a: unknown[]) => insertMany(...a) } }));
 const sendEmail = jest.fn().mockResolvedValue({ messageId: "m" });
 jest.mock("@/lib/communications/email", () => ({ sendEmail: (...a: unknown[]) => sendEmail(...a) }));
-jest.mock("@/lib/communications/broadcastAudience", () => ({ broadcastRecipientQuery: () => ({ isActive: true }) }));
+jest.mock("@/lib/communications/broadcastAudienceServer", () => ({
+  broadcastAudienceQuery: jest.fn(async (targetAll: boolean, targetRoles: unknown, purpose: string) => {
+    // Return a proper query object for testing
+    const query: Record<string, unknown> = { isActive: true };
+    if (!targetAll) query.role = Array.isArray(targetRoles) ? { $in: targetRoles } : targetRoles;
+    return query;
+  }),
+}));
+jest.mock("@/lib/communications/broadcastAudience", () => ({
+  broadcastRecipientQuery: () => ({ isActive: true }),
+  withIdRange: (q: Record<string, unknown>, range: Record<string, unknown>) => {
+    const current = q._id && typeof q._id === "object" ? (q._id as Record<string, unknown>) : {};
+    return { ...q, _id: { ...current, ...range } };
+  },
+}));
 const sendWhatsAppToUsers = jest.fn();
 jest.mock("@/lib/communications/whatsapp/audienceSend", () => ({ sendWhatsAppToUsers: (...a: unknown[]) => sendWhatsAppToUsers(...a) }));
 
@@ -85,7 +99,7 @@ describe("admin broadcast — WhatsApp leg", () => {
   it("re-reads exactly the batch's _id range, so the step output carries no phone numbers", async () => {
     const step = makeStep();
     await run({ title: "T", message: "M", targetAll: true, channels: ["in_app", "whatsapp"], whatsapp }, step);
-    expect(step.names).toEqual(["batch-0", "batch-0-wa", "batch-1"]);
+    expect(step.names).toEqual(["audience", "batch-0", "batch-0-wa", "batch-1"]);
     const range = finds.find((f) => (f.q._id as { $lte?: unknown } | undefined)?.$lte);
     expect(range?.q).toEqual({ isActive: true, _id: { $lte: "u2" } });
     // The cursor step never projects phone/consent.

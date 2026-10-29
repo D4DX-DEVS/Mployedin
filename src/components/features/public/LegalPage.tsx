@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Accessibility, Building2, Calendar, Cookie, FileText, Mail, MapPin, Shield, ShieldCheck, type LucideIcon } from "lucide-react";
+import { Accessibility, Building2, Calendar, Cookie, FileText, ListChecks, Mail, MapPin, Shield, ShieldCheck, type LucideIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sanitizePublicHtml } from "@/lib/security/html";
 import { formatDate } from "@/lib/ui/intlFormat";
 import type { LegalPageSlug } from "@/lib/cms/legalPages";
+import { layoutLegalHtml } from "@/lib/cms/legalLayout";
 
 type LegalKind = "privacy" | "terms" | "cookies" | "gdpr" | "accessibility";
 type LandingT = ReturnType<typeof useTranslations<"landing">>;
@@ -18,6 +19,11 @@ interface LegalCopy {
   intro: string;
   preparing: string;
   agreement: string;
+  /**
+   * The key points, shown above the full text (a layered notice). Written by us, not the CMS, from what the
+   * code does. [LEGAL] wording for solicitor sign-off along with the policies themselves.
+   */
+  brief?: string[];
 }
 
 // Literal t() keys per page, so the message-key checks can see every one.
@@ -25,7 +31,13 @@ const KINDS: Record<LegalKind, { slug: LegalPageSlug; icon: LucideIcon; copy: (t
   privacy: {
     slug: "privacy-policy",
     icon: Shield,
-    copy: (t) => ({ heading: t("privacyHeading"), intro: t("privacyIntro"), preparing: t("privacyPreparing"), agreement: t("privacyAgreement") }),
+    copy: (t) => ({
+      heading: t("privacyHeading"),
+      intro: t("privacyIntro"),
+      preparing: t("privacyPreparing"),
+      agreement: t("privacyAgreement"),
+      brief: [t("privacyBrief1"), t("privacyBrief2"), t("privacyBrief3"), t("privacyBrief4"), t("privacyBrief5")],
+    }),
   },
   terms: {
     slug: "terms-and-conditions",
@@ -35,7 +47,13 @@ const KINDS: Record<LegalKind, { slug: LegalPageSlug; icon: LucideIcon; copy: (t
   cookies: {
     slug: "cookie-policy",
     icon: Cookie,
-    copy: (t) => ({ heading: t("cookiesHeading"), intro: t("cookiesIntro"), preparing: t("cookiesPreparing"), agreement: t("cookiesAgreement") }),
+    copy: (t) => ({
+      heading: t("cookiesHeading"),
+      intro: t("cookiesIntro"),
+      preparing: t("cookiesPreparing"),
+      agreement: t("cookiesAgreement"),
+      brief: [t("cookiesBrief1"), t("cookiesBrief2"), t("cookiesBrief3"), t("cookiesBrief4"), t("cookiesBrief5")],
+    }),
   },
   gdpr: {
     slug: "gdpr",
@@ -69,7 +87,17 @@ const CONTENT_CLASSES = [
   "[&_h3]:mb-3 [&_h3]:mt-6 [&_h3]:scroll-mt-20 [&_h3]:text-lg [&_h3]:font-semibold",
   "[&_p]:my-4 [&_ul]:my-4 [&_ul]:list-disc [&_ul]:ps-6 [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:ps-6 [&_li]:my-1",
   "[&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-4 [&_strong]:font-semibold",
+  // Tables folded by layoutLegalHtml: the summary is the button that opens one.
+  "[&_.legal-fold]:my-4 [&_.legal-fold]:rounded-xl [&_.legal-fold]:border [&_.legal-fold]:border-border/60",
+  "[&_.legal-fold>summary]:flex [&_.legal-fold>summary]:min-h-11 [&_.legal-fold>summary]:cursor-pointer [&_.legal-fold>summary]:items-center",
+  "[&_.legal-fold>summary]:px-4 [&_.legal-fold>summary]:text-sm [&_.legal-fold>summary]:font-medium [&_.legal-fold>summary]:text-primary",
+  "[&_.legal-fold>summary:focus-visible]:outline-2 [&_.legal-fold>summary:focus-visible]:outline-primary",
+  "[&_.legal-fold[open]>summary]:border-b [&_.legal-fold[open]>summary]:border-border/60 [&_.legal-fold_table]:my-0",
+  "[&_.legal-fold-hide]:hidden [&_.legal-fold[open]_.legal-fold-hide]:inline [&_.legal-fold[open]_.legal-fold-show]:hidden",
 ].join(" ");
+
+/** A contents list is worth showing from this many sections up. */
+const MIN_SECTIONS_FOR_CONTENTS = 3;
 
 interface PublishedPage {
   title?: string;
@@ -109,6 +137,13 @@ export default function LegalPage({ kind }: { kind: LegalKind }) {
 
   const title = page ? (isAr ? page.titleAr || page.title : page.title) || text.heading : text.heading;
   const body = page ? (isAr ? page.bodyAr || page.body : page.body) ?? "" : "";
+  // Body only arrives after the fetch above, so this never runs during the server render.
+  const layout = useMemo(
+    () => (body && typeof document !== "undefined"
+      ? layoutLegalHtml(sanitizePublicHtml(body), { show: (rows) => t("legalShowList", { count: rows }), hide: t("legalHideList") })
+      : { html: "", sections: [] }),
+    [body, t],
+  );
 
   if (loading) {
     return (
@@ -154,10 +189,40 @@ export default function LegalPage({ kind }: { kind: LegalKind }) {
               <p className="text-sm leading-relaxed text-muted-foreground">{text.intro}</p>
             </div>
 
-            {/* Body content */}
+            {text.brief && (
+              <section aria-labelledby="legal-brief-heading" className="border-b border-border/60 px-6 py-6 sm:px-8">
+                <h2 id="legal-brief-heading" className="flex items-center gap-2 text-lg font-semibold">
+                  <ListChecks className="size-5 text-primary" aria-hidden="true" />
+                  {t("legalInBrief")}
+                </h2>
+                <ul className="mt-3 list-disc space-y-2 ps-6 text-sm leading-6">
+                  {text.brief.map((point) => <li key={point}>{point}</li>)}
+                </ul>
+              </section>
+            )}
+
+            {layout.sections.length >= MIN_SECTIONS_FOR_CONTENTS && (
+              <nav aria-labelledby="legal-contents-heading" className="border-b border-border/60 px-6 py-5 sm:px-8">
+                <h2 id="legal-contents-heading" className="heading-label font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("legalContents")}
+                </h2>
+                {/* A list without numbers: the policies number their own headings. */}
+                <ul className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+                  {layout.sections.map((section) => (
+                    <li key={section.id} className="min-w-0">
+                      <a href={`#${section.id}`} className="inline-flex min-h-9 items-center text-primary underline-offset-4 hover:underline">
+                        {section.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            )}
+
+            {/* Body content: sanitised, then given anchors and folded tables (lib/cms/legalLayout.ts). */}
             <div
               className={CONTENT_CLASSES}
-              dangerouslySetInnerHTML={{ __html: sanitizePublicHtml(body) }}
+              dangerouslySetInnerHTML={{ __html: layout.html }}
             />
 
             {/* Contact footer card */}

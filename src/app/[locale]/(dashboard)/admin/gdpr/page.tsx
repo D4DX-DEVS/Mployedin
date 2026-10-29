@@ -121,6 +121,7 @@ export default function AdminGdprPage() {
     { value: "all", label: t("allTypesLabel") },
     { value: "export", label: typeLabel("export") },
     { value: "delete", label: typeLabel("delete") },
+    { value: "complaint", label: typeLabel("complaint") },
   ];
 
   const STATUS_OPTIONS = [

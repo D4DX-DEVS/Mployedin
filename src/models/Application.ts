@@ -67,6 +67,20 @@ export interface IScreeningAnswer {
   answer: string | string[] | boolean;
 }
 
+export interface IAutomatedDecision {
+  kind: "auto_reject";
+  /** The match score and the employer's line it fell below, as they were at the decision. */
+  score: number;
+  threshold: number;
+  decidedAt: Date;
+  /** Set once, by the candidate's "ask for a human review". */
+  reviewRequestedAt?: Date;
+  reviewNote?: string;
+  /** The first status change a person makes after the request. */
+  reviewedAt?: Date;
+  reviewedBy?: mongoose.Types.ObjectId;
+}
+
 export interface IApplication extends Document {
   _id: mongoose.Types.ObjectId;
   jobSeekerId: mongoose.Types.ObjectId;
@@ -75,6 +89,8 @@ export interface IApplication extends Document {
   agentId?: mongoose.Types.ObjectId;
   status: ApplicationStatus;
   documents: { name: string; url: string; type: string }[];
+  /** Set when the 24-month retention clean-up anonymised it (lib/gdpr/applicationRetention.ts). */
+  retentionAnonymisedAt?: Date;
   aiMatchScore?: number;
   /**
    * How the score was calculated: 'engine' (the shared matching engine every
@@ -140,6 +156,12 @@ export interface IApplication extends Document {
     changedBy?: mongoose.Types.ObjectId;
     note?: string;
   }[];
+  /**
+   * A decision the screening worker made with no person involved (UK GDPR
+   * Art 22A-D, in force 5 Feb 2026): the candidate is told, and may ask for a
+   * person to review it, which reopens the application for the employer.
+   */
+  automatedDecision?: IAutomatedDecision;
   slaAlertSentAt?: Date;
   strongAlertSentAt?: Date;
   createdAt: Date;
@@ -178,6 +200,7 @@ const ApplicationSchema = new Schema<IApplication>(
       default: "applied",
     },
     documents: [ApplicationDocumentSchema],
+    retentionAnonymisedAt: Date,
     aiMatchScore: Number,
     scoredVia: String,
     aiMatchNotifiedAt: Date,
@@ -279,6 +302,17 @@ const ApplicationSchema = new Schema<IApplication>(
         _id: false,
       },
     ],
+    automatedDecision: {
+      kind: { type: String, enum: ["auto_reject"] },
+      score: Number,
+      threshold: Number,
+      decidedAt: Date,
+      reviewRequestedAt: Date,
+      reviewNote: { type: String, maxlength: 1000, trim: true },
+      reviewedAt: Date,
+      reviewedBy: Schema.Types.ObjectId,
+      _id: false,
+    },
     slaAlertSentAt: Date,
     strongAlertSentAt: Date,
   },

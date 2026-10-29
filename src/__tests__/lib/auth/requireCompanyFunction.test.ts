@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  */
-import { requireCompanyFunction } from "@/lib/auth/requireCompanyFunction";
+import { mayUseCompanyFunction, requireCompanyFunction } from "@/lib/auth/requireCompanyFunction";
 import { computeEffectivePermissions } from "@/models/CompanyUser";
 
 const notFound = jest.fn(() => {
@@ -73,5 +73,23 @@ describe("requireCompanyFunction", () => {
       user: { id: "member", role: "employer", companyOwnerUserId: "owner" },
     });
     await expect(requireCompanyFunction("canRunScreening")).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+});
+
+describe("mayUseCompanyFunction", () => {
+  beforeEach(() => {
+    notFound.mockClear();
+    auth.mockReset();
+  });
+
+  it("answers yes for an owner and no for a member without the flag, never calling notFound", async () => {
+    auth.mockResolvedValue({ user: { id: "u1", role: "employer", companyOwnerUserId: "u1" } });
+    await expect(mayUseCompanyFunction("canManageCompanySettings")).resolves.toBe(true);
+
+    auth.mockResolvedValue({
+      user: { id: "member", role: "employer", companyOwnerUserId: "owner", companyPermissions: computeEffectivePermissions(["viewer"]) },
+    });
+    await expect(mayUseCompanyFunction("canManageCompanySettings")).resolves.toBe(false);
+    expect(notFound).not.toHaveBeenCalled();
   });
 });

@@ -62,6 +62,18 @@ export const OTHER_ROWS = [
   },
 ];
 
+/** What /api/admin/gdpr/consent/entries/[id] answers for OTHER_ROWS[0]. */
+export const ENTRIES: Record<string, unknown> = {
+  "64d0000000000000000000b2": {
+    entry: { ...OTHER_ROWS[0], ipAddress: undefined },
+    status: "replaced",
+    termsVersion: "older",
+    history: [
+      { _id: "64d0000000000000000000b3", timestamp: "2026-10-22T11:00:00Z", relation: "later", granted: true, source: "terms_update", policyVersion: "2026-10-22" },
+    ],
+  },
+};
+
 export type Json = Record<string, unknown>;
 export const ok = (body: unknown) => Promise.resolve({ ok: true, status: 200, json: async () => body });
 export const fail = (status = 500) => Promise.resolve({ ok: false, status, json: async () => ({}) });
@@ -103,6 +115,10 @@ export function installConsentFetch(): void {
         receipts: [{ receiptId: REF, preferences: false, media: false, version: 1, locale: "en", createdAt: "2026-10-18T09:30:00.000Z", wordingMatchesCurrent: true, source: null }],
         linkedAccount: { userId: "64d000000000000000000003", userName: "Sara Ahmed", userEmail: "sara@example.com", source: "banner", firstChoice: true },
       });
+    }
+    if (url.pathname.startsWith("/api/admin/gdpr/consent/entries/")) {
+      const id = decodeURIComponent(url.pathname.split("/").pop() ?? "");
+      return ENTRIES[id] ? ok(ENTRIES[id]) : fail(404);
     }
     if (url.pathname === "/api/admin/gdpr/consent") return api.other(url);
     if (url.pathname === "/api/admin/gdpr/terms") {

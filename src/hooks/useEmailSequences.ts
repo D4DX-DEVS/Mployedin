@@ -3,7 +3,7 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 
 // ── Types ──────────────────────────────────────────────────────────
 export type SequenceStatus = "draft" | "active" | "paused" | "completed";
-export type RecipientStatus = "active" | "completed" | "unsubscribed" | "bounced";
+export type RecipientStatus = "active" | "completed" | "unsubscribed" | "bounced" | "no_consent";
 
 export interface SequenceStep {
   _id?: string;

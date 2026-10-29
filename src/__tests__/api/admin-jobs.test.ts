@@ -52,6 +52,7 @@ jest.mock("@/models/Employer", () => ({
   default: {
     exists: jest.fn(),
     findOne: jest.fn(),
+    findById: jest.fn(),
     // Company-name lookup: only "Beta Industries" exists.
     find: jest.fn((filter: { companyName?: { $regex: string; $options: string } }) => ({
       select: () => ({
@@ -160,6 +161,19 @@ describe("Admin Jobs API", () => {
     expect(query.$and).toHaveLength(2);
     expect(query.$and[0].$or).toContainEqual({ "location.city": { $regex: "Dubai", $options: "i" } });
     expect(query.$and[1].$or).toContainEqual({ employerId: { $in: ["emp_beta"] } });
+  });
+
+  it("GET /api/admin/jobs?employerId keeps to that account, not every employer with the same company name", async () => {
+    const { GET } = await import("@/app/api/admin/jobs/route");
+    const Employer = require("@/models/Employer").default;
+    Employer.findById.mockReturnValue({ select: () => ({ lean: () => Promise.resolve({ _id: "emp_d4dx_1", companyName: "d4dx" }) }) });
+    Employer.find.mockImplementationOnce(() => ({
+      select: () => ({ lean: () => Promise.resolve([{ _id: "emp_d4dx_1" }, { _id: "emp_d4dx_2" }]) }),
+    }));
+
+    await GET(makeRequest("/api/admin/jobs?employerId=6a0000000000000000000001"), { params: Promise.resolve({}) });
+
+    expect(Job.find.mock.calls[0][0].employerId).toBe("emp_d4dx_1");
   });
 
   it("GET /api/admin/jobs?applications=none lists only jobs nobody has applied to, as the dashboard counts them", async () => {

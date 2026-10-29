@@ -140,6 +140,17 @@ describe("employerId filter keeps the caller's scope", () => {
     expect(q.status).toBe("active");
     expect(employerConstraints(q)).toContainEqual(OTHER_EMP);
   });
+
+  it("a same-named employer is a separate account and is not pulled in", async () => {
+    // Two "d4dx" accounts: the agent home's account row opened this list and
+    // showed both companies' jobs under one employer's chip.
+    const sameName = new Types.ObjectId();
+    employerFindByIdLean.mockResolvedValue({ _id: OTHER_EMP, companyName: "d4dx" });
+    employerFindLean.mockResolvedValue([{ _id: OTHER_EMP }, { _id: sameName }]);
+    const ctx = { userId: "cccccccccccccccccccccccc", role: "job_seeker" as const, locale: "en" };
+    await getHandler(new NextRequest(`http://localhost/api/jobs?employerId=${OTHER_EMP}`), ctx);
+    expect(employerConstraints(lastQuery())).toEqual([OTHER_EMP]);
+  });
 });
 
 describe("short search", () => {

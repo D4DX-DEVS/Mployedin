@@ -16,6 +16,7 @@ export function useGdprLabels() {
     delete: t("erasureLabel"),
     rectification: t("rectificationLabel"),
     restrict: t("restrictProcessingLabel"),
+    complaint: t("complaintLabel"),
   };
 
   const typeLabel = (type: string): string => TYPE_LABELS[type] ?? type.replace(/_/g, " ");

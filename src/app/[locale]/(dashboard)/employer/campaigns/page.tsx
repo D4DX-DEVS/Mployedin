@@ -33,6 +33,7 @@ import {
   Send,
   Eye,
   MousePointerClick,
+  Info,
 } from "lucide-react";
 import {
   useEmailSequences,
@@ -612,6 +613,10 @@ function SequenceDetailDialog({ sequenceId, onClose }: { sequenceId: string | nu
                 <div>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {t("recipientCount", { count: sequence.recipients?.length ?? 0 })}
+                  </p>
+                  <p className="mb-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                    {t("recipientsConsentHint")}
                   </p>
                   <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background sm:flex-row chip-pad">
                     <Input

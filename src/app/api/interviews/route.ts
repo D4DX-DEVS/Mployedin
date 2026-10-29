@@ -173,7 +173,10 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     // filter — the client holds one page and could not find the rest.
     query.outcome = { $in: [null, ""] };
     query.scheduledAt = { ...(query.scheduledAt as Record<string, unknown> ?? {}), $lt: new Date() };
-    query.status = { $nin: ["cancelled", "rescheduled"] };
+    // In $and, not on `status`: the status tiles drop `status` before counting
+    // (so cancelled ones were counted again: "15 interviews" over 7 rows), and
+    // assigning it overwrote a ?status= filter.
+    query.$and = [...((query.$and as Record<string, unknown>[] | undefined) ?? []), { status: { $nin: ["cancelled", "rescheduled"] } }];
   }
 
   // Date range filter. Merges rather than replaces: outcome=pending already put

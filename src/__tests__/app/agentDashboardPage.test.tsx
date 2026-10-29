@@ -306,7 +306,7 @@ describe("AgentDashboard", () => {
     expect(leadCountDocumentsMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ agentId: "agent-1", status: "converted", convertedAt: { $gte: expect.any(Date) } }));
     expect(leadCountDocumentsMock).toHaveBeenNthCalledWith(4, expect.objectContaining({ agentId: "agent-1", status: { $in: ["new", "contacted", "interested", "negotiating"] } }));
     // Target and commission are links with no figure on the home.
-    expect(screen.getByRole("link", { name: "Target" })).toHaveAttribute("href", "/en/agent/target-report");
+    expect(screen.getByRole("link", { name: "Target" })).toHaveAttribute("href", "/en/agent/target-management");
     expect(screen.getByRole("link", { name: "Commission" })).toHaveAttribute("href", "/en/agent/commissions");
     expect(screen.queryByText(/target this month/i)).toBeNull();
     expect(screen.queryByText(/commission this month/i)).toBeNull();

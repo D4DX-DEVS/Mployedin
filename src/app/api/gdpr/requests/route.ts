@@ -5,6 +5,9 @@ import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import GdprRequest from "@/models/GdprRequest";
 import { createDeletionRequest } from "@/lib/gdpr/deletionRequest";
+import { createPrivacyComplaint } from "@/lib/gdpr/privacyComplaint";
+import { COMPLAINT_MAX, COMPLAINT_MIN } from "@/lib/gdpr/complaintRules";
+import { checkRateLimit } from "@/lib/security/rateLimit";
 
 /**
  * GET /api/gdpr/requests — the signed-in user's own data requests, newest
@@ -48,16 +51,35 @@ async function getHandler(_req: NextRequest, ctx: AuthContext) {
   });
 }
 
-const createRequestSchema = z.object({
-  requestType: z.literal("delete"),
-  reason: z.string().trim().max(1000).optional(),
-});
+const createRequestSchema = z.discriminatedUnion("requestType", [
+  z.object({
+    requestType: z.literal("delete"),
+    reason: z.string().trim().max(1000).optional(),
+  }),
+  z.object({
+    requestType: z.literal("complaint"),
+    message: z.string().trim().min(COMPLAINT_MIN).max(COMPLAINT_MAX),
+  }),
+]);
 
-/** POST /api/gdpr/requests — ask for the account to be deleted (admin completes it). */
+/**
+ * POST /api/gdpr/requests — ask for the account to be deleted (admin completes
+ * it), or make a privacy complaint (admin acknowledges and answers it).
+ */
 async function postHandler(req: NextRequest, ctx: AuthContext) {
   const body = await validateBody(req, createRequestSchema);
-  await connectDB();
 
+  if (body.requestType === "complaint") {
+    const { allowed } = await checkRateLimit(`gdpr-complaint:${ctx.userId}`, { limit: 3, windowSec: 86400, prefix: "gdpr" });
+    if (!allowed) {
+      return NextResponse.json({ error: "You can send 3 complaints a day. Please try again tomorrow.", code: "RATE_LIMITED" }, { status: 429 });
+    }
+    await connectDB();
+    const requestId = await createPrivacyComplaint(req, ctx, body.message);
+    return NextResponse.json({ success: true, requestId }, { status: 201 });
+  }
+
+  await connectDB();
   const result = await createDeletionRequest(req, ctx, body.reason || undefined);
   if (!result.ok) {
     return result.code === "ADMIN_ACCOUNT"

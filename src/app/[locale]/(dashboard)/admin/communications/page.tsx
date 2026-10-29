@@ -39,7 +39,11 @@ interface BroadcastForm {
   message: string;
   targetRoles: string[];
   channels: string[];
+  /** Empty until the admin picks one: marketing reaches only users who opted in. */
+  purpose: "" | "service" | "marketing";
 }
+
+const EMPTY_FORM: BroadcastForm = { title: "", message: "", targetRoles: ["all"], channels: ["in_app"], purpose: "" };
 
 interface BroadcastRecord {
   _id: string;
@@ -74,12 +78,7 @@ export default function AdminCommunicationsPage() {
   const locale = useLocale();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [tab, setTab] = useState<"broadcast" | "templates" | "history">("broadcast");
-  const [form, setForm] = useState<BroadcastForm>({
-    title: "",
-    message: "",
-    targetRoles: ["all"],
-    channels: ["in_app"],
-  });
+  const [form, setForm] = useState<BroadcastForm>(EMPTY_FORM);
   const [sending, setSending] = useState(false);
   const [sentCount, setSentCount] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -210,6 +209,10 @@ export default function AdminCommunicationsPage() {
     const targetAll = form.targetRoles.includes("all");
     const targetRoles = targetAll ? undefined : form.targetRoles;
 
+    if (!form.purpose) {
+      toast.error(tr("purposeRequired"));
+      return;
+    }
     if (waSelected && !waTemplate) {
       toast.error(tr("whatsappTemplateRequired"));
       return;
@@ -223,9 +226,9 @@ export default function AdminCommunicationsPage() {
     // the title field submits the form — so show who it reaches first.
     let recipientCount: number | null = null;
     try {
-      const countRes = await fetch(
-        `/api/admin/communications/audience${targetRoles ? `?roles=${encodeURIComponent(targetRoles.join(","))}` : ""}`
-      );
+      const query = new URLSearchParams({ purpose: form.purpose });
+      if (targetRoles) query.set("roles", targetRoles.join(","));
+      const countRes = await fetch(`/api/admin/communications/audience?${query.toString()}`);
       if (countRes.ok) recipientCount = ((await countRes.json()) as { count?: number }).count ?? null;
     } catch {
       // The dialog falls back to naming the audience.
@@ -252,6 +255,7 @@ export default function AdminCommunicationsPage() {
           targetAll,
           targetRoles,
           channels: form.channels,
+          purpose: form.purpose,
           whatsapp: waSelected && waTemplate ? { templateName: waTemplate.name, language: waTemplate.language, params: waParams } : undefined,
         }),
       });
@@ -259,7 +263,7 @@ export default function AdminCommunicationsPage() {
       if (res.ok) {
         const data = await res.json();
         setSentCount(data.sent ?? 0);
-        setForm({ title: "", message: "", targetRoles: ["all"], channels: ["in_app"] });
+        setForm(EMPTY_FORM);
         setWaTemplateId("");
         setWaParams([]);
         toast.success(tr("sentToUsers", { count: data.sent ?? 0 }));
@@ -487,6 +491,35 @@ export default function AdminCommunicationsPage() {
                 />
               </div>
             </div>
+
+            <fieldset className="space-y-3">
+              <legend className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {tr("purposeLabel")} <span className="text-rose-500">*</span>
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {(["service", "marketing"] as const).map((purpose) => {
+                  const active = form.purpose === purpose;
+                  return (
+                    <button
+                      key={purpose}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setForm((current) => ({ ...current, purpose }))}
+                      className={`rounded-full border px-3.5 py-2 text-sm font-medium transition ${
+                        active
+                          ? "border-primary/40 bg-primary text-primary-foreground shadow-[0_16px_30px_-22px_rgba(2,132,199,0.7)]"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                      }`}
+                    >
+                      {purpose === "service" ? tr("purposeService") : tr("purposeMarketing")}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {form.purpose === "marketing" ? tr("purposeMarketingHint") : form.purpose === "service" ? tr("purposeServiceHint") : tr("purposeHint")}
+              </p>
+            </fieldset>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">

@@ -48,6 +48,7 @@ import {
   Square,
   Star,
   User,
+  UserCheck,
   Users,
   X,
 } from "lucide-react";
@@ -61,6 +62,7 @@ import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { PriorityBadge } from "@/components/shared/PriorityBadge";
+import { isHumanReviewPending } from "@/lib/hiring/automatedDecision";
 import { TableToolbar } from "@/components/shared/TableToolbar";
 import { AiSearchField, AiSearchResultLine } from "@/components/shared/AiSearchField";
 import { AI_SCORE_BANDS, useAiFilterSearch, type AiApplicationFilters } from "@/hooks/useAiFilterSearch";
@@ -208,6 +210,8 @@ export interface Applicant {
   isAgentReferred?: boolean;
   /** The candidate is a Premium job seeker: reviewed first, badged "Priority". */
   isPriority?: boolean;
+  /** Set when the AI screening rule rejected it; reviewRequestedAt when the candidate asked a person to look again. */
+  automatedDecision?: { score?: number; threshold?: number; reviewRequestedAt?: string; reviewNote?: string; reviewedAt?: string };
   appliedAt: string;
   coverLetter?: string;
   matchBreakdown?: { skills?: number; role?: number; experience?: number; education?: number; industry?: number; location?: number; salary?: number; overall?: number };
@@ -2238,6 +2242,16 @@ export function ApplicationsWorkspace({
  * Verification at a glance on the candidate row. Icon + text, never colour
  * alone — the tone only reinforces what the label already says.
  */
+/** The candidate asked a person to review an automatic rejection; the application is back in the queue. */
+function ReviewRequestedChip({ label }: { label: string }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+      <UserCheck className="h-3 w-3" aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
 function CheckChip({ check }: { check: CandidateCheck }) {
   const t = useTranslations("employerApplications");
   const { key, tone } = checkChipTone(check);
@@ -2459,7 +2473,8 @@ function TableView({
                       {app.jobId?.title || t("roleNotSpecified")}
                     </p>
                   )}
-                  <div className="flex min-w-0 items-center gap-1.5">
+                  {/* Wraps: with several badges the last one ran under the score column. */}
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
                     {location ? (
                       <span className="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
                         <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -2477,6 +2492,7 @@ function TableView({
                     ) : null}
                     {app.isPriority ? <PriorityBadge size="xs" /> : null}
                     {app.isAgentReferred ? <ReferredBadge size="xs" /> : null}
+                    {isHumanReviewPending(app) ? <ReviewRequestedChip label={t("humanReviewChip")} /> : null}
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1 lg:hidden">
@@ -2917,6 +2933,7 @@ function ApplicationDetailsPanel({
                   <BadgeCheck className="h-4 w-4 shrink-0 text-sky-500" />
                   {app.isPriority ? <PriorityBadge /> : null}
                   {app.isAgentReferred ? <ReferredBadge /> : null}
+                  {isHumanReviewPending(app) ? <ReviewRequestedChip label={t("humanReviewChip")} /> : null}
                   {/* Only worth screen space when the candidate is in play for
                       more than this one job. */}
                   {(app.otherApplicationsCount ?? 0) > 0 ? (
@@ -2959,6 +2976,18 @@ function ApplicationDetailsPanel({
               </Button>
             </div>
           </div>
+
+          {isHumanReviewPending(app) ? (
+            <div role="note" className="mt-4 rounded-xl border border-amber-300/60 bg-amber-50/60 p-3 text-sm">
+              <p className="font-semibold text-foreground">{t("humanReviewTitle")}</p>
+              <p className="mt-0.5 text-muted-foreground">
+                {t("humanReviewBody", { score: app.automatedDecision?.score ?? 0, threshold: app.automatedDecision?.threshold ?? 0 })}
+              </p>
+              {app.automatedDecision?.reviewNote ? (
+                <p className="mt-2 whitespace-pre-wrap break-words border-s-2 border-amber-400 ps-2 text-foreground">{app.automatedDecision.reviewNote}</p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {onChangeStatus && stageOptions.length > 0 ? (

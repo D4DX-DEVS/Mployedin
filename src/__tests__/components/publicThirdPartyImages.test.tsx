@@ -208,13 +208,22 @@ describe("public render sites", () => {
     expect(rawImages(source)).toEqual([]);
   });
 
-  it.each(["app/[locale]/(public)/blog/[slug]/page.tsx", "components/features/public/LegalPage.tsx"])(
+  it.each(["app/[locale]/(public)/blog/[slug]/page.tsx"])(
     "%s: renders its rich text with sanitizePublicHtml",
     (file) => {
       const source = readFileSync(path.join(SRC, file), "utf8");
       expect(source).toMatch(/dangerouslySetInnerHTML=\{\{ __html: sanitizePublicHtml\(/);
     },
   );
+
+  // The legal pages add anchors and fold-outs after sanitising (lib/cms/legalLayout.ts), so the HTML they
+  // render is layoutLegalHtml's output — which must only ever be fed sanitised HTML.
+  it("LegalPage sanitises before laying out, and renders only the laid-out result", () => {
+    const source = readFileSync(path.join(SRC, "components/features/public/LegalPage.tsx"), "utf8");
+    expect(source).toMatch(/layoutLegalHtml\(sanitizePublicHtml\(body\)/);
+    expect(source).toMatch(/dangerouslySetInnerHTML=\{\{ __html: layout\.html \}\}/);
+    expect(source.match(/dangerouslySetInnerHTML/g)).toHaveLength(1);
+  });
 
   it("PublicImage is the one place that renders the <img>, through toPublicImageSrc", () => {
     const source = readFileSync(path.join(SRC, "components/shared/PublicImage.tsx"), "utf8");

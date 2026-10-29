@@ -20,6 +20,9 @@ jest.mock("@/lib/auth/withAuth", () => ({
     (req: NextRequest) => handler(req, { userId: USER_ID, role: "job_seeker", locale: "en" }),
 }));
 jest.mock("@/lib/storage/spaces", () => ({ deleteFile: jest.fn().mockResolvedValue(undefined) }));
+// The rest of the file (messages, CVs, checks …) has its own test: gdprExportRelated.test.ts.
+const mockExportRelated = jest.fn().mockResolvedValue({ directMessages: [] });
+jest.mock("@/lib/gdpr/exportRelated", () => ({ exportRelatedRecords: (...a: unknown[]) => mockExportRelated(...a) }));
 
 const leanChain = (value: unknown) => ({
   select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(value) }),
@@ -92,6 +95,20 @@ describe("Self-service GDPR actions are recorded in the admin register", () => {
     expect(GdprRequest.find).toHaveBeenCalledWith({ userId: USER_ID });
     const query = GdprRequest.find.mock.results[0].value as { select: jest.Mock };
     expect(query.select).toHaveBeenCalledWith("-adminNotes");
+  });
+
+  it("GET /api/gdpr/export never hands out the account's secrets, and adds everything else held about the person", async () => {
+    const User = (await import("@/models/User")).default as unknown as { findById: jest.Mock };
+    User.findById.mockClear();
+    const { GET } = await import("@/app/api/gdpr/export/route");
+    const res = await GET(new NextRequest("http://localhost:3000/api/gdpr/export"), { params: Promise.resolve({}) });
+
+    const select = (User.findById.mock.results[0].value as { select: jest.Mock }).select.mock.calls[0][0] as string;
+    for (const secret of ["-passwordHash", "-twoFactorSecretEnc", "-passwordResetToken", "-linkedinAccessToken", "-calendarFeedToken"]) {
+      expect(select).toContain(secret);
+    }
+    expect(mockExportRelated).toHaveBeenCalledWith(USER_ID, "seeker_1", []);
+    expect(await res.json()).toHaveProperty("directMessages");
   });
 
   it("DELETE /api/gdpr/export opens a pending deletion request for an admin to complete", async () => {

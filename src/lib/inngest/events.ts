@@ -133,6 +133,8 @@ export interface AdminBroadcastEvent {
     targetRoles?: string[];
     targetAll?: boolean;
     channels: string[];
+    /** Absent on events queued before purposes existed: treated as "service", as they were sent then. */
+    purpose?: "service" | "marketing";
     /** Correlates the audit entry, the event and every WhatsApp log row of one send. */
     broadcastId?: string;
     whatsapp?: { templateName: string; language: string; params: string[] };

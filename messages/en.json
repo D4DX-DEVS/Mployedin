@@ -222,7 +222,9 @@
       "signedOutTitle": "Your session has ended",
       "signedOutDescription": "Sign in again to continue.",
       "signInAgain": "Sign in again"
-    }
+    },
+    "ageConfirmation": ", and confirm I am 16 or over",
+    "mustAgreeToTermsAndAge": "You must agree to the Terms of Service and Privacy Policy, and be 16 or over."
   },
   "authLayout": {
     "aiPowered": "AI-powered",
@@ -1721,7 +1723,9 @@
       "failed": "We couldn't save — please try again",
       "idle": "Fill in your details and click Save",
       "cancel": "Cancel",
-      "save": "Save"
+      "save": "Save",
+      "dobTooYoung": "You must be {age} or over to use Mployedin.",
+      "dobInvalid": "Enter a real date of birth."
     },
     "profile": {
       "documentTitle": "My Profile · MPLOYEDIN",
@@ -3196,7 +3200,21 @@
     "chipRole": "Role: {value}",
     "chipLocation": "Location: {value}",
     "removeFilter": "Remove filter: {label}",
-    "searchNote": "Nothing you type here is shared with employers."
+    "searchNote": "Nothing you type here is shared with employers.",
+    "legalInBrief": "In brief",
+    "legalContents": "Contents",
+    "legalShowList": "Show the list ({count, plural, one {# item} other {# items}})",
+    "privacyBrief1": "What we collect: what you put in your account and CV, your applications, and what employers and our agents record while they consider them.",
+    "privacyBrief2": "Why: to match you with jobs, to send your applications to employers, and to let employers find your profile in search. Finding is on unless you switch it off in Data & Privacy.",
+    "privacyBrief3": "AI: we use AI to read CVs and estimate how well you fit a job. An employer can choose to reject low scores automatically. If that happens we tell you, and you can ask for a person to review it.",
+    "privacyBrief4": "How long: applications are anonymised 24 months after the job closes. Your account stays until you ask us to delete it.",
+    "privacyBrief5": "Your rights: download your data, correct your profile, ask us to delete your account, or make a complaint, all from Data & Privacy in your account. You can also complain to the Information Commissioner's Office (ICO).",
+    "cookiesBrief1": "Cookies we need to sign you in and keep your forms secure are always on.",
+    "cookiesBrief2": "Your display settings (language, currency, accessibility) are remembered unless you object.",
+    "cookiesBrief3": "Google sign-in, the spam check and YouTube videos load only when you use them.",
+    "cookiesBrief4": "We don't use analytics or advertising cookies.",
+    "cookiesBrief5": "You can change your choice at any time in Cookie settings.",
+    "legalHideList": "Hide the list"
   },
   "locationData": {
     "title": "Location Data",
@@ -4277,7 +4295,8 @@
     "gdpr": "GDPR",
     "accessibility": "Accessibility",
     "support": "Support",
-    "homepage": "Homepage"
+    "homepage": "Homepage",
+    "aboutLink": "About us"
   },
   "profileDropdown": {
     "preferences": "Preferences",
@@ -5349,7 +5368,10 @@
     "mustHavesNotMet": "Missing a must-have",
     "noMatchingApplications": "No applications match these filters",
     "noMatchingApplicationsDesc": "Change or clear the filters to see the other candidates.",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "humanReviewChip": "Review requested",
+    "humanReviewTitle": "The candidate asked for a human review",
+    "humanReviewBody": "Your automatic screening rejected this application (match {score}%, your line {threshold}%). The candidate asked for a person to look again, so it is back in your queue. Please review it and move it to the right stage yourself."
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
@@ -9335,7 +9357,15 @@
     "targetTeamAtRiskBody": "{agentName} is at {progress}% of their profit target against an expected pace of {expectedProgress}%.",
     "applicationInviteTitle": "You've been invited to apply",
     "applicationInviteBody": "{companyName} would like you to apply for \"{jobTitle}\".",
-    "applicationInviteBodyWithMessage": "{companyName} would like you to apply for \"{jobTitle}\".\n\n\"{message}\""
+    "applicationInviteBodyWithMessage": "{companyName} would like you to apply for \"{jobTitle}\".\n\n\"{message}\"",
+    "autoRejectedTitle": "Application Update",
+    "autoRejectedBody": "Your application for \"{jobTitle}\" was not taken forward by the employer's automatic screening. You can ask for a person to review it from your application page.",
+    "humanReviewRequestedTitle": "Human review requested",
+    "humanReviewRequestedBody": "{candidateName} asked for a person to review the automatic rejection of their application for \"{jobTitle}\". The application is open again for you to decide.",
+    "backgroundCheckStartedTitle": "Background check started",
+    "backgroundCheckStartedBody": "{companyName} has started a background or reference check for your application to \"{jobTitle}\". They may contact the referees you gave. Read what this means on your application page.",
+    "adminPrivacyComplaintTitle": "Privacy complaint received",
+    "adminPrivacyComplaintBody": "{userName} made a privacy complaint. Acknowledge it within 30 days."
   },
   "publicPages": {
     "jobsTitle": "Find Jobs",
@@ -9550,7 +9580,9 @@
     "activatedToast": "Sequence activated",
     "pausedToast": "Sequence paused",
     "deleteConfirm": "Delete this sequence? This cannot be undone.",
-    "campaigns": "Campaigns"
+    "campaigns": "Campaigns",
+    "recipientStatus_no_consent": "Not sent",
+    "recipientsConsentHint": "These are marketing emails. They only go to people with a Mployedin account who have turned on marketing emails; anyone else is skipped and marked \"Not sent\". Every email has an unsubscribe link."
   },
   "offerLetters": {
     "title": "Offer Letters",
@@ -12346,7 +12378,28 @@
     "phoneFilterType": "Type",
     "viewRecordFor": "View record for {name}",
     "decisionErasureNoPersonalData": "Don't include the person's name or contact details: this note is kept after their account is erased.",
-    "phoneSortFieldName": "{field} · {order}"
+    "phoneSortFieldName": "{field} · {order}",
+    "complaintLabel": "Privacy complaint",
+    "detailsAskedComplaint": "Complained about how their personal data is used",
+    "detailsComplaintLabel": "Their complaint",
+    "detailsAcknowledgeByLabel": "Acknowledge by",
+    "detailsAcknowledgeByHint": "The law gives 30 days. Press Start to acknowledge it, then complete it with your answer.",
+    "otherConsentDialogTitle": "Consent details",
+    "otherConsentDialogDescription": "One saved consent, what it means, and the account's other answers of the same type.",
+    "otherConsentAnswerLabel": "Answer",
+    "otherConsentStatusCurrent": "Current answer",
+    "otherConsentStatusReplaced": "Replaced by a later answer",
+    "otherConsentVersionLabel": "Version",
+    "otherConsentTermsCurrent": "The version in force today",
+    "otherConsentTermsOlder": "An older version. The person is asked to accept the current one before they continue.",
+    "otherConsentMeaningLabel": "What it means",
+    "otherConsentMeaningTerms": "Agreement to the Terms of Service and Privacy Policy. An account can't be used without it.",
+    "otherConsentMeaningCookies": "The cookie choice made on the sign-up form. Choices made later on the cookie banner are under Cookie choices.",
+    "otherConsentMeaningMarketing": "Whether the person wants marketing messages. Messages about their account and applications don't need it.",
+    "otherConsentHistoryTitle": "Other answers of this type on this account",
+    "otherConsentHistoryNone": "No other answers of this type are recorded for this account.",
+    "otherConsentErrorTitle": "We couldn't load this consent",
+    "otherConsentNotFoundTitle": "This consent entry no longer exists"
   },
   "adminInterviews": {
     "recruitmentControl": "Recruitment Control",
@@ -13008,7 +13061,14 @@
     "whatsappMessageLimitNote": "Each WhatsApp blank is limited to 1,024 characters and line breaks become spaces, so a longer message is cut off on WhatsApp only.",
     "channelDeliveryNoteWhatsApp": "In-app and email send your message as written. WhatsApp sends the approved template you choose.",
     "whatsappDisabled": "We couldn't send this broadcast: WhatsApp sending is switched off in the WhatsApp settings. Switch it on there, or send without the WhatsApp channel.",
-    "duplicateBroadcast": "We couldn't send this broadcast: you sent the same one less than a minute ago. Wait a minute if you mean to send it again."
+    "duplicateBroadcast": "We couldn't send this broadcast: you sent the same one less than a minute ago. Wait a minute if you mean to send it again.",
+    "purposeLabel": "Message type",
+    "purposeService": "Service notice",
+    "purposeMarketing": "Marketing",
+    "purposeHint": "Choose one. Marketing can only go to users who agreed to receive it.",
+    "purposeServiceHint": "For things users need to know about their account or the service, such as changed terms or planned downtime. Goes to everyone in the audience. Don't use it for promotions.",
+    "purposeMarketingHint": "Promotions, offers and news. Goes only to users who turned marketing on, and every email includes an unsubscribe link.",
+    "purposeRequired": "Choose whether this is a service notice or marketing."
   },
   "adminExhibitions": {
     "supportSectionTitle": "Support & inventory",
@@ -17110,7 +17170,31 @@
       "countered": "Counter-offer sent"
     },
     "perMonth": "/ month",
-    "perYear": "/ year"
+    "perYear": "/ year",
+    "automatedDecision": {
+      "title": "This decision was made automatically",
+      "explanation": "On {date} this employer's screening rule compared your profile and CV with the job's requirements, using the employer's own weighting. Your application scored {score}% on it, below the {threshold}% the employer set, so it was not taken forward. This score can differ from the match we show you. No person was involved in this decision.",
+      "rightToReview": "You can ask for a person at the employer to review your application. You can also tell them anything you think the screening missed.",
+      "noteLabel": "Anything you'd like the reviewer to know (optional)",
+      "notePlaceholder": "For example, experience that isn't clear from your CV",
+      "requestButton": "Ask for a human review",
+      "requestSent": "Review requested. Your application is open again for the employer to decide.",
+      "requestFailed": "We couldn't send your request. Please try again.",
+      "reviewPending": "You asked for a human review on {date}. Your application is back with the employer, and a person will decide.",
+      "reviewed": "A person at the employer reviewed your application on {date}."
+    },
+    "backgroundCheck": {
+      "title": "Background check",
+      "explanation": "{companyName} is checking the information you gave them. They may contact the referees or past employers you listed to confirm your work history. They see the answers; you are told when a check starts and when it is finished.",
+      "typeBackground": "Background check",
+      "typeReference": "Reference check",
+      "typeBoth": "Background and reference check",
+      "started": "Started {date}",
+      "statusPending": "Waiting to start",
+      "statusInProgress": "In progress",
+      "statusCompleted": "Finished",
+      "questions": "Questions or concerns about this check? Ask the employer, or see <link>Data & Privacy</link> to download what we hold about you."
+    }
   },
   "applicationFeedback": {
     "errorLoadingDetails": "Could not load application details.",
@@ -19323,7 +19407,7 @@
     "settingsLinkTitle": "Data & Privacy",
     "settingsLinkDescription": "Download a copy of your data, see your consents or ask for your account to be deleted.",
     "exportTitle": "Download your data",
-    "exportDescription": "A JSON file with your account, profile, applications, interviews, notifications, consents and data requests.",
+    "exportDescription": "A JSON file with everything we hold about you: your account, profile, CVs, applications, interviews, offers, messages, background checks, notifications, the emails and WhatsApp messages we sent you, consents and data requests.",
     "exportButton": "Download my data",
     "exporting": "Preparing your file…",
     "exportDone": "Your data has been downloaded.",
@@ -19387,7 +19471,29 @@
     "statusInProgress": "In progress",
     "statusCompleted": "Completed",
     "statusRejected": "Rejected",
-    "statusCancelled": "Cancelled"
+    "statusCancelled": "Cancelled",
+    "visibilityTitle": "Who can find your profile",
+    "visibilityDescription": "Choose whether employers searching for talent can find you. Employers you have applied to can always see your application.",
+    "visibilitySwitch": "Let employers find me",
+    "visibilityOn": "On: employers can find you in search and invite you to apply. Your email, phone, salary expectations and CV stay private until you apply.",
+    "visibilityOff": "Off: employers can't find you in search. Only employers you apply to see your profile.",
+    "visibilitySavedOn": "Employers can now find your profile.",
+    "visibilitySavedOff": "Your profile is now hidden from employer search.",
+    "visibilitySaveError": "We couldn't save that. Please try again.",
+    "visibilityError": "We couldn't load this setting.",
+    "typeComplaint": "Privacy complaint",
+    "complaintTitle": "Make a privacy complaint",
+    "complaintDescription": "Unhappy with how we use your personal data? Tell us here. We acknowledge every complaint within 30 days, and our answer shows in your request history below.",
+    "complaintLabel": "What is your complaint about?",
+    "complaintPlaceholder": "Tell us what happened and what you would like us to do.",
+    "complaintHint": "At least 10 characters. You can still complain to the ICO at any time.",
+    "complaintButton": "Send complaint",
+    "complaintSent": "Your complaint has been sent. We'll acknowledge it within 30 days.",
+    "complaintLimit": "You can send 3 complaints a day. Please try again tomorrow.",
+    "complaintError": "We couldn't send your complaint. Please try again.",
+    "messagesTitle": "Messages we send you",
+    "messagesDescription": "Choose which emails, WhatsApp messages and in-app alerts you get. Marketing messages are off unless you turn them on.",
+    "messagesButton": "Open notification settings"
   },
   "territoryOverlap": {
     "superAgentTitle": "{count, plural, one {# other super agent already covers part of this region} other {# other super agents already cover part of this region}}",

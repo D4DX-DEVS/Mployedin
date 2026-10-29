@@ -18,7 +18,8 @@ export interface ISequenceRecipient {
   email: string;
   name: string;
   currentStep: number;
-  status: "active" | "completed" | "unsubscribed" | "bounced";
+  /** no_consent: no account with marketing turned on, so the sender never mails them. */
+  status: "active" | "completed" | "unsubscribed" | "bounced" | "no_consent";
   lastSentAt?: Date;
   nextSendAt?: Date;
   openedSteps: number[];
@@ -62,7 +63,7 @@ const RecipientSchema = new Schema<ISequenceRecipient>(
     email: { type: String, required: true },
     name: { type: String, required: true },
     currentStep: { type: Number, default: 0 },
-    status: { type: String, enum: ["active", "completed", "unsubscribed", "bounced"], default: "active" },
+    status: { type: String, enum: ["active", "completed", "unsubscribed", "bounced", "no_consent"], default: "active" },
     lastSentAt: Date,
     nextSendAt: Date,
     openedSteps: [Number],

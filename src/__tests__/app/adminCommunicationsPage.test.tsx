@@ -37,6 +37,7 @@ const posts = () => fetchMock.mock.calls.filter(([, init]) => (init as RequestIn
 
 async function fillAndSend() {
   render(<AdminCommunicationsPage />);
+  await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
   await userEvent.type(screen.getByRole("textbox", { name: "Title" }), "Maintenance tonight");
   await userEvent.type(screen.getByRole("textbox", { name: "Message" }), "Down 1-2am");
   await userEvent.click(screen.getByRole("button", { name: /send now/i }));
@@ -58,8 +59,32 @@ describe("broadcast send", () => {
 
     await waitFor(() => expect(posts()).toHaveLength(1));
     expect(JSON.parse(String((posts()[0][1] as RequestInit).body))).toEqual(
-      expect.objectContaining({ title: "Maintenance tonight", targetAll: true, channels: ["in_app"] })
+      expect.objectContaining({ title: "Maintenance tonight", targetAll: true, channels: ["in_app"], purpose: "service" })
     );
+    // The count the admin confirmed is for the chosen type of message.
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes("/api/admin/communications/audience?purpose=service"))).toBe(true);
+  });
+
+  it("asks for the message type before anything is counted or sent", async () => {
+    confirm.mockResolvedValue(true);
+    render(<AdminCommunicationsPage />);
+    await userEvent.type(await screen.findByRole("textbox", { name: "Title" }), "Spring offer");
+    await userEvent.type(screen.getByRole("textbox", { name: "Message" }), "20% off");
+    await userEvent.click(screen.getByRole("button", { name: /send now/i }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(posts()).toHaveLength(0);
+  });
+
+  it("counts and sends marketing as marketing", async () => {
+    confirm.mockResolvedValue(true);
+    render(<AdminCommunicationsPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Marketing" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Title" }), "Spring offer");
+    await userEvent.type(screen.getByRole("textbox", { name: "Message" }), "20% off");
+    await userEvent.click(screen.getByRole("button", { name: /send now/i }));
+    await waitFor(() => expect(posts()).toHaveLength(1));
+    expect(JSON.parse(String((posts()[0][1] as RequestInit).body))).toEqual(expect.objectContaining({ purpose: "marketing" }));
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes("purpose=marketing"))).toBe(true);
   });
 
   // The server refuses the same broadcast by the same admin within a minute (a double click, a second tab).

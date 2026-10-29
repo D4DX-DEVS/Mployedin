@@ -181,6 +181,10 @@ export default auth(async function middleware(req: NextAuthRequest) {
   const requestHeaders = trustedRequestHeaders;
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("x-locale", activeLocale);
+  // next-intl's getTranslations() reads the locale from this header. Its middleware sets it on its own
+  // response, which we don't forward, so without this a client-side navigation (page segment only, no
+  // layout setRequestLocale) rendered server pages in English. Set from the URL, so a sent value is replaced.
+  requestHeaders.set("X-NEXT-INTL-LOCALE", activeLocale);
   // Consumed by the dashboard layout for path-aware checks (2FA enforcement).
   requestHeaders.set("x-pathname", pathname);
 

@@ -47,6 +47,8 @@ const postedWhatsApp = () => JSON.parse(String((posts()[0][1] as RequestInit).bo
 describe("broadcast WhatsApp channel", () => {
   it("loads approved templates when WhatsApp is selected and refuses to send without one", async () => {
     render(<AdminCommunicationsPage />);
+    // A broadcast needs a message type before it can be sent.
+    await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
     await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).startsWith("/api/admin/whatsapp/templates?status=APPROVED"))).toBe(true));
     expect(await screen.findByText("WhatsApp template")).toBeInTheDocument();
@@ -59,6 +61,8 @@ describe("broadcast WhatsApp channel", () => {
 
   it("posts the template, language and parameters", async () => {
     render(<AdminCommunicationsPage />);
+    // A broadcast needs a message type before it can be sent.
+    await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
     await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
     await userEvent.click(await screen.findByRole("combobox", { name: "WhatsApp template" }));
     await userEvent.click(await screen.findByRole("option", { name: "mployedin_admin_announcement · en" }));
@@ -74,6 +78,8 @@ describe("broadcast WhatsApp channel", () => {
 
   it("posts a zero-variable template with an empty parameter list and no parameter fields", async () => {
     render(<AdminCommunicationsPage />);
+    // A broadcast needs a message type before it can be sent.
+    await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
     await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
     await userEvent.click(await screen.findByRole("combobox", { name: "WhatsApp template" }));
     await userEvent.click(await screen.findByRole("option", { name: "hello_world · en_US" }));
@@ -94,6 +100,8 @@ describe("broadcast WhatsApp channel", () => {
       return Promise.resolve({ ok: true, json: async () => ({ broadcasts: [] }) });
     });
     render(<AdminCommunicationsPage />);
+    // A broadcast needs a message type before it can be sent.
+    await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
     await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
     await userEvent.click(await screen.findByRole("combobox", { name: "WhatsApp template" }));
     await userEvent.click(await screen.findByRole("option", { name: "hello_world · en_US" }));
@@ -107,6 +115,8 @@ describe("broadcast WhatsApp channel", () => {
 
   it("sends no WhatsApp block when the channel is not selected", async () => {
     render(<AdminCommunicationsPage />);
+    // A broadcast needs a message type before it can be sent.
+    await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
     await userEvent.type(screen.getByRole("textbox", { name: "Title" }), "Hi");
     await userEvent.type(screen.getByRole("textbox", { name: "Message" }), "There");
     await userEvent.click(screen.getByRole("button", { name: /send now/i }));
@@ -118,6 +128,8 @@ describe("broadcast WhatsApp channel", () => {
   it("tells the admin when the templates could not be loaded, in fixed copy", async () => {
     templatesResponse = () => Promise.resolve({ ok: false, json: async () => ({ error: "mongo exploded at 10.0.0.4" }) });
     render(<AdminCommunicationsPage />);
+    // A broadcast needs a message type before it can be sent.
+    await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
     await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
     await waitFor(() => expect(toastError).toHaveBeenCalledWith("We couldn't load the WhatsApp templates. Please try again."));
     expect(toastError).not.toHaveBeenCalledWith(expect.stringContaining("mongo"));
@@ -130,6 +142,8 @@ describe("broadcast WhatsApp channel", () => {
     it("shows its own error state with a Retry, not the no-approved-templates placeholder", async () => {
       templatesResponse = () => Promise.resolve({ ok: false, json: async () => ({}) });
       render(<AdminCommunicationsPage />);
+      // A broadcast needs a message type before it can be sent.
+      await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
       await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
       expect(await screen.findByText("We couldn't load the WhatsApp templates")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
@@ -140,6 +154,8 @@ describe("broadcast WhatsApp channel", () => {
     it("Retry fetches the templates again and brings the picker back on success", async () => {
       templatesResponse = () => Promise.resolve({ ok: false, json: async () => ({}) });
       render(<AdminCommunicationsPage />);
+      // A broadcast needs a message type before it can be sent.
+      await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
       await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
       await screen.findByRole("button", { name: "Try again" });
       expect(templateFetches()).toBe(1);
@@ -154,6 +170,8 @@ describe("broadcast WhatsApp channel", () => {
     it("a failed Retry shows the error state again", async () => {
       templatesResponse = () => Promise.resolve({ ok: false, json: async () => ({}) });
       render(<AdminCommunicationsPage />);
+      // A broadcast needs a message type before it can be sent.
+      await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
       await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
       await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
       await waitFor(() => expect(templateFetches()).toBe(2));
@@ -163,6 +181,8 @@ describe("broadcast WhatsApp channel", () => {
     it("an empty approved list still shows the no-approved-templates placeholder", async () => {
       templatesResponse = () => Promise.resolve({ ok: true, json: async () => ({ templates: [] }) });
       render(<AdminCommunicationsPage />);
+      // A broadcast needs a message type before it can be sent.
+      await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
       await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
       expect(await screen.findByText(/No approved templates yet/)).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
@@ -172,6 +192,8 @@ describe("broadcast WhatsApp channel", () => {
   describe("parameters", () => {
     async function pickAnnouncement() {
       render(<AdminCommunicationsPage />);
+      // A broadcast needs a message type before it can be sent.
+      await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
       await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
       await userEvent.click(await screen.findByRole("combobox", { name: "WhatsApp template" }));
       await userEvent.click(await screen.findByRole("option", { name: "mployedin_admin_announcement · en" }));
@@ -203,6 +225,8 @@ describe("broadcast WhatsApp channel", () => {
 
     it("never blocks a template with no blanks", async () => {
       render(<AdminCommunicationsPage />);
+      // A broadcast needs a message type before it can be sent.
+      await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
       await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
       await userEvent.click(await screen.findByRole("combobox", { name: "WhatsApp template" }));
       await userEvent.click(await screen.findByRole("option", { name: "hello_world · en_US" }));
@@ -221,6 +245,8 @@ describe("broadcast WhatsApp channel", () => {
 
   it("describes what WhatsApp sends, and drops the same-body claim, only while the channel is selected", async () => {
     render(<AdminCommunicationsPage />);
+    // A broadcast needs a message type before it can be sent.
+    await userEvent.click(await screen.findByRole("button", { name: "Service notice" }));
     expect(screen.getByText("Every selected channel receives the same message body.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "WhatsApp" }));
     expect(screen.queryByText("Every selected channel receives the same message body.")).not.toBeInTheDocument();
