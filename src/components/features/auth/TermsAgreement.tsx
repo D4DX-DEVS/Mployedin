@@ -17,6 +17,7 @@ export function TermsAgreement({
   checked,
   onCheckedChange,
   errorId,
+  confirmAge = false,
 }: {
   id: string;
   locale: string;
@@ -24,6 +25,8 @@ export function TermsAgreement({
   onCheckedChange: (checked: boolean) => void;
   /** The id of the field error shown under the box, when there is one. */
   errorId?: string;
+  /** Job-seeker sign-up: the same tick also confirms the minimum age (16). */
+  confirmAge?: boolean;
 }) {
   const t = useTranslations("auth");
   return (
@@ -45,6 +48,7 @@ export function TermsAgreement({
         <Link href={`/${locale}/privacy`} className="text-primary hover:underline" target="_blank">
           {t("privacyPolicyLink")}
         </Link>
+        {confirmAge && t("ageConfirmation")}
       </label>
     </div>
   );

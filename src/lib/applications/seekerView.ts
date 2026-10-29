@@ -24,12 +24,24 @@ export const SEEKER_HIDDEN_APPLICATION_FIELDS = [
   "behaviorScore",
 ] as const;
 
+/**
+ * Which staff member reviewed an automatic rejection is the employer's
+ * business; that a person did (reviewedAt) is the candidate's.
+ */
+const SEEKER_HIDDEN_NESTED_FIELDS = ["automatedDecision.reviewedBy"] as const;
+
 /** Mongoose exclusion projection for a seeker's application query. */
-export const SEEKER_APPLICATION_PROJECTION = SEEKER_HIDDEN_APPLICATION_FIELDS.map((f) => `-${f}`).join(" ");
+export const SEEKER_APPLICATION_PROJECTION = [...SEEKER_HIDDEN_APPLICATION_FIELDS, ...SEEKER_HIDDEN_NESTED_FIELDS]
+  .map((f) => `-${f}`)
+  .join(" ");
 
 /** Returns a copy of a lean application without the recruiter-only keys. */
 export function stripSeekerHiddenFields<T extends object>(app: T): T {
   const copy = { ...app } as Record<string, unknown>;
   for (const key of SEEKER_HIDDEN_APPLICATION_FIELDS) delete copy[key];
+  if (copy.automatedDecision && typeof copy.automatedDecision === "object") {
+    const { reviewedBy: _reviewer, ...decision } = copy.automatedDecision as Record<string, unknown>;
+    copy.automatedDecision = decision;
+  }
   return copy as T;
 }

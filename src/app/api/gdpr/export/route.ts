@@ -16,6 +16,8 @@ import ConsentLog from "@/models/ConsentLog";
 import { getClientIp } from "@/lib/security/clientIp";
 import logger from "@/lib/logger";
 import { createDeletionRequest } from "@/lib/gdpr/deletionRequest";
+import { ERASED_ACCOUNT_SECRETS } from "@/lib/gdpr/erasure";
+import { exportRelatedRecords } from "@/lib/gdpr/exportRelated";
 
 /**
  * Record a completed self-service request in the GDPR register the admin page
@@ -66,7 +68,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const employerProfile = ctx.role === "employer" ? await Employer.findOne({ userId: ctx.userId }).lean() : null;
 
   const [user, applications, interviews, savedJobs, notifications, consentLogs, gdprRequests] = await Promise.all([
-    User.findById(ctx.userId).select("-passwordHash").lean(),
+    // The secrets an account holds (2FA, reset and sign-in tokens) are not personal data to hand out:
+    // a copy of the file must not be a way into the account.
+    User.findById(ctx.userId).select(ERASED_ACCOUNT_SECRETS.map((field) => `-${field}`).join(" ")).lean(),
     seekerProfile
       ? Application.find({ jobSeekerId: seekerProfile._id }).populate("jobId", "title location").lean()
       : [],
@@ -77,6 +81,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // The team's internal notes about a request stay out of the user's file.
     GdprRequest.find({ userId: ctx.userId }).select("-adminNotes").lean(),
   ]);
+  // Everything else held about the person (UK GDPR Art 15): messages, CVs, offers, checks, evaluations,
+  // who looked at the profile, and the email and WhatsApp messages sent to them.
+  const more = await exportRelatedRecords(ctx.userId, seekerProfile?._id, (applications as Array<{ _id: unknown }>).map((a) => a._id));
 
   await logActivity({ ...actorFromCtx(ctx), action: "gdpr.export", resource: "users", resourceId: ctx.userId, req });
   const subject = user as { name?: string; email?: string } | null;
@@ -99,6 +106,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     notifications,
     consentLogs,
     gdprRequests,
+    ...more,
   });
 });
 

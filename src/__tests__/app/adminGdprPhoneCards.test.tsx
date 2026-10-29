@@ -257,6 +257,7 @@ describe("other consent cards", () => {
           { _id: "c1", userName: "Visitor One", userEmail: "visitor@example.com", consentType: "terms_and_privacy", granted: true, timestamp: "2026-10-01T15:48:00Z", source: "registration", policyVersion: "2026-09-01" },
           { _id: "c2", userName: "Visitor Two", userEmail: null, consentType: "marketing", granted: false, timestamp: "2026-10-02T08:00:00Z", source: null },
         ]}
+        onView={jest.fn()}
       />,
     );
 
@@ -266,6 +267,19 @@ describe("other consent cards", () => {
     expect(within(first).getByText("Yes")).toBeInTheDocument();
     expect(within(second).getByText("No")).toBeInTheDocument();
     expect(within(second).queryByText(/@/)).not.toBeInTheDocument();
+  });
+
+  it("has a View button on each card that opens that entry", async () => {
+    const onView = jest.fn();
+    render(
+      <OtherConsentCards
+        rows={[{ _id: "c1", userName: "Visitor One", userEmail: null, consentType: "marketing", granted: true, timestamp: "2026-10-01T15:48:00Z", source: null }]}
+        onView={onView}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "View record for Visitor One" }));
+    expect(onView).toHaveBeenCalledWith("c1");
   });
 });
 

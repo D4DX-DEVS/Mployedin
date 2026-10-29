@@ -321,6 +321,77 @@ export async function notifyRejected(
   });
 }
 
+/**
+ * An auto-reject by the employer's AI screening rule. Always sent, whatever the
+ * employer's candidate-notification switch says: the candidate has to be told a
+ * decision was made automatically and that they can ask a person to review it
+ * (lib/hiring/automatedDecision.ts).
+ */
+export async function notifyAutomatedRejection(
+  jobSeekerId: string,
+  jobTitle: string,
+  applicationId: string,
+): Promise<void> {
+  await notify({
+    userId: jobSeekerId,
+    type: "application_status_update",
+    title: "Application Update",
+    message: `Your application for "${jobTitle}" was not taken forward by the employer's automatic screening. You can ask for a person to review it from your application page.`,
+    link: `/job-seeker/applications/${applicationId}`,
+    sendEmail: true,
+    metadata: { jobTitle, applicationId },
+    titleKey: "autoRejectedTitle",
+    bodyKey: "autoRejectedBody",
+    params: { jobTitle },
+  });
+}
+
+/**
+ * [LEGAL] UK GDPR Art 14: a background or reference check collects data about
+ * the candidate from other people, so the candidate is told when one starts —
+ * who is running it, for which job, and where to ask about it.
+ */
+export async function notifyBackgroundCheckStarted(
+  jobSeekerUserId: string,
+  companyName: string,
+  jobTitle: string,
+  applicationId: string,
+): Promise<void> {
+  await notify({
+    userId: jobSeekerUserId,
+    type: "application_status_update",
+    title: "Background check started",
+    message: `${companyName} has started a background or reference check for your application to "${jobTitle}". They may contact the referees you gave. Read what this means on your application page.`,
+    link: `/job-seeker/applications/${applicationId}`,
+    sendEmail: true,
+    metadata: { jobTitle, applicationId },
+    titleKey: "backgroundCheckStartedTitle",
+    bodyKey: "backgroundCheckStartedBody",
+    params: { companyName, jobTitle },
+  });
+}
+
+/** The candidate asked for a person to review an auto-reject; the application is open again. */
+export async function notifyHumanReviewRequested(
+  employerUserId: string,
+  candidateName: string,
+  jobTitle: string,
+  applicationId: string,
+): Promise<void> {
+  await notify({
+    userId: employerUserId,
+    type: "system",
+    title: "Human review requested",
+    message: `${candidateName} asked for a person to review the automatic rejection of their application for "${jobTitle}". The application is open again for you to decide.`,
+    link: `/employer/applications?application=${applicationId}`,
+    sendEmail: true,
+    metadata: { jobTitle, applicationId },
+    titleKey: "humanReviewRequestedTitle",
+    bodyKey: "humanReviewRequestedBody",
+    params: { jobTitle, candidateName },
+  });
+}
+
 export async function notifyMention(
   mentionedUserId: string,
   authorName: string,
@@ -979,6 +1050,27 @@ export async function notifyAdminsContactSubmission(
 }
 
 /** A user asked for their account to be deleted — it waits in the GDPR register. */
+/** A privacy complaint arrived; it must be acknowledged within 30 days (DUAA 2025). */
+export async function notifyAdminsPrivacyComplaint(userName: string, requestId: string): Promise<void> {
+  const adminIds = await getAdminUserIds();
+  await Promise.all(
+    adminIds.map((adminUserId) =>
+      notify({
+        userId: adminUserId,
+        type: "system",
+        title: "Privacy complaint received",
+        message: `${userName} made a privacy complaint. Acknowledge it within 30 days.`,
+        link: "/admin/gdpr",
+        sendEmail: true,
+        metadata: { requestId, userName },
+        titleKey: "adminPrivacyComplaintTitle",
+        bodyKey: "adminPrivacyComplaintBody",
+        params: { userName },
+      }),
+    ),
+  );
+}
+
 export async function notifyAdminsGdprDeletionRequest(userName: string, requestId: string): Promise<void> {
   const adminIds = await getAdminUserIds();
   await Promise.all(

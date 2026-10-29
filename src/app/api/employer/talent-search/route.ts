@@ -1,3 +1,4 @@
+import { withoutHiddenSections } from "@/lib/jobSeeker/sectionVisibility";
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
@@ -43,6 +44,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   if (experienceYears > 0) conditions.push({ totalExperienceYears: { $gte: experienceYears } });
   if (skills && skills.length > 0) {
     conditions.push({ skills: { $in: skills.map((s) => new RegExp(escapeRegex(s), "i")) } });
+    // A skills list the person hid must not be searchable either.
+    conditions.push({ "sectionVisibility.skills": { $ne: false } });
   }
   if (location) {
     const re = new RegExp(escapeRegex(location), "i");
@@ -74,7 +77,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       // URL only fed a "View CV" menu item that 403s, and shipped a private
       // object's path to a browser that has no right to it.
       .select(
-        "fullName currentLocation preferredLocations skills availabilityStatus profileCompleteness totalExperienceYears headline experience userId isAgentReferred"
+        "fullName currentLocation preferredLocations skills availabilityStatus profileCompleteness totalExperienceYears headline experience userId isAgentReferred sectionVisibility"
       )
       .populate({ path: "userId", select: "name avatar" })
       .sort({ profileCompleteness: -1, updatedAt: -1 })
@@ -86,7 +89,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     JobSeeker.countDocuments({ $and: [...conditions, { availabilityStatus: "immediately" }] }),
   ]);
 
-  const items = (docs as Array<Record<string, unknown>>).map((d) => {
+  // Sections the person hid on their profile are not shown to employers searching for talent.
+  const items = (docs as Array<Record<string, unknown>>).map(withoutHiddenSections).map((d: Record<string, unknown>) => {
     const user = d.userId as { _id?: unknown; name?: string; avatar?: string } | null;
     return {
       _id: String(d._id),

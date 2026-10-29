@@ -5,6 +5,7 @@ import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import { logActivity } from "@/lib/audit/log";
 import ConsentLog from "@/models/ConsentLog";
+import NotificationPreference, { getOrCreatePreferences } from "@/models/NotificationPreference";
 import { getClientIp } from "@/lib/security/clientIp";
 import logger from "@/lib/logger";
 import { forgetWaIdOnPhoneChange } from "@/lib/communications/whatsapp/waId";
@@ -309,6 +310,11 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
       source: "profile",
       ipAddress: getClientIp(req.headers),
     }).catch((err: unknown) => logger.warn({ err, userId: ctx.userId }, "[consent] failed to record marketing consent change"));
+    // The marketing switch every sender reads (admin marketing broadcasts, re-engagement) is the notification
+    // preference, which the email unsubscribe link also turns off; the onboarding tick has to land there too.
+    await getOrCreatePreferences(ctx.userId)
+      .then(() => NotificationPreference.updateOne({ userId: ctx.userId }, { $set: { "categories.marketing.enabled": requestedConsent } }))
+      .catch((err: unknown) => logger.warn({ err, userId: ctx.userId }, "[consent] failed to sync marketing preference"));
   }
 
   await logActivity({

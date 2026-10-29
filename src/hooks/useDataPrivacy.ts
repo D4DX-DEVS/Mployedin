@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // ── Types ──────────────────────────────────────────────────────────
-export type DataRequestType = "export" | "delete" | "rectification" | "restrict";
+export type DataRequestType = "export" | "delete" | "rectification" | "restrict" | "complaint";
 export type DataRequestStatus = "pending" | "in_progress" | "completed" | "rejected" | "cancelled";
 
 export interface DataRequest {
@@ -135,6 +135,65 @@ export function useDownloadMyData() {
       URL.revokeObjectURL(url);
     },
     // The export is recorded in the register, so it shows in the history.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: dataPrivacyKeys.requests() }),
+  });
+}
+
+export type ProfileVisibility = "visible" | "hidden";
+
+/**
+ * A job seeker's discoverability (JobSeeker.profileVisibility) — the same value
+ * the Settings → Profile visibility tab and onboarding write.
+ */
+export function useProfileVisibility(enabled: boolean) {
+  return useQuery({
+    queryKey: [...dataPrivacyKeys.all, "profileVisibility"],
+    enabled,
+    queryFn: async (): Promise<ProfileVisibility> => {
+      const res = await fetch("/api/job-seekers/settings");
+      if (!res.ok) throw new Error("Could not load profile visibility");
+      const data = (await res.json()) as { settings?: { profileVisibility?: ProfileVisibility } };
+      return data.settings?.profileVisibility ?? "visible";
+    },
+  });
+}
+
+export function useSetProfileVisibility() {
+  const queryClient = useQueryClient();
+  const key = [...dataPrivacyKeys.all, "profileVisibility"];
+  return useMutation({
+    mutationFn: async (value: ProfileVisibility) => {
+      const res = await fetch("/api/job-seekers/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: { profileVisibility: value } }),
+      });
+      if (!res.ok) throw new Error("Could not save profile visibility");
+    },
+    onSuccess: (_d, value) => queryClient.setQueryData(key, value),
+  });
+}
+
+/** A privacy complaint, answered by the team from the GDPR register (3 a day). */
+export class ComplaintLimitError extends Error {
+  constructor() {
+    super("RATE_LIMITED");
+    this.name = "ComplaintLimitError";
+  }
+}
+
+export function useSendPrivacyComplaint() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (message: string) => {
+      const res = await fetch("/api/gdpr/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestType: "complaint", message: message.trim() }),
+      });
+      if (res.status === 429) throw new ComplaintLimitError();
+      if (!res.ok) throw new Error("Could not send the complaint");
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey: dataPrivacyKeys.requests() }),
   });
 }

@@ -28,6 +28,7 @@ import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
+import { stampHumanReview } from "@/lib/hiring/automatedDecision";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -223,6 +224,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
       // Status change actions
       if (newStatus && app.status !== newStatus) {
+        // As the single PATCH: the first staff move after a requested review is that review.
+        stampHumanReview(app, ctx.userId, now);
         app.status = newStatus as typeof app.status;
         app.statusHistory.push({
           status: newStatus as typeof app.status,

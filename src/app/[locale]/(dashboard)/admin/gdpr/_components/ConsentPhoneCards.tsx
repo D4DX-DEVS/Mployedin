@@ -101,7 +101,7 @@ export function CookieChoiceCards({ rows, onLookup, onView }: CookieChoiceCardsP
 }
 
 /** Other consents on a phone: who, the consent and its version, yes or no (words and icon), and where and when. */
-export function OtherConsentCards({ rows }: { rows: readonly ConsentRow[] }) {
+export function OtherConsentCards({ rows, onView }: { rows: readonly ConsentRow[]; onView: (id: string) => void }) {
   const t = useTranslations("adminGdpr");
   const locale = useLocale();
   const { consentTypeLabel, sourceLabel } = useGdprLabels();
@@ -125,6 +125,18 @@ export function OtherConsentCards({ rows }: { rows: readonly ConsentRow[] }) {
               {" · "}
               {formatDateTime(row.timestamp, WHEN, locale)}
             </span>
+          </div>
+          <div className="mt-3 flex items-center gap-2 [flex-flow:row_wrap]">
+            <Button
+              type="button"
+              variant="outline"
+              aria-label={t("viewRecordFor", { name: row.userName })}
+              onClick={() => onView(row._id)}
+              className="min-h-11 gap-1.5 rounded-xl px-3"
+            >
+              <Eye className="size-4 shrink-0" aria-hidden="true" />
+              {t("viewButton")}
+            </Button>
           </div>
         </Card>
       ))}

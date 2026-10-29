@@ -59,22 +59,16 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   if (employerId && Types.ObjectId.isValid(employerId)) {
-    // Resolve the employer and expand to all profiles sharing the same companyName
-    // (handles data where the same company has multiple Employer documents).
-    const emp = await Employer.findById(new Types.ObjectId(employerId)).select("companyName").lean();
+    // That account only: employers sharing a companyName are separate accounts,
+    // not duplicate profiles of one company.
+    const emp = await Employer.findById(new Types.ObjectId(employerId)).select("_id").lean();
     if (emp) {
-      const sameNameIds = await Employer.find({ companyName: emp.companyName }).select("_id").lean();
-      query.employerId = sameNameIds.length > 1
-        ? { $in: sameNameIds.map(e => e._id) }
-        : emp._id;
+      query.employerId = emp._id;
     } else {
       // Fallback: try resolving as a User _id → Employer profile _id
-      const empByUser = await Employer.findOne({ userId: new Types.ObjectId(employerId) }).select("_id companyName").lean();
+      const empByUser = await Employer.findOne({ userId: new Types.ObjectId(employerId) }).select("_id").lean();
       if (empByUser) {
-        const sameNameIds = await Employer.find({ companyName: empByUser.companyName }).select("_id").lean();
-        query.employerId = sameNameIds.length > 1
-          ? { $in: sameNameIds.map(e => e._id) }
-          : empByUser._id;
+        query.employerId = empByUser._id;
       } else {
         query.employerId = new Types.ObjectId(employerId);
       }

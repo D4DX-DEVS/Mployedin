@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { AlertTriangle, Cookie, Download, FileCheck2, History, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, BellRing, ChevronRight, Cookie, Download, Eye, FileCheck2, History, Loader2, MessageSquareWarning, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -26,12 +27,15 @@ import {
   type DataRequestStatus,
   type DataRequestType,
 } from "@/hooks/useDataPrivacy";
+import { ProfileVisibilityControl } from "./ProfileVisibilityControl";
+import { PrivacyComplaintForm } from "./PrivacyComplaintForm";
 
-const TYPE_KEYS: Record<DataRequestType, "typeExport" | "typeDelete" | "typeRectification" | "typeRestrict"> = {
+const TYPE_KEYS: Record<DataRequestType, "typeExport" | "typeDelete" | "typeRectification" | "typeRestrict" | "typeComplaint"> = {
   export: "typeExport",
   delete: "typeDelete",
   rectification: "typeRectification",
   restrict: "typeRestrict",
+  complaint: "typeComplaint",
 };
 
 const STATUS_KEYS: Record<DataRequestStatus, "statusPending" | "statusInProgress" | "statusCompleted" | "statusRejected" | "statusCancelled"> = {
@@ -95,10 +99,11 @@ function Section({ icon: Icon, title, description, children }: {
  * Terms & Privacy acceptance on record, and see or change this browser's
  * cookie choice (the Cookie settings dialog, which also logs it to the account).
  */
-export function DataPrivacyPanel() {
+export function DataPrivacyPanel({ seeker = false, notificationsHref }: { seeker?: boolean; notificationsHref?: string } = {}) {
   const t = useTranslations("dataPrivacy");
   const tCommon = useTranslations("common");
   const format = useFormatter();
+  const locale = useLocale();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const date = (value: string) => format.dateTime(new Date(value), { dateStyle: "medium" });
 
@@ -159,6 +164,23 @@ export function DataPrivacyPanel() {
   return (
     <div className="space-y-6">
       {ConfirmDialogNode}
+
+      {seeker && (
+        <Section icon={Eye} title={t("visibilityTitle")} description={t("visibilityDescription")}>
+          <ProfileVisibilityControl />
+        </Section>
+      )}
+
+      {notificationsHref && (
+        <Section icon={BellRing} title={t("messagesTitle")} description={t("messagesDescription")}>
+          <Button asChild variant="outline" className="min-h-11 gap-2 sm:min-h-9">
+            <Link href={`/${locale}${notificationsHref}`}>
+              {t("messagesButton")}
+              <ChevronRight className="size-4 rtl:rotate-180" aria-hidden="true" />
+            </Link>
+          </Button>
+        </Section>
+      )}
 
       <Section icon={Download} title={t("exportTitle")} description={t("exportDescription")}>
         <Button variant="outline" onClick={handleDownload} disabled={download.isPending} className="min-h-11 gap-2 sm:min-h-9">
@@ -251,6 +273,10 @@ export function DataPrivacyPanel() {
             </li>
           </ul>
         )}
+      </Section>
+
+      <Section icon={MessageSquareWarning} title={t("complaintTitle")} description={t("complaintDescription")}>
+        <PrivacyComplaintForm />
       </Section>
 
       <Section icon={History} title={t("historyTitle")}>

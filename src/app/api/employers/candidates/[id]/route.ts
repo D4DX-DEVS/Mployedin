@@ -7,6 +7,7 @@ import Interview from "@/models/Interview";
 import JobSeeker from "@/models/JobSeeker";
 import TalentPool from "@/models/TalentPool";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { withoutHiddenSections } from "@/lib/jobSeeker/sectionVisibility";
 
 /**
  * GET /api/employers/candidates/[id]
@@ -30,7 +31,7 @@ async function handler(req: NextRequest, ctx: { userId: string }, params?: Recor
 
   const seeker = await JobSeeker.findById(jobSeekerId)
     .populate("userId", "name email avatar")
-    .select("userId currentLocation skills experience education languages preferredSalary preferredJobType availabilityStatus profileCompleteness badges createdAt cv.originalUrl certifications headline summary totalExperienceYears preferredLocations preferredRoles noticePeriod workStatus profileVisibility isAgentReferred socialLinks")
+    .select("userId currentLocation skills experience education languages preferredSalary preferredJobType availabilityStatus profileCompleteness badges createdAt cv.originalUrl certifications headline summary totalExperienceYears preferredLocations preferredRoles noticePeriod workStatus profileVisibility sectionVisibility isAgentReferred socialLinks")
     .lean();
 
   if (!seeker) {
@@ -96,7 +97,8 @@ async function handler(req: NextRequest, ctx: { userId: string }, params?: Recor
   timeline.sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime());
 
   return NextResponse.json({
-    candidate: seeker,
+    // Sections the person hid with the eye toggle stay hidden until they apply or are pooled.
+    candidate: hasRelationship ? { ...seeker, sectionVisibility: undefined } : withoutHiddenSections(seeker as Record<string, unknown>),
     company: employer.companyName,
     applications: applications.map((app) => ({
       _id: String(app._id),

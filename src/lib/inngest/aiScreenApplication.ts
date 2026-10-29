@@ -36,7 +36,8 @@ import {
 } from "@/lib/hiring/workflowSettings";
 import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWorkflow";
 import { stageForApplication } from "@/lib/hiring/workflowStages";
-import { notifyStatusChange } from "@/lib/notifications/trigger";
+import { notifyAutomatedRejection, notifyStatusChange } from "@/lib/notifications/trigger";
+import { autoRejectDecision } from "@/lib/hiring/automatedDecision";
 import logger from "@/lib/logger";
 import { applicantCvFor } from "@/lib/cv/cvDocuments";
 
@@ -158,8 +159,11 @@ Provide brief qualitative feedback ONLY (no scoring). Return JSON only: {"streng
 
       // Opt-in auto-reject, on arrival only: applications still in "applied" —
       // never override a status the employer has already moved forward.
+      let autoRejected = false;
       if (application.status === "applied" && shouldAutoReject(rules, application.aiMatchScore)) {
+        autoRejected = true;
         application.status = "rejected";
+        application.automatedDecision = autoRejectDecision(application.aiMatchScore as number, rules.autoRejectBelow);
         application.rejectionReason = `AI match score (${application.aiMatchScore}) below threshold (${rules.autoRejectBelow})`;
         application.statusHistory.push({
           status: "rejected",
@@ -189,6 +193,11 @@ Provide brief qualitative feedback ONLY (no scoring). Return JSON only: {"streng
 
       // The same candidate update an employer's own move sends, when they get them.
       const seekerUserId = (seeker as { userId?: unknown }).userId;
+      // Not behind notifyOnStageChange: an automated rejection must be disclosed.
+      if (autoRejected && seekerUserId) {
+        notifyAutomatedRejection(String(seekerUserId), String(job.title ?? ""), String(application._id))
+          .catch((err) => { logger.error({ err, applicationId: String(application._id) }, "[ai-screen] failed to notify auto-reject"); });
+      }
       if (autoShortlisted && rules.notifyOnStageChange && seekerUserId) {
         notifyStatusChange(String(seekerUserId), String(job.title ?? ""), "shortlisted", String(application._id))
           .catch((err) => { logger.error({ err, applicationId: String(application._id) }, "[ai-screen] failed to notify auto-shortlist"); });

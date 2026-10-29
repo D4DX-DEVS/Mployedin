@@ -25,7 +25,7 @@ interface AgentSmartHeaderProps {
 /**
  * The agent home header, on the same `WorkspaceHeader` the employer home uses:
  * greeting, one context line, the two things an agent creates, and links to
- * the target report and commissions — links only: the client asked for no
+ * the profit target and commissions — links only: the client asked for no
  * target or money figures on the home (2026-10-23).
  *
  * The context line names the single most urgent thing in the queue — the
@@ -94,7 +94,9 @@ export function AgentSmartHeader({ greeting, counts, activeJobs, regions, superA
             <Target className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">{t("addLead")}</span>
           </Link>
-          <Link href={`/${locale}/agent/target-report`} aria-label={tOverview("targetShort")} className={buttonClass}>
+          {/* "Target" opens the Profit target tab, not Profit report: the label
+              names the target, and the report is one tab along. */}
+          <Link href={`/${locale}/agent/target-management`} aria-label={tOverview("targetShort")} className={buttonClass}>
             <Goal className="h-4 w-4" aria-hidden="true" />
             <span className="hidden sm:inline">{tOverview("targetShort")}</span>
           </Link>

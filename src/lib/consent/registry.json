@@ -295,6 +295,17 @@
     "legal": "pending"
   },
   {
+    "name": "fonts.gstatic.com",
+    "kind": "thirdPartyHost",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "third",
+    "duration": "per Google",
+    "owner": "security",
+    "purposeKey": "recaptcha",
+    "legal": "pending"
+  },
+  {
     "name": "_grecaptcha",
     "kind": "localStorage",
     "category": "necessary",

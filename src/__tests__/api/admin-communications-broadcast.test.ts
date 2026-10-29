@@ -122,7 +122,7 @@ describe("sending", () => {
   beforeEach(() => auditFind.mockReturnValue(chain([])));
 
   it("queues the broadcast and records its message for the history", async () => {
-    const res = await POST(post({ title: "Hello", message: "World", targetAll: true, channels: ["in_app"] }), noParams);
+    const res = await POST(post({ title: "Hello", message: "World", targetAll: true, channels: ["in_app"], purpose: "service" }), noParams);
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -137,14 +137,14 @@ describe("sending", () => {
   });
 
   it("rejects the WhatsApp channel without a template", async () => {
-    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "whatsapp"] }), noParams);
+    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "whatsapp"], purpose: "service" }), noParams);
     expect(res.status).toBe(400);
     expect(inngestSend).not.toHaveBeenCalled();
   });
 
   it("queues the WhatsApp leg with a broadcast id", async () => {
     const whatsapp = { templateName: "mployedin_admin_announcement", language: "en", params: ["{{firstName}}", "{{message}}"] };
-    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "whatsapp"], whatsapp }), noParams);
+    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "whatsapp"], whatsapp, purpose: "service" }), noParams);
     expect(res.status).toBe(200);
     const data = inngestSend.mock.calls[0][0].data as Record<string, unknown>;
     expect(data.whatsapp).toEqual(whatsapp);
@@ -155,7 +155,7 @@ describe("sending", () => {
 
   it("forwards no template and audits none when the WhatsApp channel is not selected", async () => {
     const whatsapp = { templateName: "mployedin_admin_announcement", language: "en", params: ["{{firstName}}"] };
-    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "email"], whatsapp }), noParams);
+    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "email"], whatsapp, purpose: "service" }), noParams);
     expect(res.status).toBe(200);
     expect((inngestSend.mock.calls[0][0].data as Record<string, unknown>).whatsapp).toBeUndefined();
     expect(logActivity.mock.calls[0][0].meta.whatsappTemplate).toBeUndefined();
@@ -163,7 +163,7 @@ describe("sending", () => {
 
   it("accepts a zero-variable template and carries its empty parameter list", async () => {
     const whatsapp = { templateName: "hello_world", language: "en_US" };
-    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["whatsapp"], whatsapp }), noParams);
+    const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["whatsapp"], whatsapp, purpose: "service" }), noParams);
     expect(res.status).toBe(200);
     expect((inngestSend.mock.calls[0][0].data as { whatsapp: unknown }).whatsapp).toEqual({ ...whatsapp, params: [] });
   });
@@ -173,7 +173,7 @@ describe("sending", () => {
 
     it("refuses a broadcast with the WhatsApp channel: 409 whatsapp_disabled, nothing queued or audited", async () => {
       whatsAppEnabled = false;
-      const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "whatsapp"], whatsapp }), noParams);
+      const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "whatsapp"], whatsapp, purpose: "service" }), noParams);
       expect(res.status).toBe(409);
       expect(await res.json()).toEqual({ error: "whatsapp_disabled" });
       expect(inngestSend).not.toHaveBeenCalled();
@@ -182,14 +182,14 @@ describe("sending", () => {
 
     it("still sends a broadcast without the WhatsApp channel", async () => {
       whatsAppEnabled = false;
-      const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "email"], whatsapp }), noParams);
+      const res = await POST(post({ title: "T", message: "M", targetAll: true, channels: ["in_app", "email"], whatsapp, purpose: "service" }), noParams);
       expect(res.status).toBe(200);
       expect(inngestSend).toHaveBeenCalledTimes(1);
     });
   });
 
   it("refuses a template name or language Meta would not accept", async () => {
-    const bad = (whatsapp: unknown) => POST(post({ title: "T", message: "M", targetAll: true, channels: ["whatsapp"], whatsapp }), noParams);
+    const bad = (whatsapp: unknown) => POST(post({ title: "T", message: "M", targetAll: true, channels: ["whatsapp"], whatsapp, purpose: "service" }), noParams);
     expect((await bad({ templateName: "Has Spaces", language: "en", params: [] })).status).toBe(400);
     expect((await bad({ templateName: "ok_name", language: "english", params: [] })).status).toBe(400);
     expect(inngestSend).not.toHaveBeenCalled();
@@ -201,7 +201,7 @@ describe("sending", () => {
 describe("a second identical broadcast within a minute", () => {
   const SENT = { title: "Hello", message: "World", targetRoles: "all", targetAll: true, channels: ["in_app", "email"], recipientCount: 411 };
   const recent = (meta: Record<string, unknown>) => auditFind.mockReturnValue(chain([{ _id: "a1", meta }]));
-  const send = (body: Record<string, unknown>) => POST(post({ title: "Hello", message: "World", targetAll: true, channels: ["in_app", "email"], ...body }), noParams);
+  const send = (body: Record<string, unknown>) => POST(post({ title: "Hello", message: "World", targetAll: true, channels: ["in_app", "email"], purpose: "service", ...body }), noParams);
   beforeEach(() => auditFind.mockReturnValue(chain([])));
 
   it("is refused with 409 duplicate_broadcast, nothing queued or audited", async () => {

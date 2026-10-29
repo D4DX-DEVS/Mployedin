@@ -232,7 +232,7 @@ export default function RegisterPage() {
     if (!confirmPassword) nextErrors.confirmPassword = tf("confirmPasswordRequired");
     else if (password !== confirmPassword) nextErrors.confirmPassword = t("passwordsDoNotMatch");
 
-    if (!agreedToTerms) nextErrors.terms = t("mustAgreeToTerms");
+    if (!agreedToTerms) nextErrors.terms = t("mustAgreeToTermsAndAge");
 
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -464,7 +464,8 @@ export default function RegisterPage() {
             {" "}{t("and")}{" "}
             <Link href={`/${locale}/privacy`} className="text-primary hover:underline" target="_blank">
               {t("privacyPolicyLink")}
-            </Link>{" "}
+            </Link>
+            {t("ageConfirmation")}{" "}
             <RequiredMark />
           </label>
         </div>

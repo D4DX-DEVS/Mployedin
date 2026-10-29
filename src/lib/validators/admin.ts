@@ -110,6 +110,9 @@ export const communicationSchema = z
     targetRoles: z.array(z.enum(VALID_ROLES)).max(10).optional(),
     targetAll: z.boolean().optional(),
     channels: z.array(z.enum(["in_app", "email", "whatsapp"])).min(1).default(["in_app"]),
+    // No default: the admin states whether this is a service notice or marketing,
+    // because marketing may only reach users who opted in (broadcastAudience.ts).
+    purpose: z.enum(["service", "marketing"]),
     // Required whenever "whatsapp" is a channel: the approved template that
     // carries the broadcast and its body parameters (tokens allowed).
     whatsapp: broadcastWhatsAppSchema.optional(),

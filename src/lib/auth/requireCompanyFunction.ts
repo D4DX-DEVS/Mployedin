@@ -19,6 +19,11 @@ import type { ICompanyUserPermissions, PermissionFlag } from "@/models/CompanyUs
  * all is treated the same as a member missing the flag.
  */
 export async function requireCompanyFunction(flag: PermissionFlag): Promise<void> {
+  if (!(await mayUseCompanyFunction(flag))) notFound();
+}
+
+/** The same rule as requireCompanyFunction, as a yes/no — for a page that only hides a link. */
+export async function mayUseCompanyFunction(flag: PermissionFlag): Promise<boolean> {
   const session = await auth();
   const user = session?.user as
     | {
@@ -29,10 +34,10 @@ export async function requireCompanyFunction(flag: PermissionFlag): Promise<void
       }
     | undefined;
 
-  if (!user || user.role !== "employer") return;
+  if (!user || user.role !== "employer") return true;
 
   const isMember = Boolean(user.companyOwnerUserId && user.companyOwnerUserId !== user.id);
-  if (!isMember) return;
+  if (!isMember) return true;
 
-  if (user.companyPermissions?.[flag] !== true) notFound();
+  return user.companyPermissions?.[flag] === true;
 }

@@ -27,7 +27,11 @@ jest.mock("@/lib/auth/withAuth", () => ({
 }));
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/audit/log", () => ({ actorFromCtx: jest.fn(() => ({})), logActivity: jest.fn().mockResolvedValue(undefined) }));
-jest.mock("@/lib/notifications/trigger", () => ({ notify: (...a: unknown[]) => mockNotify(...a) }));
+const mockCandidateNotice = jest.fn().mockResolvedValue(undefined);
+jest.mock("@/lib/notifications/trigger", () => ({
+  notify: (...a: unknown[]) => mockNotify(...a),
+  notifyBackgroundCheckStarted: (...a: unknown[]) => mockCandidateNotice(...a),
+}));
 jest.mock("@/lib/logger", () => ({ __esModule: true, default: { error: jest.fn(), warn: jest.fn(), info: jest.fn() } }));
 
 const chain = (value: unknown) => {
@@ -50,6 +54,8 @@ jest.mock("@/models/Agent", () => ({
     find: jest.fn((q: { _id: { $in: string[] } }) => chain(q._id.$in.map((id) => ({ userId: agentUsers[id] })))),
   },
 }));
+const SEEKER_USER_ID = "651000000000000000000d02";
+jest.mock("@/models/JobSeeker", () => ({ __esModule: true, default: { findById: jest.fn(() => chain({ userId: SEEKER_USER_ID })) } }));
 jest.mock("@/models/Job", () => ({ __esModule: true, default: { findById: jest.fn(() => chain(jobDoc)) } }));
 let mockOpenChecks: Array<{ _id: string; checkType: string }> = [];
 const mockCreate = jest.fn(async (doc: unknown) => ({ _id: "check1", ...(doc as object) }));
@@ -144,4 +150,10 @@ describe("one open check of a kind per candidate (owner decision 2026-10-14)", (
     await post("background");
     expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ status: "pending", createdBy: OWNER_ID }));
   });
+});
+
+it("tells the candidate a check has started on them (UK GDPR Art 14)", async () => {
+  expect((await post()).status).toBe(201);
+  await new Promise((r) => setImmediate(r));
+  expect(mockCandidateNotice).toHaveBeenCalledWith(SEEKER_USER_ID, "Acme", "Accountant", APP_ID);
 });

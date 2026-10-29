@@ -61,7 +61,7 @@ function SignupConsentDialog({ locale, open, onConfirm, onCancel }: {
           <DialogTitle>{t("signupConsentTitle")}</DialogTitle>
           <DialogDescription>{t("signupConsentDescription")}</DialogDescription>
         </DialogHeader>
-        <TermsAgreement id="signup-consent-terms" locale={locale} checked={agreed} onCheckedChange={setAgreed} />
+        <TermsAgreement id="signup-consent-terms" locale={locale} checked={agreed} onCheckedChange={setAgreed} confirmAge />
         <DialogFooter>
           <Button
             variant="outline"

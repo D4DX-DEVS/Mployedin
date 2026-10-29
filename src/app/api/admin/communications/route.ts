@@ -8,7 +8,7 @@ import { logActivity } from "@/lib/audit/log";
 import { validateBody } from "@/lib/validators";
 import { communicationSchema } from "@/lib/validators/admin";
 import { inngest } from "@/lib/inngest/client";
-import { broadcastRecipientQuery } from "@/lib/communications/broadcastAudience";
+import { broadcastAudienceQuery } from "@/lib/communications/broadcastAudienceServer";
 import { getWhatsAppSettings } from "@/models/SystemConfig";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
@@ -23,6 +23,8 @@ interface BroadcastAuditMeta {
   targetAll?: boolean;
   /** Set only when the WhatsApp channel was selected. */
   whatsappTemplate?: string;
+  /** Absent on entries written before purposes existed (all sent as service notices). */
+  purpose?: "service" | "marketing";
 }
 
 /** How long a second identical broadcast by the same admin is refused. */
@@ -38,7 +40,7 @@ function broadcastKey(meta: BroadcastAuditMeta): string {
   const roles = Array.isArray(meta.targetRoles) && meta.targetRoles.length > 0 ? [...meta.targetRoles].sort() : "all";
   const channels = [...(meta.channels ?? [])].sort();
   const template = channels.includes("whatsapp") ? (meta.whatsappTemplate ?? "") : "";
-  return JSON.stringify([meta.title ?? "", meta.message ?? "", roles, channels, Boolean(meta.targetAll), template]);
+  return JSON.stringify([meta.title ?? "", meta.message ?? "", roles, channels, Boolean(meta.targetAll), template, meta.purpose ?? "service"]);
 }
 
 async function getHandler(_req: NextRequest, ctx: AuthCtx) {
@@ -70,6 +72,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
       body: meta.message ?? "",
       channels: meta.channels?.length ? meta.channels : ["in_app"],
       recipientCount: typeof meta.recipientCount === "number" ? meta.recipientCount : null,
+      purpose: meta.purpose ?? "service",
       audience: meta.targetRoles ?? "all",
       createdAt: entry.createdAt,
     };
@@ -87,7 +90,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   if (req.method === "POST") {
-    const { targetRoles, targetAll, message, title, channels, whatsapp } = await validateBody(req, communicationSchema);
+    const { targetRoles, targetAll, message, title, channels, whatsapp, purpose } = await validateBody(req, communicationSchema);
 
     if (!message || !title) {
       return NextResponse.json({ error: "title and message required" }, { status: 400 });
@@ -108,6 +111,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       targetAll: Boolean(targetAll),
       channels: selectedChannels,
       whatsappTemplate: selectedChannels.includes("whatsapp") ? whatsapp?.templateName : undefined,
+      purpose,
     });
     const recent = await AuditLog.find({ action: "communication.broadcast", actorId: ctx.userId, createdAt: { $gte: new Date(Date.now() - DUPLICATE_WINDOW_MS) } })
       .select("meta")
@@ -124,11 +128,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // per-user notification + email fan-out is offloaded to Inngest so a
     // targetAll broadcast (100k+ users) never runs on the request path
     // (which would blow the serverless timeout + memory).
-    const recipientCount = await User.countDocuments(broadcastRecipientQuery(Boolean(targetAll), targetRoles));
+    const recipientCount = await User.countDocuments(await broadcastAudienceQuery(Boolean(targetAll), targetRoles, purpose));
 
     await inngest.send({
       name: "admin/broadcast",
-      data: { title, message, targetRoles, targetAll: Boolean(targetAll), channels: selectedChannels, broadcastId, whatsapp: waLeg },
+      data: { title, message, targetRoles, targetAll: Boolean(targetAll), channels: selectedChannels, purpose, broadcastId, whatsapp: waLeg },
     });
 
     await logActivity({
@@ -137,7 +141,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       action: "communication.broadcast",
       resource: "notifications",
       // The History tab is built from this entry, message included.
-      meta: { title, message, targetRoles: targetRoles ?? "all", targetAll: Boolean(targetAll), recipientCount, channels: selectedChannels, broadcastId, whatsappTemplate: waLeg?.templateName },
+      meta: { title, message, targetRoles: targetRoles ?? "all", targetAll: Boolean(targetAll), recipientCount, channels: selectedChannels, purpose, broadcastId, whatsappTemplate: waLeg?.templateName },
       req,
     });
 

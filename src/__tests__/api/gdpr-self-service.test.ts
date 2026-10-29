@@ -37,8 +37,14 @@ jest.mock("@/lib/auth/withAuth", () => ({
 }));
 
 const notifyAdmins = jest.fn().mockResolvedValue(undefined);
+const notifyComplaint = jest.fn().mockResolvedValue(undefined);
 jest.mock("@/lib/notifications/trigger", () => ({
   notifyAdminsGdprDeletionRequest: (...a: unknown[]) => notifyAdmins(...a),
+  notifyAdminsPrivacyComplaint: (...a: unknown[]) => notifyComplaint(...a),
+}));
+let complaintAllowed = true;
+jest.mock("@/lib/security/rateLimit", () => ({
+  checkRateLimit: jest.fn(async () => ({ allowed: complaintAllowed, remaining: 1, resetAt: Date.now() + 1000 })),
 }));
 const erase = jest.fn();
 jest.mock("@/lib/gdpr/erasure", () => ({ eraseUserPersonalData: (...a: unknown[]) => erase(...a) }));
@@ -173,6 +179,41 @@ describe("POST /api/gdpr/requests", () => {
     expect(res.status).toBe(202);
     expect(gdprCreate).toHaveBeenCalledWith(expect.objectContaining({ requestType: "delete", status: "pending" }));
     expect(erase).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/gdpr/requests — privacy complaint (DUAA 2025)", () => {
+  beforeEach(() => { complaintAllowed = true; });
+
+  it("records the complaint in the register in the person's own words and tells the admins", async () => {
+    const { POST } = await import("@/app/api/gdpr/requests/route");
+    const res = await POST(req("/api/gdpr/requests", "POST", { requestType: "complaint", message: "  You kept emailing me after I unsubscribed.  " }), noParams);
+
+    expect(res.status).toBe(201);
+    expect(gdprCreate).toHaveBeenCalledWith(expect.objectContaining({
+      userId: USER_ID,
+      requestType: "complaint",
+      status: "pending",
+      notes: "You kept emailing me after I unsubscribed.",
+    }));
+    expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "gdpr.complaint_received" }));
+    expect(notifyComplaint).toHaveBeenCalledWith("Sara Ahmed", REQUEST_ID);
+    expect(erase).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty or too-short complaint", async () => {
+    const { POST } = await import("@/app/api/gdpr/requests/route");
+    const res = await POST(req("/api/gdpr/requests", "POST", { requestType: "complaint", message: "bad" }), noParams);
+    expect(res.status).toBe(400);
+    expect(gdprCreate).not.toHaveBeenCalled();
+  });
+
+  it("limits complaints to 3 a day", async () => {
+    complaintAllowed = false;
+    const { POST } = await import("@/app/api/gdpr/requests/route");
+    const res = await POST(req("/api/gdpr/requests", "POST", { requestType: "complaint", message: "Another complaint about my data" }), noParams);
+    expect(res.status).toBe(429);
+    expect(gdprCreate).not.toHaveBeenCalled();
   });
 });
 

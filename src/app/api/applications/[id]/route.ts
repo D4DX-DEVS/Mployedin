@@ -20,6 +20,7 @@ import { stageForApplication, type WorkflowStageDef } from "@/lib/hiring/workflo
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 import { SEEKER_HIDDEN_APPLICATION_FIELDS } from "@/lib/applications/seekerView";
+import { stampHumanReview } from "@/lib/hiring/automatedDecision";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
 
@@ -173,6 +174,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // will attend. Done after the save below, so a failed change leaves it open.
   const settleInterviews = !!status && status !== application.status && closesOpenInterviews(status);
   if (status && status !== application.status) {
+    // The first move a person makes after the candidate asked for a review is that review.
+    if (ctx.role !== "job_seeker") stampHumanReview(application, ctx.userId);
     application.status = status;
     // Unnamed → the first stage of the new status.
     application.stageId = targetStage?.id;
@@ -352,6 +355,11 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (ctx.role === "job_seeker") {
     if (typeof result.seekerMatchScore === "number") result.aiMatchScore = result.seekerMatchScore;
     for (const key of SEEKER_HIDDEN_APPLICATION_FIELDS) delete result[key];
+    // Which staff member reviewed it is the employer's business; that a person did is the candidate's.
+    if (result.automatedDecision) {
+      const { reviewedBy: _reviewer, ...decision } = result.automatedDecision;
+      result.automatedDecision = decision;
+    }
   }
 
   if (includes.includes("interviews")) {
@@ -367,6 +375,16 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     result.offers = await Offer.find({ applicationId: params?.id })
       .sort({ createdAt: -1 })
       .select("salary startDate benefits status expiresAt respondedAt")
+      .lean();
+  }
+
+  // UK GDPR Art 14: a check gathers data about the candidate from other people, so they can see one exists.
+  // Status only — the outcome and the referees' answers stay with the employer (the outcome is in the data export).
+  if (ctx.role === "job_seeker") {
+    const BackgroundCheck = (await import("@/models/BackgroundCheck")).default;
+    result.backgroundChecks = await BackgroundCheck.find({ applicationId: params?.id, status: { $ne: "cancelled" } })
+      .sort({ createdAt: -1 })
+      .select("checkType status createdAt completedAt")
       .lean();
   }
 

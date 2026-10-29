@@ -8,7 +8,7 @@ import BackgroundCheck from "@/models/BackgroundCheck";
 import { validateBody } from "@/lib/validators";
 import { backgroundCheckCreateSchema } from "@/lib/validators/backgroundChecks";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
-import { notify } from "@/lib/notifications/trigger";
+import { notify, notifyBackgroundCheckStarted } from "@/lib/notifications/trigger";
 import logger from "@/lib/logger";
 import { checkTypesOverlap, OPEN_STATUSES } from "@/lib/backgroundChecks/workflow";
 import type { UserRole } from "@/models/User";
@@ -171,7 +171,25 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
   notifyAgentOfCheck(emp as EmployerForNotice, (application as { jobId: unknown }).jobId, ctx.member?.actorId ?? ctx.userId)
     .catch((err) => { logger.error({ err, checkId: String(check._id) }, "[background-checks] failed to notify the agent"); });
 
+  notifyCandidateOfCheck(emp as EmployerForNotice, application as { jobId: unknown; jobSeekerId: unknown }, body.applicationId)
+    .catch((err) => { logger.error({ err, checkId: String(check._id) }, "[background-checks] failed to notify the candidate"); });
+
   return NextResponse.json({ check }, { status: 201 });
+}
+
+/** The candidate is told a check has started on them (UK GDPR Art 14). */
+async function notifyCandidateOfCheck(
+  emp: EmployerForNotice,
+  application: { jobId: unknown; jobSeekerId: unknown },
+  applicationId: string,
+): Promise<void> {
+  const [{ default: JobSeeker }, { default: Job }] = await Promise.all([import("@/models/JobSeeker"), import("@/models/Job")]);
+  const [seeker, job] = await Promise.all([
+    JobSeeker.findById(application.jobSeekerId).select("userId").lean() as Promise<{ userId?: unknown } | null>,
+    Job.findById(application.jobId).select("title").lean() as Promise<{ title?: string } | null>,
+  ]);
+  if (!seeker?.userId) return;
+  await notifyBackgroundCheckStarted(String(seeker.userId), emp.companyName ?? "", job?.title ?? "", applicationId);
 }
 
 interface EmployerForNotice { _id: unknown; agentId?: unknown; companyName?: string }

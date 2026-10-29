@@ -37,6 +37,18 @@ import {
 import { isCronEnabled, updateCronRunStatus, resolveMatchThreshold, isAiRerankEnabled } from "@/models/SystemConfig";
 import { mongoJevVerdictStore } from "@/lib/matching/jevVerdictStore";
 
+/** Of these users, the ones who turned marketing on and have not unsubscribed from everything. */
+async function marketingOptedIn(userIds: string[]): Promise<Set<string>> {
+  const prefs = await NotificationPreference.find({
+    userId: { $in: userIds },
+    "categories.marketing.enabled": true,
+    unsubscribedAll: { $ne: true },
+  })
+    .select("userId")
+    .lean();
+  return new Set(prefs.map((p) => p.userId.toString()));
+}
+
 const RE_ENGAGEMENT_INACTIVE_DAYS = 7;
 const RE_ENGAGEMENT_COOLDOWN_DAYS = 14;
 const PROFILE_COMPLETION_THRESHOLD = 70;
@@ -98,7 +110,10 @@ export const reEngagementCron = inngest.createFunction(
         .lean();
 
       const excludeSet = new Set(recentlySent.map((p) => p.userId.toString()));
-      return users.filter((u) => !excludeSet.has(u._id.toString()));
+      // Marketing is opt-in (PECR reg 22): a seeker with no preference document never turned it on, and the
+      // category defaults to off. Only excluding "enabled: false" mailed everyone who never opened settings.
+      const optedIn = await marketingOptedIn(userIds);
+      return users.filter((u) => optedIn.has(u._id.toString()) && !excludeSet.has(u._id.toString()));
     });
 
     if (inactiveUsers.length === 0) {
@@ -293,6 +308,9 @@ export const profileCompletionCron = inngest.createFunction(
         const excludeSet = new Set(
           excludePrefs.map((p) => p.userId.toString()),
         );
+        // Opt-in only, as the re-engagement mail above: no preference document = never agreed.
+        const optedIn = await marketingOptedIn(userIds);
+        for (const id of userIds) if (!optedIn.has(id)) excludeSet.add(id);
 
         const targets: Array<{
           userId: string;

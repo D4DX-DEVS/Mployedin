@@ -11,7 +11,11 @@ import { DataPrivacyPanel } from "./DataPrivacyPanel";
  * with the WorkspaceHeader; job seekers with the plain PageHeader their other
  * routes use.
  */
-export function DataPrivacyPage({ variant }: { variant: "workspace" | "seeker" }) {
+export function DataPrivacyPage({ variant, notificationsHref }: {
+  variant: "workspace" | "seeker";
+  /** Where this role turns emails, WhatsApp and other messages on or off (no locale prefix). */
+  notificationsHref?: string;
+}) {
   const t = useTranslations("dataPrivacy");
   return (
     <div className="page-container">
@@ -21,7 +25,7 @@ export function DataPrivacyPage({ variant }: { variant: "workspace" | "seeker" }
         <PageHeader title={t("pageTitle")} description={t("pageDescription")} />
       )}
       <section className="workspace-panel-surface rounded-2xl p-4 sm:p-6">
-        <DataPrivacyPanel />
+        <DataPrivacyPanel seeker={variant === "seeker"} notificationsHref={notificationsHref} />
       </section>
     </div>
   );

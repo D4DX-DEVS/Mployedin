@@ -1,5 +1,5 @@
 /** Mirrors GdprRequestType / GdprRequestStatus; the model file cannot be imported client-side. */
-export type GdprRequestType = "export" | "delete" | "rectification" | "restrict";
+export type GdprRequestType = "export" | "delete" | "rectification" | "restrict" | "complaint";
 export type GdprRequestStatus = "pending" | "in_progress" | "completed" | "rejected" | "cancelled";
 
 /** One row of GET /api/admin/gdpr/consent (Other consents). No IP address: the API no longer sends one. */

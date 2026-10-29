@@ -53,10 +53,32 @@ jest.mock("@/models/JobSeeker", () => ({
     updateOne: jest.fn(async () => undefined),
   },
 }));
-jest.mock("@/models/NotificationPreference", () => ({
-  __esModule: true,
-  default: { find: () => query([]), updateOne: jest.fn(async () => undefined) },
-}));
+jest.mock("@/models/NotificationPreference", () => {
+  return {
+    __esModule: true,
+    default: {
+      find: (queryObj: Record<string, unknown>) => {
+        // Distinguish between queries:
+        // - excludePrefs queries have $or clause
+        // - marketingOptedIn queries check "categories.marketing.enabled": true
+        const isMarketingOptinQuery = "categories.marketing.enabled" in queryObj;
+
+        if (isMarketingOptinQuery) {
+          // marketingOptedIn query: return all users as opted in
+          return query([
+            { userId: "u1", "categories.marketing.enabled": true, unsubscribedAll: false },
+            { userId: "u2", "categories.marketing.enabled": true, unsubscribedAll: false },
+            { userId: "u3", "categories.marketing.enabled": true, unsubscribedAll: false },
+          ]);
+        } else {
+          // excludePrefs query: return empty (no exclusions)
+          return query([]);
+        }
+      },
+      updateOne: jest.fn(async () => undefined),
+    },
+  };
+});
 jest.mock("@/lib/matchScore", () => ({ profileSignalCount: () => 5, MIN_PROFILE_SIGNALS: 2, SEEKER_MATCH_FIELDS: "" }));
 jest.mock("@/lib/matching/recommend", () => ({
   recommendJobsFor: jest.fn(async () => ({ jobs: [{ title: "Site Engineer", company: "Beta", score: 88 }] })),

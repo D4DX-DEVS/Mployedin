@@ -1456,6 +1456,11 @@ function SecurityTab() {
 
 export default function AgentSettingsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
+  // ?tab= opens a section directly (Data & Privacy links to ?tab=notifications). Read once, after hydration.
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab && NAV_ITEMS.some((item) => item.key === tab)) setActiveTab(tab as TabKey);
+  }, []);
   const t = useTranslations("agentSettings");
   const common = useTranslations("agentCommon");
 

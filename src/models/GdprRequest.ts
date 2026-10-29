@@ -16,10 +16,15 @@ import { ADMIN_NOTES_MAX, OUTCOME_MAX, OUTCOME_REASON_MAX } from "@/lib/gdpr/req
  * recorded. The user may be shown `outcome` and `outcomeReason` (a refused
  * person is told why); `adminNotes` is internal and is never sent to them.
  */
-export type GdprRequestType = "export" | "delete" | "rectification" | "restrict";
+/**
+ * `complaint` is a privacy complaint made to us (DUAA 2025: controllers must
+ * take complaints and acknowledge them within 30 days). The person's words are
+ * in `notes`; the team answers through `outcome` like any other request.
+ */
+export type GdprRequestType = "export" | "delete" | "rectification" | "restrict" | "complaint";
 export type GdprRequestStatus = "pending" | "in_progress" | "completed" | "rejected" | "cancelled";
 
-export const GDPR_REQUEST_TYPES: GdprRequestType[] = ["export", "delete", "rectification", "restrict"];
+export const GDPR_REQUEST_TYPES: GdprRequestType[] = ["export", "delete", "rectification", "restrict", "complaint"];
 export const GDPR_REQUEST_STATUSES: GdprRequestStatus[] = ["pending", "in_progress", "completed", "rejected", "cancelled"];
 
 /** Allowed status transitions; completed, rejected and cancelled are terminal. */
@@ -39,7 +44,7 @@ export interface IGdprRequest extends Document {
   userEmail: string;
   requestType: GdprRequestType;
   status: GdprRequestStatus;
-  /** The user's own reason (deletion requests). Written once, at request time; never by an admin. */
+  /** The user's own words (a deletion reason, a complaint). Written once, at request time; never by an admin. */
   notes?: string;
   /** What the team did. */
   outcome?: string;

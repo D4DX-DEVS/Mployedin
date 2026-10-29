@@ -33,7 +33,9 @@ import { InterviewActionCard } from "./_components/InterviewActionCard";
 import { OfferActionCard } from "./_components/OfferActionCard";
 import { DocumentsSection } from "./_components/DocumentsSection";
 import { WhatYouSent } from "./_components/WhatYouSent";
-import type { InterviewItem, OfferItem } from "./_components/types";
+import { AutomatedDecisionCard } from "./_components/AutomatedDecisionCard";
+import { BackgroundCheckNotice } from "./_components/BackgroundCheckNotice";
+import type { AutomatedDecisionItem, BackgroundCheckItem, InterviewItem, OfferItem } from "./_components/types";
 
 interface ApplicationDetail {
   _id: string;
@@ -55,6 +57,8 @@ interface ApplicationDetail {
   } | null;
   interviews?: InterviewItem[];
   offers?: OfferItem[];
+  automatedDecision?: AutomatedDecisionItem;
+  backgroundChecks?: BackgroundCheckItem[];
 }
 
 const TERMINAL_STATUSES = ["hired", "rejected", "withdrawn"];
@@ -186,7 +190,23 @@ export default function ApplicationDetailPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         {/* ── Main column ──────────────────────────────────────────── */}
         <div className="min-w-0 space-y-6">
-          {nextStep && <NextStepCallout step={nextStep} locale={locale} />}
+          {/* After an automatic rejection the card below says what happened; "the employer has decided" would contradict it. */}
+          {nextStep && !(app.status === "rejected" && app.automatedDecision?.kind === "auto_reject") && (
+            <NextStepCallout step={nextStep} locale={locale} />
+          )}
+
+          {app.automatedDecision?.kind === "auto_reject" && (
+            <AutomatedDecisionCard
+              applicationId={app._id}
+              status={app.status}
+              decision={app.automatedDecision}
+              onUpdated={refresh}
+            />
+          )}
+
+          {(app.backgroundChecks?.length ?? 0) > 0 && (
+            <BackgroundCheckNotice checks={app.backgroundChecks ?? []} companyName={employer?.companyName ?? t("company")} />
+          )}
 
           {interviews.length > 0 && (
             <section className="space-y-3" aria-labelledby="interviews-heading">

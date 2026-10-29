@@ -108,6 +108,11 @@ export const bulkActionSchema = z.object({
   { message: "Rejection reason is required when rejecting applications", path: ["params", "rejectionReason"] },
 );
 
+/** The candidate's "ask for a human review" of an automatic rejection. */
+export const humanReviewRequestSchema = z.object({
+  note: z.string().max(1000).trim().optional(),
+});
+
 export const npsCreateSchema = z.object({
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(500).trim().optional(),

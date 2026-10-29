@@ -97,6 +97,7 @@ export default function PublicFooter({ locale, variant = "full", showAccessibili
   const companySection: FooterSection = {
     title: t("company"),
     links: [
+      { href: `/${locale}/about`, label: t("aboutLink") },
       { href: `/${locale}/privacy`, label: t("privacy") },
       { href: `/${locale}/terms`, label: t("terms") },
       { href: `/${locale}/cookies`, label: t("cookies") },

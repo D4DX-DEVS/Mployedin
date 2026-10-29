@@ -272,17 +272,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     };
   }
   if (employerId && Types.ObjectId.isValid(employerId)) {
-    // Expand to all employer profiles sharing the same companyName (handles duplicate profiles)
-    const emp = await Employer.findById(new Types.ObjectId(employerId)).select("companyName").lean();
-    let requested: unknown;
-    if (emp) {
-      const sameNameIds = await Employer.find({ companyName: emp.companyName }).select("_id").lean();
-      requested = sameNameIds.length > 1
-        ? { $in: sameNameIds.map(e => e._id) }
-        : emp._id;
-    } else {
-      requested = new Types.ObjectId(employerId);
-    }
+    // That account only. Employers sharing a companyName are separate accounts
+    // (three unrelated "d4dx" sign-ups); widening to the name put another
+    // company's jobs under this employer's filter chip.
+    const requested = new Types.ObjectId(employerId);
     // A filter narrows the caller's scope; it must never replace it. Assigning
     // query.employerId here overwrote the super-agent portfolio and the
     // employer's own-company scope, so `myJobs=true&employerId=<other>&status=draft`
