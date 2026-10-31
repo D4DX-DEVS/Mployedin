@@ -27,7 +27,7 @@ import {
   Send,
   Trash2,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -120,18 +120,45 @@ const STATUS_COLORS: Record<string, string> = {
   archived: "bg-slate-100 text-slate-600",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Draft",
-  submitted: "Submitted",
-  under_review: "Under Review",
-  approved: "Operationally Approved",
-  revision_requested: "Revision Requested",
-  budget_approved: "Financially Approved",
-  resources_assigned: "Resources Assigned",
-  active: "Active",
-  completed: "Completed",
-  rejected: "Rejected",
-  archived: "Archived",
+// Labels come from the `exhibitions` namespace, the same keys the super agent
+// and admin screens read (client check 2026-10-30: English-only here, and
+// "Financially Approved" where the admin read "Payment approved").
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  draft: "statusDraft",
+  submitted: "statusSubmitted",
+  under_review: "statusUnderReview",
+  approved: "statusApproved",
+  revision_requested: "statusRevisionRequested",
+  budget_approved: "statusBudgetApproved",
+  resources_assigned: "statusResourcesAssigned",
+  active: "statusActive",
+  completed: "statusCompleted",
+  rejected: "statusRejected",
+  archived: "statusArchived",
+};
+
+/** A billing country stored as a code ("IN") reads as its name ("India"). */
+function countryName(value: string): string {
+  if (!/^[A-Za-z]{2}$/.test(value)) return value;
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" }).of(value.toUpperCase()) ?? value;
+  } catch {
+    return value;
+  }
+}
+
+/** City and country; "TBD" is the stored "no city yet", not a place. */
+function placeText(item: { eventLocation?: string; country?: string }): string {
+  const city = item.eventLocation?.trim();
+  return [city && city.toUpperCase() !== "TBD" ? city : "", item.country ? countryName(item.country.trim()) : ""]
+    .filter(Boolean).join(", ");
+}
+
+const PRIORITY_LABEL_KEYS: Record<string, string> = {
+  low: "priorityLow",
+  medium: "priorityMedium",
+  high: "priorityHigh",
+  critical: "priorityCritical",
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -141,49 +168,38 @@ const PRIORITY_COLORS: Record<string, string> = {
   critical: "bg-red-100 text-red-700",
 };
 
-const EVENT_CATEGORIES = [
-  { value: "career_fair", label: "Career Fair" },
-  { value: "recruitment_expo", label: "Recruitment Expo" },
-  { value: "employer_branding", label: "Employer Branding Event" },
-  { value: "hiring_drive", label: "Hiring Drive" },
-  { value: "university_event", label: "University Event" },
-  { value: "gcc_recruitment", label: "GCC Recruitment Expo" },
-  { value: "job_fair", label: "Job Fair" },
-  { value: "other", label: "Other" },
-];
+const PARTICIPATION_KEYS = [
+  ["standee", "participationStandee"],
+  ["stall", "participationStall"],
+  ["booth", "participationBooth"],
+  ["sponsorship", "participationSponsorship"],
+  ["flyers", "participationFlyers"],
+  ["recruitment_desk", "participationRecruitmentDesk"],
+  ["branding_package", "participationBrandingPackage"],
+  ["other", "participationOther"],
+] as const;
 
-const PARTICIPATION_TYPES = [
-  { value: "standee", label: "Standee" },
-  { value: "stall", label: "Stall" },
-  { value: "booth", label: "Booth" },
-  { value: "sponsorship", label: "Sponsorship" },
-  { value: "flyers", label: "Flyers" },
-  { value: "recruitment_desk", label: "Recruitment Desk" },
-  { value: "branding_package", label: "Branding Package" },
-  { value: "other", label: "Other" },
-];
+const OBJECTIVE_KEYS = [
+  ["employer_acquisition", "objectiveEmployerAcquisition"],
+  ["candidate_sourcing", "objectiveCandidateSourcing"],
+  ["brand_awareness", "objectiveBrandAwareness"],
+  ["lead_generation", "objectiveLeadGeneration"],
+  ["direct_hiring", "objectiveDirectHiring"],
+  ["market_expansion", "objectiveMarketExpansion"],
+] as const;
 
-const OBJECTIVES = [
-  { value: "employer_acquisition", label: "Employer Acquisition" },
-  { value: "candidate_sourcing", label: "Candidate Sourcing" },
-  { value: "brand_awareness", label: "Brand Awareness" },
-  { value: "lead_generation", label: "Lead Generation" },
-  { value: "direct_hiring", label: "Direct Hiring" },
-  { value: "market_expansion", label: "Market Expansion" },
-];
-
-const RESOURCE_TYPES = [
-  { value: "brochures", label: "Brochures" },
-  { value: "standee", label: "Standee" },
-  { value: "flyers", label: "Flyers" },
-  { value: "presentation_deck", label: "Presentation Deck" },
-  { value: "employer_catalog", label: "Employer Catalog" },
-  { value: "candidate_forms", label: "Candidate Forms" },
-  { value: "branding_banners", label: "Branding Banners" },
-  { value: "video_assets", label: "Video Assets" },
-  { value: "business_cards", label: "Business Cards" },
-  { value: "booth_design", label: "Booth Design" },
-];
+const RESOURCE_KEYS = [
+  ["brochures", "resourceBrochures"],
+  ["standee", "resourceStandee"],
+  ["flyers", "resourceFlyers"],
+  ["presentation_deck", "resourcePresentationDeck"],
+  ["employer_catalog", "resourceEmployerCatalog"],
+  ["candidate_forms", "resourceCandidateForms"],
+  ["branding_banners", "resourceBrandingBanners"],
+  ["video_assets", "resourceVideoAssets"],
+  ["business_cards", "resourceBusinessCards"],
+  ["booth_design", "resourceBoothDesign"],
+] as const;
 
 // Filter options: values here, labels from the `exhibitions` namespace at render
 // (the hard-coded English labels showed in Arabic too).
@@ -217,7 +233,11 @@ const SPINNERLESS_INPUT_CLASS = "[appearance:textfield] [&::-webkit-inner-spin-b
 
 export default function AgentExhibitionsPage() {
   const t = useTranslations("exhibitions");
+  const locale = useLocale();
   const tc = useTranslations("common");
+  const statusLabel = (status: string) => (STATUS_LABEL_KEYS[status] ? t(STATUS_LABEL_KEYS[status]) : status);
+  const priorityLabel = (priority: string) => (PRIORITY_LABEL_KEYS[priority] ? t(PRIORITY_LABEL_KEYS[priority]) : priority);
+  const eventCategories = CATEGORY_FILTER_KEYS.map(([value, key]) => ({ value, label: t(key) }));
   const tf = useTranslations("exhibitionHeroFilters");
   const { confirm, ConfirmDialogNode } = useConfirm();
   const {
@@ -270,7 +290,7 @@ export default function AgentExhibitionsPage() {
           setAgentCurrency(data.invoiceDefaults.defaultCurrency);
         }
         if (data?.invoiceDefaults?.billingCountry) {
-          setAgentCountry(data.invoiceDefaults.billingCountry);
+          setAgentCountry(countryName(data.invoiceDefaults.billingCountry));
         }
       })
       .catch(() => { /* silent fallback */ });
@@ -459,7 +479,7 @@ export default function AgentExhibitionsPage() {
         }
       }
 
-      toast.success(editingId ? t("updated") : asDraft ? "Saved as draft" : t("created"));
+      toast.success(editingId ? t("updated") : asDraft ? t("savedAsDraft") : t("created"));
       resetForm();
       setShowWizard(false);
       fetchItems();
@@ -472,9 +492,9 @@ export default function AgentExhibitionsPage() {
 
   const handleDelete = async (id: string) => {
     const shouldDelete = await confirm({
-      title: "Delete request",
-      message: "Delete this exhibition request? This action cannot be undone.",
-      confirmLabel: "Delete request",
+      title: t("deleteRequest"),
+      message: t("deleteRequestConfirm"),
+      confirmLabel: t("deleteRequest"),
       variant: "destructive",
     });
 
@@ -498,7 +518,7 @@ export default function AgentExhibitionsPage() {
       ...EMPTY_AGENT_EXHIBITION_FORM,
       eventName: item.eventName,
       eventCategory: item.eventCategory ?? EMPTY_AGENT_EXHIBITION_FORM.eventCategory,
-      eventLocation: item.eventLocation ?? "",
+      eventLocation: item.eventLocation && item.eventLocation.toUpperCase() !== "TBD" ? item.eventLocation : "",
       venue: item.venue ?? "",
       country: item.country ?? "",
       countryCode: resolveCountryCode(item.country),
@@ -559,18 +579,18 @@ export default function AgentExhibitionsPage() {
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("tableHeaderEvent"), key: "eventName" },
-    { header: t("tableHeaderCategory"), key: "eventCategory", formatter: (v) => labelFor(EVENT_CATEGORIES, String(v)) },
-    { header: t("tableHeaderLocation"), key: "eventLocation" },
+    { header: t("tableHeaderCategory"), key: "eventCategory", formatter: (v) => labelFor(eventCategories, String(v)) },
+    { header: t("tableHeaderLocation"), key: "eventLocation", formatter: (_v, row) => placeText(row) || t("notSpecified") },
     { header: t("tableHeaderDates"), key: "eventStartDate", formatter: (_v, row) => {
       const item = row as unknown as ExhibitionRequest;
-      return `${formatListDate(item.eventStartDate)}${item.eventEndDate ? ` – ${formatListDate(item.eventEndDate)}` : ""}`;
+      return `${formatListDate(item.eventStartDate, locale)}${item.eventEndDate ? ` – ${formatListDate(item.eventEndDate, locale)}` : ""}`;
     }},
     { header: t("tableHeaderBudget"), key: "estimatedBudget", formatter: (_v, row) => {
       const item = row as unknown as ExhibitionRequest;
       return formatCurrency(item.estimatedBudget, item.budgetCurrency);
     }},
-    { header: t("tableHeaderStatus"), key: "status", formatter: (v) => STATUS_LABELS[String(v)] ?? String(v) },
-    { header: t("tableHeaderPriority"), key: "priority" },
+    { header: t("tableHeaderStatus"), key: "status", formatter: (v) => statusLabel(String(v)) },
+    { header: t("tableHeaderPriority"), key: "priority", formatter: (v) => priorityLabel(String(v)) },
   ];
   const dayCount = (startDate: string, endDate: string) => {
     const parsedStartDate = new Date(startDate);
@@ -592,6 +612,10 @@ export default function AgentExhibitionsPage() {
   const labelFor = (options: { value: string; label: string }[], value: string) => (
     options.find((option) => option.value === value)?.label ?? value
   );
+  const keyed = (pairs: readonly (readonly [string, string])[]) => pairs.map(([value, key]) => ({ value, label: t(key) }));
+  const participationTypes = keyed(PARTICIPATION_KEYS);
+  const objectives = keyed(OBJECTIVE_KEYS);
+  const resourceTypes = keyed(RESOURCE_KEYS);
   const isEditing = editingId !== null;
   const setDialogRef = useCallback((node: HTMLDivElement | null) => {
     dialogContentRef.current = node;
@@ -730,26 +754,26 @@ export default function AgentExhibitionsPage() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge variant="outline" className="rounded-md border-primary/20 bg-primary/5 text-xs font-medium">
-                          {labelFor(EVENT_CATEGORIES, item.eventCategory)}
+                          {labelFor(eventCategories, item.eventCategory)}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5 text-primary/60" /> {item.eventLocation}
+                          <MapPin className="h-3.5 w-3.5 text-primary/60" /> {placeText(item) || t("notSpecified")}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        <p className="text-xs font-medium">{formatListDate(item.eventStartDate)}{item.eventEndDate ? ` – ${formatListDate(item.eventEndDate)}` : ""}</p>
-                        {item.eventEndDate && <p className="mt-0.5 text-[11px] text-muted-foreground">{dayCount(item.eventStartDate, item.eventEndDate)} days</p>}
+                        <p className="text-xs font-medium">{formatListDate(item.eventStartDate, locale)}{item.eventEndDate ? ` – ${formatListDate(item.eventEndDate, locale)}` : ""}</p>
+                        {item.eventEndDate && <p className="mt-0.5 text-[11px] text-muted-foreground">{t("dayCount", { count: dayCount(item.eventStartDate, item.eventEndDate) })}</p>}
                       </TableCell>
                       <TableCell className="hidden whitespace-nowrap font-medium sm:table-cell">{formatCurrency(item.estimatedBudget, item.budgetCurrency)}</TableCell>
                       <TableCell>
                         <Badge className={`${STATUS_COLORS[item.status] ?? STATUS_COLORS.draft} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>
-                          {STATUS_LABELS[item.status] ?? item.status}
+                          {statusLabel(item.status)}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize`}>{item.priority}</Badge>
+                        <Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold`}>{priorityLabel(item.priority)}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <RowActions name={item.eventName} quick={quick} menu={menu} />
@@ -782,13 +806,13 @@ export default function AgentExhibitionsPage() {
           setDetailItem(null);
           setCompleteItem(item as ExhibitionRequest);
         }}
-        statusLabel={(status) => STATUS_LABELS[status] ?? status}
+        statusLabel={statusLabel}
         statusClassName={(status) => STATUS_COLORS[status] ?? STATUS_COLORS.draft}
         priorityClassName={(priority) => PRIORITY_COLORS[priority] ?? PRIORITY_COLORS.medium}
-        categoryLabel={(value) => labelFor(EVENT_CATEGORIES, value)}
-        participationLabel={(value) => labelFor(PARTICIPATION_TYPES, value)}
-        objectiveLabel={(value) => labelFor(OBJECTIVES, value)}
-        resourceLabel={(value) => labelFor(RESOURCE_TYPES, value)}
+        categoryLabel={(value) => labelFor(eventCategories, value)}
+        participationLabel={(value) => labelFor(participationTypes, value)}
+        objectiveLabel={(value) => labelFor(objectives, value)}
+        resourceLabel={(value) => labelFor(resourceTypes, value)}
       />
 
       <CompleteEventDialog
@@ -814,8 +838,8 @@ export default function AgentExhibitionsPage() {
             setShowWizard(false);
           }
         }}
-        title={isEditing ? "Edit Exhibition Request" : "New Exhibition Request"}
-        description="Fill in the details below to submit your request for approval."
+        title={isEditing ? t("editRequestTitle") : t("newRequestTitle")}
+        description={t("requestFormDescription")}
         className="sm:max-w-xl"
         equalStepHeights
         contentRef={setDialogRef}
@@ -838,12 +862,12 @@ export default function AgentExhibitionsPage() {
             content: (
               <>
                 <div>
-                  <Label htmlFor="exhibition-title">Exhibition Title *</Label>
+                  <Label htmlFor="exhibition-title" required>{t("exhibitionTitleLabel")}</Label>
                   <Input
                     id="exhibition-title"
                     value={form.eventName}
                     onChange={(event) => updateForm("eventName", event.target.value)}
-                    placeholder="e.g., Dubai Career Expo 2026"
+                    placeholder={t("eventNamePlaceholder")}
                   />
                 </div>
 
@@ -897,8 +921,31 @@ export default function AgentExhibitionsPage() {
                     id="exhibition-venue"
                     value={form.venue}
                     onChange={(event) => updateForm("venue", event.target.value)}
-                    placeholder="e.g., Dubai World Trade Centre"
+                    placeholder={t("locationPlaceholder")}
                   />
+                </div>
+
+                {/* Client check 2026-10-30: requests had no city, so lists read "TBD · IN". */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="exhibition-city">{t("eventLocation")} <span className="text-muted-foreground text-xs">({t("optional")})</span></Label>
+                    <Input
+                      id="exhibition-city"
+                      value={form.eventLocation}
+                      onChange={(event) => updateForm("eventLocation", event.target.value)}
+                      placeholder={t("eventLocationPlaceholder")}
+                      maxLength={300}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="exhibition-country">{t("country")} <span className="text-muted-foreground text-xs">({t("optional")})</span></Label>
+                    <Input
+                      id="exhibition-country"
+                      value={form.country}
+                      onChange={(event) => updateForm("country", event.target.value)}
+                      maxLength={100}
+                    />
+                  </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -908,7 +955,7 @@ export default function AgentExhibitionsPage() {
                       id="exhibition-organizer"
                       value={form.organizerName}
                       onChange={(event) => updateForm("organizerName", event.target.value)}
-                      placeholder="e.g., DWTC Events"
+                      placeholder={t("organizerPlaceholder")}
                     />
                   </div>
                   <div>
@@ -939,7 +986,7 @@ export default function AgentExhibitionsPage() {
                       className={SPINNERLESS_INPUT_CLASS}
                       value={form.estimatedBudget}
                       onChange={(event) => handleBudgetChange(event.target.value)}
-                      placeholder="e.g., 5000"
+                      placeholder={t("budgetPlaceholder")}
                     />
                   </div>
                   <div>
@@ -960,15 +1007,15 @@ export default function AgentExhibitionsPage() {
                     it. A dropdown, not a wall of chips: the step has to fit. */}
                 <div>
                   <Label htmlFor="participation-types">
-                    Participation Style <span className="text-muted-foreground text-xs">({t("optional")})</span>
+                    {t("participationStyle")} <span className="text-muted-foreground text-xs">({t("optional")})</span>
                   </Label>
                   <MultiSelect
                     id="participation-types"
-                    options={PARTICIPATION_TYPES}
+                    options={participationTypes}
                     values={form.participationTypes}
                     onValuesChange={(values) => updateForm("participationTypes", values)}
                     placeholder={t("participationPickPlaceholder")}
-                    ariaLabel="Participation Style"
+                    ariaLabel={t("participationStyle")}
                     container={dialogContainer}
                     modal
                   />

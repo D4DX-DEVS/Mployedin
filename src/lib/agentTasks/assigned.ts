@@ -6,6 +6,8 @@ import { getSuperAgentTeamAgentUserIds } from "@/lib/auth/agentRestrictions";
 import { notify } from "@/lib/notifications/trigger";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { pushHistory, readTaskHistory } from "./history";
+import { TaskError } from "./taskError";
+import { resolveTaskLinks, validateTaskLinks, type ResolvedTaskLinks, type TaskLinkInput } from "./links";
 
 /**
  * Tasks a super agent or an admin gives an agent, and their review.
@@ -138,6 +140,9 @@ export async function listAssignedTasks(ctx: AssignerCtx, p: AssignedListParams)
     ? await User.find({ _id: { $in: userIds } }).select("_id name").lean<Array<{ _id: unknown; name?: string }>>()
     : [];
   const names = new Map(users.map((u) => [String(u._id), u.name ?? ""]));
+  // Names only: the reviewer sees what the task is about; the links to open
+  // the records are the agent's (their own task list).
+  const links = await resolveTaskLinks(ctx, rows);
 
   return {
     total,
@@ -166,6 +171,7 @@ export async function listAssignedTasks(ctx: AssignerCtx, p: AssignedListParams)
       assignedByName: names.get(String(t.assignedBy?.userId)) ?? "",
       assignedByRole: t.assignedBy?.role,
       managedByName: t.managedBy ? names.get(String(t.managedBy)) ?? "" : undefined,
+      links: linkNames(links.get(String(t._id))),
       // Only the assigner's own super agent or an admin may review; the UI
       // shows Approve / Send back only when this is true.
       canReview: t.reviewStatus === "awaiting_review" && canReviewTask(ctx, t),
@@ -180,11 +186,8 @@ function canReviewTask(ctx: AssignerCtx, task: { assignedBy?: { userId?: unknown
     && (String(task.assignedBy?.userId ?? "") === ctx.userId || String(task.managedBy ?? "") === ctx.userId);
 }
 
-export class TaskError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
-}
+// Its own module so links.ts can throw it without importing this file back.
+export { TaskError };
 
 async function nameOf(userId: string): Promise<string> {
   const u = await User.findById(userId).select("name").lean<{ name?: string }>();
@@ -198,6 +201,17 @@ async function reviewerHome(assignerUserId: string, role: AssignerRole | undefin
   return sa ? "/super-agent/tasks" : "/admin/agent-tasks";
 }
 
+/** The linked records' names for the reviewer's list, or undefined when none. */
+function linkNames(resolved: ResolvedTaskLinks | undefined): { candidate?: string; job?: string; employer?: string } | undefined {
+  if (!resolved) return undefined;
+  const out = {
+    candidate: resolved.candidate?.name || undefined,
+    job: resolved.job?.title || undefined,
+    employer: resolved.employer?.name || undefined,
+  };
+  return out.candidate || out.job || out.employer ? out : undefined;
+}
+
 export interface AssignInput {
   agentUserId: string;
   title: string;
@@ -205,6 +219,18 @@ export interface AssignInput {
   priority: "high" | "medium" | "low";
   dueDate?: Date;
   superAgentUserId?: string;
+  candidateId?: string;
+  jobId?: string;
+  employerId?: string;
+}
+
+/**
+ * Records on an assigned task are checked as the AGENT who gets it: the task
+ * links straight to them, so each must be one the agent can open (client
+ * 2026-10-30: super agent and admin tasks could not point at a record).
+ */
+export function assigneeLinkCtx(agentUserId: string): AssignerCtx {
+  return { userId: agentUserId, role: "agent" };
 }
 
 export async function assignTask(ctx: AssignerCtx, input: AssignInput) {
@@ -228,6 +254,9 @@ export async function assignTask(ctx: AssignerCtx, input: AssignInput) {
     }
   }
 
+  const linkInput: TaskLinkInput = { candidateId: input.candidateId, jobId: input.jobId, employerId: input.employerId };
+  const links = await validateTaskLinks(assigneeLinkCtx(input.agentUserId), linkInput, { forAssignee: true });
+
   const task = await AgentTask.create({
     userId: new mongoose.Types.ObjectId(input.agentUserId),
     title: input.title,
@@ -241,6 +270,7 @@ export async function assignTask(ctx: AssignerCtx, input: AssignInput) {
       assignedAt: new Date(),
     },
     ...(via ? { managedBy: new mongoose.Types.ObjectId(via) } : {}),
+    ...(links ? { links } : {}),
     reviewStatus: "none",
     history: [{ action: "assigned", to: "pending", by: new mongoose.Types.ObjectId(ctx.userId), at: new Date() }],
   });

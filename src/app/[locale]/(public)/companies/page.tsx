@@ -82,7 +82,7 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
 
   const employerIds = employers.map((e: Record<string, unknown>) => e._id);
   const jobCounts = await Job.aggregate([
-    { $match: { employerId: { $in: employerIds }, status: "active" } },
+    { $match: { employerId: { $in: employerIds }, status: "active", deletedAt: null } },
     { $group: { _id: "$employerId", count: { $sum: 1 } } },
   ]);
   const jobCountMap = new Map(jobCounts.map((j) => [String(j._id), j.count]));

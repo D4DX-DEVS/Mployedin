@@ -107,6 +107,8 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const query: Record<string, any> = {
     status: "active",
+    // A deleted job keeps its status; without this it was listed and 404'd on click.
+    deletedAt: null,
     // $nin (not equality) so legacy docs without a visibility field stay listed
     visibility: { $nin: ["private", "invite_only"] },
     $and: [

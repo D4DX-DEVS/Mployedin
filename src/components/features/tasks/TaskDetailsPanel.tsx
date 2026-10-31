@@ -29,6 +29,8 @@ export interface TaskDetails {
   assignedByRole?: "super_agent" | "admin";
   /** Set when an admin gave the task through a super agent. */
   managedByName?: string;
+  /** Names of the records the task is about, when it was linked to any. */
+  links?: { candidate?: string; job?: string; employer?: string };
   canReview: boolean;
 }
 
@@ -65,6 +67,7 @@ export function TaskDetailsPanel({
   onReviewed: () => void;
 }) {
   const t = useTranslations("assignedTasks");
+  const tl = useTranslations("agentTasks");
   const locale = useLocale();
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState<"approve" | "return" | null>(null);
@@ -144,6 +147,24 @@ export function TaskDetailsPanel({
                   </dd>
                   <dt className="text-muted-foreground">{t("fieldDue")}</dt>
                   <dd className="text-foreground">{task.dueDate ? formatListDate(task.dueDate, locale) : "—"}</dd>
+                  {task.links?.employer && (
+                    <>
+                      <dt className="text-muted-foreground">{tl("linkEmployerLabel")}</dt>
+                      <dd className="text-foreground">{task.links.employer}</dd>
+                    </>
+                  )}
+                  {task.links?.job && (
+                    <>
+                      <dt className="text-muted-foreground">{tl("linkJobLabel")}</dt>
+                      <dd className="text-foreground">{task.links.job}</dd>
+                    </>
+                  )}
+                  {task.links?.candidate && (
+                    <>
+                      <dt className="text-muted-foreground">{tl("linkCandidateLabel")}</dt>
+                      <dd className="text-foreground">{task.links.candidate}</dd>
+                    </>
+                  )}
                   {task.createdAt && (
                     <>
                       <dt className="text-muted-foreground">{t("detailsCreated")}</dt>

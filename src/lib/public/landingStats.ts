@@ -30,6 +30,7 @@ let cached: { at: number; value: LandingStats } | null = null;
 function publicJobFilter() {
   return {
     status: "active",
+    deletedAt: null,
     visibility: { $nin: ["private", "invite_only"] },
     $and: [{ $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: new Date() } }] }],
   };

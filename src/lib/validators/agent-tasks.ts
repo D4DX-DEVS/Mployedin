@@ -49,6 +49,10 @@ export const assignedTaskCreateSchema = z.object({
   title: z.string().min(1, "Title is required").max(200).trim(),
   description: z.string().max(2000).trim().optional(),
   priority: z.enum(["high", "medium", "low"]).default("medium"),
+  // The record(s) the task is about, checked against what the agent may open.
+  candidateId: recordIdField,
+  jobId: recordIdField,
+  employerId: recordIdField,
   // Picker sends the assigner's local midnight, which is never more than 24h behind "now".
   dueDate: dueDateField
     .refine((d) => d.getTime() >= Date.now() - 24 * 60 * 60 * 1000, "Due date can't be in the past")

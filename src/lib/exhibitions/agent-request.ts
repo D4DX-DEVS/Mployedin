@@ -233,7 +233,7 @@ export function createDuplicatedExhibitionForm(item: ExhibitionRequestLike): Age
     ...EMPTY_AGENT_EXHIBITION_FORM,
     eventName: `Copy of ${item.eventName}`,
     eventCategory: item.eventCategory ?? EMPTY_AGENT_EXHIBITION_FORM.eventCategory,
-    eventLocation: item.eventLocation ?? "",
+    eventLocation: item.eventLocation && item.eventLocation.toUpperCase() !== "TBD" ? item.eventLocation : "",
     venue: item.venue ?? "",
     country: item.country ?? "",
     countryCode,

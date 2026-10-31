@@ -11,9 +11,9 @@ describe("taskLinkHrefs", () => {
       .toBe("/ar/agent/candidates?jobSeekerId=c1");
   });
 
-  it("falls back to their row in Job Seekers when they never applied", () => {
+  it("opens their profile over Job Seekers when they never applied", () => {
     expect(taskLinkHrefs("en", { candidate: { id: "c1", name: "Sara Ali", hasApplications: false } }).candidate)
-      .toBe("/en/agent/job-seekers?search=Sara+Ali");
+      .toBe("/en/agent/job-seekers?profile=c1");
   });
 
   it("links a job to its page and an employer to their jobs", () => {

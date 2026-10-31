@@ -71,8 +71,6 @@ export async function GET(req: NextRequest) {
     .lean();
   const seekerMap = byId(seekers);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://mployedin.com";
-
   // Send with bounded concurrency
   const { ok: sent, failed } = await forEachBounded(
     toNotify,
@@ -86,20 +84,28 @@ export async function GET(req: NextRequest) {
       const jobTitle = job?.title ?? "the position";
       const companyName = employer?.companyName ?? "the company";
 
-      const statusLabel =
-        app.status === "hired"
-          ? "hired"
-          : app.status === "rejected"
-          ? "not selected"
-          : "withdrawn";
+      // One sentence per outcome: "You were withdrawn" read wrong when the
+      // seeker withdrew themselves (client check 2026-10-30), and the text was
+      // English-only. The keys localize it; `message` is the English fallback.
+      const outcome = app.status === "hired" ? "Hired" : app.status === "rejected" ? "Rejected" : "Withdrawn";
+      const message =
+        outcome === "Hired"
+          ? `You were hired for "${jobTitle}" at ${companyName}.`
+          : outcome === "Rejected"
+          ? `Your application for "${jobTitle}" at ${companyName} was not selected.`
+          : `You withdrew your application for "${jobTitle}" at ${companyName}.`;
 
       await notify({
         userId: String(seeker.userId),
         type: "system",
         title: "How was your experience?",
-        message: `You were ${statusLabel} for "${jobTitle}" at ${companyName}. Share your feedback to help improve the hiring process.`,
-        link: `${appUrl}/en/job-seeker/applications/${String(app._id)}/feedback`,
+        message: `${message} Share your feedback to help improve the hiring process.`,
+        // Stored without a locale: the reader's own locale is put in front.
+        link: `/job-seeker/applications/${String(app._id)}/feedback`,
         sendEmail: true,
+        titleKey: "feedbackRequestTitle",
+        bodyKey: `feedbackRequestBody${outcome}`,
+        params: { jobTitle, companyName },
       });
     },
     "nps-trigger"

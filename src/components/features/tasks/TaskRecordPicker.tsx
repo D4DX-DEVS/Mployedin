@@ -45,6 +45,10 @@ interface TaskRecordPickerProps {
   /** Narrow the search: candidates to a job's applicants, jobs to an employer's. */
   jobId?: string;
   employerId?: string;
+  /** Super agent / admin assigning a task: search what this agent (user id) may open. */
+  forAgentUserId?: string;
+  /** The link-options route to search; the assigner's own namespace for Assign task. */
+  endpoint?: string;
   /** Inside a Dialog: portal the list into it and trap focus (SearchableSelect). */
   container?: HTMLElement | null;
   modal?: boolean;
@@ -52,7 +56,7 @@ interface TaskRecordPickerProps {
 
 export function TaskRecordPicker({
   type, value, onChange, label, placeholder, searchPlaceholder, emptyMessage, loadingMessage, clearLabel, hint, jobId, employerId,
-  container, modal,
+  forAgentUserId, endpoint = "/api/agent/tasks/link-options", container, modal,
 }: TaskRecordPickerProps) {
   const ts = useTranslations("statusBadge");
   const controlId = `task-record-${type}-${useId()}`;
@@ -68,7 +72,8 @@ export function TaskRecordPicker({
       const params = new URLSearchParams({ type, q: query.trim() });
       if (jobId) params.set("jobId", jobId);
       if (employerId) params.set("employerId", employerId);
-      fetch(`/api/agent/tasks/link-options?${params}`, { signal: controller.signal })
+      if (forAgentUserId) params.set("forAgent", forAgentUserId);
+      fetch(`${endpoint}?${params}`, { signal: controller.signal })
         .then((r) => (r.ok ? r.json() : { options: [] }))
         .then((data: { options?: LinkOption[] }) => setResults(data.options ?? []))
         .catch(() => { /* aborted or offline — keep the last list */ })
@@ -78,7 +83,7 @@ export function TaskRecordPicker({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [type, query, jobId, employerId]);
+  }, [type, query, jobId, employerId, forAgentUserId, endpoint]);
 
   const options = useMemo(() => {
     // The list filters on `label` too, so the email / company rides in it —
