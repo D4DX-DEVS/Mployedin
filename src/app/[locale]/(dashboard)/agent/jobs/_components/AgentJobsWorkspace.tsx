@@ -38,6 +38,7 @@ import { disambiguateEmployerLabels } from "@/lib/employers/optionLabels";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 import { ShareJobDialog } from "@/components/features/agent/ShareJobDialog";
 import { IndustryChips, type IndustryFacet } from "./IndustryChips";
+import { countryLabel } from "@/lib/jobs/countryFacets";
 
 interface JobItem {
   _id: string;
@@ -326,7 +327,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
           <SearchableSelect
             id="agent-jobs-country-filter"
             className={INLINE_FILTER_CONTROL}
-            options={[{ value: "", label: t("portal.allCountries"), triggerLabel: t("portal.country") }, ...facets.countries.map((v) => ({ value: v, label: v }))]}
+            options={[{ value: "", label: t("portal.allCountries"), triggerLabel: t("portal.country") }, ...facets.countries.map((v) => ({ value: v, label: countryLabel(v, locale) }))]}
             value={country}
             onValueChange={(value) => { setCountry(value); setCity(""); resetPage(); }}
             ariaLabel={t("portal.country")}

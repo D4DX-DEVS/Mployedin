@@ -18,6 +18,7 @@ import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
 import { checkAdvert } from "@/lib/compliance/inclusiveWording";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { countryChoices, countrySpellings } from "@/lib/jobs/countryFacets";
 import { getAgentEmployerIds, getSuperAgentEmployerIds } from "@/lib/auth/agentRestrictions";
 import { getMemberJobRestriction } from "@/lib/permissions/team";
 import { isPublishGated, PUBLISH_GATE_SELECT, PUBLISH_GATE_ERROR, type PublishGateFields } from "@/lib/employers/publishGate";
@@ -51,7 +52,7 @@ async function portalJobFacets(country: string) {
       .sort((a, b) => a.localeCompare(b));
   const [countries, cities, professions, jobsPerEmployer, newThisWeek, totalActive] = await Promise.all([
     Job.distinct("location.country", base),
-    Job.distinct("location.city", country ? { ...base, "location.country": new RegExp(`^${escapeRegex(country)}$`, "i") } : base),
+    Job.distinct("location.city", country ? { ...base, "location.country": { $in: countrySpellings(country) } } : base),
     Job.distinct("category", base),
     Job.aggregate<{ _id: unknown; count: number }>([
       { $match: base },
@@ -81,7 +82,7 @@ async function portalJobFacets(country: string) {
     industryChoices.set(key, { value: value.trim(), label: words.charAt(0).toUpperCase() + words.slice(1), count: row.count });
   }
   return {
-    countries: clean(countries),
+    countries: countryChoices(countries),
     cities: clean(cities),
     professions: clean(professions),
     industries: [...industryChoices.values()].sort((a, b) => a.label.localeCompare(b.label)),
@@ -247,14 +248,15 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     query.$and = [...(query.$and ?? []), locationCondition];
   }
   // Portal filters (agent "All active jobs"): values come from the facet lists
-  // below, so they match whole values, case-insensitively.
+  // below, so they match whole values, case-insensitively; a country matches
+  // every spelling of it ("India", "IN").
   const country = (searchParams.get("country") ?? "").trim();
   const city = (searchParams.get("city") ?? "").trim();
   const profession = (searchParams.get("profession") ?? "").trim();
   const industry = (searchParams.get("industry") ?? "").trim();
   const postedWeek = searchParams.get("posted") === "week";
   const exact = (v: string) => new RegExp(`^${escapeRegex(v)}$`, "i");
-  if (country) query["location.country"] = exact(country);
+  if (country) query["location.country"] = { $in: countrySpellings(country) };
   if (city) query["location.city"] = exact(city);
   if (profession) query.category = exact(profession);
   if (industry) {

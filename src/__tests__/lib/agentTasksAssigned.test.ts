@@ -23,6 +23,12 @@ jest.mock("@/lib/auth/agentRestrictions", () => ({
 const notify = jest.fn(async (_p: unknown) => undefined);
 jest.mock("@/lib/notifications/trigger", () => ({ notify: (p: unknown) => notify(p) }));
 
+const validateTaskLinks = jest.fn(async (_ctx: unknown, _input: unknown, _opts?: unknown): Promise<unknown> => undefined);
+jest.mock("@/lib/agentTasks/links", () => ({
+  validateTaskLinks: (ctx: unknown, input: unknown, opts?: unknown) => validateTaskLinks(ctx, input, opts),
+  resolveTaskLinks: async () => new Map(),
+}));
+
 const agentFind = jest.fn();
 jest.mock("@/models/Agent", () => ({ __esModule: true, default: { find: (...a: unknown[]) => agentFind(...a) } }));
 jest.mock("@/models/SuperAgent", () => ({ __esModule: true, default: { exists: jest.fn(async () => ({ _id: "sa" })) } }));
@@ -133,6 +139,33 @@ describe("assignTask", () => {
     expect(String(doc.assignedBy.userId)).toBe(ADMIN_USER);
     // The super agent hears about the task for their team.
     expect(notify).toHaveBeenCalledWith(expect.objectContaining({ userId: SA_USER, titleKey: "taskViaSuperAgentTitle" }));
+  });
+
+  it("checks linked records as the agent who gets the task, and stores them", async () => {
+    teamOf([TEAM_AGENT_USER]);
+    const stored = { candidateId: oid("650000000000000000000061"), jobId: oid("650000000000000000000062") };
+    validateTaskLinks.mockResolvedValueOnce(stored);
+    const { assignTask } = await import("@/lib/agentTasks/assigned");
+    await assignTask(sa, {
+      agentUserId: TEAM_AGENT_USER, title: "Follow up", priority: "medium",
+      candidateId: "650000000000000000000061", jobId: "650000000000000000000062",
+    });
+    // As the agent, not the super agent: the agent must be able to open them.
+    expect(validateTaskLinks).toHaveBeenCalledWith(
+      { userId: TEAM_AGENT_USER, role: "agent" },
+      { candidateId: "650000000000000000000061", jobId: "650000000000000000000062", employerId: undefined },
+      { forAssignee: true },
+    );
+    expect((taskCreate.mock.calls[0][0] as { links?: unknown }).links).toBe(stored);
+  });
+
+  it("creates nothing when a linked record is one the agent can't open", async () => {
+    teamOf([TEAM_AGENT_USER]);
+    validateTaskLinks.mockRejectedValueOnce(Object.assign(new Error("no"), { status: 403 }));
+    const { assignTask } = await import("@/lib/agentTasks/assigned");
+    await expect(assignTask(sa, { agentUserId: TEAM_AGENT_USER, title: "x", priority: "low", employerId: "650000000000000000000063" }))
+      .rejects.toMatchObject({ status: 403 });
+    expect(taskCreate).not.toHaveBeenCalled();
   });
 
   it("ignores a super agent's own superAgentUserId", async () => {

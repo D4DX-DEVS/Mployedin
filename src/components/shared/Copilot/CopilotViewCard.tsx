@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/ui/intlFormat";
 import type { ApplicationRow, CandidateRow, CopilotView, JobCard, StatTile } from "@/lib/ai/copilot/views";
 import { sameOriginPath } from "./links";
+import { TalentShortlist } from "./TalentShortlist";
 
 interface CopilotViewCardProps {
   view: CopilotView;
@@ -21,6 +22,16 @@ export function CopilotViewCard({ view, onInternalLink }: CopilotViewCardProps) 
       return <JobCards jobs={view.jobs} more={view.more} onInternalLink={onInternalLink} />;
     case "candidates":
       return <CandidateRows candidates={view.candidates} more={view.more} />;
+    case "talent":
+      return (
+        <TalentShortlist
+          talent={view.talent}
+          totalMatched={view.totalMatched}
+          relaxed={view.relaxed}
+          brief={view.brief}
+          onInternalLink={onInternalLink}
+        />
+      );
     case "applications":
       return <ApplicationRows applications={view.applications} more={view.more} />;
     case "stats":

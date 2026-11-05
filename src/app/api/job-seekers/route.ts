@@ -11,6 +11,8 @@ import { computeHiringStatus, HIRING_STATUSES } from "@/lib/jobseekers/hiringSta
 import { applicationStatusesBySeeker } from "@/lib/jobseekers/hiringStatus.server";
 import mongoose from "mongoose";
 import { escapeRegex } from "@/lib/security/sanitize";
+import { isKnownCountry, locationSearchRegex } from "@/lib/i18n/locations";
+import { readSeekerListStats, SEEKER_LIST_STATS_STAGES, type SeekerListStats } from "@/lib/jobseekers/listStats";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   // ── Authorization — staff-only route ──────────────────────
@@ -44,6 +46,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const onboarded = searchParams.get("onboarded")?.trim();              // "1": agent = seekers they brought in; others = isOnboarded (dashboard deep-link)
   const premium = searchParams.get("premium")?.trim();                  // "1": only badges[] = premium (dashboard deep-link)
   const hiringStatusParam = searchParams.get("hiringStatus")?.trim();   // placed|offer|interviewing|shortlisted|applied|notProgressed|waiting
+  // "1": also count the page-header numbers over the whole filtered list (agent Job Seekers page)
+  const wantStats = searchParams.get("stats") === "1";
 
   // ── Agent scoping — an agent sees only their own job seekers ───
   let agentScopeFilter: Record<string, unknown> = {};
@@ -270,31 +274,56 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   if (search || location) {
     const escapedSearch = search ? escapeRegex(search) : "";
-    const escapedLocation = location ? escapeRegex(location) : "";
+    const escapedLocation = location ? locationSearchRegex(location) : "";
 
     // Build search match conditions
     const searchConditions: Record<string, unknown>[] = [];
     if (escapedSearch) {
-      searchConditions.push({
+      const anyField = (pattern: string) => ({
         $or: [
-          { "userId.name": { $regex: escapedSearch, $options: "i" } },
-          { "userId.email": { $regex: escapedSearch, $options: "i" } },
-          { fullName: { $regex: escapedSearch, $options: "i" } },
-          { skills: { $regex: escapedSearch, $options: "i" } },
-          { currentLocation: { $regex: escapedSearch, $options: "i" } },
-          { "experience.jobTitle": { $regex: escapedSearch, $options: "i" } },
-          { headline: { $regex: escapedSearch, $options: "i" } },
-          { "education.degree": { $regex: escapedSearch, $options: "i" } },
-          { "education.field": { $regex: escapedSearch, $options: "i" } },
-          { nationality: { $regex: escapedSearch, $options: "i" } },
+          { "userId.name": { $regex: pattern, $options: "i" } },
+          { "userId.email": { $regex: pattern, $options: "i" } },
+          { fullName: { $regex: pattern, $options: "i" } },
+          { skills: { $regex: pattern, $options: "i" } },
+          { currentLocation: { $regex: pattern, $options: "i" } },
+          { "experience.jobTitle": { $regex: pattern, $options: "i" } },
+          { "experience.location": { $regex: pattern, $options: "i" } },
+          { headline: { $regex: pattern, $options: "i" } },
+          { "education.degree": { $regex: pattern, $options: "i" } },
+          { "education.field": { $regex: pattern, $options: "i" } },
+          { nationality: { $regex: pattern, $options: "i" } },
         ],
       });
+      // "electrical engineer kuwait": every word must appear, but each may sit
+      // in a different field — the whole phrase literally appears almost nowhere.
+      // Plurals fold to the singular ("engineers" → "engineer") — this box is a
+      // keyword match, not vector search, so "engineers" used to find only the
+      // 3 profiles that spell it out.
+      const singular = (w: string) =>
+        w.length > 4 && /ies$/i.test(w) ? `${w.slice(0, -3)}y`
+        : w.length > 3 && /[^s]s$/i.test(w) ? w.slice(0, -1)
+        : w;
+      // Filler a typed brief carries ("2 year experience in") would otherwise be
+      // required words; a country word matches every spelling and main city.
+      const FILLER = new Set(["in", "at", "of", "the", "and", "with", "for", "year", "years", "yr", "yrs", "experience", "experienced", "exp"]);
+      const words = (search ?? "").split(/\s+/)
+        .filter((w) => w && !FILLER.has(w.toLowerCase()) && !/^\d+\+?$/.test(w))
+        .slice(0, 6)
+        .map(singular);
+      const wordPattern = (w: string) => (isKnownCountry(w) ? locationSearchRegex(w) : escapeRegex(w));
+      if (words.length > 0 && (words.length > 1 || words[0] !== search)) {
+        searchConditions.push({ $or: [anyField(escapedSearch), { $and: words.map((w) => anyField(wordPattern(w))) }] });
+      } else {
+        searchConditions.push(anyField(escapedSearch));
+      }
     }
     if (escapedLocation) {
       searchConditions.push({
         $or: [
           { currentLocation: { $regex: escapedLocation, $options: "i" } },
           { preferredLocations: { $regex: escapedLocation, $options: "i" } },
+          // Worked there counts too: "Kuwait" should find a Gulf hire now back home.
+          { "experience.location": { $regex: escapedLocation, $options: "i" } },
         ],
       });
     }
@@ -328,6 +357,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         $facet: {
           items: [{ $skip: (page - 1) * limit }, { $limit: limit }],
           count: [{ $count: "total" }],
+          ...(wantStats ? { stats: SEEKER_LIST_STATS_STAGES } : {}),
         },
       },
     ];
@@ -335,12 +365,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const [result] = await JobSeeker.aggregate(pipeline);
     const items = result?.items ?? [];
     const total = result?.count?.[0]?.total ?? 0;
-    return respond(items, total);
+    return respond(items, total, wantStats ? readSeekerListStats(result?.stats?.[0]) : undefined);
   }
 
   // No search — simple find + populate
   const baseFilter = filterConditions.length > 0 ? { $and: filterConditions } : {};
-  const [items, total] = await Promise.all([
+  const [items, total, statsRows] = await Promise.all([
     JobSeeker.find(baseFilter)
       .populate("userId", "name email isActive")
       .sort(sortOption)
@@ -348,16 +378,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       .limit(limit)
       .lean(),
     JobSeeker.countDocuments(baseFilter),
+    // Same filter as the rows (the search path's $match runs it uncast too).
+    wantStats ? JobSeeker.aggregate([{ $match: baseFilter }, ...SEEKER_LIST_STATS_STAGES]) : null,
   ]);
 
-  return respond(items as Array<Record<string, unknown>>, total);
+  return respond(items as Array<Record<string, unknown>>, total, statsRows ? readSeekerListStats(statsRows[0]) : undefined);
 
   /**
    * Staff rows say whether the caller owns the seeker ("own": may edit) or
    * only sees them because they live in the caller's area ("area": view only).
    * Worked out before the referral is swapped for its summary.
    */
-  async function respond(rows: Array<Record<string, unknown>>, total: number) {
+  async function respond(rows: Array<Record<string, unknown>>, total: number, stats?: SeekerListStats) {
     const owned = ownsRow;
     const marked: Array<Record<string, unknown>> = owned ? rows.map((row) => ({ ...row, staffAccess: owned(row) ? "own" : "area" })) : rows;
 
@@ -374,6 +406,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       page,
       totalPages: Math.ceil(total / limit),
       ...(owned ? { areaAssigned: areaMatch !== null } : {}),
+      ...(stats ? { stats } : {}),
     });
   }
 }, { resource: "job_seekers", action: "read" });

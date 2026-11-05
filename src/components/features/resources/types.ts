@@ -16,6 +16,8 @@ export interface Resource {
   accessLevel: string;
   version: number;
   downloadCount: number;
+  /** false: hidden from agents and super agents; only admin still sees it. */
+  isActive?: boolean;
   files: ResourceFile[];
   uploadedBy?: { _id: string; name?: string } | string | null;
   versionHistory?: { version: number; uploadedAt?: string }[];

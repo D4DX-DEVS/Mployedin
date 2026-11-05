@@ -30,7 +30,7 @@ async function loadDynamicEntries(): Promise<MetadataRoute.Sitemap> {
   await connectDB();
 
   // Up to 1000 most recently updated active jobs
-  const jobs = await Job.find({ status: "active" })
+  const jobs = await Job.find({ status: "active", deletedAt: null, visibility: { $nin: ["private", "invite_only"] } })
     .sort({ updatedAt: -1 })
     .limit(1000)
     .select("_id updatedAt")

@@ -64,7 +64,8 @@ describe("sitemap", () => {
       expect.stringMatching(/\/ar\/blog\/hello$/),
       expect.stringMatching(/\/ar\/accessibility$/),
     ]));
-    expect(jobFindMock).toHaveBeenCalledWith({ status: "active" });
+    // Deleted and private jobs 404 or are hidden from guests, so they stay out of the sitemap.
+    expect(jobFindMock).toHaveBeenCalledWith({ status: "active", deletedAt: null, visibility: { $nin: ["private", "invite_only"] } });
   });
 
   it("leaves the accessibility statement out until an admin publishes it (it is a 404 until then)", async () => {

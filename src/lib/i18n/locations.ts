@@ -187,6 +187,39 @@ export function countriesInLocationText(value: string | null | undefined): strin
  * A case-insensitive regex source matching any spelling of one country inside a
  * location line. Unrecognised input matches only itself.
  */
+/**
+ * Main cities per country. Gulf profiles often name only the city ("Dubai",
+ * "Doha"), so a staff search for "UAE" or "Qatar" has to accept those too.
+ */
+const MAIN_CITIES_BY_CODE: Record<string, string[]> = {
+  AE: ["dubai", "abu dhabi", "sharjah", "ajman", "ras al khaimah", "fujairah", "al ain", "umm al quwain", "jebel ali"],
+  SA: ["riyadh", "jeddah", "jiddah", "dammam", "khobar", "dhahran", "mecca", "makkah", "medina", "madinah", "jubail", "yanbu", "tabuk", "abha"],
+  KW: ["salmiya", "hawalli", "farwaniya", "ahmadi", "jahra"],
+  QA: ["doha", "al wakrah", "lusail", "al khor"],
+  BH: ["manama", "muharraq", "riffa"],
+  OM: ["muscat", "salalah", "sohar", "nizwa"],
+};
+
+/**
+ * Regex source for a staff "where" search: a known country matches every
+ * spelling of it plus its main cities ("uae" → UAE, United Arab Emirates,
+ * Dubai…); anything else matches itself.
+ */
+export function locationSearchRegex(term: string): string {
+  const code = getRegionCodeForCountryName(term);
+  if (!code) return escapeRegex(term.trim());
+  const spellings = [
+    ...Object.entries(COUNTRY_REGION_CODES).filter(([, value]) => value === code).map(([alias]) => alias),
+    ...(MAIN_CITIES_BY_CODE[code] ?? []),
+  ].map(escapeRegex);
+  return `(^|[^A-Za-z])(${spellings.join("|")})($|[^A-Za-z])`;
+}
+
+/** True when the word names a country in the alias table ("uae", "ksa", "kuwait"). */
+export function isKnownCountry(term: string): boolean {
+  return getRegionCodeForCountryName(term) !== null;
+}
+
 export function locationCountryRegex(countryName: string): string {
   const code = getRegionCodeForCountryName(countryName);
   const aliases = code

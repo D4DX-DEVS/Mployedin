@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { ArrowRight, ChevronDown, Mail, MapPin } from "lucide-react";
+import { ArrowRight, Mail, MapPin } from "lucide-react";
 import { CookieSettingsLink } from "@/components/shared/ConsentManager/CookieSettingsLink";
 import { usePendingReferral } from "@/lib/referrals/pendingReferral";
 import { registerHrefFor } from "@/lib/referrals/url";
@@ -30,8 +30,10 @@ type FooterSection = {
   links: FooterLink[];
 };
 
+// On phones every row is a 44px target: the Cookie settings <button> already
+// was (globals.css touch-target rule), so it stood apart from the links.
 const FOOTER_LINK_CLASS =
-  "text-sm leading-6 text-white/72 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
+  "inline-flex min-h-11 items-center text-sm leading-6 text-white/72 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:min-h-0";
 
 const WHATSAPP_URL = "https://whatsapp.com/channel/0029VaiIpxg2ER6cM4IX4D41";
 const INSTAGRAM_URL = "https://www.instagram.com/mployedin_jobs?igsh=MTE1MzJob3p5ZDFhMA==";
@@ -70,7 +72,6 @@ export default function PublicFooter({ locale, variant = "full", showAccessibili
   // Obfuscation" from rewriting it (which injects a CSP-blocked decode
   // script and triggers a React hydration mismatch, error #418).
   const [mounted, setMounted] = useState(false);
-  const [openMobileSection, setOpenMobileSection] = useState<string | null>(null);
   useEffect(() => setMounted(true), []);
   // A shared job's ?ref= code, held in memory only, rides in the register link.
   const registerHref = registerHrefFor(locale, usePendingReferral());
@@ -127,8 +128,13 @@ export default function PublicFooter({ locale, variant = "full", showAccessibili
         {/* One row on desktop: brand block + link columns beside it. Everything
             that used to stack under the brand (address, email, socials) moved to
             the bottom bar — that vertical stack was the whole height problem. */}
-        <div className={`grid gap-6 sm:gap-8 ${isEmbedded ? "sm:grid-cols-[minmax(0,1.5fr)_repeat(2,minmax(0,1fr))]" : "sm:grid-cols-2 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]"}`}>
-          <div className="space-y-4">
+        {/* Full footer by width: phone = brand, then Platform | Resources,
+            then Company in two columns; sm–lg = brand across the top (text
+            left, chips and buttons right from md) over three even link
+            columns — the old two-column grid left the brand block beside a
+            short list and big empty gaps; lg = one row. */}
+        <div className={`grid gap-6 sm:gap-8 ${isEmbedded ? "sm:grid-cols-[minmax(0,1.5fr)_repeat(2,minmax(0,1fr))]" : "grid-cols-2 gap-x-6 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]"}`}>
+          <div className={isEmbedded ? "space-y-4" : "col-span-2 space-y-4 sm:col-span-3 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:items-end md:gap-x-10 md:space-y-0 lg:col-span-1 lg:block lg:space-y-4"}>
             <div>
               <p className={`text-[11px] font-semibold uppercase tracking-[0.28em] text-white/55 ${isEmbedded ? "hidden sm:block" : ""}`}>
                 {t("digitalPlatform")}
@@ -141,58 +147,64 @@ export default function PublicFooter({ locale, variant = "full", showAccessibili
               </p>
             </div>
 
-            {!isEmbedded && (
-              <ul className="hidden flex-wrap gap-2 sm:flex" role="list">
-                {platformHighlights.map((highlight) => (
-                  <li
-                    key={highlight}
-                    className="rounded-full border border-white/12 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white/78"
-                  >
-                    {highlight}
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                href={`/${locale}/jobs`}
-                className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[hsl(var(--brand-blue-dark))] transition-transform hover:-translate-y-0.5"
-              >
-                {t("browseJobs")}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+            <div className="space-y-4">
               {!isEmbedded && (
-                <Link
-                  href={`/${locale}/employer-register`}
-                  className="inline-flex h-11 items-center rounded-full border border-white/18 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-                >
-                  {t("forEmployers")}
-                </Link>
+                <ul className="hidden flex-wrap gap-2 sm:flex" role="list">
+                  {platformHighlights.map((highlight) => (
+                    <li
+                      key={highlight}
+                      className="rounded-full border border-white/12 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white/78"
+                    >
+                      {highlight}
+                    </li>
+                  ))}
+                </ul>
               )}
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href={`/${locale}/jobs`}
+                  className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[hsl(var(--brand-blue-dark))] transition-transform hover:-translate-y-0.5"
+                >
+                  {t("browseJobs")}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                {!isEmbedded && (
+                  <Link
+                    href={`/${locale}/employer-register`}
+                    className="inline-flex h-11 items-center rounded-full border border-white/18 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                  >
+                    {t("forEmployers")}
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Inside the app shell on a phone these columns duplicate the bottom
               tab bar and the legal row below, so they only render from sm up. */}
-          {linkSections.map((section) => (
-            <div key={section.title} className={isEmbedded ? "hidden sm:block" : ""}>
-              <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-white/58 sm:tracking-[0.22em]">{section.title}</h3>
-              <ul className="mt-3 space-y-2">
-                {section.links.map((link) => (
-                  <li key={`${section.title}-${link.href}`}>
-                    {link.opensCookieSettings ? (
-                      <CookieSettingsLink className={`${FOOTER_LINK_CLASS} text-start`}>{link.label}</CookieSettingsLink>
-                    ) : (
-                      <Link href={link.href} className={FOOTER_LINK_CLASS}>
-                        {link.label}
-                      </Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {linkSections.map((section) => {
+            // Company is the long list: full width in two columns on a phone.
+            const wide = !isEmbedded && section === companySection;
+            return (
+              <div key={section.title} className={isEmbedded ? "hidden sm:block" : wide ? "col-span-2 sm:col-span-1" : ""}>
+                <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-white/58 sm:tracking-[0.22em]">{section.title}</h3>
+                <ul className={`mt-2 sm:mt-3 sm:space-y-2 ${wide ? "grid grid-cols-2 gap-x-6 sm:block" : ""}`}>
+                  {section.links.map((link) => (
+                    <li key={`${section.title}-${link.href}`}>
+                      {link.opensCookieSettings ? (
+                        <CookieSettingsLink className={`${FOOTER_LINK_CLASS} text-start`}>{link.label}</CookieSettingsLink>
+                      ) : (
+                        <Link href={link.href} className={FOOTER_LINK_CLASS}>
+                          {link.label}
+                        </Link>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
 
           {/* The Company column above is hidden on phones in the app shell; the Cookie Policy and
               Cookie settings must still be one tap away there (withdrawing as easy as consenting). */}

@@ -58,16 +58,19 @@ export function countActiveJobSeekerFilters(search: string, filters: JobSeekerFi
     .length + (search ? 1 : 0);
 }
 
-/** Filters on the "Advanced Filters" line. */
-const ADVANCED_KEYS: (keyof JobSeekerFilters)[] = ["location", "experienceYears", "jobType", "referred"];
+/** Filters on the "Advanced Filters" line. Location and experience sit in the
+ *  main bar: they are what admins narrow a hiring brief by first. */
+const ADVANCED_KEYS: (keyof JobSeekerFilters)[] = ["nationality", "jobType", "referred"];
+
+const EXPERIENCE_PRESETS = [1, 2, 3, 5, 10];
 
 /**
- * Filters with no field of their own: the search box already matches skills,
- * nationality and degree/field, so separate inputs only repeated it. AI search
- * still sets them (a brief can name several at once), and the page shows them
- * as removable chips so they are never invisible.
+ * Filters with no field of their own: the search box already matches skills
+ * and degree/field, so separate inputs only repeated it. AI search still sets
+ * them (a brief can name several at once), and the page shows them as
+ * removable chips so they are never invisible.
  */
-export const FIELDLESS_FILTER_KEYS: readonly string[] = ["skills", "nationality", "education"];
+export const FIELDLESS_FILTER_KEYS: readonly string[] = ["skills", "education"];
 
 type Translate = ReturnType<typeof useTranslations<"adminJobSeekers">>;
 
@@ -92,6 +95,10 @@ function filterOptions(tr: Translate) {
       { value: "remote", label: tr("jobTypeRemote") },
       { value: "hybrid", label: tr("jobTypeHybrid") },
       { value: "onsite", label: tr("jobTypeOnsite") },
+    ],
+    experience: [
+      { value: "", label: tr("filterExperienceAny") },
+      ...EXPERIENCE_PRESETS.map((n) => ({ value: String(n), label: tr("filterExperienceAtLeast", { count: n }) })),
     ],
     sort: [
       { value: "joined", label: tr("tableHeaderJoined") },
@@ -190,21 +197,10 @@ export function JobSeekersFilterPanel({
       more={(
         <>
           <Input
-            aria-label={tr("filterLabelLocation")}
-            placeholder={tr("filterLabelLocation")}
-            value={filters.location}
-            onChange={(e) => onFiltersChange({ location: e.target.value })}
-            className={`${INLINE_FILTER_CONTROL} shadow-none`}
-          />
-          <Input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={50}
-            aria-label={tr("filterLabelMinExperience")}
-            placeholder={tr("filterLabelMinExperience")}
-            value={filters.experienceYears > 0 ? String(filters.experienceYears) : ""}
-            onChange={(e) => onFiltersChange({ experienceYears: Math.max(0, Number(e.target.value) || 0) })}
+            aria-label={tr("tableHeaderNationality")}
+            placeholder={tr("tableHeaderNationality")}
+            value={filters.nationality}
+            onChange={(e) => onFiltersChange({ nationality: e.target.value })}
             className={`${INLINE_FILTER_CONTROL} shadow-none`}
           />
           <SearchableSelect
@@ -251,7 +247,9 @@ export function JobSeekersFilterPanel({
         placeholder={tr("searchOrDescribePlaceholder")}
         onAskAi={() => onAiSearch()}
         pending={aiLoading}
-        className="flex-[2_1_20rem]"
+        // A line of its own: briefs run long ("civil engineer UAE 2 years"),
+        // and squeezed beside six filters the text slid under Ask AI.
+        className="basis-full"
         inputClassName="h-11 rounded-lg bg-card sm:h-9"
       />
       <SearchableSelect
@@ -261,6 +259,27 @@ export function JobSeekersFilterPanel({
         value={filters.availability}
         onValueChange={(value) => onFiltersChange({ availability: value })}
         placeholder={tr("filterLabelAvailability")}
+      />
+      <Input
+        aria-label={tr("filterLabelCountryCity")}
+        placeholder={tr("filterLabelCountryCity")}
+        value={filters.location}
+        onChange={(e) => onFiltersChange({ location: e.target.value })}
+        className={`${INLINE_FILTER_CONTROL} shadow-none`}
+      />
+      <SearchableSelect
+        ariaLabel={tr("filterLabelMinExperience")}
+        // Wide enough for "Any experience" / "10+ years" without an ellipsis.
+        className={`${INLINE_FILTER_CONTROL} min-w-40`}
+        options={
+          // A typed or AI-set value outside the presets still shows as itself.
+          filters.experienceYears > 0 && !EXPERIENCE_PRESETS.includes(filters.experienceYears)
+            ? [...options.experience, { value: String(filters.experienceYears), label: tr("filterExperienceAtLeast", { count: filters.experienceYears }) }]
+            : options.experience
+        }
+        value={filters.experienceYears > 0 ? String(filters.experienceYears) : ""}
+        onValueChange={(value) => onFiltersChange({ experienceYears: Number(value) || 0 })}
+        placeholder={tr("filterExperienceAny")}
       />
       <label className="flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground sm:h-9">
         <Checkbox

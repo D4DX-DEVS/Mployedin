@@ -46,12 +46,28 @@ export interface ApplicationRow {
   matchScore?: number;
 }
 
+/** A ranked job seeker from find_candidates. Every row is kept: the card exports them all. */
+export interface TalentRow {
+  seekerId: string;
+  name: string;
+  title?: string;
+  location?: string;
+  nationality?: string;
+  experienceYears?: number;
+  skills: string[];
+  hasCV: boolean;
+  fit: number;
+  locationFit?: "current" | "worked" | "prefers";
+  experienceFit?: "meets" | "below" | "above" | "unknown";
+}
+
 /** One number. `status` is a pipeline or lead status; `metric` a fixed label. */
 export type StatTile = { status: string; value: number } | { metric: "total" | "overdue"; value: number };
 
 export type CopilotView =
   | { kind: "jobs"; jobs: JobCard[]; more: number }
   | { kind: "candidates"; candidates: CandidateRow[]; more: number }
+  | { kind: "talent"; talent: TalentRow[]; totalMatched: number; relaxed: boolean; brief: string }
   | { kind: "applications"; applications: ApplicationRow[]; more: number }
   | { kind: "stats"; tiles: StatTile[]; rows: Array<{ label: string; value: number }> };
 
@@ -111,6 +127,44 @@ function candidatesView(rows: Row[]): CopilotView | null {
   };
 }
 
+const LOCATION_FITS = ["current", "worked", "prefers"] as const;
+const EXPERIENCE_FITS = ["meets", "below", "above", "unknown"] as const;
+const oneOf = <T extends string>(list: readonly T[], v: unknown): T | undefined =>
+  list.includes(v as T) ? (v as T) : undefined;
+
+/** "electrical engineer · Kuwait · 2+ yrs": the brief as the export's file title. */
+function briefLabel(brief: unknown): string {
+  const b = (brief && typeof brief === "object" ? brief : {}) as Row;
+  const years = num(b.minYears);
+  return [str(b.role), ...strings(b.skills), str(b.location), years !== undefined ? `${years}+ yrs` : undefined]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function talentView(data: Row): CopilotView | null {
+  const rows = rowsOf(data.candidates);
+  if (!rows.length) return null;
+  return {
+    kind: "talent",
+    talent: rows.map((r) => ({
+      seekerId: String(r.seekerId ?? ""),
+      name: str(r.name) ?? "",
+      title: str(r.title),
+      location: str(r.location),
+      nationality: str(r.nationality),
+      experienceYears: num(r.experienceYears),
+      skills: strings(r.matchedSkills).length ? strings(r.matchedSkills) : strings(r.skills),
+      hasCV: r.hasCV === true,
+      fit: num(r.fit) ?? 0,
+      locationFit: oneOf(LOCATION_FITS, r.locationFit),
+      experienceFit: oneOf(EXPERIENCE_FITS, r.experienceFit),
+    })),
+    totalMatched: num(data.totalMatched) ?? rows.length,
+    relaxed: data.relaxed === true,
+    brief: briefLabel(data.brief),
+  };
+}
+
 function applicationsView(rows: Row[]): CopilotView | null {
   if (!rows.length) return null;
   const { shown, more } = limited(rows);
@@ -159,6 +213,7 @@ const PRESENTERS: Record<string, (data: unknown) => CopilotView | null> = {
   recommended_jobs: (data) => jobsView(rowsOf((data as Row | null)?.jobs)),
   search_jobs: (data) => jobsView(rowsOf(data)),
   search_candidates: (data) => candidatesView(rowsOf(data)),
+  find_candidates: (data) => (data && typeof data === "object" ? talentView(data as Row) : null),
   my_applications: (data) => applicationsView(rowsOf(data)),
   pipeline_stats: (data) => (data && typeof data === "object" ? pipelineView(data as Row) : null),
   lead_stats: (data) => (data && typeof data === "object" ? leadStatsView(data as Row) : null),

@@ -79,8 +79,14 @@ describe("push-only notify()", () => {
 });
 
 describe("helpers whose caller sends its own email", () => {
+  it("notifyApplicationReceived drops the email copy and, as the seeker's own action, has no bell row", async () => {
+    const { create, send } = await mocks();
+    await notifyApplicationReceived("u1", "", "Nurse", "Acme", "a1", { sendEmail: false });
+    expect(create).not.toHaveBeenCalled();
+    expect(send.mock.calls[0][0].data).toEqual(expect.objectContaining({ sendEmail: false, sendWhatsApp: true }));
+  });
+
   it.each([
-    ["notifyApplicationReceived", () => notifyApplicationReceived("u1", "", "Nurse", "Acme", "a1", { sendEmail: false })],
     ["notifyStatusChange", () => notifyStatusChange("u1", "Nurse", "shortlisted", "a1", { sendEmail: false })],
     ["notifyOfferMade", () => notifyOfferMade("u1", "Nurse", "Acme", "a1", { sendEmail: false })],
     ["notifyInterviewScheduled", () => notifyInterviewScheduled("u1", "Nurse", new Date("2026-10-05T06:00:00Z"), "Dubai office", "i1", { sendEmail: false })],

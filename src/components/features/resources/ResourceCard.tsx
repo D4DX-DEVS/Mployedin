@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { CalendarDays, Download, Eye, History, Info, Loader2, Shield } from "lucide-react";
+import { CalendarDays, Download, EyeOff, Eye, History, Info, Loader2, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,12 @@ export function ResourceCard({ item, categoryLabel, pendingKey, onOpen, onDownlo
               <Badge variant="outline" className="gap-1">
                 <Shield className="size-3" aria-hidden="true" />
                 {accessLabel}
+              </Badge>
+            )}
+            {accessLabel && item.isActive === false && (
+              <Badge variant="outline" className="gap-1 text-muted-foreground">
+                <EyeOff className="size-3" aria-hidden="true" />
+                {t("hiddenFromStaff")}
               </Badge>
             )}
           </div>

@@ -12,6 +12,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { TaskRecordPicker, type PickedRecord } from "./TaskRecordPicker";
 
 export interface AssignableAgentOption {
   userId: string;
@@ -42,8 +43,14 @@ export function AssignTaskDialog({
   presetAgentUserId?: string;
 }) {
   const t = useTranslations("assignedTasks");
+  const tl = useTranslations("agentTasks");
   const tc = useTranslations("common");
   const [form, setForm] = useState(EMPTY);
+  // The record(s) the task is about, searched as the chosen agent so each
+  // opens for them (client 2026-10-30). A new agent clears them.
+  const [employer, setEmployer] = useState<PickedRecord | null>(null);
+  const [job, setJob] = useState<PickedRecord | null>(null);
+  const [candidate, setCandidate] = useState<PickedRecord | null>(null);
   const [saving, setSaving] = useState(false);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   // Through a super agent: only their team can be picked (null while loading).
@@ -62,6 +69,22 @@ export function AssignTaskDialog({
   }, [apiBase, via]);
 
   const agentChoices = via ? teamAgents ?? [] : agents;
+
+  useEffect(() => {
+    setEmployer(null);
+    setJob(null);
+    setCandidate(null);
+  }, [form.agentUserId]);
+
+  // Picking a job fills in its employer; a different employer drops the job.
+  const pickJob = (picked: PickedRecord | null) => {
+    setJob(picked);
+    if (picked?.employerId) setEmployer({ id: picked.employerId, label: picked.employerName ?? "" });
+  };
+  const pickEmployer = (picked: PickedRecord | null) => {
+    setEmployer(picked);
+    if (job && job.employerId !== picked?.id) setJob(null);
+  };
 
   useEffect(() => {
     if (open && presetAgentUserId) setForm((p) => ({ ...p, agentUserId: presetAgentUserId }));
@@ -85,6 +108,9 @@ export function AssignTaskDialog({
           superAgentUserId: form.superAgentUserId || undefined,
           description: form.description.trim() || undefined,
           dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
+          candidateId: candidate?.id,
+          jobId: job?.id,
+          employerId: employer?.id,
         }),
       });
       if (!res.ok) { toast.error(await errorFrom(res, t("assignError"))); return; }
@@ -168,6 +194,61 @@ export function AssignTaskDialog({
               <DateTimePicker mode="date" minDate={new Date()} value={form.dueDate} onChange={(v) => setForm((p) => ({ ...p, dueDate: v }))} />
             </div>
           </div>
+          {form.agentUserId && (
+            <fieldset className="space-y-3 rounded-xl border border-border/70 p-3">
+              <legend className="px-1 text-sm font-medium">{tl("linkSectionTitle")}</legend>
+              <p className="text-xs text-muted-foreground">{t("linkHintAssign")}</p>
+              <TaskRecordPicker
+                type="employer"
+                value={employer}
+                onChange={pickEmployer}
+                forAgentUserId={form.agentUserId}
+                endpoint={`${apiBase}/link-options`}
+                label={tl("linkEmployerLabel")}
+                placeholder={tl("linkEmployerPlaceholder")}
+                searchPlaceholder={tl("linkEmployerSearch")}
+                emptyMessage={tl("linkEmployerEmpty")}
+                clearLabel={tl("linkEmployerClear")}
+                loadingMessage={tc("searching")}
+                container={container}
+                modal
+              />
+              <TaskRecordPicker
+                type="job"
+                value={job}
+                onChange={pickJob}
+                employerId={employer?.id}
+                forAgentUserId={form.agentUserId}
+                endpoint={`${apiBase}/link-options`}
+                hint={employer ? tl("linkJobHintEmployer") : undefined}
+                label={tl("linkJobLabel")}
+                placeholder={tl("linkJobPlaceholder")}
+                searchPlaceholder={tl("linkJobSearch")}
+                emptyMessage={tl("linkJobEmpty")}
+                clearLabel={tl("linkJobClear")}
+                loadingMessage={tc("searching")}
+                container={container}
+                modal
+              />
+              <TaskRecordPicker
+                type="candidate"
+                value={candidate}
+                onChange={setCandidate}
+                jobId={job?.id}
+                forAgentUserId={form.agentUserId}
+                endpoint={`${apiBase}/link-options`}
+                hint={job ? tl("linkCandidateHintJob") : undefined}
+                label={tl("linkCandidateLabel")}
+                placeholder={tl("linkCandidatePlaceholder")}
+                searchPlaceholder={tl("linkCandidateSearch")}
+                emptyMessage={tl("linkCandidateEmpty")}
+                clearLabel={tl("linkCandidateClear")}
+                loadingMessage={tc("searching")}
+                container={container}
+                modal
+              />
+            </fieldset>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => close(false)} disabled={saving}>{tc("cancel")}</Button>

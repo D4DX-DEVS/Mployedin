@@ -57,6 +57,8 @@ describe("getLandingStats", () => {
       { name: "Oman", nameAr: "عُمان", count: 3 },
     ]);
     expect(employerCount).toHaveBeenCalledWith(expect.objectContaining({ _id: { $in: ["e1", "e2", "e3"] } }));
+    // A deleted job keeps status "active"; it must not count as an open role.
+    expect(jobCount).toHaveBeenCalledWith(expect.objectContaining({ status: "active", deletedAt: null }));
   });
 
   it("serves the cached numbers for ten minutes instead of querying again", async () => {

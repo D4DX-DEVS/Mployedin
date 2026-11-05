@@ -19,7 +19,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, BriefcaseBusiness, Handshake, Edit2, Inbox, MapPin, UserPlus, UserRoundSearch, Users, X, Crown } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Handshake, Edit2, Eye, Inbox, MapPin, UserPlus, UserRoundSearch, Users, X, Crown } from "lucide-react";
 import { useTableExport } from "@/hooks/useTableExport";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
@@ -31,12 +31,17 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { ReferSeekerDialog } from "@/components/features/agent/ReferSeekerDialog";
+import { SeekerDetailPanel } from "@/components/features/super-agent/SeekerDetailPanel";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { hiringStatusLabelKeyMap, hiringStatusClassMap } from "@/lib/jobseekers/hiringStatus";
 import type { ReferralSummary } from "@/lib/referrals/summary";
+import { totalExperience } from "@/lib/jobseekers/experience";
+import type { SeekerListStats } from "@/lib/jobseekers/listStats";
 
 interface JobSeeker {
   _id: string;
@@ -44,7 +49,8 @@ interface JobSeeker {
   currentLocation?: string;
   nationality?: string;
   summary?: string;
-  experience?: { jobTitle: string; isCurrent: boolean }[];
+  experience?: { jobTitle: string; isCurrent: boolean; startDate?: string; endDate?: string }[];
+  totalExperienceYears?: number;
   profileCompleteness: number;
   skills: string[];
   availabilityStatus?: string;
@@ -73,9 +79,20 @@ export default function AgentJobSeekersPage() {
   const t = useTranslations("agentJobSeekers");
   const tf = useTranslations("formErrors");
   const tc = useTranslations("common");
+  // The stated total, else the dated jobs added up; null when neither says.
+  const experienceLabel = (s: JobSeeker): string | null => {
+    const total = totalExperience(s.totalExperienceYears, s.experience ?? []);
+    if (!total) return null;
+    return [
+      total.years > 0 ? t("experienceYears", { count: total.years }) : null,
+      total.months > 0 ? t("experienceMonths", { count: total.months }) : null,
+    ].filter(Boolean).join(" ");
+  };
   const { can } = usePermissions();
   const pagination = usePagination();
   const [seekers, setSeekers] = useState<JobSeeker[]>([]);
+  // Header numbers over the whole filtered list (the route's ?stats=1), not the page on screen.
+  const [stats, setStats] = useState<SeekerListStats | null>(null);
   const [loading, setLoading] = useState(true);
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
@@ -84,6 +101,20 @@ export default function AgentJobSeekersPage() {
   // Client point #5: share a job-seeker referral link from here.
   const [referOpen, setReferOpen] = useState(false);
   const [editSeeker, setEditSeeker] = useState<JobSeeker | null>(null);
+  // Client report 2026-10-30: an agent could not open a seeker's profile or
+  // CV from this list. The super agent's read-only panel is reused.
+  const [profileSeekerId, setProfileSeekerId] = useState<string | null>(null);
+  const [cvSeeker, setCvSeeker] = useState<{ id: string; name: string } | null>(null);
+  // A task's linked candidate opens here as ?profile=<id>. The param is dropped
+  // once read so closing the panel and reloading don't reopen it.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("profile");
+    if (!id) return;
+    setProfileSeekerId(id);
+    url.searchParams.delete("profile");
+    window.history.replaceState(null, "", url);
+  }, []);
 
   // Build options with translations
   const AVAILABILITY_OPTIONS = [
@@ -188,6 +219,7 @@ export default function AgentJobSeekersPage() {
   const fetchSeekers = useCallback(async () => {
     setLoading(true);
     const params = pagination.paginationParams();
+    params.set("stats", "1");
     if (search.trim()) params.set("search", search.trim());
     if (availability) params.set("availability", availability);
     if (minProfile > 0) params.set("minProfile", String(minProfile));
@@ -206,6 +238,7 @@ export default function AgentJobSeekersPage() {
     if (res.ok) {
       const data = await res.json();
       setSeekers(data.items ?? []);
+      setStats(data.stats ?? null);
       setAreaAssigned(data.areaAssigned !== false);
       pagination.updateTotal(data.total ?? data.items?.length ?? 0);
     }
@@ -266,6 +299,7 @@ export default function AgentJobSeekersPage() {
     { header: tc("country"), key: "currentLocation" },
     { header: t("tableHeaderTopSkills"), key: "skills", formatter: (v) => Array.isArray(v) ? (v as string[]).join(", ") : "" },
     { header: t("hiringStatusLabel"), key: "hiringStatus", formatter: (v) => v ? t(hiringStatusLabelKeyMap[v as keyof typeof hiringStatusLabelKeyMap] || "hiringStatus.waiting") : "" },
+    { header: t("tableHeaderExperience"), key: "totalExperienceYears", formatter: (_v, row) => experienceLabel(row as unknown as JobSeeker) ?? "" },
     { header: t("tableHeaderAvailability"), key: "availabilityStatus" },
     { header: t("tableHeaderProfile"), key: "profileCompleteness" },
     { header: t("tableHeaderJoined"), key: "createdAt", formatter: (v) => v ? formatListDate(String(v), locale) : "" },
@@ -309,11 +343,14 @@ export default function AgentJobSeekersPage() {
 
   const availabilityLabel = (val?: string) => AVAILABILITY_OPTIONS.find((o) => o.value === val)?.label ?? val ?? "\u2014";
 
-  const completeProfiles = seekers.filter((seeker) => (seeker.profileCompleteness ?? 0) >= 80).length;
-  const averageCompleteness = seekers.length > 0
-    ? Math.round(seekers.reduce((sum, seeker) => sum + (seeker.profileCompleteness ?? 0), 0) / seekers.length)
-    : 0;
-  const withTitles = seekers.filter((seeker) => Boolean(getCurrentTitle(seeker))).length;
+  const completeProfiles = stats?.complete ?? 0;
+  const averageCompleteness = stats?.avgCompleteness ?? 0;
+  const withTitles = stats?.withTitles ?? 0;
+
+  const profileRow = seekers.find((row) => row._id === profileSeekerId);
+  const profileContext = profileRow
+    ? { referralSummary: profileRow.referralSummary, inArea: profileRow.staffAccess === "area" }
+    : undefined;
 
   return (
     <div className="page-container">
@@ -437,18 +474,19 @@ export default function AgentJobSeekersPage() {
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>{tc("name")}</TableHead>
               <TableHead>{t("tableHeaderTitle")}</TableHead>
-              <TableHead>{t("tableHeaderTopSkills")}</TableHead>
+              {/* Skills and profile % sit out the 640–1279px band so the row actions stay in view; the profile panel has both. */}
+              <TableHead className="sm:max-xl:hidden">{t("tableHeaderTopSkills")}</TableHead>
               <TableHead>{t("hiringStatusLabel")}</TableHead>
-              <TableHead>{t("tableHeaderProfile")}</TableHead>
-              {can("job_seekers", "update") && <TableHead className="text-right">{tc("actions")}</TableHead>}
+              <TableHead className="sm:max-xl:hidden">{t("tableHeaderProfile")}</TableHead>
+              <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableBodySkeleton rows={5} cols={can("job_seekers", "update") ? 6 : 5} />
+              <TableBodySkeleton rows={5} cols={6} />
             ) : seekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={can("job_seekers", "update") ? 6 : 5} className="py-12">
+                <TableCell colSpan={6} className="py-12">
                   {view === "area" && activeFilterCount === 0 && !search ? (
                     <EmptyState
                       icon={MapPin}
@@ -469,7 +507,13 @@ export default function AgentJobSeekersPage() {
                 </TableCell>
               </TableRow>
             ) : seekers.map((s) => {
-              const actions: RowAction[] = [];
+              const actions: RowAction[] = [{
+                key: "view",
+                label: t("viewProfile"),
+                icon: Eye,
+                iconOnly: true,
+                onSelect: () => setProfileSeekerId(s._id),
+              }];
               const menuActions: RowAction[] = [];
               const isPremium = (s.badges ?? []).includes("premium");
               if (can("job_seekers", "update")) {
@@ -499,12 +543,18 @@ export default function AgentJobSeekersPage() {
                     <div className="flex min-w-0 items-start gap-3">
                       <UserAvatar name={s.userId?.name} email={s.userId?.email} className="h-9 w-9 shrink-0" colorful />
                       <div className="min-w-0">
-                        <span className="block truncate font-medium text-foreground">{s.userId?.name ?? "\u2014"}</span>
+                        <button
+                          type="button"
+                          onClick={() => setProfileSeekerId(s._id)}
+                          className="block max-w-full truncate text-start font-medium text-foreground hover:text-primary hover:underline"
+                        >
+                          {s.userId?.name ?? "—"}
+                        </button>
                         <span className="block truncate text-xs text-muted-foreground">{s.userId?.email ?? "\u2014"}</span>
                         {/* Phone card: title and location fold in here instead of a labelled row. */}
-                        {(getCurrentTitle(s) || s.currentLocation) && (
+                        {(getCurrentTitle(s) || s.currentLocation || experienceLabel(s)) && (
                           <span dir="auto" className="block truncate text-xs text-muted-foreground sm:hidden">
-                            {[getCurrentTitle(s), s.currentLocation].filter(Boolean).join(" · ")}
+                            {[getCurrentTitle(s), experienceLabel(s), s.currentLocation].filter(Boolean).join(" · ")}
                           </span>
                         )}
                         <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -550,13 +600,20 @@ export default function AgentJobSeekersPage() {
                   <TableCell data-mobile-hidden className="text-muted-foreground">
                     <div className="grid w-full min-w-0 gap-1 text-start">
                       <span className="font-medium text-foreground/80">{getCurrentTitle(s) ?? "\u2014"}</span>
+                      {experienceLabel(s) && (
+                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                          <BriefcaseBusiness className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                          <span className="sr-only">{t("tableHeaderExperience")}: </span>
+                          {experienceLabel(s)}
+                        </span>
+                      )}
                       <span className="inline-flex items-center gap-1.5">
                         <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
                         {s.currentLocation ?? "\u2014"}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="sm:max-xl:hidden">
                     <div className="flex flex-wrap gap-1">
                       {(s.skills ?? []).slice(0, 3).map((skill) => (
                         <span key={skill} className="workspace-tone-sky rounded-full px-2 py-0.5 text-xs">{skill}</span>
@@ -578,7 +635,7 @@ export default function AgentJobSeekersPage() {
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="sm:max-xl:hidden">
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 w-24 bg-muted rounded-full overflow-hidden">
                         <div
@@ -590,17 +647,9 @@ export default function AgentJobSeekersPage() {
                     </div>
                     <span className="mt-1 block text-xs text-muted-foreground">{formatListDate(s.createdAt, locale)}</span>
                   </TableCell>
-                  {can("job_seekers", "update") && (
-                    <TableCell className="text-right">
-                      {s.staffAccess === "area" ? (
-                        <span className="text-xs text-muted-foreground" title={t("inYourAreaViewOnly")}>
-                          {t("viewOnly")}
-                        </span>
-                      ) : (
-                        <RowActions name={s.userId?.name ?? "job seeker"} quick={actions} menu={menuActions} />
-                      )}
-                    </TableCell>
-                  )}
+                  <TableCell className="text-right">
+                    <RowActions name={s.userId?.name ?? "job seeker"} quick={actions} menu={menuActions} labelsFrom="wide" />
+                  </TableCell>
                 </TableRow>
               );
             })}
@@ -617,6 +666,18 @@ export default function AgentJobSeekersPage() {
           onPageChange={pagination.setPage}
           onLimitChange={pagination.setLimit}
         />
+      )}
+
+      {/* A seeker's profile, docked beside the list (full width on phones). */}
+      <Dialog open={profileSeekerId !== null && !cvSeeker} onOpenChange={(open) => { if (!open) setProfileSeekerId(null); }}>
+        <DialogContent side="end" className="flex flex-col gap-0 p-0 sm:max-w-xl" aria-describedby={undefined}>
+          <DialogTitle className="sr-only">{t("viewProfile")}</DialogTitle>
+          <SeekerDetailPanel seekerId={profileSeekerId} context={profileContext} onViewCv={setCvSeeker} />
+        </DialogContent>
+      </Dialog>
+      {/* Closing the CV brings the profile back where it was. */}
+      {cvSeeker && (
+        <ResumeViewerModal url={`/api/employers/candidates/${cvSeeker.id}/cv#cv.pdf`} candidateName={cvSeeker.name} onClose={() => setCvSeeker(null)} />
       )}
 
       <CrudModal

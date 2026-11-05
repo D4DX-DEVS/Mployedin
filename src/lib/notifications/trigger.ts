@@ -94,6 +94,12 @@ interface NotifyPayload {
    * own action; anyone else still is (client report 2026-09-30).
    */
   actorId?: string | null;
+  /**
+   * false: no bell row, only the email / WhatsApp / push legs. For a
+   * confirmation of something the recipient just did themselves, which the
+   * bell would echo back at them (client report 2026-10-30).
+   */
+  inApp?: boolean;
 }
 
 /**
@@ -118,8 +124,8 @@ export async function notify(payload: NotifyPayload): Promise<void> {
   if (payload.bodyKey) meta.bodyKey = payload.bodyKey;
   if (payload.params) meta.params = payload.params;
 
-  // Always create an in-app notification synchronously (fast, no queue needed)
-  const created = await Notification.create({
+  // The in-app row is written synchronously (fast, no queue needed)
+  const created = payload.inApp === false ? null : await Notification.create({
     userId: payload.userId,
     type: payload.type,
     title: payload.title,
@@ -191,6 +197,9 @@ export async function notifyApplicationReceived(
     sendEmail: options.sendEmail ?? true,
     sendPush: options.sendPush,
     sendWhatsApp: true,
+    // The seeker just applied and saw the confirmation; the email and
+    // WhatsApp copy is their receipt, the bell would only echo it.
+    inApp: false,
     metadata: { jobTitle, companyName, applicationId },
     titleKey: "applicationReceivedTitle",
     bodyKey: "applicationReceivedBody",

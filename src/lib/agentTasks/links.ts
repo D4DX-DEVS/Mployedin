@@ -11,7 +11,7 @@ import { seekerRegionMatch } from "@/lib/auth/regionMatch";
 import { canStaffAccessSeeker, type SeekerOwnership } from "@/lib/jobSeeker/staffAccess";
 import { escapeRegex, isValidObjectId } from "@/lib/security/sanitize";
 import { disambiguateEmployerLabels } from "@/lib/employers/optionLabels";
-import { TaskError } from "./assigned";
+import { TaskError } from "./taskError";
 
 /**
  * The candidate, job and employer a task can point at. Who may link what is
@@ -89,8 +89,29 @@ async function visibleJobIds(ctx: Ctx): Promise<Id[] | null> {
  * Checks each picked id against what the agent may see and returns the links to
  * store. A job fills in its own employer; a job and an employer that don't
  * belong together are refused rather than silently corrected.
+ *
+ * `forAssignee`: a super agent or admin is checking on behalf of the agent the
+ * task goes to, so a refusal names that agent's reach, not the assigner's.
  */
-export async function validateTaskLinks(ctx: Ctx, input: TaskLinkInput): Promise<IAgentTaskLinks | undefined> {
+const OUT_OF_REACH = {
+  self: {
+    job: "You can't link that job. Pick one of the jobs you work on.",
+    employer: "You can't link that employer. Pick one of the employers you work with.",
+    candidate: "You can't link that candidate. Pick someone in your area or who applied to your jobs.",
+  },
+  assignee: {
+    job: "This agent doesn't work on that job. Pick one of their jobs.",
+    employer: "This agent doesn't work with that employer. Pick one of their employers.",
+    candidate: "This agent can't open that candidate. Pick someone in their area or who applied to their jobs.",
+  },
+} as const;
+
+export async function validateTaskLinks(
+  ctx: Ctx,
+  input: TaskLinkInput,
+  { forAssignee = false }: { forAssignee?: boolean } = {},
+): Promise<IAgentTaskLinks | undefined> {
+  const refuse = OUT_OF_REACH[forAssignee ? "assignee" : "self"];
   const { candidateId, jobId } = input;
   let { employerId } = input;
   if (!candidateId && !jobId && !employerId) return undefined;
@@ -103,7 +124,7 @@ export async function validateTaskLinks(ctx: Ctx, input: TaskLinkInput): Promise
     const job = await Job.findOne({ _id: jobId, ...(scope ?? { deletedAt: null }) })
       .select("employerId")
       .lean<{ employerId?: Id } | null>();
-    if (!job) throw new TaskError(403, "You can't link that job. Pick one of the jobs you work on.");
+    if (!job) throw new TaskError(403, refuse.job);
     const jobEmployer = job.employerId ? String(job.employerId) : undefined;
     if (employerId && jobEmployer && employerId !== jobEmployer) {
       throw new TaskError(400, "That job belongs to a different employer. Pick the job's own employer or clear one of them.");
@@ -112,7 +133,7 @@ export async function validateTaskLinks(ctx: Ctx, input: TaskLinkInput): Promise
   }
 
   if (employerId && !jobId && ctx.role !== "admin" && !(await agentCanSeeEmployer(ctx.userId, employerId))) {
-    throw new TaskError(403, "You can't link that employer. Pick one of the employers you work with.");
+    throw new TaskError(403, refuse.employer);
   }
   if (employerId && ctx.role === "admin" && !(await Employer.exists({ _id: employerId }))) {
     throw new TaskError(400, "That employer no longer exists.");
@@ -125,7 +146,7 @@ export async function validateTaskLinks(ctx: Ctx, input: TaskLinkInput): Promise
     if (!seeker) throw new TaskError(400, "That candidate no longer exists.");
     const canView = await canStaffAccessSeeker(seeker, ctx, "view");
     if (!canView && !(await appliedToVisibleJob(ctx, candidateId, jobId))) {
-      throw new TaskError(403, "You can't link that candidate. Pick someone in your area or who applied to your jobs.");
+      throw new TaskError(403, refuse.candidate);
     }
   }
 

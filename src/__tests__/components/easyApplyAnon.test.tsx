@@ -1,5 +1,15 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent, waitFor } from "@testing-library/react";
+
+// The sign-in choices sit in a dialog the card opens. Most tests start from
+// there, so render opens it the way a visitor does: Apply without CV. A CV
+// picked afterwards through the card's file input is still held for sign-in.
+function render(ui: React.ReactElement) {
+  const result = rtlRender(ui);
+  const open = screen.queryByRole("button", { name: /Apply without CV/ });
+  if (open) fireEvent.click(open);
+  return result;
+}
 import userEvent from "@testing-library/user-event";
 
 // Mock fetch and Response globally before anything else
@@ -55,6 +65,18 @@ jest.mock("next-intl", () => ({
       googleWindowBlocked: "Your browser blocked the Google window. Press the Google button again.",
       "errors.popupBlocked": "Your browser blocked the Google sign-in popup. Try using email instead.",
       continueWithEmail: "Continue with email",
+      applyWithCv: "Apply with CV",
+      applyWithoutCv: "Apply without CV",
+      cvDialogTitle: "Add your CV",
+      cvDialogHint: "Our AI reads your CV.",
+      cvFormats: "PDF or Word",
+      applyNow: "Apply",
+      changeCv: "Change",
+      authDialogTitle: "Sign in to apply",
+      authDialogHint: "Use Google or your email.",
+      authDialogHintCv: "Use Google or your email. We'll read {file}.",
+      orDivider: "or",
+      backToOptions: "Back to sign-in options",
       settingUpProfile: "Setting up your profile…",
       googleSignInFailed: "Google sign-in failed. Please try again.",
       signInApply: "Sign in to Apply",
@@ -130,6 +152,14 @@ jest.mock("@/components/ui/button", () => ({
   ),
 }));
 
+jest.mock("@/components/ui/dialog", () => ({
+  Dialog: ({ open, children }: any) => (open ? <div role="dialog">{children}</div> : null),
+  DialogContent: ({ children }: any) => <div>{children}</div>,
+  DialogHeader: ({ children }: any) => <div>{children}</div>,
+  DialogTitle: ({ children }: any) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: any) => <p>{children}</p>,
+}));
+
 jest.mock("@/components/ui/input", () => ({
   Input: (props: any) => <input {...props} />,
 }));
@@ -166,6 +196,7 @@ describe("EasyApply Anonymous Card", () => {
     });
     (useParams as jest.Mock).mockReturnValue({ locale: "en" });
     (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
+    (require("@/lib/browser/inAppBrowser").isInAppBrowser as jest.Mock).mockReturnValue(false);
   });
 
   it("renders the anonymous card when not authenticated", () => {
@@ -179,7 +210,7 @@ describe("EasyApply Anonymous Card", () => {
     );
 
     expect(screen.getByText("Apply in seconds")).toBeInTheDocument();
-    expect(screen.getByText("Upload your CV (PDF or Word)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Apply with CV/ })).toBeInTheDocument();
   });
 
   it("renders CV upload control", () => {
@@ -192,6 +223,7 @@ describe("EasyApply Anonymous Card", () => {
       />
     );
 
+    fireEvent.click(screen.getByRole("button", { name: /Apply with CV/ }));
     const uploadButton = screen.getByText("Upload your CV (PDF or Word)");
     expect(uploadButton).toBeInTheDocument();
   });
@@ -321,43 +353,6 @@ describe("EasyApply Anonymous Card", () => {
     });
   });
 
-  it("shows CV upload in email OTP flow", async () => {
-    const { csrfFetch } = require("@/lib/security/csrf-client");
-    csrfFetch.mockResolvedValueOnce(
-      new Response(JSON.stringify({ sent: true }), { status: 200 })
-    );
-
-    const user = userEvent.setup();
-    render(
-      <EasyApply
-        jobId="test-job-id"
-        jobTitle="Test Job"
-        locale="en"
-        screeningQuestions={[]}
-      />
-    );
-
-    // Click email button
-    const emailButton = screen.getByText("Continue with email");
-    await user.click(emailButton);
-
-    // Enter email
-    const emailInput = screen.getByPlaceholderText("Enter your email") as HTMLInputElement;
-    await user.type(emailInput, "test@example.com");
-    // The account is named after this, not the email's local part.
-    await user.type(screen.getByPlaceholderText("Enter your full name"), "Test Person");
-
-    // Click send code button
-    const sendCodeButton = screen.getByText("Send code");
-    await user.click(sendCodeButton);
-
-    // Wait for CV upload to be visible in code entry screen
-    await waitFor(() => {
-      const uploadButtons = screen.getAllByText("Upload your CV (PDF or Word)");
-      expect(uploadButtons.length).toBeGreaterThan(0);
-    });
-  });
-
   it("validates email input", async () => {
     const { csrfFetch } = require("@/lib/security/csrf-client");
 
@@ -383,21 +378,50 @@ describe("EasyApply Anonymous Card", () => {
     expect(csrfFetch).not.toHaveBeenCalled();
   });
 
-  it("renders sign in instead link", () => {
-    render(
-      <EasyApply
-        jobId="test-job-id"
-        jobTitle="Test Job"
-        locale="en"
-        screeningQuestions={[]}
-      />
-    );
+  it("offers only Apply with CV and Apply without CV (login is in the site header)", () => {
+    rtlRender(<EasyApply jobId="test-job-id" jobTitle="Test Job" locale="en" screeningQuestions={[]} />);
 
-    const signInLink = screen.getByText("Sign in to Apply");
-    expect(signInLink).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Apply with CV/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Apply without CV/ })).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByText("Continue with Google")).toBeNull();
   });
 
-  it("renders copy link button", () => {
+  it("Apply with CV asks for the CV first, and its Apply moves on to log-in for that CV", () => {
+    const { container } = rtlRender(<EasyApply jobId="test-job-id" jobTitle="Test Job" locale="en" screeningQuestions={[]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Apply with CV/ }));
+    expect(screen.getByText("Add your CV")).toBeInTheDocument();
+    expect(screen.queryByText("Continue with Google")).toBeNull();
+    // No CV yet: there is no Apply to press.
+    expect(screen.queryByRole("button", { name: "Apply" })).toBeNull();
+
+    const file = new File(["%PDF"], "my-cv.pdf", { type: "application/pdf" });
+    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    expect(screen.getByText("my-cv.pdf")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(screen.getByText("Use Google or your email. We'll read my-cv.pdf.")).toBeInTheDocument();
+    expect(screen.getByText("Continue with Google")).toBeInTheDocument();
+    expect(screen.getByText("Continue with email")).toBeInTheDocument();
+  });
+
+  it("Apply without CV goes straight to log-in and drops a CV picked earlier", () => {
+    const { container } = rtlRender(<EasyApply jobId="test-job-id" jobTitle="Test Job" locale="en" screeningQuestions={[]} />);
+    const file = new File(["%PDF"], "my-cv.pdf", { type: "application/pdf" });
+    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Apply without CV/ }));
+
+    expect(screen.getByText("Use Google or your email.")).toBeInTheDocument();
+    expect(screen.getByText("Continue with Google")).toBeInTheDocument();
+    expect(screen.queryByText("my-cv.pdf")).toBeNull();
+  });
+
+  it("offers Copy link inside an in-app browser, which blocks the Google window", () => {
+    const { isInAppBrowser } = require("@/lib/browser/inAppBrowser");
+    (isInAppBrowser as jest.Mock).mockReturnValue(true);
     render(
       <EasyApply
         jobId="test-job-id"

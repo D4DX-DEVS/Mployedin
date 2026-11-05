@@ -1,6 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- mock scaffolding copied from easyApplyAnon.test.tsx */
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render as rtlRender, screen, fireEvent, waitFor } from "@testing-library/react";
+
+// The sign-in choices sit in a dialog the card opens. Most tests start from
+// there, so render opens it the way a visitor does: Apply without CV. A CV
+// picked afterwards through the card's file input is still held for sign-in.
+function render(ui: React.ReactElement) {
+  const result = rtlRender(ui);
+  const open = screen.queryByRole("button", { name: /Apply without CV/ });
+  if (open) fireEvent.click(open);
+  return result;
+}
 import userEvent from "@testing-library/user-event";
 
 // Mock fetch and Response globally before anything else
@@ -56,6 +66,18 @@ jest.mock("next-intl", () => ({
       googleWindowBlocked: "Your browser blocked the Google window. Press the Google button again.",
       "errors.popupBlocked": "Your browser blocked the Google sign-in popup. Try using email instead.",
       continueWithEmail: "Continue with email",
+      applyWithCv: "Apply with CV",
+      applyWithoutCv: "Apply without CV",
+      cvDialogTitle: "Add your CV",
+      cvDialogHint: "Our AI reads your CV.",
+      cvFormats: "PDF or Word",
+      applyNow: "Apply",
+      changeCv: "Change",
+      authDialogTitle: "Sign in to apply",
+      authDialogHint: "Use Google or your email.",
+      authDialogHintCv: "Use Google or your email. We'll read {file}.",
+      orDivider: "or",
+      backToOptions: "Back to sign-in options",
       settingUpProfile: "Setting up your profile…",
       googleSignInFailed: "Google sign-in failed. Please try again.",
       signInApply: "Sign in to Apply",
@@ -124,6 +146,14 @@ jest.mock("@/components/ui/button", () => ({
   Button: ({ children, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
+}));
+
+jest.mock("@/components/ui/dialog", () => ({
+  Dialog: ({ open, children }: any) => (open ? <div role="dialog">{children}</div> : null),
+  DialogContent: ({ children }: any) => <div>{children}</div>,
+  DialogHeader: ({ children }: any) => <div>{children}</div>,
+  DialogTitle: ({ children }: any) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: any) => <p>{children}</p>,
 }));
 
 jest.mock("@/components/ui/input", () => ({

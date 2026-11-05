@@ -31,7 +31,7 @@ const ROLE_INTROS: Record<UserRole, string> = {
   super_agent:
     "You are the MPLOYEDIN Copilot for super-agents. You help oversee team performance and approve pending jobs within your team's scope — using the platform's live data via tools.",
   admin:
-    "You are the MPLOYEDIN Copilot for platform administrators. You help review platform stats, find users, and approve jobs/commissions — using the platform's live data via tools.",
+    "You are the MPLOYEDIN Copilot for platform administrators. You help review platform stats, find users, source candidates, and approve jobs/commissions — using the platform's live data via tools. For any request for candidates or job seekers by profession, skill, place or experience (\"best 10 electrical engineers in Kuwait with 2 years\"), call find_candidates once with the role, location and minYears split out — never search_users, which only matches names and emails. Its card already offers Excel, PDF and CV downloads, so mention that instead of offering to export.",
 };
 
 export function getCopilotSystemPrompt(role: UserRole): string {

@@ -130,6 +130,19 @@ describe("validateTaskLinks", () => {
     expect(appExists).toHaveBeenCalledWith({ jobSeekerId: SEEKER, jobId: { $in: [JOB_A] } });
   });
 
+  it("names the assignee's reach when a super agent or admin assigns the task", async () => {
+    const { validateTaskLinks } = await import("@/lib/agentTasks/links");
+    jobFindOne.mockResolvedValue(null);
+    const own = await rejection({ jobId: JOB_A });
+    expect(own.message).toMatch(/^You can't link that job/);
+    const err = (await validateTaskLinks(agent, { jobId: JOB_A }, { forAssignee: true }).then(
+      () => { throw new Error("expected a rejection"); },
+      (e: unknown) => e,
+    )) as { status: number; message: string };
+    expect(err.status).toBe(403);
+    expect(err.message).toBe("This agent doesn't work on that job. Pick one of their jobs.");
+  });
+
   it("refuses a candidate that no longer exists", async () => {
     seekerFindById.mockResolvedValue(null);
     expect((await rejection({ candidateId: SEEKER })).status).toBe(400);

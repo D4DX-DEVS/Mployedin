@@ -45,10 +45,11 @@ export function AiSearchField({
         onChange={(event) => onValueChange(event.target.value)}
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
-        className={cn("h-11 rounded-xl border-border bg-background ps-9 pe-12 text-sm shadow-none lg:pe-28", inputClassName)}
+        className={cn("h-11 rounded-xl border-border bg-background ps-9 pe-12 text-sm shadow-none lg:pe-32", inputClassName)}
       />
       {/* Full height of the box so it keeps the 44px touch target on phones.
-          Icon-only below lg: tablet toolbars leave the box ~250px wide. */}
+          Icon-only below lg: tablet toolbars leave the box ~250px wide.
+          The input's lg:pe-32 must cover the wider "Asking AI…" label. */}
       <button
         type="button"
         onClick={() => onAskAi(value)}
