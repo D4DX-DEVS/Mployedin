@@ -16,10 +16,9 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import {
-  Pencil, Trash2, Ban, Briefcase,
-  GraduationCap, Globe, Award, Inbox, Download, Contact, CalendarDays, AlignLeft, BadgeCheck, FileText,
-  FileDown, Loader2, Eye, RotateCcw, X, Crown,
+  Pencil, Trash2, Ban, Inbox, FileDown, Loader2, Eye, RotateCcw, X, Crown,
 } from "lucide-react";
+import { JobSeekerExpandedRow } from "./_components/JobSeekerExpandedRow";
 import { useConfirm } from "@/hooks/useConfirm";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { Button } from "@/components/ui/button";
@@ -744,92 +743,13 @@ export default function AdminJobSeekersPage() {
               {/* Expanded Row */}
               {expandedId === js._id && (
                 <TableRow className="bg-muted/10 hover:bg-muted/10">
-                  <TableCell colSpan={columnCount} className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      {/* Summary */}
-                      {js.summary && (
-                        <div className="md:col-span-3">
-                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><AlignLeft className="h-3 w-3" /> {tr("expandedLabelSummary")}</p>
-                          <p className="text-muted-foreground text-xs">{js.summary}</p>
-                        </div>
-                      )}
-                      {/* Contact */}
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Contact className="h-3 w-3" /> {tr("expandedLabelContact")}</p>
-                        <p className="text-muted-foreground text-xs">{js.email ?? js.userId?.email ?? "—"}</p>
-                        {js.phone && <p className="text-muted-foreground text-xs">{js.phone}</p>}
-                        {js.currentLocation && <p className="text-muted-foreground text-xs">{js.currentLocation}</p>}
-                        <p className="mt-1 flex items-center gap-1 text-muted-foreground text-xs"><CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" /> {tr("tableHeaderJoined")}: {formatListDate(new Date(js.createdAt), locale)}</p>
-                      </div>
-                      {/* Experience */}
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Briefcase className="h-3 w-3" /> {tr("expandedLabelExperience")}</p>
-                        {js.experience?.length ? js.experience.slice(0, 3).map((exp, i) => (
-                          <div key={i} className="mb-1.5">
-                            <p className="font-medium text-foreground text-xs">{exp.jobTitle || "—"}</p>
-                            <p className="text-xs text-muted-foreground">{exp.company}{exp.isCurrent ? ` · ${tr("experienceCurrent")}` : ""}</p>
-                          </div>
-                        )) : <p className="text-xs text-muted-foreground">{tr("expandedNoExperience")}</p>}
-                      </div>
-                      {/* Education */}
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><GraduationCap className="h-3 w-3" /> {tr("expandedLabelEducation")}</p>
-                        {js.education?.length ? js.education.slice(0, 3).map((edu, i) => (
-                          <div key={i} className="mb-1.5">
-                            <p className="font-medium text-foreground text-xs">{edu.degree || "—"}{edu.field ? ` — ${edu.field}` : ""}</p>
-                            <p className="text-xs text-muted-foreground">{edu.institution}{edu.passingYear ? ` · ${edu.passingYear}` : ""}</p>
-                          </div>
-                        )) : <p className="text-xs text-muted-foreground">{tr("expandedNoEducation")}</p>}
-                      </div>
-                      {/* Skills */}
-                      {js.skills?.length ? (
-                        <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Award className="h-3 w-3" /> {tr("expandedLabelSkills")}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {js.skills.slice(0, 12).map((s) => (
-                              <span key={s} className="rounded-full border bg-muted/30 px-2 py-0.5 text-[0.65rem] text-muted-foreground">{s}</span>
-                            ))}
-                            {js.skills.length > 12 && <span className="text-xs text-muted-foreground">{tr("expandedMoreSkills", { count: js.skills.length - 12 })}</span>}
-                          </div>
-                        </div>
-                      ) : null}
-                      {/* Languages */}
-                      {js.languages?.length ? (
-                        <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><Globe className="h-3 w-3" /> {tr("expandedLabelLanguages")}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {js.languages.map((l, i) => (
-                              <span key={i} className="rounded-full border bg-muted/30 px-2 py-0.5 text-[0.65rem] text-muted-foreground">{l.language} ({l.proficiency})</span>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                      {/* Certifications */}
-                      {js.certifications?.length ? (
-                        <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><BadgeCheck className="h-3 w-3" /> {tr("expandedLabelCertifications")}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {js.certifications.slice(0, 5).map((c, i) => (
-                              <span key={i} className="rounded-full border bg-muted/30 px-2 py-0.5 text-[0.65rem] text-muted-foreground">{c}</span>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                      {/* CV Download (individual) */}
-                      {js.cv?.originalUrl && (
-                        <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1"><FileText className="h-3 w-3" /> {tr("expandedLabelCvResume")}</p>
-                          <button
-                            type="button"
-                            onClick={() => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" })}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs text-primary hover:bg-primary/10 transition-colors"
-                          >
-                            <Download className="h-3 w-3" />
-                            {tr("downloadCvLink")}
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                  <TableCell colSpan={columnCount} className="whitespace-normal p-3 sm:p-4">
+                    <JobSeekerExpandedRow
+                      seeker={js}
+                      locale={locale}
+                      availabilityLabel={js.availabilityStatus ? (availabilityLabels[js.availabilityStatus] ?? js.availabilityStatus.replace(/_/g, " ")) : undefined}
+                      onViewCv={() => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" })}
+                    />
                   </TableCell>
                 </TableRow>
               )}

@@ -17,8 +17,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
 
   const body = await req.json();
-  const { ids, search, skills, location, availability, hasCV, jobType } = body as {
+  const { ids, includeWithoutCv, search, skills, location, availability, hasCV, jobType } = body as {
     ids?: string[];
+    /** With `ids`: also return the picked candidates who have no CV (Copilot shortlist export). */
+    includeWithoutCv?: boolean;
     search?: string;
     skills?: string[];
     location?: string;
@@ -32,11 +34,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   if (ids && Array.isArray(ids) && ids.length > 0) {
     // Validate IDs are proper MongoDB ObjectIds
-    const validIds = ids.filter((id) => /^[a-f\d]{24}$/i.test(id));
+    const validIds = ids.filter((id) => /^[a-f\d]{24}$/i.test(id)).slice(0, 200);
     if (validIds.length === 0) {
       return NextResponse.json({ error: "No valid IDs provided" }, { status: 400 });
     }
-    filter._id = { $in: validIds };
+    filter = includeWithoutCv === true ? { _id: { $in: validIds } } : { ...filter, _id: { $in: validIds } };
   } else {
     // Apply the same filters as the search
     const conditions: Record<string, unknown>[] = [];
@@ -72,21 +74,28 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   const results = await JobSeeker.find(filter)
     .populate("userId", "name email")
-    .select("fullName email cv.originalUrl userId headline nationality currentLocation totalExperienceYears")
+    .select("fullName email phone skills experience.jobTitle cv.originalUrl userId headline nationality currentLocation totalExperienceYears")
     .limit(200)
     .lean();
 
+  // Picked ids come back in the order they were sent (the Copilot's ranking).
+  const order = new Map((ids ?? []).map((id, i) => [id, i]));
   const cvList = results
-    .filter((js) => js.cv?.originalUrl)
+    .filter((js) => includeWithoutCv === true || js.cv?.originalUrl)
+    .sort((a, b) => (order.get(String(a._id)) ?? 0) - (order.get(String(b._id)) ?? 0))
     .map((js) => ({
       id: String(js._id),
       name: js.fullName || (js.userId as { name?: string })?.name || "Unknown",
       headline: js.headline || "",
+      title: js.experience?.[0]?.jobTitle || "",
       email: js.email || (js.userId as { email?: string })?.email || "",
+      phone: js.phone || "",
+      skills: (js.skills ?? []).slice(0, 12),
       nationality: js.nationality || "",
       location: js.currentLocation || "",
       experienceYears: js.totalExperienceYears ?? null,
-      url: js.cv.originalUrl,
+      hasCV: Boolean(js.cv?.originalUrl),
+      url: js.cv?.originalUrl || null,
     }));
 
   return NextResponse.json({ cvs: cvList, total: cvList.length });

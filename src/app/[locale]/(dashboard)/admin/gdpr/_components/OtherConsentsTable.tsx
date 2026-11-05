@@ -17,7 +17,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import type { UsePaginationReturn } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useMediaQuery, PHONE_QUERY } from "@/hooks/useMediaQuery";
-import { formatDateTime } from "@/lib/ui/intlFormat";
+import { formatDate, formatTime } from "@/lib/ui/intlFormat";
 import { ConsentTypeCell } from "./ConsentTypeCell";
 import { OtherConsentCards } from "./ConsentPhoneCards";
 import { PhoneFilterRow } from "./PhoneFilterRow";
@@ -31,8 +31,11 @@ import { useGdprLabels } from "./useGdprLabels";
  */
 const OTHER_CONSENT_TYPES = ["terms_and_privacy", "cookies", "marketing"] as const;
 const COLUMN_COUNT = 6;
-/** Same date format as the Cookie choices table. */
-const WHEN: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" };
+/** Same date and time formats as the Cookie choices table: the date over the time keeps the column narrow. */
+const DAY: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" };
+const TIME: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" };
+/** Slimmer cell padding, as in Cookie choices, so the six columns fit at 768px beside the sidebar. */
+const CELL = "sm:px-3";
 
 type LoadState = { status: "loading" } | { status: "error" } | { status: "ready"; rows: ConsentRow[] };
 
@@ -110,16 +113,16 @@ export function OtherConsentsTable({ pagination, onView }: OtherConsentsTablePro
   const header = (sortable: boolean) => (
     <TableHeader>
       <TableRow className="bg-muted/30 hover:bg-muted/30">
-        <TableHead>{t("consentUserColumnHeader")}</TableHead>
-        <TableHead>{t("consentTypeColumnHeader")}</TableHead>
-        <TableHead>{t("grantedColumnHeader")}</TableHead>
-        <TableHead>{t("consentSourceColumnHeader")}</TableHead>
-        <TableHead>
+        <TableHead className={`whitespace-normal ${CELL}`}>{t("consentUserColumnHeader")}</TableHead>
+        <TableHead className={`whitespace-normal ${CELL}`}>{t("consentTypeColumnHeader")}</TableHead>
+        <TableHead className={`whitespace-normal ${CELL}`}>{t("grantedColumnHeader")}</TableHead>
+        <TableHead className={`whitespace-normal ${CELL}`}>{t("consentSourceColumnHeader")}</TableHead>
+        <TableHead className={`whitespace-normal ${CELL}`}>
           {sortable
             ? <SortableTableHeader label={t("timestampColumnHeader")} active order={order} onClick={toggleOrder} />
             : t("timestampColumnHeader")}
         </TableHead>
-        <TableHead className="text-end">{t("actionsColumnHeader")}</TableHead>
+        <TableHead className={`text-end ${CELL}`}>{t("actionsColumnHeader")}</TableHead>
       </TableRow>
     </TableHeader>
   );
@@ -219,25 +222,32 @@ export function OtherConsentsTable({ pagination, onView }: OtherConsentsTablePro
               <TableBody>
                 {state.rows.map((row) => (
                   <TableRow key={row._id}>
-                    <TableCell>
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground">{row.userName}</p>
-                        {row.userEmail ? <p className="break-all text-xs text-muted-foreground">{row.userEmail}</p> : null}
+                    <TableCell className={CELL}>
+                      {/* One line each, like Cookie choices: a long (or anonymised) address no longer wraps; the full text is the tooltip and the View panel. */}
+                      <div className="min-w-0 max-w-36">
+                        <p className="truncate font-medium text-foreground" title={row.userName}>{row.userName}</p>
+                        {/* ltr: an Arabic page would otherwise cut the start of the address. */}
+                        {row.userEmail ? <p dir="ltr" className="truncate text-xs text-muted-foreground rtl:text-right" title={row.userEmail}>{row.userEmail}</p> : null}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={CELL}>
                       <ConsentTypeCell label={consentTypeLabel(row.consentType)} policyVersion={row.policyVersion} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={CELL}>
                       {row.granted ? (
                         <span className="inline-flex items-center gap-1 text-sm text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> {t("consentYesLabel")}</span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-sm text-red-600"><XCircle className="h-3.5 w-3.5" aria-hidden="true" /> {t("consentNoLabel")}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{row.source ? sourceLabel(row.source) : "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatDateTime(row.timestamp, WHEN, locale)}</TableCell>
-                    <TableCell className="text-end">
+                    <TableCell className={`text-sm text-muted-foreground ${CELL}`}>{row.source ? sourceLabel(row.source) : "—"}</TableCell>
+                    <TableCell className={`whitespace-nowrap text-sm text-muted-foreground ${CELL}`}>
+                      <time dateTime={row.timestamp}>
+                        <span className="block">{formatDate(row.timestamp, DAY, locale)}</span>
+                        <span className="block text-xs">{formatTime(row.timestamp, TIME, locale)}</span>
+                      </time>
+                    </TableCell>
+                    <TableCell className={`text-end ${CELL}`}>
                       <RowActions name={row.userName} quick={[{ key: "view", label: t("viewButton"), icon: Eye, onSelect: () => onView(row._id) }]} />
                     </TableCell>
                   </TableRow>

@@ -41,6 +41,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { hiringStatusLabelKeyMap, hiringStatusClassMap } from "@/lib/jobseekers/hiringStatus";
 import type { ReferralSummary } from "@/lib/referrals/summary";
 import { totalExperience } from "@/lib/jobseekers/experience";
+import type { SeekerListStats } from "@/lib/jobseekers/listStats";
 
 interface JobSeeker {
   _id: string;
@@ -90,6 +91,8 @@ export default function AgentJobSeekersPage() {
   const { can } = usePermissions();
   const pagination = usePagination();
   const [seekers, setSeekers] = useState<JobSeeker[]>([]);
+  // Header numbers over the whole filtered list (the route's ?stats=1), not the page on screen.
+  const [stats, setStats] = useState<SeekerListStats | null>(null);
   const [loading, setLoading] = useState(true);
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
@@ -216,6 +219,7 @@ export default function AgentJobSeekersPage() {
   const fetchSeekers = useCallback(async () => {
     setLoading(true);
     const params = pagination.paginationParams();
+    params.set("stats", "1");
     if (search.trim()) params.set("search", search.trim());
     if (availability) params.set("availability", availability);
     if (minProfile > 0) params.set("minProfile", String(minProfile));
@@ -234,6 +238,7 @@ export default function AgentJobSeekersPage() {
     if (res.ok) {
       const data = await res.json();
       setSeekers(data.items ?? []);
+      setStats(data.stats ?? null);
       setAreaAssigned(data.areaAssigned !== false);
       pagination.updateTotal(data.total ?? data.items?.length ?? 0);
     }
@@ -338,11 +343,9 @@ export default function AgentJobSeekersPage() {
 
   const availabilityLabel = (val?: string) => AVAILABILITY_OPTIONS.find((o) => o.value === val)?.label ?? val ?? "\u2014";
 
-  const completeProfiles = seekers.filter((seeker) => (seeker.profileCompleteness ?? 0) >= 80).length;
-  const averageCompleteness = seekers.length > 0
-    ? Math.round(seekers.reduce((sum, seeker) => sum + (seeker.profileCompleteness ?? 0), 0) / seekers.length)
-    : 0;
-  const withTitles = seekers.filter((seeker) => Boolean(getCurrentTitle(seeker))).length;
+  const completeProfiles = stats?.complete ?? 0;
+  const averageCompleteness = stats?.avgCompleteness ?? 0;
+  const withTitles = stats?.withTitles ?? 0;
 
   const profileRow = seekers.find((row) => row._id === profileSeekerId);
   const profileContext = profileRow

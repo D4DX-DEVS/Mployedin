@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { useSignupConsentPrompt } from "@/components/features/auth/SignupConsentDialog";
 import { CONSENT_REQUIRED_CODE, signupConsentCredentials } from "@/lib/auth/signupConsent";
 import { useSession, signIn, getSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getGoogleIdToken, preloadGoogleSignIn } from "@/lib/firebase/googleSignIn";
 import { GooglePopupBlockedError } from "@/lib/firebase/googlePopupBlocked";
@@ -15,8 +14,9 @@ import { csrfFetch } from "@/lib/security/csrf-client";
 import { isInAppBrowser, inAppBrowserName } from "@/lib/browser/inAppBrowser";
 import { getCaptchaToken } from "@/lib/browser/captcha";
 import { CaptchaNotice } from "@/components/shared/CaptchaNotice";
-import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2, Check } from "lucide-react";
+import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2, Check, Mail, Sparkles, ChevronRight, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/shared/PhoneInput";
@@ -109,7 +109,6 @@ function EasyApplyFlow({
 }: EasyApplyProps & { askSignupConsent: () => Promise<boolean> }) {
   const t = useTranslations("easyApply");
   const { data: session, status, update } = useSession();
-  const router = useRouter();
   // A job an agent shared carries ?ref=: applying here as a new seeker
   // credits that agent, like a /register?ref= sign-up.
   const referralCredentials = useJobShareReferral();
@@ -136,6 +135,9 @@ function EasyApplyFlow({
   const [anonOtpCode, setAnonOtpCode] = useState("");
   const [anonOtpSent, setAnonOtpSent] = useState(false);
   const [anonOtpResendCountdown, setAnonOtpResendCountdown] = useState(0);
+  // Google / e-mail sign-in opens in a dialog on the first Apply click.
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [dialogStep, setDialogStep] = useState<"cv" | "auth">("auth");
 
   // Profile confirmation after extraction. Only the three editable fields and the
   // completeness figure are rendered, so the rest of the extracted payload is not
@@ -673,375 +675,340 @@ function EasyApplyFlow({
   if (!session) {
     const inAppBrwsr = isInAppBrowser();
     const inAppName = inAppBrowserName();
-    const showEmailFirst = inAppBrwsr && anonAuthMethod === null;
+    const busy = anonPhase !== "idle";
 
-    // Email input form (before OTP is sent)
-    if (anonAuthMethod === "email" && !anonOtpSent) {
-      return (
-        <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 card-pad">
-          <p className="text-sm font-semibold text-foreground">{t("quickApplyTitle")}</p>
-          <p className="text-xs text-muted-foreground">{t("quickApplyHint")}</p>
-
-          <input
-            ref={anonCvInputRef}
-            type="file"
-            accept=".pdf,.doc,.docx"
-            className="hidden"
-            onChange={(e) => {
-              setAnonCvFile(e.target.files?.[0] ?? null);
-              e.target.value = "";
-            }}
-          />
-
-          <Button
-            size="lg"
-            type="button"
-            variant="outline"
-            className="w-full justify-start gap-2 rounded-xl text-sm"
-            onClick={() => anonCvInputRef.current?.click()}
-            disabled={anonPhase !== "idle"}
-          >
-            {anonCvFile ? <FileText className="h-4 w-4 text-primary" /> : <Upload className="h-4 w-4" />}
-            <span className="truncate">{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
-          </Button>
-
-          <div className="field">
-            <Label htmlFor="anon-name" className="text-xs font-medium text-foreground">
-              {t("fullName")} <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="anon-name"
-              type="text"
-              value={anonName}
-              onChange={(e) => setAnonName(e.target.value)}
-              placeholder={t("enterFullName")}
-              className="rounded-xl"
-              autoComplete="name"
-              maxLength={200}
-            />
-          </div>
-
-          <div className="field">
-            <Label htmlFor="anon-email" className="text-xs font-medium text-foreground">
-              {t("email")}
-            </Label>
-            <Input
-              id="anon-email"
-              type="email"
-              value={anonEmail}
-              onChange={(e) => setAnonEmail(e.target.value)}
-              placeholder={t("enterEmail")}
-              className="rounded-xl"
-            />
-          </div>
-
-          <Button
-            size="lg"
-            onClick={handleAnonEmailOtpStart}
-            disabled={anonPhase !== "idle" || !anonEmail || !anonName.trim()}
-            className="w-full rounded-2xl text-base font-medium gap-2"
-          >
-            {anonPhase !== "idle" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {t("sendCode")}
-          </Button>
-          <CaptchaNotice className="-mt-1.5" />
-
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={handleAnonGoogleApply}
-            onPointerEnter={preloadGoogleSignIn}
-            onFocus={preloadGoogleSignIn}
-            onTouchStart={preloadGoogleSignIn}
-            aria-describedby={GOOGLE_WINDOW_NOTICE_ID}
-            disabled={anonPhase !== "idle"}
-            className="w-full rounded-2xl text-base font-medium gap-2"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-            </svg>
-            {t("continueWithGoogle")}
-          </Button>
-          <GoogleWindowNotice
-            notice={t("googleWindowNotice")}
-            blockedMessage={t("googleWindowBlocked")}
-            blocked={googleWindowBlocked}
-            className="-mt-2"
-          />
-
-          {anonError && <p className="text-center text-xs text-destructive">{anonError}</p>}
-
-          <button
-            type="button"
-            onClick={() => {
-              setAnonAuthMethod(null);
-              setAnonEmail("");
-              setAnonName("");
-            }}
-            className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
-          >
-            {t("signInApply")}
-          </button>
-        </div>
-      );
+    // Apply with CV: the dialog asks for the CV, its Apply moves on to log-in.
+    function openCvDialog() {
+      setAnonError("");
+      setDialogStep("cv");
+      setAuthDialogOpen(true);
     }
 
-    // Email OTP code entry
-    if (anonOtpSent && anonAuthMethod === "email") {
-      return (
-        <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 card-pad">
-          <p className="text-sm font-semibold text-foreground">{t("enterCode")}</p>
-          <p className="text-xs text-muted-foreground">
-            {t("codeSentTo", { email: anonEmail })}
-          </p>
-
-          <input
-            ref={anonCvInputRef}
-            type="file"
-            accept=".pdf,.doc,.docx"
-            className="hidden"
-            onChange={(e) => {
-              setAnonCvFile(e.target.files?.[0] ?? null);
-              e.target.value = "";
-            }}
-          />
-
-          <Button
-            size="lg"
-            type="button"
-            variant="outline"
-            className="w-full justify-start gap-2 rounded-xl text-sm"
-            onClick={() => anonCvInputRef.current?.click()}
-            disabled={anonPhase !== "idle" || anonOtpResendCountdown > 0}
-          >
-            {anonCvFile ? <FileText className="h-4 w-4 text-primary" /> : <Upload className="h-4 w-4" />}
-            <span className="truncate">{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
-          </Button>
-
-          <Input
-            type="text"
-            inputMode="numeric"
-            maxLength={6}
-            placeholder="000000"
-            value={anonOtpCode}
-            onChange={(e) => setAnonOtpCode(e.target.value.replace(/\D/g, ""))}
-            className="rounded-xl text-center tracking-widest text-lg"
-            autoComplete="one-time-code"
-          />
-
-          <Button
-            size="lg"
-            onClick={handleAnonEmailOtpSubmit}
-            disabled={anonPhase !== "idle" || anonOtpCode.length !== 6}
-            className="w-full rounded-2xl text-base font-medium gap-2"
-          >
-            {anonPhase !== "idle" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {t("verify")}
-          </Button>
-
-          {anonError && <p className="text-center text-xs text-destructive">{anonError}</p>}
-
-          <div className="flex gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setAnonAuthMethod(null);
-                setAnonOtpSent(false);
-                setAnonEmail("");
-                setAnonName("");
-                setAnonOtpCode("");
-              }}
-              className="flex-1 text-center text-muted-foreground underline-offset-2 hover:underline"
-            >
-              {t("useDifferentEmail")}
-            </button>
-            <button
-              type="button"
-              onClick={handleAnonEmailOtpStart}
-              disabled={anonOtpResendCountdown > 0}
-              className="flex-1 text-center text-muted-foreground underline-offset-2 hover:underline disabled:opacity-50"
-            >
-              {anonOtpResendCountdown > 0 ? t("resendIn", { seconds: anonOtpResendCountdown }) : t("resend")}
-            </button>
-          </div>
-
-          <button
-            type="button"
-            className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
-            onClick={() =>
-              router.push(`/${locale}/login?callbackUrl=/${locale}/jobs/${jobId}`)
-            }
-          >
-            {t("signInApply")}
-          </button>
-        </div>
-      );
+    // Apply without CV: straight to log-in, dropping any CV picked earlier, so
+    // the visitor lands on the apply form.
+    function openAuthWithoutCv() {
+      setAnonCvFile(null);
+      setAnonError("");
+      setDialogStep("auth");
+      setAuthDialogOpen(true);
     }
 
-    // Main anonymous card - initial state
-    return (
-      <div className="space-y-3 rounded-3xl border border-border/70 bg-muted/10 card-pad">
-        <p className="text-sm font-semibold text-foreground">{t("quickApplyTitle")}</p>
-        <p className="text-xs text-muted-foreground">{t("quickApplyHint")}</p>
+    const cvStep = (
+      <>
+        <DialogHeader>
+          <DialogTitle>{t("cvDialogTitle")}</DialogTitle>
+          <DialogDescription>{t("cvDialogHint")}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          {anonCvFile ? (
+            <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5">
+              <FileText className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{anonCvFile.name}</span>
+              <button
+                type="button"
+                onClick={() => anonCvInputRef.current?.click()}
+                className="shrink-0 text-xs font-medium text-primary underline-offset-2 hover:underline"
+              >
+                {t("changeCv")}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => anonCvInputRef.current?.click()}
+              className="flex w-full flex-col items-center gap-1.5 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 px-4 py-6 text-center transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Upload className="h-5 w-5 text-primary" aria-hidden="true" />
+              <span className="text-sm font-semibold text-foreground">{t("uploadYourCv")}</span>
+              <span className="text-xs text-muted-foreground">{t("cvFormats")}</span>
+            </button>
+          )}
+          {anonCvFile && (
+            <Button
+              size="lg"
+              className="w-full rounded-2xl text-base font-medium gap-2"
+              onClick={() => setDialogStep("auth")}
+            >
+              <Zap className="h-4 w-4" aria-hidden="true" />
+              {t("applyNow")}
+            </Button>
+          )}
+        </div>
+      </>
+    );
 
-        {inAppBrwsr && (
-          <p className="text-xs bg-amber-50 border border-amber-200 rounded-lg p-2 text-amber-900">
-            {t("inAppBrowserHint", { app: inAppName || "this app" })}
-          </p>
-        )}
+    function resetEmailStep() {
+      setAnonAuthMethod(null);
+      setAnonOtpSent(false);
+      setAnonEmail("");
+      setAnonName("");
+      setAnonOtpCode("");
+    }
 
-        <input
-          ref={anonCvInputRef}
-          type="file"
-          accept=".pdf,.doc,.docx"
-          className="hidden"
-          onChange={(e) => {
-            setAnonCvFile(e.target.files?.[0] ?? null);
-            e.target.value = "";
-          }}
+    const googleButton = (
+      <>
+        <Button
+          size="lg"
+          variant={inAppBrwsr ? "outline" : "default"}
+          className="w-full rounded-2xl text-base font-medium gap-2"
+          onClick={handleAnonGoogleApply}
+          onPointerEnter={preloadGoogleSignIn}
+          onFocus={preloadGoogleSignIn}
+          onTouchStart={preloadGoogleSignIn}
+          aria-describedby={GOOGLE_WINDOW_NOTICE_ID}
+          disabled={busy}
+        >
+          {busy && anonAuthMethod !== "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleMark />}
+          {anonPhase === "extract" ? t("settingUpProfile") : t("continueWithGoogle")}
+        </Button>
+        <GoogleWindowNotice
+          notice={t("googleWindowNotice")}
+          blockedMessage={t("googleWindowBlocked")}
+          blocked={googleWindowBlocked}
+          className="-mt-2"
+        />
+      </>
+    );
+
+    // E-mail step: name + address → 6-digit code → verify.
+    const emailStep = anonOtpSent ? (
+      <div className="space-y-3">
+        <p className="text-xs text-muted-foreground">{t("codeSentTo", { email: anonEmail })}</p>
+        <Input
+          type="text"
+          inputMode="numeric"
+          maxLength={6}
+          placeholder="000000"
+          aria-label={t("enterCode")}
+          value={anonOtpCode}
+          onChange={(e) => setAnonOtpCode(e.target.value.replace(/\D/g, ""))}
+          className="rounded-xl text-center tracking-widest text-lg"
+          autoComplete="one-time-code"
         />
         <Button
           size="lg"
-          type="button"
-          variant="outline"
-          className="w-full justify-start gap-2 rounded-xl text-sm"
-          onClick={() => anonCvInputRef.current?.click()}
-          disabled={anonPhase !== "idle"}
+          onClick={handleAnonEmailOtpSubmit}
+          disabled={busy || anonOtpCode.length !== 6}
+          className="w-full rounded-2xl text-base font-medium gap-2"
         >
-          {anonCvFile ? <FileText className="h-4 w-4 text-primary" /> : <Upload className="h-4 w-4" />}
-          <span className="truncate">{anonCvFile ? anonCvFile.name : t("uploadYourCv")}</span>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          {anonPhase === "extract" ? t("settingUpProfile") : t("verify")}
         </Button>
-
-        {showEmailFirst ? (
-          <>
-            <div className="field">
-              <Label htmlFor="anon-email" className="text-xs font-medium text-foreground">
-                {t("email")}
-              </Label>
-              <Input
-                id="anon-email"
-                type="email"
-                value={anonEmail}
-                onChange={(e) => setAnonEmail(e.target.value)}
-                placeholder={t("enterEmail")}
-                className="rounded-xl"
-                disabled={anonOtpSent}
-              />
-            </div>
-
-            <Button
-              size="lg"
-              onClick={handleAnonEmailOtpStart}
-              disabled={anonPhase !== "idle" || !anonEmail}
-              className="w-full rounded-2xl text-base font-medium gap-2"
-            >
-              {anonPhase !== "idle" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {t("sendCode")}
-            </Button>
-            <CaptchaNotice className="-mt-1.5" />
-
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={handleAnonGoogleApply}
-              onPointerEnter={preloadGoogleSignIn}
-              onFocus={preloadGoogleSignIn}
-              onTouchStart={preloadGoogleSignIn}
-              aria-describedby={GOOGLE_WINDOW_NOTICE_ID}
-              disabled={anonPhase !== "idle"}
-              className="w-full rounded-2xl text-base font-medium gap-2"
-            >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              {t("continueWithGoogle")}
-            </Button>
-            <GoogleWindowNotice
-              notice={t("googleWindowNotice")}
-              blockedMessage={t("googleWindowBlocked")}
-              blocked={googleWindowBlocked}
-              className="-mt-2"
-            />
-
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline flex items-center justify-center gap-1"
-            >
-              <Link2 className="h-3 w-3" />
-              {t("copyLink")}
-            </button>
-          </>
-        ) : (
-          <>
-            <Button
-              size="lg"
-              className="w-full rounded-2xl text-base font-medium gap-2"
-              onClick={handleAnonGoogleApply}
-              onPointerEnter={preloadGoogleSignIn}
-              onFocus={preloadGoogleSignIn}
-              onTouchStart={preloadGoogleSignIn}
-              aria-describedby={GOOGLE_WINDOW_NOTICE_ID}
-              disabled={anonPhase !== "idle"}
-            >
-              {anonPhase !== "idle" ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                </svg>
-              )}
-              {anonPhase === "extract" ? t("settingUpProfile") : t("continueWithGoogle")}
-            </Button>
-            <GoogleWindowNotice
-              notice={t("googleWindowNotice")}
-              blockedMessage={t("googleWindowBlocked")}
-              blocked={googleWindowBlocked}
-              className="-mt-2"
-            />
-
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => setAnonAuthMethod("email")}
-              disabled={anonPhase !== "idle"}
-              className="w-full rounded-2xl text-base font-medium gap-2"
-            >
-              {t("continueWithEmail")}
-            </Button>
-
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline flex items-center justify-center gap-1"
-            >
-              <Link2 className="h-3 w-3" />
-              {t("copyLink")}
-            </button>
-          </>
-        )}
-
-        {anonError && <p className="text-center text-xs text-destructive">{anonError}</p>}
-
-        <button
-          type="button"
-          className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
-          onClick={() =>
-            router.push(`/${locale}/login?callbackUrl=/${locale}/jobs/${jobId}`)
-          }
-        >
-          {t("signInApply")}
-        </button>
+        <div className="flex gap-2 text-xs">
+          <button
+            type="button"
+            onClick={resetEmailStep}
+            disabled={busy}
+            className="flex-1 text-center text-muted-foreground underline-offset-2 hover:underline"
+          >
+            {t("useDifferentEmail")}
+          </button>
+          <button
+            type="button"
+            onClick={handleAnonEmailOtpStart}
+            disabled={busy || anonOtpResendCountdown > 0}
+            className="flex-1 text-center text-muted-foreground underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            {anonOtpResendCountdown > 0 ? t("resendIn", { seconds: anonOtpResendCountdown }) : t("resend")}
+          </button>
+        </div>
       </div>
+    ) : (
+      <div className="space-y-3">
+        <div className="field">
+          <Label htmlFor="anon-name" className="text-xs font-medium text-foreground">
+            {t("fullName")} <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            id="anon-name"
+            type="text"
+            value={anonName}
+            onChange={(e) => setAnonName(e.target.value)}
+            placeholder={t("enterFullName")}
+            className="rounded-xl"
+            autoComplete="name"
+            maxLength={200}
+          />
+        </div>
+        <div className="field">
+          <Label htmlFor="anon-email" className="text-xs font-medium text-foreground">
+            {t("email")}
+          </Label>
+          <Input
+            id="anon-email"
+            type="email"
+            value={anonEmail}
+            onChange={(e) => setAnonEmail(e.target.value)}
+            placeholder={t("enterEmail")}
+            className="rounded-xl"
+            autoComplete="email"
+          />
+        </div>
+        <Button
+          size="lg"
+          onClick={handleAnonEmailOtpStart}
+          disabled={busy || !anonEmail || !anonName.trim()}
+          className="w-full rounded-2xl text-base font-medium gap-2"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {t("sendCode")}
+        </Button>
+        <CaptchaNotice className="-mt-1.5" />
+      </div>
+    );
+
+    return (
+      <>
+        <div className="space-y-3">
+          {/* Header: what this is, plus a small CV-and-sparkle mark. */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent px-4 py-4">
+            <div className="flex items-start gap-2.5 pe-12">
+              <Zap className="mt-0.5 h-5 w-5 shrink-0 fill-primary text-primary" aria-hidden="true" />
+              <div>
+                <p className="text-lg font-semibold leading-tight text-foreground">{t("quickApplyTitle")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("chooseHowToApply")}</p>
+              </div>
+            </div>
+            <div className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 rotate-6 rounded-xl border border-primary/15 bg-background/90 p-2 shadow-sm" aria-hidden="true">
+              <FileText className="h-6 w-6 text-primary/70" />
+              <Sparkles className="absolute -end-1.5 -top-1.5 h-4 w-4 fill-primary text-primary" />
+            </div>
+          </div>
+
+          <input
+            ref={anonCvInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            className="hidden"
+            onChange={(e) => {
+              setAnonCvFile(e.target.files?.[0] ?? null);
+              e.target.value = "";
+            }}
+          />
+
+          {/* Login sits in the site header, so the card offers only the two ways to apply.
+              The AI part is said on the option itself: a hint above it goes unread. */}
+          <button
+            type="button"
+            onClick={openCvDialog}
+            className="group relative flex w-full items-center gap-3 rounded-2xl bg-gradient-to-br from-primary to-blue-800 p-4 pt-5 text-start text-primary-foreground shadow-md shadow-primary/20 transition hover:shadow-lg hover:shadow-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <span className="absolute top-0 end-4 -translate-y-1/2 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-semibold leading-tight text-amber-950 shadow-sm">
+              {t("recommended")}
+            </span>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/25" aria-hidden="true">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-center gap-1.5">
+                <span className="text-base font-semibold">{t("applyWithCv")}</span>
+                <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold leading-none">{t("aiBadge")}</span>
+              </span>
+              <span className="mt-1 block text-xs text-primary-foreground/85">{t("applyWithCvDesc")}</span>
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            onClick={openAuthWithoutCv}
+            className="group flex w-full items-center gap-3 rounded-2xl border border-border bg-background p-4 text-start transition hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary" aria-hidden="true">
+              <UserRound className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-base font-semibold text-foreground">{t("applyWithoutCv")}</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">{t("applyWithoutCvDesc")}</span>
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" />
+          </button>
+        </div>
+
+        <Dialog
+          open={authDialogOpen}
+          onOpenChange={(open) => {
+            // Mid sign-in the dialog stays: closing it would hide the progress.
+            if (!open && busy) return;
+            setAuthDialogOpen(open);
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            {dialogStep === "cv" ? cvStep : (<>
+            <DialogHeader>
+              <DialogTitle>{t("authDialogTitle")}</DialogTitle>
+              <DialogDescription>
+                {anonCvFile ? t("authDialogHintCv", { file: anonCvFile.name }) : t("authDialogHint")}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              {inAppBrwsr && (
+                <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                  <p>{t("inAppBrowserHint", { app: inAppName || "this app" })}</p>
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline"
+                  >
+                    <Link2 className="h-3 w-3" aria-hidden="true" />
+                    {t("copyLink")}
+                  </button>
+                </div>
+              )}
+
+              {/* In-app browsers block the Google window, so e-mail leads there. */}
+              {inAppBrwsr ? (
+                <>
+                  {emailStep}
+                  {!anonOtpSent && (
+                    <>
+                      <OrDivider label={t("orDivider")} />
+                      {googleButton}
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  {anonAuthMethod !== "email" && googleButton}
+                  {anonAuthMethod === "email" ? (
+                    <>
+                      {emailStep}
+                      {!anonOtpSent && (
+                        <button
+                          type="button"
+                          onClick={resetEmailStep}
+                          disabled={busy}
+                          className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+                        >
+                          {t("backToOptions")}
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <OrDivider label={t("orDivider")} />
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        onClick={() => setAnonAuthMethod("email")}
+                        disabled={busy}
+                        className="w-full rounded-2xl text-base font-medium gap-2"
+                      >
+                        <Mail className="h-4 w-4" aria-hidden="true" />
+                        {t("continueWithEmail")}
+                      </Button>
+                    </>
+                  )}
+                </>
+              )}
+
+              {anonError && <p className="text-center text-xs text-destructive" role="alert">{anonError}</p>}
+            </div>
+            </>)}
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
@@ -1681,6 +1648,28 @@ function EasyApplySkillConfirm({ jobId }: { jobId: string }) {
           {t("moreSkillQuestions", { count: remaining - 1 })}
         </p>
       )}
+    </div>
+  );
+}
+
+// Google's own multi-colour "G" (brand asset, so not a lucide icon).
+function GoogleMark() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden>
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+    </svg>
+  );
+}
+
+function OrDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 text-xs text-muted-foreground" role="separator">
+      <span className="h-px flex-1 bg-border" />
+      {label}
+      <span className="h-px flex-1 bg-border" />
     </div>
   );
 }
