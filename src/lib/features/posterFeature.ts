@@ -8,4 +8,4 @@
  *
  * Kept free of imports so client components can read it.
  */
-export const POSTERS_ENABLED = false;
+export const POSTERS_ENABLED = true;

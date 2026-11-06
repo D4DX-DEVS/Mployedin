@@ -26,7 +26,12 @@ const baseHandler = createMcpHandler(
  * token minted by /api/mcp/token) — see CSRF_EXEMPT_EXACT_PATHS for why this
  * exact path (and only this exact path) skips the cookie-based CSRF check.
  */
-const authedHandler = withMcpAuth(baseHandler, verifyMcpToken, { required: true });
+const authedHandler = withMcpAuth(baseHandler, verifyMcpToken, {
+  required: true,
+  // RFC 9728 §3.1 path-suffixed metadata URL for the /api/mcp resource; the
+  // proxy rewrites it (and the bare root form) to the same metadata route.
+  resourceMetadataPath: "/.well-known/oauth-protected-resource/api/mcp",
+});
 
 /**
  * This server speaks the legacy (initialize-handshake) MCP versions, up to

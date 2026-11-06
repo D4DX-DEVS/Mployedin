@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import McpToken from "@/models/McpToken";
-import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { normalizeMcpResource } from "@/lib/mcp/baseUrl";
 import { getClientIp } from "@/lib/security/clientIp";
 import { MCP_RATE_LIMITS, mcpRateLimited } from "@/lib/mcp/rateLimit";
 
@@ -33,9 +33,12 @@ export async function POST(req: NextRequest) {
   ]);
   if (limited) return limited;
 
-  if (!rawToken || !clientId || resource !== getMcpResourceUrl()) {
+  // RFC 7009 has no resource parameter; when a client sends one anyway it must
+  // still name this server. Tokens are matched by hash + client only, so legacy
+  // origin-bound and canonical tokens revoke alike.
+  if (!rawToken || !clientId || (resource && !normalizeMcpResource(resource))) {
     return NextResponse.json(
-      { error: "invalid_request", error_description: "token, client_id and the canonical resource are required" },
+      { error: "invalid_request", error_description: "token and client_id are required; resource, if sent, must name this server" },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -44,7 +47,6 @@ export async function POST(req: NextRequest) {
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
   const token = await McpToken.findOne({
     clientId,
-    resource,
     $or: [{ accessTokenHash: tokenHash }, { refreshTokenHash: tokenHash }],
   }).lean();
 

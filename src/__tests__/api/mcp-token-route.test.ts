@@ -200,6 +200,64 @@ describe("POST /api/mcp/token security", () => {
     }));
   });
 
+  it("refreshes a legacy origin-bound token when the client names the endpoint URL, moving it to the canonical resource", async () => {
+    const authorizationExpiresAt = new Date(Date.now() + 24 * 60 * 60_000);
+    const oldToken = {
+      _id: "token-id",
+      familyId: "family-id",
+      clientId: "mcpc_example",
+      resource: "http://localhost:3000",
+      userId: "user-id",
+      role: "admin",
+      scopes: ["read:reports"],
+      isRevoked: false,
+      refreshTokenExpiresAt: authorizationExpiresAt,
+      authorizationExpiresAt,
+    };
+    tokenModel.findOne.mockReturnValue(leanResult(oldToken));
+    tokenModel.findOneAndUpdate.mockReturnValue(leanResult(oldToken));
+    userModel.findById.mockReturnValue(userResult({ role: "admin", isActive: true, permissionMode: "role_default" }));
+
+    const res = await POST(formRequest({
+      grant_type: "refresh_token",
+      refresh_token: "mcp_rt_example",
+      client_id: "mcpc_example",
+      resource: "http://localhost:3000/api/mcp",
+    }));
+
+    expect(res.status).toBe(200);
+    expect(tokenModel.create).toHaveBeenCalledWith(expect.objectContaining({
+      resource: "http://localhost:3000/api/mcp",
+    }));
+  });
+
+  it("refreshes without a resource parameter (RFC 8707 makes it optional)", async () => {
+    const authorizationExpiresAt = new Date(Date.now() + 24 * 60 * 60_000);
+    const oldToken = {
+      _id: "token-id",
+      familyId: "family-id",
+      clientId: "mcpc_example",
+      resource: "http://localhost:3000/api/mcp",
+      userId: "user-id",
+      role: "admin",
+      scopes: ["read:reports"],
+      isRevoked: false,
+      refreshTokenExpiresAt: authorizationExpiresAt,
+      authorizationExpiresAt,
+    };
+    tokenModel.findOne.mockReturnValue(leanResult(oldToken));
+    tokenModel.findOneAndUpdate.mockReturnValue(leanResult(oldToken));
+    userModel.findById.mockReturnValue(userResult({ role: "admin", isActive: true, permissionMode: "role_default" }));
+
+    const res = await POST(formRequest({
+      grant_type: "refresh_token",
+      refresh_token: "mcp_rt_example",
+      client_id: "mcpc_example",
+    }));
+
+    expect(res.status).toBe(200);
+  });
+
   it("rate-limits token calls per client so one app cannot hammer the endpoint", async () => {
     const statuses: number[] = [];
     for (let i = 0; i < 21; i += 1) {

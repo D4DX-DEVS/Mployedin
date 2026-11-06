@@ -5,7 +5,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import McpClient from "@/models/McpClient";
 import { scopesForRole, type McpScope } from "@/lib/mcp/scopes";
 import { isAllowedMcpRedirectUri, mcpRedirectHost } from "@/lib/mcp/oauth";
-import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { isMcpResource } from "@/lib/mcp/baseUrl";
 import { ConsentForm } from "./ConsentForm";
 import type { UserRole } from "@/types/user";
 
@@ -57,7 +57,7 @@ export default async function McpAuthorizePage({
   const client = clientId ? await McpClient.findOne({ clientId }).lean() : null;
   const valid = Boolean(
     user && role && client && client.redirectUris.includes(redirectUri) && codeChallenge &&
-    resource === getMcpResourceUrl() && isAllowedMcpRedirectUri(redirectUri),
+    isMcpResource(resource) && isAllowedMcpRedirectUri(redirectUri),
   );
   const redirectHost = mcpRedirectHost(redirectUri);
 

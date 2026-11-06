@@ -5,7 +5,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import McpAuthorizationCode from "@/models/McpAuthorizationCode";
 import McpToken from "@/models/McpToken";
 import User from "@/models/User";
-import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { normalizeMcpResource } from "@/lib/mcp/baseUrl";
 import {
   grantPredatesPasswordChange,
   isValidPkceVerifier,
@@ -75,14 +75,17 @@ export async function POST(req: NextRequest) {
     const redirectUri = params.get("redirect_uri") ?? "";
     const clientId = params.get("client_id") ?? "";
     const codeVerifier = params.get("code_verifier") ?? "";
-    const resource = params.get("resource") ?? "";
-    if (!code || !redirectUri || !clientId || !codeVerifier || !resource) {
-      return tokenError("invalid_request", "code, redirect_uri, client_id, code_verifier and resource are required");
+    const requestedResource = params.get("resource") ?? "";
+    if (!code || !redirectUri || !clientId || !codeVerifier) {
+      return tokenError("invalid_request", "code, redirect_uri, client_id and code_verifier are required");
     }
     if (!isValidPkceVerifier(codeVerifier)) {
       return tokenError("invalid_grant", "code_verifier is malformed");
     }
-    if (resource !== getMcpResourceUrl()) {
+    // RFC 8707: optional here. When sent it must name this server; when absent
+    // the grant's own resource applies.
+    const namedResource = requestedResource ? normalizeMcpResource(requestedResource) : null;
+    if (requestedResource && !namedResource) {
       return tokenError("invalid_target", "resource does not identify this MCP server");
     }
 
@@ -96,7 +99,11 @@ export async function POST(req: NextRequest) {
     if (authCode.expiresAt.getTime() < Date.now()) return tokenError("invalid_grant", "Authorization code has expired");
     if (authCode.clientId !== clientId) return tokenError("invalid_grant", "client_id does not match");
     if (authCode.redirectUri !== redirectUri) return tokenError("invalid_grant", "redirect_uri does not match");
-    if (authCode.resource !== resource) return tokenError("invalid_target", "resource does not match authorization");
+    const grantResource = normalizeMcpResource(authCode.resource);
+    if (!grantResource || (namedResource && namedResource !== grantResource)) {
+      return tokenError("invalid_target", "resource does not match authorization");
+    }
+    const resource = grantResource;
 
     const expectedChallenge = await calculatePKCECodeChallenge(codeVerifier);
     if (expectedChallenge !== authCode.codeChallenge) {
@@ -153,11 +160,12 @@ export async function POST(req: NextRequest) {
   if (grantType === "refresh_token") {
     const refreshToken = params.get("refresh_token") ?? "";
     const clientId = params.get("client_id") ?? "";
-    const resource = params.get("resource") ?? "";
-    if (!refreshToken || !clientId || !resource) {
-      return tokenError("invalid_request", "refresh_token, client_id and resource are required");
+    const requestedResource = params.get("resource") ?? "";
+    if (!refreshToken || !clientId) {
+      return tokenError("invalid_request", "refresh_token and client_id are required");
     }
-    if (resource !== getMcpResourceUrl()) {
+    const namedResource = requestedResource ? normalizeMcpResource(requestedResource) : null;
+    if (requestedResource && !namedResource) {
       return tokenError("invalid_target", "resource does not identify this MCP server");
     }
 
@@ -176,7 +184,12 @@ export async function POST(req: NextRequest) {
       return tokenError("invalid_grant", "Refresh token has expired");
     }
     if (oldToken.clientId !== clientId) return tokenError("invalid_grant", "client_id does not match");
-    if (oldToken.resource !== resource) return tokenError("invalid_target", "resource does not match authorization");
+    const grantResource = normalizeMcpResource(oldToken.resource);
+    if (!grantResource || (namedResource && namedResource !== grantResource)) {
+      return tokenError("invalid_target", "resource does not match authorization");
+    }
+    // Rotated tokens move legacy origin-bound grants onto the canonical resource.
+    const resource = grantResource;
 
     const authorizationExpiresAt = oldToken.authorizationExpiresAt ?? oldToken.refreshTokenExpiresAt;
     if (!authorizationExpiresAt || authorizationExpiresAt.getTime() < Date.now()) {

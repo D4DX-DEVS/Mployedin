@@ -8,7 +8,7 @@ import McpAuthorizationCode from "@/models/McpAuthorizationCode";
 import { validateBody } from "@/lib/validators";
 import { scopesForRole } from "@/lib/mcp/scopes";
 import type { AuthContext } from "@/lib/auth/withAuth";
-import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { normalizeMcpResource } from "@/lib/mcp/baseUrl";
 import { isAllowedMcpRedirectUri, isValidPkceChallenge } from "@/lib/mcp/oauth";
 import { MCP_RATE_LIMITS, mcpRateLimited } from "@/lib/mcp/rateLimit";
 import { logActivity } from "@/lib/audit/log";
@@ -43,7 +43,8 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
   if (!client || !client.redirectUris.includes(body.redirect_uri) || !isAllowedMcpRedirectUri(body.redirect_uri)) {
     return NextResponse.json({ error: "invalid_request", error_description: "Unknown client_id or redirect_uri" }, { status: 400 });
   }
-  if (body.resource !== getMcpResourceUrl()) {
+  const resource = normalizeMcpResource(body.resource);
+  if (!resource) {
     return NextResponse.json(
       { error: "invalid_target", error_description: "resource does not identify this MCP server" },
       { status: 400 },
@@ -88,7 +89,7 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     userId: ctx.userId,
     role: ctx.role,
     redirectUri: body.redirect_uri,
-    resource: body.resource,
+    resource,
     codeChallenge: body.code_challenge,
     scopes: grantedScopes,
     expiresAt: new Date(Date.now() + AUTH_CODE_TTL_SECONDS * 1000),

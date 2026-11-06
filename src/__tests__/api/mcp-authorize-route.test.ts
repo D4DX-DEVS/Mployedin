@@ -27,14 +27,14 @@ import { safeCallbackPath } from "@/lib/routing/callbackUrl";
 
 const REDIRECT = "https://chatgpt.com/connector_platform_oauth_redirect";
 
-function authorizeRequest() {
+function authorizeRequest(resource: string | null = "https://app.test") {
   const url = new URL("https://app.test/api/mcp/authorize");
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", "mcpc_1");
   url.searchParams.set("redirect_uri", REDIRECT);
   url.searchParams.set("code_challenge", "A".repeat(43));
   url.searchParams.set("code_challenge_method", "S256");
-  url.searchParams.set("resource", "https://app.test");
+  if (resource !== null) url.searchParams.set("resource", resource);
   url.searchParams.set("scope", "read:reports");
   url.searchParams.set("state", "st/ate://x");
   return new NextRequest(url);
@@ -72,6 +72,28 @@ describe("GET /api/mcp/authorize", () => {
     const res = await GET(authorizeRequest());
     const location = new URL(res.headers.get("location") ?? "");
     expect(location.pathname).toBe("/en/mcp-authorize");
-    expect(location.searchParams.get("resource")).toBe("https://app.test");
+    // The legacy bare-origin resource is accepted and normalised to the endpoint URL.
+    expect(location.searchParams.get("resource")).toBe("https://app.test/api/mcp");
+  });
+
+  // ChatGPT sends the connector URL itself as the resource; before 2026-11-06
+  // this answered invalid_target and the login screen never appeared.
+  it.each(["https://app.test/api/mcp", "https://app.test/api/mcp/", null])(
+    "accepts resource=%s (ChatGPT / MCP SDK / absent)",
+    async (resource) => {
+      (auth as jest.Mock).mockResolvedValue({ user: { id: "u1", role: "job_seeker" } });
+      const res = await GET(authorizeRequest(resource));
+      const location = new URL(res.headers.get("location") ?? "");
+      expect(location.pathname).toBe("/en/mcp-authorize");
+      expect(location.searchParams.get("resource")).toBe("https://app.test/api/mcp");
+    },
+  );
+
+  it("rejects a resource naming another server", async () => {
+    (auth as jest.Mock).mockResolvedValue({ user: { id: "u1", role: "job_seeker" } });
+    const res = await GET(authorizeRequest("https://evil.example/api/mcp"));
+    const location = new URL(res.headers.get("location") ?? "");
+    expect(location.origin + location.pathname).toBe(REDIRECT);
+    expect(location.searchParams.get("error")).toBe("invalid_target");
   });
 });
