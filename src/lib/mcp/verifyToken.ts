@@ -3,7 +3,7 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { connectDB } from "@/lib/db/mongoose";
 import McpToken from "@/models/McpToken";
 import User from "@/models/User";
-import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { isMcpResource } from "@/lib/mcp/baseUrl";
 import { defaultScopesForRole, type McpScope } from "@/lib/mcp/scopes";
 import { grantPredatesPasswordChange } from "@/lib/mcp/oauth";
 
@@ -19,7 +19,7 @@ export async function verifyMcpToken(
   if (!token) return undefined;
   if (token.accessTokenExpiresAt.getTime() < Date.now()) return undefined;
   if (!token.authorizationExpiresAt || token.authorizationExpiresAt.getTime() < Date.now()) return undefined;
-  if (token.resource !== getMcpResourceUrl()) return undefined;
+  if (!isMcpResource(token.resource)) return undefined;
 
   // Authorization is live, not a 90-day snapshot. Deactivation, role changes,
   // and custom permission changes take effect on the very next tool call.

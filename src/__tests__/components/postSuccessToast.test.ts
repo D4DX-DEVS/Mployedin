@@ -1,3 +1,4 @@
+import { POSTERS_ENABLED } from "@/lib/features/posterFeature";
 import { jobLandingHref, postSuccessToastOptions } from "@/components/features/employer/job-form/postSuccessToast";
 
 const labels = {
@@ -31,9 +32,9 @@ describe("postSuccessToastOptions", () => {
     }
   });
 
-  it("defaults to the feature flag", () => {
+  it("defaults to the feature flag (posters shown again 2026-11-06)", () => {
     const opts = postSuccessToastOptions({ basePath: "employer", posterHref: "x", push: jest.fn(), labels });
-    expect(opts.description).toBe(labels.descriptionNoPoster);
+    expect(opts.description).toBe(POSTERS_ENABLED ? labels.description : labels.descriptionNoPoster);
   });
 });
 

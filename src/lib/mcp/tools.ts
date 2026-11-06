@@ -6,7 +6,7 @@ import type { McpScope } from "@/lib/mcp/scopes";
 import { canAccess } from "@/lib/permissions/matrix";
 import { connectDB } from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
-import { getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { getMcpResourceMetadataUrl } from "@/lib/mcp/baseUrl";
 import { DASHBOARD_PERIODS, resolveDashboardPeriod, type DashboardPeriod } from "@/lib/admin/dashboard/period";
 import { describePeriod } from "@/lib/mcp/reports/period";
 import { sanitizeReport } from "@/lib/mcp/reports/privacy";
@@ -54,7 +54,7 @@ function errorResult(text: string, scope?: McpScope) {
       ? {
           _meta: {
             "mcp/www_authenticate":
-              `Bearer resource_metadata="${getMcpResourceUrl()}/.well-known/oauth-protected-resource", ` +
+              `Bearer resource_metadata="${getMcpResourceMetadataUrl()}", ` +
               `error="insufficient_scope", error_description="The ${scope} scope is required"`,
           },
         }

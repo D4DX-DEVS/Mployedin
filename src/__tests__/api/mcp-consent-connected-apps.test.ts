@@ -144,7 +144,7 @@ describe("POST /api/mcp/consent", () => {
     expect(url.searchParams.get("code")).toMatch(/^mcpac_[0-9a-f]{64}$/);
     expect(url.searchParams.get("state")).toBe("s1");
     expect(codeModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: "owner-1", role: "employer", resource: "https://app.test" }),
+      expect.objectContaining({ userId: "owner-1", role: "employer", resource: "https://app.test/api/mcp" }),
     );
     expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "mcp.connected", actorId: "owner-1" }));
   });

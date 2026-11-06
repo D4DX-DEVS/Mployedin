@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { connectDB } from "@/lib/db/mongoose";
 import McpClient from "@/models/McpClient";
-import { getAppBaseUrl, getMcpResourceUrl } from "@/lib/mcp/baseUrl";
+import { getAppBaseUrl, getMcpResourceUrl, normalizeMcpResource } from "@/lib/mcp/baseUrl";
 import { isAllowedMcpRedirectUri, isValidPkceChallenge } from "@/lib/mcp/oauth";
 import { getClientIp } from "@/lib/security/clientIp";
 import { MCP_RATE_LIMITS, mcpRateLimited } from "@/lib/mcp/rateLimit";
@@ -59,7 +59,10 @@ export async function GET(req: NextRequest) {
   if (!isValidPkceChallenge(codeChallenge) || codeChallengeMethod !== "S256") {
     return authorizeError(redirectUri, "invalid_request", "PKCE (code_challenge with S256) is required", state);
   }
-  if (resource !== getMcpResourceUrl()) {
+  // RFC 8707: `resource` is optional. Absent → this server's canonical resource.
+  // Present → must name this server (endpoint URL or the legacy bare origin).
+  const canonicalResource = resource ? normalizeMcpResource(resource) : getMcpResourceUrl();
+  if (!canonicalResource) {
     return authorizeError(redirectUri, "invalid_target", "resource does not identify this MCP server", state);
   }
 
@@ -72,7 +75,7 @@ export async function GET(req: NextRequest) {
   consentUrl.searchParams.set("client_id", clientId);
   consentUrl.searchParams.set("redirect_uri", redirectUri);
   consentUrl.searchParams.set("code_challenge", codeChallenge);
-  consentUrl.searchParams.set("resource", resource);
+  consentUrl.searchParams.set("resource", canonicalResource);
   consentUrl.searchParams.set("scope", scope);
   if (state) consentUrl.searchParams.set("state", state);
   // Login only follows a relative /<locale>/… callback (safeCallbackPath rejects

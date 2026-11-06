@@ -115,10 +115,22 @@ export default auth(async function middleware(req: NextAuthRequest) {
   // to a route handler under /api/mcp/well-known — App Router route segments
   // starting with "." are unconventional/risky, so the dot-prefixed public path
   // is served via a rewrite rather than a literal folder name.
-  if (pathname === "/.well-known/oauth-authorization-server" || pathname === "/.well-known/oauth-protected-resource") {
+  //
+  // Both the root form and the RFC 9728 / RFC 8414 path-suffixed form for the
+  // /api/mcp resource are served (ChatGPT and the MCP SDK try the suffixed one
+  // first). OpenID discovery is answered with a plain JSON 404 so clients fall
+  // back to the RFC 8414 document instead of following a locale redirect to an
+  // HTML page.
+  const wellKnownMcp = pathname.match(/^\/\.well-known\/(oauth-authorization-server|oauth-protected-resource)(?:\/api\/mcp)?\/?$/);
+  if (wellKnownMcp) {
     const url = req.nextUrl.clone();
-    url.pathname = `/api/mcp/well-known${pathname.slice("/.well-known".length)}`;
+    url.pathname = `/api/mcp/well-known/${wellKnownMcp[1]}`;
     return withSecurityHeaders(NextResponse.rewrite(url));
+  }
+  if (/^\/\.well-known\/openid-configuration(?:\/api\/mcp)?\/?$/.test(pathname)) {
+    return withSecurityHeaders(
+      NextResponse.json({ error: "not_found" }, { status: 404, headers: { "Access-Control-Allow-Origin": "*" } }),
+    );
   }
 
   // Redirect locale-prefixed API routes → /api/… (clients like next-auth/react
