@@ -58,6 +58,12 @@ jest.mock("@/lib/audit/log", () => ({ actorFromCtx: jest.fn(() => ({})), logActi
 jest.mock("@/lib/notifications/trigger", () => ({ notify: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/hiring/closeOpenInterviews", () => ({ closeOpenInterviewsForAdvance: jest.fn() }));
 
+const Placement = { create: jest.fn() };
+jest.mock("@/models/Placement", () => ({ __esModule: true, default: Placement }));
+
+const logger = { error: jest.fn(), warn: jest.fn(), info: jest.fn() };
+jest.mock("@/lib/logger", () => ({ __esModule: true, default: logger }));
+
 const session = {
   withTransaction: jest.fn(async (fn: () => Promise<unknown>) => fn()),
   endSession: jest.fn(),
@@ -173,6 +179,63 @@ describe("PATCH /api/offers/[id] integrity", () => {
       expect.objectContaining({ $set: expect.objectContaining({ status: "withdrawn" }) }),
       expect.objectContaining({ session }),
     );
+  });
+
+  describe("placement on acceptance", () => {
+    const hiredApp = { jobId: "job_1", jobSeekerId: "seeker_1", employerId: "emp_1", agentId: "agent_1" };
+
+    async function accept() {
+      validateBody.mockResolvedValue({ status: "accepted", signatureName: "Cand" });
+      Application.updateOne.mockResolvedValue({ matchedCount: 1 });
+      const { PATCH } = await import("@/app/api/offers/[id]/route");
+      return PATCH(patch("accepted"), { params: Promise.resolve({ id: OFFER_ID }) });
+    }
+
+    it("records a placement for the hired application", async () => {
+      Application.findById.mockReturnValue(chain(hiredApp));
+      Placement.create.mockResolvedValue({});
+      const res = await accept();
+      expect(res.status).toBe(200);
+      expect(Placement.create).toHaveBeenCalledWith(expect.objectContaining({
+        applicationId: APP_ID,
+        jobId: "job_1",
+        jobSeekerId: "seeker_1",
+        employerId: "emp_1",
+        agentId: "agent_1",
+        commissionPaid: false,
+      }));
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it("stays quiet when the application already has a placement", async () => {
+      Application.findById.mockReturnValue(chain(hiredApp));
+      Placement.create.mockRejectedValue(Object.assign(new Error("dup"), { code: 11000 }));
+      const res = await accept();
+      expect(res.status).toBe(200);
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it("logs a failed placement but still answers the candidate", async () => {
+      Application.findById.mockReturnValue(chain(hiredApp));
+      Placement.create.mockRejectedValue(new Error("validation failed"));
+      const res = await accept();
+      expect(res.status).toBe(200);
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ offerId: OFFER_ID, applicationId: APP_ID }),
+        expect.stringContaining("recording the placement failed"),
+      );
+    });
+
+    it("logs when the accepted offer's application is missing", async () => {
+      Application.findById.mockReturnValue(chain(null));
+      const res = await accept();
+      expect(res.status).toBe(200);
+      expect(Placement.create).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ applicationId: APP_ID }),
+        expect.stringContaining("no placement recorded"),
+      );
+    });
   });
 });
 

@@ -13,6 +13,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { getClientIp } from "@/lib/security/clientIp";
+import logger from "@/lib/logger";
 import type { UserRole } from "@/models/User";
 import { agentOwnsOffer, superAgentOwnsOffer } from "@/lib/offers/access";
 import { CLOSED_APPLICATION_STATUSES, OPEN_OFFER_STATUSES } from "@/lib/offers/status";
@@ -196,14 +197,17 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // BUG-05: an accepted offer hires the candidate — record the placement
   // automatically so Dashboard / Placements / Commissions agree with the
   // Hired application instead of showing 0. Best-effort: never fails the
-  // response; duplicates (11000) mean a placement already exists.
+  // response; duplicates (11000) mean a placement already exists. Any other
+  // failure is logged — a silent miss is how hires and placements drift apart.
   if (status === "accepted") {
     try {
       const { default: Placement } = await import("@/models/Placement");
       const app = await Application.findById(offer.applicationId)
         .select("jobId jobSeekerId employerId agentId")
         .lean() as { jobId?: unknown; jobSeekerId?: unknown; employerId?: unknown; agentId?: unknown } | null;
-      if (app) {
+      if (!app) {
+        logger.error({ offerId: String(offer._id), applicationId: String(offer.applicationId) }, "offer accepted but its application was not found; no placement recorded");
+      } else {
         await Placement.create({
           applicationId: offer.applicationId,
           jobId: app.jobId,
@@ -214,8 +218,11 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
           commissionPaid: false,
         });
       }
-    } catch {
-      /* placement recording must never fail the offer response */
+    } catch (err) {
+      // Placement recording must never fail the offer response.
+      if ((err as { code?: number }).code !== 11000) {
+        logger.error({ err, offerId: String(offer._id), applicationId: String(offer.applicationId) }, "offer accepted but recording the placement failed");
+      }
     }
   }
 

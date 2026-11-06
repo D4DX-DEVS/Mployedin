@@ -1,17 +1,35 @@
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
-import { SUPPORTED_PROTOCOL_VERSIONS } from "@modelcontextprotocol/sdk/types.js";
+import { SUPPORTED_PROTOCOL_VERSIONS, type Implementation } from "@modelcontextprotocol/sdk/types.js";
 import { registerMcpTools } from "@/lib/mcp/tools";
 import { verifyMcpToken } from "@/lib/mcp/verifyToken";
 import { MCP_RATE_LIMITS, mcpRateLimited, tokenKey } from "@/lib/mcp/rateLimit";
 import { getClientIp } from "@/lib/security/clientIp";
+import { getAppBaseUrl } from "@/lib/mcp/baseUrl";
 
 export const runtime = "nodejs";
+
+/**
+ * title + icons (MCP 2025-11-25) are what Claude, ChatGPT and Codex can show
+ * beside the connector; without them they fall back to a letter or "@".
+ */
+const SERVER_INFO: Implementation = {
+  name: "mployedin",
+  title: "Mployedin",
+  version: "1.0.0",
+  websiteUrl: getAppBaseUrl(),
+  icons: [
+    { src: `${getAppBaseUrl()}/icons/icon-192x192.png`, mimeType: "image/png", sizes: ["192x192"] },
+    { src: `${getAppBaseUrl()}/icons/icon-512x512.png`, mimeType: "image/png", sizes: ["512x512"] },
+  ],
+};
 
 const baseHandler = createMcpHandler(
   async (server) => {
     registerMcpTools(server);
   },
-  { serverInfo: { name: "mployedin", version: "1.0.0" } },
+  // mcp-handler types serverInfo as { name, version } but hands it unchanged
+  // to the SDK's McpServer, which sends the full Implementation.
+  { serverInfo: SERVER_INFO as { name: string; version: string } },
   {
     // mcp-handler serves only `${basePath}/mcp` and answers every other path
     // with a bare 404. Without basePath it expects "/mcp", so every signed-in

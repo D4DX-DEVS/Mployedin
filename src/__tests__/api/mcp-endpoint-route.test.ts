@@ -105,6 +105,22 @@ describe("POST /api/mcp (real mcp-handler)", () => {
     });
   });
 
+  it("names itself Mployedin and sends the logo so clients can show it", async () => {
+    const res = await rpc({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "initialize",
+      params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "jest", version: "1.0.0" } },
+    });
+    const body = (await payload(res)) as { result: { serverInfo: { title?: string; icons?: Array<{ src: string; mimeType?: string }> } } };
+    expect(body.result.serverInfo.title).toBe("Mployedin");
+    expect(body.result.serverInfo.icons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ src: expect.stringMatching(/\/icons\/icon-192x192\.png$/), mimeType: "image/png" }),
+      ]),
+    );
+  });
+
   function modernRequest(body: Record<string, unknown>) {
     return POST(
       new Request(URL_, {
