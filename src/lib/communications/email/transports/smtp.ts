@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
 import type { SmtpConfig } from "../types";
 
 /**
@@ -33,10 +34,10 @@ export function normalizeSmtpPassword(raw: string | undefined, host: string | un
   return /gmail|googlemail/i.test(host ?? "") ? raw.replace(/\s+/g, "") : raw;
 }
 
-let defaultTransporter: nodemailer.Transporter | null = null;
+let defaultTransporter: Transporter | null = null;
 
 /** GMAIL_* OAuth2 → SMTP_* / EMAIL_* → Ethereal (dev). Built once per process. */
-export function getEnvTransporter(): nodemailer.Transporter {
+export function getEnvTransporter(): Transporter {
   if (defaultTransporter) return defaultTransporter;
 
   if (process.env.GMAIL_CLIENT_ID && process.env.GMAIL_CLIENT_SECRET && process.env.GMAIL_REFRESH_TOKEN) {
@@ -94,9 +95,9 @@ export function envFromEmail(): string {
  * overrides and the DB-level SMTP config are both stable, so key the cache on the
  * config itself: a changed host/user/password simply produces a new entry.
  */
-const smtpTransporterCache = new Map<string, nodemailer.Transporter>();
+const smtpTransporterCache = new Map<string, Transporter>();
 
-export function createSmtpTransporter(smtp: SmtpConfig): nodemailer.Transporter {
+export function createSmtpTransporter(smtp: SmtpConfig): Transporter {
   const host = smtp.smtpHost || "smtp.gmail.com";
   const port = smtp.smtpPort || 587;
   const pass = normalizeSmtpPassword(smtp.smtpAppPassword, host) ?? smtp.smtpAppPassword;

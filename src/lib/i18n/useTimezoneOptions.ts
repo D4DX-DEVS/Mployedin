@@ -16,14 +16,18 @@ const ZONE_ALIASES: Record<string, string> = {
   "Asia/Cairo": "Africa/Cairo",
 };
 
-/** "GMT+4", "GMT+5:30" — today's offset, so summer time shows as it is. */
-function gmtOffset(timeZone: string): string {
+/**
+ * "GMT+4", "GMT+5:30" — today's offset, so summer time shows as it is.
+ * A zero offset reads "GMT" on ICU 77 but "GMT+0" on newer ICU builds (CI's
+ * Node 22), so it is normalised to "GMT" for one label everywhere.
+ */
+export function gmtOffset(timeZone: string, at: Date = new Date()): string {
   try {
-    return (
+    const offset =
       new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "shortOffset" })
-        .formatToParts(new Date())
-        .find((part) => part.type === "timeZoneName")?.value ?? ""
-    );
+        .formatToParts(at)
+        .find((part) => part.type === "timeZoneName")?.value ?? "";
+    return offset.replace(/^GMT[+-]0(?::00)?$/, "GMT");
   } catch {
     return "";
   }
