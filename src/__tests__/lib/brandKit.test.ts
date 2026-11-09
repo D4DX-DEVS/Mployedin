@@ -5,7 +5,7 @@ import {
   readableTextOn,
   resolveBrandKit,
 } from "@/lib/brand/brandKit";
-import { buildBrandPosterData, defaultHeadline } from "@/lib/poster/brandPosterContent";
+import { buildBrandPosterData, defaultHeadline, posterRequirements } from "@/lib/poster/brandPosterContent";
 
 describe("brand kit", () => {
   it("fills every missing part from the Mployedin kit", () => {
@@ -51,8 +51,41 @@ describe("poster text from a job", () => {
   it("builds the headline, details and call to action", () => {
     const data = buildBrandPosterData(job, { look: "bold" });
     expect(data.headline).toBe("We're hiring");
-    expect(data.details).toEqual(["Dubai, UAE", "Full time · Hybrid", "AED 14,000–18,000/month"]);
-    expect(data.cta).toBe("Scan to apply");
+    expect(data.location).toBe("Dubai, UAE");
+    expect(data.details).toEqual(["Full time · Hybrid", "AED 14,000–18,000/month"]);
+    expect(data.cta).toBe("Scan & apply now");
+    expect(data.applyLabel).toBe("Apply now");
+    expect(data.contact).toBeUndefined();
+  });
+
+  it("lists the employer's written requirements first, at most four", () => {
+    const data = buildBrandPosterData(
+      { ...job, qualifications: ["  Bachelor's degree. ", "3 years in audit", "IFRS", "Arabic", "Excel"], requirements: { experienceMin: 3, experienceMax: 5 } },
+      { look: "bold" },
+    );
+    expect(data.requirementsTitle).toBe("Requirements");
+    expect(data.requirements).toEqual(["Bachelor's degree", "3 years in audit", "IFRS", "Arabic"]);
+  });
+
+  it("fills requirements from experience, education, skills and languages, never the 0-year default", () => {
+    expect(posterRequirements({ requirements: { experienceMin: 0, experienceMax: 10 } })).toEqual([]);
+    expect(
+      posterRequirements({
+        qualifications: ["Valid UAE licence"],
+        requirements: { experienceMin: 2, experienceMax: 4, education: "bachelors", skills: ["Excel", "SAP", "IFRS", "VAT", "Tally"], languages: ["English"] },
+      }),
+    ).toEqual(["Valid UAE licence", "2–4 years of experience", "Education: Bachelors", "Skills: Excel, SAP, IFRS, VAT"]);
+    expect(posterRequirements({ qualifications: ["x".repeat(200)] })[0]).toHaveLength(90);
+    expect(posterRequirements({ qualifications: ["English"], qualificationsAr: ["العربية"] }, "ar")).toEqual(["العربية"]);
+  });
+
+  it("prints Mployedin's contact line and the posted date", () => {
+    const data = buildBrandPosterData(
+      { ...job, createdAt: "2026-10-27T10:00:00Z" },
+      { look: "bold", contact: { email: "support@mployedin.com", phone: "" } },
+    );
+    expect(data.contact).toEqual({ label: "For enquiries", email: "support@mployedin.com", phone: undefined });
+    expect(data.posted).toBe("Posted: 27 Oct 2026");
   });
 
   it("leaves the salary off when the job hides it", () => {

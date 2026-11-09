@@ -33,7 +33,7 @@ const EMPLOYER_ROOT = path.join(
 const REACHED_ELSEWHERE: Record<string, string> = {
   "/employer/jobs/ai-create": "Create menu + ⌘K action + jobs list header",
   "/employer/jobs/ai-extract": "AI job creator offers the upload path",
-  "/employer/jobs/new": "Create menu + ⌘K actions (?mode=manual, ?from=template); bare path is the chooser",
+  "/employer/jobs/new": "Create menu + ⌘K actions (?mode=manual, ?from=template); bare path redirects to the AI creator",
   "/employer/job-templates": "Template picker's “Manage templates” link (jobs/new?from=template)",
   "/employer/my-posters": "Each job's Posting tab (“Manage all posters”)",
   "/employer/interviews/bulk": "Interviews header + Create menu + ⌘K action",

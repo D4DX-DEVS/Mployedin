@@ -31,10 +31,11 @@ export async function renderBrandPosterImage(slug: string, size: PosterSize): Pr
     locale: loaded.spec.locale,
     headline: loaded.spec.headline,
     companyName: loaded.companyName,
+    contact: loaded.contact,
     qrDataUrl,
   });
   const needsArabic =
-    ARABIC.test(`${data.title} ${data.headline} ${data.companyName} ${data.details.join(" ")}`) || loaded.spec.locale === "ar";
+    ARABIC.test(`${data.title} ${data.headline} ${data.companyName} ${data.details.join(" ")} ${(data.requirements ?? []).join(" ")}`) || loaded.spec.locale === "ar";
   // Images go in as data URLs: next/og won't fetch our own host, and fetch errors
   // inside its stream can't be turned into a clean response.
   const [{ fonts, family }, logoUrl, platformLogoUrl] = await Promise.all([

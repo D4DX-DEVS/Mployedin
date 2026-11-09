@@ -10,16 +10,29 @@ import { z } from "zod";
  */
 
 /**
- * Fonts a poster may use. Only fonts the app already loads (next/font in
- * app/layout.tsx) or system fonts, so the PNG export draws the same glyphs the
- * preview shows.
+ * Fonts a poster may use. Each is loaded in the browser by next/font
+ * (posterFontFaces.ts, only on poster pages) and fetched by the server from
+ * Google Fonts by `family`, so a downloaded PNG draws the same glyphs the
+ * preview shows. `weights` are the ones Google serves, near the 600/700/800
+ * posters use. Ids are stored in kits: never rename one.
  */
 export const BRAND_FONTS = {
-  manrope: { label: "Manrope", stack: "var(--font-manrope), Manrope, system-ui, sans-serif" },
-  lexend: { label: "Lexend", stack: "var(--font-lexend), Lexend, system-ui, sans-serif" },
-  arabic: { label: "Noto Sans Arabic", stack: "var(--font-noto-arabic), 'Noto Sans Arabic', system-ui, sans-serif" },
-  serif: { label: "Georgia", stack: "Georgia, 'Times New Roman', serif" },
-} as const;
+  manrope: { label: "Manrope", family: "Manrope", weights: [600, 700, 800], stack: "var(--font-manrope), Manrope, system-ui, sans-serif" },
+  lexend: { label: "Lexend", family: "Lexend", weights: [600, 700, 800], stack: "var(--font-lexend), Lexend, system-ui, sans-serif" },
+  poppins: { label: "Poppins", family: "Poppins", weights: [600, 700, 800], stack: "var(--font-poster-poppins), Poppins, system-ui, sans-serif" },
+  montserrat: { label: "Montserrat", family: "Montserrat", weights: [600, 700, 800], stack: "var(--font-poster-montserrat), Montserrat, system-ui, sans-serif" },
+  inter: { label: "Inter", family: "Inter", weights: [600, 700, 800], stack: "var(--font-poster-inter), Inter, system-ui, sans-serif" },
+  nunito: { label: "Nunito", family: "Nunito", weights: [600, 700, 800], stack: "var(--font-poster-nunito), Nunito, system-ui, sans-serif" },
+  raleway: { label: "Raleway", family: "Raleway", weights: [600, 700, 800], stack: "var(--font-poster-raleway), Raleway, system-ui, sans-serif" },
+  oswald: { label: "Oswald (condensed)", family: "Oswald", weights: [500, 600, 700], stack: "var(--font-poster-oswald), Oswald, Impact, sans-serif" },
+  playfair: { label: "Playfair Display (serif)", family: "Playfair Display", weights: [600, 700, 800], stack: "var(--font-poster-playfair), 'Playfair Display', Georgia, serif" },
+  serif: { label: "Noto Serif", family: "Noto Serif", weights: [600, 700, 800], stack: "var(--font-poster-noto-serif), 'Noto Serif', Georgia, serif" },
+  merriweather: { label: "Merriweather (serif)", family: "Merriweather", weights: [700, 900], stack: "var(--font-poster-merriweather), Merriweather, Georgia, serif" },
+  robotoSlab: { label: "Roboto Slab", family: "Roboto Slab", weights: [600, 700, 800], stack: "var(--font-poster-roboto-slab), 'Roboto Slab', Georgia, serif" },
+  arabic: { label: "Noto Sans Arabic", family: "Noto Sans Arabic", weights: [600, 700, 800], stack: "var(--font-noto-arabic), 'Noto Sans Arabic', system-ui, sans-serif" },
+  cairo: { label: "Cairo (Arabic + English)", family: "Cairo", weights: [600, 700, 800], stack: "var(--font-poster-cairo), Cairo, system-ui, sans-serif" },
+  tajawal: { label: "Tajawal (Arabic + English)", family: "Tajawal", weights: [500, 700, 800], stack: "var(--font-poster-tajawal), Tajawal, system-ui, sans-serif" },
+} as const satisfies Record<string, { label: string; family: string; weights: readonly number[]; stack: string }>;
 
 export type BrandFont = keyof typeof BRAND_FONTS;
 export const BRAND_FONT_IDS = Object.keys(BRAND_FONTS) as BrandFont[];
@@ -30,6 +43,8 @@ export type BrandTone = (typeof BRAND_TONES)[number];
 export interface BrandKit {
   /** Logo drawn on the poster. Empty means "use the company logo from the profile". */
   logoUrl?: string;
+  /** Company name on posters when it should differ from the profile name (e.g. a short brand name). */
+  displayName?: string;
   primary: string;
   accent: string;
   text: string;
@@ -62,9 +77,23 @@ const logoUrl = z
   .refine((v) => v === "" || v.startsWith("/") || /^https:\/\//i.test(v), "Use an https address for the logo")
   .optional();
 
+/** Mployedin's contact line on posters (owner decision 2026-11-09: Mployedin's only, every brand). */
+export interface PosterContact {
+  email: string;
+  phone: string;
+}
+
+export const posterContactSchema = z
+  .object({
+    email: z.union([z.literal(""), z.string().trim().email("Enter an email like support@mployedin.com").max(254)]),
+    phone: z.string().trim().max(40).regex(/^[+\d\s().-]*$/, "Use digits, spaces and + ( ) - only"),
+  })
+  .strict();
+
 export const brandKitSchema = z
   .object({
     logoUrl,
+    displayName: z.string().trim().max(60, "Keep the name under 60 characters").optional(),
     primary: hex,
     accent: hex,
     text: hex,
@@ -82,6 +111,7 @@ export function resolveBrandKit(stored?: Partial<BrandKit> | null, base: BrandKi
   };
   return {
     logoUrl: pick("logoUrl"),
+    displayName: stored?.displayName?.trim() || base.displayName || undefined,
     primary: pick("primary"),
     accent: pick("accent"),
     text: pick("text"),

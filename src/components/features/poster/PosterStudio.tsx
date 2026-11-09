@@ -14,14 +14,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MPLOYEDIN_LOGO_URL, type BrandKit } from "@/lib/brand/brandKit";
+import { MPLOYEDIN_LOGO_URL, type BrandKit, type PosterContact } from "@/lib/brand/brandKit";
+import { POSTER_FONT_VARIABLES } from "@/lib/brand/posterFontFaces";
 import { buildJobApplyUrl, buildPosterShareUrl } from "@/lib/composer/branding";
 import { buildBrandPosterData, defaultHeadline, type PosterJobInput } from "@/lib/poster/brandPosterContent";
 import { BRAND_LAYOUTS, POSTER_SIZES, type BrandLayout, type PosterLook, type PosterSize } from "./BrandPoster";
 import { ScaledPoster } from "./ScaledPoster";
 
 type Source = "company" | "mployedin";
-interface KitView { kit: BrandKit; platform: BrandKit; isCustom: boolean; companyLogo: string | null; companyName: string }
+interface KitView { kit: BrandKit; platform: BrandKit; isCustom: boolean; companyLogo: string | null; companyName: string; contact?: PosterContact }
 interface Saved { id: string; shareSlug: string }
 
 async function readJson<T>(res: Response): Promise<T> {
@@ -88,8 +89,8 @@ export function PosterStudio({ jobId }: { jobId: string }) {
   // The logo spot names the employer; without a company logo the name alone does (Mployedin has its own corner badge).
   const logo = view?.companyLogo || null;
   const data = useMemo(
-    () => (job ? buildBrandPosterData(job, { look, locale: posterLocale, headline, companyName: view?.companyName || job.companyName, qrDataUrl: qr }) : null),
-    [job, look, posterLocale, headline, view?.companyName, qr],
+    () => (job ? buildBrandPosterData(job, { look, locale: posterLocale, headline, companyName: kit?.displayName || view?.companyName || job.companyName, contact: view?.contact, qrDataUrl: qr }) : null),
+    [job, look, posterLocale, headline, kit?.displayName, view?.companyName, view?.contact, qr],
   );
 
   const save = useMutation({
@@ -123,7 +124,7 @@ export function PosterStudio({ jobId }: { jobId: string }) {
   };
 
   return (
-    <div className="page-container">
+    <div className={`page-container ${POSTER_FONT_VARIABLES}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <Link href={`${base}/jobs/${jobId}/posting`} className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">

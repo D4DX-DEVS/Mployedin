@@ -1,13 +1,15 @@
 import mongoose, { Document, Schema } from "mongoose";
 import { encryptIfPlain, decrypt } from "@/lib/security/encryption";
+import { BRAND_FONT_IDS, type BrandFont } from "@/lib/brand/brandKit";
 
 export interface IEmployerBrandKit {
   logoUrl?: string;
+  displayName?: string;
   primary?: string;
   accent?: string;
   text?: string;
   background?: string;
-  font?: "manrope" | "lexend" | "arabic" | "serif";
+  font?: BrandFont;
   tone?: "friendly" | "formal" | "energetic";
   updatedAt?: Date;
 }
@@ -198,11 +200,12 @@ const EmployerSchema = new Schema<IEmployer>(
       type: new Schema<IEmployerBrandKit>(
         {
           logoUrl: { type: String, maxlength: 2048 },
+          displayName: { type: String, maxlength: 60, trim: true },
           primary: { type: String, maxlength: 7 },
           accent: { type: String, maxlength: 7 },
           text: { type: String, maxlength: 7 },
           background: { type: String, maxlength: 7 },
-          font: { type: String, enum: ["manrope", "lexend", "arabic", "serif"] },
+          font: { type: String, enum: BRAND_FONT_IDS },
           tone: { type: String, enum: ["friendly", "formal", "energetic"] },
         },
         { _id: false, timestamps: { createdAt: false, updatedAt: true } },

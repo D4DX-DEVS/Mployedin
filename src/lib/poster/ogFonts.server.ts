@@ -1,6 +1,6 @@
 import "server-only";
 import logger from "@/lib/logger";
-import type { BrandFont } from "@/lib/brand/brandKit";
+import { BRAND_FONTS, type BrandFont } from "@/lib/brand/brandKit";
 
 /**
  * Fonts for server-drawn posters (next/og). It reads TTF/OTF/WOFF only, and the
@@ -9,15 +9,9 @@ import type { BrandFont } from "@/lib/brand/brandKit";
  * and kept in memory. A failed fetch falls back to next/og's built-in font.
  */
 
-type Weight = 600 | 700 | 800;
+type Weight = 400 | 500 | 600 | 700 | 800 | 900;
 export interface OgFont { name: string; data: ArrayBuffer; weight: Weight; style: "normal" }
 
-const FAMILY: Record<BrandFont, string> = {
-  manrope: "Manrope",
-  lexend: "Lexend",
-  arabic: "Noto Sans Arabic",
-  serif: "Noto Serif",
-};
 
 const cache = new Map<string, Promise<ArrayBuffer | null>>();
 
@@ -49,11 +43,13 @@ function load(family: string, weight: Weight): Promise<ArrayBuffer | null> {
 
 /** The kit's family in the weights posters use, plus Arabic glyphs when the text needs them. */
 export async function posterFonts(font: BrandFont, needsArabic: boolean): Promise<{ fonts: OgFont[]; family?: string }> {
-  const families = [FAMILY[font] ?? FAMILY.manrope];
-  if (needsArabic && font !== "arabic") families.push(FAMILY.arabic);
-  const weights: Weight[] = [600, 700, 800];
+  const chosen = BRAND_FONTS[font] ?? BRAND_FONTS.manrope;
+  // Cairo and Tajawal carry Arabic glyphs themselves; other fonts borrow Noto Sans Arabic.
+  const hasArabic = font === "arabic" || font === "cairo" || font === "tajawal";
+  const sets: { family: string; weights: readonly number[] }[] = [chosen, ...(needsArabic && !hasArabic ? [BRAND_FONTS.arabic] : [])];
+  const families = sets.map((set) => set.family);
   const loaded = await Promise.all(
-    families.flatMap((family) => weights.map(async (weight) => ({ family, weight, data: await load(family, weight) }))),
+    sets.flatMap((set) => set.weights.map(async (weight) => ({ family: set.family, weight: weight as Weight, data: await load(set.family, weight as Weight) }))),
   );
   const fonts = loaded
     .filter((f): f is { family: string; weight: Weight; data: ArrayBuffer } => Boolean(f.data))

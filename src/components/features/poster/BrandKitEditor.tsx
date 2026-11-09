@@ -20,14 +20,17 @@ import {
   MPLOYEDIN_LOGO_URL,
   brandKitSchema,
   type BrandKit,
+  type PosterContact,
 } from "@/lib/brand/brandKit";
 import { buildBrandPosterData } from "@/lib/poster/brandPosterContent";
+import { POSTER_FONT_VARIABLES } from "@/lib/brand/posterFontFaces";
+import { CompanyLogoField } from "./CompanyLogoField";
 import { ScaledPoster } from "./ScaledPoster";
 
 type Mode = "employer" | "admin";
 
-interface EmployerView { kit: BrandKit; platform: BrandKit; isCustom: boolean; companyLogo: string | null; companyName: string }
-interface AdminView { kit: BrandKit; builtIn: BrandKit }
+interface EmployerView { kit: BrandKit; platform: BrandKit; isCustom: boolean; companyLogo: string | null; companyName: string; contact: PosterContact }
+interface AdminView { kit: BrandKit; builtIn: BrandKit; contact: PosterContact }
 
 const ENDPOINT: Record<Mode, string> = { employer: "/api/employers/brand-kit", admin: "/api/admin/brand-kit" };
 
@@ -58,11 +61,12 @@ export function BrandKitEditor({ mode }: { mode: Mode }) {
   const form = useForm<BrandKit>({ resolver: zodResolver(brandKitSchema), mode: "onChange" });
   const { register, handleSubmit, reset, formState, control, setValue } = form;
 
-  // Reset the form once the saved kit arrives (and after every save).
+  // Load the saved kit into the form when it arrives and after every save.
   useEffect(() => {
     if (!query.data) return;
     const kit = query.data.kit;
-    reset({ ...kit, logoUrl: mode === "admin" ? kit.logoUrl ?? "" : "" });
+    // keepDirtyValues: a refetch (e.g. after a logo upload) must not wipe unsaved edits.
+    reset({ ...kit, logoUrl: mode === "admin" ? kit.logoUrl ?? "" : "", displayName: kit.displayName ?? "" }, { keepDirtyValues: true });
   }, [query.data, reset, mode]);
 
   const save = useMutation({
@@ -117,11 +121,18 @@ export function BrandKitEditor({ mode }: { mode: Mode }) {
   const previewLogo =
     mode === "employer" ? employerView?.companyLogo || null : previewKit.logoUrl || MPLOYEDIN_LOGO_URL;
   const previewData = buildBrandPosterData(
-    { title: t("sampleTitle"), location: { city: t("sampleCity") }, employmentType: "full_time" },
-    { look: "bold", companyName: employerView?.companyName || "Mployedin" },
+    {
+      title: t("sampleTitle"),
+      location: { city: t("sampleCity") },
+      employmentType: "full_time",
+      qualifications: [t("sampleReq1"), t("sampleReq2"), t("sampleReq3")],
+    },
+    { look: "bold", companyName: (mode === "employer" && watched.displayName?.trim()) || employerView?.companyName || "Mployedin", contact: view.contact },
   );
 
-  const onSubmit = handleSubmit((kit) => save.mutate({ ...kit, logoUrl: mode === "admin" ? kit.logoUrl : undefined }));
+  const onSubmit = handleSubmit((kit) =>
+    save.mutate({ ...kit, logoUrl: mode === "admin" ? kit.logoUrl : undefined, displayName: mode === "employer" ? kit.displayName ?? "" : undefined }),
+  );
 
   const onReset = async () => {
     const ok = await confirm({ title: t("resetTitle"), message: t("resetMessage"), confirmLabel: t("resetConfirm") });
@@ -131,7 +142,7 @@ export function BrandKitEditor({ mode }: { mode: Mode }) {
   const busy = save.isPending || resetKit.isPending;
 
   return (
-    <div className="@container/brand">
+    <div className={`@container/brand ${POSTER_FONT_VARIABLES}`}>
     <div className="grid gap-6 @3xl/brand:grid-cols-[minmax(0,1fr)_minmax(0,300px)]">
       {ConfirmDialogNode}
       <div className="space-y-5">
@@ -164,7 +175,7 @@ export function BrandKitEditor({ mode }: { mode: Mode }) {
             <Label htmlFor={`brand-${mode}-font`}>{t("font")}</Label>
             <Select value={watched.font ?? view.kit.font} onValueChange={(v) => setValue("font", v as BrandKit["font"], { shouldDirty: true })}>
               <SelectTrigger id={`brand-${mode}-font`} className="min-h-11"><SelectValue /></SelectTrigger>
-              <SelectContent>
+              <SelectContent className={POSTER_FONT_VARIABLES}>
                 {BRAND_FONT_IDS.map((id) => (
                   <SelectItem key={id} value={id}>
                     <span style={{ fontFamily: BRAND_FONTS[id].stack }}>{BRAND_FONTS[id].label}</span>
@@ -196,12 +207,29 @@ export function BrandKitEditor({ mode }: { mode: Mode }) {
             )}
           </div>
         ) : (
-          <div className="space-y-1.5">
-            <p className="text-sm font-semibold">{t("logo")}</p>
-            <p className="text-sm text-muted-foreground">
-              {employerView?.companyLogo ? t("logoFromProfile") : t("logoMissing")}
-            </p>
-          </div>
+          <fieldset className="space-y-4 rounded-xl border p-4">
+            <legend className="px-1 text-sm font-semibold">{t("companyOnPosters")}</legend>
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">{t("logo")}</p>
+              <CompanyLogoField logoUrl={employerView?.companyLogo ?? null} companyName={employerView?.companyName ?? ""} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="brand-employer-name">{t("displayName")}</Label>
+              <Input
+                id="brand-employer-name"
+                className="min-h-11"
+                maxLength={60}
+                placeholder={employerView?.companyName}
+                aria-invalid={Boolean(formState.errors.displayName)}
+                {...register("displayName")}
+              />
+              {formState.errors.displayName ? (
+                <p className="text-xs text-destructive">{t("displayNameInvalid")}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">{t("displayNameHint")}</p>
+              )}
+            </div>
+          </fieldset>
         )}
 
         <div className="flex flex-wrap items-center gap-2">
@@ -241,7 +269,7 @@ export function BrandKitEditor({ mode }: { mode: Mode }) {
 
 function stripEmpty(kit: Partial<BrandKit>): Partial<BrandKit> {
   return Object.fromEntries(
-    Object.entries(kit).filter(([key, v]) => v !== undefined && v !== "" && (key === "logoUrl" || key === "font" || key === "tone" || /^#[0-9a-fA-F]{6}$/.test(String(v)))),
+    Object.entries(kit).filter(([key, v]) => v !== undefined && v !== "" && (key === "logoUrl" || key === "displayName" || key === "font" || key === "tone" || /^#[0-9a-fA-F]{6}$/.test(String(v)))),
   ) as Partial<BrandKit>;
 }
 
