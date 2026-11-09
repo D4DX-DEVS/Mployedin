@@ -33,7 +33,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, LogIn, UserCog, Building2, MapPin, Mail, UserRoundCheck, UserRoundX } from "lucide-react";
-import { AssignAgentDialog } from "./_components/AssignAgentDialog";
+import { AssignAgentDialog } from "@/components/features/agent/AssignAgentDialog";
 import { ChangeRegionDialog } from "./_components/ChangeRegionDialog";
 import type { EmployerAgentSummary } from "@/lib/agents/employerAssignment";
 import type { EmployerRegionSummary } from "@/lib/agents/territoryCoverage";

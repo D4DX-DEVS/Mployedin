@@ -46,7 +46,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: "AI_UNAVAILABLE" }, { status: 502 });
   }
 
-  const result = parseJobAssistResponse(raw);
+  const result = parseJobAssistResponse(raw, body.job);
   if (!result) {
     return NextResponse.json({ error: "AI_UNREADABLE" }, { status: 502 });
   }

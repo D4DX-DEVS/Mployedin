@@ -13,6 +13,7 @@ import { calculateLeadScore, deriveQualification } from "@/lib/leads/scoring";
 import { autoRouteLead } from "@/lib/leads/autoRouter";
 import { isLeadPeriod, leadPeriodFilter } from "@/lib/leads/period";
 import { isValidTimeZone } from "@/lib/datetime/zone";
+import { openPosterToken } from "@/lib/leads/posterExtract";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
@@ -103,7 +104,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   await connectDB();
-  const body = await validateBody(req, leadCreateSchema);
+  const { posterToken, ...body } = await validateBody(req, leadCreateSchema);
+
+  // A poster is attached only from a token this server sealed for this agent.
+  const posterFile = posterToken ? openPosterToken(posterToken, ctx.userId) : null;
+  if (posterToken && !posterFile) {
+    return NextResponse.json({ error: "The uploaded poster expired. Upload it again." }, { status: 400 });
+  }
 
   // Resolve Agent._id from User._id
   const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
@@ -133,6 +140,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     status: "new",
     score,
     qualificationLevel,
+    ...(posterFile ? {
+      sourceFile: { ...posterFile, uploadedAt: new Date() },
+      activityLog: [{ action: "created_from_poster", note: posterFile.name, timestamp: new Date(), by: ctx.userId }],
+    } : {}),
     ...(routeResult && {
       ...(routeResult.territoryId ? { territoryId: routeResult.territoryId } : {}),
       superAgentId: routeResult.superAgentId,

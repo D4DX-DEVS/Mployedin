@@ -2,12 +2,14 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, SendHorizontal, Sparkles, Undo2 } from "lucide-react";
+import { FileText, Loader2, SendHorizontal, Sparkles, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { JOB_ASSIST_INSTRUCTION_MAX } from "@/lib/ai/jobAssist";
 import type { JobAssistantState } from "./useJobAssistant";
+import { PosterTextDialog } from "./PosterTextDialog";
 
 export interface JobAssistantQuickAction {
   label: string;
@@ -20,6 +22,8 @@ interface JobAssistantPanelProps {
   className?: string;
   /** Rendered inside the small-screen dialog: taller list, header is the dialog's title. */
   inDialog?: boolean;
+  /** The poster's own text, when this job was read from an uploaded poster: the assistant checks against it. */
+  posterText?: string | null;
 }
 
 /**
@@ -27,9 +31,15 @@ interface JobAssistantPanelProps {
  * straight into the form, each with an Undo. Shared by the create wizard,
  * the edit page and the bulk-upload review.
  */
-export function JobAssistantPanel({ assistant, quickActions, className, inDialog }: JobAssistantPanelProps) {
+export function JobAssistantPanel({ assistant, quickActions, className, inDialog, posterText }: JobAssistantPanelProps) {
   const t = useTranslations("jobAssistant");
   const [input, setInput] = useState("");
+  const [posterOpen, setPosterOpen] = useState(false);
+  const fromPoster = Boolean(posterText?.trim());
+  // With a poster, the first thing worth asking is what the reading missed.
+  const starters = fromPoster
+    ? [{ label: t("poster.check.label"), instruction: t("poster.check.instruction") }, ...quickActions]
+    : quickActions;
   const inputId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   const { messages, busy, ask, undo } = assistant;
@@ -67,8 +77,24 @@ export function JobAssistantPanel({ assistant, quickActions, className, inDialog
               <p className="text-xs text-muted-foreground">{t("subtitle")}</p>
             </>
           )}
+          {fromPoster && (
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/[0.08] px-2 py-0.5 font-medium text-primary">
+                <FileText className="size-3" aria-hidden="true" />
+                {t("poster.using")}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPosterOpen(true)}
+                className="inline-flex min-h-6 items-center font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+              >
+                {t("poster.view")}
+              </button>
+            </p>
+          )}
         </div>
       </header>
+      {fromPoster && <PosterTextDialog open={posterOpen} onOpenChange={setPosterOpen} text={posterText ?? ""} />}
 
       <div
         ref={listRef}
@@ -79,7 +105,7 @@ export function JobAssistantPanel({ assistant, quickActions, className, inDialog
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">{t("emptyHint")}</p>
             <div className="flex flex-wrap gap-1.5">
-              {quickActions.map((action) => (
+              {starters.map((action) => (
                 <button
                   key={action.label}
                   type="button"
@@ -146,7 +172,7 @@ export function JobAssistantPanel({ assistant, quickActions, className, inDialog
             }
           }}
           placeholder={t("placeholder")}
-          maxLength={1000}
+          maxLength={JOB_ASSIST_INSTRUCTION_MAX}
           rows={2}
           className="min-h-11 flex-1 resize-none text-sm"
         />

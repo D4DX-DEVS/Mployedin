@@ -130,9 +130,9 @@ describe("employer registration — region", () => {
 
     await post({ cityId: "city-dubai" });
 
-    expect(notifyRegion).toHaveBeenCalledWith("sa-a", "super_agent", "ABC Technologies", "Dubai", "employer-1");
-    expect(notifyRegion).toHaveBeenCalledWith("sa-b", "super_agent", "ABC Technologies", "Dubai", "employer-1");
-    expect(notifyRegion).toHaveBeenCalledWith("agent-1", "agent", "ABC Technologies", "Dubai", "employer-1");
+    expect(notifyRegion).toHaveBeenCalledWith("sa-a", "super_agent", "ABC Technologies", "Dubai", "employer-1", "registered");
+    expect(notifyRegion).toHaveBeenCalledWith("sa-b", "super_agent", "ABC Technologies", "Dubai", "employer-1", "registered");
+    expect(notifyRegion).toHaveBeenCalledWith("agent-1", "agent", "ABC Technologies", "Dubai", "employer-1", "registered");
     expect(notifyOutside).not.toHaveBeenCalled();
   });
 

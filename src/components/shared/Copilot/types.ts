@@ -1,4 +1,6 @@
 import type { CopilotView } from "@/lib/ai/copilot/views";
+import type { LeadPosterResult } from "@/lib/leads/posterClient";
+import type { LeadDraftStatus } from "./LeadDraftCard";
 
 export type CopilotStreamFrame =
   | { type: "text"; content: string }
@@ -40,4 +42,8 @@ export type TranscriptItem =
       resultMessage?: string;
       preview?: { summary: string; rows?: Array<{ name: string; score: number | null; note?: string }> };
     }
-  | { id: string; kind: "error"; message: string };
+  | { id: string; kind: "error"; message: string }
+  /** A file the user attached (a hiring poster), shown as their turn. */
+  | { id: string; kind: "upload"; name: string }
+  /** A lead read off an attached poster, editable until it is created. */
+  | { id: string; kind: "lead_draft"; draft: LeadPosterResult; status: LeadDraftStatus; leadId?: string; error?: string };

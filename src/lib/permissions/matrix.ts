@@ -87,7 +87,9 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     invoices: ["create", "read", "update"],
   },
   agent: {
-    jobs: ["create", "read", "update", "export"],
+    // "delete" = discard a draft; DELETE /api/jobs/[id] refuses an agent any
+    // other status and any job outside their own / assigned employers.
+    jobs: ["create", "read", "update", "delete", "export"],
     applications: ["read", "update", "export"],
     interviews: ["create", "read", "update"],
     placements: ["read"],

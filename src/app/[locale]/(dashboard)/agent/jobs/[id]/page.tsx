@@ -5,15 +5,18 @@ import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Building2, DollarSign, Loader2, Users, Eye, Tag, Clock, UserSearch,
+  ArrowLeft, Building2, DollarSign, Edit2, Loader2, Send, Trash2, Users, Eye, Tag, Clock, UserSearch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
-import { useJobDetail } from "@/hooks/useJobs";
+import { useQueryClient } from "@tanstack/react-query";
+import { jobKeys, useJobDetail } from "@/hooks/useJobs";
 import Link from "next/link";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { useMediaQuery, PHONE_QUERY } from "@/hooks/useMediaQuery";
 import { JOB_STATUS_BADGE_CLASS, jobStatusLabelKey } from "@/components/features/employer/jobs/jobStatus";
+import { useAgentJobActions } from "../_components/useAgentJobActions";
 
 export default function AgentJobDetailPage() {
   const router = useRouter();
@@ -22,6 +25,9 @@ export default function AgentJobDetailPage() {
   const t = useTranslations("agentJobDetail");
   const tJobs = useTranslations("employerJobs");
   const [openingEmployerView, setOpeningEmployerView] = useState(false);
+  const queryClient = useQueryClient();
+  const isPhone = useMediaQuery(PHONE_QUERY);
+  const draftActions = useAgentJobActions(() => { void queryClient.invalidateQueries({ queryKey: jobKeys.details() }); });
 
   // The employer's own job page (applications, interviews, offers, hires,
   // posting, setup) in "view as employer" mode: the tenant view an agent
@@ -89,13 +95,19 @@ export default function AgentJobDetailPage() {
   const salaryMin = job.salary?.min ?? 0;
   const salaryMax = job.salary?.max ?? 0;
   // Short form for big figures (1.2M, not 1,200,000) so a range fits its card on a phone.
+  // Phones: four metric tiles share 375px, so thousands go compact too
+  // (3.5K–8.5K); "3,500–8,500" ran into the next tile.
+  const compactFrom = isPhone ? 1_000 : 100_000;
+  // Four tiles share a phone's width: a long value ("No expiry", a salary
+  // range) steps down a size so it stays inside its own tile.
+  const phoneFit = (value: string) => (isPhone && value.length > 6 ? <span className="text-sm">{value}</span> : value);
   const money = (n: number) =>
-    formatCount(n, n >= 100_000 ? { notation: "compact", maximumFractionDigits: 1 } : undefined, locale);
+    formatCount(n, n >= compactFrom ? { notation: "compact", maximumFractionDigits: 1 } : undefined, locale);
   const salaryValue = salaryMin && salaryMax
     ? `${money(salaryMin)}–${money(salaryMax)}`
     : salaryMin
       ? `${money(salaryMin)}+`
-      : job.salary?.isNegotiable ? t("negotiable") : t("notDisclosed");
+      : job.salary?.isNegotiable ? t("negotiable") : isPhone ? "—" : t("notDisclosed");
 
   return (
     <div className="page-container">
@@ -121,27 +133,68 @@ export default function AgentJobDetailPage() {
         actions={
           <>
             {/* Status rides with the actions, styled and worded as on the employer's page. */}
-            <span className={`${JOB_STATUS_BADGE_CLASS[job.status] ?? ""} inline-flex items-center self-center rounded-full border px-2.5 py-1 text-[11px] font-semibold`}>
+            <span className={`${JOB_STATUS_BADGE_CLASS[job.status] ?? ""} inline-flex shrink-0 items-center self-center rounded-full border px-2 py-1 text-[11px] font-semibold sm:px-2.5`}>
               {tJobs(jobStatusLabelKey(job.status))}
             </span>
-            <Link href={`/${locale}/agent/candidates?jobId=${id}`}>
-              <Button variant="outline" aria-label={t("viewCandidates")} className="min-h-11 gap-2 rounded-xl">
+            {job.viewerCanEdit && job.status === "draft" ? (
+              <>
+                {/* A draft's next steps: finish it, publish it, or throw it away. */}
+                <Button
+                  variant="outline"
+                  onClick={() => { void draftActions.discard(id).then((ok) => { if (ok) router.push(`/${locale}/agent/jobs`); }); }}
+                  disabled={draftActions.isPending(id, "delete")}
+                  aria-label={tJobs("deleteButton")}
+                  className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4 text-destructive hover:text-destructive"
+                >
+                  {draftActions.isPending(id, "delete") ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Trash2 className="h-4 w-4" aria-hidden />}
+                  <span className="hidden sm:inline">{tJobs("deleteButton")}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => { void draftActions.publish(id); }}
+                  disabled={draftActions.isPending(id, "publish")}
+                  aria-label={tJobs("publishButton")}
+                  className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4"
+                >
+                  {draftActions.isPending(id, "publish") ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
+                  <span className="hidden sm:inline">{draftActions.isPending(id, "publish") ? tJobs("publishingButton") : tJobs("publishButton")}</span>
+                </Button>
+                <Button asChild className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4">
+                  <Link href={`/${locale}/agent/jobs/${id}/edit`} aria-label={tJobs("continueDraftButton")}>
+                    <Edit2 className="h-4 w-4" aria-hidden />
+                    {/* The draft's next step keeps a label on phones too — the short one, so the row fits. */}
+                    <span className="sm:hidden">{t("continueShort")}</span>
+                    <span className="hidden sm:inline">{tJobs("continueDraftButton")}</span>
+                  </Link>
+                </Button>
+              </>
+            ) : job.viewerCanEdit && job.status !== "closed" ? (
+              <Button asChild variant="outline" className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4">
+                <Link href={`/${locale}/agent/jobs/${id}/edit`} aria-label={tJobs("editButton")}>
+                  <Edit2 className="h-4 w-4" aria-hidden />
+                  <span className="hidden sm:inline">{tJobs("editButton")}</span>
+                </Link>
+              </Button>
+            ) : null}
+            {job.status !== "draft" && <Link href={`/${locale}/agent/candidates?jobId=${id}`}>
+              <Button variant="outline" aria-label={t("viewCandidates")} className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4">
                 <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">{t("viewCandidates")}</span>
               </Button>
-            </Link>
-            <Link href={`/${locale}/agent/jobs/${id}/matches`}>
-              <Button variant={job.viewerCanManage ? "outline" : "default"} aria-label={t("findCandidates")} className="min-h-11 gap-2 rounded-xl">
+            </Link>}
+            {job.status !== "draft" && <Link href={`/${locale}/agent/jobs/${id}/matches`}>
+              <Button variant={job.viewerCanManage ? "outline" : "default"} aria-label={t("findCandidates")} className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4">
                 <UserSearch className="h-4 w-4" />
                 <span className="hidden sm:inline">{t("findCandidates")}</span>
               </Button>
-            </Link>
+            </Link>}
             {job.viewerCanManage ? (
               <Button
+                variant={job.status === "draft" ? "outline" : "default"}
                 onClick={() => { void openEmployerView(); }}
                 disabled={openingEmployerView}
                 aria-label={t("openEmployerView")}
-                className="min-h-11 gap-2 rounded-xl"
+                className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4"
               >
                 {openingEmployerView ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Building2 className="h-4 w-4" aria-hidden />}
                 <span className="hidden sm:inline">{openingEmployerView ? t("openingEmployerView") : t("openEmployerView")}</span>
@@ -154,13 +207,17 @@ export default function AgentJobDetailPage() {
           { label: t("views"), value: job.views ?? 0, icon: Eye, tone: "info" },
           {
             label: t("salaryIn", { currency: job.salary?.currency ?? "USD" }),
-            value: salaryValue,
+            // A range is the widest value; on phones it steps down a size so it
+            // stays inside its quarter of the strip.
+            value: phoneFit(salaryValue),
             icon: DollarSign,
             tone: "success",
           },
-          { label: t("expires"), value: expires ?? t("noExpiry"), icon: Clock, tone: "warning" },
+          { label: t("expires"), value: phoneFit(expires ?? t("noExpiry")), icon: Clock, tone: "warning" },
         ]}
       />
+
+      {draftActions.dialog}
 
       {/* Description */}
       <div className="card-base panel-body">

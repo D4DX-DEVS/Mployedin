@@ -1,5 +1,6 @@
 import mongoose, { type Document, Schema } from "mongoose";
 import type { PosterType, PosterFormat, DesignStyle, PosterLayout, ShowFields } from "@/lib/composer/types";
+import { BRAND_LAYOUTS, type BrandLayout } from "@/components/features/poster/BrandPoster";
 
 export interface IPosterVariation {
   backgroundUrl: string;
@@ -16,7 +17,7 @@ export interface IPosterAnalytics {
 export interface IBrandPosterSpec {
   /** Whose brand: the employer's own kit or the Mployedin kit. */
   source: "company" | "mployedin";
-  layout: "spotlight" | "band" | "split" | "frame" | "night" | "minimal";
+  layout: BrandLayout;
   look: "bold" | "clean" | "urgent";
   headline: string;
   locale: "en" | "ar";
@@ -71,7 +72,7 @@ const PosterVariationSchema = new Schema<IPosterVariation>(
 const BrandPosterSpecSchema = new Schema<IBrandPosterSpec>(
   {
     source: { type: String, enum: ["company", "mployedin"], required: true },
-    layout: { type: String, enum: ["spotlight", "band", "split", "frame", "night", "minimal"], required: true },
+    layout: { type: String, enum: BRAND_LAYOUTS, required: true },
     look: { type: String, enum: ["bold", "clean", "urgent"], required: true },
     headline: { type: String, required: true, maxlength: 80 },
     locale: { type: String, enum: ["en", "ar"], default: "en" },

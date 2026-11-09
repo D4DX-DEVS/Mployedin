@@ -3,7 +3,6 @@ import { z } from "zod";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
-import Agent from "@/models/Agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
@@ -78,15 +77,16 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       req,
     });
 
-    // Tell the agent who now runs the account. Best effort — the move stands.
-    if (agentId) {
-      const agent = await Agent.findById(agentId).select("userId").lean<{ userId: unknown } | null>();
-      if (agent?.userId) {
-        const { notifyAgentEmployerAssigned } = await import("@/lib/notifications/trigger");
-        notifyAgentEmployerAssigned(String(agent.userId), employer.companyName || "A company", String(employer._id))
-          .catch((err) => logger.error({ err, employerId: String(employer._id) }, "Failed to notify agent of employer assignment"));
-      }
-    }
+    // Tell the agent who now runs the account, and any agent it was taken
+    // from. Best effort — the move stands.
+    const { notifyEmployerAgentChange } = await import("@/lib/notifications/employerCoverage");
+    notifyEmployerAgentChange({
+      employerId: String(employer._id),
+      companyName: employer.companyName || "A company",
+      newAgentId: result.agentId,
+      previousAgentIds: result.previousAgentIds,
+      assignedBy: "admin",
+    }).catch((err) => logger.error({ err, employerId: String(employer._id) }, "Failed to notify agents of employer assignment"));
   }
 
   const current = (await resolveEmployerAgents([{ _id: employer._id, agentId: result.agentId }])).get(String(employer._id)) ?? null;

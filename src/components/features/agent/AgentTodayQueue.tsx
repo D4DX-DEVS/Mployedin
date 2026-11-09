@@ -152,16 +152,23 @@ export function AgentTodayQueue({ items, counts, locale, labels }: AgentTodayQue
                     <Icon className="h-4 w-4" aria-hidden="true" />
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm font-semibold text-foreground">
-                      {item.subject || labels.kind[item.kind]}
+                    {/* Lateness sits beside the name so a narrow screen never
+                        truncates it away; reason · job title underneath — without
+                        the job, three "Job Seeker / No outcome recorded" rows
+                        could not be told apart. */}
+                    <span className="flex min-w-0 items-baseline gap-2">
+                      <span className="truncate text-sm font-semibold text-foreground">
+                        {item.subject || labels.kind[item.kind]}
+                      </span>
+                      <span className="ms-auto shrink-0 text-xs font-medium tabular-nums text-status-rejected">
+                        {labels.lateness[`${item.kind}-${item.id}`]}
+                      </span>
                     </span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {labels.reason[item.kind]}
-                      {" · "}
-                      {labels.lateness[`${item.kind}-${item.id}`]}
+                      {[labels.reason[item.kind], item.context].filter(Boolean).join(" · ")}
                     </span>
                   </span>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/55 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground/55 transition-transform group-hover:translate-x-0.5 group-hover:text-primary rtl:rotate-180 rtl:group-hover:-translate-x-0.5" aria-hidden="true" />
                 </Link>
               </li>
             );

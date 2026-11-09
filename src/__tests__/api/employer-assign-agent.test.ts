@@ -29,9 +29,9 @@ jest.mock("@/lib/audit/log", () => ({
   logActivity: (...a: unknown[]) => logActivity(...a),
 }));
 
-const notifyAgentEmployerAssigned = jest.fn().mockResolvedValue(undefined);
-jest.mock("@/lib/notifications/trigger", () => ({
-  notifyAgentEmployerAssigned: (...a: unknown[]) => notifyAgentEmployerAssigned(...a),
+const notifyEmployerAgentChange = jest.fn().mockResolvedValue(undefined);
+jest.mock("@/lib/notifications/employerCoverage", () => ({
+  notifyEmployerAgentChange: (...a: unknown[]) => notifyEmployerAgentChange(...a),
 }));
 
 const assignEmployerAgent = jest.fn();
@@ -106,24 +106,26 @@ describe("/api/employers/[id]/agent", () => {
       resourceId: EMP_USER,
       changes: { before: { agentIds: [] }, after: { agentId: AGENT, movedOpenJobs: 3 } },
     }));
-    expect(notifyAgentEmployerAssigned).toHaveBeenCalledWith("u_agent", "Acme", EMP_DOC);
+    expect(notifyEmployerAgentChange).toHaveBeenCalledWith({
+      employerId: EMP_DOC, companyName: "Acme", newAgentId: AGENT, previousAgentIds: [], assignedBy: "admin",
+    });
   });
 
-  it("PATCH with null removes the agent and notifies nobody", async () => {
+  it("PATCH with null removes the agent and tells the agent it was taken from", async () => {
     assignEmployerAgent.mockResolvedValue({ ok: true, changed: true, previousAgentIds: [AGENT], agentId: null, movedOpenJobs: 0 });
     resolveEmployerAgents.mockResolvedValue(new Map());
 
     const body = await (await call("PATCH", "admin", { agentId: null })).json();
     expect(assignEmployerAgent).toHaveBeenCalledWith(EMP_DOC, null);
     expect(body.current).toBeNull();
-    expect(notifyAgentEmployerAssigned).not.toHaveBeenCalled();
+    expect(notifyEmployerAgentChange).toHaveBeenCalledWith(expect.objectContaining({ newAgentId: null, previousAgentIds: [AGENT] }));
   });
 
   it("does not audit or notify a no-op, and passes the helper's refusal through", async () => {
     assignEmployerAgent.mockResolvedValueOnce({ ok: true, changed: false, previousAgentIds: [AGENT], agentId: AGENT, movedOpenJobs: 0 });
     await call("PATCH", "admin", { agentId: AGENT });
     expect(logActivity).not.toHaveBeenCalled();
-    expect(notifyAgentEmployerAssigned).not.toHaveBeenCalled();
+    expect(notifyEmployerAgentChange).not.toHaveBeenCalled();
 
     assignEmployerAgent.mockResolvedValueOnce({ ok: false, status: 400, error: "That agent account is inactive" });
     const res = await call("PATCH", "admin", { agentId: AGENT });

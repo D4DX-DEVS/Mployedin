@@ -44,6 +44,13 @@ export const leadCreateSchema = z.preprocess(stripEmptyStrings, z.object({
   expectedHiring: z.enum(HIRING_RANGES).optional(),
   followUpAt: z.string().optional(),
   exhibitionId: commonSchemas.objectId.optional(),
+  /** Roles read from a hiring poster (POST /api/ai/lead-extract). */
+  rolesHiring: z.array(z.object({
+    title: z.string().trim().min(1).max(120),
+    count: z.number().int().min(1).max(10000),
+  })).max(30).optional(),
+  /** Sealed reference to the stored poster, from the same endpoint. */
+  posterToken: z.string().max(4000).optional(),
 }));
 
 export const leadUpdateSchema = z.preprocess(stripEmptyStrings, z.object({

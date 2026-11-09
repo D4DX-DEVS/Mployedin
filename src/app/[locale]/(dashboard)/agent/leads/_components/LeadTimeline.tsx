@@ -191,6 +191,7 @@ function activityTitle(entry: LeadActivity, stageConfig: Record<LeadStatus, Stag
   if (entry.action === "created") return t("detailCreated");
   if (entry.action === "follow_up") return t("activityFollowUp");
   if (entry.action === "converted_to_employer") return t("activityAccountCreated");
+  if (entry.action === "created_from_poster") return t("activityFromPoster");
   if (entry.action in CONTACT_METHOD_KEYS) return t(CONTACT_METHOD_KEYS[entry.action as ContactMethod]);
   return t("activityOther");
 }

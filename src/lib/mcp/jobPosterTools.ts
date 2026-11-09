@@ -8,7 +8,7 @@ import { getScopedEmployerIds } from "@/lib/auth/agentRestrictions";
 import { getAppBaseUrl } from "@/lib/mcp/baseUrl";
 import { errorResult, jsonResult, oauthMeta, requireScope, type TokenExtra } from "@/lib/mcp/toolHelpers";
 import { POSTERS_ENABLED } from "@/lib/features/posterFeature";
-import { BRAND_LAYOUTS, POSTER_LOOKS } from "@/components/features/poster/BrandPoster";
+import { BRAND_LAYOUTS, DEFAULT_BRAND_LAYOUT, POSTER_LOOKS } from "@/components/features/poster/BrandPoster";
 import { BrandPosterError, createBrandPoster } from "@/lib/poster/brandPosters.server";
 import { renderBrandPosterBase64 } from "@/lib/poster/renderBrandPoster.server";
 import Job from "@/models/Job";
@@ -147,7 +147,7 @@ export function registerJobPosterTools(server: McpServer) {
         brand: z.enum(["company", "mployedin"]).optional()
           .describe("company = the company's logo and brand kit colours; mployedin = Mployedin blue. Defaults to company."),
         style: z.enum(POSTER_LOOKS).optional().describe("bold, clean or urgent. Defaults to bold."),
-        layout: z.enum(BRAND_LAYOUTS).optional().describe("One of the six layouts. Defaults to spotlight."),
+        layout: z.enum(BRAND_LAYOUTS).optional().describe("Poster layout. Defaults to wave (a brand hero with a wave edge)."),
         language: z.enum(["en", "ar"]).optional().describe("Poster language. Defaults to en."),
       },
       outputSchema: RESULT_SCHEMA,
@@ -175,7 +175,7 @@ export function registerJobPosterTools(server: McpServer) {
               jobId,
               employerId,
               source: args.brand ?? "company",
-              layout: args.layout ?? "spotlight",
+              layout: args.layout ?? DEFAULT_BRAND_LAYOUT,
               look: args.style ?? "bold",
               locale: args.language ?? "en",
               actorUserId: check.userId,

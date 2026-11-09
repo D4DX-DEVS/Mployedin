@@ -12,6 +12,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { StepFormDialog } from "@/components/shared/StepFormDialog";
 import { TaskRecordPicker, type PickedRecord } from "./TaskRecordPicker";
 
 export interface AssignableAgentOption {
@@ -124,13 +125,8 @@ export function AssignTaskDialog({
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={close}>
-      <DialogContent ref={setContainer} className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t("assignTitle")}</DialogTitle>
-          <DialogDescription>{t("assignDescription")}</DialogDescription>
-        </DialogHeader>
+  // Two steps so neither one scrolls: who + what, then the optional links.
+  const taskStep = (
         <div className="space-y-4">
           {superAgents && superAgents.length > 0 && (
             <div className="space-y-1.5">
@@ -194,10 +190,12 @@ export function AssignTaskDialog({
               <DateTimePicker mode="date" minDate={new Date()} value={form.dueDate} onChange={(v) => setForm((p) => ({ ...p, dueDate: v }))} />
             </div>
           </div>
-          {form.agentUserId && (
-            <fieldset className="space-y-3 rounded-xl border border-border/70 p-3">
-              <legend className="px-1 text-sm font-medium">{tl("linkSectionTitle")}</legend>
-              <p className="text-xs text-muted-foreground">{t("linkHintAssign")}</p>
+        </div>
+  );
+
+  const linkStep = (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">{t("linkHintAssign")}</p>
               <TaskRecordPicker
                 type="employer"
                 value={employer}
@@ -247,18 +245,29 @@ export function AssignTaskDialog({
                 container={container}
                 modal
               />
-            </fieldset>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => close(false)} disabled={saving}>{tc("cancel")}</Button>
-          <Button onClick={() => void submit()} disabled={saving}>
-            {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" />}
-            {t("assignSubmit")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            </div>
+  );
+
+  return (
+    <StepFormDialog
+      open={open}
+      onOpenChange={close}
+      contentRef={setContainer}
+      title={t("assignTitle")}
+      description={t("assignDescription")}
+      steps={[
+        {
+          label: t("stepTask"),
+          content: taskStep,
+          validate: () => (!form.agentUserId ? t("chooseAgent") : !form.title.trim() ? t("titleRequired") : null),
+        },
+        { label: t("stepLinks"), content: linkStep },
+      ]}
+      submitLabel={t("assignSubmit")}
+      submittingLabel={t("assigning")}
+      submitting={saving}
+      onSubmit={() => void submit()}
+    />
   );
 }
 

@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import {
   changedFields,
+  JOB_ASSIST_INSTRUCTION_MAX,
   type JobAssistChangeField,
   type JobAssistChanges,
   type JobAssistDraft,
@@ -29,6 +30,8 @@ interface UseJobAssistantOptions {
   applyChanges: (changes: JobAssistChanges) => () => void;
   /** Fields this form has; anything else the assistant returns is ignored. */
   supportedFields?: readonly JobAssistChangeField[];
+  /** The poster's own text, when this job was read from an uploaded poster. */
+  getSource?: () => string | undefined;
 }
 
 export interface JobAssistantState {
@@ -61,7 +64,7 @@ const nextId = () => `m${Date.now().toString(36)}${(seq++).toString(36)}`;
  * One conversation per job form. The conversation lives in the form's page,
  * so the inline panel and the small-screen dialog show the same thread.
  */
-export function useJobAssistant({ getJob, applyChanges, supportedFields }: UseJobAssistantOptions, errorText: (e: JobAssistantError) => string): JobAssistantState {
+export function useJobAssistant({ getJob, applyChanges, supportedFields, getSource }: UseJobAssistantOptions, errorText: (e: JobAssistantError) => string): JobAssistantState {
   const [messages, setMessages] = useState<JobAssistantMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const messagesRef = useRef(messages);
@@ -77,10 +80,16 @@ export function useJobAssistant({ getJob, applyChanges, supportedFields }: UseJo
     setMessages((prev) => [...prev, { id: nextId(), role: "user", content: text }]);
     setBusy(true);
     try {
+      const source = getSource?.()?.trim();
       const res = await csrfFetch("/api/ai/job-assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instruction: text.slice(0, 1000), job: getJob(), history }),
+        body: JSON.stringify({
+          instruction: text.slice(0, JOB_ASSIST_INSTRUCTION_MAX),
+          job: getJob(),
+          history,
+          ...(source ? { source } : {}),
+        }),
       });
       if (!res.ok) {
         const kind = await assistErrorKind(res);
@@ -101,7 +110,7 @@ export function useJobAssistant({ getJob, applyChanges, supportedFields }: UseJo
     } finally {
       setBusy(false);
     }
-  }, [applyChanges, busy, errorText, getJob, supportedFields]);
+  }, [applyChanges, busy, errorText, getJob, getSource, supportedFields]);
 
   const undo = useCallback((messageId: string) => {
     const message = messagesRef.current.find((m) => m.id === messageId);
