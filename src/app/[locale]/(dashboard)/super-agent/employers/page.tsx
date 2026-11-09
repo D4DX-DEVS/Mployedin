@@ -35,11 +35,14 @@ import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ClientPlanChip, ClientPlanRequests, useClientPlans } from "@/components/features/subscription/ClientPlans";
 import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 
 interface Employer {
   _id: string;
+  /** Account holder's user id (plans and subscriptions are keyed on it). */
+  userId?: string;
   name: string;
   email: string;
   companyName?: string;
@@ -93,6 +96,7 @@ function countActiveFilters(f: Filters): number {
 
 export default function SuperAgentEmployersPage() {
   const [employers, setEmployers] = useState<Employer[]>([]);
+  const { data: clientPlans } = useClientPlans(employers.map((em) => em.userId));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const router = useRouter();
@@ -350,6 +354,7 @@ export default function SuperAgentEmployersPage() {
         {/* ---- Error State ---- */}
         {error && <ErrorState onRetry={() => loadEmployers()} />}
 
+        <ClientPlanRequests />
         <WorkspaceTabs tabs={viewTabs} ariaLabel={t("area.viewLabel")} activeKey={view} className="mb-3" />
 
         {/* ── Search + everyday filters in plain sight, the rest behind More ── */}
@@ -495,6 +500,7 @@ export default function SuperAgentEmployersPage() {
                       <UserAvatar name={em.companyName ?? em.name} className="h-9 w-9 shrink-0" colorful />
                       <div className="min-w-0 space-y-1">
                         <p className="truncate font-medium text-foreground">{em.companyName ?? em.name}</p>
+                        <ClientPlanChip plan={em.userId ? clientPlans?.get(em.userId) : undefined} known={Boolean(clientPlans && em.userId)} />
                         <div className="flex flex-wrap items-center gap-1.5">
                           {em.isAgentVerified && (
                             <span className="text-[11px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">{t("verified")}</span>

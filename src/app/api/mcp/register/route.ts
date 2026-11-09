@@ -10,12 +10,22 @@ import { isAllowedMcpRedirectUri } from "@/lib/mcp/oauth";
 
 const registerSchema = z.object({
   redirect_uris: z.array(z.string().url()).min(1).max(10),
-  client_name: z.string().trim().min(1).max(200),
+  // Optional per RFC 7591 §2; a client that leaves it out is named after its
+  // redirect host so the consent screen still says who is asking.
+  client_name: z.string().trim().min(1).max(200).optional(),
   token_endpoint_auth_method: z.string().optional(),
   grant_types: z.array(z.enum(["authorization_code", "refresh_token"])).min(1).max(2).optional(),
   response_types: z.array(z.literal("code")).min(1).max(1).optional(),
   logo_uri: z.string().url().optional(),
 });
+
+/** Name for a client that registered without one, from where it gets its codes. */
+function defaultClientName(redirectUri: string): string {
+  const host = new URL(redirectUri).hostname;
+  if (host === "chatgpt.com" || host === "chat.openai.com") return "ChatGPT";
+  if (host === "claude.ai" || host === "claude.com") return "Claude";
+  return "MCP client";
+}
 
 /**
  * POST /api/mcp/register — RFC 7591 dynamic client registration.
@@ -35,15 +45,9 @@ async function register(req: NextRequest) {
 
   const body = await validateBody(req, registerSchema);
 
-  if (body.token_endpoint_auth_method && body.token_endpoint_auth_method !== "none") {
-    return NextResponse.json(
-      {
-        error: "invalid_client_metadata",
-        error_description: "Only public clients (token_endpoint_auth_method=none) with PKCE are supported",
-      },
-      { status: 400 }
-    );
-  }
+  // A client asking for a secret-based method is not refused: RFC 7591 §3.2.1
+  // lets the server register it with the method it supports, and the response
+  // says token_endpoint_auth_method "none". PKCE still guards every exchange.
 
   for (const uri of body.redirect_uris) {
     if (!isAllowedMcpRedirectUri(uri)) {
@@ -70,7 +74,7 @@ async function register(req: NextRequest) {
   const clientId = `mcpc_${crypto.randomBytes(16).toString("hex")}`;
   const client = await McpClient.create({
     clientId,
-    clientName: body.client_name,
+    clientName: body.client_name ?? defaultClientName(body.redirect_uris[0]),
     redirectUris: body.redirect_uris,
     logoUri: body.logo_uri,
   });

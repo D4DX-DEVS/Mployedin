@@ -566,7 +566,9 @@ export default function AdminSubscriptionPlansPage() {
                       {t("applyToExistingLabel")}
                     </label>
                   </div>
-                  <p className="mt-1.5 text-xs text-muted-foreground">{t("applyToExistingHelp")}</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {t("applyToExistingHelpCount", { count: plans?.find((p) => p._id === editId)?.liveSubscriptionCount ?? 0 })}
+                  </p>
                 </div>
               )}
             </div>

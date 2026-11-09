@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 
 export interface SesConfig {
@@ -36,7 +37,7 @@ export function sesEnvConfig(): SesConfig | null {
   return isSesConfigComplete(c) ? c : null;
 }
 
-const sesTransporterCache = new Map<string, nodemailer.Transporter>();
+const sesTransporterCache = new Map<string, Transporter>();
 
 /**
  * One transporter per credential set (a rotated secret makes a new entry). SES
@@ -49,7 +50,7 @@ const sesTransporterCache = new Map<string, nodemailer.Transporter>();
  * as a failed send. The only pacing is the Inngest functions' own concurrency
  * (account cap 5, new functions use `concurrency: { limit: 1 }`).
  */
-export function createSesTransporter(config: SesConfig): nodemailer.Transporter {
+export function createSesTransporter(config: SesConfig): Transporter {
   const key = [config.region, config.accessKeyId, config.fromEmail, createHash("sha256").update(config.secretAccessKey).digest("hex").slice(0, 12)].join("|");
   const cached = sesTransporterCache.get(key);
   if (cached) return cached;

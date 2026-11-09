@@ -438,6 +438,15 @@ export async function ensureIndexes() {
     { key: { subscriptionId: 1 } },
   ]);
 
+  // Plan requests (customer asks, admin decides — no payment gateway yet).
+  await safeCreateIndexes(db, "upgraderequests", [
+    { key: { status: 1, createdAt: -1 } },
+    { key: { userId: 1, createdAt: -1 } },
+    { key: { agentId: 1, status: 1 } },
+    // One open request per customer; mirrors the schema declaration.
+    { key: { userId: 1 }, unique: true, partialFilterExpression: { status: "pending" }, name: "unique_pending_upgrade_request" },
+  ]);
+
   // ── Candidate NPS ──────────────────────────────────────────────────────────
   await safeCreateIndexes(db, "candidatenps", [
     // Cron hot path: nps-trigger dedup lookup by application

@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { NO_ACTIVITY } from "@/lib/agents/accountActivity";
 import type { Employer, EmployerListProps } from "./types";
+import { ClientPlanChip, useClientPlans } from "@/components/features/subscription/ClientPlans";
 
 const COLUMN_COUNT = 5;
 
@@ -28,6 +29,7 @@ export function EmployerTable({
 }: EmployerListProps) {
   const t = useTranslations("agentEmployers");
   const tc = useTranslations("common");
+  const { data: plans } = useClientPlans(employers.map((em) => em.userId));
 
   // Same actions as a card. Posting, entering the account and editing need the
   // employer assigned to me; a region-only row can still open its jobs.
@@ -135,6 +137,7 @@ export function EmployerTable({
                           <div className="min-w-0 max-w-[14rem]">
                             <p className="truncate font-medium text-foreground">{em.companyName ?? em.name}</p>
                             <p className="truncate text-xs text-muted-foreground">{em.email}</p>
+                            <ClientPlanChip plan={em.userId ? plans?.get(em.userId) : undefined} known={Boolean(plans && em.userId)} />
                           </div>
                         </div>
                       </TableCell>

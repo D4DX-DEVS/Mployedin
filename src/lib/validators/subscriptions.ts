@@ -211,3 +211,20 @@ export const invoicePaymentSchema = z.object({
   referenceNumber: z.string().max(100).trim().optional(),
   notes: z.string().max(500).trim().optional(),
 });
+
+// ── Upgrade requests (customer asks, admin decides) ──────────────────────────
+export const upgradeRequestCreateSchema = z.object({
+  planId: commonSchemas.objectId,
+  note: z.string().max(500).trim().optional(),
+});
+
+export const upgradeRequestListSchema = z.object({
+  status: z.enum(["pending", "approved", "declined", "cancelled", "all"]).default("pending"),
+  page: commonSchemas.paginationPage,
+  pageSize: z.coerce.number().int().refine((n) => [10, 20, 50, 100].includes(n)).default(20),
+});
+
+export const upgradeRequestDecisionSchema = z.object({
+  action: z.enum(["approve", "decline", "cancel"]),
+  note: z.string().max(500).trim().optional(),
+});

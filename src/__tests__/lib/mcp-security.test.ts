@@ -71,15 +71,23 @@ describe("MCP OAuth security helpers", () => {
     expect(isValidPkceVerifier(`${"a".repeat(42)}+`)).toBe(false);
   });
 
-  it("grants every role the single reports scope and nothing else", () => {
-    for (const role of ["job_seeker", "employer", "agent", "super_agent", "admin"] as const) {
-      expect(defaultScopesForRole(role)).toEqual(["read:reports"]);
-      expect(scopesForRole([], role)).toEqual(["read:reports"]);
+  it("grants each role exactly its own scopes, whatever the client asks for", () => {
+    const expected = {
+      job_seeker: ["read:reports"],
+      employer: ["read:reports", "read:jobs", "write:posters"],
+      agent: ["read:reports", "read:jobs"],
+      super_agent: ["read:reports", "read:jobs"],
+      admin: ["read:reports", "read:jobs", "write:posters"],
+    } as const;
+    for (const [role, scopes] of Object.entries(expected) as [keyof typeof expected, readonly string[]][]) {
+      expect(defaultScopesForRole(role)).toEqual(scopes);
+      expect(scopesForRole([], role)).toEqual(scopes);
+      // A stale request (reports only, or retired names) can't leave tools unusable…
+      expect(scopesForRole(["read:reports", "read:applicants"], role)).toEqual(scopes);
     }
-    expect(scopesForRole(["read:reports"], "employer")).toEqual(["read:reports"]);
-    // A client still asking for the retired record scopes gets reports, never records.
-    expect(scopesForRole(["read:jobs", "read:applicants"], "employer")).toEqual(["read:reports"]);
-    expect(scopesForRole(["write:everything"], "admin")).toEqual(["read:reports"]);
+    // …and can't widen a role either.
+    expect(scopesForRole(["write:posters", "read:jobs"], "job_seeker")).toEqual(["read:reports"]);
+    expect(scopesForRole(["write:posters"], "agent")).toEqual(["read:reports", "read:jobs"]);
   });
 
   it("keeps browser consent protected while exempting server OAuth exchanges", () => {

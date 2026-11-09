@@ -70,8 +70,16 @@ describe("admin subscription plans list", () => {
     // "1 seats" was the old copy.
     expect(within(row).getByText("1 seat")).toBeInTheDocument();
     expect(within(row).getByText("1 AI feature")).toBeInTheDocument();
-    expect(within(row).getByText("No subscriptions")).toBeInTheDocument();
+    expect(within(row).getByText("No active subscribers")).toBeInTheDocument();
     expect(within(row).getByText("Monthly")).toBeInTheDocument();
+  });
+
+  it("counts active subscribers first, ended ones apart", () => {
+    // Platinum showed "55 subscriptions" with only 5 paying.
+    renderList([employerPlan({ subscriptionCount: 55, liveSubscriptionCount: 5 })]);
+    const row = screen.getByRole("article");
+    expect(within(row).getByText(/5 active/)).toBeInTheDocument();
+    expect(within(row).getByText(/50 ended/)).toBeInTheDocument();
   });
 
   it("edits with the pen and keeps the rest behind a labelled More menu", async () => {

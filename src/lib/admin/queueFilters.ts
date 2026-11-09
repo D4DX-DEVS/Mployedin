@@ -39,7 +39,13 @@ export const SUBSCRIPTION_EXPIRING_WINDOWS: Record<string, number> = { "7d": 7, 
 
 /** Active subscriptions whose paid period ends within `days`. */
 export function subscriptionsEndingFilter(days: number, now: Date = new Date()) {
-  return { status: "active", endDate: { $gte: now, $lte: new Date(now.getTime() + days * DAY_MS) } };
+  // Paid plans only. A Free plan "ending" rolls straight into another free
+  // period; counting them made 88 of 88 "renewals due" noise for the admin.
+  return {
+    status: "active",
+    "planSnapshot.price": { $gt: 0 },
+    endDate: { $gte: now, $lte: new Date(now.getTime() + days * DAY_MS) },
+  };
 }
 
 /** `expiring=` values the admin jobs list accepts, in days. */

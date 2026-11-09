@@ -192,3 +192,70 @@ export function useToggleAutoRenew() {
     },
   });
 }
+
+// ── Upgrade requests (no payment gateway yet: customer asks, admin decides) ──
+
+export interface MyUpgradeRequest {
+  _id: string;
+  toPlanId: string;
+  toPlanName: string;
+  toPlanPrice: number;
+  toPlanCurrency: string;
+  fromPlanName?: string;
+  status: "pending" | "approved" | "declined" | "cancelled";
+  createdAt: string;
+}
+
+const upgradeRequestKey = [...mySubscriptionKeys.all, "upgrade-request"] as const;
+
+async function readError(res: Response, fallback: string): Promise<Error> {
+  const data = await res.json().catch(() => ({}));
+  return new Error((data as { error?: string }).error ?? fallback);
+}
+
+/** The signed-in customer's open plan request, or null. */
+export function useMyUpgradeRequest(enabled = true) {
+  return useQuery({
+    queryKey: upgradeRequestKey,
+    enabled,
+    queryFn: async (): Promise<MyUpgradeRequest | null> => {
+      const res = await fetch("/api/subscriptions/upgrade-requests");
+      if (!res.ok) throw await readError(res, "We couldn't load your plan request.");
+      return ((await res.json()) as { request: MyUpgradeRequest | null }).request;
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+/** Ask to move to another plan. */
+export function useRequestPlanChange() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (planId: string): Promise<MyUpgradeRequest> => {
+      const res = await fetch("/api/subscriptions/upgrade-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId }),
+      });
+      if (!res.ok) throw await readError(res, "We couldn't send your request.");
+      return ((await res.json()) as { request: MyUpgradeRequest }).request;
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: upgradeRequestKey }),
+  });
+}
+
+/** Withdraw the open plan request. */
+export function useCancelPlanRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (requestId: string): Promise<void> => {
+      const res = await fetch(`/api/subscriptions/upgrade-requests/${requestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cancel" }),
+      });
+      if (!res.ok) throw await readError(res, "We couldn't cancel your request.");
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: upgradeRequestKey }),
+  });
+}

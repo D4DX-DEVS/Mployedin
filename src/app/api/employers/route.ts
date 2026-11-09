@@ -236,6 +236,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         const agentUserId = agentProfile?.userId ? String(agentProfile.userId) : null;
         return {
           _id: p._id,
+          // Account holder's user id: plans and subscriptions are keyed on it.
+          userId: user?._id,
           name: user?.name,
           email: user?.email,
           companyName: p.companyName,

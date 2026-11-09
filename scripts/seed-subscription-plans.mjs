@@ -140,19 +140,19 @@ const CATALOGUE = [
     matchingWeightCustomization: false, workflowCustomization: false, prioritySupport: false,
     featuredJobListings: 0, brandedCompanyPage: false,
   }, true),
-  employer("Silver", 1, 499, 1, {
+  employer("Silver", 1, 49, 1, {
     maxActiveJobs: 10, maxApplicationsViewPerMonth: 100, maxTeamMembers: 3, aiFeatures: EMPLOYER_AI.silver,
     analyticsLevel: "basic", dataExport: false, commTemplates: true, scorecardEvaluations: false,
     matchingWeightCustomization: false, workflowCustomization: false, prioritySupport: false,
     featuredJobListings: 1, brandedCompanyPage: false,
   }),
-  employer("Gold", 2, 1499, 2, {
+  employer("Gold", 2, 129, 2, {
     maxActiveJobs: 50, maxApplicationsViewPerMonth: 500, maxTeamMembers: 10, aiFeatures: EMPLOYER_AI.gold,
     analyticsLevel: "advanced", dataExport: true, commTemplates: true, scorecardEvaluations: true,
     matchingWeightCustomization: true, workflowCustomization: true, prioritySupport: false,
     featuredJobListings: 5, brandedCompanyPage: true,
   }),
-  employer("Platinum", 3, 3999, 3, {
+  employer("Platinum", 3, 249, 3, {
     maxActiveJobs: -1, maxApplicationsViewPerMonth: -1, maxTeamMembers: -1, aiFeatures: EMPLOYER_AI.platinum,
     analyticsLevel: "advanced", dataExport: true, commTemplates: true, scorecardEvaluations: true,
     matchingWeightCustomization: true, workflowCustomization: true, prioritySupport: true,
@@ -162,11 +162,11 @@ const CATALOGUE = [
     maxApplicationsPerMonth: 10, aiFeatures: JOB_SEEKER_AI.free,
     profileVisibilityBoost: false, salaryInsights: false, priorityApplicationReview: false, resumeBuilderAccess: false,
   }, true),
-  jobSeeker("Premium", 1, 49, 1, {
+  jobSeeker("Premium", 1, 9, 1, {
     maxApplicationsPerMonth: 50, aiFeatures: JOB_SEEKER_AI.premium,
     profileVisibilityBoost: true, salaryInsights: true, priorityApplicationReview: false, resumeBuilderAccess: true,
   }),
-  jobSeeker("Premium Plus", 2, 99, 2, {
+  jobSeeker("Premium Plus", 2, 19, 2, {
     maxApplicationsPerMonth: -1, aiFeatures: JOB_SEEKER_AI.premiumPlus,
     profileVisibilityBoost: true, salaryInsights: true, priorityApplicationReview: true, resumeBuilderAccess: true,
   }),

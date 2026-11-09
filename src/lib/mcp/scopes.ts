@@ -1,21 +1,29 @@
 import type { UserRole } from "@/types/user";
 
 /**
- * The MCP connector serves aggregated reports only (owner decision
- * 2026-10-07): totals, breakdowns and trends inside the user's own scope —
- * no records, no names, no contact details, no money figures. One read scope
- * covers it for every role; what the report contains is decided by the role.
+ * What the MCP connector may do.
+ *
+ * - read:reports — aggregated reports (owner decision 2026-10-07): totals,
+ *   breakdowns and trends inside the user's own scope; no names, contacts or money.
+ * - read:jobs — the latest jobs the user can already see, with only the fields
+ *   the public job page shows (2026-11 poster plan).
+ * - write:posters — save free brand posters for those jobs (admin: any job,
+ *   employer: their own). No AI credits, nothing published anywhere.
  */
-export type McpScope = "read:reports";
+export type McpScope = "read:reports" | "read:jobs" | "write:posters";
 
-export const MCP_SCOPES: McpScope[] = ["read:reports"];
+export const MCP_SCOPES: McpScope[] = ["read:reports", "read:jobs", "write:posters"];
 
 export const MCP_SCOPE_ROLES: Record<McpScope, UserRole[]> = {
   "read:reports": ["job_seeker", "employer", "agent", "super_agent", "admin"],
+  "read:jobs": ["employer", "agent", "super_agent", "admin"],
+  "write:posters": ["employer", "admin"],
 };
 
 export const MCP_SCOPE_DESCRIPTIONS: Record<McpScope, string> = {
   "read:reports": "View summary reports (totals and trends) for your own account scope",
+  "read:jobs": "See the latest jobs you can already see in Mployedin",
+  "write:posters": "Make job posters for jobs you manage",
 };
 
 /** All scopes the current role can hold. */
@@ -24,15 +32,14 @@ export function defaultScopesForRole(role: UserRole): McpScope[] {
 }
 
 /**
- * Drop any requested scope that isn't valid for the session's actual role.
- * A client may omit `scope`, or still ask for scopes this server no longer
- * offers (the pre-2026-10-07 read:jobs, read:applicants, …); in both cases
- * grant the role's defaults so the connector cannot complete with a silently
- * unusable token.
+ * The scopes a sign-in grants: everything the session's actual role may hold.
+ *
+ * The requested list is not trusted to narrow it: clients send stale lists
+ * (only read:reports from before 2026-11, or retired names like
+ * read:applicants), and a token missing a tool's scope leaves that tool
+ * silently unusable. The consent page lists exactly what is granted, and the
+ * role, not the request, bounds it. `requested` is kept for the call shape.
  */
-export function scopesForRole(requested: string[], role: UserRole): McpScope[] {
-  const valid = requested.filter((s): s is McpScope =>
-    MCP_SCOPES.includes(s as McpScope) && MCP_SCOPE_ROLES[s as McpScope].includes(role)
-  );
-  return valid.length > 0 ? valid : defaultScopesForRole(role);
+export function scopesForRole(_requested: string[], role: UserRole): McpScope[] {
+  return defaultScopesForRole(role);
 }

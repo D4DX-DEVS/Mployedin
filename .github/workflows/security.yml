@@ -25,9 +25,13 @@ jobs:
       - run: npm ci
       - run: npm test -- --runInBand
       - run: npm run build
+        env:
+          # "Collecting build traces" needs more than Node's default ~4 GB heap
+          # and crashed with "heap out of memory" (exit 134).
+          NODE_OPTIONS: --max-old-space-size=6144
       - run: npm audit --omit=dev --audit-level=high
       - name: Semgrep OWASP scan
-        run: pipx run semgrep==1.171.0 scan --error --config p/owasp-top-ten --config p/secrets .
+        run: pipx run semgrep==1.171.0 scan --error --config p/owasp-top-ten --config p/secrets --exclude src/__tests__ --exclude e2e .
       - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

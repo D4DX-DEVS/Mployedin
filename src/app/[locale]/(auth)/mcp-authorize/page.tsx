@@ -11,6 +11,8 @@ import type { UserRole } from "@/types/user";
 
 const SCOPE_TRANSLATION_KEY: Record<McpScope, string> = {
   "read:reports": "scopeReadReports",
+  "read:jobs": "scopeLatestJobs",
+  "write:posters": "scopeWritePosters",
 };
 
 interface ConsentSessionUser {
@@ -95,7 +97,15 @@ export default async function McpAuthorizePage({
         <p className="mt-4 text-sm text-destructive">{t("noScopes")}</p>
       )}
 
-      <p className="mt-3 text-sm text-muted-foreground">{t("readOnlyNote")}</p>
+      <p className="mt-3 text-sm text-muted-foreground">
+        {t(
+          grantedScopes.includes("write:posters")
+            ? "postersNote"
+            : grantedScopes.includes("read:jobs")
+              ? "jobsNote"
+              : "readOnlyNote",
+        )}
+      </p>
       <p className="mt-3 text-sm text-muted-foreground">{t("returnTo", { host: redirectHost })}</p>
 
       <ConsentForm

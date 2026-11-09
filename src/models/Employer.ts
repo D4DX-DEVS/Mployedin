@@ -1,6 +1,17 @@
 import mongoose, { Document, Schema } from "mongoose";
 import { encryptIfPlain, decrypt } from "@/lib/security/encryption";
 
+export interface IEmployerBrandKit {
+  logoUrl?: string;
+  primary?: string;
+  accent?: string;
+  text?: string;
+  background?: string;
+  font?: "manrope" | "lexend" | "arabic" | "serif";
+  tone?: "friendly" | "formal" | "energetic";
+  updatedAt?: Date;
+}
+
 export type VerificationLevel = "basic" | "company" | "premium";
 export type WorkflowMode = "auto" | "manual";
 
@@ -61,6 +72,8 @@ export interface IEmployer extends Document {
   // Profile
   logo?: string;
   coverImage?: string;
+  /** Poster brand kit; unset parts fall back to the Mployedin default (lib/brand/brandKit.ts). */
+  brandKit?: IEmployerBrandKit;
   description?: string;
   foundedYear?: number;
   socialLinks?: IEmployerSocialLinks;
@@ -181,6 +194,21 @@ const EmployerSchema = new Schema<IEmployer>(
     // Profile
     logo: String,
     coverImage: String,
+    brandKit: {
+      type: new Schema<IEmployerBrandKit>(
+        {
+          logoUrl: { type: String, maxlength: 2048 },
+          primary: { type: String, maxlength: 7 },
+          accent: { type: String, maxlength: 7 },
+          text: { type: String, maxlength: 7 },
+          background: { type: String, maxlength: 7 },
+          font: { type: String, enum: ["manrope", "lexend", "arabic", "serif"] },
+          tone: { type: String, enum: ["friendly", "formal", "energetic"] },
+        },
+        { _id: false, timestamps: { createdAt: false, updatedAt: true } },
+      ),
+      default: undefined,
+    },
     description: { type: String, maxlength: 2000 },
     foundedYear: Number,
     socialLinks: {

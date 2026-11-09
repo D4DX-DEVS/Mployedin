@@ -1,12 +1,13 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { CustomPermissions, PermissionMode, UserRole } from "@/types/user";
+import type { UserRole } from "@/types/user";
 import type { McpScope } from "@/lib/mcp/scopes";
 import { canAccess } from "@/lib/permissions/matrix";
 import { connectDB } from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
-import { getMcpResourceMetadataUrl } from "@/lib/mcp/baseUrl";
+import { errorResult, jsonResult, oauthMeta, requireScope, type TokenExtra } from "@/lib/mcp/toolHelpers";
+import { registerJobPosterTools } from "@/lib/mcp/jobPosterTools";
 import { DASHBOARD_PERIODS, resolveDashboardPeriod, type DashboardPeriod } from "@/lib/admin/dashboard/period";
 import { describePeriod } from "@/lib/mcp/reports/period";
 import { sanitizeReport } from "@/lib/mcp/reports/privacy";
@@ -15,13 +16,6 @@ import { buildSuperAgentReport } from "@/lib/mcp/reports/superAgent";
 import { buildAgentReport } from "@/lib/mcp/reports/agent";
 import { buildEmployerReport } from "@/lib/mcp/reports/employer";
 import { buildJobSeekerReport } from "@/lib/mcp/reports/jobSeeker";
-
-interface TokenExtra {
-  userId: string;
-  role: UserRole;
-  permissionMode: PermissionMode;
-  customPermissions?: CustomPermissions;
-}
 
 const READ_ONLY_ANNOTATIONS = {
   readOnlyHint: true,
@@ -40,42 +34,11 @@ const STAFF_ROLES: ReadonlySet<UserRole> = new Set(["admin", "super_agent", "age
 const PRIVACY_NOTE =
   "Aggregated numbers only: no names of people or companies, no email addresses, phone numbers, ids or money figures. Job titles are the only names included.";
 
-function oauthMeta(scope: McpScope) {
-  // SDK 1.26 exposes vendor auth metadata through `_meta`. Keep this alongside
-  // RFC 9728 resource metadata so ChatGPT can present the correct linking UI.
-  return { securitySchemes: [{ type: "oauth2", scopes: [scope] }] };
-}
-
-function errorResult(text: string, scope?: McpScope) {
-  return {
-    content: [{ type: "text" as const, text }],
-    isError: true,
-    ...(scope
-      ? {
-          _meta: {
-            "mcp/www_authenticate":
-              `Bearer resource_metadata="${getMcpResourceMetadataUrl()}", ` +
-              `error="insufficient_scope", error_description="The ${scope} scope is required"`,
-          },
-        }
-      : {}),
-  };
-}
-
-function jsonResult(body: unknown) {
-  return {
-    structuredContent: { data: body },
-    content: [{ type: "text" as const, text: JSON.stringify(body) }],
-  };
-}
-
 /** Token scope + live permission check; the report builders do the data scoping. */
 function authorize(auth: AuthInfo | undefined) {
-  const extra = auth?.extra as TokenExtra | undefined;
-  if (!extra) return { ok: false as const, error: errorResult("Unauthorized", REPORT_SCOPE) };
-  if (!auth!.scopes.includes(REPORT_SCOPE)) {
-    return { ok: false as const, error: errorResult(`Forbidden — missing scope "${REPORT_SCOPE}"`, REPORT_SCOPE) };
-  }
+  const check = requireScope(auth, REPORT_SCOPE);
+  if (!check.ok) return check;
+  const extra: TokenExtra = check;
   if (
     STAFF_ROLES.has(extra.role) &&
     !canAccess(extra.role, "reports", "read", {
@@ -116,8 +79,9 @@ async function buildReport(auth: TokenExtra, period: DashboardPeriod): Promise<u
   }
 }
 
-/** Register the reports-only, read-only MCP tool surface. */
+/** Register the MCP tools: the summary report, plus latest jobs and job posters. */
 export function registerMcpTools(server: McpServer) {
+  registerJobPosterTools(server);
   server.registerTool(
     "get_summary_report",
     {
