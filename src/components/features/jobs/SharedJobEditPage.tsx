@@ -400,6 +400,7 @@ export function SharedJobEditPage({
         return () => setForm((f) => mergeEditPatch(f, revert(f)));
       }, []),
       supportedFields: EDIT_ASSIST_FIELDS,
+      getTarget: () => ({ jobId: id }),
     },
     useJobAssistantErrorText(),
   );

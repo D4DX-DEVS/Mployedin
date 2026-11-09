@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type RefObject } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Eye, EyeOff, Mail, Send, Globe, ReceiptText, Banknote, Check } from "lucide-react";
+import { Eye, EyeOff, Mail, Send, Globe, ReceiptText, Check, Building2, Percent, Palette, ShieldCheck } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { CurrencySelect } from "@/components/ui/currency-select";
 import { Switch } from "@/components/ui/switch";
 import { TwoFactorCard } from "@/components/features/settings/TwoFactorCard";
@@ -15,8 +14,9 @@ import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard"
 import { ConnectedAppsCard } from "@/components/features/settings/ConnectedAppsCard";
 import { BrandKitEditor } from "@/components/features/poster/BrandKitEditor";
 import { PosterContactForm } from "@/components/features/poster/PosterContactForm";
-import { PhoneInput } from "@/components/shared/PhoneInput";
 import { CommissionCountryRules, commissionRuleProblem, type CommissionOverride } from "./_components/CommissionCountryRules";
+import { GeneralSectionNav, type GeneralSectionItem } from "./_components/GeneralSectionNav";
+import { InvoiceIssuerSection, EMPTY_ISSUER, type InvoiceIssuerForm } from "./_components/InvoiceIssuerSection";
 
 interface SmtpConfig {
   smtpEmail: string;
@@ -69,32 +69,13 @@ function toEmailConfig(email: { provider?: string; ses?: Partial<SesConfig> } | 
 }
 
 
-interface InvoiceIssuerBank {
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  iban: string;
-  swift: string;
-  branch: string;
-  instructions: string;
-}
 
-/**
- * The FROM block and payment instructions printed on every invoice PDF.
- * `addressText` is the textarea's value; it is split into `addressLines` on
- * save, because an address is lines rather than one string.
- */
-interface InvoiceIssuerForm {
-  legalName: string;
-  addressText: string;
-  country: string;
-  taxRegNo: string;
-  email: string;
-  phone: string;
-  website: string;
-  bank: InvoiceIssuerBank;
-  footerNote: string;
-}
+/** The General tab's topics; each renders on its own, chosen from the side nav and kept in ?section=. */
+const SECTION_KEYS = ["platform", "invoices", "commissions", "email", "branding", "account"] as const;
+type SectionKey = (typeof SECTION_KEYS)[number];
+/** Topics whose fields go out with the shared Save button; Branding and Account save themselves. */
+const SAVED_SECTIONS: readonly SectionKey[] = ["platform", "invoices", "commissions", "email"];
+const isSectionKey = (v: string | null): v is SectionKey => !!v && (SECTION_KEYS as readonly string[]).includes(v);
 
 interface SystemSettings {
   platformName: string;
@@ -106,18 +87,6 @@ interface SystemSettings {
   invoiceIssuer: InvoiceIssuerForm;
   commissionOverrides: CommissionOverride[];
 }
-
-const EMPTY_ISSUER: InvoiceIssuerForm = {
-  legalName: "",
-  addressText: "",
-  country: "",
-  taxRegNo: "",
-  email: "",
-  phone: "",
-  website: "",
-  bank: { bankName: "", accountName: "", accountNumber: "", iban: "", swift: "", branch: "", instructions: "" },
-  footerNote: "",
-};
 
 export default function AdminSettingsPage() {
   const t = useTranslations("adminSettings");
@@ -142,6 +111,37 @@ export default function AdminSettingsPage() {
   const [showRegionError, setShowRegionError] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string; detail?: string } | null>(null);
+  const [section, setSection] = useState<SectionKey>("platform");
+
+  // ?section= keeps the topic across reloads and shared links. Read once on mount and written with
+  // history.replaceState: useSearchParams would need a Suspense boundary around the whole form.
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("section");
+    if (isSectionKey(fromUrl)) setSection(fromUrl);
+  }, []);
+
+  const selectSection = (key: SectionKey) => {
+    setSection(key);
+    const url = new URL(window.location.href);
+    if (key === "platform") url.searchParams.delete("section");
+    else url.searchParams.set("section", key);
+    window.history.replaceState(window.history.state, "", url);
+  };
+
+  /** Opens the topic holding a field the save refused, then focuses it once that topic has rendered. */
+  const focusInSection = (key: SectionKey, ref: RefObject<HTMLInputElement | null>) => {
+    selectSection(key);
+    window.setTimeout(() => ref.current?.focus(), 0);
+  };
+
+  const sections: GeneralSectionItem<SectionKey>[] = [
+    { key: "platform", label: t("sectionPlatform"), description: t("sectionPlatformDesc"), icon: Building2 },
+    { key: "invoices", label: t("sectionInvoices"), description: t("sectionInvoicesDesc"), icon: ReceiptText },
+    { key: "commissions", label: t("sectionCommissions"), description: t("sectionCommissionsDesc"), icon: Percent },
+    { key: "email", label: t("sectionEmail"), description: t("sectionEmailDesc"), icon: Mail },
+    { key: "branding", label: t("sectionBranding"), description: t("sectionBrandingDesc"), icon: Palette },
+    { key: "account", label: t("sectionAccount"), description: t("sectionAccountDesc"), icon: ShieldCheck },
+  ];
   const [settings, setSettings] = useState<SystemSettings>({
     platformName: "MPLOYEDIN",
     supportEmail: "support@mployedin.com",
@@ -231,17 +231,18 @@ export default function AdminSettingsPage() {
     const ruleProblem = commissionRuleProblem(settings.commissionOverrides);
     if (ruleProblem) {
       toast.error(ruleProblem === "missingCountry" ? t("commissionRuleMissingCountry") : t("commissionRuleDuplicateCountry"));
+      selectSection("commissions");
       return;
     }
     if (settings.email.provider === "ses" && sesSecretRequired) {
       toast.error(t("sesSecretRequired"));
-      sesSecretRef.current?.focus();
+      focusInSection("email", sesSecretRef);
       return;
     }
     if (settings.email.provider === "ses" && sesRegionInvalid) {
       setShowRegionError(true);
       toast.error(t("sesRegionInvalid"));
-      sesRegionRef.current?.focus();
+      focusInSection("email", sesRegionRef);
       return;
     }
     // With SES hidden, an edited key ID without its secret is left out: the server would pair it with the old stored secret.
@@ -288,7 +289,7 @@ export default function AdminSettingsPage() {
         if (res.status === 400 && body?.error === "smtp_password_required") {
           setSmtpPasswordRequired(true);
           toast.error(t("smtpPasswordRequired"));
-          smtpPasswordRef.current?.focus();
+          focusInSection("email", smtpPasswordRef);
         } else {
           toast.error(t("failedToSaveSettings"));
         }
@@ -369,455 +370,340 @@ export default function AdminSettingsPage() {
     );
   }
 
+  const showSaveBar = SAVED_SECTIONS.includes(section);
+
   return (
     <div className="page-container">
       <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compact compactOnMobile />
 
-      <section className="workspace-panel-surface rounded-3xl divide-y">
-        {/* General */}
-        <div className="panel-body space-y-4">
-          <h2 className="heading-section font-semibold text-foreground">{t("generalSectionTitle")}</h2>
-          <div className="space-y-1">
-            <label htmlFor="admin-platform-name" className="text-sm text-muted-foreground">{t("platformNameLabel")}</label>
-            <Input
-              id="admin-platform-name"
-              value={settings.platformName}
-              onChange={(e) => setSettings((s) => ({ ...s, platformName: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="admin-support-email" className="text-sm text-muted-foreground">{t("supportEmailLabel")}</label>
-            <Input
-              id="admin-support-email"
-              type="email"
-              value={settings.supportEmail}
-              onChange={(e) => setSettings((s) => ({ ...s, supportEmail: e.target.value }))}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5" /> {t("defaultCurrencyLabel")}
-            </label>
-            <CurrencySelect
-              ariaLabel={t("defaultCurrencyLabel")}
-              value={settings.defaultCurrency}
-              onValueChange={(v) => setSettings((s) => ({ ...s, defaultCurrency: v }))}
-              placeholder={t("defaultCurrencyPlaceholder")}
-              className="max-w-xs"
-            />
-            <p className="text-xs text-muted-foreground">
-              {t("defaultCurrencyHelp")}
-            </p>
-          </div>
-        </div>
+      <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-6">
+        <GeneralSectionNav items={sections} active={section} onSelect={selectSection} label={t("generalNavLabel")} />
 
-        {/* Maintenance */}
-        <div className="panel-body flex items-center justify-between">
-          <div>
-            <div className="font-medium text-foreground">{t("maintenanceModeLabel")}</div>
-            <div className="text-sm text-muted-foreground">{t("maintenanceModeDescription")}</div>
-          </div>
-          <Switch
-            checked={settings.maintenanceMode}
-            onCheckedChange={(checked) => setSettings((s) => ({ ...s, maintenanceMode: checked }))}
-            aria-label={t("maintenanceModeLabel")}
-          />
-        </div>
-
-        {/* Invoice issuer — the FROM block and payment instructions printed on
-            every invoice PDF. Kept here rather than in code so a change of
-            address or tax number does not need a deploy. */}
-        <div className="panel-body space-y-4">
-          <div>
-            <h2 className="heading-section font-semibold text-foreground flex items-center gap-2">
-              <ReceiptText className="h-4 w-4 text-primary" />
-              {t("invoiceIssuerTitle")}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-0.5">{t("invoiceIssuerDescription")}</p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1 sm:col-span-2">
-              <label htmlFor="issuer-legal-name" className="text-sm text-muted-foreground">{t("issuerLegalNameLabel")}</label>
-              <Input
-                id="issuer-legal-name"
-                value={settings.invoiceIssuer.legalName}
-                placeholder={t("issuerLegalNamePlaceholder")}
-                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, legalName: e.target.value } }))}
-              />
-            </div>
-
-            <div className="space-y-1 sm:col-span-2">
-              <label htmlFor="issuer-address" className="text-sm text-muted-foreground">{t("issuerAddressLabel")}</label>
-              <Textarea
-                id="issuer-address"
-                rows={3}
-                value={settings.invoiceIssuer.addressText}
-                placeholder={t("issuerAddressPlaceholder")}
-                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, addressText: e.target.value } }))}
-              />
-              <p className="text-xs text-muted-foreground">{t("issuerAddressHelp")}</p>
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="issuer-country" className="text-sm text-muted-foreground">{t("issuerCountryLabel")}</label>
-              <Input
-                id="issuer-country"
-                value={settings.invoiceIssuer.country}
-                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, country: e.target.value } }))}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="issuer-tax-reg" className="text-sm text-muted-foreground">{t("issuerTaxRegLabel")}</label>
-              <Input
-                id="issuer-tax-reg"
-                value={settings.invoiceIssuer.taxRegNo}
-                placeholder={t("issuerTaxRegPlaceholder")}
-                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, taxRegNo: e.target.value } }))}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="issuer-email" className="text-sm text-muted-foreground">{t("issuerEmailLabel")}</label>
-              <Input
-                id="issuer-email"
-                type="email"
-                value={settings.invoiceIssuer.email}
-                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, email: e.target.value } }))}
-              />
-            </div>
-
-            <PhoneInput
-              id="issuer-phone"
-              label={t("issuerPhoneLabel")}
-              value={settings.invoiceIssuer.phone}
-              onChange={(value) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, phone: value } }))}
-            />
-
-            <div className="space-y-1 sm:col-span-2">
-              <label htmlFor="issuer-website" className="text-sm text-muted-foreground">{t("issuerWebsiteLabel")}</label>
-              <Input
-                id="issuer-website"
-                value={settings.invoiceIssuer.website}
-                placeholder={t("issuerWebsitePlaceholder")}
-                onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, website: e.target.value } }))}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border/70 card-pad space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Banknote className="h-4 w-4 text-primary" /> {t("issuerBankTitle")}
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("issuerBankDescription")}</p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <label htmlFor="issuer-bank-name" className="text-sm text-muted-foreground">{t("issuerBankNameLabel")}</label>
-                <Input
-                  id="issuer-bank-name"
-                  value={settings.invoiceIssuer.bank.bankName}
-                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, bankName: e.target.value } } }))}
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="issuer-account-name" className="text-sm text-muted-foreground">{t("issuerAccountNameLabel")}</label>
-                <Input
-                  id="issuer-account-name"
-                  value={settings.invoiceIssuer.bank.accountName}
-                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, accountName: e.target.value } } }))}
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="issuer-account-number" className="text-sm text-muted-foreground">{t("issuerAccountNumberLabel")}</label>
-                <Input
-                  id="issuer-account-number"
-                  value={settings.invoiceIssuer.bank.accountNumber}
-                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, accountNumber: e.target.value } } }))}
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="issuer-iban" className="text-sm text-muted-foreground">{t("issuerIbanLabel")}</label>
-                <Input
-                  id="issuer-iban"
-                  value={settings.invoiceIssuer.bank.iban}
-                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, iban: e.target.value } } }))}
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="issuer-swift" className="text-sm text-muted-foreground">{t("issuerSwiftLabel")}</label>
-                <Input
-                  id="issuer-swift"
-                  value={settings.invoiceIssuer.bank.swift}
-                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, swift: e.target.value } } }))}
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="issuer-branch" className="text-sm text-muted-foreground">{t("issuerBranchLabel")}</label>
-                <Input
-                  id="issuer-branch"
-                  value={settings.invoiceIssuer.bank.branch}
-                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, branch: e.target.value } } }))}
-                />
-              </div>
-              <div className="space-y-1 sm:col-span-2">
-                <label htmlFor="issuer-instructions" className="text-sm text-muted-foreground">{t("issuerInstructionsLabel")}</label>
-                <Textarea
-                  id="issuer-instructions"
-                  rows={2}
-                  value={settings.invoiceIssuer.bank.instructions}
-                  placeholder={t("issuerInstructionsPlaceholder")}
-                  onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, bank: { ...s.invoiceIssuer.bank, instructions: e.target.value } } }))}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="issuer-footer" className="text-sm text-muted-foreground">{t("issuerFooterLabel")}</label>
-            <Input
-              id="issuer-footer"
-              value={settings.invoiceIssuer.footerNote}
-              placeholder={t("issuerFooterPlaceholder")}
-              onChange={(e) => setSettings((s) => ({ ...s, invoiceIssuer: { ...s.invoiceIssuer, footerNote: e.target.value } }))}
-            />
-            <p className="text-xs text-muted-foreground">{t("issuerFooterHelp")}</p>
-          </div>
-        </div>
-
-        <CommissionCountryRules
-          rules={settings.commissionOverrides}
-          onChange={(commissionOverrides) => setSettings((s) => ({ ...s, commissionOverrides }))}
-        />
-
-        {/* Email delivery: provider switch, SES, SMTP, test */}
-        <div className="panel-body space-y-5">
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-primary" />
-            <h2 className="heading-section font-semibold text-foreground">{t("emailDeliveryTitle")}</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">{t("emailDeliveryDescription")}</p>
-
-          <fieldset className="space-y-2">
-            <legend className="text-sm text-muted-foreground">{t("emailProviderLabel")}</legend>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <label className="flex items-center gap-2 rounded-lg border border-border/50 p-3 text-sm cursor-pointer has-[:checked]:border-primary">
-                <input type="radio" name="email-provider" value="smtp" checked={settings.email.provider === "smtp"} onChange={() => setProvider("smtp")} className="h-4 w-4" />
-                {t("emailProviderSmtp")}
-              </label>
-              <label className="flex items-center gap-2 rounded-lg border border-border/50 p-3 text-sm cursor-pointer has-[:checked]:border-primary">
-                <input type="radio" name="email-provider" value="ses" checked={settings.email.provider === "ses"} onChange={() => setProvider("ses")} className="h-4 w-4" />
-                {t("emailProviderSes")}
-              </label>
-            </div>
-            {settings.email.provider === null && <p className="text-xs text-muted-foreground">{t("emailProviderNotChosen")}</p>}
-          </fieldset>
-
-          {settings.email.provider === "ses" && (
-            <div className="space-y-3 rounded-lg border border-border/50 p-4">
-              <h3 className="text-sm font-semibold">{t("sesSectionTitle")}</h3>
-              <p className="text-xs text-muted-foreground">{t("sesSetupHelp")}</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <label htmlFor="admin-ses-region" className="text-sm text-muted-foreground">{t("sesRegionLabel")}</label>
-                  <Input
-                    id="admin-ses-region"
-                    ref={sesRegionRef}
-                    dir="ltr"
-                    placeholder={t("sesRegionPlaceholder")}
-                    value={settings.email.ses.region}
-                    onChange={(e) => updateSes("region", e.target.value.trim().toLowerCase())}
-                    onBlur={() => setShowRegionError(true)}
-                    aria-invalid={(showRegionError && sesRegionInvalid) || undefined}
-                    aria-describedby={showRegionError && sesRegionInvalid ? "admin-ses-region-error" : undefined}
-                    className={showRegionError && sesRegionInvalid ? "border-destructive" : undefined}
-                  />
-                  {showRegionError && sesRegionInvalid && (
-                    <p id="admin-ses-region-error" className="text-xs text-destructive">{t("sesRegionInvalid")}</p>
-                  )}
+        <div className="min-w-0 space-y-4">
+          {section === "platform" && (
+            <section className="workspace-panel-surface rounded-3xl divide-y" aria-labelledby="admin-settings-platform-title">
+              <div className="panel-body space-y-4">
+                <div>
+                  <h2 id="admin-settings-platform-title" className="heading-section font-semibold text-foreground flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" aria-hidden="true" />
+                    {t("sectionPlatform")}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">{t("sectionPlatformDesc")}</p>
                 </div>
-                <div className="space-y-1">
-                  <label htmlFor="admin-ses-from-email" className="text-sm text-muted-foreground">{t("sesFromEmailLabel")}</label>
-                  <Input id="admin-ses-from-email" type="email" dir="ltr" value={settings.email.ses.fromEmail} onChange={(e) => updateSes("fromEmail", e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="admin-ses-access-key" className="text-sm text-muted-foreground">{t("sesAccessKeyIdLabel")}</label>
-                  <Input id="admin-ses-access-key" dir="ltr" autoComplete="off" value={settings.email.ses.accessKeyId} onChange={(e) => updateSes("accessKeyId", e.target.value.trim())} />
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="admin-ses-secret" className="text-sm text-muted-foreground">{t("sesSecretAccessKeyLabel")}</label>
-                  <div className="relative">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label htmlFor="admin-platform-name" className="text-sm text-muted-foreground">{t("platformNameLabel")}</label>
                     <Input
-                      id="admin-ses-secret"
-                      ref={sesSecretRef}
-                      dir="ltr"
-                      type={showSesSecret ? "text" : "password"}
-                      autoComplete="new-password"
-                      value={settings.email.ses.secretAccessKey}
-                      onChange={(e) => updateSes("secretAccessKey", e.target.value.trim())}
-                      required={sesSecretRequired}
-                      aria-invalid={sesSecretRequired || undefined}
-                      aria-describedby="admin-ses-secret-help"
-                      className={sesSecretRequired ? "pr-10 border-destructive" : "pr-10"}
+                      id="admin-platform-name"
+                      value={settings.platformName}
+                      onChange={(e) => setSettings((s) => ({ ...s, platformName: e.target.value }))}
                     />
-                    <button aria-label={showSesSecret ? ta("hidePassword") : ta("showPassword")}
-                      type="button"
-                      onClick={() => setShowSesSecret(!showSesSecret)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showSesSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
                   </div>
-                  <p id="admin-ses-secret-help" className={sesSecretRequired ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
-                    {sesSecretRequired ? t("sesSecretRequired") : t("sesSecretHelp")}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="admin-ses-from-name" className="text-sm text-muted-foreground">{t("sesFromNameLabel")}</label>
-                  <Input id="admin-ses-from-name" value={settings.email.ses.fromName} onChange={(e) => updateSes("fromName", e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <label htmlFor="admin-ses-config-set" className="text-sm text-muted-foreground">{t("sesConfigurationSetLabel")}</label>
-                  <Input id="admin-ses-config-set" dir="ltr" value={settings.email.ses.configurationSet} onChange={(e) => updateSes("configurationSet", e.target.value.trim())} />
-                  <p className="text-xs text-muted-foreground">{t("sesConfigurationSetHelp")}</p>
+                  <div className="space-y-1">
+                    <label htmlFor="admin-support-email" className="text-sm text-muted-foreground">{t("supportEmailLabel")}</label>
+                    <Input
+                      id="admin-support-email"
+                      type="email"
+                      value={settings.supportEmail}
+                      onChange={(e) => setSettings((s) => ({ ...s, supportEmail: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <Globe className="h-3.5 w-3.5" /> {t("defaultCurrencyLabel")}
+                    </label>
+                    <CurrencySelect
+                      ariaLabel={t("defaultCurrencyLabel")}
+                      value={settings.defaultCurrency}
+                      onValueChange={(v) => setSettings((s) => ({ ...s, defaultCurrency: v }))}
+                      placeholder={t("defaultCurrencyPlaceholder")}
+                      className="max-w-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("defaultCurrencyHelp")}
+                    </p>
+                  </div>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">{t("emailProviderSmtpNote")}</p>
+              <div className="panel-body flex items-center justify-between gap-4">
+                <div>
+                  <div className="font-medium text-foreground">{t("maintenanceModeLabel")}</div>
+                  <div className="text-sm text-muted-foreground">{t("maintenanceModeDescription")}</div>
+                </div>
+                <Switch
+                  checked={settings.maintenanceMode}
+                  onCheckedChange={(checked) => setSettings((s) => ({ ...s, maintenanceMode: checked }))}
+                  aria-label={t("maintenanceModeLabel")}
+                />
+              </div>
+            </section>
+          )}
+
+          {section === "invoices" && (
+            <section className="workspace-panel-surface rounded-3xl divide-y" aria-labelledby="admin-settings-invoices-title">
+              <div className="panel-body">
+                <h2 id="admin-settings-invoices-title" className="heading-section font-semibold text-foreground flex items-center gap-2">
+                  <ReceiptText className="h-4 w-4 text-primary" aria-hidden="true" />
+                  {t("invoiceIssuerTitle")}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{t("invoiceIssuerDescription")}</p>
+              </div>
+              <InvoiceIssuerSection
+                value={settings.invoiceIssuer}
+                onChange={(update) => setSettings((s) => ({ ...s, invoiceIssuer: update(s.invoiceIssuer) }))}
+              />
+            </section>
+          )}
+
+          {section === "commissions" && (
+            <section className="workspace-panel-surface rounded-3xl">
+              <CommissionCountryRules
+                rules={settings.commissionOverrides}
+                onChange={(commissionOverrides) => setSettings((s) => ({ ...s, commissionOverrides }))}
+              />
+            </section>
+          )}
+
+          {section === "email" && (
+            <section className="workspace-panel-surface rounded-3xl">
+              <div className="panel-body space-y-5">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-primary" />
+                  <h2 className="heading-section font-semibold text-foreground">{t("emailDeliveryTitle")}</h2>
+                </div>
+                <p className="text-sm text-muted-foreground">{t("emailDeliveryDescription")}</p>
+
+                <fieldset className="space-y-2">
+                  <legend className="text-sm text-muted-foreground">{t("emailProviderLabel")}</legend>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="flex items-center gap-2 rounded-lg border border-border/50 p-3 text-sm cursor-pointer has-[:checked]:border-primary">
+                      <input type="radio" name="email-provider" value="smtp" checked={settings.email.provider === "smtp"} onChange={() => setProvider("smtp")} className="h-4 w-4" />
+                      {t("emailProviderSmtp")}
+                    </label>
+                    <label className="flex items-center gap-2 rounded-lg border border-border/50 p-3 text-sm cursor-pointer has-[:checked]:border-primary">
+                      <input type="radio" name="email-provider" value="ses" checked={settings.email.provider === "ses"} onChange={() => setProvider("ses")} className="h-4 w-4" />
+                      {t("emailProviderSes")}
+                    </label>
+                  </div>
+                  {settings.email.provider === null && <p className="text-xs text-muted-foreground">{t("emailProviderNotChosen")}</p>}
+                </fieldset>
+
+                {settings.email.provider === "ses" && (
+                  <div className="space-y-3 rounded-lg border border-border/50 p-4">
+                    <h3 className="text-sm font-semibold">{t("sesSectionTitle")}</h3>
+                    <p className="text-xs text-muted-foreground">{t("sesSetupHelp")}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label htmlFor="admin-ses-region" className="text-sm text-muted-foreground">{t("sesRegionLabel")}</label>
+                        <Input
+                          id="admin-ses-region"
+                          ref={sesRegionRef}
+                          dir="ltr"
+                          placeholder={t("sesRegionPlaceholder")}
+                          value={settings.email.ses.region}
+                          onChange={(e) => updateSes("region", e.target.value.trim().toLowerCase())}
+                          onBlur={() => setShowRegionError(true)}
+                          aria-invalid={(showRegionError && sesRegionInvalid) || undefined}
+                          aria-describedby={showRegionError && sesRegionInvalid ? "admin-ses-region-error" : undefined}
+                          className={showRegionError && sesRegionInvalid ? "border-destructive" : undefined}
+                        />
+                        {showRegionError && sesRegionInvalid && (
+                          <p id="admin-ses-region-error" className="text-xs text-destructive">{t("sesRegionInvalid")}</p>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <label htmlFor="admin-ses-from-email" className="text-sm text-muted-foreground">{t("sesFromEmailLabel")}</label>
+                        <Input id="admin-ses-from-email" type="email" dir="ltr" value={settings.email.ses.fromEmail} onChange={(e) => updateSes("fromEmail", e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <label htmlFor="admin-ses-access-key" className="text-sm text-muted-foreground">{t("sesAccessKeyIdLabel")}</label>
+                        <Input id="admin-ses-access-key" dir="ltr" autoComplete="off" value={settings.email.ses.accessKeyId} onChange={(e) => updateSes("accessKeyId", e.target.value.trim())} />
+                      </div>
+                      <div className="space-y-1">
+                        <label htmlFor="admin-ses-secret" className="text-sm text-muted-foreground">{t("sesSecretAccessKeyLabel")}</label>
+                        <div className="relative">
+                          <Input
+                            id="admin-ses-secret"
+                            ref={sesSecretRef}
+                            dir="ltr"
+                            type={showSesSecret ? "text" : "password"}
+                            autoComplete="new-password"
+                            value={settings.email.ses.secretAccessKey}
+                            onChange={(e) => updateSes("secretAccessKey", e.target.value.trim())}
+                            required={sesSecretRequired}
+                            aria-invalid={sesSecretRequired || undefined}
+                            aria-describedby="admin-ses-secret-help"
+                            className={sesSecretRequired ? "pr-10 border-destructive" : "pr-10"}
+                          />
+                          <button aria-label={showSesSecret ? ta("hidePassword") : ta("showPassword")}
+                            type="button"
+                            onClick={() => setShowSesSecret(!showSesSecret)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showSesSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                        <p id="admin-ses-secret-help" className={sesSecretRequired ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
+                          {sesSecretRequired ? t("sesSecretRequired") : t("sesSecretHelp")}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <label htmlFor="admin-ses-from-name" className="text-sm text-muted-foreground">{t("sesFromNameLabel")}</label>
+                        <Input id="admin-ses-from-name" value={settings.email.ses.fromName} onChange={(e) => updateSes("fromName", e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <label htmlFor="admin-ses-config-set" className="text-sm text-muted-foreground">{t("sesConfigurationSetLabel")}</label>
+                        <Input id="admin-ses-config-set" dir="ltr" value={settings.email.ses.configurationSet} onChange={(e) => updateSes("configurationSet", e.target.value.trim())} />
+                        <p className="text-xs text-muted-foreground">{t("sesConfigurationSetHelp")}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t("emailProviderSmtpNote")}</p>
+                  </div>
+                )}
+
+                <div className="space-y-3 rounded-lg border border-border/50 p-4">
+                  <h3 className="text-sm font-semibold">{t("smtpSectionTitle")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("emailConfigDescription")}</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label htmlFor="admin-smtp-email" className="text-sm text-muted-foreground">{t("smtpEmailLabel")}</label>
+                      <Input
+                        id="admin-smtp-email"
+                        type="email"
+                        placeholder={t("smtpEmailPlaceholder")}
+                        value={settings.smtp.smtpEmail}
+                        onChange={(e) => updateSmtp("smtpEmail", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="admin-smtp-password" className="text-sm text-muted-foreground">{t("appPasswordLabel")}</label>
+                      <div className="relative">
+                        <Input
+                          id="admin-smtp-password"
+                          ref={smtpPasswordRef}
+                          type={showPassword ? "text" : "password"}
+                          placeholder={t("appPasswordPlaceholder")}
+                          value={settings.smtp.smtpAppPassword}
+                          onChange={(e) => updateSmtp("smtpAppPassword", e.target.value)}
+                          aria-invalid={smtpPasswordRequired || undefined}
+                          aria-describedby="admin-smtp-password-help"
+                          className={smtpPasswordRequired ? "pr-10 border-destructive" : "pr-10"}
+                        />
+                        <button aria-label={showPassword ? ta("hidePassword") : ta("showPassword")}
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      <p id="admin-smtp-password-help" className={smtpPasswordRequired ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
+                        {smtpPasswordRequired ? t("smtpPasswordRequired") : t("appPasswordHelp")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <label htmlFor="admin-smtp-host" className="text-sm text-muted-foreground">{t("smtpHostLabel")}</label>
+                      <Input
+                        id="admin-smtp-host"
+                        placeholder={t("smtpHostPlaceholder")}
+                        value={settings.smtp.smtpHost}
+                        onChange={(e) => updateSmtp("smtpHost", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="admin-smtp-port" className="text-sm text-muted-foreground">{t("smtpPortLabel")}</label>
+                      <Input
+                        id="admin-smtp-port"
+                        type="number"
+                        placeholder={t("smtpPortPlaceholder")}
+                        value={settings.smtp.smtpPort}
+                        onChange={(e) => updateSmtp("smtpPort", parseInt(e.target.value) || 587)}
+                      />
+                    </div>
+                    <div className="flex items-end gap-2 pb-1">
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.smtp.smtpSecure}
+                          onChange={(e) => updateSmtp("smtpSecure", e.target.checked)}
+                          className="h-4 w-4 rounded border-border"
+                        />
+                        {t("sslTlsLabel")}
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <div className="space-y-1">
+                    <label htmlFor="admin-email-test-to" className="text-sm text-muted-foreground">{t("testRecipientLabel")}</label>
+                    <Input id="admin-email-test-to" type="email" dir="ltr" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">{t("testRecipientHelp")}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleTestEmail} disabled={testingEmail || !canTest} className="w-full sm:w-auto">
+                    <Send className="mr-2 h-3.5 w-3.5" />
+                    {testingEmail ? t("testEmailSending") : t("testEmailButton")}
+                  </Button>
+                </div>
+                {testResult && (
+                  <div role={testResult.ok ? "status" : "alert"} className={`space-y-1 text-sm ${testResult.ok ? "text-emerald-600" : "text-destructive"}`}>
+                    <p>{testResult.message}</p>
+                    {/* The service's own reply is English and technical: it stays behind a closed disclosure for whoever sets the service up. */}
+                    {testResult.detail && (
+                      <details className="rounded-lg border border-border/50 px-3 py-2 text-xs text-muted-foreground">
+                        <summary className="cursor-pointer select-none rounded font-medium hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+                          {t("testEmailDetailsTitle")}
+                        </summary>
+                        <p className="mt-1.5">
+                          {t("testEmailProviderReply")}{" "}
+                          <span dir="auto" className="break-words">{testResult.detail}</span>
+                        </p>
+                      </details>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {section === "branding" && (
+            <section className="workspace-panel-surface rounded-3xl" aria-labelledby="admin-brand-kit-title">
+              <div className="panel-body space-y-4">
+                <div>
+                  <h2 id="admin-brand-kit-title" className="heading-section font-semibold text-foreground">{t("brandKitTitle")}</h2>
+                  <p className="text-sm text-muted-foreground mt-1">{t("brandKitDesc")}</p>
+                </div>
+                <BrandKitEditor mode="admin" />
+                <div className="mt-6 border-t pt-6">
+                  <PosterContactForm />
+                </div>
+              </div>
+            </section>
+          )}
+
+          {section === "account" && (
+            <div className="space-y-4">
+              <TwoFactorCard />
+              <ChangeEmailCard />
+              <ConnectedAppsCard />
             </div>
           )}
 
-          <div className="space-y-3 rounded-lg border border-border/50 p-4">
-            <h3 className="text-sm font-semibold">{t("smtpSectionTitle")}</h3>
-            <p className="text-xs text-muted-foreground">{t("emailConfigDescription")}</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <label htmlFor="admin-smtp-email" className="text-sm text-muted-foreground">{t("smtpEmailLabel")}</label>
-                <Input
-                  id="admin-smtp-email"
-                  type="email"
-                  placeholder={t("smtpEmailPlaceholder")}
-                  value={settings.smtp.smtpEmail}
-                  onChange={(e) => updateSmtp("smtpEmail", e.target.value)}
-                />
+          {showSaveBar && (
+            <div className="workspace-panel-surface rounded-3xl panel-body flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">{t("saveScopeHint")}</p>
+              <div className="flex items-center gap-3">
+                {saved && <span className="inline-flex items-center gap-1 text-sm text-green-600"><Check className="h-4 w-4" aria-hidden="true" />{t("saveSuccess")}</span>}
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? t("savingSaving") : t("saveButton")}
+                </Button>
               </div>
-              <div className="space-y-1">
-                <label htmlFor="admin-smtp-password" className="text-sm text-muted-foreground">{t("appPasswordLabel")}</label>
-                <div className="relative">
-                  <Input
-                    id="admin-smtp-password"
-                    ref={smtpPasswordRef}
-                    type={showPassword ? "text" : "password"}
-                    placeholder={t("appPasswordPlaceholder")}
-                    value={settings.smtp.smtpAppPassword}
-                    onChange={(e) => updateSmtp("smtpAppPassword", e.target.value)}
-                    aria-invalid={smtpPasswordRequired || undefined}
-                    aria-describedby="admin-smtp-password-help"
-                    className={smtpPasswordRequired ? "pr-10 border-destructive" : "pr-10"}
-                  />
-                  <button aria-label={showPassword ? ta("hidePassword") : ta("showPassword")}
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <p id="admin-smtp-password-help" className={smtpPasswordRequired ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
-                  {smtpPasswordRequired ? t("smtpPasswordRequired") : t("appPasswordHelp")}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="space-y-1">
-                <label htmlFor="admin-smtp-host" className="text-sm text-muted-foreground">{t("smtpHostLabel")}</label>
-                <Input
-                  id="admin-smtp-host"
-                  placeholder={t("smtpHostPlaceholder")}
-                  value={settings.smtp.smtpHost}
-                  onChange={(e) => updateSmtp("smtpHost", e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="admin-smtp-port" className="text-sm text-muted-foreground">{t("smtpPortLabel")}</label>
-                <Input
-                  id="admin-smtp-port"
-                  type="number"
-                  placeholder={t("smtpPortPlaceholder")}
-                  value={settings.smtp.smtpPort}
-                  onChange={(e) => updateSmtp("smtpPort", parseInt(e.target.value) || 587)}
-                />
-              </div>
-              <div className="flex items-end gap-2 pb-1">
-                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={settings.smtp.smtpSecure}
-                    onChange={(e) => updateSmtp("smtpSecure", e.target.checked)}
-                    className="h-4 w-4 rounded border-border"
-                  />
-                  {t("sslTlsLabel")}
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <div className="space-y-1">
-              <label htmlFor="admin-email-test-to" className="text-sm text-muted-foreground">{t("testRecipientLabel")}</label>
-              <Input id="admin-email-test-to" type="email" dir="ltr" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
-              <p className="text-xs text-muted-foreground">{t("testRecipientHelp")}</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleTestEmail} disabled={testingEmail || !canTest} className="w-full sm:w-auto">
-              <Send className="mr-2 h-3.5 w-3.5" />
-              {testingEmail ? t("testEmailSending") : t("testEmailButton")}
-            </Button>
-          </div>
-          {testResult && (
-            <div role={testResult.ok ? "status" : "alert"} className={`space-y-1 text-sm ${testResult.ok ? "text-emerald-600" : "text-destructive"}`}>
-              <p>{testResult.message}</p>
-              {/* The service's own reply is English and technical: it stays behind a closed disclosure for whoever sets the service up. */}
-              {testResult.detail && (
-                <details className="rounded-lg border border-border/50 px-3 py-2 text-xs text-muted-foreground">
-                  <summary className="cursor-pointer select-none rounded font-medium hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
-                    {t("testEmailDetailsTitle")}
-                  </summary>
-                  <p className="mt-1.5">
-                    {t("testEmailProviderReply")}{" "}
-                    <span dir="auto" className="break-words">{testResult.detail}</span>
-                  </p>
-                </details>
-              )}
             </div>
           )}
         </div>
-      </section>
-
-      <section className="workspace-panel-surface rounded-3xl" aria-labelledby="admin-brand-kit-title">
-        <div className="panel-body space-y-4">
-          <div>
-            <h2 id="admin-brand-kit-title" className="heading-section font-semibold text-foreground">{t("brandKitTitle")}</h2>
-            <p className="text-sm text-muted-foreground mt-1">{t("brandKitDesc")}</p>
-          </div>
-          <BrandKitEditor mode="admin" />
-          <div className="mt-6 border-t pt-6">
-            <PosterContactForm />
-          </div>
-        </div>
-      </section>
-
-      <TwoFactorCard />
-
-      <ChangeEmailCard />
-      <ConnectedAppsCard />
-
-      <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? t("savingSaving") : t("saveButton")}
-        </Button>
-        {saved && <span className="inline-flex items-center gap-1 text-sm text-green-600"><Check className="h-4 w-4" aria-hidden="true" />{t("saveSuccess")}</span>}
       </div>
     </div>
   );

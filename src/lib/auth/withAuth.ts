@@ -8,6 +8,7 @@ import TenantViewSession from "@/models/TenantViewSession";
 import { verifyTenantCookie, TENANT_COOKIE_NAME } from "@/lib/security/tenantCookie";
 import { logActivity } from "@/lib/audit/log";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
+import { runWithAiCaller, featureFromPath } from "@/lib/ai/usageContext";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
 import type { CompanyRole, ICompanyUserPermissions } from "@/models/CompanyUser";
 
@@ -334,7 +335,18 @@ export function withAuth(
           const quota = await enforceDailyAiQuota(tenantCtx.userId, tenantCtx.role);
           if (quota) return quota;
         }
-        const response = await handler(req, tenantCtx, resolvedParams);
+        const response = await runWithAiCaller(
+          {
+            userId,
+            role,
+            employerUserId: resolvedTenantEmployerUserId,
+            employerId: resolvedTenantEmployerId,
+            onBehalf: true,
+            route: req.nextUrl.pathname,
+            feature: featureFromPath(req.nextUrl.pathname),
+          },
+          () => handler(req, tenantCtx, resolvedParams),
+        );
 
         // ── Auto-audit: log all write actions performed on behalf of employer
         if (isWriteRequest && response.status >= 200 && response.status < 300) {
@@ -414,19 +426,31 @@ export function withAuth(
         const quota = await enforceDailyAiQuota(userId, role);
         if (quota) return quota;
       }
-      return await handler(
-        req,
+      const ownerUserId = memberCtx ? (companyOwnerUserId as string) : userId;
+      return await runWithAiCaller(
         {
-          userId: memberCtx ? (companyOwnerUserId as string) : userId,
+          userId,
           role,
-          locale,
-          permissionMode,
-          customPermissions,
-          companyUserRole,
-          companyId,
-          member: memberCtx,
+          // Employer accounts (owner or colleague) belong to the owner's company.
+          employerUserId: role === "employer" ? ownerUserId : null,
+          route: req.nextUrl.pathname,
+          feature: featureFromPath(req.nextUrl.pathname),
         },
-        resolvedParams
+        () =>
+          handler(
+            req,
+            {
+              userId: ownerUserId,
+              role,
+              locale,
+              permissionMode,
+              customPermissions,
+              companyUserRole,
+              companyId,
+              member: memberCtx,
+            },
+            resolvedParams
+          ),
       );
     } catch (err) {
       // validateBody() throws a NextResponse on validation failure — surface it directly

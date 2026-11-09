@@ -177,3 +177,6 @@ PLAN.md
 
 # Undo journals written by scripts/fix-location-data.mjs --apply
 /backups/
+
+# Local script output (reports, caches) — e.g. scripts/backfill-seeker-areas.mjs
+/tmp/

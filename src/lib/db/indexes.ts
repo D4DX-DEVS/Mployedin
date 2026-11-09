@@ -33,8 +33,10 @@ async function safeCreateIndexes(
   try {
     await db.collection(collection).createIndexes(indexes);
     return;
-  } catch (err: unknown) {
-    if (benign(err)) return;
+  } catch {
+    // One bad spec fails the whole batch — even a benign 85 — so the others were
+    // never built (jobseekers ran for months without its createdAt/region indexes).
+    // Fall through and create them one by one.
   }
 
   for (const spec of indexes) {
@@ -80,8 +82,13 @@ export async function ensureIndexes() {
     { key: { userId: 1 }, unique: true },
     // Matching-vector refresh sweep: profiles changed in the last few minutes
     { key: { updatedAt: -1 } },
+    // Staff job-seeker lists sort newest first. Without it a deep page (skip 6000)
+    // sorts every profile in memory, passes Mongo's 32 MB cap and the API 500s.
+    { key: { createdAt: -1, _id: -1 } },
     { key: { "skills.name": 1 } },
     { key: { profileCompleteness: -1 } },
+    // "Profile strength" sort on the same lists, deep pages included.
+    { key: { profileCompleteness: -1, _id: -1 } },
     { key: { nationality: 1 } },
     { key: { currentLocation: 1 } },
     { key: { availableFrom: 1 } },
@@ -457,6 +464,28 @@ export async function ensureIndexes() {
   await safeCreateIndexes(db, "aidailyusages", [
     { key: { userId: 1, day: 1 }, unique: true },
     { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+
+  // ── AI usage log + market gaps (admin reports) ──────────────────────────────
+  await safeCreateIndexes(db, "aiusagelogs", [
+    { key: { employerId: 1, at: -1 } },
+    { key: { userId: 1, at: -1 } },
+    { key: { at: -1 } },
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+  await safeCreateIndexes(db, "aiusagemonthlies", [
+    { key: { month: 1, scope: 1, refId: 1, feature: 1 }, unique: true },
+    { key: { month: 1, scope: 1, role: 1 } },
+  ]);
+  await safeCreateIndexes(db, "marketgapsnapshots", [
+    { key: { generatedAt: -1 } },
+    { key: { generatedAt: 1 }, expireAfterSeconds: 365 * 24 * 3600 },
+  ]);
+  await safeCreateIndexes(db, "marketsuggestions", [
+    { key: { key: 1 }, unique: true },
+    { key: { status: 1, priority: 1, seekers: -1 } },
+    { key: { saUserId: 1, status: 1 } },
+    { key: { areaId: 1 } },
   ]);
 
   // ── Model-declared indexes ────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAiContext } from "@/lib/ai/usageContext";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
@@ -189,7 +190,7 @@ async function trySonioxTranscription(
   });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -218,7 +219,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole);
+    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole, req.nextUrl.pathname);
     if (__aiQuota) return __aiQuota;
 
     // Read audio from form data
@@ -452,3 +453,5 @@ Rules:
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+
+export const POST = withAiContext(handlePOST);

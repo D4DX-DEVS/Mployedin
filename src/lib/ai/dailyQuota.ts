@@ -18,6 +18,7 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import AiDailyUsage from "@/models/AiDailyUsage";
+import { identifyAiCaller, featureFromPath } from "./usageContext";
 
 const PRIVILEGED_ROLES = new Set(["admin", "super_agent", "agent"]);
 
@@ -53,7 +54,19 @@ function nextUtcMidnight(now: Date): Date {
 export async function enforceDailyAiQuota(
   userId: string,
   role: string,
+  /** The request path, so the AI usage page knows which feature this call belongs to. */
+  route?: string,
 ): Promise<NextResponse | null> {
+  // Every AI route calls this before it reaches a provider, so it is where a
+  // route that reads its own session (wrapped in `withAiContext`) tells the
+  // usage log who is calling. A no-op for `withAuth` routes, which name it themselves.
+  identifyAiCaller({
+    userId,
+    role,
+    employerUserId: role === "employer" ? userId : null,
+    route,
+    feature: featureFromPath(route),
+  });
   const limit = getDailyLimit(role);
   if (limit <= 0) return null; // quota disabled
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAiContext } from "@/lib/ai/usageContext";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
@@ -58,7 +59,7 @@ function failedRequirements(app: RankedApplication): string[] {
     .map((check) => `${check.label ?? check.key}: asks ${check.required ?? "?"}, has ${check.actual ?? "not stated"}`);
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole);
+    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole, req.nextUrl.pathname);
     if (__aiQuota) return __aiQuota;
 
     const body = await validateBody(req, aiScreenCandidatesSchema);
@@ -261,3 +262,5 @@ Output ONLY a JSON array of {"id","strengths","gaps","summary"}, no markdown cod
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+
+export const POST = withAiContext(handlePOST);

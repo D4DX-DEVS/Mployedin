@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAiContext } from "@/lib/ai/usageContext";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
 import { getClientIp } from "@/lib/security/clientIp";
 import { routeGenerate } from "@/lib/ai/router";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const __aiQuota = await enforceDailyAiQuota(session.user.id as string, (session.user as { role: string }).role);
+    const __aiQuota = await enforceDailyAiQuota(session.user.id as string, (session.user as { role: string }).role, req.nextUrl.pathname);
     if (__aiQuota) return __aiQuota;
 
     const body = await req.json();
@@ -91,3 +92,5 @@ Example: {"search": "React", "status": "scheduled", "dateFrom": "2026-05-01", "d
     return NextResponse.json({ error: "Failed to parse query" }, { status: 500 });
   }
 }
+
+export const POST = withAiContext(handlePOST);

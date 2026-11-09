@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAiContext } from "@/lib/ai/usageContext";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
@@ -16,7 +17,7 @@ import logger from "@/lib/logger";
 const QUESTION_TYPES = ["technical", "behavioral", "culture_fit", "situational"] as const;
 type QuestionType = (typeof QUESTION_TYPES)[number];
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole);
+    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole, req.nextUrl.pathname);
     if (__aiQuota) return __aiQuota;
 
     const body = await validateBody(req, aiInterviewQuestionsSchema);
@@ -236,3 +237,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+
+export const POST = withAiContext(handlePOST);

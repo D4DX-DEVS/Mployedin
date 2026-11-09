@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAiContext } from "@/lib/ai/usageContext";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
@@ -8,7 +9,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Lead from "@/models/Lead";
 import logger from "@/lib/logger";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole);
+    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole, req.nextUrl.pathname);
     if (__aiQuota) return __aiQuota;
 
     const body = await req.json();
@@ -149,3 +150,5 @@ Output ONLY valid JSON, no markdown code blocks.`;
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+
+export const POST = withAiContext(handlePOST);

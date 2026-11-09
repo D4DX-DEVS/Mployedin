@@ -265,10 +265,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   // ── Sort option ───────────────────────────────────────────
   const sortMap: Record<string, Record<string, 1 | -1>> = {
-    newest: { createdAt: -1 },
-    oldest: { createdAt: 1 },
-    profile_high: { profileCompleteness: -1 },
-    profile_low: { profileCompleteness: 1 },
+    // _id breaks ties so rows never repeat or vanish between pages (thousands of
+    // legacy imports share a createdAt second); matches the { createdAt, _id } index.
+    newest: { createdAt: -1, _id: -1 },
+    oldest: { createdAt: 1, _id: 1 },
+    profile_high: { profileCompleteness: -1, _id: -1 },
+    profile_low: { profileCompleteness: 1, _id: 1 },
   };
   const sortOption = sortMap[sort] ?? sortMap.newest;
 

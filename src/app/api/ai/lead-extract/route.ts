@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAiContext } from "@/lib/ai/usageContext";
 import mammoth from "mammoth";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
@@ -30,7 +31,7 @@ const ALLOWED = ["application/pdf", "image/jpeg", "image/png", "image/webp", DOC
 // The answer is small (one company, a role list); the CV budget is far more than enough.
 const MAX_OUTPUT_TOKENS = Math.min(AI_TOKEN_LIMITS.cv_extract ?? 4000, 4000);
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const userId = session.user.id;
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
   const { allowed } = await checkRateLimit(`lead-extract:${userId ?? getClientIp(req.headers)}`, RATE_LIMIT_CONFIGS.upload);
   if (!allowed) return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
 
-  const quota = await enforceDailyAiQuota(userId, role);
+  const quota = await enforceDailyAiQuota(userId, role, req.nextUrl.pathname);
   if (quota) return quota;
 
   try {
@@ -120,3 +121,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "We couldn't read this file. Please try again." }, { status: 500 });
   }
 }
+
+export const POST = withAiContext(handlePOST);

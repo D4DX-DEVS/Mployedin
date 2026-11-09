@@ -10,6 +10,8 @@ export const ADMIN_REPORT_TABS = [
   { key: "targets", path: "/admin/target-report" },
   { key: "commissions", path: "/admin/commissions-report" },
   { key: "subscriptions", path: "/admin/subscription-dashboard" },
+  { key: "marketGaps", path: "/admin/market-gaps" },
+  { key: "aiUsage", path: "/admin/ai-usage" },
 ] as const;
 
 /**

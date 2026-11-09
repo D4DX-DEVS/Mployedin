@@ -19,6 +19,7 @@ import {
   Pencil, Trash2, Ban, Inbox, FileDown, Loader2, Eye, RotateCcw, X, Crown,
 } from "lucide-react";
 import { JobSeekerExpandedRow } from "./_components/JobSeekerExpandedRow";
+import { JobSeekerMobileList } from "./_components/JobSeekerMobileList";
 import { useConfirm } from "@/hooks/useConfirm";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { Button } from "@/components/ui/button";
@@ -616,13 +617,57 @@ export default function AdminJobSeekersPage() {
       />
 
       {/* ── List ──────────────────────────────────────────── */}
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      {/* Phones: the cards sit straight on the page; a box around bordered cards doubled border and padding. */}
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:!overflow-visible max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none">
         {loadError ? (
           <div className="p-6">
             <ErrorState onRetry={fetchJobSeekers} />
           </div>
         ) : (
-        <Table>
+        <>
+        <div className="sm:hidden">
+          <JobSeekerMobileList
+            seekers={jobSeekers}
+            loading={loading}
+            expandedId={expandedId}
+            onToggle={(id) => setExpandedId(expandedId === id ? null : id)}
+            availabilityLabels={availabilityLabels}
+            empty={(
+              <EmptyState
+                icon={Inbox}
+                title={tr("emptyStateTitle")}
+                description={tr("emptyStateSubtitle")}
+                action={activeFilterCount > 0 || aiSummary ? (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {aiBrief && !closestTo && (
+                      <Button size="sm" onClick={showClosestMatches}>{tr("showClosestMatches")}</Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={clearAllFilters}>{tr("clearFilters")}</Button>
+                  </div>
+                ) : undefined}
+              />
+            )}
+            renderActions={(js) => (js.cv?.originalUrl || canUpdate || canDelete
+              ? (() => {
+                  // Phones: View CV joins the menu, so the card needs no actions line.
+                  const { quick, menu } = rowActionsFor(js);
+                  return <RowActions name={js.fullName || js.userId?.name || js.email || ""} quick={[]} menu={[...quick, ...menu]} />;
+                })()
+              : null)}
+            renderExpanded={(js) => (
+              <JobSeekerExpandedRow
+                seeker={js}
+                locale={locale}
+                availabilityLabel={js.availabilityStatus ? (availabilityLabels[js.availabilityStatus] ?? js.availabilityStatus.replace(/_/g, " ")) : undefined}
+                onViewCv={() => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" })}
+              />
+            )}
+          />
+        </div>
+
+        {/* Phones get JobSeekerMobileList above; "scroll" keeps the
+            ResponsiveTables card fallback off this hidden table. */}
+        <Table data-mobile-table="scroll" className="max-sm:hidden">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>
@@ -757,6 +802,7 @@ export default function AdminJobSeekersPage() {
             ))}
           </TableBody>
         </Table>
+        </>
         )}
       </section>
 
