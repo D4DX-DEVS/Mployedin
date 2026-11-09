@@ -724,24 +724,51 @@ export async function notifySuperAgentEmployerRegistered(
   });
 }
 
-/** An admin put an employer under this agent. In-app only. */
+/**
+ * An admin or this agent's super agent put an employer under them. Bell,
+ * email and push — a new account is work the agent should start on now.
+ */
 export async function notifyAgentEmployerAssigned(
   agentUserId: string,
   companyName: string,
   employerId: string,
+  assignedBy: "admin" | "super_agent" = "admin",
 ): Promise<void> {
+  const bySa = assignedBy === "super_agent";
   await notify({
     userId: agentUserId,
     // Reuses the existing type: a new enum value needs a Notification schema
     // change and a server restart before it validates.
     type: "employer_registered",
     title: "Employer assigned to you",
-    message: `An admin assigned ${companyName} to you.`,
+    message: bySa ? `Your super agent assigned ${companyName} to you.` : `An admin assigned ${companyName} to you.`,
     link: `/agent/employers?search=${encodeURIComponent(companyName)}`,
-    sendEmail: false,
-    metadata: { companyName, employerId },
+    sendEmail: true,
+    sendPush: true,
+    metadata: { companyName, employerId, assignedBy },
     titleKey: "agentEmployerAssignedTitle",
-    bodyKey: "agentEmployerAssignedBody",
+    bodyKey: bySa ? "agentEmployerAssignedBySaBody" : "agentEmployerAssignedBody",
+    params: { companyName },
+  });
+}
+
+/** The employer this agent looked after moved to another agent (or to none). In-app + push. */
+export async function notifyAgentEmployerUnassigned(
+  agentUserId: string,
+  companyName: string,
+  employerId: string,
+): Promise<void> {
+  await notify({
+    userId: agentUserId,
+    type: "employer_registered",
+    title: "Employer moved to another agent",
+    message: `${companyName} is no longer assigned to you. Its open jobs moved with it.`,
+    link: "/agent/employers",
+    sendEmail: false,
+    sendPush: true,
+    metadata: { companyName, employerId },
+    titleKey: "agentEmployerUnassignedTitle",
+    bodyKey: "agentEmployerUnassignedBody",
     params: { companyName },
   });
 }
@@ -928,18 +955,30 @@ export async function notifyRegionEmployerRegistered(
   companyName: string,
   cityName: string,
   employerId: string,
+  /** How the company came into the region: signed up, added by staff, or moved here by an admin. */
+  event: "registered" | "added" | "moved" = "registered",
 ): Promise<void> {
   const segment = role === "super_agent" ? "super-agent" : "agent";
+  const MESSAGE = {
+    registered: `${companyName} registered in ${cityName}.`,
+    added: `${companyName} was added in ${cityName}.`,
+    moved: `${companyName} moved to ${cityName}.`,
+  } as const;
+  const BODY_KEY = {
+    registered: "regionEmployerRegisteredBody",
+    added: "regionEmployerAddedBody",
+    moved: "regionEmployerMovedBody",
+  } as const;
   await notify({
     userId,
     type: "employer_registered",
     title: "New employer in your region",
-    message: `${companyName} registered in ${cityName}.`,
+    message: MESSAGE[event],
     link: `/${segment}/employers?search=${encodeURIComponent(companyName)}`,
     sendEmail: false,
-    metadata: { companyName, employerId, cityName },
+    metadata: { companyName, employerId, cityName, event },
     titleKey: "regionEmployerRegisteredTitle",
-    bodyKey: "regionEmployerRegisteredBody",
+    bodyKey: BODY_KEY[event],
     params: { companyName, cityName },
   });
 }

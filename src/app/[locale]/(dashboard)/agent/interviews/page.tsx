@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CalendarCheck2, CheckCircle, Inbox, Video, MapPin, Pencil, Phone, XCircle, RotateCcw } from "lucide-react";
+import { RecordOutcomeDialog, type RecordOutcomeTarget } from "./_components/RecordOutcomeDialog";
+import { CalendarCheck2, CheckCircle, ClipboardCheck, Inbox, Video, MapPin, Pencil, Phone, XCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useTableExport } from "@/hooks/useTableExport";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -154,6 +155,13 @@ export default function AgentInterviewsPage() {
   // `?new=1` from the Create menu and ⌘K opens the schedule dialog on arrival.
   const [modalOpen, setModalOpen] = useState(() => readQuery().get("new") === "1");
   const [editInterview, setEditInterview] = useState<Interview | null>(null);
+  // The dashboard queue links a single interview as `?record=<id>`: opening
+  // the outcome dialog for it is the whole point of that click.
+  // URL-backed, not read once: the first client tree can be discarded and
+  // re-rendered, which lost a one-shot read. Cleared when the dialog closes.
+  const [recordId, setRecordId] = useUrlFilter("record", "");
+  const resolvedRecordRef = useRef("");
+  const [outcomeTarget, setOutcomeTarget] = useState<RecordOutcomeTarget | null>(null);
 
   /* Debounce search */
   useEffect(() => {
@@ -229,6 +237,31 @@ export default function AgentInterviewsPage() {
   }, [status, employerFilter, jobFilter, typeFilter, outcomeFilter, debouncedSearch, dateFrom, dateTo, pagination.page, pagination.limit]);
 
   useEffect(() => { fetchInterviews(); }, [fetchInterviews]);
+
+  // Resolve `?record=<id>`: from the loaded page when it is there,
+  // otherwise from the interview itself.
+  useEffect(() => {
+    if (!recordId || loading || resolvedRecordRef.current === recordId) return;
+    const id = recordId;
+    resolvedRecordRef.current = id;
+    const listed = interviews.find((iv) => iv._id === id);
+    if (listed) {
+      setOutcomeTarget({ _id: id, candidateName: listed.jobSeekerId?.fullName ?? t("candidateFallback"), jobTitle: listed.jobId?.title });
+      return;
+    }
+    void (async () => {
+      const res = await fetch(`/api/interviews/${id}`).catch(() => null);
+      if (!res?.ok) return;
+      const data = await res.json().catch(() => ({}));
+      const job = (data.interview?.applicationId as { jobId?: { title?: string } } | undefined)?.jobId;
+      setOutcomeTarget({ _id: id, candidateName: t("candidateFallback"), jobTitle: job?.title });
+    })();
+  }, [recordId, loading, interviews, t]);
+
+  const closeOutcome = () => {
+    setOutcomeTarget(null);
+    if (recordId) setRecordId("");
+  };
 
   /* Reset page on filter change */
   useEffect(() => { pagination.resetPage(); }, [status, employerFilter, jobFilter, typeFilter, outcomeFilter, debouncedSearch, dateFrom, dateTo]);
@@ -445,6 +478,9 @@ export default function AgentInterviewsPage() {
               ) : interviews.map((iv) => {
                 const name = iv.jobSeekerId?.fullName ?? tc("name");
                 const open = iv.status === "scheduled" || iv.status === "confirmed";
+                // Happened, not cancelled, nothing recorded: this is what the
+                // dashboard's "Outcomes to record" counts.
+                const awaitingOutcome = !iv.outcome && (open || iv.status === "completed") && new Date(iv.scheduledAt).getTime() < Date.now();
                 return (
                   <TableRow key={iv._id} className="group">
                     <TableCell>
@@ -490,6 +526,10 @@ export default function AgentInterviewsPage() {
                       <TableCell className="text-right">
                         <RowActions
                           name={name}
+                          labelsFrom="widest"
+                          // "Mark completed" sent no outcome, so the interview
+                          // stayed on the dashboard queue for good; recording
+                          // the outcome completes it, so it sits in plain sight.
                           quick={[
                             {
                               key: "edit",
@@ -498,25 +538,22 @@ export default function AgentInterviewsPage() {
                               iconOnly: true,
                               onSelect: () => { setEditInterview(iv); setModalOpen(true); },
                             },
-                          ]}
-                          menu={open ? [
-                            {
-                              key: "complete",
-                              label: t("buttonMarkCompleted"),
-                              icon: CheckCircle,
+                            ...(awaitingOutcome ? [{
+                              key: "outcome",
+                              label: t("recordOutcome"),
+                              icon: ClipboardCheck,
                               iconClassName: "text-emerald-600",
-                              pending: updatingId === iv._id,
-                              onSelect: () => void updateInterviewStatus(iv._id, "completed"),
-                            },
-                            {
-                              key: "cancel",
-                              label: t("ariaCancel"),
-                              icon: XCircle,
-                              destructive: true,
-                              pending: updatingId === iv._id,
-                              onSelect: () => void cancelInterview(iv),
-                            },
-                          ] : []}
+                              onSelect: () => setOutcomeTarget({ _id: iv._id, candidateName: name, jobTitle: iv.jobId?.title }),
+                            }] : []),
+                          ]}
+                          menu={open ? [{
+                            key: "cancel",
+                            label: t("ariaCancel"),
+                            icon: XCircle,
+                            destructive: true,
+                            pending: updatingId === iv._id,
+                            onSelect: () => void cancelInterview(iv),
+                          }] : []}
                         />
                       </TableCell>
                     )}
@@ -535,6 +572,12 @@ export default function AgentInterviewsPage() {
         limit={pagination.limit}
         onPageChange={pagination.setPage}
         onLimitChange={pagination.setLimit}
+      />
+
+      <RecordOutcomeDialog
+        target={outcomeTarget}
+        onClose={closeOutcome}
+        onSaved={() => void fetchInterviews()}
       />
 
       <CrudModal

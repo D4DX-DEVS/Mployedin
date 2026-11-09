@@ -15,6 +15,8 @@ const INLINE_QUERY = "(min-width: 1280px)";
 interface JobAssistantContextValue {
   assistant: JobAssistantState;
   quickActions: JobAssistantQuickAction[];
+  /** The poster's own text, when the job was read from an uploaded poster. */
+  posterText: string | null;
   /** Sends an instruction from a step's shortcut, opening the dialog on small screens. */
   askFromField: (instruction: string) => void;
   openDialog: () => void;
@@ -29,6 +31,7 @@ export function useJobAssistantContext(): JobAssistantContextValue | null {
 interface JobAssistantProviderProps {
   assistant: JobAssistantState;
   quickActions: JobAssistantQuickAction[];
+  posterText?: string | null;
   children: ReactNode;
 }
 
@@ -36,7 +39,7 @@ interface JobAssistantProviderProps {
  * Holds the job's one assistant for the page: the inline panel (wide screens),
  * the dialog (small screens) and the steps' shortcuts all talk to it.
  */
-export function JobAssistantProvider({ assistant, quickActions, children }: JobAssistantProviderProps) {
+export function JobAssistantProvider({ assistant, quickActions, posterText = null, children }: JobAssistantProviderProps) {
   const [open, setOpen] = useState(false);
 
   const openDialog = useCallback(() => setOpen(true), []);
@@ -46,8 +49,8 @@ export function JobAssistantProvider({ assistant, quickActions, children }: JobA
   }, [assistant]);
 
   const value = useMemo(
-    () => ({ assistant, quickActions, askFromField, openDialog }),
-    [assistant, quickActions, askFromField, openDialog],
+    () => ({ assistant, quickActions, posterText, askFromField, openDialog }),
+    [assistant, quickActions, posterText, askFromField, openDialog],
   );
 
   return (
@@ -55,7 +58,7 @@ export function JobAssistantProvider({ assistant, quickActions, children }: JobA
       {children}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="w-[calc(100vw-2rem)] max-w-lg gap-0 overflow-hidden rounded-2xl p-0">
-          <JobAssistantPanel assistant={assistant} quickActions={quickActions} inDialog className="rounded-none border-0 shadow-none" />
+          <JobAssistantPanel assistant={assistant} quickActions={quickActions} posterText={posterText} inDialog className="rounded-none border-0 shadow-none" />
         </DialogContent>
       </Dialog>
     </JobAssistantContext.Provider>
@@ -70,6 +73,7 @@ export function JobAssistantInline({ className }: { className?: string }) {
     <JobAssistantPanel
       assistant={ctx.assistant}
       quickActions={ctx.quickActions}
+      posterText={ctx.posterText}
       className={cn("hidden xl:flex", className)}
     />
   );

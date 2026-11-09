@@ -39,6 +39,18 @@ export function sanitizeAIInput(input: string, maxLength = 4000): string {
 }
 
 /**
+ * Text placed between delimiter lines in a prompt (an uploaded poster, a job
+ * draft): cut first (the filters run on at most `maxLength` characters),
+ * sanitised, and unable to fake a "=== END … ===" delimiter or the
+ * <JOB_DATA> / <BULK_JOB_DATA> tags the app reads back out of the answer.
+ */
+export function sanitizePromptData(input: string, maxLength: number): string {
+  return sanitizeAIInput(input.slice(0, maxLength), maxLength)
+    .replace(/={3,}/g, "==")
+    .replace(/<\/?\s*(?:BULK_)?JOB_DATA\s*>/gi, "");
+}
+
+/**
  * Sanitize an array of chat messages.
  */
 export function sanitizeChatMessages(

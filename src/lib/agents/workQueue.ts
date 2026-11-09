@@ -61,9 +61,11 @@ export interface AgentQueueItem {
   id: string;
   /** The record's own name — a company, a task title, a candidate. */
   subject: string;
+  /** Secondary detail that tells same-named rows apart, e.g. the job title. */
+  context?: string;
   /** Whole days past the moment this became actionable; 0 when it is due today. */
   daysLate: number;
-  /** Path (no locale prefix) to the filtered list this row belongs to. */
+  /** Path (no locale prefix) that opens this record, or the list holding it. */
   href: string;
 }
 
@@ -172,8 +174,9 @@ export async function getAgentQueueItems(scope: AgentScope, limit = 6): Promise<
           outcome: { $in: [null, ""] },
           status: { $nin: ["cancelled", "rescheduled"] },
         })
-          .select("_id scheduledAt jobSeekerId")
+          .select("_id scheduledAt jobSeekerId jobId")
           .populate("jobSeekerId", "fullName")
+          .populate("jobId", "title")
           .sort({ scheduledAt: 1 })
           .limit(limit)
           .lean()
@@ -200,7 +203,8 @@ export async function getAgentQueueItems(scope: AgentScope, limit = 6): Promise<
       id: String(l._id),
       subject: String((l as Record<string, unknown>).companyName ?? ""),
       daysLate: daysBetween(new Date(String((l as Record<string, unknown>).followUpAt)), now),
-      href: "/agent/leads?followUp=due",
+      // Opens the lead's workspace on top of the due list.
+      href: `/agent/leads?followUp=due&lead=${String(l._id)}`,
     })),
     // AgentTask is a typed model, so these fields need no cast.
     ...tasks.map((t) => ({
@@ -213,12 +217,16 @@ export async function getAgentQueueItems(scope: AgentScope, limit = 6): Promise<
     ...interviews.map((iv) => {
       const row = iv as Record<string, unknown>;
       const seeker = row.jobSeekerId as { fullName?: string } | undefined;
+      const job = row.jobId as { title?: string } | undefined;
       return {
         kind: "interviewOutcome" as const,
         id: String(row._id),
         subject: seeker?.fullName ?? "",
+        context: job?.title ?? "",
         daysLate: daysBetween(new Date(String(row.scheduledAt)), now),
-        href: "/agent/interviews?outcome=pending",
+        // Opens the outcome dialog for this interview — the list alone left
+        // the agent hunting for the row with nothing to record it with.
+        href: `/agent/interviews?outcome=pending&record=${String(row._id)}`,
       };
     }),
     ...offers.map((o) => {

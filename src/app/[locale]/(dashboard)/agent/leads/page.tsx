@@ -52,6 +52,9 @@ import type { LeadActionHandlers, LeadActionState } from "./_components/LeadActi
 import { LeadWorkspace, type WorkspaceTab } from "./_components/LeadWorkspace";
 import { MoveStageDialog } from "./_components/MoveStageDialog";
 import { FollowUpDialog } from "./_components/FollowUpDialog";
+import { LeadPosterImport } from "./_components/LeadPosterImport";
+import type { LeadPosterResult } from "@/lib/leads/posterClient";
+import { COPILOT_LEAD_DRAFT_EVENT, COPILOT_LEAD_DRAFT_KEY, useCopilotExecuted } from "@/components/shared/Copilot/events";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 
@@ -89,6 +92,7 @@ function getLeadFields(t: ReturnType<typeof useTranslations>, { isEdit }: { isEd
     { name: "contactEmail", label: t("fieldContactEmail"), type: "email" },
     { name: "contactPhone", label: t("fieldContactPhone"), type: "phone" },
     { name: "country", label: t("fieldCountry"), type: "text" },
+    { name: "city", label: t("fieldCity"), type: "text" },
     { name: "industry", label: t("fieldIndustry"), type: "text" },
     { name: "expectedRevenue", label: t("fieldExpectedRevenue"), type: "number" },
     {
@@ -112,7 +116,7 @@ function getLeadFields(t: ReturnType<typeof useTranslations>, { isEdit }: { isEd
 // Thirteen fields scrolled past the footer in one column, so the form is two
 // steps: who the lead is, then where the deal stands.
 const LEAD_FORM_STEPS = [
-  { labelKey: "formStepCompany", fields: ["companyName", "contactPerson", "contactEmail", "contactPhone", "country", "industry"] },
+  { labelKey: "formStepCompany", fields: ["companyName", "contactPerson", "contactEmail", "contactPhone", "country", "city", "industry"] },
   { labelKey: "formStepDeal", fields: ["expectedRevenue", "expectedHiring", "requirement", "source", "exhibitionId", "notes", "followUpAt"] },
 ] as const;
 
@@ -250,6 +254,8 @@ export default function AgentLeadsPage() {
   // command palette and /agent/leads/new all open this one form.
   const [modalOpen, setModalOpen] = useQueryFlag("new");
   const [editLead, setEditLead] = useState<Lead | null>(null);
+  // A hiring poster read into the New Lead form (create only).
+  const [posterResult, setPosterResult] = useState<LeadPosterResult | null>(null);
   const [scoringLeadId, setScoringLeadId] = useState<string | null>(null);
   const [scoreResult, setScoreResult] = useState<LeadScoreResult | null>(null);
   const [convertingLeadId, setConvertingLeadId] = useState<string | null>(null);
@@ -395,8 +401,17 @@ export default function AgentLeadsPage() {
   const leadFields = useMemo<CrudField[]>(() => {
     const baseFields = getLeadFields(t, { isEdit: Boolean(editLead) });
     const exOpts = [{ value: "", label: t("noneOption") }, ...exhibitions.map((e) => ({ value: e._id, label: e.eventName }))];
-    return baseFields.map((f) => f.name === "exhibitionId" ? { ...f, options: exOpts } : f);
-  }, [exhibitions, t, editLead]);
+    // Fields the poster reader was unsure of say so under the input.
+    const unsure = new Set<string>(!editLead && posterResult ? posterResult.unsure : []);
+    return baseFields.map((f) => {
+      const withOptions = f.name === "exhibitionId" ? { ...f, options: exOpts } : f;
+      return unsure.has(f.name) ? { ...withOptions, hint: t("posterCheckHint") } : withOptions;
+    });
+  }, [exhibitions, t, editLead, posterResult]);
+  const leadFieldLabels = useMemo(
+    () => Object.fromEntries(leadFields.map((f) => [f.name, f.label])),
+    [leadFields],
+  );
 
   const leadSteps = useMemo(
     () => LEAD_FORM_STEPS.map((step) => ({ label: t(step.labelKey), fields: [...step.fields] })),
@@ -557,11 +572,17 @@ export default function AgentLeadsPage() {
     }
     if (payload.expectedRevenue) payload.expectedRevenue = Number(payload.expectedRevenue);
     else delete payload.expectedRevenue;
+    if (!editLead && posterResult) {
+      if (posterResult.roles.length > 0) payload.rolesHiring = posterResult.roles;
+      if (posterResult.posterToken) payload.posterToken = posterResult.posterToken;
+    }
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (!res.ok) {
       throw await formErrorFromResponse(res, { t: tf, locale, fieldLabels: leadFields, conflict: tf("emailInUse") });
     }
+    if (!editLead && posterResult) toast.success(t("posterLeadSaved"));
     setEditLead(null);
+    setPosterResult(null);
     afterLeadChange();
   };
 
@@ -580,7 +601,29 @@ export default function AgentLeadsPage() {
   };
 
   const openEdit = (lead: Lead) => { setEditLead(lead); setDuplicates([]); setModalOpen(true); };
-  const openAdd = () => { setEditLead(null); setDuplicates([]); setModalOpen(true); };
+  const openAdd = () => { setEditLead(null); setPosterResult(null); setDuplicates([]); setModalOpen(true); };
+
+  // A lead Copilot read off a poster, sent here with "Open in full form".
+  useEffect(() => {
+    const take = () => {
+      try {
+        const raw = sessionStorage.getItem(COPILOT_LEAD_DRAFT_KEY);
+        if (!raw) return;
+        sessionStorage.removeItem(COPILOT_LEAD_DRAFT_KEY);
+        const draft = JSON.parse(raw) as LeadPosterResult;
+        if (!draft?.values) return;
+        setEditLead(null);
+        setDuplicates([]);
+        setPosterResult(draft);
+        setModalOpen(true);
+      } catch { /* storage blocked or malformed: nothing to open */ }
+    };
+    take();
+    window.addEventListener(COPILOT_LEAD_DRAFT_EVENT, take);
+    return () => window.removeEventListener(COPILOT_LEAD_DRAFT_EVENT, take);
+  }, [setModalOpen]);
+  // A lead created from the Copilot card shows up on the board without a reload.
+  useCopilotExecuted(["create_lead"], () => afterLeadChange());
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("exportHeaderCompany"), key: "companyName" },
@@ -1263,7 +1306,7 @@ export default function AgentLeadsPage() {
       {/* ──── CrudModal ──── */}
       <CrudModal
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setEditLead(null); }}
+        onClose={() => { setModalOpen(false); setEditLead(null); setPosterResult(null); }}
         title={editLead ? t("modalTitleEdit") : t("modalTitleNew")}
         fields={leadFields}
         steps={leadSteps}
@@ -1273,6 +1316,7 @@ export default function AgentLeadsPage() {
           contactEmail: editLead.contactEmail ?? "",
           contactPhone: editLead.contactPhone ?? "",
           country: editLead.country ?? "",
+          city: editLead.city ?? "",
           industry: editLead.industry ?? "",
           expectedRevenue: editLead.expectedRevenue != null ? String(editLead.expectedRevenue) : "",
           expectedHiring: editLead.expectedHiring ?? "",
@@ -1280,7 +1324,7 @@ export default function AgentLeadsPage() {
           source: editLead.source ?? "",
           exhibitionId: editLead.exhibitionId ?? "",
           notes: editLead.notes ?? "",
-        } : undefined}
+        } : posterResult ? { ...posterResult.values } : undefined}
         onSubmit={handleSave}
         onValuesChange={(vals) => {
           if (dupTimerRef.current) clearTimeout(dupTimerRef.current);
@@ -1297,7 +1341,12 @@ export default function AgentLeadsPage() {
             } catch { /* ignore */ }
           }, 500);
         }}
-        warningNode={duplicates.length > 0 ? (
+        warningNode={(!editLead || duplicates.length > 0) ? (
+          <div className="space-y-3">
+            {!editLead && can("leads", "create") && (
+              <LeadPosterImport result={posterResult} onResult={setPosterResult} fieldLabels={leadFieldLabels} t={t} />
+            )}
+            {duplicates.length > 0 ? (
           <div className="flex items-start gap-2 rounded-lg border border-status-shortlisted/20 bg-status-shortlisted-bg text-sm text-status-shortlisted chip-pad">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
@@ -1316,6 +1365,8 @@ export default function AgentLeadsPage() {
               </ul>
               <p className="mt-1 text-[11px] text-status-shortlisted">{t("duplicatesWarningOnly")}</p>
             </div>
+          </div>
+            ) : null}
           </div>
         ) : undefined}
       />

@@ -2802,6 +2802,19 @@
       "responsibilities": "المسؤوليات:",
       "benefits": "المزايا:",
       "more": "+{count} المزيد",
+      "openingsLabel": "عدد الشواغر:",
+      "experienceLabel": "الخبرة:",
+      "experienceYears": "{min}–{max} سنوات",
+      "experienceMinOnly": "{min}+ سنوات",
+      "educationLabel": "التعليم:",
+      "descriptionLabel": "الوصف:",
+      "preferredSkills": "مهارات مرغوبة:",
+      "qualifications": "المؤهلات:",
+      "screeningQuestionsLabel": "أسئلة الفرز:",
+      "screeningCount": "{count, plural, one {سؤال واحد} two {سؤالان} few {# أسئلة} many {# سؤالًا} other {# سؤال}}",
+      "notOnPoster": "غير موجود في الملصق",
+      "notAddedYet": "لم يُضف بعد",
+      "askChatToFix": "هل هناك شيء ناقص أو خاطئ من الملصق؟ أخبر المحادثة، مثلًا: \"أضف المؤهلات من الملصق\".",
       "nothingSavedYet": "لم يتم حفظ أي شيء بعد. راجع وأرسل في النموذج الكامل.",
       "reviewInForm": "مراجعة في النموذج الكامل",
       "createAllDrafts": "إنشاء جميع المسودات ({count})",
@@ -2832,7 +2845,49 @@
       "postHeld": "حُفظت كمسودة: يجب إكمال ملف الشركة قبل نشر هذه الوظيفة.",
       "postNeedsReview": "تنقص بعض التفاصيل اللازمة لنشر الوظيفة. راجعها في النموذج الكامل لإكمالها.",
       "draftSaveFailed": "تعذّر حفظ المسودة. يرجى المحاولة مرة أخرى.",
-      "postFailed": "تعذّر نشر الوظيفة. يرجى المحاولة مرة أخرى."
+      "postFailed": "تعذّر نشر الوظيفة. يرجى المحاولة مرة أخرى.",
+      "posterSummary": {
+        "title": "قرأتُ إعلانك: **{title}**.",
+        "found": "وجدتُ: {items}.",
+        "missing": "غير موجود في الإعلان: {items}.",
+        "next": "أخبرني بما تريد إضافته أو تغييره وسأحدّث هذه المسودة.",
+        "foundItem": {
+          "qualifications": "{count, plural, one {مؤهل واحد} two {مؤهلان} few {# مؤهلات} many {# مؤهلًا} other {# مؤهل}}",
+          "skills": "{count, plural, one {مهارة واحدة} two {مهارتان} few {# مهارات} many {# مهارة} other {# مهارة}}",
+          "responsibilities": "{count, plural, one {مسؤولية واحدة} two {مسؤوليتان} few {# مسؤوليات} many {# مسؤولية} other {# مسؤولية}}",
+          "benefits": "{count, plural, one {ميزة واحدة} two {ميزتان} few {# مزايا} many {# ميزة} other {# ميزة}}"
+        },
+        "missingItem": {
+          "responsibilities": "المسؤوليات",
+          "benefits": "المزايا",
+          "qualifications": "المؤهلات",
+          "salary": "الراتب",
+          "experience": "الخبرة"
+        },
+        "viewPosterText": "عرض نص الإعلان",
+        "ask": {
+          "responsibilities": {
+            "label": "اكتب المسؤوليات",
+            "instruction": "اكتب مسؤوليات هذه الوظيفة من الإعلان ومسمى الوظيفة."
+          },
+          "benefits": {
+            "label": "اقترح المزايا",
+            "instruction": "اقترح المزايا المعتادة لهذه الوظيفة وأضفها إلى المزايا."
+          },
+          "qualifications": {
+            "label": "أضف المؤهلات",
+            "instruction": "انسخ المؤهلات من الإعلان إلى المؤهلات كما هي مكتوبة. إذا لم يذكر الإعلان أي مؤهلات، فأخبرني."
+          },
+          "salary": {
+            "label": "أضف الراتب",
+            "instruction": "أريد إضافة الراتب. اسألني عن المبلغ والعملة والفترة."
+          },
+          "experience": {
+            "label": "أضف الخبرة",
+            "instruction": "أريد تحديد الخبرة المطلوبة. اسألني عن عدد السنوات."
+          }
+        }
+      }
     },
     "quickPrompts": {
       "superAgent": {
@@ -6695,6 +6750,10 @@
       "newThisWeek": "جديد هذا الأسبوع",
       "industriesLabel": "الوظائف حسب القطاع",
       "allIndustries": "كل القطاعات"
+    },
+    "draftActions": {
+      "publishGated": "الملف التعريفي لشركة صاحب العمل غير مكتمل بعد، لذلك تبقى الوظيفة مسودة. أكمل الملف من عرض صاحب العمل ثم انشرها.",
+      "draftDeleted": "تم حذف المسودة."
     }
   },
   "agentJobNew": {
@@ -9344,8 +9403,13 @@
     "roleChangedBody": "قام أحد المشرفين بتغيير حسابك من {fromRole} إلى {toRole}.",
     "agentEmployerAssignedTitle": "تم تعيين صاحب عمل لك",
     "agentEmployerAssignedBody": "عيّن المسؤول {companyName} لك.",
+    "agentEmployerAssignedBySaBody": "قام الوكيل الرئيسي بتعيين {companyName} لك.",
+    "agentEmployerUnassignedTitle": "نُقل صاحب العمل إلى وكيل آخر",
+    "agentEmployerUnassignedBody": "لم يعد {companyName} معيّنًا لك. انتقلت وظائفه المفتوحة معه.",
     "regionEmployerRegisteredTitle": "صاحب عمل جديد في منطقتك",
     "regionEmployerRegisteredBody": "سجّل {companyName} في {cityName}.",
+    "regionEmployerAddedBody": "تمت إضافة {companyName} في {cityName}.",
+    "regionEmployerMovedBody": "انتقل {companyName} إلى {cityName}.",
     "adminEmployerOutsideTerritoryTitle": "صاحب عمل خارج كل المناطق",
     "adminEmployerOutsideTerritoryBody": "سجّل {companyName} في {region}، ولا يغطيها أي وكيل رئيسي.",
     "adminEmployerNoRegionBody": "سجّل {companyName} دون مدينة معروفة، لذلك لا يغطيه أي وكيل رئيسي.",
@@ -12121,6 +12185,7 @@
       "titleAssign": "تعيين وكيل",
       "titleChange": "تغيير الوكيل",
       "description": "اختر الوكيل الذي يتولى {company}. ويتبعه الوكيل الرئيسي تلقائيًا.",
+      "descriptionTeam": "اختر أي وكيل من فريقك يتولى {company}. تظهر هنا فقط الوكلاء في فريقك.",
       "currentLabel": "الوكيل الحالي",
       "noAgent": "لا يوجد وكيل بعد",
       "newLabel": "الوكيل",
@@ -14712,6 +14777,10 @@
       "emptyDescription": "يظهر أصحاب العمل هنا عند تسجيلهم في مدينة تغطيها منطقتك.",
       "noRegionTitle": "ليست لديك منطقة بعد",
       "noRegionDescription": "يحدد المسؤول المدن التي تغطيها منطقتك. بعد ذلك يظهر هنا أصحاب العمل المسجّلون فيها."
+    },
+    "assignAgent": {
+      "assign": "تعيين وكيل",
+      "change": "تغيير الوكيل"
     }
   },
   "superAgentPlacements": {
@@ -15735,7 +15804,31 @@
     "boardColumnPageEmpty": "لا مزيد من الفرص في هذه المرحلة.",
     "boardPerStage": "الفرص لكل مرحلة",
     "boardPageSummary": "{total, plural, zero {لا توجد فرص} one {فرصة واحدة} two {فرصتان} few {# فرص} many {# فرصة} other {# فرصة}} في جميع المراحل",
-    "moveInvalidDates": "تحقق من التواريخ: لا يمكن أن يكون تاريخ التواصل أو الفوز في المستقبل، ولا موعد المتابعة التالية في الماضي."
+    "moveInvalidDates": "تحقق من التواريخ: لا يمكن أن يكون تاريخ التواصل أو الفوز في المستقبل، ولا موعد المتابعة التالية في الماضي.",
+    "fieldCity": "المدينة",
+    "rolesHiringLabel": "الوظائف المطلوبة",
+    "posterLabel": "إعلان التوظيف",
+    "viewPoster": "عرض الإعلان",
+    "activityFromPoster": "أُنشئ من إعلان توظيف",
+    "posterTitle": "لديك إعلان توظيف؟",
+    "posterHint": "ارفع صورة أو ملف PDF أو منشورًا وسيملأ الذكاء الاصطناعي بيانات الشركة وجهة الاتصال والوظائف لتراجعها.",
+    "posterChooseFile": "رفع الإعلان",
+    "posterReading": "جارٍ قراءة الإعلان…",
+    "posterFilled": "تم ملء البيانات من الإعلان",
+    "posterThumbAlt": "إعلان التوظيف المرفوع",
+    "posterReplace": "استخدام إعلان آخر",
+    "posterRemove": "إزالة الإعلان ومسح النموذج",
+    "posterCheckFields": "يرجى التحقق من: {fields}. لم يتمكن الذكاء الاصطناعي من قراءتها بوضوح.",
+    "posterCheckAll": "راجع كل الحقول قبل الحفظ — قد يخطئ الذكاء الاصطناعي في قراءة الإعلانات.",
+    "posterCheckHint": "لم يكن الذكاء الاصطناعي متأكدًا من هذا — يرجى التحقق.",
+    "posterNotStored": "تعذّر حفظ الإعلان، لذلك لن يُرفق بالعميل المحتمل.",
+    "posterLeadSaved": "تم إنشاء العميل المحتمل من الإعلان.",
+    "posterErrorNotPoster": "لا يبدو هذا إعلان توظيف. جرّب ملفًا آخر أو املأ النموذج بنفسك.",
+    "posterErrorUnreadable": "تعذّرت قراءة هذا الملف. جرّب صورة أوضح أو ملف PDF.",
+    "posterErrorTooLarge": "حجم الملف أكبر من 10 ميغابايت. جرّب ملفًا أصغر.",
+    "posterErrorType": "استخدم ملف PDF أو JPG أو PNG أو WebP أو Word.",
+    "posterErrorLimit": "لقد استهلكت حد الذكاء الاصطناعي لليوم. املأ النموذج بنفسك أو حاول غدًا.",
+    "posterErrorFailed": "تعذّرت قراءة الإعلان. يرجى المحاولة مرة أخرى."
   },
   "agentCandidates": {
     "agentWorkspace": "مساحة عمل الوكيل",
@@ -15900,6 +15993,16 @@
     "outcomeFailed": "فشل",
     "outcomeOnHold": "قيد الانتظار",
     "outcomeNoShow": "لم يظهر",
+    "recordOutcome": "تسجيل النتيجة",
+    "candidateFallback": "المرشح",
+    "recordOutcomeTitle": "تسجيل نتيجة المقابلة",
+    "recordOutcomeSave": "حفظ النتيجة",
+    "outcomeLabel": "كيف سارت المقابلة؟",
+    "outcomeFeedback": "ملاحظات (اختياري)",
+    "outcomeFeedbackPlaceholder": "ما أخبرك به صاحب العمل أو المرشح",
+    "outcomeRequired": "اختر نتيجة أولاً.",
+    "outcomeSaved": "تم حفظ النتيجة لـ {name}",
+    "outcomeSaveFailed": "تعذّر حفظ النتيجة. حاول مرة أخرى.",
     "filterAllOutcomes": "جميع النتائج",
     "fieldScheduledAt": "المجدول في",
     "fieldType": "النوع",
@@ -16500,6 +16603,13 @@
     "linkOpenCandidate": "فتح الملف الشخصي لـ {name}",
     "linkOpenJob": "فتح الوظيفة: {title}",
     "linkJobDeleted": "{title} (وظيفة محذوفة)",
+    "employerMenuLabel": "التواصل مع {name} أو فتحه",
+    "employerNoContact": "لا يوجد بريد إلكتروني أو هاتف في ملفه",
+    "employerMessage": "إرسال رسالة",
+    "employerEmail": "إرسال بريد إلكتروني",
+    "employerCall": "اتصال",
+    "employerWhatsapp": "واتساب",
+    "employerViewJobs": "عرض وظائفه",
     "linkOpenEmployer": "فتح وظائف {name}",
     "createTaskDescription": "مهمة أو متابعة خاصة بك. اربطها بمرشح أو وظيفة أو صاحب عمل لتفتحهم مباشرة من المهمة.",
     "fieldTitle": "المهمة",
@@ -16625,7 +16735,8 @@
     "openingEmployerView": "جارٍ الفتح…",
     "openEmployerViewError": "تعذّر فتح صفحة الوظيفة لدى صاحب العمل. يرجى المحاولة مرة أخرى.",
     "notDisclosed": "غير معلن",
-    "salaryIn": "الراتب ({currency})"
+    "salaryIn": "الراتب ({currency})",
+    "continueShort": "متابعة"
   },
   "agentChat": {
     "agentWorkspaceBadge": "مساحة العمل للوكلاء",
@@ -18540,7 +18651,36 @@
         },
         "pdfTitle": "قائمة المرشحين المختصرة"
       }
-    }
+    },
+    "attachPoster": "إرفاق إعلان توظيف لإنشاء عميل محتمل",
+    "readingPoster": "جارٍ قراءة الإعلان…",
+    "leadDraftTitle": "عميل محتمل من إعلان",
+    "leadDraftPosterAlt": "إعلان التوظيف المرفق",
+    "leadDraftNoCompany": "لم يُعثر على اسم الشركة",
+    "leadDraftRoles": "{count, plural, one {وظيفة شاغرة واحدة} two {وظيفتان شاغرتان} few {# وظائف شاغرة} many {# وظيفة شاغرة} other {# وظيفة شاغرة}}",
+    "leadDraftCompany": "الشركة",
+    "leadDraftContact": "جهة الاتصال",
+    "leadDraftEmail": "البريد الإلكتروني",
+    "leadDraftPhone": "الهاتف",
+    "leadDraftCity": "المدينة",
+    "leadDraftCountry": "الدولة",
+    "leadDraftIndustry": "القطاع",
+    "leadDraftCheck": "تحقق",
+    "leadDraftCheckHint": "الحقول المعلّمة بـ«تحقق» صعبة القراءة — صحّحها قبل إنشاء العميل المحتمل.",
+    "leadDraftReviewHint": "راجع البيانات — قد يخطئ الذكاء الاصطناعي في قراءة الإعلانات.",
+    "leadDraftDuplicates": "عملاء محتملون مشابهون موجودون بالفعل",
+    "leadDraftFullForm": "فتح في النموذج الكامل",
+    "leadDraftCreate": "إنشاء العميل المحتمل",
+    "leadDraftSaving": "جارٍ الإنشاء…",
+    "leadDraftSaved": "تم إنشاء العميل المحتمل مع إرفاق الإعلان.",
+    "leadDraftOpen": "فتح العميل المحتمل",
+    "leadDraftFailed": "تعذّر إنشاء العميل المحتمل. يرجى المحاولة مرة أخرى.",
+    "posterErrorNotPoster": "لا يبدو هذا إعلان توظيف. جرّب ملفًا آخر.",
+    "posterErrorUnreadable": "تعذّرت قراءة هذا الملف. جرّب صورة أوضح أو ملف PDF.",
+    "posterErrorTooLarge": "حجم الملف أكبر من 10 ميغابايت. جرّب ملفًا أصغر.",
+    "posterErrorType": "أرفق ملف PDF أو JPG أو PNG أو WebP أو Word.",
+    "posterErrorLimit": "لقد استهلكت حد الذكاء الاصطناعي لليوم. حاول غدًا.",
+    "posterErrorFailed": "تعذّرت قراءة الإعلان. يرجى المحاولة مرة أخرى."
   },
   "mcpAuthorize": {
     "title": "ربط {clientName} بـ Mployedin",
@@ -20112,6 +20252,9 @@
     "adminContext": "المهام التي يكلّف بها الوكلاء الرئيسيون والمشرفون الوكلاءَ، ومراجعتها.",
     "assignButton": "تكليف بمهمة",
     "assignTitle": "تكليف بمهمة",
+    "stepTask": "المهمة",
+    "stepLinks": "السجلات المرتبطة",
+    "assigning": "جارٍ التكليف…",
     "assignDescription": "يُبلَّغ الوكيل ويراها في مهامه. عندما يحدّدها كمنجزة تعود إليك للمراجعة.",
     "fieldAgent": "الوكيل",
     "chooseAgent": "اختر وكيلًا",
@@ -20839,6 +20982,16 @@
       "gated": "خطتك لا تشمل المساعد الذكي، أو نفد رصيد الذكاء الاصطناعي حالياً.",
       "rate_limited": "طلبات كثيرة. انتظر دقيقة ثم حاول مرة أخرى.",
       "failed": "تعذر على المساعد الذكي الرد الآن. حاول مرة أخرى."
+    },
+    "poster": {
+      "using": "يستخدم إعلانك",
+      "view": "عرض النص",
+      "dialogTitle": "النص المقروء من إعلانك",
+      "dialogDescription": "هذا ما قرأه الذكاء الاصطناعي من الإعلان الذي رفعته. إذا كان هناك خطأ أو نقص، فأخبر المساعد.",
+      "check": {
+        "label": "قارن مع الإعلان",
+        "instruction": "قارن هذه الوظيفة بإعلاني. انسخ كما هو مكتوب أي شيء في الإعلان ناقص أو مختلف، وأخبرني بما غيّرته. لا تُضف شيئًا لا يذكره الإعلان."
+      }
     }
   },
   "jobBulkReview": {
@@ -21104,7 +21257,7 @@
   },
   "posterStudio": {
     "title": "إنشاء ملصق وظيفة",
-    "subtitle": "اختر الهوية والأسلوب، ثم أحد التصاميم الستة، واحفظه للمشاركة والتنزيل.",
+    "subtitle": "اختر الهوية والأسلوب، ثم أحد التصاميم، واحفظه للمشاركة والتنزيل.",
     "backToJob": "العودة إلى الوظيفة",
     "myPosters": "ملصقاتي",
     "stepsLabel": "خطوات الملصق",
@@ -21135,8 +21288,14 @@
     "size_a4": "طباعة A4",
     "language": "لغة الملصق",
     "layoutsTitle": "اختر تصميمًا",
-    "layoutsHint": "ستة تصاميم بهويتك. مجانية وتتغير مع تعديلاتك.",
+    "layoutsHint": "تصاميم بخلفيات مرسومة أولاً، ثم التصاميم الكلاسيكية. كلها بهويتك، مجانية وتتغير مع تعديلاتك.",
     "pickLayout": "استخدام تصميم {name}",
+    "layout_wave": "موجة",
+    "layout_slant": "مائل",
+    "layout_statement": "عنوان كبير",
+    "layout_card": "بطاقة",
+    "layout_orbit": "مدار",
+    "layout_global": "عالمي",
     "layout_spotlight": "إبراز",
     "layout_band": "شريط",
     "layout_split": "مقسوم",

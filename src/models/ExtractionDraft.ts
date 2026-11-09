@@ -45,6 +45,7 @@ export interface ExtractedJobPayload {
     preferredSkills?: string[];
     experienceMin?: number;
     experienceMax?: number;
+    education?: string;
   };
   salary?: {
     min?: number;

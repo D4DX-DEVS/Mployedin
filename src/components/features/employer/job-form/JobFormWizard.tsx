@@ -165,12 +165,20 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   const { watch, trigger, handleSubmit, reset, formState } = methods;
   const formValues = watch();
 
+  // The poster's own text, carried over from the AI job creator when the job
+  // was read from an uploaded poster, so the assistant can check what the
+  // reading missed. Lives for this form session only.
+  const posterTextRef = useRef<string | null>(null);
+  // The same text for the assistant's "Using your poster" line and its viewer.
+  const [posterText, setPosterText] = useState<string | null>(null);
+
   // The job's one AI assistant (client 2026-10-27): it reads the form as it
   // stands and writes its answer back into the fields, with an Undo.
   const assistant = useJobAssistant(
     {
       getJob: useCallback(() => wizardToAssistDraft(methods.getValues()), [methods]),
       applyChanges: useCallback((changes) => applyAssistToWizard(changes, methods.getValues, methods.setValue), [methods]),
+      getSource: useCallback(() => posterTextRef.current ?? undefined, []),
     },
     useJobAssistantErrorText(),
   );
@@ -203,7 +211,10 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
           const parsed = JSON.parse(rawPrefill) as Partial<JobFormValues> & {
             extractionDraftId?: string;
             extractionDraftIndex?: number;
+            posterText?: string;
           };
+          posterTextRef.current = typeof parsed.posterText === "string" && parsed.posterText.trim() ? parsed.posterText : null;
+          setPosterText(posterTextRef.current);
           // Pull the draft write-back ref BEFORE merging into form state
           // (those keys aren't JobFormValues so reset() must not see them).
           if (parsed.extractionDraftId && typeof parsed.extractionDraftIndex === "number") {
@@ -214,7 +225,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
           } else {
             aiExtractionDraftRef.current = null;
           }
-          const { extractionDraftId: _omit, extractionDraftIndex: _omit2, ...formValues } = parsed;
+          const { extractionDraftId: _omit, extractionDraftIndex: _omit2, posterText: _omit3, ...formValues } = parsed;
           reset(mergeJobFormValues(baseValues, formValues));
           sessionStorage.removeItem(AI_PREFILL_STORAGE_KEY);
           aiPrefillApplied.current = true;
@@ -577,7 +588,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   }, []);
 
   return (
-    <JobAssistantProvider assistant={assistant} quickActions={assistantQuickActions}>
+    <JobAssistantProvider assistant={assistant} quickActions={assistantQuickActions} posterText={posterText}>
     <div className="flex h-full flex-col">
     <div className="flex-1 overflow-y-auto">
     <div className="page-container">

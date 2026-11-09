@@ -21,7 +21,7 @@ import { normalizeWebsiteUrl } from "@/lib/validators/website";
 import { recordRegistrationConsents } from "@/lib/gdpr/consent";
 import { parseCookieChoice } from "@/lib/gdpr/cookieChoice";
 import { TERMS_REQUIRED_MESSAGE } from "@/lib/validators/misc";
-import { findRegionCoverage, resolveEmployerRegion } from "@/lib/agents/territoryCoverage";
+import { resolveEmployerRegion } from "@/lib/agents/territoryCoverage";
 import { resolveRequestLocale } from "@/lib/i18n/requestLocale";
 
 export const runtime = "nodejs";
@@ -351,27 +351,15 @@ export async function POST(req: NextRequest) {
     // Every super-agent and agent whose territory covers the region sees the
     // company from now on, so each is told. When nobody covers it, admins are.
     {
-      const { notifyRegionEmployerRegistered, notifyAdminsEmployerOutsideTerritory } =
-        await import("@/lib/notifications/trigger");
-      const name = companyName || "A company";
+      const { notifyEmployerRegion } = await import("@/lib/notifications/employerCoverage");
       const employerId = String(employer._id);
-      (async () => {
-        if (!region) {
-          await notifyAdminsEmployerOutsideTerritory(name, employerId, null);
-          return;
-        }
-        const coverage = await findRegionCoverage(region);
-        await Promise.all([
-          ...coverage.superAgents
-            .filter((m) => m.userId !== referralSaUserId)
-            .map((m) => notifyRegionEmployerRegistered(m.userId, "super_agent", name, region.cityName, employerId)),
-          ...coverage.agents
-            .map((m) => notifyRegionEmployerRegistered(m.userId, "agent", name, region.cityName, employerId)),
-        ]);
-        if (coverage.superAgents.length === 0) {
-          await notifyAdminsEmployerOutsideTerritory(name, employerId, `${region.cityName}, ${region.countryCode}`);
-        }
-      })().catch((err) =>
+      notifyEmployerRegion({
+        employerId,
+        companyName: companyName || "A company",
+        region: region ?? null,
+        event: "registered",
+        skipUserIds: referralSaUserId ? [referralSaUserId] : [],
+      }).catch((err) =>
         logger.error({ err, employerId }, "Failed to notify the employer's region of its registration"),
       );
     }

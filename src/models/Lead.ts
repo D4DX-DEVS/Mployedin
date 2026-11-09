@@ -48,6 +48,10 @@ export interface ILead extends Document {
   /** The roles the employer is hiring for, in the agent's words. */
   requirement?: string;
   expectedHiring?: HiringRange;
+  /** Roles being hired, when known one by one (a read hiring poster). */
+  rolesHiring?: { title: string; count: number }[];
+  /** The hiring poster the lead was created from. Private object; opened through GET /api/leads/[id]/poster. */
+  sourceFile?: { key: string; name?: string; mimeType?: string; size?: number; uploadedAt?: Date };
   followUpAt?: Date;
   followUpType?: FollowUpType;
   /** What the follow-up is for ("Send proposal"). */
@@ -118,6 +122,25 @@ const LeadSchema = new Schema<ILead>(
     notes: String,
     requirement: { type: String, maxlength: 500, trim: true },
     expectedHiring: { type: String, enum: HIRING_RANGES },
+    rolesHiring: {
+      type: [{
+        title: { type: String, required: true, trim: true, maxlength: 120 },
+        count: { type: Number, min: 1, max: 10000, default: 1 },
+        _id: false,
+      }],
+      default: undefined,
+    },
+    sourceFile: {
+      type: {
+        key: { type: String, required: true, maxlength: 500 },
+        name: { type: String, maxlength: 255 },
+        mimeType: { type: String, maxlength: 100 },
+        size: Number,
+        uploadedAt: Date,
+        _id: false,
+      },
+      default: undefined,
+    },
     followUpAt: Date,
     followUpType: { type: String, enum: FOLLOW_UP_TYPES },
     followUpNote: { type: String, maxlength: 200, trim: true },

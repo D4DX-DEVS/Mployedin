@@ -197,7 +197,7 @@ export function StepFormDialog({
         <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-1 flex-col">
           {/* `relative`: Radix checkboxes' hidden inputs are absolutely positioned
               and would otherwise stretch the dialog past this scroll box. */}
-          <div ref={bodyRef} className="relative flex-1 space-y-4 overflow-y-auto px-6 py-4">
+          <div ref={bodyRef} className="scrollbar-none relative flex-1 space-y-4 overflow-y-auto px-6 py-4">
             {banner && (
               <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 text-sm text-destructive chip-pad">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />

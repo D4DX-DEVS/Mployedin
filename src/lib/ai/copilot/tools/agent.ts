@@ -6,7 +6,8 @@ import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import type { Types } from "mongoose";
 import { calculateLeadScore, deriveQualification } from "@/lib/leads/scoring";
 import { applyStageMove, stageMoveProblems } from "@/lib/leads/applyStageMove";
-import { STAGE_FIELD_NAMES, type LeadStage } from "@/lib/leads/stageRules";
+import { HIRING_RANGES, STAGE_FIELD_NAMES, type HiringRange, type LeadStage } from "@/lib/leads/stageRules";
+import { checkLeadDuplicates } from "@/lib/leads/duplicateDetection";
 import { autoRouteLead } from "@/lib/leads/autoRouter";
 import type { CopilotTool } from "../types";
 
@@ -100,10 +101,13 @@ export const createLeadTool: CopilotTool<{
   city?: string;
   industry?: string;
   notes?: string;
+  requirement?: string;
+  expectedHiring?: string;
+  source?: string;
 }> = {
   name: "create_lead",
   description:
-    "Create a new sales lead: a prospect company the agent wants to sign up as an employer. Only when the agent asks to add a lead or prospect — never for a task, follow-up, reminder or call about an existing candidate or job (that is create_task).",
+    "Create a new sales lead: a prospect company the agent wants to sign up as an employer. Only when the agent asks to add a lead or prospect — never for a task, follow-up, reminder or call about an existing candidate or job (that is create_task). For a hiring poster, tell the agent to use the paperclip button to attach it: the poster is read there, not by you.",
   resource: "leads",
   action: "create",
   roles: ["agent"],
@@ -117,8 +121,35 @@ export const createLeadTool: CopilotTool<{
     city: { type: "string", description: "City", optional: true, maxLength: 100 },
     industry: { type: "string", description: "Industry", optional: true, maxLength: 100 },
     notes: { type: "string", description: "Notes about this lead", optional: true, maxLength: 2000 },
+    requirement: { type: "string", description: "The roles the company is hiring for, in a line (e.g. 'Waiters x10, Chefs x2')", optional: true, maxLength: 500 },
+    expectedHiring: { type: "string", description: "How many people they will hire", optional: true, enum: [...HIRING_RANGES] },
+    source: { type: "string", description: "Where the lead came from (e.g. Referral, Exhibition, Hiring poster)", optional: true, maxLength: 100 },
   },
   summarize: (args) => `Create lead for "${args.companyName}"`,
+  // The confirmation card warns about leads that already look like this one,
+  // as the New Lead form does — the agent decides; nothing is blocked.
+  preview: async (args, ctx) => {
+    await connectDB();
+    const agent = await getAgentProfile(ctx.userId);
+    const duplicates = agent
+      ? await checkLeadDuplicates({
+          companyName: args.companyName,
+          contactEmail: args.contactEmail,
+          contactPhone: args.contactPhone,
+          agentId: String(agent._id),
+        }).catch(() => [])
+      : [];
+    return {
+      summary: duplicates.length > 0
+        ? `${duplicates.length} similar lead${duplicates.length === 1 ? "" : "s"} already in your pipeline — check before creating.`
+        : `New lead: ${args.companyName}${args.city || args.country ? ` (${[args.city, args.country].filter(Boolean).join(", ")})` : ""}.`,
+      rows: duplicates.slice(0, 5).map((d) => ({
+        name: d.companyName,
+        score: null,
+        note: [d.contactEmail, d.status].filter(Boolean).join(" · "),
+      })),
+    };
+  },
   execute: async (args, ctx) => {
     await connectDB();
     const agent = await getAgentProfile(ctx.userId);
@@ -157,6 +188,9 @@ export const createLeadTool: CopilotTool<{
       qualificationLevel: deriveQualification(score),
       status: "new",
       notes: args.notes ? sanitizeAIInput(args.notes, 2000) : undefined,
+      requirement: args.requirement ? sanitizeAIInput(args.requirement, 500) : undefined,
+      expectedHiring: (HIRING_RANGES as readonly string[]).includes(args.expectedHiring ?? "") ? args.expectedHiring as HiringRange : undefined,
+      source: args.source ? sanitizeAIInput(args.source, 100) : undefined,
       territoryId,
       autoRouted: Boolean(superAgentId),
       activityLog: [{ action: "created", timestamp: new Date() }],

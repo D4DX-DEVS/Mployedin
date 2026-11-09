@@ -220,6 +220,24 @@ describe("AgentJobsPage", () => {
     expect(candidatesLink).toHaveAttribute("href", "/en/agent/candidates?jobId=j1");
   });
 
+  it("gives a draft Continue draft, Publish and Delete instead of candidates", async () => {
+    paginationState.total = 1;
+    jobsResponse = {
+      ok: true,
+      body: { jobs: [{ ...JOB, status: "draft", applicationCount: 0 }], pagination: { total: 1 }, statusCounts: { draft: 1 } },
+    };
+    const user = userEvent.setup();
+    render(<AgentJobsPage />);
+
+    const row = (await screen.findByText("Site Engineer")).closest("tr")!;
+    expect(within(row).getByRole("link", { name: /continue draft/i })).toHaveAttribute("href", "/en/agent/jobs/j1/edit");
+    expect(within(row).queryByRole("link", { name: /candidates/i })).toBeNull();
+
+    await user.click(within(row).getByRole("button", { name: /more|actions|site engineer/i }));
+    expect(await screen.findByRole("menuitem", { name: /publish/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /delete/i })).toBeInTheDocument();
+  });
+
   describe("browse mode (/agent/browse-jobs)", () => {
     const FACETS = {
       countries: ["UAE"], cities: ["Dubai"], professions: ["Engineering"],

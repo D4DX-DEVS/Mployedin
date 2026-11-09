@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import {
   ArrowRight, BadgeDollarSign, Briefcase, Building2, CalendarCheck2, CalendarClock, CalendarPlus,
-  Check, CheckCircle2, CircleUser, ClipboardList, Factory, Loader2, Mail, MapPin, MessageCircle,
+  Check, CheckCircle2, CircleUser, ClipboardList, ExternalLink, Factory, FileImage, Loader2, Mail, MapPin, MessageCircle,
   Pencil, Phone, PhoneCall, Target, Users, X, XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -195,7 +195,32 @@ function DetailsSection({ lead, t, locale }: OverviewProps) {
           {lead.expectedRevenue != null ? <span className="text-status-selected">{formatMoney(lead.expectedRevenue, currency)}</span> : null}
         </Row>
         <Row icon={<Users />} label={t("moveFieldExpectedHiring")}>{lead.expectedHiring ? t(HIRING_RANGE_KEYS[lead.expectedHiring]) : null}</Row>
-        <Row icon={<Briefcase />} label={t("moveFieldRequirement")}>{lead.requirement || null}</Row>
+        {lead.rolesHiring && lead.rolesHiring.length > 0 ? (
+          <Row icon={<Briefcase />} label={t("rolesHiringLabel")}>
+            <ul className="flex flex-wrap gap-1.5">
+              {lead.rolesHiring.map((role) => (
+                <li key={role.title} dir="auto" className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-xs font-medium">
+                  {role.title}{role.count > 1 ? <span className="ms-1 tabular-nums text-muted-foreground">×{role.count}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </Row>
+        ) : (
+          <Row icon={<Briefcase />} label={t("moveFieldRequirement")}>{lead.requirement || null}</Row>
+        )}
+        {lead.sourceFile && (
+          <Row icon={<FileImage />} label={t("posterLabel")}>
+            <a
+              href={`/api/leads/${lead._id}/poster`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-6 items-center gap-1 text-primary underline-offset-2 hover:underline"
+            >
+              <span dir="auto" className="truncate">{lead.sourceFile.name || t("viewPoster")}</span>
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            </a>
+          </Row>
+        )}
         <Row icon={<PhoneCall />} label={t("lastContactLabel")}>
           {lead.lastContactedAt
             ? `${formatListDate(lead.lastContactedAt, locale)}${lead.lastContactMethod ? ` · ${t(CONTACT_METHOD_KEYS[lead.lastContactMethod])}` : ""}`

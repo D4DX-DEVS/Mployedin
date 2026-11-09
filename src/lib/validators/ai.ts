@@ -12,6 +12,13 @@ export const aiChatSchema = z.object({
     .max(50, "Maximum 50 messages per request"),
   context: z.string().max(2000).optional(),
   currentPage: z.string().max(200).optional(),
+  /** AI job creator: the draft on screen, so a follow-up edits it instead of starting over. */
+  jobDraft: z
+    .record(z.string(), z.unknown())
+    .refine((draft) => JSON.stringify(draft).length <= 30_000, "Draft too large")
+    .optional(),
+  /** AI job creator: the uploaded poster's own text. */
+  posterText: z.string().max(8000).optional(),
 });
 
 export const aiReportSchema = z.object({

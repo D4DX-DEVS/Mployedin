@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import {
-  Briefcase, Building2, CalendarDays, CheckCircle, Sparkles, Edit2, Eye, Globe, Inbox, MapPin, PauseCircle, PlayCircle, Plus, Tag, Users, Share2,
+  Briefcase, Building2, CalendarDays, CheckCircle, Sparkles, Edit2, Eye, Globe, Inbox, MapPin, PauseCircle, PlayCircle, Plus, Send, Tag, Trash2, Users, Share2,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import { disambiguateEmployerLabels } from "@/lib/employers/optionLabels";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 import { ShareJobDialog } from "@/components/features/agent/ShareJobDialog";
 import { IndustryChips, type IndustryFacet } from "./IndustryChips";
+import { useAgentJobActions } from "./useAgentJobActions";
 import { countryLabel } from "@/lib/jobs/countryFacets";
 
 interface JobItem {
@@ -202,6 +203,10 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
   }, [page, limit, debouncedSearch, status, employer, workMode, debouncedLocation, debouncedSkills, sortBy, view, country, city, industry, profession, posted, updateTotal]);
 
   useEffect(() => { void loadJobs(); }, [loadJobs]);
+
+  // Continue / publish / discard a draft, as on the employer's own jobs page.
+  const tJobs = useTranslations("employerJobs");
+  const draftActions = useAgentJobActions(() => { void loadJobs(); });
 
   // next-intl throws on a missing key, so an unknown status prints as stored.
   const statusLabel = (value: string) =>
@@ -613,11 +618,22 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
                           name={job.title}
                           // Labels only from 1440: at 1280 they pushed Actions out of the panel.
                           labelsFrom="wide"
-                          quick={[
+                          quick={view === "my" && job.status === "draft" ? [
+                            // A draft has no candidates yet: its next step is finishing it.
+                            { key: "continue", label: tJobs("continueDraftButton"), icon: Edit2, href: `/${locale}/agent/jobs/${job._id}/edit` },
+                            { key: "view", label: t("actions.viewJob"), icon: Eye, iconOnly: true, href: jobHref },
+                          ] : [
                             ...(view === "my" ? [{ key: "candidates", label: t("actions.viewCandidates"), icon: Users, href: `/${locale}/agent/candidates?jobId=${job._id}` }] : []),
                             { key: "view", label: t("actions.viewJob"), icon: Eye, iconOnly: true, href: jobHref },
                             ...(job.status === "active" ? [{ key: "share", label: t("share.title"), icon: Share2, iconOnly: true, onSelect: () => setShareJob(job) }] : []),
                           ]}
+                          menu={view === "my" ? [
+                            ...(job.status !== "draft" && job.status !== "closed" ? [{ key: "edit", label: tJobs("editButton"), icon: Edit2, href: `/${locale}/agent/jobs/${job._id}/edit` }] : []),
+                            ...(job.status === "draft" ? [
+                              { key: "publish", label: draftActions.isPending(job._id, "publish") ? tJobs("publishingButton") : tJobs("publishButton"), icon: Send, pending: draftActions.isPending(job._id, "publish"), disabled: draftActions.isPending(job._id, "publish"), onSelect: () => { void draftActions.publish(job._id); } },
+                              { key: "delete", label: draftActions.isPending(job._id, "delete") ? tJobs("deletingButton") : tJobs("deleteButton"), icon: Trash2, destructive: true, pending: draftActions.isPending(job._id, "delete"), disabled: draftActions.isPending(job._id, "delete"), onSelect: () => { void draftActions.discard(job._id); } },
+                            ] : []),
+                          ] : []}
                         />
                       </TableCell>
                     </TableRow>
@@ -641,6 +657,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
       )}
 
       <ShareJobDialog job={shareJob} onClose={() => setShareJob(null)} locale={locale} />
+      {draftActions.dialog}
     </div>
   );
 }

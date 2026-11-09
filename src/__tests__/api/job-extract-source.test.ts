@@ -105,3 +105,51 @@ describe("job-extract: reader and model per file", () => {
     expect(generateMultimodal.mock.calls[0][1]).toBe("extraction-model");
   });
 });
+
+// 2026-11-09: the chat and the job form's assistant could not see the poster,
+// so "you missed the qualification" got a made-up answer. The poster's own
+// text now comes back with the jobs.
+describe("job-extract: the poster's own text and separate lists", () => {
+  const png = () => upload("poster.png", "image/png", [0x89, 0x50, 0x4e, 0x47]);
+
+  it("asks the vision model to copy the poster's text, and returns it", async () => {
+    generateMultimodal.mockResolvedValue(
+      JSON.stringify({ jobs: [{ title: "Operations Head" }], posterText: "OPERATIONS HEAD\nQualification: Any degree" }),
+    );
+    const { POST } = await import("@/app/api/ai/job-extract/route");
+    const body = await (await POST(png())).json();
+    expect(generateMultimodal.mock.calls[0][0][0].text).toContain('"posterText"');
+    expect(body.posterText).toBe("OPERATIONS HEAD\nQualification: Any degree");
+  });
+
+  it("returns a PDF's own text as the poster text, without asking the model to copy it", async () => {
+    extractResumeText.mockResolvedValue({ text: LONG_LAYER });
+    const { POST } = await import("@/app/api/ai/job-extract/route");
+    const body = await (await POST(pdf())).json();
+    expect(generateText.mock.calls[0][0]).not.toContain('"posterText"');
+    expect(body.posterText).toBe(LONG_LAYER.trim());
+  });
+
+  it("asks for education and an overview-only description, with qualifications copied as written", async () => {
+    const { POST } = await import("@/app/api/ai/job-extract/route");
+    await POST(png());
+    const prompt = generateMultimodal.mock.calls[0][0][0].text as string;
+    expect(prompt).toContain('"education"');
+    expect(prompt).toMatch(/do NOT put responsibilities, qualifications, skills or benefits/);
+    expect(prompt).toMatch(/copied as written/);
+  });
+
+  it("moves lists the model wrote into the description into their own fields", async () => {
+    generateMultimodal.mockResolvedValue(JSON.stringify({
+      jobs: [{
+        title: "Operations Head",
+        description: "Lead business operations for a growing events company.\n\nQualifications:\n- Any degree\n- Driving licence",
+        qualifications: [],
+      }],
+    }));
+    const { POST } = await import("@/app/api/ai/job-extract/route");
+    const body = await (await POST(png())).json();
+    expect(body.jobs[0].description).toBe("Lead business operations for a growing events company.");
+    expect(body.jobs[0].qualifications).toEqual(["Any degree", "Driving licence"]);
+  });
+});

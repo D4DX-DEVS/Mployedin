@@ -7,6 +7,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validators";
 import { resolveEmployerRegion, summariseEmployerRegions } from "@/lib/agents/territoryCoverage";
+import logger from "@/lib/logger";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -82,6 +83,17 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       },
       req,
     });
+
+    // The company now shows up for the new region's super-agents and agents.
+    if (next) {
+      const { notifyEmployerRegion } = await import("@/lib/notifications/employerCoverage");
+      notifyEmployerRegion({
+        employerId: String(employer._id),
+        companyName: employer.companyName || "A company",
+        region: next,
+        event: "moved",
+      }).catch((err) => logger.error({ err, employerId: String(employer._id) }, "Failed to notify the employer's new region"));
+    }
   }
 
   return NextResponse.json({ changed, region });

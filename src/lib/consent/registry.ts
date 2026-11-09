@@ -34,6 +34,8 @@ export const REGISTRY: RegistryItem[] = [
   { name: "ai-thread-*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "ai", purposeKey: "taskState" },
   { name: "ai_insights_*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "ai", purposeKey: "taskState" },
   { name: "copilot-chats", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "ai", purposeKey: "taskState" },
+  // A lead Copilot read off a hiring poster, handed to the New Lead form; removed as soon as the form reads it.
+  { name: "copilot:lead-draft", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "ai", purposeKey: "taskState" },
   { name: "poster-edit:*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "employer", purposeKey: "taskState" },
   { name: "mployedin:temp-password-notice-dismissed:*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "auth", purposeKey: "noticeDismissed" },
   // user-action third parties (load only after a click)

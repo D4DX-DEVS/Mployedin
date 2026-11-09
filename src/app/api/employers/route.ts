@@ -655,6 +655,19 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
   }
 
+  // Everyone whose territory covers the company's region now sees it, so each
+  // is told — except the agent or super-agent who just added it.
+  {
+    const { notifyEmployerRegion } = await import("@/lib/notifications/employerCoverage");
+    notifyEmployerRegion({
+      employerId: String(employer._id),
+      companyName: companyName || name,
+      region: region ?? null,
+      event: "added",
+      skipUserIds: [ctx.userId],
+    }).catch((err) => logger.error({ err, employerId: String(employer._id) }, "Failed to notify the employer's region of its creation"));
+  }
+
   // Send welcome email with a password-setup link instead of the plaintext password
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? "https://mployedin.com";
   const loginUrl = `${baseUrl}/login`;

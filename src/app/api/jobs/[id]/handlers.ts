@@ -34,6 +34,17 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
   // employerId is populated above, so read the id off the populated doc.
   const ownerId = (job.employerId as { _id?: unknown } | null)?._id ?? job.employerId;
+  // Whether the calling agent is the one who posted this job (looked up once).
+  let postedByViewer: boolean | undefined;
+  const isPostingAgent = async (): Promise<boolean> => {
+    if (postedByViewer === undefined) {
+      const agent = ctx.role === "agent" && job.agentId
+        ? await Agent.findOne({ userId: ctx.userId }).select("_id").lean()
+        : null;
+      postedByViewer = Boolean(agent && String(agent._id) === String(job.agentId));
+    }
+    return postedByViewer;
+  };
   let isOwnerSide: boolean;
   if (ctx.role === "super_agent") {
     // The super-agent's book — the definition /api/super-agent/jobs lists by:
@@ -52,6 +63,10 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     isOwnerSide =
       (employerIds === null || employerIds.map(String).includes(String(ownerId))) &&
       (ctx.role !== "employer" || (await memberMayAccessJob(ctx, ownerId, job._id)));
+    // The agent who posted the job stays its owning side even after the
+    // employer moves to another agent — the same rule PATCH writes by, so a
+    // draft listed under "My jobs" never opens as "not found".
+    if (!isOwnerSide && ctx.role === "agent") isOwnerSide = await isPostingAgent();
   }
 
   // An active job is public to any signed-in user. A non-active one (draft,
@@ -64,7 +79,11 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   // An agent's job page offers "Open employer's job page" (tenant view), which
   // only an employer assigned to the agent allows — area visibility is not enough.
   if (ctx.role === "agent") {
-    (job as Record<string, unknown>).viewerCanManage = Boolean(await agentPostingFor(ctx.userId, ownerId));
+    const canManage = Boolean(await agentPostingFor(ctx.userId, ownerId));
+    (job as Record<string, unknown>).viewerCanManage = canManage;
+    // Edit / publish / discard: the same rule PATCH and DELETE apply — the
+    // agent posted it, or its employer is assigned to them.
+    (job as Record<string, unknown>).viewerCanEdit = canManage || (await isPostingAgent());
   }
 
   // Whether the caller is the owning side, so the employer job workspace can
@@ -261,6 +280,18 @@ async function deleteHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<st
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+  } else if (ctx.role === "agent") {
+    // Agents may only discard a draft — of a job they posted or one at an
+    // employer assigned to them. A live job is closed, never deleted, by them.
+    if (job.status !== "draft") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const agent = await Agent.findOne({ userId: ctx.userId }).select("_id assignedEmployerIds").lean();
+    const ok = Boolean(
+      agent && (
+        String(job.agentId) === String(agent._id) ||
+        ((agent.assignedEmployerIds as unknown[]) ?? []).some((e) => String(e) === String(job.employerId))
+      )
+    );
+    if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   } else if (ctx.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

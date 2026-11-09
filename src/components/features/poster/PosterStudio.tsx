@@ -18,7 +18,7 @@ import { MPLOYEDIN_LOGO_URL, type BrandKit, type PosterContact } from "@/lib/bra
 import { POSTER_FONT_VARIABLES } from "@/lib/brand/posterFontFaces";
 import { buildJobApplyUrl, buildPosterShareUrl } from "@/lib/composer/branding";
 import { buildBrandPosterData, defaultHeadline, type PosterJobInput } from "@/lib/poster/brandPosterContent";
-import { BRAND_LAYOUTS, POSTER_SIZES, type BrandLayout, type PosterLook, type PosterSize } from "./BrandPoster";
+import { BRAND_LAYOUTS, DEFAULT_BRAND_LAYOUT, POSTER_SIZES, type BrandLayout, type PosterLook, type PosterSize } from "./BrandPoster";
 import { ScaledPoster } from "./ScaledPoster";
 
 type Source = "company" | "mployedin";
@@ -59,7 +59,7 @@ export function PosterStudio({ jobId }: { jobId: string }) {
   const [headline, setHeadline] = useState("");
   const [headlineEdited, setHeadlineEdited] = useState(false);
   const [size, setSize] = useState<PosterSize>("square");
-  const [layout, setLayout] = useState<BrandLayout>("spotlight");
+  const [layout, setLayout] = useState<BrandLayout>(DEFAULT_BRAND_LAYOUT);
   const [saved, setSaved] = useState<Saved | null>(null);
   const [qr, setQr] = useState<string>();
 
@@ -272,7 +272,7 @@ export function PosterStudio({ jobId }: { jobId: string }) {
           </section>
 
           <div className="space-y-6 min-w-0">
-            {/* Six layouts */}
+            {/* Layouts */}
             <section className="space-y-3 rounded-xl border bg-card p-4 sm:p-6" aria-labelledby="studio-layouts">
               <div>
                 <h2 id="studio-layouts" className="text-base font-semibold">{t("layoutsTitle")}</h2>
@@ -280,7 +280,7 @@ export function PosterStudio({ jobId }: { jobId: string }) {
               </div>
               <div className={`grid gap-3 ${size === "landscape" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2 md:grid-cols-3"}`}>
                 {loading || !data || !kit
-                  ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="w-full rounded-lg" style={{ aspectRatio: `${width} / ${height}` }} />)
+                  ? Array.from({ length: BRAND_LAYOUTS.length }).map((_, i) => <Skeleton key={i} className="w-full rounded-lg" style={{ aspectRatio: `${width} / ${height}` }} />)
                   : BRAND_LAYOUTS.map((l) => (
                       <button
                         key={l}

@@ -12,9 +12,13 @@
  * one child sets display:flex (a satori rule). No hooks, no "use client".
  */
 import type { CSSProperties, ReactNode } from "react";
-import { BRAND_FONTS, contrastRatio, readableTextOn, type BrandKit } from "@/lib/brand/brandKit";
+import { BRAND_FONTS, type BrandKit } from "@/lib/brand/brandKit";
+import { renderArtLayout } from "./posterArt";
+import { ART_LAYOUTS, alpha, artScale, darken, isArtLayout, paletteFor } from "./posterPalette";
 
-export const BRAND_LAYOUTS = ["spotlight", "band", "split", "frame", "night", "minimal"] as const;
+/** The art layouts (drawn backgrounds, posterArt.tsx) first, then the six classic ones. */
+export const BRAND_LAYOUTS = [...ART_LAYOUTS, "spotlight", "band", "split", "frame", "night", "minimal"] as const;
+export const DEFAULT_BRAND_LAYOUT: BrandLayout = "wave";
 export type BrandLayout = (typeof BRAND_LAYOUTS)[number];
 
 export const POSTER_LOOKS = ["bold", "clean", "urgent"] as const;
@@ -68,18 +72,6 @@ export interface BrandPosterProps {
   fontFamily?: string;
 }
 
-/** Mix a #rrggbb colour toward black (amount 0–1). */
-function darken(color: string, amount: number): string {
-  const c = (i: number) => Math.round(parseInt(color.slice(i, i + 2), 16) * (1 - amount));
-  return `rgb(${c(1)}, ${c(3)}, ${c(5)})`;
-}
-
-/** #rrggbb with alpha, as rgba(). */
-function alpha(color: string, a: number): string {
-  const c = (i: number) => parseInt(color.slice(i, i + 2), 16);
-  return `rgba(${c(1)}, ${c(3)}, ${c(5)}, ${a})`;
-}
-
 /**
  * Icon paths copied from lucide (ISC). lucide-react can't be used here: its
  * forwardRef components don't render under satori (next/og), so the poster
@@ -110,7 +102,7 @@ export function BrandPoster(props: BrandPosterProps) {
   const landscape = width > height * 1.2;
   // Story and A4: more height than a square, so text grows a little and blocks spread out.
   const tall = height > width * 1.3;
-  const u = (Math.min(width, height) / 100) * (tall ? 1.12 : 1); // 1% of the short side
+  const u = (Math.min(width, height) / 100) * (tall ? 1.12 : 1) * artScale(layout, tall); // 1% of the short side
   const spread = tall ? "space-around" : "space-between";
   const font = props.fontFamily ?? BRAND_FONTS[kit.font].stack;
   const reqs = (data.requirements ?? []).filter(Boolean).slice(0, landscape ? 2 : 4);
@@ -329,7 +321,9 @@ export function BrandPoster(props: BrandPosterProps) {
   let body: ReactNode;
   const pad = landscape ? 5 * u : 7 * u;
 
-  switch (layout) {
+  if (isArtLayout(layout)) {
+    body = renderArtLayout(layout, { company, kicker, title, meta, bottom, headline: data.headline, kit, width, height, u, pad, landscape, tall, spread });
+  } else switch (layout) {
     case "band":
       body = (
         <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%" }}>
@@ -436,154 +430,4 @@ export function BrandPoster(props: BrandPosterProps) {
       {body}
     </div>
   );
-}
-
-interface Palette {
-  background: string;
-  titleFg: string;
-  bodyFg: string;
-  metaFg: string;
-  metaBg: string;
-  mutedFg: string;
-  ctaFg: string;
-  kickerBg: string;
-  kickerFg: string;
-  /** Icons, the requirements heading and the QR frame. */
-  iconFg: string;
-  buttonBg: string;
-  buttonFg: string;
-  ruleFg: string;
-  align: "left" | "center";
-}
-
-type BasePalette = Omit<Palette, "iconFg" | "buttonBg" | "buttonFg" | "ruleFg">;
-
-/** #rrggbb or white/black for a colour that may be an rgba() string. */
-function solid(color: string): string {
-  return color.startsWith("#") ? color : "#ffffff";
-}
-
-/**
- * Colours for each layout, always picked for contrast against what they sit on.
- * The extras (icons, the Apply button, the divider) follow the area the bottom
- * of the poster sits on: the brand colour for light layouts, white/accent on dark ones.
- */
-function paletteFor(layout: BrandLayout, kit: BrandKit, look: PosterLook): Palette {
-  const base = basePalette(layout, kit, look);
-  const onPrimary = readableTextOn(kit.primary);
-  const dark = layout === "spotlight" || layout === "night";
-  if (layout === "night") {
-    const accentOk = contrastRatio(kit.accent, "#0b1328") >= 3;
-    return { ...base, iconFg: accentOk ? kit.accent : "#ffffff", buttonBg: kit.accent, buttonFg: readableTextOn(kit.accent), ruleFg: "rgba(255,255,255,0.18)" };
-  }
-  if (dark) {
-    const lightText = onPrimary === "#ffffff";
-    return {
-      ...base,
-      iconFg: contrastRatio(kit.accent, kit.primary) >= 3 ? kit.accent : onPrimary,
-      buttonBg: lightText ? "#ffffff" : kit.text,
-      buttonFg: lightText ? kit.primary : "#ffffff",
-      ruleFg: lightText ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)",
-    };
-  }
-  const text = solid(base.ctaFg);
-  return {
-    ...base,
-    iconFg: contrastRatio(kit.primary, kit.background) >= 3 ? kit.primary : text,
-    buttonBg: kit.primary,
-    buttonFg: onPrimary,
-    ruleFg: alpha(text, 0.15),
-  };
-}
-
-function basePalette(layout: BrandLayout, kit: BrandKit, look: PosterLook): BasePalette {
-  const urgentKicker = look === "urgent";
-  const onPrimary = readableTextOn(kit.primary);
-  const onBackground = readableTextOn(kit.background);
-  const onAccent = readableTextOn(kit.accent);
-  const titleOnBackground = readableTextOn(kit.background) === "#ffffff" ? "#ffffff" : kit.text;
-
-  switch (layout) {
-    case "band":
-      return {
-        background: kit.background,
-        titleFg: titleOnBackground,
-        bodyFg: onPrimary,
-        metaFg: titleOnBackground,
-        metaBg: alpha(kit.primary, 0.1),
-        mutedFg: alpha(onBackground === "#ffffff" ? "#ffffff" : kit.text, 0.65),
-        ctaFg: titleOnBackground,
-        kickerBg: urgentKicker ? kit.accent : "rgba(255,255,255,0.18)",
-        kickerFg: urgentKicker ? onAccent : onPrimary,
-        align: "left",
-      };
-    case "split":
-      return {
-        background: kit.background,
-        titleFg: onPrimary,
-        bodyFg: titleOnBackground,
-        metaFg: titleOnBackground,
-        metaBg: alpha(kit.primary, 0.1),
-        mutedFg: alpha(onBackground === "#ffffff" ? "#ffffff" : kit.text, 0.65),
-        ctaFg: titleOnBackground,
-        kickerBg: urgentKicker ? kit.accent : "rgba(255,255,255,0.18)",
-        kickerFg: urgentKicker ? onAccent : onPrimary,
-        align: "left",
-      };
-    case "frame":
-      return {
-        background: kit.background,
-        titleFg: titleOnBackground,
-        bodyFg: titleOnBackground,
-        metaFg: titleOnBackground,
-        metaBg: alpha(kit.accent, 0.14),
-        mutedFg: alpha(onBackground === "#ffffff" ? "#ffffff" : kit.text, 0.65),
-        ctaFg: titleOnBackground,
-        kickerBg: urgentKicker ? kit.accent : kit.primary,
-        kickerFg: urgentKicker ? onAccent : onPrimary,
-        align: "center",
-      };
-    case "night": {
-      const dark = readableTextOn(kit.text) === "#ffffff" ? kit.text : "#0b1328";
-      return {
-        background: `linear-gradient(180deg, ${dark}, ${darken(dark.startsWith("#") ? dark : "#0b1328", 0.4)})`,
-        titleFg: "#ffffff",
-        bodyFg: "#ffffff",
-        metaFg: "#ffffff",
-        metaBg: "rgba(255,255,255,0.12)",
-        mutedFg: "rgba(255,255,255,0.7)",
-        ctaFg: "#ffffff",
-        kickerBg: kit.accent,
-        kickerFg: onAccent,
-        align: "left",
-      };
-    }
-    case "minimal":
-      return {
-        background: kit.background,
-        titleFg: titleOnBackground,
-        bodyFg: titleOnBackground,
-        metaFg: titleOnBackground,
-        metaBg: "rgba(0,0,0,0)",
-        mutedFg: alpha(onBackground === "#ffffff" ? "#ffffff" : kit.text, 0.6),
-        ctaFg: titleOnBackground,
-        kickerBg: urgentKicker ? kit.accent : alpha(kit.primary, 0.12),
-        kickerFg: urgentKicker ? onAccent : readableTextOn(kit.background) === "#ffffff" ? "#ffffff" : kit.primary,
-        align: "left",
-      };
-    case "spotlight":
-    default:
-      return {
-        background: `linear-gradient(150deg, ${kit.primary} 0%, ${darken(kit.primary, 0.45)} 75%)`,
-        titleFg: onPrimary,
-        bodyFg: onPrimary,
-        metaFg: onPrimary,
-        metaBg: "rgba(255,255,255,0.14)",
-        mutedFg: onPrimary === "#ffffff" ? "rgba(255,255,255,0.72)" : "rgba(17,24,39,0.7)",
-        ctaFg: onPrimary,
-        kickerBg: urgentKicker ? kit.accent : "rgba(255,255,255,0.18)",
-        kickerFg: urgentKicker ? onAccent : onPrimary,
-        align: "left",
-      };
-  }
 }

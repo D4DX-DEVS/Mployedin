@@ -14,7 +14,7 @@ import {
   logUsage,
   type ChatUsage,
 } from "@/lib/ai/googleAI";
-import { getAssistantSystemPrompt, SCOPE_GUARD, type AssistantContext } from "@/lib/ai/assistantPrompts";
+import { buildJobCreatorDraftContext, getAssistantSystemPrompt, SCOPE_GUARD, type AssistantContext } from "@/lib/ai/assistantPrompts";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
 import { aiChatSchema } from "@/lib/validators/ai";
@@ -800,7 +800,12 @@ ${interviewLines ? `\n### Upcoming Interviews\n${interviewLines}` : ""}`;
       }
     }
 
-    const systemPrompt = getSystemPrompt(context ?? "", profileContext, jobsContext, roleStatsContext + pageContext + recentActivityContext);
+    // AI job creator: the draft on screen and the poster's text, so a follow-up
+    // ("add the qualification") edits that draft instead of starting over.
+    const jobDraftContext = context === "job_creator" ? buildJobCreatorDraftContext(body.jobDraft, body.posterText) : "";
+
+    const systemPrompt =
+      getSystemPrompt(context ?? "", profileContext, jobsContext, roleStatsContext + pageContext + recentActivityContext) + jobDraftContext;
 
     // Build OpenAI-compatible messages array
     const chatMessages: { role: "system" | "user" | "assistant"; content: string }[] = [

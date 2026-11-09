@@ -2802,6 +2802,19 @@
       "responsibilities": "Responsibilities:",
       "benefits": "Benefits:",
       "more": "+{count} more",
+      "openingsLabel": "Openings:",
+      "experienceLabel": "Experience:",
+      "experienceYears": "{min}–{max} years",
+      "experienceMinOnly": "{min}+ years",
+      "educationLabel": "Education:",
+      "descriptionLabel": "Description:",
+      "preferredSkills": "Nice-to-have Skills:",
+      "qualifications": "Qualifications:",
+      "screeningQuestionsLabel": "Screening questions:",
+      "screeningCount": "{count, plural, one {# question} other {# questions}}",
+      "notOnPoster": "Not on the poster",
+      "notAddedYet": "Not added yet",
+      "askChatToFix": "Something from the poster missing or wrong? Tell the chat, for example: \"add the qualifications from the poster\".",
       "nothingSavedYet": "Nothing is saved yet. Review and submit in the full form.",
       "reviewInForm": "Review in Full Form",
       "createAllDrafts": "Create All {count} Drafts",
@@ -2832,7 +2845,49 @@
       "postHeld": "Saved as a draft: the company profile must be completed before this job can go live.",
       "postNeedsReview": "Some details a live job needs are missing. Review it in the full form to finish them.",
       "draftSaveFailed": "We couldn't save the draft. Please try again.",
-      "postFailed": "We couldn't post the job. Please try again."
+      "postFailed": "We couldn't post the job. Please try again.",
+      "posterSummary": {
+        "title": "I read your poster: **{title}**.",
+        "found": "Found: {items}.",
+        "missing": "Not on the poster: {items}.",
+        "next": "Tell me what to add or change and I'll update this draft.",
+        "foundItem": {
+          "qualifications": "{count, plural, one {# qualification} other {# qualifications}}",
+          "skills": "{count, plural, one {# skill} other {# skills}}",
+          "responsibilities": "{count, plural, one {# responsibility} other {# responsibilities}}",
+          "benefits": "{count, plural, one {# benefit} other {# benefits}}"
+        },
+        "missingItem": {
+          "responsibilities": "responsibilities",
+          "benefits": "benefits",
+          "qualifications": "qualifications",
+          "salary": "salary",
+          "experience": "experience"
+        },
+        "viewPosterText": "View poster text",
+        "ask": {
+          "responsibilities": {
+            "label": "Write responsibilities",
+            "instruction": "Write the responsibilities for this role from the poster and the job title."
+          },
+          "benefits": {
+            "label": "Suggest benefits",
+            "instruction": "Suggest the usual benefits for this role and add them to the benefits."
+          },
+          "qualifications": {
+            "label": "Add qualifications",
+            "instruction": "Copy the qualifications from the poster into the qualifications, as written. If the poster lists none, tell me."
+          },
+          "salary": {
+            "label": "Add salary",
+            "instruction": "I want to add the salary. Ask me for the amount, currency and period."
+          },
+          "experience": {
+            "label": "Add experience",
+            "instruction": "I want to set the experience needed. Ask me how many years."
+          }
+        }
+      }
     },
     "quickPrompts": {
       "superAgent": {
@@ -6695,6 +6750,10 @@
       "newThisWeek": "New this week",
       "industriesLabel": "Jobs by industry",
       "allIndustries": "All industries"
+    },
+    "draftActions": {
+      "publishGated": "This employer's company profile isn't complete yet, so the job stays a draft. Finish the profile in the employer view, then publish.",
+      "draftDeleted": "Draft deleted."
     }
   },
   "agentJobNew": {
@@ -9344,8 +9403,13 @@
     "roleChangedBody": "An administrator changed your account from {fromRole} to {toRole}.",
     "agentEmployerAssignedTitle": "Employer assigned to you",
     "agentEmployerAssignedBody": "An admin assigned {companyName} to you.",
+    "agentEmployerAssignedBySaBody": "Your super agent assigned {companyName} to you.",
+    "agentEmployerUnassignedTitle": "Employer moved to another agent",
+    "agentEmployerUnassignedBody": "{companyName} is no longer assigned to you. Its open jobs moved with it.",
     "regionEmployerRegisteredTitle": "New employer in your region",
     "regionEmployerRegisteredBody": "{companyName} registered in {cityName}.",
+    "regionEmployerAddedBody": "{companyName} was added in {cityName}.",
+    "regionEmployerMovedBody": "{companyName} moved to {cityName}.",
     "adminEmployerOutsideTerritoryTitle": "Employer outside every territory",
     "adminEmployerOutsideTerritoryBody": "{companyName} registered in {region}, which no super agent covers.",
     "adminEmployerNoRegionBody": "{companyName} registered without a recognised city, so no super agent covers it.",
@@ -12121,6 +12185,7 @@
       "titleAssign": "Assign agent",
       "titleChange": "Change agent",
       "description": "Choose the agent who looks after {company}. Their super agent follows automatically.",
+      "descriptionTeam": "Choose which of your agents looks after {company}. Only agents on your team are listed.",
       "currentLabel": "Current agent",
       "noAgent": "No agent yet",
       "newLabel": "Agent",
@@ -14712,6 +14777,10 @@
       "emptyDescription": "Employers appear here when they sign up in a city your region covers.",
       "noRegionTitle": "You don't have a region yet",
       "noRegionDescription": "An admin sets the cities your region covers. Once they do, employers registered there appear here."
+    },
+    "assignAgent": {
+      "assign": "Assign agent",
+      "change": "Change agent"
     }
   },
   "superAgentPlacements": {
@@ -15735,7 +15804,31 @@
     "boardColumnPageEmpty": "No more leads in this stage.",
     "boardPerStage": "Leads per stage",
     "boardPageSummary": "{total, plural, one {# lead} other {# leads}} across all stages",
-    "moveInvalidDates": "Check the dates: a contact or a win can't be in the future, and the next follow-up can't be in the past."
+    "moveInvalidDates": "Check the dates: a contact or a win can't be in the future, and the next follow-up can't be in the past.",
+    "fieldCity": "City",
+    "rolesHiringLabel": "Roles hiring",
+    "posterLabel": "Hiring poster",
+    "viewPoster": "View poster",
+    "activityFromPoster": "Created from a hiring poster",
+    "posterTitle": "Got a hiring poster?",
+    "posterHint": "Upload a photo, PDF or flyer and AI fills in the company, contact and roles for you to check.",
+    "posterChooseFile": "Upload poster",
+    "posterReading": "Reading the poster…",
+    "posterFilled": "Details filled from the poster",
+    "posterThumbAlt": "Uploaded hiring poster",
+    "posterReplace": "Use another poster",
+    "posterRemove": "Remove poster and clear the form",
+    "posterCheckFields": "Please check: {fields}. AI couldn't read them clearly.",
+    "posterCheckAll": "Check every field before you save — AI can misread posters.",
+    "posterCheckHint": "AI wasn't sure about this — please check.",
+    "posterNotStored": "The poster couldn't be stored, so it won't be attached to the lead.",
+    "posterLeadSaved": "Lead created from the poster.",
+    "posterErrorNotPoster": "This doesn't look like a hiring poster. Try another file or fill the form yourself.",
+    "posterErrorUnreadable": "We couldn't read this file. Try a clearer photo or a PDF.",
+    "posterErrorTooLarge": "That file is over 10 MB. Try a smaller one.",
+    "posterErrorType": "Use a PDF, JPG, PNG, WebP or Word file.",
+    "posterErrorLimit": "You've used today's AI limit. Fill the form yourself or try again tomorrow.",
+    "posterErrorFailed": "We couldn't read the poster. Please try again."
   },
   "agentCandidates": {
     "agentWorkspace": "Agent workspace",
@@ -15900,6 +15993,16 @@
     "outcomeFailed": "Failed",
     "outcomeOnHold": "On Hold",
     "outcomeNoShow": "No Show",
+    "recordOutcome": "Record outcome",
+    "candidateFallback": "Candidate",
+    "recordOutcomeTitle": "Record interview outcome",
+    "recordOutcomeSave": "Save outcome",
+    "outcomeLabel": "How did it go?",
+    "outcomeFeedback": "Feedback (optional)",
+    "outcomeFeedbackPlaceholder": "What the employer or candidate told you",
+    "outcomeRequired": "Choose an outcome first.",
+    "outcomeSaved": "Outcome saved for {name}",
+    "outcomeSaveFailed": "We couldn't save the outcome. Try again.",
     "filterAllOutcomes": "All Outcomes",
     "fieldScheduledAt": "Scheduled At",
     "fieldType": "Type",
@@ -16500,6 +16603,13 @@
     "linkOpenCandidate": "Open {name}'s profile",
     "linkOpenJob": "Open job: {title}",
     "linkJobDeleted": "{title} (job deleted)",
+    "employerMenuLabel": "Contact or open {name}",
+    "employerNoContact": "No email or phone on their profile",
+    "employerMessage": "Send message",
+    "employerEmail": "Send email",
+    "employerCall": "Call",
+    "employerWhatsapp": "WhatsApp",
+    "employerViewJobs": "View their jobs",
     "linkOpenEmployer": "Open {name}'s jobs",
     "createTaskDescription": "A to-do or follow-up for yourself. Link it to a candidate, job or employer to open them straight from the task.",
     "fieldTitle": "Task",
@@ -16625,7 +16735,8 @@
     "openingEmployerView": "Opening…",
     "openEmployerViewError": "We couldn't open the employer's job page. Please try again.",
     "notDisclosed": "Not disclosed",
-    "salaryIn": "Salary ({currency})"
+    "salaryIn": "Salary ({currency})",
+    "continueShort": "Continue"
   },
   "agentChat": {
     "agentWorkspaceBadge": "Agent workspace",
@@ -18540,7 +18651,36 @@
         },
         "pdfTitle": "Candidate shortlist"
       }
-    }
+    },
+    "attachPoster": "Attach a hiring poster to create a lead",
+    "readingPoster": "Reading the poster…",
+    "leadDraftTitle": "Lead from poster",
+    "leadDraftPosterAlt": "Attached hiring poster",
+    "leadDraftNoCompany": "Company not found",
+    "leadDraftRoles": "{count, plural, one {# opening} other {# openings}}",
+    "leadDraftCompany": "Company",
+    "leadDraftContact": "Contact person",
+    "leadDraftEmail": "Email",
+    "leadDraftPhone": "Phone",
+    "leadDraftCity": "City",
+    "leadDraftCountry": "Country",
+    "leadDraftIndustry": "Industry",
+    "leadDraftCheck": "Check",
+    "leadDraftCheckHint": "Fields marked Check were hard to read — fix them before you create the lead.",
+    "leadDraftReviewHint": "Review the details — AI can misread posters.",
+    "leadDraftDuplicates": "Similar leads already in your pipeline",
+    "leadDraftFullForm": "Open in full form",
+    "leadDraftCreate": "Create lead",
+    "leadDraftSaving": "Creating…",
+    "leadDraftSaved": "Lead created with the poster attached.",
+    "leadDraftOpen": "Open lead",
+    "leadDraftFailed": "We couldn't create the lead. Please try again.",
+    "posterErrorNotPoster": "That doesn't look like a hiring poster. Try another file.",
+    "posterErrorUnreadable": "We couldn't read that file. Try a clearer photo or a PDF.",
+    "posterErrorTooLarge": "That file is over 10 MB. Try a smaller one.",
+    "posterErrorType": "Attach a PDF, JPG, PNG, WebP or Word file.",
+    "posterErrorLimit": "You've used today's AI limit. Try again tomorrow.",
+    "posterErrorFailed": "We couldn't read the poster. Please try again."
   },
   "mcpAuthorize": {
     "title": "Connect {clientName} to Mployedin",
@@ -20112,6 +20252,9 @@
     "adminContext": "Tasks given to agents by super agents and admins, and their review.",
     "assignButton": "Assign task",
     "assignTitle": "Assign a task",
+    "stepTask": "Task",
+    "stepLinks": "Linked records",
+    "assigning": "Assigning…",
     "assignDescription": "The agent is notified and sees it in their Tasks. When they mark it done, it comes back to you for review.",
     "fieldAgent": "Agent",
     "chooseAgent": "Choose an agent",
@@ -20839,6 +20982,16 @@
       "gated": "Your plan doesn't include the AI assistant, or your AI allowance has run out for now.",
       "rate_limited": "Too many requests. Wait a minute, then try again.",
       "failed": "The AI assistant couldn't answer just now. Try again."
+    },
+    "poster": {
+      "using": "Using your poster",
+      "view": "View text",
+      "dialogTitle": "Text read from your poster",
+      "dialogDescription": "This is what the AI read from the poster you uploaded. If something is wrong or missing, tell the assistant.",
+      "check": {
+        "label": "Check against the poster",
+        "instruction": "Compare this job with my poster. Copy in anything from the poster that is missing or different, as written, and tell me what you changed. Don't add anything the poster doesn't say."
+      }
     }
   },
   "jobBulkReview": {
@@ -21104,7 +21257,7 @@
   },
   "posterStudio": {
     "title": "Make a job poster",
-    "subtitle": "Pick a brand and a style, choose one of six layouts, then save to share and download.",
+    "subtitle": "Pick a brand and a style, choose a layout, then save to share and download.",
     "backToJob": "Back to job",
     "myPosters": "My posters",
     "stepsLabel": "Poster steps",
@@ -21135,8 +21288,14 @@
     "size_a4": "A4 print",
     "language": "Poster language",
     "layoutsTitle": "Pick a layout",
-    "layoutsHint": "Six layouts in your brand. Free, and they change as you edit.",
+    "layoutsHint": "Designed backgrounds first, then the classic layouts. All in your brand, free, and they change as you edit.",
     "pickLayout": "Use the {name} layout",
+    "layout_wave": "Wave",
+    "layout_slant": "Slant",
+    "layout_statement": "Statement",
+    "layout_card": "Card",
+    "layout_orbit": "Orbit",
+    "layout_global": "Global",
     "layout_spotlight": "Spotlight",
     "layout_band": "Band",
     "layout_split": "Split",

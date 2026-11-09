@@ -52,6 +52,8 @@ export interface Job {
   viewerCanManage?: boolean;
   /** The caller is the owning side (their company's job, within their job scope). */
   viewerIsOwner?: boolean;
+  /** Agent only: may edit, publish or discard this job (posted it, or employer assigned). */
+  viewerCanEdit?: boolean;
   applicantIds?: string[];
   applicationCount?: number;
   createdAt: string;

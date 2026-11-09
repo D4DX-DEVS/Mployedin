@@ -21,3 +21,11 @@ export function useCopilotExecuted(tools: readonly string[], onExecuted: () => v
     return () => window.removeEventListener(COPILOT_EXECUTED_EVENT, handler);
   }, [key]);
 }
+
+/**
+ * A lead Copilot read off a hiring poster, handed to the New Lead form
+ * ("Open in full form"): stored under this sessionStorage key, then this
+ * event tells an already-open leads page to pick it up.
+ */
+export const COPILOT_LEAD_DRAFT_KEY = "copilot:lead-draft";
+export const COPILOT_LEAD_DRAFT_EVENT = "mployedin:copilot-lead-draft";

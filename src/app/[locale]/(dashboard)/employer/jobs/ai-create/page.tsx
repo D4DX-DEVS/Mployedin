@@ -12,10 +12,23 @@ import type { JobFormValues } from "@/components/features/employer/job-form/jobF
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTranslations, useLocale } from "next-intl";
-import { formatCount } from "@/lib/ui/intlFormat";
 import { useJobPostingTarget } from "@/components/features/jobs/jobPostingTarget";
 import { BulkJobReview, isReadyToSave, type BulkJobStatus } from "@/components/features/jobs/bulk-review/BulkJobReview";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import {
+  applyDraftUpdate,
+  DEFAULT_EXPERIENCE_MAX,
+  experienceRange,
+  extractSkills,
+  isDifferentJob,
+  normalizeDraft,
+  requirementsOf,
+  type ExtractedJob,
+  type ExtractedScreeningQuestion,
+} from "./_components/extractedJob";
+import { JobDraftPreview } from "./_components/JobDraftPreview";
+import { PosterSummaryActions } from "./_components/PosterSummaryActions";
+import { summarizeDraft } from "./_components/posterSummary";
 
 function hasMalayalam(text: string): boolean {
   return /[\u0D00-\u0D7F]/.test(text);
@@ -26,50 +39,8 @@ interface Message {
   content: string;
   /** The reply failed (network, non-2xx, or an empty stream); shown with a Retry, never sent back to the model or persisted. */
   error?: boolean;
-}
-
-interface ExtractedRequirements {
-  skills?: string[];
-  experienceMin?: number;
-  experienceMax?: number;
-}
-
-interface ExtractedSalary {
-  min?: number;
-  max?: number;
-  currency?: string;
-  period?: "monthly" | "yearly" | "lpa";
-  isNegotiable?: boolean;
-}
-
-interface ExtractedJob {
-  title?: string;
-  category?: string;
-  location?: string | { country?: string; city?: string; isRemote?: boolean };
-  description?: string;
-  requirements?: string[] | ExtractedRequirements & { preferredSkills?: string[] };
-  salary?: ExtractedSalary;
-  employmentType?: string;
-  workMode?: string;
-  responsibilities?: string[];
-  qualifications?: string[];
-  benefits?: string[];
-  vacancies?: number;
-  showSalary?: boolean;
-  tags?: string[];
-  visibility?: string;
-  screeningQuestions?: ExtractedScreeningQuestion[];
-}
-
-/** A screening question as the model writes it — loosely typed, normalised by buildPrefill. */
-interface ExtractedScreeningQuestion {
-  label?: string;
-  /** Some replies use `question` instead of `label`. */
-  question?: string;
-  type?: string;
-  required?: boolean;
-  options?: string[];
-  placeholder?: string;
+  /** The message written after a poster upload; it carries one-tap requests for what the poster left out. */
+  kind?: "posterSummary";
 }
 
 type ScreeningQuestionValue = NonNullable<JobFormValues["screeningQuestions"]>[number];
@@ -127,6 +98,8 @@ interface ChatSession {
   bulkEdits?: Record<string, Partial<JobFormValues>>;
   bulkStatuses?: Record<string, BulkJobStatus>;
   bulkSelected?: number[];
+  /** The uploaded poster's own text, for the chat and the job form's assistant. */
+  posterText?: string | null;
 }
 
 /** Read the persisted AI chat session (conversation + extracted draft). */
@@ -158,14 +131,6 @@ const DETECTED_LANGUAGE_LABELS: Record<string, string> = {
   "te-IN": "langTelugu",
   "ur-PK": "langUrdu",
 };
-
-function extractSkills(requirements?: ExtractedJob["requirements"]): string[] {
-  if (Array.isArray(requirements)) {
-    return requirements.filter(Boolean).slice(0, 12);
-  }
-
-  return requirements?.skills?.filter(Boolean).slice(0, 12) ?? [];
-}
 
 function normalizeLocation(location?: ExtractedJob["location"]): JobFormValues["location"] {
   if (!location) {
@@ -208,8 +173,10 @@ function normalizeWorkMode(val?: string): JobFormValues["workMode"] | undefined 
 }
 
 function buildPrefill(job: ExtractedJob): Partial<JobFormValues> {
-  const requirements = Array.isArray(job.requirements) ? {} : (job.requirements ?? {});
-  const preferredSkills = !Array.isArray(job.requirements) ? (job.requirements?.preferredSkills ?? []) : [];
+  const requirements = requirementsOf(job);
+  const preferredSkills = requirements.preferredSkills ?? [];
+  const experience = experienceRange(job);
+  const experienceMin = experience.min ?? 0;
 
   return {
     title: job.title ?? "",
@@ -219,10 +186,13 @@ function buildPrefill(job: ExtractedJob): Partial<JobFormValues> {
     employmentType: normalizeEmploymentType(job.employmentType),
     workMode: normalizeWorkMode(job.workMode),
     requirements: {
-      skills: extractSkills(job.requirements),
+      // Every skill the draft has (the form takes 50); the preview shows fewer.
+      skills: (requirements.skills ?? []).filter(Boolean).slice(0, 50),
       preferredSkills: preferredSkills.filter(Boolean).slice(0, 30),
-      experienceMin: requirements.experienceMin ?? 0,
-      experienceMax: requirements.experienceMax ?? 10,
+      experienceMin,
+      // "5+ years" has no upper limit; the form needs one, so it gets its default.
+      experienceMax: experience.max ?? Math.max(experienceMin, DEFAULT_EXPERIENCE_MAX),
+      education: typeof requirements.education === "string" ? requirements.education.trim().slice(0, 200) : "",
     },
     responsibilities: job.responsibilities?.filter(Boolean).slice(0, 20) ?? [],
     qualifications: job.qualifications?.filter(Boolean).slice(0, 20) ?? [],
@@ -330,6 +300,8 @@ export default function EmployerAIJobCreatePage() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [extractedJob, setExtractedJob] = useState<ExtractedJob | null>(null);
+  /** The uploaded poster's own text: sent with each chat message and carried into the job form. */
+  const [posterText, setPosterText] = useState<string | null>(null);
   const [extractedBulkJobs, setExtractedBulkJobsRaw] = useState<ExtractedJob[]>([]);
   const [creatingBulk, setCreatingBulk] = useState(false);
   // Bulk review (client 2026-10-27): each job can be edited or filled in by the
@@ -403,9 +375,10 @@ export default function EmployerAIJobCreatePage() {
     if (!saved) return;
     const restored = saved.messages ? dropUnfinishedReplies(saved.messages) : [];
     if (restored.length > 0) setMessages(restored);
-    if (saved.extractedJob) setExtractedJob(saved.extractedJob);
-    if (saved.extractedBulkJobs && saved.extractedBulkJobs.length > 0) {
-      setExtractedBulkJobs(saved.extractedBulkJobs);
+    if (saved.extractedJob) setExtractedJob(normalizeDraft(saved.extractedJob));
+    if (typeof saved.posterText === "string" && saved.posterText) setPosterText(saved.posterText);
+    if (Array.isArray(saved.extractedBulkJobs) && saved.extractedBulkJobs.length > 0) {
+      setExtractedBulkJobs(saved.extractedBulkJobs.map(normalizeDraft));
       const byIndex = <V,>(record: Record<string, V> | undefined) =>
         Object.fromEntries(Object.entries(record ?? {}).map(([k, v]) => [Number(k), v])) as Record<number, V>;
       setBulkEdits(byIndex(saved.bulkEdits));
@@ -433,12 +406,13 @@ export default function EmployerAIJobCreatePage() {
           bulkEdits,
           bulkStatuses,
           bulkSelected: Array.from(bulkSelected),
+          posterText,
         } satisfies ChatSession),
       );
     } catch {
       /* quota / serialization — non-critical */
     }
-  }, [messages, extractedJob, extractedBulkJobs, bulkEdits, bulkStatuses, bulkSelected]);
+  }, [messages, extractedJob, extractedBulkJobs, bulkEdits, bulkStatuses, bulkSelected, posterText]);
 
   // ── Cross-session resume (Scenario: close tab / next day / logout) ──────
   // ?resume=<threadId> on the URL → fetch the persisted ConversationThread
@@ -468,8 +442,11 @@ export default function EmployerAIJobCreatePage() {
         // rendered, so dropping them on restore is safe.
         setMessages(dropUnfinishedReplies(thread.messages.filter((m) => m.role !== "system") as Message[]));
         setThreadId(resumeId);
-        if (thread.meta?.extractedJob) setExtractedJob(thread.meta.extractedJob);
-        if (thread.meta?.extractedBulkJobs) setExtractedBulkJobs(thread.meta.extractedBulkJobs);
+        // A resumed thread keeps no poster text; one left from another poster
+        // in this tab must not travel with this draft.
+        setPosterText(null);
+        if (thread.meta?.extractedJob) setExtractedJob(normalizeDraft(thread.meta.extractedJob));
+        if (Array.isArray(thread.meta?.extractedBulkJobs)) setExtractedBulkJobs(thread.meta.extractedBulkJobs.map(normalizeDraft));
       } catch {
         if (!cancelled) toast.error(t("jobCreator.toastThreadUnavailable"));
       } finally {
@@ -544,6 +521,10 @@ export default function EmployerAIJobCreatePage() {
         body: JSON.stringify({
           messages: history.filter((m) => !m.error).map((m) => ({ role: m.role, content: m.content })),
           context: "job_creator",
+          // The draft on screen and the poster it came from, so a follow-up
+          // ("add the qualification") edits this draft instead of starting over.
+          ...(extractedJob ? { jobDraft: extractedJob } : {}),
+          ...(posterText ? { posterText } : {}),
         }),
       });
 
@@ -573,7 +554,7 @@ export default function EmployerAIJobCreatePage() {
         try {
           const parsed = JSON.parse(bulkMatch[1].trim());
           if (Array.isArray(parsed) && parsed.length > 0) {
-            setExtractedBulkJobs(parsed.slice(0, 10));
+            setExtractedBulkJobs(parsed.slice(0, 10).map(normalizeDraft));
             setExtractedJob(null);
             toast.success(t("jobCreator.draftReady"));
           }
@@ -582,8 +563,10 @@ export default function EmployerAIJobCreatePage() {
         const jobDataMatch = accumulated.match(/<JOB_DATA>([\s\S]*?)<\/JOB_DATA>/);
         if (jobDataMatch) {
           try {
-            const jobData = JSON.parse(jobDataMatch[1].trim());
-            setExtractedJob(jobData);
+            const jobData: unknown = JSON.parse(jobDataMatch[1].trim());
+            // A different job is not from the uploaded poster.
+            if (isDifferentJob(extractedJob, normalizeDraft(jobData))) setPosterText(null);
+            setExtractedJob((current) => applyDraftUpdate(current, jobData));
             setExtractedBulkJobs([]);
             toast.success(t("jobCreator.draftReady"));
           } catch { /* ignore parse errors */ }
@@ -600,13 +583,20 @@ export default function EmployerAIJobCreatePage() {
     }
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() || isStreaming || isRecording || isVoiceProcessing) return;
+  // Only the latest upload's message keeps its one-tap requests.
+  const lastPosterSummaryIndex = messages.reduce((last, m, idx) => (m.kind === "posterSummary" ? idx : last), -1);
 
-    const userMsg: Message = { role: "user", content: input.trim() };
+  /** Sends what is typed, or `preset` (a one-tap request) without touching the input. */
+  const sendMessage = async (preset?: string) => {
+    const text = (preset ?? input).trim();
+    if (!text || isStreaming || isRecording || isVoiceProcessing) return;
+
+    const userMsg: Message = { role: "user", content: text };
     setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    if (preset === undefined) {
+      setInput("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+    }
     await streamReply([...messages, userMsg]);
   };
 
@@ -623,7 +613,10 @@ export default function EmployerAIJobCreatePage() {
   const reviewInForm = () => {
     if (!extractedJob) return;
     try {
-      sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify({ ...buildPrefill(extractedJob), ...forEmployer }));
+      sessionStorage.setItem(
+        AI_PREFILL_STORAGE_KEY,
+        JSON.stringify({ ...buildPrefill(extractedJob), ...forEmployer, ...(posterText ? { posterText } : {}) }),
+      );
       sessionStorage.removeItem(AI_CHAT_STORAGE_KEY);
       // Mark the server-side thread as inactive so the dashboard card stops
       // surfacing it once the draft has been carried into the job form.
@@ -736,7 +729,10 @@ export default function EmployerAIJobCreatePage() {
   /** Opens one job of the bulk list in the full form (with its AI assistant). */
   const openBulkJobInForm = (index: number) => {
     try {
-      sessionStorage.setItem(AI_PREFILL_STORAGE_KEY, JSON.stringify({ ...bulkReviewJobs[index], ...forEmployer }));
+      sessionStorage.setItem(
+        AI_PREFILL_STORAGE_KEY,
+        JSON.stringify({ ...bulkReviewJobs[index], ...forEmployer, ...(posterText ? { posterText } : {}) }),
+      );
       router.push(target.withEmployer(`${target.jobsHref}/new?mode=manual&prefill=ai`));
     } catch {
       toast.error(t("jobCreator.failedOpenForm"));
@@ -779,19 +775,41 @@ export default function EmployerAIJobCreatePage() {
       }
 
       const data = await res.json();
-      const jobs: ExtractedJob[] = Array.isArray(data.jobs) ? data.jobs : [];
+      const jobs: ExtractedJob[] = Array.isArray(data.jobs) ? data.jobs.map(normalizeDraft) : [];
 
       if (jobs.length === 0) {
         toast.error(t("jobCreator.toastNoJobs"));
         return;
       }
+      // Only once this poster replaces the draft does its text replace the old one.
+      setPosterText(typeof data.posterText === "string" && data.posterText.trim() ? data.posterText : null);
 
       // Inject an assistant message so the chat history reflects the upload.
-      const summary =
-        jobs.length === 1
-          ? t("jobCreator.uploadExtractedOne", { title: jobs[0].title ?? t("jobCreator.untitledJob") })
-          : t("jobCreator.uploadExtractedMany", { count: jobs.length });
-      setMessages((prev) => [...prev, { role: "assistant", content: summary }]);
+      // One job: say what was read and what the poster left out, so the
+      // employer (and the chat, which gets this message) knows where to start.
+      if (jobs.length === 1) {
+        const { found, missing } = summarizeDraft(jobs[0]);
+        const lines = [
+          t("jobCreator.posterSummary.title", { title: jobs[0].title ?? t("jobCreator.untitledJob") }),
+          found.length
+            ? t("jobCreator.posterSummary.found", {
+                items: found.map(({ key, count }) => t(`jobCreator.posterSummary.foundItem.${key}`, { count })).join(", "),
+              })
+            : null,
+          missing.length
+            ? t("jobCreator.posterSummary.missing", {
+                items: missing.map((key) => t(`jobCreator.posterSummary.missingItem.${key}`)).join(", "),
+              })
+            : null,
+          t("jobCreator.posterSummary.next"),
+        ].filter(Boolean);
+        setMessages((prev) => [...prev, { role: "assistant", content: lines.join("\n"), kind: "posterSummary" }]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: t("jobCreator.uploadExtractedMany", { count: jobs.length }) },
+        ]);
+      }
 
       if (jobs.length === 1) {
         setExtractedJob(jobs[0]);
@@ -866,6 +884,14 @@ export default function EmployerAIJobCreatePage() {
                             </span>
                           ) : (
                             renderMarkdown(displayText)
+                          )}
+                          {msg.kind === "posterSummary" && i === lastPosterSummaryIndex && extractedJob && (
+                            <PosterSummaryActions
+                              job={extractedJob}
+                              posterText={posterText}
+                              disabled={isStreaming || isRecording || isVoiceProcessing}
+                              onAsk={(instruction) => void sendMessage(instruction)}
+                            />
                           )}
                           {msg.error && isLast && !isStreaming && (
                             <button
@@ -1111,47 +1137,7 @@ export default function EmployerAIJobCreatePage() {
             )}
             {extractedJob && (
               <div className="space-y-2 text-xs">
-                <p><strong>{t("jobCreator.titleLabel")}</strong> {extractedJob.title ?? "—"}</p>
-                <p><strong>{t("jobCreator.categoryLabel")}</strong> {extractedJob.category ?? "—"}</p>
-                <p><strong>{t("jobCreator.locationLabel")}</strong> {typeof extractedJob.location === "string" ? extractedJob.location : [extractedJob.location?.city, extractedJob.location?.country].filter(Boolean).join(", ") || "—"}</p>
-                <p><strong>{t("jobCreator.typeLabel")}</strong> {extractedJob.employmentType ? extractedJob.employmentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>
-                <p><strong>{t("jobCreator.workModeLabel")}</strong> {extractedJob.workMode ? extractedJob.workMode.replace(/\b\w/g, (c) => c.toUpperCase()) : "—"}</p>
-                {extractedJob.salary && (extractedJob.salary.min || extractedJob.salary.max) ? (
-                  <p><strong>{t("jobCreator.salaryLabel")}</strong> {extractedJob.showSalary === false ? t("jobCreator.notDisclosed") : `${extractedJob.salary.currency ?? "USD"} ${formatCount(extractedJob.salary.min) ?? 0} – ${formatCount(extractedJob.salary.max) ?? 0}`}</p>
-                ) : (
-                  <p><strong>{t("jobCreator.salaryLabel")}</strong> <span className="text-muted-foreground italic">{t("jobCreator.notSpecified")}</span></p>
-                )}
-                {extractSkills(extractedJob.requirements).length ? (
-                  <div>
-                    <strong>{t("jobCreator.requiredSkills")}</strong>
-                    <ul className="mt-1 space-y-0.5 list-disc list-inside">
-                      {extractSkills(extractedJob.requirements).map((r, i) => (
-                        <li key={i} className="text-muted-foreground">{r}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                {extractedJob.responsibilities?.length ? (
-                  <div>
-                    <strong>{t("jobCreator.responsibilities")}</strong>
-                    <ul className="mt-1 space-y-0.5 list-disc list-inside">
-                      {extractedJob.responsibilities.slice(0, 5).map((r, i) => (
-                        <li key={i} className="text-muted-foreground">{r}</li>
-                      ))}
-                      {extractedJob.responsibilities.length > 5 && <li className="text-muted-foreground italic">+{extractedJob.responsibilities.length - 5} {t("jobCreator.more", { count: extractedJob.responsibilities.length - 5 }).replace(/^\+\d+\s*/, "")}</li>}
-                    </ul>
-                  </div>
-                ) : null}
-                {extractedJob.benefits?.length ? (
-                  <div>
-                    <strong>{t("jobCreator.benefits")}</strong>
-                    <ul className="mt-1 space-y-0.5 list-disc list-inside">
-                      {extractedJob.benefits.map((b, i) => (
-                        <li key={i} className="text-muted-foreground">{b}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
+                <JobDraftPreview job={extractedJob} fromPoster={Boolean(posterText)} />
                 <p className="rounded-lg bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
                   {t("jobCreator.chooseNextStep")}
                 </p>

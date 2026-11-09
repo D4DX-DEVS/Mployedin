@@ -1,6 +1,6 @@
 import type { useTranslations } from "next-intl";
 import {
-  Building2, Calendar, Mail, MapPin, MessageCircle, Phone, Sparkles,
+  Building2, Calendar, FileImage, Mail, MapPin, MessageCircle, Phone, Sparkles,
   Target, TrendingUp, Users, XCircle, type LucideIcon,
 } from "lucide-react";
 import { formatCount } from "@/lib/ui/intlFormat";
@@ -52,6 +52,10 @@ export interface Lead {
   notes?: string;
   requirement?: string;
   expectedHiring?: HiringRange;
+  /** Roles read from a hiring poster, one by one. */
+  rolesHiring?: { title: string; count: number }[];
+  /** The poster the lead was created from (opened via /api/leads/[id]/poster). */
+  sourceFile?: { name?: string; mimeType?: string };
   followUpAt?: string;
   followUpType?: FollowUpType;
   followUpNote?: string;
@@ -188,6 +192,7 @@ export const ACTIVITY_ICONS: Record<string, LucideIcon> = {
   note: MessageCircle,
   stage_change: TrendingUp,
   converted_to_employer: Building2,
+  created_from_poster: FileImage,
 };
 
 /** "AED 89,000". Currency code first, as the rest of the pipeline writes it. */

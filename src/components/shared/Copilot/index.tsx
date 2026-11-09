@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { X, Send, Loader2, Sparkles, RotateCcw, Check, History, Trash2 } from "lucide-react";
+import { X, Send, Loader2, Sparkles, RotateCcw, Check, History, Trash2, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -18,11 +18,14 @@ import { ToolProposalCard } from "./ToolProposalCard";
 import { CopilotViewCard } from "./CopilotViewCard";
 import { loadChats, persistChats, removeLegacyChats, type SavedChat } from "./chatStorage";
 import { sameOriginPath } from "./links";
-import { COPILOT_EXECUTED_EVENT } from "./events";
+import { COPILOT_EXECUTED_EVENT, COPILOT_LEAD_DRAFT_EVENT, COPILOT_LEAD_DRAFT_KEY } from "./events";
 import type { CopilotStreamFrame, TranscriptItem } from "./types";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { useConfirm } from "@/hooks/useConfirm";
 import { stripToolDataEcho, toolDataEntry } from "@/lib/ai/copilot/historyToolData";
+import { LeadDraftCard } from "./LeadDraftCard";
+import { LEAD_POSTER_ACCEPT, readLeadPoster, type LeadPosterFailure } from "@/lib/leads/posterClient";
+import type { LeadPosterValues } from "@/lib/leads/posterExtract";
 
 const FAB_POS_KEY = "ui:copilot-fab-pos";
 
@@ -46,6 +49,7 @@ function settleRestoredItem(item: TranscriptItem): TranscriptItem {
   if (item.kind === "proposal" && ["pending", "confirming", "cancelling"].includes(item.status)) {
     return { ...item, status: "expired" };
   }
+  if (item.kind === "lead_draft" && item.status === "saving") return { ...item, status: "editing" };
   return item;
 }
 
@@ -99,6 +103,15 @@ function AssistantMarkdown({ content, onInternalLink }: AssistantMarkdownProps) 
   );
 }
 
+const POSTER_FAILURE_KEYS: Record<LeadPosterFailure, string> = {
+  not_poster: "posterErrorNotPoster",
+  unreadable: "posterErrorUnreadable",
+  too_large: "posterErrorTooLarge",
+  bad_type: "posterErrorType",
+  limit: "posterErrorLimit",
+  failed: "posterErrorFailed",
+};
+
 /**
  * The brand mark on the launcher and the empty chat. A dropped request (seen
  * while a busy dev server lost /favicon.ico) is retried once; if that fails
@@ -125,6 +138,7 @@ interface CopilotProps {
 
 export function Copilot({ className }: CopilotProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const locale = useLocale();
   const isRtl = locale === "ar";
   const t = useTranslations("copilot");
@@ -145,6 +159,10 @@ export function Copilot({ className }: CopilotProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const historyForRequest = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
   const dragRef = useRef({ dragging: false, moved: false, grabX: 0, grabY: 0 });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Poster thumbnails by transcript item: object URLs live for this tab only.
+  const [posterPreviews, setPosterPreviews] = useState<Record<string, string>>({});
+  const [readingPoster, setReadingPoster] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -483,6 +501,79 @@ export function Copilot({ className }: CopilotProps) {
     }
   }, [input, isStreaming, pathname, t]);
 
+  // ── Hiring poster -> lead (agents) ───────────────────────────────────────
+  // The poster goes to the same reader as the New Lead form; the model is not
+  // involved, so the details are never re-typed by it or echoed into history.
+  const handlePosterFile = useCallback(async (file: File) => {
+    if (readingPoster || isStreaming) return;
+    const callId = nextId();
+    setReadingPoster(true);
+    setTranscript((prev) => [
+      ...prev,
+      { id: nextId(), kind: "upload", name: file.name },
+      { id: callId, kind: "tool_call", tool: "read_poster", label: t("readingPoster") },
+    ]);
+    const outcome = await readLeadPoster(file);
+    setReadingPoster(false);
+    setTranscript((prev) => prev.map((it) => (it.id === callId && it.kind === "tool_call" ? { ...it, done: true, ok: outcome.ok } : it)));
+    if (!outcome.ok) {
+      setTranscript((prev) => [...prev, { id: nextId(), kind: "error", message: t(POSTER_FAILURE_KEYS[outcome.reason]) }]);
+      return;
+    }
+    const draftId = nextId();
+    if (file.type.startsWith("image/")) {
+      const url = URL.createObjectURL(file);
+      setPosterPreviews((prev) => ({ ...prev, [draftId]: url }));
+    }
+    setTranscript((prev) => [...prev, { id: draftId, kind: "lead_draft", draft: outcome.data, status: "editing" }]);
+  }, [readingPoster, isStreaming, t]);
+
+  const updateDraft = useCallback((itemId: string, patch: Partial<Extract<TranscriptItem, { kind: "lead_draft" }>>) => {
+    setTranscript((prev) => prev.map((it) => (it.id === itemId && it.kind === "lead_draft" ? { ...it, ...patch } : it)));
+  }, []);
+
+  const createLeadFromDraft = useCallback(async (itemId: string, values: LeadPosterValues) => {
+    const item = transcript.find((it) => it.id === itemId);
+    if (!item || item.kind !== "lead_draft") return;
+    updateDraft(itemId, { status: "saving", error: undefined });
+    const payload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(values)) if (typeof v === "string" && v.trim()) payload[k] = v.trim();
+    if (item.draft.roles.length > 0) payload.rolesHiring = item.draft.roles;
+    if (item.draft.posterToken) payload.posterToken = item.draft.posterToken;
+    try {
+      const res = await csrfFetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = (await res.json().catch(() => ({}))) as { _id?: string; error?: string; details?: Array<{ message?: string }> };
+      if (!res.ok || !data._id) {
+        updateDraft(itemId, { status: "failed", error: data.details?.[0]?.message ?? data.error ?? t("leadDraftFailed") });
+        return;
+      }
+      updateDraft(itemId, { status: "saved", leadId: data._id, draft: { ...item.draft, values } });
+      // The model hears that the lead exists, so "add a follow-up for it" works next.
+      historyForRequest.current = [
+        ...historyForRequest.current,
+        { role: "assistant", content: toolDataEntry("create_lead", JSON.stringify({ message: `Created lead for "${values.companyName}".`, data: { leadId: data._id } })) },
+      ];
+      window.dispatchEvent(new CustomEvent(COPILOT_EXECUTED_EVENT, { detail: { tool: "create_lead" } }));
+    } catch {
+      updateDraft(itemId, { status: "failed", error: t("leadDraftFailed") });
+    }
+  }, [transcript, updateDraft, t]);
+
+  const openDraftInForm = useCallback((itemId: string, values: LeadPosterValues) => {
+    const item = transcript.find((it) => it.id === itemId);
+    if (!item || item.kind !== "lead_draft") return;
+    try {
+      sessionStorage.setItem(COPILOT_LEAD_DRAFT_KEY, JSON.stringify({ ...item.draft, values }));
+    } catch { /* storage blocked: the form opens empty */ }
+    window.dispatchEvent(new CustomEvent(COPILOT_LEAD_DRAFT_EVENT));
+    router.push(`/${locale}/agent/leads?new=1`);
+    if (window.matchMedia("(max-width: 639px)").matches) setOpen(false);
+  }, [transcript, router, locale]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -537,6 +628,8 @@ export function Copilot({ className }: CopilotProps) {
     const role = roleFromPathname(pathname);
     return [1, 2, 3].map((i) => t(`suggestions.${role}${i}`));
   }, [pathname, t]);
+  // Leads belong to agents: only they get the poster attach button.
+  const canAttachPoster = roleFromPathname(pathname) === "agent";
 
   const panel = useMemo(() => (
     <div
@@ -692,6 +785,31 @@ export function Copilot({ className }: CopilotProps) {
           if (item.kind === "proposal") {
             return <ToolProposalCard key={item.id} item={item} onConfirm={handleConfirm} onCancel={handleCancel} />;
           }
+          if (item.kind === "upload") {
+            return (
+              <div key={item.id} className="flex justify-end">
+                <div className="flex min-w-0 max-w-[85%] items-center gap-1.5 rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">
+                  <Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span dir="auto" className="truncate">{item.name}</span>
+                </div>
+              </div>
+            );
+          }
+          if (item.kind === "lead_draft") {
+            return (
+              <LeadDraftCard
+                key={item.id}
+                draft={item.draft}
+                status={item.status}
+                leadId={item.leadId}
+                error={item.error}
+                previewUrl={posterPreviews[item.id]}
+                onCreate={(values) => { void createLeadFromDraft(item.id, values); }}
+                onOpenForm={(values) => openDraftInForm(item.id, values)}
+                onInternalLink={handleInternalLink}
+              />
+            );
+          }
           if (item.kind === "error") {
             return (
               <div key={item.id} className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
@@ -714,6 +832,31 @@ export function Copilot({ className }: CopilotProps) {
       {/* Input */}
       <div className="border-t border-border p-2.5">
         <div className="flex items-end gap-2 rounded-lg border border-input bg-background focus-within:ring-1 focus-within:ring-ring chip-pad">
+          {canAttachPoster && (
+            <>
+              <Button
+                type="button"
+                size="iconDense"
+                variant="ghost"
+                className="shrink-0 text-muted-foreground"
+                disabled={readingPoster || isStreaming}
+                onClick={() => fileInputRef.current?.click()}
+                aria-label={t("attachPoster")}
+                title={t("attachPoster")}
+              >
+                {readingPoster ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={LEAD_POSTER_ACCEPT}
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
+                onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ""; if (file) void handlePosterFile(file); }}
+              />
+            </>
+          )}
           <Textarea
             ref={textareaRef}
             value={input}
@@ -736,7 +879,8 @@ export function Copilot({ className }: CopilotProps) {
         <p className="mt-1.5 text-center text-[11px] text-muted-foreground">{t("disclaimer")}</p>
       </div>
     </div>
-  ), [transcript, input, isStreaming, isRtl, hasMessages, t, handleConfirm, handleCancel, handleInternalLink, suggestions, sendMessage, showHistory, savedChats]);
+  ), [transcript, input, isStreaming, isRtl, hasMessages, t, handleConfirm, handleCancel, handleInternalLink, suggestions, sendMessage, showHistory, savedChats,
+    canAttachPoster, readingPoster, handlePosterFile, posterPreviews, createLeadFromDraft, openDraftInForm]);
 
   if (!mounted) return null;
 

@@ -46,7 +46,11 @@ jest.mock("@/models/Job", () => ({
   },
 }));
 jest.mock("@/models/Employer", () => ({ __esModule: true, Employer: { findOne: jest.fn(), findById: jest.fn() } }));
-jest.mock("@/models/Agent", () => ({ __esModule: true, default: { findOne: jest.fn() } }));
+// The viewing agent is not the one who posted the fixture job.
+jest.mock("@/models/Agent", () => ({
+  __esModule: true,
+  default: { findOne: jest.fn(() => ({ select: () => ({ lean: () => Promise.resolve(null) }) })) },
+}));
 const mockAgentPostingFor = jest.fn();
 jest.mock("@/lib/jobs/agentPosting", () => ({ agentPostingFor: (...a: unknown[]) => mockAgentPostingFor(...a) }));
 

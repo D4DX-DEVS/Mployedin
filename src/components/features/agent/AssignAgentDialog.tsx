@@ -20,15 +20,24 @@ interface AssignAgentDialogProps {
   onClose: () => void;
   /** Called after a successful save with the employer's new agent (null = none). */
   onAssigned: (userId: string, agent: EmployerAgentSummary | null) => void;
+  /**
+   * Where the current agent and the choices come from, by employer user id.
+   * Admin: every agent (default). Super agent: their own team only.
+   */
+  endpoint?: (employerUserId: string) => string;
+  /** "team": a super agent picking among their own agents (wording only). */
+  audience?: "admin" | "team";
 }
 
+const ADMIN_ENDPOINT = (employerUserId: string) => `/api/employers/${employerUserId}/agent`;
+
 /**
- * Admin: add, change or remove the agent who looks after an employer.
+ * Admin or super agent: add, change or remove the agent who looks after an employer.
  * Employers can join from anywhere, so this is how an account gets to the
  * right agent — and through them, to that agent's super-agent, targets and
  * invoicing.
  */
-export function AssignAgentDialog({ employer, onClose, onAssigned }: AssignAgentDialogProps) {
+export function AssignAgentDialog({ employer, onClose, onAssigned, endpoint = ADMIN_ENDPOINT, audience = "admin" }: AssignAgentDialogProps) {
   const t = useTranslations("adminEmployers.assignAgent");
   const [agents, setAgents] = useState<AssignableAgent[]>([]);
   const [current, setCurrent] = useState<EmployerAgentSummary | null>(null);
@@ -45,7 +54,7 @@ export function AssignAgentDialog({ employer, onClose, onAssigned }: AssignAgent
     setLoading(true);
     setLoadFailed(false);
     try {
-      const res = await fetch(`/api/employers/${userId}/agent`);
+      const res = await fetch(endpoint(userId));
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as { current: EmployerAgentSummary | null; agents: AssignableAgent[] };
       setAgents(data.agents ?? []);
@@ -56,7 +65,7 @@ export function AssignAgentDialog({ employer, onClose, onAssigned }: AssignAgent
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, endpoint]);
 
   useEffect(() => {
     if (userId) void load();
@@ -68,7 +77,7 @@ export function AssignAgentDialog({ employer, onClose, onAssigned }: AssignAgent
     if (!employer || unchanged) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/employers/${employer.userId}/agent`, {
+      const res = await fetch(endpoint(employer.userId), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agentId: selected === NO_AGENT ? null : selected }),
@@ -117,7 +126,7 @@ export function AssignAgentDialog({ employer, onClose, onAssigned }: AssignAgent
             <UserCog className="size-5 text-primary" aria-hidden="true" />
             {current ? t("titleChange") : t("titleAssign")}
           </DialogTitle>
-          <DialogDescription>{t("description", { company: employer?.companyName ?? "" })}</DialogDescription>
+          <DialogDescription>{t(audience === "team" ? "descriptionTeam" : "description", { company: employer?.companyName ?? "" })}</DialogDescription>
         </DialogHeader>
 
         {loadFailed ? (

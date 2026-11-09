@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import {
   Building2, DollarSign,
-  Link2, LogIn, Mail, MapPin, ShieldCheck, UserPlus, Users,
+  Link2, LogIn, Mail, MapPin, ShieldCheck, UserCog, UserPlus, Users,
 } from "lucide-react";
 import { WorkspaceTabs, type WorkspaceTab } from "@/components/shared/WorkspaceTabs";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -38,6 +38,10 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ClientPlanChip, ClientPlanRequests, useClientPlans } from "@/components/features/subscription/ClientPlans";
 import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
+import { AssignAgentDialog } from "@/components/features/agent/AssignAgentDialog";
+
+/** The super agent's assign route: their own agents only, their book only. */
+const SA_ASSIGN_ENDPOINT = (employerUserId: string) => `/api/super-agent/employers/${employerUserId}/agent`;
 
 interface Employer {
   _id: string;
@@ -137,6 +141,7 @@ export default function SuperAgentEmployersPage() {
   // agent's territory. Kept apart from the filters so Clear keeps the tab.
   const [view] = useUrlFilter("view", "all", { allow: VIEWS });
   const [regionAssigned, setRegionAssigned] = useState(true);
+  const [assigning, setAssigning] = useState<{ userId: string; companyName: string } | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const viewHref = (next: string) => {
@@ -544,6 +549,16 @@ export default function SuperAgentEmployersPage() {
                           onSelect: () => { void handleSwitchToEmployerView(em._id); },
                         },
                       ] : []}
+                      // Unassigned, or already with one of my agents: mine to hand out.
+                      // Another team's employer is the admin's call (the route refuses it).
+                      menu={em.userId && (!em.assignedAgent?.name || em.canEnterAccount) ? [
+                        {
+                          key: "assign",
+                          label: em.assignedAgent?.name ? t("assignAgent.change") : t("assignAgent.assign"),
+                          icon: UserCog,
+                          onSelect: () => setAssigning({ userId: em.userId!, companyName: em.companyName ?? em.name }),
+                        },
+                      ] : []}
                     />
                   </TableCell>
                 </TableRow>
@@ -561,6 +576,14 @@ export default function SuperAgentEmployersPage() {
         title={t("onboardModalTitle")}
         fields={onboardFields}
         onSubmit={handleOnboard}
+      />
+
+      <AssignAgentDialog
+        employer={assigning}
+        onClose={() => setAssigning(null)}
+        onAssigned={() => { void loadEmployers(); }}
+        endpoint={SA_ASSIGN_ENDPOINT}
+        audience="team"
       />
 
       <ReferralLinkDialog

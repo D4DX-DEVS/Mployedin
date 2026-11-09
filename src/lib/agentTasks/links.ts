@@ -57,7 +57,8 @@ export interface ResolvedTaskLinks {
     hasApplications: boolean;
   };
   job?: { id: string; title: string; deleted: boolean };
-  employer?: { id: string; name: string };
+  /** Contact details come from the employer's profile (falls back to the account email). */
+  employer?: { id: string; name: string; email?: string; phone?: string; userId?: string };
 }
 
 const OPTION_LIMIT = 20;
@@ -185,13 +186,14 @@ export async function resolveTaskLinks(
           .lean<Array<{ _id: Id; userId?: { name?: string } | null }>>()
       : [],
     jobIds.length ? Job.find({ _id: { $in: jobIds } }).select("title deletedAt").lean<Array<{ _id: Id; title?: string; deletedAt?: Date | null }>>() : [],
-    employerIds.length ? Employer.find({ _id: { $in: employerIds } }).select("companyName").lean<Array<{ _id: Id; companyName?: string }>>() : [],
+    employerIds.length ? Employer.find({ _id: { $in: employerIds } }).select("companyName companyEmail phone userId").populate("userId", "email")
+      .lean<Array<{ _id: Id; companyName?: string; companyEmail?: string; phone?: string; userId?: { _id: Id; email?: string } | null }>>() : [],
     candidateIds.length ? candidateApplications(ctx, candidateIds) : [],
   ]);
 
   const seekerName = new Map(seekers.map((s) => [String(s._id), s.userId?.name ?? ""]));
   const jobById = new Map(jobs.map((j) => [String(j._id), j]));
-  const employerName = new Map(employers.map((e) => [String(e._id), e.companyName ?? ""]));
+  const employerById = new Map(employers.map((e) => [String(e._id), e]));
 
   for (const task of linked) {
     const l = task.links!;
@@ -209,8 +211,19 @@ export async function resolveTaskLinks(
     }
     const job = l.jobId ? jobById.get(String(l.jobId)) : undefined;
     if (job) resolved.job = { id: String(job._id), title: job.title ?? "", deleted: Boolean(job.deletedAt) };
-    if (l.employerId && employerName.has(String(l.employerId))) {
-      resolved.employer = { id: String(l.employerId), name: employerName.get(String(l.employerId)) ?? "" };
+    const emp = l.employerId ? employerById.get(String(l.employerId)) : undefined;
+    if (emp) {
+      const email = emp.companyEmail?.trim() || emp.userId?.email?.trim();
+      // Imported profiles carry placeholders like "N/A"; a number to call needs real digits.
+      const rawPhone = emp.phone?.trim();
+      const phone = rawPhone && rawPhone.replace(/\D/g, "").length >= 7 ? rawPhone : undefined;
+      resolved.employer = {
+        id: String(emp._id),
+        name: emp.companyName ?? "",
+        ...(email ? { email } : {}),
+        ...(phone ? { phone } : {}),
+        ...(emp.userId?._id ? { userId: String(emp.userId._id) } : {}),
+      };
     }
     out.set(String(task._id), resolved);
   }

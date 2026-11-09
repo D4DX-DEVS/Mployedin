@@ -126,7 +126,7 @@ describe("create_job_posters", () => {
     const res = await make({ jobIds: [JOB_ID], brand: "mployedin", style: "urgent" }, authFor("employer", ["write:posters"]));
     expect(res.isError).toBeUndefined();
     expect(createBrandPoster).toHaveBeenCalledWith(expect.objectContaining({
-      jobId: JOB_ID, employerId: "e1", source: "mployedin", look: "urgent", layout: "spotlight", locale: "en", actorUserId: "user-1",
+      jobId: JOB_ID, employerId: "e1", source: "mployedin", look: "urgent", layout: "wave", locale: "en", actorUserId: "user-1",
     }));
     const posters = res.structuredContent?.data.posters as Array<Record<string, unknown>>;
     expect(posters[0]).toMatchObject({
