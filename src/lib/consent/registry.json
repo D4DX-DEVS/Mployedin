@@ -170,6 +170,16 @@
     "purposeKey": "taskState"
   },
   {
+    "name": "copilot:lead-draft",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "ai",
+    "purposeKey": "taskState"
+  },
+  {
     "name": "poster-edit:*",
     "kind": "sessionStorage",
     "category": "necessary",
