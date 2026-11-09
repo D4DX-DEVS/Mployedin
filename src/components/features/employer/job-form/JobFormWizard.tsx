@@ -179,6 +179,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
       getJob: useCallback(() => wizardToAssistDraft(methods.getValues()), [methods]),
       applyChanges: useCallback((changes) => applyAssistToWizard(changes, methods.getValues, methods.setValue), [methods]),
       getSource: useCallback(() => posterTextRef.current ?? undefined, []),
+      getTarget: useCallback(() => ({ employerId: methods.getValues("employerId") || undefined }), [methods]),
     },
     useJobAssistantErrorText(),
   );

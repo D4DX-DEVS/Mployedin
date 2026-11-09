@@ -5,6 +5,7 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
 import { validateBody } from "@/lib/validators";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { buildJobAssistPrompt, jobAssistRequestSchema, parseJobAssistResponse } from "@/lib/ai/jobAssist";
+import { attributeStaffAiToEmployer } from "@/lib/ai/usageAttribution";
 import logger from "@/lib/logger";
 
 /** Everyone who writes job postings: the employer (and its team), its agent, and admin. */
@@ -33,6 +34,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   const body = await validateBody(req, jobAssistRequestSchema);
+
+  await attributeStaffAiToEmployer(ctx, { employerId: body.employerId, jobId: body.jobId });
 
   const gateErr = await enforceFeatureGate(ctx.userId, ctx.role, { type: "ai", feature: "ai_job_description" });
   if (gateErr) return gateErr;

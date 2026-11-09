@@ -8,6 +8,7 @@
  * goes through here so that cannot come back one endpoint at a time.
  */
 import logger from "@/lib/logger";
+import { recordFromResponse } from "@/lib/ai/usageCapture";
 
 /** Ceiling on a single provider round trip (headers, not body). */
 export const AI_REQUEST_TIMEOUT_MS = Number(process.env.AI_REQUEST_TIMEOUT_MS ?? 20000);
@@ -32,8 +33,11 @@ export async function providerFetch(
 ): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const startedAt = Date.now();
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    const res = await fetch(url, { ...init, signal: controller.signal });
+    recordFromResponse(res, { url, body: init.body, label, startedAt });
+    return res;
   } catch (err) {
     if (controller.signal.aborted) {
       logger.warn({ label, timeoutMs }, "AI provider request timed out");

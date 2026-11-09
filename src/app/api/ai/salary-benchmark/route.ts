@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAiContext } from "@/lib/ai/usageContext";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
@@ -12,7 +13,7 @@ import logger from "@/lib/logger";
 const benchmarkCache = new Map<string, { data: unknown; expiresAt: number }>();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole);
+    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole, req.nextUrl.pathname);
     if (__aiQuota) return __aiQuota;
 
     const { searchParams } = new URL(req.url);
@@ -127,3 +128,5 @@ Base the numbers on real market data for this currency and period. For example i
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
+
+export const GET = withAiContext(handleGET);

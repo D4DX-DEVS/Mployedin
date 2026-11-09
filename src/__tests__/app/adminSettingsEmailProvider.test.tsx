@@ -54,6 +54,8 @@ function postsTo(url: string, method = "POST") {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // The General tab shows one topic at a time; these tests work in Email delivery.
+  window.history.replaceState({}, "", "/en/admin/settings?section=email");
   loaded = settings;
   saveResponse = { ok: true, body: { settings } };
   testResponse = { ok: true, body: { message: "Test email sent successfully via Amazon SES to noreply@mployedin.com" } };
@@ -134,6 +136,7 @@ describe("admin settings email provider", () => {
     it("saving the platform name sends no email key", async () => {
       render(<AdminSettingsPage />);
       await screen.findByLabelText("Amazon SES (Amazon's email sending service)");
+      await userEvent.click(screen.getByRole("button", { name: /^Platform/ }));
       await userEvent.type(screen.getByLabelText("Platform Name"), "X");
       await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
       await waitFor(() => expect(postsTo("/api/admin/settings")).toHaveLength(1));

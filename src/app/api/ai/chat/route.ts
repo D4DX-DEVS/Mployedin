@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAiContext } from "@/lib/ai/usageContext";
 import { auth } from "@/lib/auth/config";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
@@ -44,7 +45,7 @@ import { escapeRegex } from "@/lib/security/sanitize";
 
 const CHAT_MODEL = GEMINI_MODELS.flash;
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Mongo-backed daily AI quota (matches every other AI route)
-    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole as UserRole);
+    const __aiQuota = await enforceDailyAiQuota(session.user.id!, userRole as UserRole, req.nextUrl.pathname);
     if (__aiQuota) return __aiQuota;
 
     const body = await validateBody(req, aiChatSchema);
@@ -978,3 +979,5 @@ IMPORTANT: The user's profile is provided below. Use it to give personalized res
 
   return contextPrompts[context] ?? profileAwareBase;
 }
+
+export const POST = withAiContext(handlePOST);

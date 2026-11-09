@@ -1,8 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Sparkles } from "lucide-react";
+import { SlidersHorizontal, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { JobSeekersFilterSheet } from "./JobSeekersFilterSheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AiSearchField } from "@/components/shared/AiSearchField";
 import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
@@ -185,15 +187,27 @@ export function JobSeekersFilterPanel({
   chips,
 }: JobSeekersFilterPanelProps) {
   const tr = useTranslations("adminJobSeekers");
+  const [sheetOpen, setSheetOpen] = useState(false);
   const options = filterOptions(tr);
+  // Typed or AI-set experience outside the presets still shows as itself.
+  const experienceOptions = filters.experienceYears > 0 && !EXPERIENCE_PRESETS.includes(filters.experienceYears)
+    ? [...options.experience, { value: String(filters.experienceYears), label: tr("filterExperienceAtLeast", { count: filters.experienceYears }) }]
+    : options.experience;
+  // Sheet badge: everything in the sheet that is set (search lives outside it).
+  const sheetActiveCount = countActiveJobSeekerFilters("", filters) - (filters.skills ? 1 : 0) - (filters.education ? 1 : 0);
   const sort = splitJobSeekerSort(filters.sort);
   const advancedActiveCount = ADVANCED_KEYS
     .filter((key) => filters[key] !== EMPTY_JOB_SEEKER_FILTERS[key])
     .length;
 
   return (
+    <>
     <InlineFilterBar
-      className="workspace-panel-surface rounded-2xl border-b-0"
+      // Phones: no box around one line of search + Filters (CSS, so first paint has it).
+      className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+      // Phones open the sheet instead of the second line.
+      moreToggleClassName="max-sm:hidden"
+      moreClassName="max-sm:hidden"
       more={(
         <>
           <Input
@@ -249,9 +263,25 @@ export function JobSeekersFilterPanel({
         pending={aiLoading}
         // A line of its own: briefs run long ("civil engineer UAE 2 years"),
         // and squeezed beside six filters the text slid under Ask AI.
-        className="basis-full"
+        className="basis-full max-sm:basis-0 max-sm:flex-1"
         inputClassName="h-11 rounded-lg bg-card sm:h-9"
       />
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setSheetOpen(true)}
+        aria-label={sheetActiveCount > 0 ? `${tr("filtersShort")} (${sheetActiveCount})` : tr("filtersShort")}
+        className={`h-11 shrink-0 gap-1.5 rounded-lg px-3 text-sm sm:hidden ${sheetActiveCount > 0 ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
+      >
+        <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+        {sheetActiveCount > 0 ? (
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">{sheetActiveCount}</span>
+        ) : (
+          <span className="max-[359px]:sr-only">{tr("filtersShort")}</span>
+        )}
+      </Button>
+      {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+      <div className="contents max-sm:hidden">
       <SearchableSelect
         ariaLabel={tr("filterLabelAvailability")}
         className={INLINE_FILTER_CONTROL}
@@ -271,12 +301,7 @@ export function JobSeekersFilterPanel({
         ariaLabel={tr("filterLabelMinExperience")}
         // Wide enough for "Any experience" / "10+ years" without an ellipsis.
         className={`${INLINE_FILTER_CONTROL} min-w-40`}
-        options={
-          // A typed or AI-set value outside the presets still shows as itself.
-          filters.experienceYears > 0 && !EXPERIENCE_PRESETS.includes(filters.experienceYears)
-            ? [...options.experience, { value: String(filters.experienceYears), label: tr("filterExperienceAtLeast", { count: filters.experienceYears }) }]
-            : options.experience
-        }
+        options={experienceOptions}
         value={filters.experienceYears > 0 ? String(filters.experienceYears) : ""}
         onValueChange={(value) => onFiltersChange({ experienceYears: Number(value) || 0 })}
         placeholder={tr("filterExperienceAny")}
@@ -296,6 +321,27 @@ export function JobSeekersFilterPanel({
         onOrderChange={(order) => onFiltersChange({ sort: joinJobSeekerSort(sort.field, order) })}
         compact
       />
+      </div>
     </InlineFilterBar>
+    <JobSeekersFilterSheet
+      open={sheetOpen}
+      onOpenChange={setSheetOpen}
+      activeCount={sheetActiveCount}
+      availability={filters.availability}
+      location={filters.location}
+      experienceYears={filters.experienceYears}
+      hasCV={filters.hasCV}
+      nationality={filters.nationality}
+      jobType={filters.jobType}
+      referred={filters.referred}
+      options={{ ...options, experience: experienceOptions }}
+      sortField={sort.field}
+      sortOrder={sort.order}
+      onSortFieldChange={(field) => onFiltersChange({ sort: joinJobSeekerSort(field as JobSeekerSortField, sort.order) })}
+      onSortOrderChange={(order) => onFiltersChange({ sort: joinJobSeekerSort(sort.field, order) })}
+      onChange={onFiltersChange}
+      onClearAll={onClear}
+    />
+    </>
   );
 }

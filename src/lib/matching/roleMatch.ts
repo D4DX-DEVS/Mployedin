@@ -42,3 +42,17 @@ export function sharesRole(jobTitle: string, titles: readonly string[]): boolean
   const deciding = specific.size > 0 ? specific : target;
   return titles.some((title) => [...roleWords(title)].some((w) => deciding.has(w)));
 }
+
+/**
+ * A stable key for "this kind of work": the deciding words of a title, sorted.
+ * Two titles that `sharesRole` on the same specific word get the same key, so
+ * "Electrician" and "Senior Electrician" group together. Empty when the title
+ * has no significant word. Used by the admin market-gaps report to group seekers.
+ */
+export function roleKey(title: string): string {
+  const words = roleWords(title);
+  if (words.size === 0) return "";
+  const specific = [...words].filter((w) => !GENERIC_ROLE_WORDS.has(w));
+  return (specific.length > 0 ? specific : [...words]).sort().join(" ");
+}
+

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAiContext } from "@/lib/ai/usageContext";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
@@ -34,7 +35,7 @@ import {
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const __aiQuota = await enforceDailyAiQuota(session.user.id!, role);
+  const __aiQuota = await enforceDailyAiQuota(session.user.id!, role, req.nextUrl.pathname);
   if (__aiQuota) return __aiQuota;
 
   try {
@@ -369,3 +370,4 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export const POST = withAiContext(handlePOST);

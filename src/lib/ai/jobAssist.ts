@@ -74,6 +74,9 @@ export const jobAssistRequestSchema = z.object({
   instruction: z.string().trim().min(1).max(JOB_ASSIST_INSTRUCTION_MAX),
   job: jobAssistDraftSchema,
   source: z.string().max(JOB_ASSIST_SOURCE_MAX).optional(),
+  /** Who the job is for, so staff AI use is attributed to that employer. */
+  employerId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
+  jobId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
   history: z
     .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(2000) }))
     .max(12)

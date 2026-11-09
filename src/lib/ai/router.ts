@@ -10,6 +10,7 @@ import logger from "@/lib/logger";
 import AICache, { CACHE_TTL_SEC } from "@/models/AICache";
 import { connectDB } from "@/lib/db/mongoose";
 import { servingModelId } from "@/lib/ai/openRouter";
+import { recordAiUsage } from "@/lib/ai/usageLog";
 
 export type AITask =
   | "chat"
@@ -62,6 +63,15 @@ export async function routeGenerate(
     const cached = await AICache.findOne({ hash }).lean();
     if (cached) {
       logger.debug({ task, hash }, "AI cache hit");
+      // Logged at $0 so the admin page can show how many answers the cache saved.
+      void recordAiUsage({
+        usage: { inputTokens: 0, outputTokens: 0 },
+        model: servingModelId(model),
+        provider: "cache",
+        ok: true,
+        cacheHit: true,
+        label: `cache:${task}`,
+      });
       return cached.result;
     }
   } catch (cacheErr) {

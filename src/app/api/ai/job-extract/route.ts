@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
+import { tagAiEmployer, withAiContext } from "@/lib/ai/usageContext";
 import { connectDB } from "@/lib/db/mongoose";
 import { Employer } from "@/models/Employer";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
@@ -94,7 +95,7 @@ Rules:
 - If information is not available, use sensible defaults or empty values`;
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const __aiQuota = await enforceDailyAiQuota(session.user.id!, role);
+  const __aiQuota = await enforceDailyAiQuota(session.user.id!, role, req.nextUrl.pathname);
   if (__aiQuota) return __aiQuota;
 
   try {
@@ -139,6 +140,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "EMPLOYER_NOT_ASSIGNED" }, { status: 403 });
       }
       agentEmployerId = String(requested);
+      // The agent was just checked against their assigned employers, so this
+      // extraction's AI cost belongs to that employer on the admin usage page.
+      tagAiEmployer(agentEmployerId);
     }
 
     if (file.size > MAX_FILE_SIZE) {
@@ -324,3 +328,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withAiContext(handlePOST);

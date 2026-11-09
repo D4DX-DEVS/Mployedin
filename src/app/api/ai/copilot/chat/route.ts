@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAiContext } from "@/lib/ai/usageContext";
 import { auth } from "@/lib/auth/config";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
@@ -151,7 +152,7 @@ async function callModel(model: string, messages: CopilotMessage[], tools: unkno
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -176,7 +177,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const quotaErr = await enforceDailyAiQuota(userId, role);
+    const quotaErr = await enforceDailyAiQuota(userId, role, req.nextUrl.pathname);
     if (quotaErr) return quotaErr;
 
     const body = await validateBody(req, copilotChatSchema);
@@ -419,3 +420,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "AI service error" }, { status: 500 });
   }
 }
+
+export const POST = withAiContext(handlePOST);

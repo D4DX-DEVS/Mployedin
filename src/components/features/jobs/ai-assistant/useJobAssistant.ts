@@ -32,6 +32,8 @@ interface UseJobAssistantOptions {
   supportedFields?: readonly JobAssistChangeField[];
   /** The poster's own text, when this job was read from an uploaded poster. */
   getSource?: () => string | undefined;
+  /** The employer or saved job this form is for, so staff AI use is attributed to that employer. */
+  getTarget?: () => { employerId?: string; jobId?: string };
 }
 
 export interface JobAssistantState {
@@ -64,7 +66,7 @@ const nextId = () => `m${Date.now().toString(36)}${(seq++).toString(36)}`;
  * One conversation per job form. The conversation lives in the form's page,
  * so the inline panel and the small-screen dialog show the same thread.
  */
-export function useJobAssistant({ getJob, applyChanges, supportedFields, getSource }: UseJobAssistantOptions, errorText: (e: JobAssistantError) => string): JobAssistantState {
+export function useJobAssistant({ getJob, applyChanges, supportedFields, getSource, getTarget }: UseJobAssistantOptions, errorText: (e: JobAssistantError) => string): JobAssistantState {
   const [messages, setMessages] = useState<JobAssistantMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const messagesRef = useRef(messages);
@@ -81,6 +83,7 @@ export function useJobAssistant({ getJob, applyChanges, supportedFields, getSour
     setBusy(true);
     try {
       const source = getSource?.()?.trim();
+      const target = getTarget?.() ?? {};
       const res = await csrfFetch("/api/ai/job-assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -89,6 +92,8 @@ export function useJobAssistant({ getJob, applyChanges, supportedFields, getSour
           job: getJob(),
           history,
           ...(source ? { source } : {}),
+          ...(target.employerId ? { employerId: target.employerId } : {}),
+          ...(target.jobId ? { jobId: target.jobId } : {}),
         }),
       });
       if (!res.ok) {

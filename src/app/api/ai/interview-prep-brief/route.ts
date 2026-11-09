@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withAiContext } from "@/lib/ai/usageContext";
 import { auth } from "@/lib/auth/config";
 import { enforceDailyAiQuota } from "@/lib/ai/dailyQuota";
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit";
@@ -23,7 +24,7 @@ function parseJsonResponse(raw: string): unknown {
   return JSON.parse(cleaned);
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const __aiQuota = await enforceDailyAiQuota(session.user.id as string, (session.user as { role: string }).role);
+    const __aiQuota = await enforceDailyAiQuota(session.user.id as string, (session.user as { role: string }).role, req.nextUrl.pathname);
     if (__aiQuota) return __aiQuota;
 
     const body = await req.json();
@@ -224,3 +225,5 @@ Output ONLY valid JSON, no markdown code blocks.`;
 }
 
 export const maxDuration = 30;
+
+export const POST = withAiContext(handlePOST);
