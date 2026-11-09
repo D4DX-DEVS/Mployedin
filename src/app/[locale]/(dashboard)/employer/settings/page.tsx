@@ -6,7 +6,7 @@ import {
   Save, Building2, Globe, Mail, Shield, FileText,
   Briefcase, Bell, AlertTriangle, Linkedin, Twitter, Facebook, Instagram,
   MapPin, Calendar, Users, Eye, EyeOff, Link2, CheckCircle2, Clock, Sparkles,
-  ChevronRight, Camera, X, Upload, Trash2, Send,
+  ChevronRight, Camera, X, Upload, Trash2, Send, Palette,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSession, signOut } from "next-auth/react";
@@ -25,6 +25,7 @@ import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard"
 import { ConnectedAppsCard } from "@/components/features/settings/ConnectedAppsCard";
 import { WhatsAppVerificationPanel, hasWhatsAppOn, type WhatsAppVerification } from "@/components/features/settings/WhatsAppVerificationPanel";
 import { CalendarFeedCard } from "@/components/features/settings/CalendarFeedCard";
+import { BrandKitEditor } from "@/components/features/poster/BrandKitEditor";
 import { useConfirm } from "@/hooks/useConfirm";
 import { PhoneInput } from "@/components/shared/PhoneInput";
 import { useEmployerProfile, useUpdateEmployerProfile, useUploadDocument, useDeleteDocument, EmployerProfileUpdateError } from "@/hooks/useEmployerProfile";
@@ -57,12 +58,13 @@ const VERIFICATION_BADGES: Record<string, { label: string; color: string; icon: 
   premium: { label: "Premium", color: "bg-amber-50 text-amber-700 border-amber-200", icon: Sparkles },
 };
 
-type TabKey = "profile" | "contact" | "hiring" | "notifications" | "account";
+type TabKey = "profile" | "contact" | "hiring" | "brand" | "notifications" | "account";
 
 const NAV_ITEMS: { key: TabKey; label: string; desc: string; icon: typeof Building2 }[] = [
   { key: "profile", label: "companyProfile", desc: "companyProfileDesc", icon: Building2 },
   { key: "contact", label: "contactSocial", desc: "contactSocialDesc", icon: Link2 },
   { key: "hiring", label: "hiringPreferences", desc: "hiringPreferencesDesc", icon: Briefcase },
+  { key: "brand", label: "brandKit", desc: "brandKitDesc", icon: Palette },
   { key: "notifications", label: "notifications", desc: "notificationsDesc", icon: Bell },
   { key: "account", label: "accountSecurity", desc: "accountSecurityDesc", icon: Shield },
 ];
@@ -267,7 +269,7 @@ function CompanySettingsPage() {
   // inside it (shared with the job form — see useFieldHighlight).
   useEffect(() => {
     const tab = searchParams.get("tab") as TabKey | null;
-    if (tab && ["profile", "contact", "hiring", "notifications", "account"].includes(tab)) {
+    if (tab && ["profile", "contact", "hiring", "brand", "notifications", "account"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -957,6 +959,16 @@ function CompanySettingsPage() {
                       {t("preferredLocationsHint")}
                     </p>
                   </div>
+                </div>
+              </SectionCard>
+            )}
+
+            {/* ── Brand kit Tab ────────────────────────────────────────── */}
+            {activeTab === "brand" && (
+              <SectionCard>
+                <SectionHeader icon={Palette} title={t("brandKit")} description={t("brandKitDesc")} />
+                <div className="p-4 sm:p-6">
+                  <BrandKitEditor mode="employer" />
                 </div>
               </SectionCard>
             )}

@@ -1099,3 +1099,66 @@ export async function notifyAdminsGdprDeletionRequest(userName: string, requestI
     ),
   );
 }
+
+// ─── Plan upgrade requests ───
+// No payment gateway yet: a customer asks for a plan, admins (and an
+// employer's agent and super agent) hear about it, an admin decides.
+
+/** A customer asked to move to another plan. */
+export async function notifyUpgradeRequested(params: {
+  requestId: string;
+  customerName: string;
+  toPlanName: string;
+  agentId?: string;
+}): Promise<void> {
+  const { requestId, customerName, toPlanName, agentId } = params;
+  const recipients = new Map<string, string>();
+  for (const id of await getAdminUserIds()) recipients.set(id, "/admin/subscriptions?tab=requests");
+  if (agentId) {
+    const Agent = (await import("@/models/Agent")).default;
+    const agent = await Agent.findById(agentId).select("userId").lean();
+    if (agent?.userId) recipients.set(String(agent.userId), "/agent/employers");
+    const saUserId = await getSuperAgentUserId(agentId);
+    if (saUserId) recipients.set(saUserId, "/super-agent/employers");
+  }
+  await Promise.all(
+    [...recipients].map(([userId, link]) =>
+      notify({
+        userId,
+        type: "payment",
+        title: "Plan upgrade requested",
+        message: `${customerName} asked to move to ${toPlanName}.`,
+        link,
+        sendEmail: true,
+        metadata: { requestId, customerName, toPlanName },
+        titleKey: "upgradeRequestedTitle",
+        bodyKey: "upgradeRequestedBody",
+        params: { customerName, toPlanName },
+      }),
+    ),
+  );
+}
+
+/** An admin approved or declined a customer's plan request. */
+export async function notifyUpgradeDecided(params: {
+  userId: string;
+  role: "employer" | "job_seeker";
+  toPlanName: string;
+  approved: boolean;
+}): Promise<void> {
+  const { userId, role, toPlanName, approved } = params;
+  await notify({
+    userId,
+    type: "payment",
+    title: approved ? "Your plan was changed" : "Plan request not approved",
+    message: approved
+      ? `You're now on ${toPlanName}.`
+      : `Your request to move to ${toPlanName} was not approved. Contact us if you have questions.`,
+    link: role === "employer" ? "/employer/subscription" : "/job-seeker/subscription",
+    sendEmail: true,
+    metadata: { toPlanName, approved },
+    titleKey: approved ? "upgradeApprovedTitle" : "upgradeDeclinedTitle",
+    bodyKey: approved ? "upgradeApprovedBody" : "upgradeDeclinedBody",
+    params: { toPlanName },
+  });
+}

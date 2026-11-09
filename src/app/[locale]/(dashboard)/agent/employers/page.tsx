@@ -23,6 +23,7 @@ import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { WorkspaceTabs, type WorkspaceTab } from "@/components/shared/WorkspaceTabs";
 import { EmployerTable } from "./_components/EmployerTable";
+import { ClientPlanRequests } from "@/components/features/subscription/ClientPlans";
 import type { Employer, EmployerListProps } from "./_components/types";
 
 const getEmployerFields = (t: ReturnType<typeof useTranslations>): CrudField[] => [
@@ -395,6 +396,7 @@ export default function AgentEmployersPage() {
       {/* One table, like admin's (owner, 2026-10-02): the card grid it could
           switch to carried an inline Delete, and two layouts had to be kept
           in step for every action. */}
+      <ClientPlanRequests />
       <WorkspaceTabs tabs={viewTabs} ariaLabel={t("viewLabel")} activeKey={view} />
 
       <InlineFilterBar

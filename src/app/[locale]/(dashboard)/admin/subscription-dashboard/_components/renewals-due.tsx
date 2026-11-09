@@ -29,7 +29,6 @@ export function RenewalsDue({ renewals, currency, locale, className = "" }: {
       bar: "bg-rose-500",
       note: renewals.paidManual > 0 ? t("renewalsAtStake", { amount: money }) : null,
     },
-    { key: "free", label: t("renewalsFree"), value: renewals.free, bar: "bg-slate-400", note: null },
   ];
   const listHref = `/${locale}/admin/subscriptions`;
 

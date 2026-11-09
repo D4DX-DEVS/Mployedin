@@ -18,6 +18,8 @@ jest.mock("@/models/PosterGeneration", () => ({ __esModule: true, default: { fin
 jest.mock("@/lib/auth/requireCompanyFunction", () => ({ requireCompanyFunction: () => reached() }));
 jest.mock("@/components/features/employer/poster/CreatePosterPage", () => ({ CreatePosterPage: () => null }));
 jest.mock("@/components/features/employer/poster/MyPostersPage", () => ({ MyPostersPage: () => null }));
+jest.mock("@/models/Employer", () => ({ __esModule: true, Employer: { findById: () => reached() }, default: { findById: () => reached() } }));
+jest.mock("@/components/features/poster/PosterStudio", () => ({ PosterStudio: () => null }));
 jest.mock("@/components/features/employer/poster/PosterShareView", () => ({ PosterShareView: () => null }));
 jest.mock("next-intl/server", () => ({ getMessages: () => reached() }));
 

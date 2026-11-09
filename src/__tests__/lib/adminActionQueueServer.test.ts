@@ -121,10 +121,11 @@ describe("PAYMENT_NOTICE_PENDING_FILTER", () => {
 });
 
 describe("subscriptionsEndingFilter", () => {
-  it("covers active subscriptions ending between now and the window", () => {
+  it("covers active paid subscriptions ending between now and the window", () => {
     const now = new Date("2026-09-24T00:00:00.000Z");
     expect(subscriptionsEndingFilter(7, now)).toEqual({
       status: "active",
+      "planSnapshot.price": { $gt: 0 },
       endDate: { $gte: now, $lte: new Date("2026-10-01T00:00:00.000Z") },
     });
   });

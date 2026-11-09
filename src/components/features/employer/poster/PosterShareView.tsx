@@ -28,6 +28,8 @@ interface PosterShareViewProps {
   companyName: string;
   jobId: string;
   slug: string;
+  /** A brand poster's server-drawn image; replaces the AI background + overlay. */
+  imageUrl?: string;
 }
 
 export function PosterShareView({
@@ -41,6 +43,7 @@ export function PosterShareView({
   companyName,
   jobId,
   slug,
+  imageUrl,
 }: PosterShareViewProps) {
   const t = useTranslations("posterShareView");
   const applyUrl = buildJobApplyUrl(jobId);
@@ -55,6 +58,13 @@ export function PosterShareView({
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background flex flex-col items-center justify-center p-3 sm:p-4 md:p-8">
+      {imageUrl ? (
+        <div className="relative w-full max-w-lg aspect-square rounded-2xl overflow-hidden shadow-2xl mb-6 bg-muted">
+          { }
+          <img src={imageUrl} alt={`${jobTitle} - ${companyName}`} className="h-full w-full object-cover" />
+        </div>
+      ) : (
+      <>
       {/* Composed poster: AI background + the same overlay used by editor/export */}
       <div
         className="relative w-full max-w-lg aspect-square rounded-2xl overflow-hidden shadow-2xl mb-6"
@@ -76,6 +86,8 @@ export function PosterShareView({
           style={styleOverrides}
         />
       </div>
+      </>
+      )}
 
       {/* Info + CTA */}
       <div className="text-center max-w-lg space-y-3">

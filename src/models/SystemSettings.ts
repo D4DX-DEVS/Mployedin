@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from "mongoose";
 import { encryptIfPlain, decrypt } from "@/lib/security/encryption";
+import type { IEmployerBrandKit } from "@/models/Employer";
 
 export interface ISmtpConfig {
   smtpEmail?: string;
@@ -91,6 +92,8 @@ export interface ISystemSettings extends Document {
   smtp?: ISmtpConfig;
   email?: IEmailProviderSettings;
   commissionOverrides?: ICommissionOverride[];
+  /** The Mployedin poster brand kit every employer starts from; unset = built-in default. */
+  brandKit?: IEmployerBrandKit;
   updatedAt: Date;
 }
 
@@ -138,6 +141,15 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
         instructions: { type: String, maxlength: 500 },
       },
       footerNote: { type: String, maxlength: 300 },
+    },
+    brandKit: {
+      logoUrl: { type: String, maxlength: 2048 },
+      primary: { type: String, maxlength: 7 },
+      accent: { type: String, maxlength: 7 },
+      text: { type: String, maxlength: 7 },
+      background: { type: String, maxlength: 7 },
+      font: { type: String, enum: ["manrope", "lexend", "arabic", "serif"] },
+      tone: { type: String, enum: ["friendly", "formal", "energetic"] },
     },
     commissionOverrides: [
       {

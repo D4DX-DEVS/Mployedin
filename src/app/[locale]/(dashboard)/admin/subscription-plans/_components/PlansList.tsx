@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { RowExpandToggle, isRowToggleClick } from "@/components/shared/RowExpandToggle";
 import type { SubscriptionPlanItem } from "@/hooks/useSubscriptionPlans";
-import { convertAndFormat } from "@/lib/currency";
+import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { AI_FEATURE_LABEL_KEYS, BILLING_CYCLE_LABEL_KEYS, TIER_COLORS } from "./planLabels";
 
@@ -52,6 +52,9 @@ export function PlansList({
   const t = useTranslations("adminSubscriptionPlans");
   const tc = useTranslations("common");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // The currency most of this audience's plans use; a plan priced in another
+  // one is almost always a data-entry mistake, so it is flagged on its row.
+  const mainCurrency = mostCommonCurrency(plans, systemCurrency);
 
   /** Mirrors the API's hard-delete guard so the menu can say no first. */
   const canDestroy = (p: SubscriptionPlanItem) => !p.isDefault && (p.subscriptionCount ?? 0) === 0;
@@ -110,7 +113,9 @@ export function PlansList({
   };
 
   return (
-    <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+    // mb below lg: the assistant button floats above the bottom nav and sat on
+    // the last row's actions menu; the extra room lets that row scroll clear.
+    <section className="workspace-panel-surface mb-20 overflow-hidden rounded-2xl lg:mb-0">
       <div className={cn("hidden items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground md:grid", ROW_GRID)}>
         <span className="ps-10">{t("columnPlan")}</span>
         <span>{t("columnPrice")}</span>
@@ -122,9 +127,11 @@ export function PlansList({
         {plans.map((p) => {
           const isExpanded = expandedId === p._id;
           const toggle = () => setExpandedId(isExpanded ? null : p._id);
-          // Formatted even when no conversion is needed: a plain "599 INR" sat
-          // beside "₹ 11,367.22" in the same column.
-          const price = convertAndFormat(p.price, p.currency, systemCurrency);
+          // The stored price in the stored currency: this is the number the
+          // admin edits and customers are billed. Converting it hid a plan
+          // saved as 599 INR among AED plans (it read as the cheapest tier).
+          const price = formatCurrency(p.price, p.currency, "code");
+          const odd = (p.currency || "").toUpperCase() !== mainCurrency;
 
           return (
             <article
@@ -156,7 +163,14 @@ export function PlansList({
                   </div>
                   <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                     <CreditCard className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                    {t("subscriptionCount", { count: p.subscriptionCount ?? 0 })}
+                    {/* Active first: the all-time total counted expired and
+                        cancelled rows too (Platinum read "55" with 5 paying). */}
+                    {t("subscriptionActive", { count: p.liveSubscriptionCount ?? 0 })}
+                    {(p.subscriptionCount ?? 0) > (p.liveSubscriptionCount ?? 0) && (
+                      <span className="ms-1 text-muted-foreground/70">
+                        · {t("subscriptionEnded", { count: (p.subscriptionCount ?? 0) - (p.liveSubscriptionCount ?? 0) })}
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -164,6 +178,14 @@ export function PlansList({
               {/* Price */}
               <p className={cn("flex items-baseline gap-1.5 md:block", UNDER_NAME)}>
                 <span className="text-sm font-semibold text-foreground">{price}</span>
+                {odd && (
+                  <span
+                    className="ms-1 inline-flex rounded-full border border-amber-500/40 px-2 py-0.5 text-[11px] font-medium text-amber-700 md:ms-0 md:mt-1"
+                    title={t("currencyMismatchHelp", { currency: mainCurrency })}
+                  >
+                    {t("currencyMismatch")}
+                  </span>
+                )}
                 <span className="text-xs text-muted-foreground md:hidden" aria-hidden="true">/</span>
                 <span className="text-xs text-muted-foreground md:mt-0.5 md:block">{t(BILLING_CYCLE_LABEL_KEYS[p.billingCycle])}</span>
               </p>
@@ -329,4 +351,16 @@ export function PlansListSkeleton({ rows = 4 }: { rows?: number }) {
       </div>
     </section>
   );
+}
+
+function mostCommonCurrency(plans: readonly SubscriptionPlanItem[], fallback: string): string {
+  const counts = new Map<string, number>();
+  for (const p of plans) {
+    const c = (p.currency || fallback).toUpperCase();
+    counts.set(c, (counts.get(c) ?? 0) + 1);
+  }
+  let best = fallback.toUpperCase();
+  let bestCount = 0;
+  for (const [c, n] of counts) if (n > bestCount) { best = c; bestCount = n; }
+  return best;
 }

@@ -24,6 +24,8 @@ interface PosterItem {
     skills?: string[]; description?: string; responsibilities?: string[]; qualifications?: string[];
     requirements?: { skills?: string[]; education?: string } | null; employmentType?: string;
   } | null;
+  /** "brand" = drawn from the brand kit by /api/poster/[slug]/image; AI posters have variations. */
+  kind?: "ai" | "brand";
   type: string;
   style: string;
   showFields?: ShowFields;
@@ -147,12 +149,15 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {data.posters.map((poster) => {
-              const thumb = poster.variations[poster.selectedVariation]?.backgroundUrl
-                || poster.variations[0]?.backgroundUrl;
+              const isBrand = poster.kind === "brand";
+              const thumb = isBrand
+                ? null
+                : poster.variations[poster.selectedVariation]?.backgroundUrl || poster.variations[0]?.backgroundUrl;
               // Card click reopens this poster in the editor (same tab) — saved
               // design + overrides restore there, so posters double as reusable templates.
+              // Brand posters have no AI editor state: they reopen the poster maker for the job.
               const reuseHref = poster.jobId?._id
-                ? `/${locale}/employer/jobs/${poster.jobId._id}/poster?generation=${poster._id}`
+                ? `/${locale}/employer/jobs/${poster.jobId._id}/poster${isBrand ? "" : `?generation=${poster._id}`}`
                 : null;
               return (
                 <div
@@ -172,7 +177,15 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
                   {/* Composed poster thumbnail (background + branding/text overlay).
                       Clicks pass through to the link; only the actions take them. */}
                   <div className="aspect-square relative pointer-events-none" style={{ containerType: "size" }}>
-                    {thumb ? (
+                    {isBrand && poster.shareSlug ? (
+                       
+                      <img
+                        src={`/api/poster/${poster.shareSlug}/image?size=square`}
+                        alt=""
+                        loading="lazy"
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    ) : thumb ? (
                       <div aria-hidden="true">
                         <div
                           className="absolute inset-0 bg-cover bg-center"

@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   Search, Crown, ArrowUpRight, ArrowDownRight, RotateCcw, X, Loader2,
   Clock, CheckCircle, XCircle, AlertTriangle, User, Briefcase,
-  ChevronDown, ChevronUp, CreditCard, Users, FileText, Eye,
+  ChevronDown, ChevronUp, CreditCard, Users, FileText, Eye, Inbox,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { PageHero } from "@/components/shared/PageHero";
@@ -50,6 +50,8 @@ import {
   type BulkAssignResult,
 } from "@/hooks/useSubscriptionManagement";
 import { formatListDate } from "@/lib/ui/intlFormat";
+import { useSearchParams } from "next/navigation";
+import { UpgradeRequestsPanel, usePendingUpgradeCount } from "./_components/UpgradeRequestsPanel";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -92,7 +94,12 @@ async function fetchStats(): Promise<StatsData> {
 
 export default function AdminSubscriptionsPage() {
   const t = useTranslations("adminSubscriptions");
-  const [activeTab, setActiveTab] = useState<"table" | "manage">("table");
+  // ?tab=requests is where the "plan upgrade requested" notification lands.
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<"table" | "manage" | "requests">(
+    searchParams.get("tab") === "requests" ? "requests" : "table",
+  );
+  const { data: pendingRequests = 0 } = usePendingUpgradeCount();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<SearchUser | null>(null);
 
@@ -147,6 +154,19 @@ export default function AdminSubscriptionsPage() {
         <Search className="h-3.5 w-3.5 mr-1.5" />
         {t("searchManageTab")}
       </Button>
+      <Button
+        size="sm"
+        variant={activeTab === "requests" ? "default" : "outline"}
+        className={activeTab === "requests" ? "bg-primary hover:bg-primary/90" : ""}
+        aria-pressed={activeTab === "requests"}
+        onClick={() => setActiveTab("requests")}
+      >
+        <Inbox className="h-3.5 w-3.5 mr-1.5" />
+        {t("requestsTab")}
+        {pendingRequests > 0 && (
+          <span className="ms-1.5 rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white tabular-nums">{pendingRequests}</span>
+        )}
+      </Button>
     </div>
   );
 
@@ -182,6 +202,13 @@ export default function AdminSubscriptionsPage() {
 
       {/* ── All Subscribers Table (renders the tab switcher inline with its role toggle) ── */}
       {activeTab === "table" && <SubscribersTable viewTabs={viewTabs} />}
+
+      {activeTab === "requests" && (
+        <>
+          {viewTabs}
+          <UpgradeRequestsPanel />
+        </>
+      )}
 
       {/* ── Search & Manage (existing flow) ── */}
       {activeTab === "manage" && (
@@ -593,8 +620,8 @@ function ExpandableRow({
               {sub.targetRole === "employer" ? <Briefcase className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
             </div>
             <div className="min-w-0">
-              <p className="font-medium truncate">{user?.name ?? "—"}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email ?? "—"}</p>
+              <p className="font-medium truncate">{user?.name ?? (user ? "—" : t("deletedAccount"))}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email ?? (user ? "—" : t("deletedAccountHint"))}</p>
             </div>
           </div>
         </TableCell>

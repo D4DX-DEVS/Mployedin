@@ -26,6 +26,7 @@ export const MEMBER_ROUTE_FUNCTIONS: ReadonlyArray<readonly [string, PermissionF
   ["/api/employers/comm-templates", "canManageTalentPools"],
   ["/api/employers/posters", "canManageTalentPools"],
   ["/api/employers/poster-credits", "canManageTalentPools"],
+  ["/api/employers/brand-kit", "canManageTalentPools"],
   ["/api/employers/job-templates", "canManageCompanySettings"],
   ["/api/employers/matching-weights", "canViewAnalytics"],
   ["/api/employers/matching-weight-templates", "canViewAnalytics"],

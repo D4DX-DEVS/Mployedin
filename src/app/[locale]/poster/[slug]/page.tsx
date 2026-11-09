@@ -9,6 +9,8 @@ import PosterGeneration from "@/models/PosterGeneration";
 import { PosterShareView } from "@/components/features/employer/poster/PosterShareView";
 import { MAIN_CONTENT_ID } from "@/components/shared/SkipToContent";
 import type { PosterStyleOverrides } from "@/lib/composer/types";
+import { getAppBaseUrl } from "@/lib/mcp/baseUrl";
+import { Employer } from "@/models/Employer";
 
 interface Props {
   params: Promise<{ slug: string; locale: string }>;
@@ -27,8 +29,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const job = poster.jobId as { title?: string; companyName?: string } | null;
-  const thumb = poster.variations?.[poster.selectedVariation]?.backgroundUrl
-    || poster.variations?.[0]?.backgroundUrl;
+  // A brand poster's own image makes the link preview; an AI poster shows its background.
+  const thumb = poster.kind === "brand"
+    ? `${getAppBaseUrl()}/api/poster/${slug}/image?size=square`
+    : poster.variations?.[poster.selectedVariation]?.backgroundUrl || poster.variations?.[0]?.backgroundUrl;
 
   return {
     title: `${job?.title || "Job Poster"} - ${job?.companyName || "Mployedin"}`,
@@ -64,6 +68,11 @@ export default async function PosterSharePage({ params }: Props) {
 
   const selected = poster.variations?.[poster.selectedVariation] ?? poster.variations?.[0];
   const job = poster.jobId as any;
+  const isBrand = poster.kind === "brand";
+  // Jobs don't carry the company name; brand posters read it from the employer.
+  const companyName = job?.companyName
+    || (isBrand ? ((await Employer.findById(poster.employerId).select("companyName").lean()) as { companyName?: string } | null)?.companyName : "")
+    || "";
 
   // The share view reads only its own namespace; see clientMessages.ts.
   const messages = await getMessages();
@@ -79,9 +88,10 @@ export default async function PosterSharePage({ params }: Props) {
       layout={poster.layoutOverride ?? selected?.layout ?? "layout-a"}
       styleOverrides={poster.styleOverrides as PosterStyleOverrides | undefined}
       jobTitle={job?.title || ""}
-      companyName={job?.companyName || ""}
+      companyName={companyName}
       jobId={job?._id?.toString() || ""}
       slug={slug}
+      imageUrl={isBrand ? `/api/poster/${slug}/image?size=square` : undefined}
     />
     </main>
     </NextIntlClientProvider>

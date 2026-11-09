@@ -28,6 +28,8 @@ export interface SubscriptionPlanItem {
   /** Subscriptions referencing this plan, any status. Server-supplied on the
    *  list endpoint; a plan can only be hard-deleted while this is 0. */
   subscriptionCount?: number;
+  /** Active or suspended subscriptions billed on this plan now. */
+  liveSubscriptionCount?: number;
 }
 
 export interface SubscriptionPlanPayload {

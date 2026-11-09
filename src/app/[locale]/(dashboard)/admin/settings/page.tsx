@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { TwoFactorCard } from "@/components/features/settings/TwoFactorCard";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import { ConnectedAppsCard } from "@/components/features/settings/ConnectedAppsCard";
+import { BrandKitEditor } from "@/components/features/poster/BrandKitEditor";
 import { PhoneInput } from "@/components/shared/PhoneInput";
 import { CommissionCountryRules, commissionRuleProblem, type CommissionOverride } from "./_components/CommissionCountryRules";
 
@@ -790,6 +791,16 @@ export default function AdminSettingsPage() {
               )}
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="workspace-panel-surface rounded-3xl" aria-labelledby="admin-brand-kit-title">
+        <div className="panel-body space-y-4">
+          <div>
+            <h2 id="admin-brand-kit-title" className="heading-section font-semibold text-foreground">{t("brandKitTitle")}</h2>
+            <p className="text-sm text-muted-foreground mt-1">{t("brandKitDesc")}</p>
+          </div>
+          <BrandKitEditor mode="admin" />
         </div>
       </section>
 

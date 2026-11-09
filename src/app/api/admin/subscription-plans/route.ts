@@ -48,14 +48,23 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
    */
   const counts = await Subscription.aggregate<{ _id: mongoose.Types.ObjectId; count: number }>([
     { $match: { planId: { $in: plans.map((p) => p._id) } } },
-    { $group: { _id: "$planId", count: { $sum: 1 } } },
+    {
+      $group: {
+        _id: "$planId",
+        count: { $sum: 1 },
+        // Billed on this plan right now — who "Move current subscribers" reaches.
+        live: { $sum: { $cond: [{ $in: ["$status", ["active", "suspended"]] }, 1, 0] } },
+      },
+    },
   ]);
   const countByPlan = new Map(counts.map((c) => [String(c._id), c.count]));
+  const liveByPlan = new Map(counts.map((c) => [String(c._id), (c as { live?: number }).live ?? 0]));
 
   return NextResponse.json({
     plans: plans.map((p) => ({
       ...p,
       subscriptionCount: countByPlan.get(String(p._id)) ?? 0,
+      liveSubscriptionCount: liveByPlan.get(String(p._id)) ?? 0,
     })),
   });
 }

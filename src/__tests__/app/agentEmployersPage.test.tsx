@@ -43,6 +43,12 @@ jest.mock("@/hooks/usePagination", () => ({
 }));
 
 let allowedActions = ["update"];
+// Plan chip and plan requests fetch through React Query; this suite is about the table.
+jest.mock("@/components/features/subscription/ClientPlans", () => ({
+  useClientPlans: () => ({ data: undefined }),
+  ClientPlanChip: () => null,
+  ClientPlanRequests: () => null,
+}));
 jest.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({ can: (_resource: string, action: string) => allowedActions.includes(action) }),
 }));

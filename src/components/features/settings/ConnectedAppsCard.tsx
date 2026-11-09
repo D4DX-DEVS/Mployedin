@@ -14,6 +14,8 @@ type Phase = "loading" | "error" | "ready";
 
 const SCOPE_KEY: Record<string, string> = {
   "read:reports": "scopeReadReports",
+  "read:jobs": "scopeLatestJobs",
+  "write:posters": "scopeWritePosters",
 };
 
 /**

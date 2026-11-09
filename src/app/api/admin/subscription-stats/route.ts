@@ -75,6 +75,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     // 4. Expiring within 30 days
     Subscription.find({
       status: "active",
+      "planSnapshot.price": { $gt: 0 },
       endDate: { $gte: now, $lte: in30Days },
     })
       .sort({ endDate: 1 })
@@ -85,6 +86,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     // 4b. True count of subscriptions expiring within 30 days (list above is capped at 20)
     Subscription.countDocuments({
       status: "active",
+      "planSnapshot.price": { $gt: 0 },
       endDate: { $gte: now, $lte: in30Days },
     }),
 

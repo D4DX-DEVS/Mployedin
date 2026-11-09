@@ -12,8 +12,33 @@ export interface IPosterAnalytics {
   qrScans: number;
 }
 
+/** A poster drawn in code from a brand kit (lib/brand, components/features/poster/BrandPoster). */
+export interface IBrandPosterSpec {
+  /** Whose brand: the employer's own kit or the Mployedin kit. */
+  source: "company" | "mployedin";
+  layout: "spotlight" | "band" | "split" | "frame" | "night" | "minimal";
+  look: "bold" | "clean" | "urgent";
+  headline: string;
+  locale: "en" | "ar";
+  /** The kit as it was when the poster was made, so later kit edits don't repaint old posters. */
+  kit: {
+    logoUrl?: string;
+    primary: string;
+    accent: string;
+    text: string;
+    background: string;
+    font: string;
+    tone: string;
+  };
+}
+
 export interface IPosterGeneration extends Document {
   _id: mongoose.Types.ObjectId;
+  /** "ai" = AI background + overlay (original maker); "brand" = drawn in code from a brand kit. */
+  kind: "ai" | "brand";
+  brand?: IBrandPosterSpec;
+  /** Who made it from outside the employer workspace (an admin through the MCP connector). */
+  createdByUserId?: mongoose.Types.ObjectId;
   employerId: mongoose.Types.ObjectId;
   jobId: mongoose.Types.ObjectId;
   type: PosterType;
@@ -42,8 +67,31 @@ const PosterVariationSchema = new Schema<IPosterVariation>(
   { _id: false },
 );
 
+const BrandPosterSpecSchema = new Schema<IBrandPosterSpec>(
+  {
+    source: { type: String, enum: ["company", "mployedin"], required: true },
+    layout: { type: String, enum: ["spotlight", "band", "split", "frame", "night", "minimal"], required: true },
+    look: { type: String, enum: ["bold", "clean", "urgent"], required: true },
+    headline: { type: String, required: true, maxlength: 80 },
+    locale: { type: String, enum: ["en", "ar"], default: "en" },
+    kit: {
+      logoUrl: { type: String, maxlength: 2048 },
+      primary: { type: String, required: true, maxlength: 7 },
+      accent: { type: String, required: true, maxlength: 7 },
+      text: { type: String, required: true, maxlength: 7 },
+      background: { type: String, required: true, maxlength: 7 },
+      font: { type: String, required: true, maxlength: 20 },
+      tone: { type: String, required: true, maxlength: 20 },
+    },
+  },
+  { _id: false },
+);
+
 const PosterGenerationSchema = new Schema<IPosterGeneration>(
   {
+    kind: { type: String, enum: ["ai", "brand"], default: "ai" },
+    brand: { type: BrandPosterSpecSchema, default: undefined },
+    createdByUserId: { type: Schema.Types.ObjectId, ref: "User" },
     employerId: { type: Schema.Types.ObjectId, ref: "Employer", required: true, index: true },
     jobId: { type: Schema.Types.ObjectId, ref: "Job", required: true, index: true },
     type: {
