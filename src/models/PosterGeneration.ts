@@ -23,6 +23,7 @@ export interface IBrandPosterSpec {
   /** The kit as it was when the poster was made, so later kit edits don't repaint old posters. */
   kit: {
     logoUrl?: string;
+    displayName?: string;
     primary: string;
     accent: string;
     text: string;
@@ -76,6 +77,7 @@ const BrandPosterSpecSchema = new Schema<IBrandPosterSpec>(
     locale: { type: String, enum: ["en", "ar"], default: "en" },
     kit: {
       logoUrl: { type: String, maxlength: 2048 },
+      displayName: { type: String, maxlength: 60 },
       primary: { type: String, required: true, maxlength: 7 },
       accent: { type: String, required: true, maxlength: 7 },
       text: { type: String, required: true, maxlength: 7 },

@@ -16,12 +16,20 @@ import logger from "@/lib/logger";
  */
 
 const MAX_BYTES = 2 * 1024 * 1024;
-const TYPES: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif" };
-const REMOTE_TYPES = new Set(["image/png", "image/jpeg", "image/gif"]);
+const TYPES: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp" };
+const REMOTE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 const PUBLIC_DIR = path.join(process.cwd(), "public");
 
-function asDataUrl(bytes: ArrayBuffer | Buffer, type: string): string {
-  return `data:${type};base64,${Buffer.from(bytes as ArrayBuffer).toString("base64")}`;
+/** next/og draws PNG, JPEG and GIF only; a WebP logo (allowed by the logo upload) is turned into PNG. */
+async function asDataUrl(bytes: ArrayBuffer | Buffer, type: string): Promise<string> {
+  let data = Buffer.from(bytes as ArrayBuffer);
+  let mime = type;
+  if (type === "image/webp") {
+    const { default: sharp } = await import("sharp");
+    data = await sharp(data).png().toBuffer();
+    mime = "image/png";
+  }
+  return `data:${mime};base64,${data.toString("base64")}`;
 }
 
 async function fromPublic(sitePath: string): Promise<string | null> {
@@ -31,7 +39,7 @@ async function fromPublic(sitePath: string): Promise<string | null> {
   const type = TYPES[path.extname(file).toLowerCase()];
   if (!type) return null;
   const bytes = await readFile(file);
-  return bytes.length <= MAX_BYTES ? asDataUrl(bytes, type) : null;
+  return bytes.length <= MAX_BYTES ? await asDataUrl(bytes, type) : null;
 }
 
 async function fromStorage(url: URL): Promise<string | null> {
@@ -42,7 +50,7 @@ async function fromStorage(url: URL): Promise<string | null> {
   if (!REMOTE_TYPES.has(type)) return null;
   if (Number(res.headers.get("content-length") || 0) > MAX_BYTES) return null;
   const bytes = await res.arrayBuffer();
-  return bytes.byteLength <= MAX_BYTES ? asDataUrl(bytes, type) : null;
+  return bytes.byteLength <= MAX_BYTES ? await asDataUrl(bytes, type) : null;
 }
 
 /** A logo or badge as a data URL the poster renderer can draw, or null to leave it off. */

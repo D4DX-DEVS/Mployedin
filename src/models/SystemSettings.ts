@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from "mongoose";
 import { encryptIfPlain, decrypt } from "@/lib/security/encryption";
+import { BRAND_FONT_IDS } from "@/lib/brand/brandKit";
 import type { IEmployerBrandKit } from "@/models/Employer";
 
 export interface ISmtpConfig {
@@ -94,6 +95,8 @@ export interface ISystemSettings extends Document {
   commissionOverrides?: ICommissionOverride[];
   /** The Mployedin poster brand kit every employer starts from; unset = built-in default. */
   brandKit?: IEmployerBrandKit;
+  /** Mployedin's contact line printed on every poster ("For enquiries"). */
+  posterContact?: { email?: string; phone?: string };
   updatedAt: Date;
 }
 
@@ -142,13 +145,17 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
       },
       footerNote: { type: String, maxlength: 300 },
     },
+    posterContact: {
+      email: { type: String, maxlength: 254 },
+      phone: { type: String, maxlength: 40 },
+    },
     brandKit: {
       logoUrl: { type: String, maxlength: 2048 },
       primary: { type: String, maxlength: 7 },
       accent: { type: String, maxlength: 7 },
       text: { type: String, maxlength: 7 },
       background: { type: String, maxlength: 7 },
-      font: { type: String, enum: ["manrope", "lexend", "arabic", "serif"] },
+      font: { type: String, enum: BRAND_FONT_IDS },
       tone: { type: String, enum: ["friendly", "formal", "energetic"] },
     },
     commissionOverrides: [

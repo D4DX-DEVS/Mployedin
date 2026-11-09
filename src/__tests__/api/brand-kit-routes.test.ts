@@ -23,6 +23,7 @@ const getPlatformBrandKit = jest.fn();
 jest.mock("@/lib/brand/brandKit.server", () => ({
   getEmployerBrandKit: (...a: unknown[]) => getEmployerBrandKit(...a),
   getPlatformBrandKit: (...a: unknown[]) => getPlatformBrandKit(...a),
+  getPosterContact: async () => ({ email: "support@mployedin.com", phone: "" }),
 }));
 
 const ROUTE = { params: Promise.resolve({}) };
@@ -96,5 +97,22 @@ describe("/api/admin/brand-kit", () => {
     expect(res.status).toBe(200);
     const [, update] = SystemSettings.findOneAndUpdate.mock.calls[0];
     expect(update.$set.brandKit).toMatchObject({ primary: "#003399", logoUrl: "/mployedin-logo.png" });
+  });
+
+  it("saves the poster contact line for an admin and rejects a bad email or phone", async () => {
+    ctx.role = "admin";
+    const { PATCH } = await import("@/app/api/admin/brand-kit/route");
+    expect((await PATCH(req("PATCH", { email: "not-an-email", phone: "" }), ROUTE)).status).toBe(400);
+    expect((await PATCH(req("PATCH", { email: "", phone: "call <script>" }), ROUTE)).status).toBe(400);
+    const ok = await PATCH(req("PATCH", { email: "jobs@mployedin.com", phone: "+91 9747 224 335" }), ROUTE);
+    expect(ok.status).toBe(200);
+    const [, update] = SystemSettings.findOneAndUpdate.mock.calls.at(-1);
+    expect(update.$set.posterContact).toEqual({ email: "jobs@mployedin.com", phone: "+91 9747 224 335" });
+  });
+
+  it("lets only admins change the poster contact line", async () => {
+    ctx.role = "employer";
+    const { PATCH } = await import("@/app/api/admin/brand-kit/route");
+    expect((await PATCH(req("PATCH", { email: "x@y.co", phone: "" }), ROUTE)).status).toBe(403);
   });
 });

@@ -4,7 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import PosterGeneration, { type IBrandPosterSpec } from "@/models/PosterGeneration";
 import { getEmployerBrandKit } from "@/lib/brand/brandKit.server";
-import { resolveBrandKit, type BrandKit } from "@/lib/brand/brandKit";
+import { resolveBrandKit, type BrandKit, type PosterContact } from "@/lib/brand/brandKit";
 import { buildBrandPosterData, defaultHeadline, type PosterJobInput } from "@/lib/poster/brandPosterContent";
 import { BRAND_LAYOUTS, type BrandLayout, type PosterLook } from "@/components/features/poster/BrandPoster";
 
@@ -36,7 +36,7 @@ function legacyFields(look: PosterLook) {
   };
 }
 
-const JOB_FIELDS = "title employerId location employmentType workMode salary showSalary status";
+const JOB_FIELDS = "title employerId location employmentType workMode salary showSalary status qualifications qualificationsAr requirements createdAt";
 
 /**
  * Save a code-drawn poster for one job. Free (no AI, no credits). The brand kit
@@ -82,7 +82,7 @@ export async function createBrandPoster(input: CreateBrandPosterInput) {
     ...(input.actorUserId ? { createdByUserId: input.actorUserId } : {}),
   });
 
-  return { id: String(poster._id), shareSlug: poster.shareSlug as string, jobTitle: job.title ?? "", companyName: view.companyName };
+  return { id: String(poster._id), shareSlug: poster.shareSlug as string, jobTitle: job.title ?? "", companyName: kit.displayName || view.companyName };
 }
 
 export interface LoadedBrandPoster {
@@ -92,6 +92,7 @@ export interface LoadedBrandPoster {
   companyName: string;
   /** The company logo; without one the company name alone names the employer (Mployedin has its corner badge). */
   logoUrl: string | null;
+  contact: PosterContact | null;
 }
 
 /** A saved brand poster by its public share slug, with what it needs to be drawn. */
@@ -114,8 +115,9 @@ export async function loadBrandPosterBySlug(slug: string): Promise<LoadedBrandPo
     spec: poster.brand,
     kit,
     job,
-    companyName: view?.companyName ?? "",
+    companyName: kit.displayName || view?.companyName || "",
     logoUrl: view?.companyLogo || null,
+    contact: view?.contact ?? null,
   };
 }
 

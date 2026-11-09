@@ -14,6 +14,7 @@ import { TwoFactorCard } from "@/components/features/settings/TwoFactorCard";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import { ConnectedAppsCard } from "@/components/features/settings/ConnectedAppsCard";
 import { BrandKitEditor } from "@/components/features/poster/BrandKitEditor";
+import { PosterContactForm } from "@/components/features/poster/PosterContactForm";
 import { PhoneInput } from "@/components/shared/PhoneInput";
 import { CommissionCountryRules, commissionRuleProblem, type CommissionOverride } from "./_components/CommissionCountryRules";
 
@@ -801,6 +802,9 @@ export default function AdminSettingsPage() {
             <p className="text-sm text-muted-foreground mt-1">{t("brandKitDesc")}</p>
           </div>
           <BrandKitEditor mode="admin" />
+          <div className="mt-6 border-t pt-6">
+            <PosterContactForm />
+          </div>
         </div>
       </section>
 

@@ -14,6 +14,7 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 jest.mock("@/components/features/poster/BrandKitEditor", () => ({ BrandKitEditor: () => null }));
+jest.mock("@/components/features/poster/PosterContactForm", () => ({ PosterContactForm: () => null }));
 jest.mock("@/components/features/settings/TwoFactorCard", () => ({ TwoFactorCard: () => null }));
 jest.mock("@/components/features/settings/ChangeEmailCard", () => ({ ChangeEmailCard: () => null }));
 jest.mock("@/app/[locale]/(dashboard)/admin/settings/_components/CommissionCountryRules", () => ({
