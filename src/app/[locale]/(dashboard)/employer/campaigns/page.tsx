@@ -128,7 +128,7 @@ export default function EmployerCampaignsPage() {
               value={statusFilter || "all"}
               onValueChange={(v) => { setStatusFilter(v === "all" ? null : v); setPage(1); }}
             >
-              <SelectTrigger className="h-10 w-44 shrink-0 rounded-xl border-border bg-background">
+              <SelectTrigger className="h-10 w-44 shrink-0 rounded-xl border-border bg-background" aria-label={t("status")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -20,9 +20,11 @@ import { toast } from "sonner";
 import { useTableExport } from "@/hooks/useTableExport";
 import { useConfirm } from "@/hooks/useConfirm";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -125,6 +127,7 @@ export default function AgentInterviewsPage() {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
 
@@ -246,7 +249,7 @@ export default function AgentInterviewsPage() {
     resolvedRecordRef.current = id;
     const listed = interviews.find((iv) => iv._id === id);
     if (listed) {
-      setOutcomeTarget({ _id: id, candidateName: listed.jobSeekerId?.fullName ?? t("candidateFallback"), jobTitle: listed.jobId?.title });
+      setOutcomeTarget({ _id: id, candidateName: listed.jobSeekerId?.fullName ?? t("candidateFallback"), jobTitle: listed.jobId?.title, scheduledAt: listed.scheduledAt });
       return;
     }
     void (async () => {
@@ -362,6 +365,80 @@ export default function AgentInterviewsPage() {
   const rescheduledCount = statusCounts.rescheduled ?? 0;
   const totalAll = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
+  const statusOptions = STATUS_OPTIONS.map((o) => ({ value: o.value || "all", label: o.label }));
+  const employerOptions = [{ value: "all", label: t("filterAllEmployers") }, ...employers.map((emp) => ({ value: emp._id, label: emp.companyName }))];
+  const jobOptions = [{ value: "all", label: t("filterAllJobs") }, ...jobs.map((j) => ({ value: j._id, label: j.title }))];
+  const typeOptions = TYPE_OPTIONS.map((o) => ({ value: o.value || "all", label: o.label }));
+  const outcomeOptions = OUTCOME_OPTIONS.map((o) => ({ value: o.value || "all", label: o.label }));
+  const phoneFilterCount = [status, employerFilter !== "all", jobFilter !== "all", typeFilter, outcomeFilter, dateFrom, dateTo].filter(Boolean).length;
+  const clearPhoneFilters = () => {
+    setStatus("");
+    setEmployerFilter("all");
+    setJobFilter("all");
+    setTypeFilter("");
+    setOutcomeFilter("");
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  const emptyState = (
+    <EmptyState
+      icon={Inbox}
+      title={hasActiveFilters ? t("emptyStateWithFilters") : t("emptyStateNoResults")}
+      action={hasActiveFilters ? (
+        <Button variant="outline" onClick={clearAllFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
+          {t("buttonClearFilters")}
+        </Button>
+      ) : undefined}
+    />
+  );
+
+  const interviewState = (iv: Interview) => {
+    const open = iv.status === "scheduled" || iv.status === "confirmed";
+    // Happened, not cancelled, nothing recorded: this is what the
+    // dashboard's "Outcomes to record" counts.
+    const awaitingOutcome = !iv.outcome && (open || iv.status === "completed") && new Date(iv.scheduledAt).getTime() < Date.now();
+    return { open, awaitingOutcome };
+  };
+
+  const interviewActions = (iv: Interview) => {
+    const name = iv.jobSeekerId?.fullName ?? tc("name");
+    const { open, awaitingOutcome } = interviewState(iv);
+    return (
+    <RowActions
+      name={name}
+      labelsFrom="widest"
+      // "Mark completed" sent no outcome, so the interview
+      // stayed on the dashboard queue for good; recording
+      // the outcome completes it, so it sits in plain sight.
+      quick={[
+        {
+          key: "edit",
+          label: t("ariaEditInterview", { name }),
+          icon: Pencil,
+          iconOnly: true,
+          onSelect: () => { setEditInterview(iv); setModalOpen(true); },
+        },
+        ...(awaitingOutcome ? [{
+          key: "outcome",
+          label: t("recordOutcome"),
+          icon: ClipboardCheck,
+          iconClassName: "text-emerald-600",
+          onSelect: () => setOutcomeTarget({ _id: iv._id, candidateName: name, jobTitle: iv.jobId?.title, scheduledAt: iv.scheduledAt }),
+        }] : []),
+      ]}
+      menu={open ? [{
+        key: "cancel",
+        label: t("ariaCancel"),
+        icon: XCircle,
+        destructive: true,
+        pending: updatingId === iv._id,
+        onSelect: () => void cancelInterview(iv),
+      }] : []}
+    />
+    );
+  };
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -380,7 +457,9 @@ export default function AgentInterviewsPage() {
           Filter; the open/close grid with uppercase labels, the "results"
           eyebrow and the pill row restating each filter are gone. */}
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         onClear={hasActiveFilters ? clearAllFilters : undefined}
         clearLabel={t("buttonClearAll")}
         onExportCsv={handleExportCsv}
@@ -392,7 +471,7 @@ export default function AgentInterviewsPage() {
             <SearchableSelect
               id="agent-interviews-employer"
               className={INLINE_FILTER_CONTROL}
-              options={[{ value: "all", label: t("filterAllEmployers") }, ...employers.map((emp) => ({ value: emp._id, label: emp.companyName }))]}
+              options={employerOptions}
               value={employerFilter}
               onValueChange={(value) => { setEmployerFilter(value); setJobFilter("all"); }}
               placeholder={t("filterEmployer")}
@@ -400,7 +479,7 @@ export default function AgentInterviewsPage() {
             <SearchableSelect
               id="agent-interviews-job"
               className={INLINE_FILTER_CONTROL}
-              options={[{ value: "all", label: t("filterAllJobs") }, ...jobs.map((j) => ({ value: j._id, label: j.title }))]}
+              options={jobOptions}
               value={jobFilter}
               onValueChange={setJobFilter}
               placeholder={t("filterJob")}
@@ -408,7 +487,7 @@ export default function AgentInterviewsPage() {
             <SearchableSelect
               id="agent-interviews-type"
               className={INLINE_FILTER_CONTROL}
-              options={TYPE_OPTIONS.map((o) => ({ value: o.value || "all", label: o.label }))}
+              options={typeOptions}
               value={typeFilter || "all"}
               onValueChange={(v) => setTypeFilter(v === "all" ? "" : v)}
               placeholder={t("filterType")}
@@ -416,7 +495,7 @@ export default function AgentInterviewsPage() {
             <SearchableSelect
               id="agent-interviews-outcome"
               className={INLINE_FILTER_CONTROL}
-              options={OUTCOME_OPTIONS.map((o) => ({ value: o.value || "all", label: o.label }))}
+              options={outcomeOptions}
               value={outcomeFilter || "all"}
               onValueChange={(v) => setOutcomeFilter(v === "all" ? "" : v)}
               placeholder={t("filterOutcome")}
@@ -430,24 +509,140 @@ export default function AgentInterviewsPage() {
           </>
         )}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
-        <SearchableSelect
-          id="agent-interviews-status"
-          className={INLINE_FILTER_CONTROL}
-          options={STATUS_OPTIONS.map((o) => ({ value: o.value || "all", label: o.label }))}
-          value={status || "all"}
-          onValueChange={(v) => setStatus(v === "all" ? "" : v)}
-          placeholder={t("filterAllStatuses")}
-        />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            id="agent-interviews-status"
+            className={INLINE_FILTER_CONTROL}
+            options={statusOptions}
+            value={status || "all"}
+            onValueChange={(v) => setStatus(v === "all" ? "" : v)}
+            placeholder={t("filterAllStatuses")}
+          />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={clearPhoneFilters}
+      >
+        <FilterField label={t("columnStatus")} htmlFor="agent-interviews-sheet-status">
+          <SearchableSelect
+            id="agent-interviews-sheet-status"
+            className={SHEET_CONTROL}
+            options={statusOptions}
+            value={status || "all"}
+            onValueChange={(v) => setStatus(v === "all" ? "" : v)}
+            placeholder={t("filterAllStatuses")}
+          />
+        </FilterField>
+        <FilterField label={t("filterEmployer")} htmlFor="agent-interviews-sheet-employer">
+          <SearchableSelect
+            id="agent-interviews-sheet-employer"
+            className={SHEET_CONTROL}
+            options={employerOptions}
+            value={employerFilter}
+            onValueChange={(value) => { setEmployerFilter(value); setJobFilter("all"); }}
+            placeholder={t("filterEmployer")}
+          />
+        </FilterField>
+        <FilterField label={t("filterJob")} htmlFor="agent-interviews-sheet-job">
+          <SearchableSelect
+            id="agent-interviews-sheet-job"
+            className={SHEET_CONTROL}
+            options={jobOptions}
+            value={jobFilter}
+            onValueChange={setJobFilter}
+            placeholder={t("filterJob")}
+          />
+        </FilterField>
+        <FilterField label={t("filterType")} htmlFor="agent-interviews-sheet-type">
+          <SearchableSelect
+            id="agent-interviews-sheet-type"
+            className={SHEET_CONTROL}
+            options={typeOptions}
+            value={typeFilter || "all"}
+            onValueChange={(v) => setTypeFilter(v === "all" ? "" : v)}
+            placeholder={t("filterType")}
+          />
+        </FilterField>
+        <FilterField label={t("filterOutcome")} htmlFor="agent-interviews-sheet-outcome">
+          <SearchableSelect
+            id="agent-interviews-sheet-outcome"
+            className={SHEET_CONTROL}
+            options={outcomeOptions}
+            value={outcomeFilter || "all"}
+            onValueChange={(v) => setOutcomeFilter(v === "all" ? "" : v)}
+            placeholder={t("filterOutcome")}
+          />
+        </FilterField>
+        <FilterField label={t("labelFromDate")} htmlFor="agent-interviews-sheet-from">
+          <DateTimePicker id="agent-interviews-sheet-from" mode="date" value={dateFrom} onChange={setDateFrom} placeholder={t("labelFromDate")} className={SHEET_CONTROL} />
+        </FilterField>
+        <FilterField label={t("labelToDate")} htmlFor="agent-interviews-sheet-to">
+          <DateTimePicker id="agent-interviews-sheet-to" mode="date" value={dateTo} onChange={setDateTo} placeholder={t("labelToDate")} className={SHEET_CONTROL} />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      {!loadError && (
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("pageTitle")}
+          loading={loading}
+          empty={emptyState}
+          items={interviews.map((iv) => {
+            // Phone: a closed interview has only the edit pencil. In a footer
+            // row of its own it took a whole bordered strip for one icon, so
+            // it sits at the end of the status chip row instead.
+            const editOnly = canUpdate && !interviewState(iv).open && !interviewState(iv).awaitingOutcome;
+            return {
+            key: iv._id,
+            leading: <UserAvatar name={iv.jobSeekerId?.fullName} email={iv.jobSeekerId?.email} className="h-10 w-10" colorful />,
+            title: iv.jobSeekerId?.fullName ?? "—",
+            subtitle: `${iv.jobId?.title ?? "—"} · ${iv.employerId?.companyName ?? "—"}`,
+            actions: canUpdate && !editOnly ? interviewActions(iv) : undefined,
+            meta: (
+              <>
+                <p className="flex min-w-0 items-center gap-1">
+                  <CalendarCheck2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">
+                    {formatListDate(iv.scheduledAt, locale)} · {formatTime(iv.scheduledAt, { hour: "2-digit", minute: "2-digit" }, locale)}
+                    {iv.duration ? ` · ${t("durationMinutes", { duration: iv.duration })}` : ""}
+                  </span>
+                </p>
+                <p className="flex min-w-0 items-center gap-1">
+                  {typeIcon(iv.type)}
+                  <span className="truncate">{typeLabel(iv.type)} · {t("columnRound")}: {iv.interviewRound ?? 1}</span>
+                </p>
+              </>
+            ),
+            badges: (
+              <>
+                <StatusBadge status={iv.status} />
+                {iv.outcome && (
+                  <StatusBadge
+                    status={OUTCOME_TONE[iv.outcome] ?? iv.outcome}
+                    label={OUTCOME_OPTIONS.find((o) => o.value === iv.outcome)?.label}
+                  />
+                )}
+                {editOnly && <div className="ms-auto">{interviewActions(iv)}</div>}
+              </>
+            ),
+            };
+          })}
+        />
+      )}
+
+      <section className={`workspace-panel-surface overflow-hidden rounded-2xl ${loadError ? "" : "max-sm:hidden"}`}>
         {loadError ? (
           <div className="p-6">
             <ErrorState onRetry={() => void fetchInterviews()} />
           </div>
         ) : (
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("columnCandidate")}</TableHead>
@@ -464,23 +659,10 @@ export default function AgentInterviewsPage() {
               ) : interviews.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={columnCount} className="py-12">
-                    <EmptyState
-                      icon={Inbox}
-                      title={hasActiveFilters ? t("emptyStateWithFilters") : t("emptyStateNoResults")}
-                      action={hasActiveFilters ? (
-                        <Button variant="outline" onClick={clearAllFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
-                          {t("buttonClearFilters")}
-                        </Button>
-                      ) : undefined}
-                    />
+                    {emptyState}
                   </TableCell>
                 </TableRow>
               ) : interviews.map((iv) => {
-                const name = iv.jobSeekerId?.fullName ?? tc("name");
-                const open = iv.status === "scheduled" || iv.status === "confirmed";
-                // Happened, not cancelled, nothing recorded: this is what the
-                // dashboard's "Outcomes to record" counts.
-                const awaitingOutcome = !iv.outcome && (open || iv.status === "completed") && new Date(iv.scheduledAt).getTime() < Date.now();
                 return (
                   <TableRow key={iv._id} className="group">
                     <TableCell>
@@ -524,37 +706,7 @@ export default function AgentInterviewsPage() {
                     </TableCell>
                     {canUpdate && (
                       <TableCell className="text-right">
-                        <RowActions
-                          name={name}
-                          labelsFrom="widest"
-                          // "Mark completed" sent no outcome, so the interview
-                          // stayed on the dashboard queue for good; recording
-                          // the outcome completes it, so it sits in plain sight.
-                          quick={[
-                            {
-                              key: "edit",
-                              label: t("ariaEditInterview", { name }),
-                              icon: Pencil,
-                              iconOnly: true,
-                              onSelect: () => { setEditInterview(iv); setModalOpen(true); },
-                            },
-                            ...(awaitingOutcome ? [{
-                              key: "outcome",
-                              label: t("recordOutcome"),
-                              icon: ClipboardCheck,
-                              iconClassName: "text-emerald-600",
-                              onSelect: () => setOutcomeTarget({ _id: iv._id, candidateName: name, jobTitle: iv.jobId?.title }),
-                            }] : []),
-                          ]}
-                          menu={open ? [{
-                            key: "cancel",
-                            label: t("ariaCancel"),
-                            icon: XCircle,
-                            destructive: true,
-                            pending: updatingId === iv._id,
-                            onSelect: () => void cancelInterview(iv),
-                          }] : []}
-                        />
+                        {interviewActions(iv)}
                       </TableCell>
                     )}
                   </TableRow>

@@ -66,8 +66,8 @@ export function RegionalFunnel({ headingId, title, description, periodLabel, sta
 
       <dl className="grid grid-cols-3 border-t border-border/60">
         {ratios.map((ratio) => (
-          <div key={ratio.key} className="min-w-0 border-e border-border/60 px-3 py-2.5 last:border-e-0 sm:px-4 sm:py-3">
-            <dt className="truncate text-[11px] font-medium text-muted-foreground sm:text-xs">{ratio.label}</dt>
+          <div key={ratio.key} className="flex min-w-0 flex-col justify-between border-e border-border/60 px-3 py-2.5 last:border-e-0 sm:block sm:px-4 sm:py-3">
+            <dt className="text-[11px] leading-snug sm:truncate font-medium text-muted-foreground sm:text-xs">{ratio.label}</dt>
             <dd className="mt-0.5 text-lg font-semibold tabular-nums text-foreground sm:text-xl">{ratio.value}</dd>
             <dd className="mt-0.5 hidden truncate text-[11px] text-muted-foreground sm:block">{ratio.basis}</dd>
           </div>

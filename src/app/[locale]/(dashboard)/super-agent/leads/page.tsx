@@ -23,9 +23,11 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
 import { InlinePicker } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -197,6 +199,7 @@ export default function SuperAgentLeadsPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState("");
   const [aiDegraded, setAiDegraded] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [updatingLeadId, setUpdatingLeadId] = useState<string | null>(null);
   const aiInputRef = useRef<HTMLInputElement>(null);
 
@@ -374,6 +377,22 @@ export default function SuperAgentLeadsPage() {
 
   const activeFilterCount = countActiveFilters(filters);
 
+  // Shared by the More panel and the phone filter sheet.
+  const countryOptions = [{ value: "", label: t("filterAllCountries") }, ...facets.countries.map((c) => ({ value: c, label: c }))];
+  const industryOptions = [{ value: "", label: t("filterAllIndustries") }, ...facets.industries.map((i) => ({ value: i, label: i }))];
+  const sourceOptions = [{ value: "", label: t("filterAllSources") }, ...facets.sources.map((s) => ({ value: s, label: s }))];
+  const agentFilterOptions = [{ value: "", label: t("filterAllAgents") }, ...agents.map((a) => ({ value: a._id, label: a.name || a.email }))];
+  const hasNotesOptions = [{ value: "", label: t("filterAny") }, { value: "true", label: t("filterWithNotes") }, { value: "false", label: t("filterWithoutNotes") }];
+  const followUpOptions = [{ value: "", label: t("filterAny") }, { value: "true", label: t("filterHasFollowUp") }, { value: "overdue", label: t("filterOverdueOnly") }];
+  const sortSelectOptions = SORT_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }));
+  const sortOrderOptions = [{ value: "desc", label: t("sortNewestFirst") }, { value: "asc", label: t("sortOldestFirst") }];
+  // Phones: the filters the sheet holds (sort does not count; stage lives in the tiles above).
+  const phoneFilterCount = [
+    filters.country, filters.industry, filters.source, filters.agentId,
+    filters.dateFrom || filters.dateTo, filters.followUpFrom || filters.followUpTo,
+    filters.hasNotes, filters.hasFollowUp,
+  ].filter(Boolean).length;
+
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("columnCompany"), key: "companyName" },
     { header: t("columnContact"), key: "contactPerson" },
@@ -455,13 +474,15 @@ export default function SuperAgentLeadsPage() {
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
           onClear={(activeFilterCount > 0 || filters.status || filters.search || aiSummary) ? resetFilters : undefined}
+          moreToggleClassName="max-sm:hidden"
+          moreClassName="max-sm:hidden"
           more={(
             <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
               <div className="grid min-w-0 flex-[1_1_100%] grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{tc("country")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: t("filterAllCountries") }, ...facets.countries.map((c) => ({ value: c, label: c }))]}
+                    options={countryOptions}
                     value={filters.country}
                     onValueChange={(v) => updateFilter("country", v)}
                     placeholder={t("filterAllCountries")}
@@ -471,7 +492,7 @@ export default function SuperAgentLeadsPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterIndustry")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: t("filterAllIndustries") }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
+                    options={industryOptions}
                     value={filters.industry}
                     onValueChange={(v) => updateFilter("industry", v)}
                     placeholder={t("filterAllIndustries")}
@@ -481,7 +502,7 @@ export default function SuperAgentLeadsPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterSource")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: t("filterAllSources") }, ...facets.sources.map((s) => ({ value: s, label: s }))]}
+                    options={sourceOptions}
                     value={filters.source}
                     onValueChange={(v) => updateFilter("source", v)}
                     placeholder={t("filterAllSources")}
@@ -491,7 +512,7 @@ export default function SuperAgentLeadsPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterAgent")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: t("filterAllAgents") }, ...agents.map((a) => ({ value: a._id, label: a.name || a.email }))]}
+                    options={agentFilterOptions}
                     value={filters.agentId}
                     onValueChange={(v) => updateFilter("agentId", v)}
                     placeholder={t("filterAllAgents")}
@@ -517,7 +538,7 @@ export default function SuperAgentLeadsPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterHasNotes")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: t("filterAny") }, { value: "true", label: t("filterWithNotes") }, { value: "false", label: t("filterWithoutNotes") }]}
+                    options={hasNotesOptions}
                     value={filters.hasNotes}
                     onValueChange={(v) => updateFilter("hasNotes", v)}
                     placeholder={t("filterAny")}
@@ -526,7 +547,7 @@ export default function SuperAgentLeadsPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterFollowUpStatus")}</label>
                   <SearchableSelect
-                    options={[{ value: "", label: t("filterAny") }, { value: "true", label: t("filterHasFollowUp") }, { value: "overdue", label: t("filterOverdueOnly") }]}
+                    options={followUpOptions}
                     value={filters.hasFollowUp}
                     onValueChange={(v) => updateFilter("hasFollowUp", v)}
                     placeholder={t("filterAny")}
@@ -534,12 +555,12 @@ export default function SuperAgentLeadsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterSortBy")}</label>
-                  <SearchableSelect options={SORT_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }))} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder={t("sortOptionCreatedAt")} />
+                  <SearchableSelect options={sortSelectOptions} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder={t("sortOptionCreatedAt")} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterSortOrder")}</label>
                   <SearchableSelect
-                    options={[{ value: "desc", label: t("sortNewestFirst") }, { value: "asc", label: t("sortOldestFirst") }]}
+                    options={sortOrderOptions}
                     value={filters.sortOrder}
                     onValueChange={(v) => updateFilter("sortOrder", v)}
                     placeholder={t("sortNewestFirst")}
@@ -604,7 +625,11 @@ export default function SuperAgentLeadsPage() {
             value={filters.search}
             onChange={(v) => updateFilter("search", v)}
             placeholder={t("searchPlaceholder")}
+            className="max-sm:basis-0"
           />
+          <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+          {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+          <div className="contents max-sm:hidden">
           {/* AI search shares the bar instead of a boxed sub-container that
               forced it onto stacked lines. */}
           <div className="relative min-w-0 flex-[2_1_14rem]">
@@ -629,11 +654,154 @@ export default function SuperAgentLeadsPage() {
             {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
             <span className="sr-only sm:not-sr-only sm:inline">{t("aiButton")}</span>
           </button>
+          </div>
         </InlineFilterBar>
 
+        <PhoneFilterSheet
+          open={filterSheetOpen}
+          onOpenChange={setFilterSheetOpen}
+          activeCount={phoneFilterCount}
+          onClear={resetFilters}
+        >
+          <FilterField label={t("filterSortBy")} htmlFor="sa-leads-sheet-sort-by">
+            <SearchableSelect id="sa-leads-sheet-sort-by" options={sortSelectOptions} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder={t("sortOptionCreatedAt")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterSortOrder")} htmlFor="sa-leads-sheet-sort-order">
+            <SearchableSelect id="sa-leads-sheet-sort-order" options={sortOrderOptions} value={filters.sortOrder} onValueChange={(v) => updateFilter("sortOrder", v)} placeholder={t("sortNewestFirst")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("aiSearchLabel")} htmlFor="sa-leads-sheet-ai">
+            <div className="flex gap-2">
+              <Input
+                id="sa-leads-sheet-ai"
+                placeholder={t("aiSearchPlaceholder")}
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
+                className={`${SHEET_CONTROL} min-w-0 flex-1`}
+              />
+              <button
+                type="button"
+                onClick={handleAiSearch}
+                disabled={aiLoading || !aiQuery.trim()}
+                className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-700 transition-all hover:bg-amber-500/20 disabled:opacity-50"
+              >
+                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                {t("aiButton")}
+              </button>
+            </div>
+          </FilterField>
+          <FilterField label={tc("country")} htmlFor="sa-leads-sheet-country">
+            <SearchableSelect id="sa-leads-sheet-country" options={countryOptions} value={filters.country} onValueChange={(v) => updateFilter("country", v)} placeholder={t("filterAllCountries")} searchPlaceholder={t("searchCountry")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterIndustry")} htmlFor="sa-leads-sheet-industry">
+            <SearchableSelect id="sa-leads-sheet-industry" options={industryOptions} value={filters.industry} onValueChange={(v) => updateFilter("industry", v)} placeholder={t("filterAllIndustries")} searchPlaceholder={t("searchIndustry")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterSource")} htmlFor="sa-leads-sheet-source">
+            <SearchableSelect id="sa-leads-sheet-source" options={sourceOptions} value={filters.source} onValueChange={(v) => updateFilter("source", v)} placeholder={t("filterAllSources")} searchPlaceholder={t("searchSource")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterAgent")} htmlFor="sa-leads-sheet-agent">
+            <SearchableSelect id="sa-leads-sheet-agent" options={agentFilterOptions} value={filters.agentId} onValueChange={(v) => updateFilter("agentId", v)} placeholder={t("filterAllAgents")} searchPlaceholder={t("searchAgent")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterCreatedFrom")} htmlFor="sa-leads-sheet-created-from">
+            <DateTimePicker id="sa-leads-sheet-created-from" value={filters.dateFrom} onChange={(v) => updateFilter("dateFrom", v)} placeholder={t("placeholderStartDate")} mode="date" className="w-full" />
+          </FilterField>
+          <FilterField label={t("filterCreatedTo")} htmlFor="sa-leads-sheet-created-to">
+            <DateTimePicker id="sa-leads-sheet-created-to" value={filters.dateTo} onChange={(v) => updateFilter("dateTo", v)} placeholder={t("placeholderEndDate")} mode="date" className="w-full" />
+          </FilterField>
+          <FilterField label={t("filterFollowUpFrom")} htmlFor="sa-leads-sheet-follow-from">
+            <DateTimePicker id="sa-leads-sheet-follow-from" value={filters.followUpFrom} onChange={(v) => updateFilter("followUpFrom", v)} placeholder={t("placeholderFollowUpStart")} mode="date" className="w-full" />
+          </FilterField>
+          <FilterField label={t("filterFollowUpTo")} htmlFor="sa-leads-sheet-follow-to">
+            <DateTimePicker id="sa-leads-sheet-follow-to" value={filters.followUpTo} onChange={(v) => updateFilter("followUpTo", v)} placeholder={t("placeholderFollowUpEnd")} mode="date" className="w-full" />
+          </FilterField>
+          <FilterField label={t("filterHasNotes")} htmlFor="sa-leads-sheet-notes">
+            <SearchableSelect id="sa-leads-sheet-notes" options={hasNotesOptions} value={filters.hasNotes} onValueChange={(v) => updateFilter("hasNotes", v)} placeholder={t("filterAny")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterFollowUpStatus")} htmlFor="sa-leads-sheet-follow-status">
+            <SearchableSelect id="sa-leads-sheet-follow-status" options={followUpOptions} value={filters.hasFollowUp} onValueChange={(v) => updateFilter("hasFollowUp", v)} placeholder={t("filterAny")} className={SHEET_CONTROL} />
+          </FilterField>
+        </PhoneFilterSheet>
+
         {/* ---- Data Table ---- */}
-          <div className="overflow-x-auto">
-            <Table>
+          <PhoneRecordList
+            className="sm:hidden"
+            label={t("pageTitle")}
+            loading={loading}
+            empty={<EmptyState title={t("noLeadsFoundTitle")} description={t("noLeadsFoundMessage")} icon={Target} />}
+            items={leads.map((lead) => {
+              const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
+              return {
+                key: lead._id,
+                leading: <UserAvatar name={lead.companyName} className="h-10 w-10" colorful />,
+                title: (
+                  <button
+                    type="button"
+                    onClick={() => setWorkspaceLeadId(lead._id)}
+                    className="text-start hover:text-primary transition-colors"
+                  >
+                    {lead.companyName}
+                  </button>
+                ),
+                subtitle: [lead.contactPerson, lead.contactEmail].filter(Boolean).join(" · "),
+                actions: (
+                  <InlinePicker
+                    name={lead.companyName}
+                    picker={{
+                      label: t("changeStageFor", { company: lead.companyName }),
+                      value: lead.status,
+                      options: STAGES.map((s) => ({ value: s, label: tStage(s) })),
+                      onChange: (next) => { void handleChangeStage(lead, next as LeadStatus); },
+                      display: <StatusBadge status={lead.status} />,
+                      pending: updatingLeadId === lead._id,
+                      disabled: updatingLeadId === lead._id,
+                    }}
+                  />
+                ),
+                meta: (
+                  <>
+                    <p className="flex min-w-0 items-center gap-1">
+                      <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">
+                        {[lead.country, lead.industry, lead.source].filter(Boolean).join(" · ") || "—"}
+                        {lead.exhibitionId ? " · Linked" : ""}
+                      </span>
+                    </p>
+                    <p className="flex min-w-0 items-center gap-1">
+                      <User className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{lead.agentId?.userId?.name ?? "—"}</span>
+                    </p>
+                    <p className="flex min-w-0 items-center gap-1">
+                      <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">
+                        {lead.followUpAt ? (
+                          <span className={isOverdue ? "font-medium text-red-600" : undefined}>
+                            {formatDate(new Date(lead.followUpAt), { day: "2-digit", month: "short", year: "numeric" })}
+                            {isOverdue ? ` ${t("labelOverdue")}` : ""}
+                          </span>
+                        ) : "—"}
+                        {` · ${formatDate(new Date(lead.createdAt), { day: "2-digit", month: "short", year: "numeric" })}`}
+                      </span>
+                    </p>
+                  </>
+                ),
+                badges: (lead.score != null || lead.autoRouted) ? (
+                  <>
+                    {lead.score != null && (
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${QUAL_STYLES[lead.qualificationLevel ?? "cold"] ?? QUAL_STYLES.cold}`}>
+                        <Gauge className="h-3 w-3" />{lead.score}
+                      </span>
+                    )}
+                    {lead.autoRouted && (
+                      <span className="rounded bg-emerald-100 px-1 py-0.5 text-[11px] font-semibold text-emerald-700">{t("badgeRouted")}</span>
+                    )}
+                  </>
+                ) : undefined,
+              };
+            })}
+          />
+
+          <div className="overflow-x-auto max-sm:hidden">
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>

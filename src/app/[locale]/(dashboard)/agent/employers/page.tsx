@@ -17,6 +17,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
@@ -60,6 +61,7 @@ export default function AgentEmployersPage() {
   const pagination = usePagination();
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
@@ -314,6 +316,13 @@ export default function AgentEmployersPage() {
     onDelete: handleDelete,
   };
 
+  const statusOptions = [
+    { value: "all", label: t("statusAll") },
+    { value: "active", label: tc("active") },
+    { value: "inactive", label: tc("inactive") },
+  ];
+  const phoneFilterCount = status !== "all" ? 1 : 0;
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -400,26 +409,43 @@ export default function AgentEmployersPage() {
       <WorkspaceTabs tabs={viewTabs} ariaLabel={t("viewLabel")} activeKey={view} />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={search || status !== "all" ? () => { setSearch(""); setStatus("all"); } : undefined}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchEmployersPlaceholder")} />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          ariaLabel={t("statusFilterLabel")}
-          options={[
-            { value: "all", label: t("statusAll") },
-            { value: "active", label: tc("active") },
-            { value: "inactive", label: tc("inactive") },
-          ]}
-          value={status}
-          onValueChange={setStatus}
-          placeholder={t("statusAll")}
-        />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchEmployersPlaceholder")} className="max-sm:basis-0" />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            ariaLabel={t("statusFilterLabel")}
+            options={statusOptions}
+            value={status}
+            onValueChange={setStatus}
+            placeholder={t("statusAll")}
+          />
+        </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => setStatus("all")}
+      >
+        <FilterField label={t("statusFilterLabel")} htmlFor="agent-employers-sheet-status">
+          <SearchableSelect
+            id="agent-employers-sheet-status"
+            className={SHEET_CONTROL}
+            options={statusOptions}
+            value={status}
+            onValueChange={setStatus}
+            placeholder={t("statusAll")}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {loadError ? (
         <section className="workspace-panel-surface rounded-2xl p-6">

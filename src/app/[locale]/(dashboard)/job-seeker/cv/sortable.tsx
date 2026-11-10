@@ -79,7 +79,7 @@ export function SortableItem({
         aria-label={handleLabel ?? "Drag to reorder"}
         title={handleLabel ?? "Drag to reorder"}
         className={cn(
-          "absolute inset-y-0 left-0 z-10 flex w-7 cursor-grab touch-none select-none items-center justify-center rounded-l-lg border-r border-transparent bg-muted/30 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "absolute inset-y-0 left-0 z-10 flex w-7 min-w-0 cursor-grab touch-none select-none items-center justify-center rounded-l-lg border-r border-transparent bg-muted/30 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           isDragging && "bg-muted text-foreground",
           handleClassName,
         )}

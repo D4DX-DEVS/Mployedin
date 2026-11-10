@@ -28,10 +28,15 @@ export function SuperAgentBadge({ contact, locale }: SuperAgentBadgeProps) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="me-2 inline-flex max-w-full shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-violet-500/10 px-2 py-0.5 align-top text-[11px] font-semibold leading-4 text-violet-800 transition hover:bg-violet-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+          className="me-2 inline-flex max-w-full shrink-0 items-center gap-1 whitespace-nowrap rounded-full !min-h-6 bg-violet-500/10 px-2 py-0.5 align-top text-[11px] font-semibold leading-4 text-violet-800 transition hover:bg-violet-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
         >
           <UserCheck className="h-3 w-3 shrink-0" aria-hidden="true" />
-          <span className="truncate">{t("pill", { name: contact.name })}</span>
+          {/* Phones: the name only, so it fits beside the region; the role stays for screen readers. */}
+          <span className="truncate max-sm:hidden">{t("pill", { name: contact.name })}</span>
+          <span className="truncate sm:hidden">
+            <span className="sr-only">{t("title")}: </span>
+            {contact.name}
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-2">

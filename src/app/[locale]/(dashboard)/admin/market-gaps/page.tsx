@@ -9,6 +9,7 @@ import { PageHero } from "@/components/shared/PageHero";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -174,10 +175,10 @@ function MarketGapsContent() {
                       </div>
                       <p className="font-semibold leading-snug">{sentence(g)}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="outline" className="min-h-10" onClick={() => setSheet({ id: g.id, mode: "view" })}>{t("view")}</Button>
-                      <Button className="min-h-10" onClick={() => setSheet({ id: g.id, mode: "assign" })}>{t("assign")}</Button>
-                      <Button variant="ghost" className="min-h-10" onClick={() => setSheet({ id: g.id, mode: "dismiss" })}>{t("dismiss")}</Button>
+                    <div className="flex flex-wrap gap-2 max-sm:w-full">
+                      <Button variant="outline" className="min-h-10 max-sm:min-h-11 max-sm:flex-1" onClick={() => setSheet({ id: g.id, mode: "view" })}>{t("view")}</Button>
+                      <Button className="min-h-10 max-sm:min-h-11 max-sm:flex-1" onClick={() => setSheet({ id: g.id, mode: "assign" })}>{t("assign")}</Button>
+                      <Button variant="ghost" className="min-h-10 max-sm:min-h-11 max-sm:flex-1" onClick={() => setSheet({ id: g.id, mode: "dismiss" })}>{t("dismiss")}</Button>
                     </div>
                   </li>
                 ))}
@@ -197,8 +198,36 @@ function MarketGapsContent() {
                 />
               ) : (
                 <>
-                  <div className="mt-4 overflow-x-auto">
-                    <Table>
+                  <PhoneRecordList
+                    className="mt-4 sm:hidden"
+                    label={t("tableTitle")}
+                    items={data.data.map((g) => ({
+                      key: g.id,
+                      title: (
+                        <button type="button" onClick={() => setSheet({ id: g.id, mode: "view" })} className="text-start font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                          {g.role || t(`kind.${g.kind}`)}
+                        </button>
+                      ),
+                      subtitle: t(`kind.${g.kind}`),
+                      trailing: <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_TONE[g.status]}`}>{t(`status.${g.status}`)}</span>,
+                      meta: (
+                        <p className="flex min-w-0 items-center gap-1">
+                          <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{g.areaName || t("areaNotSet")}{g.saName ? ` · ${g.saName}` : ""}</span>
+                        </p>
+                      ),
+                      badges: g.topSkills.length > 0
+                        ? g.topSkills.slice(0, 2).map((s) => <span key={s.skill} className="rounded-full bg-secondary px-2 py-0.5 text-xs">{s.skill}</span>)
+                        : undefined,
+                      stats: [
+                        { label: t("colSeekers"), value: formatCount(g.seekers, undefined, locale) },
+                        { label: t("colJobs"), value: formatCount(g.jobs, undefined, locale) },
+                        { label: t("colWaiting"), value: g.medianWaitDays > 0 ? t("days", { count: g.medianWaitDays }) : "—" },
+                      ],
+                    }))}
+                  />
+                  <div className="mt-4 overflow-x-auto max-sm:hidden">
+                    <Table data-mobile-table="scroll">
                       <TableHeader>
                         <TableRow>
                           <TableHead>{t("colArea")}</TableHead>

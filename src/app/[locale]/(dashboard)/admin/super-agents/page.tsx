@@ -13,6 +13,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { TerritoryOverlapNotice } from "@/components/shared/TerritoryOverlapNotice";
 import { PasswordInput } from "@/components/shared/PasswordInput";
@@ -22,6 +23,7 @@ import { useOpenFromUrl } from "@/hooks/useOpenFromUrl";
 import { usePagination } from "@/hooks/usePagination";
 import { Plus, Pencil, Trash2, MapPin, Globe, Users, Ban, CheckCircle2 } from "lucide-react";
 import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
@@ -101,6 +103,7 @@ export default function AdminSuperAgentsPage() {
      and a filter kept only in component state would silently ignore it. */
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [statusFilter, setStatusFilter] = useState("all");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"createdAt" | "name">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
@@ -492,6 +495,17 @@ export default function AdminSuperAgentsPage() {
     return { quick: quick ? [quick] : [], menu };
   };
 
+  const statusFilterOptions = [
+    { value: "all", label: t("statusFilterAll") },
+    { value: "active", label: t("statusFilterActive") },
+    { value: "inactive", label: t("statusFilterInactive") },
+  ];
+  const sortOptions = [
+    { value: "createdAt", label: t("tableHeaderJoined") },
+    { value: "name", label: t("tableHeaderName") },
+  ];
+  const phoneFilterCount = statusFilter !== "all" ? 1 : 0;
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -511,7 +525,7 @@ export default function AdminSuperAgentsPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -520,38 +534,103 @@ export default function AdminSuperAgentsPage() {
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <InlineSearchSelect
-          options={[
-            { value: "all", label: t("statusFilterAll") },
-            { value: "active", label: t("statusFilterActive") },
-            { value: "inactive", label: t("statusFilterInactive") },
-          ]}
-          value={statusFilter}
-          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-          placeholder={t("statusFilterAll")}
-          className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
-        />
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(v) => { setSortBy(v === "name" ? "name" : "createdAt"); resetPage(); }}
-          options={[
-            { value: "createdAt", label: t("tableHeaderJoined") },
-            { value: "name", label: t("tableHeaderName") },
-          ]}
-          order={sortOrder}
-          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-          compact
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <InlineSearchSelect
+            options={statusFilterOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={t("statusFilterAll")}
+            className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+          />
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v === "name" ? "name" : "createdAt"); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            compact
+          />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setStatusFilter("all"); resetPage(); }}
+      >
+        <FilterField label={tc("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v === "name" ? "name" : "createdAt"); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={t("tableHeaderStatus")} htmlFor="super-agents-sheet-status">
+          <InlineSearchSelect
+            id="super-agents-sheet-status"
+            options={statusFilterOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={t("statusFilterAll")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      {!error && (
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("tableHeaderName")}
+          loading={loading}
+          empty={<EmptyState title={t("noAgentsFound")} icon={Inbox} />}
+          items={superAgents.map((sa) => ({
+            key: sa._id,
+            leading: <UserAvatar name={sa.name} email={sa.email} src={sa.avatar} className="h-10 w-10" colorful />,
+            title: sa.name,
+            subtitle: sa.email,
+            trailing: <StatusBadge status={sa.isActive !== false ? "active" : "inactive"} />,
+            actions: (can("super_agents", "update") || can("super_agents", "delete"))
+              ? <RowActions name={sa.name} {...rowActionsFor(sa)} />
+              : undefined,
+            meta: (
+              <>
+                <p className="flex min-w-0 items-center gap-1">
+                  <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{getLocationSummary(sa.superAgentProfile)}</span>
+                </p>
+                <p>{t("tableHeaderJoined")}: {formatListDate(new Date(sa.createdAt), locale)}</p>
+              </>
+            ),
+            badges: (
+              <>
+                <Badge variant="secondary" className="text-xs">
+                  {t("agentsBadge", { count: sa.superAgentProfile?.agentCount ?? 0 })}
+                </Badge>
+                {sa.superAgentProfile?.overrideCommissionRate != null && (
+                  <Badge variant="outline" className="text-xs">
+                    {t("tableHeaderCommissionOverride")}: {sa.superAgentProfile.overrideCommissionRate}%
+                  </Badge>
+                )}
+              </>
+            ),
+          }))}
+        />
+      )}
+
+      <section className={`workspace-panel-surface overflow-hidden rounded-2xl${error ? "" : " max-sm:hidden"}`}>
         {error ? (
           <div className="p-6">
             <ErrorState onRetry={fetchSuperAgents} />
           </div>
         ) : (
-        <Table>
+        <Table data-mobile-table="scroll">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>

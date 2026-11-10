@@ -139,8 +139,10 @@ export default function ApplicationDetailPage() {
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{jobTitle}</h1>
             <p className="text-sm text-muted-foreground">{employer?.companyName ?? t("company")}</p>
+            {/* Phones: the status sits under the company so the title keeps the row. */}
+            <StatusBadge status={app.status} size="md" className="mt-1.5 sm:hidden" />
           </div>
-          <StatusBadge status={app.status} size="md" />
+          <StatusBadge status={app.status} size="md" className="max-sm:hidden" />
         </div>
 
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">

@@ -587,6 +587,7 @@ function AddCandidateStep({ pool, onBack }: { pool: TalentPool; onBack: () => vo
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("searchCandidatesPlaceholder")}
+            aria-label={t("searchCandidatesPlaceholder")}
             className="pl-9"
           />
         </div>
@@ -782,6 +783,7 @@ function PoolDetailDialog({
                           value={candidateSearch}
                           onChange={(e) => setCandidateSearch(e.target.value)}
                           placeholder={t("searchInPoolPlaceholder")}
+                          aria-label={t("searchInPoolPlaceholder")}
                           className="pl-9"
                         />
                       </div>

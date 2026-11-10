@@ -310,11 +310,11 @@ export default function AdminExhibitionAnalyticsPage() {
       <section className="grid grid-cols-1 gap-3 sm:gap-6 xl:grid-cols-[1.4fr_0.8fr]">
         <div className="workspace-panel-surface min-w-0 rounded-2xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="heading-section font-semibold tracking-tight">{t("monthlyRequestFlowTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("monthlyRequestFlowDescription")}</p>
             </div>
-            <Badge variant="outline">{t("monthlyRequestFlowBadge")}</Badge>
+            <Badge variant="outline" className="shrink-0">{t("monthlyRequestFlowBadge")}</Badge>
           </div>
           <div className="h-[22rem]">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -338,11 +338,11 @@ export default function AdminExhibitionAnalyticsPage() {
 
         <div className="workspace-panel-surface rounded-2xl panel-body">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="heading-section font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("requestPipelineDescription")}</p>
             </div>
-            <Activity className="h-5 w-5 text-primary" />
+            <Activity className="h-5 w-5 shrink-0 text-primary" />
           </div>
           <div className="divide-y divide-border/60">
             {statusBreakdown.map((item) => (
@@ -366,11 +366,11 @@ export default function AdminExhibitionAnalyticsPage() {
       <section>
         <div className="workspace-panel-surface min-w-0 rounded-2xl panel-body">
           <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="heading-section font-semibold tracking-tight">{t("participationMixTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("participationMixDescription")}</p>
             </div>
-            <Target className="h-5 w-5 text-primary" />
+            <Target className="h-5 w-5 shrink-0 text-primary" />
           </div>
           {participation.length > 0 ? (
             <div className="grid items-center gap-4 sm:grid-cols-[12rem_1fr]">

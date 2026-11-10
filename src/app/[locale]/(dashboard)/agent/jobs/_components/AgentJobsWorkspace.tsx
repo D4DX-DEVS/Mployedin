@@ -20,11 +20,13 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { AiSearchField, AiSearchResultLine } from "@/components/shared/AiSearchField";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
 import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
@@ -111,6 +113,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
   const t = useTranslations("agentJobs");
   const common = useTranslations("agentCommon");
   const tAi = useTranslations("aiFilterSearch");
+  const tCommon = useTranslations("common");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   const [jobs, setJobs] = useState<JobItem[]>([]);
@@ -141,11 +144,11 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
   const [skills, setSkills] = useUrlFilter("skills", "", { debounceMs: 400 });
   // "" keeps the API default: newest first, or best match while searching.
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "", { allow: ["", ...SORTS] });
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   // Starts open when the URL already carries a secondary filter, so it is never set-but-hidden.
   const [moreOpen, setMoreOpen] = useState(() => workMode !== "all" || Boolean(location || skills || (view === "all" && (country || city || industry || profession))));
 
-  // Phones keep only search + sort on the first line; every select moves
-  // behind More filters, so the list starts above the fold.
+  // Phones: compact card rows; the filters and sort live in the filter sheet.
   const isPhone = useMediaQuery(PHONE_QUERY);
 
   const debouncedSearch = useDebounce(search, 300);
@@ -325,6 +328,24 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
 
   const filterByStatus = (value: string) => { setStatus(status === value ? "all" : value); resetPage(); };
 
+  const countryOptions = [{ value: "", label: t("portal.allCountries"), triggerLabel: t("portal.country") }, ...facets.countries.map((v) => ({ value: v, label: countryLabel(v, locale) }))];
+  const cityOptions = [{ value: "", label: t("portal.allCities"), triggerLabel: t("portal.city") }, ...facets.cities.map((v) => ({ value: v, label: v }))];
+  const industryOptions = [{ value: "", label: t("portal.allIndustries"), triggerLabel: t("portal.industry") }, ...facets.industries];
+  const professionOptions = [{ value: "", label: t("portal.allProfessions"), triggerLabel: t("portal.profession") }, ...facets.professions.map((v) => ({ value: v, label: v }))];
+  const statusOptions = [
+    { value: "all", label: t("filters.allStatuses") },
+    ...STATUSES.map((value) => ({ value, label: statusLabel(value) })),
+  ];
+  const employerOptions = [{ value: "all", label: common("allEmployers") }, ...employers];
+  const workModeOptions = [
+    { value: "all", label: t("filters.allWorkModes") },
+    ...WORK_MODES.map((mode) => ({ value: mode, label: workModeLabel(mode) })),
+  ];
+  const sortOptions = [
+    { value: "posted", label: t("table.posted") },
+    { value: "applications", label: t("table.applicants") },
+  ];
+
   const primaryFilters = (
     <>
       {view === "all" && (
@@ -332,7 +353,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
           <SearchableSelect
             id="agent-jobs-country-filter"
             className={INLINE_FILTER_CONTROL}
-            options={[{ value: "", label: t("portal.allCountries"), triggerLabel: t("portal.country") }, ...facets.countries.map((v) => ({ value: v, label: countryLabel(v, locale) }))]}
+            options={countryOptions}
             value={country}
             onValueChange={(value) => { setCountry(value); setCity(""); resetPage(); }}
             ariaLabel={t("portal.country")}
@@ -341,7 +362,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
           <SearchableSelect
             id="agent-jobs-city-filter"
             className={INLINE_FILTER_CONTROL}
-            options={[{ value: "", label: t("portal.allCities"), triggerLabel: t("portal.city") }, ...facets.cities.map((v) => ({ value: v, label: v }))]}
+            options={cityOptions}
             value={city}
             onValueChange={(value) => { setCity(value); resetPage(); }}
             ariaLabel={t("portal.city")}
@@ -350,7 +371,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
           <SearchableSelect
             id="agent-jobs-industry-filter"
             className={INLINE_FILTER_CONTROL}
-            options={[{ value: "", label: t("portal.allIndustries"), triggerLabel: t("portal.industry") }, ...facets.industries]}
+            options={industryOptions}
             value={industry}
             onValueChange={(value) => { setIndustry(value); resetPage(); }}
             ariaLabel={t("portal.industry")}
@@ -359,7 +380,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
           <SearchableSelect
             id="agent-jobs-profession-filter"
             className={INLINE_FILTER_CONTROL}
-            options={[{ value: "", label: t("portal.allProfessions"), triggerLabel: t("portal.profession") }, ...facets.professions.map((v) => ({ value: v, label: v }))]}
+            options={professionOptions}
             value={profession}
             onValueChange={(value) => { setProfession(value); resetPage(); }}
             ariaLabel={t("portal.profession")}
@@ -370,10 +391,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
       {view === "my" && <SearchableSelect
         id="agent-jobs-status-filter"
         className={INLINE_FILTER_CONTROL}
-        options={[
-          { value: "all", label: t("filters.allStatuses") },
-          ...STATUSES.map((value) => ({ value, label: statusLabel(value) })),
-        ]}
+        options={statusOptions}
         value={status}
         onValueChange={(value) => { setStatus(value); resetPage(); }}
         placeholder={t("filters.allStatuses")}
@@ -382,7 +400,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
         <SearchableSelect
           id="agent-jobs-employer-filter"
           className={INLINE_FILTER_CONTROL}
-          options={[{ value: "all", label: common("allEmployers") }, ...employers]}
+          options={employerOptions}
           value={employer}
           onValueChange={(value) => { setEmployer(value); resetPage(); }}
           placeholder={common("allEmployers")}
@@ -393,6 +411,76 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
   const primaryActiveCount = view === "all"
     ? [country, city, industry, profession].filter(Boolean).length
     : [status !== "all", employer !== "all"].filter(Boolean).length;
+  const phoneFilterCount = primaryActiveCount + [workMode !== "all", location, skills].filter(Boolean).length;
+  const clearPhoneFilters = () => {
+    if (view === "all") {
+      setCountry("");
+      setCity("");
+      setIndustry("");
+      setProfession("");
+    } else {
+      setStatus("all");
+      setEmployer("all");
+    }
+    setWorkMode("all");
+    setLocation("");
+    setSkills("");
+    resetPage();
+  };
+
+  const emptyState = (
+    <EmptyState
+      icon={Inbox}
+      title={hasActiveFilters ? t("empty.title") : t("empty.noneTitle")}
+      description={hasActiveFilters ? t("empty.description") : t("empty.noneDescription")}
+      className="rounded-none border-0 bg-transparent"
+      action={hasActiveFilters ? (
+        <Button variant="outline" onClick={resetFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
+          {t("filters.clear")}
+        </Button>
+      ) : (
+        <Button asChild className="min-h-11 gap-2 rounded-xl px-4 text-sm font-semibold sm:min-h-9">
+          <Link href={`/${locale}/agent/jobs/new`}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            {t("postJob")}
+          </Link>
+        </Button>
+      )}
+    />
+  );
+
+  const jobActions = (job: JobItem, jobHref: string) => (
+    <RowActions
+      name={job.title}
+      // Labels only from 1440: at 1280 they pushed Actions out of the panel.
+      labelsFrom="wide"
+      quick={view === "my" && job.status === "draft" ? [
+        // A draft has no candidates yet: its next step is finishing it.
+        { key: "continue", label: tJobs("continueDraftButton"), icon: Edit2, href: `/${locale}/agent/jobs/${job._id}/edit` },
+        { key: "view", label: t("actions.viewJob"), icon: Eye, iconOnly: true, href: jobHref },
+      ] : isPhone && view !== "my" ? [
+        // Browse card on a phone: the card itself opens the job, so the eye
+        // repeated it; Share is the one action left, labelled across the row.
+        ...(job.status === "active" ? [{ key: "share", label: t("share.title"), icon: Share2, onSelect: () => setShareJob(job) }] : []),
+      ] : [
+        ...(view === "my" ? [{ key: "candidates", label: t("actions.viewCandidates"), icon: Users, href: `/${locale}/agent/candidates?jobId=${job._id}` }] : []),
+        { key: "view", label: t("actions.viewJob"), icon: Eye, iconOnly: true, href: jobHref },
+        ...(job.status === "active" ? [{ key: "share", label: t("share.title"), icon: Share2, iconOnly: true, onSelect: () => setShareJob(job) }] : []),
+      ]}
+      menu={view === "my" ? [
+        ...(job.status !== "draft" && job.status !== "closed" ? [{
+          key: "edit", label: tJobs("editButton"), icon: Edit2, href: `/${locale}/agent/jobs/${job._id}/edit`,
+          // Phone card: labelled, it took a second footer row on its own; as
+          // an icon it joins View candidates / view / share on one row.
+          iconOnly: isPhone,
+        }] : []),
+        ...(job.status === "draft" ? [
+          { key: "publish", label: draftActions.isPending(job._id, "publish") ? tJobs("publishingButton") : tJobs("publishButton"), icon: Send, pending: draftActions.isPending(job._id, "publish"), disabled: draftActions.isPending(job._id, "publish"), onSelect: () => { void draftActions.publish(job._id); } },
+          { key: "delete", label: draftActions.isPending(job._id, "delete") ? tJobs("deletingButton") : tJobs("deleteButton"), icon: Trash2, destructive: true, pending: draftActions.isPending(job._id, "delete"), disabled: draftActions.isPending(job._id, "delete"), onSelect: () => { void draftActions.discard(job._id); } },
+        ] : []),
+      ] : []}
+    />
+  );
 
   return (
     <div className="page-container">
@@ -448,17 +536,15 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         more={(
           <>
-            {isPhone && primaryFilters}
             <SearchableSelect
               id="agent-jobs-workmode-filter"
               className={INLINE_FILTER_CONTROL}
-              options={[
-                { value: "all", label: t("filters.allWorkModes") },
-                ...WORK_MODES.map((mode) => ({ value: mode, label: workModeLabel(mode) })),
-              ]}
+              options={workModeOptions}
               value={workMode}
               onValueChange={(value) => { setWorkMode(value); resetPage(); }}
               placeholder={t("filters.allWorkModes")}
@@ -479,9 +565,8 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
             />
           </>
         )}
-        // On phones every filter is behind it, so it is just "Filter".
-        moreLabel={isPhone ? undefined : t("filters.more")}
-        moreActiveCount={[workMode !== "all", location, skills].filter(Boolean).length + (isPhone ? primaryActiveCount : 0)}
+        moreLabel={t("filters.more")}
+        moreActiveCount={[workMode !== "all", location, skills].filter(Boolean).length}
         moreOpen={moreOpen}
         onMoreOpenChange={setMoreOpen}
         onClear={hasActiveFilters ? resetFilters : undefined}
@@ -497,22 +582,136 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
           placeholder={t("filters.searchOrAsk")}
           onAskAi={(query) => { void ai.askAi(query); }}
           pending={ai.pending}
-          className="flex-[2_1_20rem]"
+          className="flex-[2_1_20rem] max-sm:basis-0"
           inputClassName="h-11 rounded-lg bg-card sm:h-9"
         />
-        {!isPhone && primaryFilters}
-        <TableSortControl
-          value={sortField}
-          onValueChange={(field) => applySort(field, sortOrder)}
-          options={[
-            { value: "posted", label: t("table.posted") },
-            { value: "applications", label: t("table.applicants") },
-          ]}
-          order={sortOrder}
-          onOrderChange={(order) => applySort(sortField, order)}
-          compact
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          {primaryFilters}
+          <TableSortControl
+            value={sortField}
+            onValueChange={(field) => applySort(field, sortOrder)}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(order) => applySort(sortField, order)}
+            compact
+          />
+        </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={clearPhoneFilters}
+      >
+        <FilterField label={tCommon("sortBy")}>
+          <TableSortControl
+            value={sortField}
+            onValueChange={(field) => applySort(field, sortOrder)}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(order) => applySort(sortField, order)}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        {view === "all" && (
+          <>
+            <FilterField label={t("portal.country")} htmlFor="agent-jobs-sheet-country">
+              <SearchableSelect
+                id="agent-jobs-sheet-country"
+                className={SHEET_CONTROL}
+                options={countryOptions}
+                value={country}
+                onValueChange={(value) => { setCountry(value); setCity(""); resetPage(); }}
+                placeholder={t("portal.allCountries")}
+              />
+            </FilterField>
+            <FilterField label={t("portal.city")} htmlFor="agent-jobs-sheet-city">
+              <SearchableSelect
+                id="agent-jobs-sheet-city"
+                className={SHEET_CONTROL}
+                options={cityOptions}
+                value={city}
+                onValueChange={(value) => { setCity(value); resetPage(); }}
+                placeholder={t("portal.allCities")}
+              />
+            </FilterField>
+            <FilterField label={t("portal.industry")} htmlFor="agent-jobs-sheet-industry">
+              <SearchableSelect
+                id="agent-jobs-sheet-industry"
+                className={SHEET_CONTROL}
+                options={industryOptions}
+                value={industry}
+                onValueChange={(value) => { setIndustry(value); resetPage(); }}
+                placeholder={t("portal.allIndustries")}
+              />
+            </FilterField>
+            <FilterField label={t("portal.profession")} htmlFor="agent-jobs-sheet-profession">
+              <SearchableSelect
+                id="agent-jobs-sheet-profession"
+                className={SHEET_CONTROL}
+                options={professionOptions}
+                value={profession}
+                onValueChange={(value) => { setProfession(value); resetPage(); }}
+                placeholder={t("portal.allProfessions")}
+              />
+            </FilterField>
+          </>
+        )}
+        {view === "my" && (
+          <FilterField label={t("table.status")} htmlFor="agent-jobs-sheet-status">
+            <SearchableSelect
+              id="agent-jobs-sheet-status"
+              className={SHEET_CONTROL}
+              options={statusOptions}
+              value={status}
+              onValueChange={(value) => { setStatus(value); resetPage(); }}
+              placeholder={t("filters.allStatuses")}
+            />
+          </FilterField>
+        )}
+        {view === "my" && employers.length > 1 && (
+          <FilterField label={t("table.employer")} htmlFor="agent-jobs-sheet-employer">
+            <SearchableSelect
+              id="agent-jobs-sheet-employer"
+              className={SHEET_CONTROL}
+              options={employerOptions}
+              value={employer}
+              onValueChange={(value) => { setEmployer(value); resetPage(); }}
+              placeholder={common("allEmployers")}
+            />
+          </FilterField>
+        )}
+        <FilterField label={t("filters.workModeLabel")} htmlFor="agent-jobs-sheet-workmode">
+          <SearchableSelect
+            id="agent-jobs-sheet-workmode"
+            className={SHEET_CONTROL}
+            options={workModeOptions}
+            value={workMode}
+            onValueChange={(value) => { setWorkMode(value); resetPage(); }}
+            placeholder={t("filters.allWorkModes")}
+          />
+        </FilterField>
+        <FilterField label={t("table.location")} htmlFor="agent-jobs-sheet-location">
+          <Input
+            id="agent-jobs-sheet-location"
+            placeholder={t("filters.locationPlaceholder")}
+            value={location}
+            onChange={(e) => { setLocation(e.target.value); resetPage(); }}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("filters.skillsLabel")} htmlFor="agent-jobs-sheet-skills">
+          <Input
+            id="agent-jobs-sheet-skills"
+            placeholder={t("filters.skillsPlaceholder")}
+            value={skills}
+            onChange={(e) => { setSkills(e.target.value); resetPage(); }}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {view === "all" && facets.industries.length > 0 && (
         <IndustryChips
@@ -525,9 +724,42 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
       {loadFailed && !loading ? (
         <ErrorState onRetry={() => void loadJobs()} />
       ) : (
-        <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+        <>
+        {/* Mounted on phones only (isPhone is false in jsdom and during
+            hydration), so the table stays the one list in tests. */}
+        {isPhone && <PhoneRecordList
+          className="sm:hidden"
+          label={t("table.title")}
+          loading={loading}
+          empty={emptyState}
+          items={jobs.map((job) => {
+            const jobHref = view === "all" ? `/${locale}/jobs/${job._id}` : `/${locale}/agent/jobs/${job._id}`;
+            const companyName = job.employerId?.companyName;
+            const place = locationText(job.location);
+            return {
+              key: job._id,
+              href: jobHref,
+              title: <span dir="auto">{job.title}</span>,
+              subtitle: companyName ? <span dir="auto">{companyName}</span> : undefined,
+              // Every portal job is active; only My jobs needs the badge.
+              trailing: view === "my" ? <StatusBadge status={job.status} label={statusLabel(job.status)} /> : undefined,
+              actions: view !== "my" && job.status !== "active" ? undefined : jobActions(job, jobHref),
+              meta: (
+                <p className="flex min-w-0 items-center gap-3">
+                  <IconText icon={job.location?.isRemote ? Globe : MapPin} title={place} className="shrink">{place}</IconText>
+                  {job.category && <IconText icon={Tag} title={job.category} className="shrink-[2]">{job.category}</IconText>}
+                </p>
+              ),
+              stats: [
+                { label: t("table.applicants"), value: formatCount(applicantsOf(job)) },
+                { label: t("table.posted"), value: formatListDate(job.createdAt, locale) },
+              ],
+            };
+          })}
+        />}
+        <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
           <div className="overflow-x-auto">
-            <Table className="compact-phone-cards">
+            <Table className="compact-phone-cards" data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("table.title")}</TableHead>
@@ -548,24 +780,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
                 ) : jobs.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={COLUMN_COUNT} className="p-0">
-                      <EmptyState
-                        icon={Inbox}
-                        title={hasActiveFilters ? t("empty.title") : t("empty.noneTitle")}
-                        description={hasActiveFilters ? t("empty.description") : t("empty.noneDescription")}
-                        className="rounded-none border-0 bg-transparent"
-                        action={hasActiveFilters ? (
-                          <Button variant="outline" onClick={resetFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
-                            {t("filters.clear")}
-                          </Button>
-                        ) : (
-                          <Button asChild className="min-h-11 gap-2 rounded-xl px-4 text-sm font-semibold sm:min-h-9">
-                            <Link href={`/${locale}/agent/jobs/new`}>
-                              <Plus className="h-4 w-4" aria-hidden="true" />
-                              {t("postJob")}
-                            </Link>
-                          </Button>
-                        )}
-                      />
+                      {emptyState}
                     </TableCell>
                   </TableRow>
                 ) : jobs.map((job) => {
@@ -614,27 +829,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
                         <IconText icon={CalendarDays}>{formatListDate(job.createdAt, locale)}</IconText>
                       </TableCell>
                       <TableCell className="text-right">
-                        <RowActions
-                          name={job.title}
-                          // Labels only from 1440: at 1280 they pushed Actions out of the panel.
-                          labelsFrom="wide"
-                          quick={view === "my" && job.status === "draft" ? [
-                            // A draft has no candidates yet: its next step is finishing it.
-                            { key: "continue", label: tJobs("continueDraftButton"), icon: Edit2, href: `/${locale}/agent/jobs/${job._id}/edit` },
-                            { key: "view", label: t("actions.viewJob"), icon: Eye, iconOnly: true, href: jobHref },
-                          ] : [
-                            ...(view === "my" ? [{ key: "candidates", label: t("actions.viewCandidates"), icon: Users, href: `/${locale}/agent/candidates?jobId=${job._id}` }] : []),
-                            { key: "view", label: t("actions.viewJob"), icon: Eye, iconOnly: true, href: jobHref },
-                            ...(job.status === "active" ? [{ key: "share", label: t("share.title"), icon: Share2, iconOnly: true, onSelect: () => setShareJob(job) }] : []),
-                          ]}
-                          menu={view === "my" ? [
-                            ...(job.status !== "draft" && job.status !== "closed" ? [{ key: "edit", label: tJobs("editButton"), icon: Edit2, href: `/${locale}/agent/jobs/${job._id}/edit` }] : []),
-                            ...(job.status === "draft" ? [
-                              { key: "publish", label: draftActions.isPending(job._id, "publish") ? tJobs("publishingButton") : tJobs("publishButton"), icon: Send, pending: draftActions.isPending(job._id, "publish"), disabled: draftActions.isPending(job._id, "publish"), onSelect: () => { void draftActions.publish(job._id); } },
-                              { key: "delete", label: draftActions.isPending(job._id, "delete") ? tJobs("deletingButton") : tJobs("deleteButton"), icon: Trash2, destructive: true, pending: draftActions.isPending(job._id, "delete"), disabled: draftActions.isPending(job._id, "delete"), onSelect: () => { void draftActions.discard(job._id); } },
-                            ] : []),
-                          ] : []}
-                        />
+                        {jobActions(job, jobHref)}
                       </TableCell>
                     </TableRow>
                   );
@@ -643,6 +838,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
             </Table>
           </div>
         </section>
+        </>
       )}
 
       {total > 0 && (

@@ -303,9 +303,9 @@ export function TeamAllocationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col gap-0 overflow-hidden p-0">
         {/* Header */}
-        <DialogHeader className="flex-shrink-0 panel-head">
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <SplitSquareVertical className="h-5 w-5 text-sky-600" />
+        <DialogHeader className="flex-shrink-0 panel-head max-sm:pe-12 max-sm:text-start">
+          <DialogTitle className="flex items-center gap-2 text-lg max-sm:items-start max-sm:text-base">
+            <SplitSquareVertical className="h-5 w-5 shrink-0 text-sky-600 max-sm:mt-0.5" />
             {t("distributeTargetsToAgents")}
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
@@ -314,7 +314,7 @@ export function TeamAllocationDialog({
         </DialogHeader>
 
         {/* Body */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 max-sm:px-4">
           <div className="space-y-4">
             {/* Budget summary */}
             <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 chip-pad">
@@ -329,7 +329,7 @@ export function TeamAllocationDialog({
                   </span>
                   <Badge
                     variant={budgetStatus === "over" ? "destructive" : budgetStatus === "not-set" ? "outline" : "success"}
-                    className="h-4 px-1 text-[9px]"
+                    className="h-4 px-1 text-[9px] max-sm:h-5 max-sm:px-1.5 max-sm:text-[11px]"
                   >
                     {budgetStatus === "over" ? t("over") : budgetStatus === "not-set" ? t("noBudget") : budgetStatus === "full" ? t("full") : t("withinBudget")}
                   </Badge>
@@ -373,14 +373,14 @@ export function TeamAllocationDialog({
             </div>
 
             {/* Search bar */}
-            <div className="relative max-w-xs">
+            <div className="relative max-w-xs max-sm:max-w-none">
               <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={filterName}
                 onChange={(e) => setFilterName(e.target.value)}
                 placeholder={t("searchAgents")}
                 aria-label={t("searchAgents")}
-                className="h-8 rounded-lg border-border bg-background ps-8 text-xs"
+                className="h-8 rounded-lg border-border bg-background ps-8 text-xs max-sm:h-10 max-sm:text-sm"
               />
             </div>
 
@@ -397,8 +397,8 @@ export function TeamAllocationDialog({
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-border/70 bg-muted/40">
+                  <table data-mobile-table="scroll" className="w-full text-sm max-sm:block">
+                    <thead className="border-b border-border/70 bg-muted/40 max-sm:hidden">
                       <tr>
                         <th className="w-[30%] px-4 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {t("agent")}
@@ -414,7 +414,7 @@ export function TeamAllocationDialog({
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-border/50">
+                    <tbody className="divide-y divide-border/50 max-sm:block">
                       {filteredAgents.length === 0 ? (
                         <tr>
                           <td colSpan={4} className="px-4 py-10 text-center text-sm text-muted-foreground">
@@ -444,18 +444,18 @@ export function TeamAllocationDialog({
                       )}
                     </tbody>
                     {/* Totals + Remaining */}
-                    <tfoot className="border-t-2 border-border bg-muted/30">
-                      <tr>
-                        <td className="px-4 py-2.5 text-sm font-semibold text-foreground">
+                    <tfoot className="border-t-2 border-border bg-muted/30 max-sm:block">
+                      <tr className="max-sm:flex max-sm:items-center max-sm:justify-between max-sm:gap-3 max-sm:px-3 max-sm:py-2.5">
+                        <td className="px-4 py-2.5 text-sm font-semibold text-foreground max-sm:p-0">
                           {t("total")} ({t("agentCount", { count: validRows.length })})
                         </td>
-                        <td className="px-3 py-2.5 text-center text-sm font-bold tabular-nums text-foreground" colSpan={3}>
+                        <td className="px-3 py-2.5 text-center text-sm font-bold tabular-nums text-foreground max-sm:p-0 max-sm:text-end" colSpan={3}>
                           {money(allocatedCents / 100)}
                         </td>
                       </tr>
-                      <tr className="bg-muted/10">
-                        <td className="px-4 py-2 text-xs text-muted-foreground">{t("remaining")}</td>
-                        <td className={`px-3 py-2 text-center text-xs font-semibold tabular-nums ${overBudget ? "text-red-500" : "text-emerald-600"}`} colSpan={3}>
+                      <tr className="bg-muted/10 max-sm:flex max-sm:items-center max-sm:justify-between max-sm:gap-3 max-sm:px-3 max-sm:py-2">
+                        <td className="px-4 py-2 text-xs text-muted-foreground max-sm:p-0">{t("remaining")}</td>
+                        <td className={`px-3 py-2 max-sm:p-0 max-sm:text-end text-center text-xs font-semibold tabular-nums ${overBudget ? "text-red-500" : "text-emerald-600"}`} colSpan={3}>
                           {money(remainingCents / 100)}
                         </td>
                       </tr>
@@ -468,8 +468,8 @@ export function TeamAllocationDialog({
         </div>
 
         {/* Footer */}
-        <DialogFooter className="flex-shrink-0 border-t border-border/60 bg-background px-5 py-3 sm:justify-between">
-          <div className="flex min-h-7 flex-1 items-center text-[11px] text-muted-foreground">
+        <DialogFooter className="flex-shrink-0 border-t border-border/60 bg-background px-5 py-3 sm:justify-between max-sm:flex-col max-sm:gap-2 max-sm:px-4">
+          <div className="flex min-h-7 flex-1 items-center text-[11px] text-muted-foreground max-sm:min-h-0 max-sm:empty:hidden">
             {!supervisorProfile ? (
               <span className="text-red-500">{t("noSupervisorProfile")}</span>
             ) : overBudget ? (
@@ -480,7 +480,7 @@ export function TeamAllocationDialog({
               <span>{t("summaryLine", { count: validRows.length, mode: t(mode) })}</span>
             ) : null}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:[&>button]:h-11">
             <Button variant="outline" size="dense" onClick={() => onOpenChange(false)}>
               {t("cancel")}
             </Button>
@@ -532,15 +532,16 @@ function AgentTargetRow({
 
   return (
     <>
-      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
-        <td className="px-4 py-2.5">
+      <tr className={`transition-colors max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:items-end max-sm:gap-x-2 max-sm:gap-y-2 max-sm:px-3 max-sm:py-3 ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
+        <td className="px-4 py-2.5 max-sm:col-span-2 max-sm:p-0">
           <div>
             <p className="text-sm font-medium text-foreground">{agent.name}</p>
-            <p className="text-[11px] text-muted-foreground">{agent.email}</p>
+            <p className="text-[11px] text-muted-foreground max-sm:break-all">{agent.email}</p>
           </div>
         </td>
 
-        <td className="px-3 py-2.5">
+        <td className="px-3 py-2.5 max-sm:p-0">
+          <span aria-hidden="true" className="mb-1 block text-[11px] font-medium text-muted-foreground sm:hidden">{t("profitTarget")}</span>
           <div className="relative">
             <Input
               type="number"
@@ -551,7 +552,7 @@ function AgentTargetRow({
               value={row.profitTarget || ""}
               onChange={(e) => onUpdateTarget(agent._id, Number(e.target.value) || 0)}
               placeholder="0"
-              className="h-9 w-full rounded-lg border-border bg-background pe-12 text-center text-sm tabular-nums"
+              className="h-9 w-full rounded-lg border-border bg-background pe-12 text-center text-sm tabular-nums max-sm:h-11"
               disabled={disabled}
             />
             <span className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 text-[11px] font-medium text-muted-foreground">
@@ -560,7 +561,7 @@ function AgentTargetRow({
           </div>
         </td>
 
-        <td className="px-3 py-2.5">
+        <td className="px-3 py-2.5 max-sm:order-last max-sm:col-span-2 max-sm:p-0">
           <ScheduleControls
             draft={row.draft}
             year={year}
@@ -571,13 +572,13 @@ function AgentTargetRow({
           {hasTarget && issue ? <p role="alert" className="mt-1 text-[11px] font-medium text-rose-600">{issue}</p> : null}
         </td>
 
-        <td className="px-3 py-2.5 text-center">
+        <td className="px-3 py-2.5 text-center max-sm:p-0">
           <Button
             type="button"
             aria-label={t("toggleSchedule")}
             variant={row.showSchedule ? "default" : "outline"}
             size="dense"
-            className="gap-1 rounded-lg text-xs"
+            className="gap-1 rounded-lg text-xs max-sm:h-11 max-sm:px-3"
             onClick={() => onToggleSchedule(agent._id)}
             disabled={!hasTarget}
           >
@@ -588,8 +589,8 @@ function AgentTargetRow({
       </tr>
 
       {row.showSchedule && hasTarget && (
-        <tr className="bg-muted/10">
-          <td colSpan={4} className="px-4 py-3">
+        <tr className="bg-muted/10 max-sm:block">
+          <td colSpan={4} className="px-4 py-3 max-sm:block max-sm:px-3">
             <SchedulePeriodsEditor
               draft={row.draft}
               year={year}

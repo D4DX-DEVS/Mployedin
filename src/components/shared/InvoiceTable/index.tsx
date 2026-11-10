@@ -1,10 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Eye, Inbox } from "lucide-react";
+import { Building2, Calendar, Eye, Inbox, User } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RowActions } from "@/components/shared/RowActions";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -152,9 +153,82 @@ export function InvoiceTable({ invoices, loading, role, onSelect, hasActiveFilte
     },
   ];
 
+  const emptyState = (
+    <EmptyState
+      icon={Inbox}
+      title={hasActiveFilters ? t("noResultsTitle") : t("emptyTitle")}
+      description={
+        hasActiveFilters
+          ? t("noResultsDescription")
+          : role === "agent" ? t("emptyDescriptionAgent") : t("emptyDescriptionSuperAgent")
+      }
+      className="rounded-none border-none"
+    />
+  );
+
+  const money = (inv: InvoiceTableInvoice, amount: number | undefined) => `${inv.currency} ${formatCount(amount ?? 0)}`;
+
   return (
-    <div className="overflow-x-auto">
-      <Table className="responsive-card-table">
+    <>
+    <PhoneRecordList
+      className="p-3 sm:hidden"
+      label={t("listLabel")}
+      loading={loading}
+      empty={emptyState}
+      items={invoices.map((inv) => {
+        const myComm = inv.commissions?.find((c) => c.role === role);
+        return {
+          key: `invoice-table-${inv._id}`,
+          title: <span className="font-mono">{inv.invoiceNumber}</span>,
+          subtitle: (
+            <span className="flex min-w-0 items-center gap-1">
+              <Building2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">
+                {[inv.employerId?.companyName ?? "—", inv.jobId?.title].filter(Boolean).join(" · ")}
+              </span>
+            </span>
+          ),
+          trailing: <StatusBadge status={inv.status} />,
+          actions: (
+            <RowActions
+              name={inv.invoiceNumber}
+              quick={[
+                { key: "view", label: tc("view"), icon: Eye, iconOnly: true, onSelect: () => onSelect(inv._id) },
+              ]}
+            />
+          ),
+          meta: (
+            <>
+              {role === "super_agent" && (
+                <p className="flex min-w-0 items-center gap-1">
+                  <User className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{t("agent")}: {inv.agentId?.name ?? inv.agentId?.email ?? "—"}</span>
+                </p>
+              )}
+              <p className="flex min-w-0 items-center gap-1">
+                <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">
+                  {t("dueDate")}: {inv.dueDate ? formatDate(new Date(inv.dueDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                  {inv.category ? <span className="capitalize"> · {inv.category.replace(/_/g, " ")}</span> : null}
+                </span>
+              </p>
+              {myComm && (
+                <p className="font-medium text-primary">
+                  {t("commission")}: {myComm.rate}% = {inv.currency} {formatCount(myComm.amount)}
+                </p>
+              )}
+            </>
+          ),
+          stats: [
+            { label: t("total"), value: money(inv, inv.totalAmount) },
+            { label: t("paid"), value: <span className="text-emerald-600">{money(inv, inv.paidAmount)}</span> },
+            { label: t("balance"), value: <span className="text-amber-600">{money(inv, inv.balanceDue)}</span> },
+          ],
+        };
+      })}
+    />
+    <div className="overflow-x-auto max-sm:hidden">
+      <Table className="responsive-card-table" data-mobile-table="scroll">
         <TableHeader>
           <TableRow className="bg-muted/30 hover:bg-muted/30">
             {columns.map((col) => (
@@ -168,16 +242,7 @@ export function InvoiceTable({ invoices, loading, role, onSelect, hasActiveFilte
           ) : invoices.length === 0 ? (
             <TableRow className="border-border/70 hover:bg-transparent">
               <TableCell colSpan={columns.length} className="p-0">
-                <EmptyState
-                  icon={Inbox}
-                  title={hasActiveFilters ? t("noResultsTitle") : t("emptyTitle")}
-                  description={
-                    hasActiveFilters
-                      ? t("noResultsDescription")
-                      : role === "agent" ? t("emptyDescriptionAgent") : t("emptyDescriptionSuperAgent")
-                  }
-                  className="rounded-none border-none"
-                />
+                {emptyState}
               </TableCell>
             </TableRow>
           ) : (
@@ -205,5 +270,6 @@ export function InvoiceTable({ invoices, loading, role, onSelect, hasActiveFilte
         </TableBody>
       </Table>
     </div>
+    </>
   );
 }

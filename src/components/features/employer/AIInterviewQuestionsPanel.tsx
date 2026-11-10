@@ -314,6 +314,7 @@ export function AIInterviewQuestionsPanel({
               options={["5", "8", "10", "15"].map((n) => ({ value: n, label: n }))}
               value={count}
               onValueChange={setCount}
+              ariaLabel={t("questions")}
             />
             <Button
               size="sm" className="h-7 text-xs gap-1.5 flex-1"

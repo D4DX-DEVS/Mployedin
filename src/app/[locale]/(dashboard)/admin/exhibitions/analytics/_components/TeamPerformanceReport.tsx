@@ -196,7 +196,7 @@ export function TeamPerformanceReport({ teams }: { teams: TeamRow[] }) {
           <Button variant="link" size="sm" onClick={() => setQuery("")}>{t("clearSearch")}</Button>
         </div>
       ) : (
-        <div className="scrollbar-none max-h-[36rem] overflow-auto overscroll-contain rounded-xl border border-border/60">
+        <div className="scrollbar-none max-h-[36rem] overflow-auto overscroll-contain rounded-xl border border-border/60 max-sm:max-h-none max-sm:rounded-none max-sm:border-0">
           <table className="w-full caption-bottom border-collapse text-sm">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">

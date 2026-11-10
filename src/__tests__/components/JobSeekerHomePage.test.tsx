@@ -143,6 +143,10 @@ const translations: Record<string, unknown> = {
 };
 
 // The save toggle reads react-query; this suite is about the page's layout.
+// The phone stat tiles read the saved-job ids; the test renders without a QueryClient.
+jest.mock("@/components/features/job-seeker/saved/useSavedJobs", () => ({
+  useSavedJobIds: () => ({ ids: new Set<string>(), ready: false }),
+}));
 jest.mock("@/components/features/job-seeker/saved/SaveJobButton", () => ({
   SaveJobButton: ({ jobId }: { jobId: string }) => <button type="button" data-testid={`save-${jobId}`} />,
 }));

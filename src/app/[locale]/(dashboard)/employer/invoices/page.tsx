@@ -1026,6 +1026,7 @@ export default function EmployerInvoicesPage() {
           value={statusFilter || "all"}
           onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
           placeholder={t("allStatuses")}
+          ariaLabel={t("status")}
         />
       </InlineFilterBar>
 

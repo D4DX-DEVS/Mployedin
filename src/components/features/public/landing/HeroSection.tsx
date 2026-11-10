@@ -114,7 +114,9 @@ export function HeroSection({ locale, audience, onAudienceChange }: HeroSectionP
                 />
               </label>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap gap-2">
+                {/* Phones: the examples are one scrolling row (they stacked one per
+                    line), and Find jobs spans the card. */}
+                <div className="flex flex-wrap gap-2 max-sm:-mx-3.5 max-sm:w-[calc(100%+1.75rem)] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-3.5 max-sm:pb-1 max-sm:[scrollbar-width:none]">
                   {examples.map((example) => (
                     <button
                       key={example}
@@ -123,13 +125,13 @@ export function HeroSection({ locale, audience, onAudienceChange }: HeroSectionP
                         edit(example);
                         textareaRef.current?.focus();
                       }}
-                      className="min-h-10 rounded-full border border-border/70 bg-muted/40 px-3.5 text-xs font-semibold text-foreground/80 transition-colors hover:border-primary/30 hover:text-primary"
+                      className="min-h-10 shrink-0 whitespace-nowrap rounded-full border border-border/70 bg-muted/40 px-3.5 text-xs font-semibold text-foreground/80 transition-colors hover:border-primary/30 hover:text-primary"
                     >
                       {example}
                     </button>
                   ))}
                 </div>
-                <Button type="submit" size="lg" className="gap-2 rounded-xl font-bold">
+                <Button type="submit" size="lg" className="gap-2 rounded-xl font-bold max-sm:w-full">
                   <Search className="h-4 w-4" aria-hidden="true" />
                   {t("findJobs2")}
                 </Button>

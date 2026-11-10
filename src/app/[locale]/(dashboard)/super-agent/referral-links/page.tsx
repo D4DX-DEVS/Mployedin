@@ -60,9 +60,11 @@ import {
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions } from "@/components/shared/RowActions";
 import { RowExpandToggle, isRowToggleClick } from "@/components/shared/RowExpandToggle";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -124,6 +126,7 @@ export default function SuperAgentReferralLinksPage() {
   const [aiQuery, setAiQuery] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState("");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   // Create form state
   const [newLabel, setNewLabel] = useState("");
@@ -228,6 +231,37 @@ export default function SuperAgentReferralLinksPage() {
   };
 
   const hasActiveFilters = !!(statusFilter || creatorRoleFilter || audienceFilter || dateFrom || dateTo || sortBy || search);
+  // Phones: the filters the sheet holds (sort does not count).
+  const phoneFilterCount = [statusFilter, creatorRoleFilter, audienceFilter, dateFrom, dateTo].filter(Boolean).length;
+  // Shared by the More panel and the phone filter sheet.
+  const statusSelectOptions = [
+    { value: "all", label: t("filterAllStatuses") },
+    { value: "active", label: t("statusActive") },
+    { value: "expired", label: t("statusExpired") },
+    { value: "maxed", label: t("statusLimitReached") },
+    { value: "inactive", label: t("statusDisabled") },
+  ];
+  const creatorRoleOptions = [
+    { value: "all", label: t("filterAllRoles") },
+    { value: "super_agent", label: t("roleSuperAgent") },
+    { value: "agent", label: t("roleAgent") },
+  ];
+  const audienceOptions = [
+    { value: "all", label: t("filterAudienceAll") },
+    { value: "employer", label: t("audienceEmployer") },
+    { value: "job_seeker", label: t("audienceJobSeeker") },
+  ];
+  const sortSelectOptions = [
+    { value: "newest", label: t("sortNewestFirst") },
+    { value: "usedCount", label: t("sortMostUsed") },
+    { value: "code", label: t("sortCodeAZ") },
+    { value: "label", label: t("sortLabelAZ") },
+  ];
+  const sortOrderOptions = [
+    { value: "default", label: t("sortDefault") },
+    { value: "desc", label: t("sortDescending") },
+    { value: "asc", label: t("sortAscending") },
+  ];
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("tableHeadCode"), key: "code" },
@@ -363,6 +397,8 @@ export default function SuperAgentReferralLinksPage() {
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPdf}
             onClear={hasActiveFilters ? handleClearFilters : undefined}
+            moreToggleClassName="max-sm:hidden"
+            moreClassName="max-sm:hidden"
             more={(
               <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
                 <div className="grid min-w-0 flex-[1_1_100%] gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -373,11 +409,7 @@ export default function SuperAgentReferralLinksPage() {
                       <SelectValue placeholder={t("filterAllStatuses")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t("filterAllStatuses")}</SelectItem>
-                      <SelectItem value="active">{t("statusActive")}</SelectItem>
-                      <SelectItem value="expired">{t("statusExpired")}</SelectItem>
-                      <SelectItem value="maxed">{t("statusLimitReached")}</SelectItem>
-                      <SelectItem value="inactive">{t("statusDisabled")}</SelectItem>
+                      {statusSelectOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -388,9 +420,7 @@ export default function SuperAgentReferralLinksPage() {
                       <SelectValue placeholder={t("filterAllRoles")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t("filterAllRoles")}</SelectItem>
-                      <SelectItem value="super_agent">{t("roleSuperAgent")}</SelectItem>
-                      <SelectItem value="agent">{t("roleAgent")}</SelectItem>
+                      {creatorRoleOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -401,9 +431,7 @@ export default function SuperAgentReferralLinksPage() {
                       <SelectValue placeholder={t("filterAudienceAll")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t("filterAudienceAll")}</SelectItem>
-                      <SelectItem value="employer">{t("audienceEmployer")}</SelectItem>
-                      <SelectItem value="job_seeker">{t("audienceJobSeeker")}</SelectItem>
+                      {audienceOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -422,10 +450,7 @@ export default function SuperAgentReferralLinksPage() {
                       <SelectValue placeholder={t("sortNewestFirst")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="newest">{t("sortNewestFirst")}</SelectItem>
-                      <SelectItem value="usedCount">{t("sortMostUsed")}</SelectItem>
-                      <SelectItem value="code">{t("sortCodeAZ")}</SelectItem>
-                      <SelectItem value="label">{t("sortLabelAZ")}</SelectItem>
+                      {sortSelectOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -436,9 +461,7 @@ export default function SuperAgentReferralLinksPage() {
                       <SelectValue placeholder={t("sortDefault")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="default">{t("sortDefault")}</SelectItem>
-                      <SelectItem value="desc">{t("sortDescending")}</SelectItem>
-                      <SelectItem value="asc">{t("sortAscending")}</SelectItem>
+                      {sortOrderOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -457,7 +480,11 @@ export default function SuperAgentReferralLinksPage() {
               value={search}
               onChange={(v) => { setSearch(v); pagination.resetPage(); }}
               placeholder={t("tableSearchPlaceholder")}
+              className="max-sm:basis-0"
             />
+            <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+            {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+            <div className="contents max-sm:hidden">
             {/* Natural-language box beside the plain search (was a second card
                 stacked above the toolbar with the right half of the row empty). */}
             <div className="relative min-w-0 flex-[2_1_14rem]">
@@ -480,14 +507,102 @@ export default function SuperAgentReferralLinksPage() {
                 <span className="hidden sm:inline">{t("aiSearchButton")}</span>
               </button>
             </div>
+            </div>
           </InlineFilterBar>
+
+          <PhoneFilterSheet
+            open={filterSheetOpen}
+            onOpenChange={setFilterSheetOpen}
+            activeCount={phoneFilterCount}
+            onClear={handleClearFilters}
+          >
+            <FilterField label={t("filterSortBy")} htmlFor="sa-referral-sheet-sort-by">
+              <Select value={sortBy || "newest"} onValueChange={(v) => { setSortBy(v === "newest" ? "" : (v as ReferralSortField)); pagination.resetPage(); }}>
+                <SelectTrigger id="sa-referral-sheet-sort-by" className={SHEET_CONTROL}>
+                  <SelectValue placeholder={t("sortNewestFirst")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortSelectOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FilterField>
+            <FilterField label={t("filterSortOrder")} htmlFor="sa-referral-sheet-sort-order">
+              <Select value={sortOrder || "default"} onValueChange={(v) => { setSortOrder(v === "default" ? "" : (v as "asc" | "desc")); pagination.resetPage(); }}>
+                <SelectTrigger id="sa-referral-sheet-sort-order" className={SHEET_CONTROL}>
+                  <SelectValue placeholder={t("sortDefault")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOrderOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FilterField>
+            <FilterField label={t("aiSearchButton")} htmlFor="sa-referral-sheet-ai">
+              <div className="flex gap-2">
+                <Input
+                  id="sa-referral-sheet-ai"
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
+                  placeholder={t("aiSearchPlaceholder")}
+                  className={`${SHEET_CONTROL} min-w-0 flex-1`}
+                />
+                <button
+                  type="button"
+                  onClick={handleAiSearch}
+                  disabled={aiLoading || !aiQuery.trim()}
+                  className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-purple-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {t("aiSearchButton")}
+                </button>
+              </div>
+            </FilterField>
+            <FilterField label={tc("status")} htmlFor="sa-referral-sheet-status">
+              <Select value={statusFilter || "all"} onValueChange={(v) => { setStatusFilter(v === "all" ? "" : (v as ReferralLinkStatus)); pagination.resetPage(); }}>
+                <SelectTrigger id="sa-referral-sheet-status" className={SHEET_CONTROL}>
+                  <SelectValue placeholder={t("filterAllStatuses")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusSelectOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FilterField>
+            <FilterField label={t("filterCreatorRole")} htmlFor="sa-referral-sheet-creator">
+              <Select value={creatorRoleFilter || "all"} onValueChange={(v) => { setCreatorRoleFilter(v === "all" ? "" : (v as ReferralCreatorRole)); pagination.resetPage(); }}>
+                <SelectTrigger id="sa-referral-sheet-creator" className={SHEET_CONTROL}>
+                  <SelectValue placeholder={t("filterAllRoles")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {creatorRoleOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FilterField>
+            <FilterField label={t("audienceLabel")} htmlFor="sa-referral-sheet-audience">
+              <Select value={audienceFilter || "all"} onValueChange={(v) => { setAudienceFilter(v === "all" ? "" : (v as ReferralAudience)); pagination.resetPage(); }}>
+                <SelectTrigger id="sa-referral-sheet-audience" className={SHEET_CONTROL}>
+                  <SelectValue placeholder={t("filterAudienceAll")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {audienceOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FilterField>
+            <FilterField label={t("filterDateFrom")} htmlFor="sa-referral-sheet-date-from">
+              <DateTimePicker id="sa-referral-sheet-date-from" mode="date" value={dateFrom} onChange={(v) => { setDateFrom(v); pagination.resetPage(); }} className="w-full" />
+            </FilterField>
+            <FilterField label={t("filterDateTo")} htmlFor="sa-referral-sheet-date-to">
+              <DateTimePicker id="sa-referral-sheet-date-to" mode="date" value={dateTo} onChange={(v) => { setDateTo(v); pagination.resetPage(); }} className="w-full" />
+            </FilterField>
+          </PhoneFilterSheet>
       </div>
 
       {/* Links table */}
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
       {isLoading ? (
-        <div className="overflow-x-auto">
-          <Table>
+        <>
+        <PhoneRecordList className="sm:hidden" label={t("pageTitle")} loading items={[]} />
+        <div className="overflow-x-auto max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeadCode")}</TableHead>
@@ -505,13 +620,116 @@ export default function SuperAgentReferralLinksPage() {
             </TableBody>
           </Table>
         </div>
+        </>
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : links.length === 0 ? (
         <EmptyState title={t("emptyStateTitle")} description={t("emptyStateDescription")} icon={Link2} />
       ) : (
-        <div className="overflow-x-auto">
-          <Table>
+        <>
+        <PhoneRecordList
+          className="sm:hidden p-2"
+          label={t("pageTitle")}
+          items={links.map((link) => {
+            const status = linkStatus(link);
+            const isExpanded = expandedId === link._id;
+            return {
+              key: link._id,
+              leading: <UserAvatar name={creatorName(link)} className="h-10 w-10" colorful />,
+              title: <span className="font-mono">{link.code}</span>,
+              subtitle: [creatorName(link), link.label].filter(Boolean).join(" · "),
+              actions: (
+                <>
+                  <RowActions
+                    name={link.code}
+                    quick={[
+                      {
+                        key: "copy",
+                        label: copyMap[link.code] ? t("copiedButtonText") : t("copyButtonText"),
+                        icon: copyMap[link.code] ? Check : Copy,
+                        onSelect: () => handleCopy(link),
+                      },
+                    ]}
+                    menu={[
+                      {
+                        key: "toggle",
+                        label: link.isActive ? t("disableButton") : t("enableButton"),
+                        icon: link.isActive ? PowerOff : Power,
+                        destructive: link.isActive,
+                        pending: updateMutation.isPending,
+                        disabled: updateMutation.isPending,
+                        onSelect: () => { void handleToggleActive(link); },
+                      },
+                      ...(link.usedCount === 0 && link.creatorRole === "super_agent" ? [{
+                        key: "delete",
+                        label: t("deleteButton"),
+                        icon: Trash2,
+                        destructive: true,
+                        pending: deleteMutation.isPending,
+                        disabled: deleteMutation.isPending,
+                        onSelect: () => { void handleDeleteLink(link); },
+                      }] : []),
+                    ]}
+                  />
+                  <RowExpandToggle
+                    expanded={isExpanded}
+                    onToggle={() => setExpandedId(isExpanded ? null : link._id)}
+                  />
+                </>
+              ),
+              meta: (
+                <>
+                  <p className="flex min-w-0 items-center gap-1">
+                    <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{t("tableHeadExpires")}: {formatDate(link.expiresAt, { day: "2-digit", month: "short", year: "numeric" })}</span>
+                  </p>
+                  {isExpanded && (
+                    <div className="mt-2 space-y-1 rounded-lg bg-secondary/30 p-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">
+                        {t("registrationsLabel", { count: link.registrations.length })}
+                      </p>
+                      {link.registrations.length === 0 ? (
+                        <p>{t("noRegistrationsYet")}</p>
+                      ) : link.registrations.map((reg, i) => (
+                        <p key={i} className="truncate">
+                          <span className="font-medium text-foreground">{registrationDisplayName(reg)}</span>
+                          {" · "}{reg.email}
+                          {reg.country ? ` · ${reg.city ? `${reg.city}, ` : ""}${reg.country}` : ""}
+                          {" · "}{formatDate(reg.registeredAt, { day: "2-digit", month: "short", year: "numeric" })}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ),
+              badges: (
+                <>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                    status === "active" ? "bg-emerald-100 text-emerald-700" :
+                    status === "expired" ? "bg-amber-100 text-amber-700" :
+                    status === "maxed" ? "bg-orange-100 text-orange-700" :
+                    "bg-red-100 text-red-700"
+                  }`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${
+                      status === "active" ? "bg-emerald-500" :
+                      status === "expired" ? "bg-amber-500" :
+                      status === "maxed" ? "bg-orange-500" :
+                      "bg-red-500"
+                    }`} />
+                    {statusLabel(status, t)}
+                  </span>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                    {link.creatorRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")}
+                  </span>
+                  <ReferralAudienceChip audience={link.audience} namespace="superAgentReferralLinks" />
+                </>
+              ),
+              stats: [{ label: t("tableHeadUsed"), value: `${link.usedCount}${link.maxUses > 0 ? `/${link.maxUses}` : ""}` }],
+            };
+          })}
+        />
+        <div className="overflow-x-auto max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeadCode")}</TableHead>
@@ -669,6 +887,7 @@ export default function SuperAgentReferralLinksPage() {
             </TableBody>
           </Table>
         </div>
+        </>
       )}
       </section>
 

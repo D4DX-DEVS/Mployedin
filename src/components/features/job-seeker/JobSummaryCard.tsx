@@ -50,6 +50,12 @@ interface JobSummaryCardProps {
   showMatchScore?: boolean;
   /** Extra pill rendered next to the title, e.g. an application status. */
   statusSlot?: ReactNode;
+  /**
+   * Phones only: the save (bookmark) toggle pinned as a small icon in the
+   * card's top corner. Callers keep their own copy in `actions` wrapped in
+   * `max-sm:hidden`, so the desktop button order is unchanged.
+   */
+  bookmark?: ReactNode;
   className?: string;
 }
 
@@ -139,6 +145,7 @@ export function JobSummaryCard({
   actions,
   showMatchScore = true,
   statusSlot,
+  bookmark,
   className,
 }: JobSummaryCardProps) {
   const t = useTranslations("jobCard");
@@ -182,6 +189,7 @@ export function JobSummaryCard({
         className
       )}
     >
+      {bookmark && <div className="absolute end-2 top-2 z-10 sm:hidden [&>button]:min-h-11 [&>button]:w-11 [&>button]:border-0 [&>button]:bg-transparent [&>button]:px-0">{bookmark}</div>}
       <div className="flex min-w-0 items-start gap-3">
         {companyHref ? (
           <Link href={companyHref} aria-label={t("viewCompany", { company: companyName })} className="shrink-0">
@@ -197,16 +205,16 @@ export function JobSummaryCard({
             match score. */}
         <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0 flex-1">
-            <h3 className="min-w-0 text-[15px] font-semibold leading-5 text-foreground sm:text-base">
+            <h3 className={cn("min-w-0 text-[15px] font-semibold leading-5 text-foreground sm:text-base", bookmark && "max-sm:pe-9")}>
               <Link href={jobHref} className="line-clamp-1 transition-colors hover:text-primary">
                 {job.title}
               </Link>
             </h3>
-            <p className="mt-0.5 truncate text-sm text-muted-foreground">{companyName}</p>
+            <p className={cn("mt-0.5 truncate text-sm text-muted-foreground", bookmark && "max-sm:pe-9")}>{companyName}</p>
 
           {/* Meta — always one line. Phones scroll it rather than wrapping to a
               second row, which is what made cards different heights. */}
-          <div className="scrollbar-none mt-2 flex flex-nowrap items-center gap-x-3 gap-y-1 overflow-x-auto text-xs text-muted-foreground">
+          <div className="scrollbar-none mt-2 flex flex-nowrap items-center gap-x-3 gap-y-1 overflow-x-auto text-xs text-muted-foreground max-sm:flex-wrap max-sm:overflow-visible">
             <span className="inline-flex shrink-0 items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
               {formatLocalizedLocation(job.location ?? undefined, locale, {
@@ -270,8 +278,8 @@ export function JobSummaryCard({
 
           {/* Match, age and the surface's own buttons — one column on a wide
               screen, one wrapped row on a phone. */}
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 sm:flex-col sm:items-end sm:justify-start">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-end">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 max-sm:flex-nowrap sm:flex-col sm:items-end sm:justify-start">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-end">
               {statusSlot}
               {showMatchScore && typeof job.matchScore === "number" && (
                 <span

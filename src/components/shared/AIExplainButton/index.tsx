@@ -68,11 +68,14 @@ export function AIExplainButton({ rowData, entityLabel = "item", context }: AIEx
   return (
     <div className="relative">
       <button
+        type="button"
         onClick={explain}
         title={`AI explain this ${entityLabel}`}
+        aria-label={`AI explain this ${entityLabel}`}
+        data-icon-only=""
         className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-all"
       >
-        <Sparkles className="h-4 w-4" />
+        <Sparkles className="h-4 w-4" aria-hidden="true" />
       </button>
 
       {open && (

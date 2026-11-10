@@ -7,6 +7,10 @@ import userEvent from "@testing-library/user-event";
 import { formatDateTime } from "@/lib/ui/intlFormat";
 import { resolveViewerTimeZone, timeZoneLabel } from "@/lib/datetime/zone";
 
+// These tests cover the desktop table. jsdom applies no Tailwind, so the phone
+// card list (sm:hidden) would render beside it and repeat every name; its own
+// behaviour is covered in phoneRecordList.test.tsx.
+jest.mock("@/components/shared/PhoneRecordList", () => ({ PhoneRecordList: () => null }));
 jest.mock("@/hooks/useUrlFilter", () => ({ useUrlFilter: (_key: string, def: string) => React.useState(def) }));
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),

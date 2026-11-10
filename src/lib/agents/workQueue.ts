@@ -175,7 +175,9 @@ export async function getAgentQueueItems(scope: AgentScope, limit = 6): Promise<
           status: { $nin: ["cancelled", "rescheduled"] },
         })
           .select("_id scheduledAt jobSeekerId jobId")
-          .populate("jobSeekerId", "fullName")
+          // fullName is optional on JobSeeker; most seekers carry their name
+          // only on the linked User, which made every row read "Job Seeker".
+          .populate({ path: "jobSeekerId", select: "fullName userId", populate: { path: "userId", select: "name" } })
           .populate("jobId", "title")
           .sort({ scheduledAt: 1 })
           .limit(limit)
@@ -216,12 +218,12 @@ export async function getAgentQueueItems(scope: AgentScope, limit = 6): Promise<
     })),
     ...interviews.map((iv) => {
       const row = iv as Record<string, unknown>;
-      const seeker = row.jobSeekerId as { fullName?: string } | undefined;
+      const seeker = row.jobSeekerId as { fullName?: string; userId?: { name?: string } | null } | undefined;
       const job = row.jobId as { title?: string } | undefined;
       return {
         kind: "interviewOutcome" as const,
         id: String(row._id),
-        subject: seeker?.fullName ?? "",
+        subject: seeker?.fullName || seeker?.userId?.name || "",
         context: job?.title ?? "",
         daysLate: daysBetween(new Date(String(row.scheduledAt)), now),
         // Opens the outcome dialog for this interview — the list alone left
@@ -267,5 +269,18 @@ export async function getAgentQueueItems(scope: AgentScope, limit = 6): Promise<
   // outcomes kept it off a four-row list; it blocks an upcoming event, so it
   // goes first, taking at most half the rows.
   const pinned = sorted.filter((item) => item.kind === "exhibitionRevision").slice(0, Math.max(1, Math.floor(limit / 2)));
-  return [...pinned, ...sorted.filter((item) => !pinned.includes(item))].slice(0, limit);
+  // Months-old interviews also crowded tasks and follow-ups out entirely
+  // (8 overdue tasks, none listed), so no kind takes more than half the rows.
+  const perKind = Math.max(1, Math.ceil(limit / 2));
+  const taken: Partial<Record<AgentQueueKind, number>> = {};
+  const rest = sorted.filter((item) => !pinned.includes(item));
+  const spread = [...pinned, ...rest.filter((item) => {
+    const n = (taken[item.kind] ?? 0) + (item.kind === "exhibitionRevision" ? pinned.length : 0);
+    if (n >= perKind) return false;
+    taken[item.kind] = (taken[item.kind] ?? 0) + 1;
+    return true;
+  })];
+  // Top up from what was skipped if too few kinds are waiting.
+  for (const item of rest) if (spread.length < limit && !spread.includes(item)) spread.push(item);
+  return spread.slice(0, limit);
 }

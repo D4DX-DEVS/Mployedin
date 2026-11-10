@@ -24,6 +24,10 @@ const paginationState = {
    ?status=pending). The router mock moves jsdom's location so urlQuery's
    pending-write cache cannot leak one test's filter into the next. */
 const replaceMock = jest.fn((href: string) => window.history.replaceState({}, "", href));
+// These tests cover the desktop table. jsdom applies no Tailwind, so the phone
+// card list (sm:hidden) would render beside it and repeat every name; its own
+// behaviour is covered in phoneRecordList.test.tsx.
+jest.mock("@/components/shared/PhoneRecordList", () => ({ PhoneRecordList: () => null }));
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), replace: replaceMock }),
   usePathname: () => "/en/admin/commissions",

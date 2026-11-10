@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RESOURCE_FILE_TYPES } from "@/lib/resources/fileTypes";
 import { ResourceCard } from "./ResourceCard";
 import { ResourceDetailPanel } from "./ResourceDetailPanel";
@@ -57,6 +58,8 @@ interface ResourceLibraryProps {
  */
 export function ResourceLibrary({ manage, reloadKey = 0, onSummary }: ResourceLibraryProps = {}) {
   const t = useTranslations("resources");
+  const tCommon = useTranslations("common");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [items, setItems] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -133,20 +136,41 @@ export function ResourceLibrary({ manage, reloadKey = 0, onSummary }: ResourceLi
   });
 
   const filtered = category !== "all" || fileType !== "all" || search !== "" || sortBy !== "newest";
+  const phoneFilterCount = (category !== "all" ? 1 : 0) + (fileType !== "all" ? 1 : 0);
   const clearFilters = () => { setCategory("all"); setFileType("all"); setSearch(""); setSortBy("newest"); setPage(1); };
 
   return (
     <>
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={filtered ? clearFilters : undefined}
         clearLabel={t("clear")}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
-        <SearchableSelect id="resources-category" className={INLINE_FILTER_CONTROL} options={categoryOptions} value={category} onValueChange={withPageReset(setCategory)} placeholder={t("filterCategory")} ariaLabel={t("filterCategory")} />
-        <SearchableSelect id="resources-file-type" className={INLINE_FILTER_CONTROL} options={fileTypeOptions} value={fileType} onValueChange={withPageReset(setFileType)} placeholder={t("fileTypeLabel")} ariaLabel={t("fileTypeLabel")} />
-        <SearchableSelect id="resources-sort" className={INLINE_FILTER_CONTROL} options={sortOptions} value={sortBy} onValueChange={withPageReset(setSortBy)} placeholder={t("sortLabel")} ariaLabel={t("sortLabel")} />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect id="resources-category" className={INLINE_FILTER_CONTROL} options={categoryOptions} value={category} onValueChange={withPageReset(setCategory)} placeholder={t("filterCategory")} ariaLabel={t("filterCategory")} />
+          <SearchableSelect id="resources-file-type" className={INLINE_FILTER_CONTROL} options={fileTypeOptions} value={fileType} onValueChange={withPageReset(setFileType)} placeholder={t("fileTypeLabel")} ariaLabel={t("fileTypeLabel")} />
+          <SearchableSelect id="resources-sort" className={INLINE_FILTER_CONTROL} options={sortOptions} value={sortBy} onValueChange={withPageReset(setSortBy)} placeholder={t("sortLabel")} ariaLabel={t("sortLabel")} />
+        </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setCategory("all"); setFileType("all"); setPage(1); }}
+      >
+        <FilterField label={tCommon("sortBy")} htmlFor="resources-sheet-sort">
+          <SearchableSelect id="resources-sheet-sort" className={SHEET_CONTROL} options={sortOptions} value={sortBy} onValueChange={withPageReset(setSortBy)} placeholder={t("sortLabel")} />
+        </FilterField>
+        <FilterField label={t("category")} htmlFor="resources-sheet-category">
+          <SearchableSelect id="resources-sheet-category" className={SHEET_CONTROL} options={categoryOptions} value={category} onValueChange={withPageReset(setCategory)} placeholder={t("filterCategory")} />
+        </FilterField>
+        <FilterField label={t("fileTypeLabel")} htmlFor="resources-sheet-file-type">
+          <SearchableSelect id="resources-sheet-file-type" className={SHEET_CONTROL} options={fileTypeOptions} value={fileType} onValueChange={withPageReset(setFileType)} placeholder={t("fileTypeLabel")} />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

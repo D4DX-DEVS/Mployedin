@@ -8,6 +8,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { formatCurrency } from "@/lib/currency";
@@ -61,7 +62,7 @@ export function AgentPerformanceTable({ rows, currency }: AgentPerformanceTableP
   return (
     <div className="space-y-3">
       <InlineFilterBar onExportCsv={handleExportCsv} onExportExcel={handleExportExcel}>
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchAgents")} />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchAgents")} className="max-sm:basis-0" />
       </InlineFilterBar>
 
       {visible.length === 0 ? (
@@ -69,8 +70,26 @@ export function AgentPerformanceTable({ rows, currency }: AgentPerformanceTableP
           {t("noAgentMatch")}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border/60">
-          <Table>
+        <>
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("agent")}
+          items={visible.map((row) => ({
+            key: row.agentId,
+            href: `/${locale}/super-agent/agents/${row.agentId}`,
+            title: row.name,
+            meta: <p>{t("convertedLeads")}: {row.convertedLeads}</p>,
+            badges: !row.isActive ? <Badge variant="secondary">{t("inactive")}</Badge> : undefined,
+            stats: [
+              { label: t("placements"), value: row.placements },
+              { label: t("commission"), value: formatCurrency(row.commission, currency) },
+              { label: t("leads"), value: row.leads },
+              { label: t("conversion"), value: row.leads > 0 ? `${row.conversionRate}%` : "—" },
+            ],
+          }))}
+        />
+        <div className="overflow-x-auto rounded-2xl border border-border/60 max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 {/* Placements and commission lead: on phones the table becomes
@@ -109,6 +128,7 @@ export function AgentPerformanceTable({ rows, currency }: AgentPerformanceTableP
             </TableBody>
           </Table>
         </div>
+        </>
       )}
     </div>
   );

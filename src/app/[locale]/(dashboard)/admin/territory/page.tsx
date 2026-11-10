@@ -9,7 +9,9 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton } from "@/components/shared/PhoneFilterSheet";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { Button } from "@/components/ui/button";
@@ -56,6 +58,7 @@ export default function AdminTerritoryPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [sortBy, setSortBy] = useState("superAgent");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   /** Same column flips it; a new name column starts A–Z, agent count highest first. */
   const sortByColumn = (field: string) => {
@@ -163,6 +166,32 @@ export default function AdminTerritoryPage() {
       : [],
   });
 
+  const sortOptions = [
+    { value: "superAgent", label: t("columnSuperAgent") },
+    { value: "name", label: t("columnTerritory") },
+    { value: "agentCount", label: t("columnAgents") },
+  ];
+
+  const emptyState = (
+    <EmptyState
+      icon={MapPin}
+      title={search ? t("emptySearchTitle") : t("emptyStateTitle")}
+      description={search ? t("emptySearchDescription") : t("emptyStateDescription")}
+      action={
+        search ? (
+          <Button variant="outline" size="sm" onClick={() => { setSearch(""); resetPage(); }}>
+            {t("clearSearch")}
+          </Button>
+        ) : (
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="h-4 w-4" />
+            {t("newTerritoryButtonLabel")}
+          </Button>
+        )
+      }
+    />
+  );
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -181,7 +210,7 @@ export default function AdminTerritoryPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={search ? () => { setSearch(""); resetPage(); } : undefined}
         clearLabel={t("clearSearch")}
       >
@@ -189,20 +218,33 @@ export default function AdminTerritoryPage() {
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(value) => { setSortBy(value); resetPage(); }}
-          options={[
-            { value: "superAgent", label: t("columnSuperAgent") },
-            { value: "name", label: t("columnTerritory") },
-            { value: "agentCount", label: t("columnAgents") },
-          ]}
-          order={sortOrder}
-          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-          compact
-        />
+        <PhoneFiltersButton activeCount={0} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            compact
+          />
+        </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen} activeCount={0}>
+        <FilterField label={tc("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+      </PhoneFilterSheet>
 
       <section className="workspace-panel-surface overflow-hidden rounded-2xl border-t-0 rounded-t-none">
         {loadError ? (
@@ -210,8 +252,70 @@ export default function AdminTerritoryPage() {
             <ErrorState onRetry={() => void fetchTerritories()} />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
+          <>
+          <PhoneRecordList
+            className="p-3 sm:hidden"
+            label={t("columnTerritory")}
+            loading={loading}
+            empty={emptyState}
+            items={rows.map((row) => {
+              const shown = row.regions.slice(0, VISIBLE_REGIONS);
+              const hidden = row.regions.slice(VISIBLE_REGIONS);
+              return {
+                key: row.key,
+                leading: row.superAgent ? (
+                  <UserAvatar name={row.superAgent.name} email={row.superAgent.email} src={row.superAgent.avatar} className="h-10 w-10" colorful />
+                ) : undefined,
+                title: row.name ? row.name : <span className="italic text-muted-foreground">{t("unnamedTerritory")}</span>,
+                subtitle: row.superAgent ? (
+                  row.superAgent.name
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-amber-800">
+                    <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                    {t("noSuperAgent")}
+                  </span>
+                ),
+                actions: (
+                  <RowActions
+                    name={row.name ?? row.superAgent?.name ?? t("unnamedTerritory")}
+                    {...rowActionsFor(row)}
+                  />
+                ),
+                meta: (
+                  <p className="flex items-center gap-1">
+                    <Users className="h-3 w-3" aria-hidden="true" />
+                    {t("columnAgents")}: <span className="tabular-nums">{row.agentCount}</span>
+                  </p>
+                ),
+                badges: row.regions.length > 0 ? (
+                  <>
+                    {shown.map((region) => (
+                      <span
+                        key={region.id}
+                        title={region.parent ? `${region.name}, ${region.parent}` : region.name}
+                        className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-xs text-foreground"
+                      >
+                        <MapPin className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+                        {region.name}
+                      </span>
+                    ))}
+                    {hidden.length > 0 && (
+                      <span
+                        title={hidden.map((r) => r.name).join(", ")}
+                        className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                      >
+                        {t("moreRegions", { count: hidden.length })}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground">{t("noRegion")}</span>
+                ),
+              };
+            })}
+          />
+          <div className="overflow-x-auto max-sm:hidden">
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className={`min-w-[160px] ${HEAD}`}>
@@ -233,23 +337,7 @@ export default function AdminTerritoryPage() {
                 ) : rows.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={5}>
-                      <EmptyState
-                        icon={MapPin}
-                        title={search ? t("emptySearchTitle") : t("emptyStateTitle")}
-                        description={search ? t("emptySearchDescription") : t("emptyStateDescription")}
-                        action={
-                          search ? (
-                            <Button variant="outline" size="sm" onClick={() => { setSearch(""); resetPage(); }}>
-                              {t("clearSearch")}
-                            </Button>
-                          ) : (
-                            <Button size="sm" onClick={openCreate}>
-                              <Plus className="h-4 w-4" />
-                              {t("newTerritoryButtonLabel")}
-                            </Button>
-                          )
-                        }
-                      />
+                      {emptyState}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -332,6 +420,7 @@ export default function AdminTerritoryPage() {
               </TableBody>
             </Table>
           </div>
+          </>
         )}
       </section>
 

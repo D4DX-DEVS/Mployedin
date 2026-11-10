@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { AlertTriangle, CheckCircle2, Clock3, Loader2, XCircle, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -17,6 +17,8 @@ export interface RecordOutcomeTarget {
   _id: string;
   candidateName: string;
   jobTitle?: string;
+  /** When the interview took place; tells same-named rows apart. */
+  scheduledAt?: string;
 }
 
 interface RecordOutcomeDialogProps {
@@ -44,6 +46,7 @@ const OUTCOMES: { value: InterviewOutcome; labelKey: string; icon: LucideIcon; s
 export function RecordOutcomeDialog({ target, onClose, onSaved }: RecordOutcomeDialogProps) {
   const t = useTranslations("agentInterviews");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const [outcome, setOutcome] = useState<InterviewOutcome | "">("");
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -87,7 +90,15 @@ export function RecordOutcomeDialog({ target, onClose, onSaved }: RecordOutcomeD
         <DialogHeader>
           <DialogTitle>{t("recordOutcomeTitle")}</DialogTitle>
           <DialogDescription>
-            {target ? [target.candidateName, target.jobTitle].filter(Boolean).join(" · ") : ""}
+            {target
+              ? [
+                  target.candidateName,
+                  target.jobTitle,
+                  target.scheduledAt && !Number.isNaN(Date.parse(target.scheduledAt))
+                    ? new Date(target.scheduledAt).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })
+                    : "",
+                ].filter(Boolean).join(" · ")
+              : ""}
           </DialogDescription>
         </DialogHeader>
 

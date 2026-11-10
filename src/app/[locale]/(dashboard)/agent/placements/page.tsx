@@ -13,10 +13,12 @@ import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Inbox, UserCheck } fro
 import { Button } from "@/components/ui/button";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
@@ -50,6 +52,8 @@ export default function AgentPlacementsPage() {
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
   const [dateFrom, setDateFrom] = useUrlFilter("dateFrom", "");
   const [dateTo, setDateTo] = useUrlFilter("dateTo", "");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const phoneFilterCount = [statusFilter !== "all", dateFrom, dateTo].filter(Boolean).length;
 
   // Build STATUS_OPTIONS dynamically with translations
   const STATUS_OPTIONS = [
@@ -118,6 +122,18 @@ export default function AgentPlacementsPage() {
     title: t("pageTitle"),
   });
 
+  const emptyState = (
+    <EmptyState
+      icon={Inbox}
+      title={t("noPlacementsYet")}
+      action={hasActiveFilters ? (
+        <Button variant="outline" onClick={clearAllFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
+          Clear filters
+        </Button>
+      ) : undefined}
+    />
+  );
+
   return (
     <div className="page-container">
       <WorkspaceHeader
@@ -132,7 +148,9 @@ export default function AgentPlacementsPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         more={(
           <>
             <SearchableSelect
@@ -172,11 +190,68 @@ export default function AgentPlacementsPage() {
           value={search}
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        <Table>
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setStatusFilter("all"); setDateFrom(""); setDateTo(""); pagination.resetPage(); }}
+      >
+        <FilterField label={t("filterTagStatus")} htmlFor="agent-placements-sheet-status">
+          <SearchableSelect
+            id="agent-placements-sheet-status"
+            className={SHEET_CONTROL}
+            options={STATUS_OPTIONS}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}
+            placeholder={t("statusAllStatuses")}
+          />
+        </FilterField>
+        <FilterField label={t("dateFromLabel")} htmlFor="agent-placements-sheet-from">
+          <DateTimePicker
+            id="agent-placements-sheet-from"
+            mode="date"
+            value={dateFrom}
+            onChange={(v) => { setDateFrom(v); pagination.resetPage(); }}
+            className={SHEET_CONTROL}
+            placeholder={t("dateFromLabel")}
+          />
+        </FilterField>
+        <FilterField label={t("dateToLabel")} htmlFor="agent-placements-sheet-to">
+          <DateTimePicker
+            id="agent-placements-sheet-to"
+            mode="date"
+            value={dateTo}
+            onChange={(v) => { setDateTo(v); pagination.resetPage(); }}
+            className={SHEET_CONTROL}
+            placeholder={t("dateToLabel")}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("pageTitle")}
+        loading={loading}
+        empty={emptyState}
+        items={placements.map((p) => ({
+          key: p._id,
+          title: p.jobSeekerId?.fullName ?? "—",
+          subtitle: `${p.jobId?.title ?? "—"} · ${p.employerId?.companyName ?? "—"}`,
+          trailing: <StatusBadge status={p.status} />,
+          stats: [
+            { label: t("tableHeaderSalary"), value: p.salary ? `${p.currency ?? "USD"} ${formatCount(p.salary)}` : "—" },
+            { label: t("tableHeaderStartDate"), value: p.startDate ? formatListDate(p.startDate, locale) : "—" },
+          ],
+        }))}
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
+        <Table data-mobile-table="scroll">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>{t("tableHeaderCandidate")}</TableHead>
@@ -191,15 +266,7 @@ export default function AgentPlacementsPage() {
             ) : placements.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={4} className="py-12">
-                  <EmptyState
-                    icon={Inbox}
-                    title={t("noPlacementsYet")}
-                    action={hasActiveFilters ? (
-                      <Button variant="outline" onClick={clearAllFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
-                        Clear filters
-                      </Button>
-                    ) : undefined}
-                  />
+                  {emptyState}
                 </TableCell>
               </TableRow>
             ) : placements.map((p) => (

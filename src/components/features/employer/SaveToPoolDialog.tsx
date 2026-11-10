@@ -164,7 +164,7 @@ export function SaveToPoolDialog({
               <div className="field">
                 <Label>{t("selectPool")}</Label>
                 <Select value={selected} onValueChange={setSelected}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={t("selectPool")}>
                     <SelectValue placeholder={t("selectPool")} />
                   </SelectTrigger>
                   <SelectContent>

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import {
   User, MapPin, Globe, Briefcase, GraduationCap, Award,
   Link2, Upload, Sparkles, BrainCircuit,
@@ -788,6 +789,30 @@ export default function JobSeekerProfilePage() {
         </div>
       </div>
 
+      {/* ── Phones: one row per profile section, done or still to do ───── */}
+      <nav aria-label={t("profileSetup")} className="card-base overflow-hidden !p-0 sm:hidden">
+        {(["personal", "experience", "education", "skills", "cv", "preferences", "documents"] as const).map((id, idx) => {
+          const step = checklist.find((s) => s.id === id);
+          if (!step) return null;
+          return (
+            <Link
+              key={step.id}
+              href={step.href}
+              className={cn("flex min-h-12 items-center gap-3 px-4 py-2.5", idx > 0 && "border-t border-border/60")}
+            >
+              <step.icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{step.label}</span>
+              {step.done ? (
+                <CheckCircle2 role="img" aria-label={t("stepDone")} className="h-4 w-4 shrink-0 text-emerald-600" />
+              ) : (
+                <span className="shrink-0 text-xs font-semibold text-amber-600">{step.bonus}</span>
+              )}
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl:rotate-180" aria-hidden="true" />
+            </Link>
+          );
+        })}
+      </nav>
+
       {/* ── AI Insight Card ───────────────────────────────────────────── */}
       {completeness < 80 && (
         <div className="card-base border-violet-200 panel-body"
@@ -830,7 +855,7 @@ export default function JobSeekerProfilePage() {
 
       {/* ── Missing Details CTA (Naukri-style) ────────────────────────── */}
       {missingSteps.length > 0 && completeness < 100 && (
-        <div className="card-base flex items-center justify-between panel-body">
+        <div className="card-base flex items-center justify-between panel-body max-sm:hidden">
           <div className="flex flex-wrap gap-3">
             {missingSteps.map((s) => (
               <button
@@ -892,7 +917,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Setup Checklist ─────────────────────────────────────────── */}
           {completeness < 100 && (
-            <div className="card-base panel-body">
+            <div className="card-base panel-body max-sm:hidden">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-amber-500" />

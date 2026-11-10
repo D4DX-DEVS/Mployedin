@@ -65,6 +65,9 @@ export default function EmployerJobsPage() {
   const { locale } = useParams<{ locale: string }>();
   const searchParams = useSearchParams();
   const t = useTranslations("employerJobs");
+  const tc = useTranslations("employerCommon");
+  const tCommon = useTranslations("common");
+  const tJobEdit = useTranslations("employerJobEdit");
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
@@ -466,6 +469,7 @@ export default function EmployerJobsPage() {
                   value={statusFilter}
                   onValueChange={setStatusFilter}
                   placeholder={t("allStatuses")}
+                  ariaLabel={tc("status")}
                 />
                 <SearchableSelect
                   className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
@@ -479,6 +483,7 @@ export default function EmployerJobsPage() {
                   value={sortByFilter}
                   onValueChange={setSortByFilter}
                   placeholder={t("sortDefault")}
+                  ariaLabel={tCommon("sortBy")}
                 />
               </div>
 
@@ -494,6 +499,7 @@ export default function EmployerJobsPage() {
                   value={workModeFilter}
                   onValueChange={setWorkModeFilter}
                   placeholder={t("allWorkModes")}
+                  ariaLabel={tJobEdit("workMode")}
                 />
                 <SearchableSelect
                   className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
@@ -505,10 +511,12 @@ export default function EmployerJobsPage() {
                   value={salaryVisibilityFilter}
                   onValueChange={setSalaryVisibilityFilter}
                   placeholder={t("allSalaryVisibility")}
+                  ariaLabel={t("salaryVisibilityFilterLabel")}
                 />
                 <div className="relative min-w-0">
                   <Input
                     placeholder={t("filterByLocationPlaceholder")}
+                    aria-label={t("filterByLocationPlaceholder")}
                     value={locationFilter}
                     onChange={(e) => setLocationFilter(e.target.value)}
                     className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none sm:h-11"
@@ -517,6 +525,7 @@ export default function EmployerJobsPage() {
                 <div className="relative min-w-0">
                   <Input
                     placeholder={t("skillsPlaceholder")}
+                    aria-label={t("skillsPlaceholder")}
                     value={skillsFilter}
                     onChange={(e) => setSkillsFilter(e.target.value)}
                     className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none sm:h-11"
@@ -526,6 +535,7 @@ export default function EmployerJobsPage() {
                   <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
                   <Input
                     placeholder={t("aiSearchPlaceholder")}
+                    aria-label={t("aiSearchLabel")}
                     value={aiQuery}
                     onChange={(e) => setAiQuery(e.target.value)}
                     onKeyDown={(e) => {

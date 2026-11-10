@@ -16,8 +16,10 @@ import { Clock, DollarSign, Inbox, TrendingUp, X } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatListDate } from "@/lib/ui/intlFormat";
@@ -61,6 +63,7 @@ export default function AgentCommissionsPage() {
   const [dateFrom, setDateFrom] = useUrlFilter("dateFrom", "");
   const [dateTo, setDateTo] = useUrlFilter("dateTo", "");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [currencyCode, setCurrencyCode] = useState("AED");
 
   const TYPE_OPTIONS = [
@@ -152,6 +155,8 @@ export default function AgentCommissionsPage() {
     setShowAdvanced(false);
   };
 
+  const phoneFilterCount = [typeFilter !== "all", currencyFilter !== "all", dateFrom, dateTo].filter(Boolean).length;
+
   const statusColor = (status: string) => {
     if (status === "paid") return "text-[hsl(var(--status-selected))]";
     if (status === "approved") return "text-[hsl(var(--status-applied))]";
@@ -179,7 +184,9 @@ export default function AgentCommissionsPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         more={(
           <>
             <SearchableSelect
@@ -228,11 +235,61 @@ export default function AgentCommissionsPage() {
           value={search}
           onChange={(value) => { handleSearchChange(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
       </InlineFilterBar>
 
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setTypeFilter("all"); setCurrencyFilter("all"); setDateFrom(""); setDateTo(""); }}
+      >
+        <FilterField label={t("typeFilterLabel")} htmlFor="agent-commissions-sheet-type">
+          <SearchableSelect
+            id="agent-commissions-sheet-type"
+            className={SHEET_CONTROL}
+            options={TYPE_OPTIONS}
+            value={typeFilter}
+            onValueChange={(v) => setTypeFilter(v)}
+            placeholder={t("typeFilterAll")}
+          />
+        </FilterField>
+        <FilterField label={t("currencyFilterLabel")} htmlFor="agent-commissions-sheet-currency">
+          <SearchableSelect
+            id="agent-commissions-sheet-currency"
+            className={SHEET_CONTROL}
+            options={CURRENCY_OPTIONS}
+            value={currencyFilter}
+            onValueChange={(v) => setCurrencyFilter(v)}
+            placeholder={t("currencyFilterAll")}
+          />
+        </FilterField>
+        <FilterField label={t("dateFromLabel")} htmlFor="agent-commissions-sheet-from">
+          <DateTimePicker
+            id="agent-commissions-sheet-from"
+            mode="date"
+            value={dateFrom}
+            onChange={setDateFrom}
+            className={SHEET_CONTROL}
+            placeholder="From"
+          />
+        </FilterField>
+        <FilterField label={t("dateToLabel")} htmlFor="agent-commissions-sheet-to">
+          <DateTimePicker
+            id="agent-commissions-sheet-to"
+            mode="date"
+            value={dateTo}
+            onChange={setDateTo}
+            className={SHEET_CONTROL}
+            placeholder="To"
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
       {/* Status filters as an inline row */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
+      <div className="flex flex-wrap gap-1.5 mb-4 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:[scrollbar-width:none]">
         {["all", "pending", "approved", "paid", "disputed", "clawed_back"].map((status) => {
           const isSelected = filter === status;
           return (
@@ -242,10 +299,8 @@ export default function AgentCommissionsPage() {
               size="sm"
               aria-pressed={isSelected}
               variant={isSelected ? "default" : "outline"}
-              className={isSelected
-                ? "min-h-10 sm:h-9 rounded-lg capitalize"
-                : "min-h-10 sm:h-9 rounded-lg capitalize"
-              }
+              // Phone: one scrolling row; wrapped, "Clawed back" sat alone on a second line.
+              className="min-h-10 shrink-0 sm:h-9 rounded-lg capitalize max-sm:min-h-11"
             >
               {t(`statusLabel${status.charAt(0).toUpperCase() + status.slice(1)}`)}
             </Button>
@@ -253,8 +308,41 @@ export default function AgentCommissionsPage() {
         })}
       </div>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        <Table>
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("pageTitle")}
+        loading={loading}
+        empty={
+          <EmptyState
+            icon={Inbox}
+            title={hasActiveFilters ? t("noCommissionsMatched") : t("noCommissionsYet")}
+            action={hasActiveFilters ? (
+              <Button variant="outline" onClick={clearFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
+                {t("clearFiltersButton")}
+              </Button>
+            ) : undefined}
+          />
+        }
+        items={commissions.map((c) => ({
+          key: c._id,
+          title: c.placementId?.jobTitle ?? t("placementFallback"),
+          subtitle: c.placementId?.candidateName,
+          trailing: <StatusBadge status={c.status} />,
+          meta: (
+            <p className="flex min-w-0 items-center gap-1">
+              <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">{formatListDate(c.paidAt ?? c.createdAt, locale)}</span>
+            </p>
+          ),
+          stats: [
+            { label: t("tableHeaderAmount"), value: <span className={statusColor(c.status)}>{formatCurrency(c.amount, c.currency || currencyCode)}</span> },
+            { label: t("tableHeaderType"), value: <span className="capitalize">{c.type?.replace("_", " ")}</span> },
+          ],
+        }))}
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
+        <Table data-mobile-table="scroll">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>{t("tableHeaderPlacement")}</TableHead>

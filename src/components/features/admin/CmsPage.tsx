@@ -32,7 +32,9 @@ import {
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { singularizeTitle } from "@/lib/ui/singularize";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -121,6 +123,7 @@ export default function CmsPage({
   };
   const [showAdd, setShowAdd] = useState(false);
   const [editItem, setEditItem] = useState<Record<string, unknown> | null>(null);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const filterFields = useMemo<CmsFilterField[]>(
     () => filterFieldsProp ?? [
@@ -284,6 +287,125 @@ export default function CmsPage({
     (i) => i.isActive === true || i.status === "published"
   ).length;
 
+  const phoneFilterCount = (filterValues.status !== "all" ? 1 : 0) + filterFields.filter((field) => {
+    if (field.type !== "text" && field.type !== "select") return false;
+    const v = filterValues.extras[field.key] ?? "";
+    return Boolean(v) && v !== "all";
+  }).length;
+
+  /** One page-declared filter control: inline in the bar from sm up, full width in the phone sheet. */
+  const renderFilterControl = (field: CmsFilterField, inSheet: boolean) => {
+    if (field.type === "status") {
+      return (
+        <SearchableSelect
+          key="status"
+          id={inSheet ? "cms-sheet-status" : "cms-status-filter"}
+          ariaLabel={field.label ?? tCommon("status")}
+          className={inSheet ? SHEET_CONTROL : INLINE_FILTER_CONTROL}
+          options={field.options}
+          value={filterValues.status}
+          onValueChange={(value) => { handleFilterChange({ ...filterValues, status: value }); }}
+          placeholder={field.label ?? tCommon("status")}
+        />
+      );
+    }
+    if (field.type === "select") {
+      return (
+        <SearchableSelect
+          key={field.key}
+          id={inSheet ? `cms-sheet-${field.key}` : undefined}
+          ariaLabel={field.label}
+          className={inSheet ? SHEET_CONTROL : INLINE_FILTER_CONTROL}
+          options={field.options}
+          value={filterValues.extras[field.key] ?? "all"}
+          onValueChange={(value) => { handleFilterChange({ ...filterValues, extras: { ...filterValues.extras, [field.key]: value } }); }}
+          placeholder={field.placeholder ?? field.label}
+        />
+      );
+    }
+    if (field.type === "text") {
+      return (
+        <Input
+          key={field.key}
+          id={inSheet ? `cms-sheet-${field.key}` : undefined}
+          aria-label={field.label}
+          placeholder={field.placeholder ?? field.label}
+          value={filterValues.extras[field.key] ?? ""}
+          onChange={(e) => { handleFilterChange({ ...filterValues, extras: { ...filterValues.extras, [field.key]: e.target.value } }); }}
+          className={inSheet ? SHEET_CONTROL : `${INLINE_FILTER_CONTROL} shadow-none`}
+        />
+      );
+    }
+    return null;
+  };
+
+  const renderCell = (col: CmsColumn, item: Record<string, unknown>): React.ReactNode =>
+    col.render
+      ? col.render(item[col.key], item)
+      : col.key === "isActive"
+        ? (
+            <Badge variant={item[col.key] ? "default" : "secondary"}>
+              {item[col.key] ? t("active") : t("inactive")}
+            </Badge>
+          )
+        : (col.key === "createdAt" || col.key === "updatedAt" || col.key === "publishedAt" || col.key === "date")
+          ? (
+              <span className="text-sm text-muted-foreground">
+                {item[col.key] ? formatDate(new Date(String(item[col.key])), { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+              </span>
+            )
+          : (
+              <span className="line-clamp-1 max-w-xs">
+                {String(item[col.key] ?? "")}
+              </span>
+            );
+
+  const loadErrorContent = (
+    <div className="flex flex-col items-center gap-3">
+      <p className="text-sm text-muted-foreground">{tCommon("somethingWentWrong")}</p>
+      <Button variant="outline" size="sm" onClick={() => void fetchItems()}>
+        {tCommon("tryAgain")}
+      </Button>
+    </div>
+  );
+
+  const emptyContent = (
+    <div className="flex flex-col items-center gap-2">
+      <div className="workspace-muted-pill mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-3xl sm:h-16 sm:w-16 sm:rounded-3xl">
+        <Inbox className="h-5 w-5 text-muted-foreground sm:h-7 sm:w-7" />
+      </div>
+      {/* Eyebrow duplicates the heading below it — desktop only. */}
+      <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:block sm:text-[11px] sm:tracking-[0.18em]">
+        {hasActiveFilters ? t("noMatchingItems") : t("noItemsYet")}
+      </p>
+      <h2 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
+        {hasActiveFilters
+          ? t("noItemsMatchFilters")
+          : t("noFoundTitle", { title: title.toLowerCase() })}
+      </h2>
+      {(hasActiveFilters || allowCreate) && (
+        <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
+          {hasActiveFilters
+            ? t("adjustFiltersMsg")
+            : t("clickAddNewMsg")}
+        </p>
+      )}
+      {hasActiveFilters && (
+        <Button size="sm"
+          onClick={resetFilters}
+          variant="outline"
+          className="mt-3 rounded-xl border-border bg-background/70 px-3 text-xs sm:mt-4 sm:px-4 sm:text-sm"
+        >
+          {t("clearFilters")}
+        </Button>
+      )}
+    </div>
+  );
+
+  const [phoneTitleCol, ...phoneRestCols] = columns;
+  const phoneStatusCol = phoneRestCols.find((col) => col.key === "isActive");
+  const phoneMetaCols = phoneRestCols.filter((col) => col !== phoneStatusCol);
+
   return (
     <div className="page-container admin-cms-page-container" data-admin-workspace="cms-page">
       {ConfirmDialogNode}
@@ -320,7 +442,7 @@ export default function CmsPage({
           declares sits inline (none of the CMS pages has more than three), so
           nothing hides behind a Show Filters toggle any more. */}
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={hasActiveFilters ? resetFilters : undefined}
         clearLabel={t("clearFilters")}
       >
@@ -332,62 +454,72 @@ export default function CmsPage({
             filterFields.find((f) => f.type === "search")?.placeholder ??
             t("searchFallback", { title: title.toLowerCase() })
           }
+          className="max-sm:basis-0"
         />
-        {filterFields.map((field) => {
-          if (field.type === "status") {
-            return (
-              <SearchableSelect
-                key="status"
-                id="cms-status-filter"
-                ariaLabel={field.label ?? tCommon("status")}
-                className={INLINE_FILTER_CONTROL}
-                options={field.options}
-                value={filterValues.status}
-                onValueChange={(value) => { handleFilterChange({ ...filterValues, status: value }); }}
-                placeholder={field.label ?? tCommon("status")}
-              />
-            );
-          }
-          if (field.type === "select") {
-            return (
-              <SearchableSelect
-                key={field.key}
-                ariaLabel={field.label}
-                className={INLINE_FILTER_CONTROL}
-                options={field.options}
-                value={filterValues.extras[field.key] ?? "all"}
-                onValueChange={(value) => { handleFilterChange({ ...filterValues, extras: { ...filterValues.extras, [field.key]: value } }); }}
-                placeholder={field.placeholder ?? field.label}
-              />
-            );
-          }
-          if (field.type === "text") {
-            return (
-              <Input
-                key={field.key}
-                aria-label={field.label}
-                placeholder={field.placeholder ?? field.label}
-                value={filterValues.extras[field.key] ?? ""}
-                onChange={(e) => { handleFilterChange({ ...filterValues, extras: { ...filterValues.extras, [field.key]: e.target.value } }); }}
-                className={`${INLINE_FILTER_CONTROL} shadow-none`}
-              />
-            );
-          }
-          return null;
-        })}
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(value) => { setSortBy(value); resetPage(); }}
-          options={sortOptions}
-          order={sortOrder}
-          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-          compact
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          {filterFields.map((field) => renderFilterControl(field, false))}
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            compact
+          />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        <div className="overflow-x-auto" data-mobile-table="responsive">
-          <Table className="responsive-card-table">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { handleFilterChange({ ...filterValues, status: "all", extras: {} }); }}
+      >
+        <FilterField label={tCommon("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        {filterFields.map((field) => {
+          if (field.type === "search") return null;
+          const key = field.type === "status" ? "status" : field.key;
+          const label = field.type === "status" ? (field.label ?? tCommon("status")) : field.label;
+          return (
+            <FilterField key={key} label={label} htmlFor={`cms-sheet-${key}`}>
+              {renderFilterControl(field, true)}
+            </FilterField>
+          );
+        })}
+      </PhoneFilterSheet>
+
+      <PhoneRecordList
+        className="sm:hidden"
+        label={title}
+        loading={loading}
+        empty={loadError ? loadErrorContent : emptyContent}
+        items={loadError ? [] : items.map((item) => ({
+          key: `cms-${String(item._id)}`,
+          title: phoneTitleCol ? renderCell(phoneTitleCol, item) : rowName(item),
+          trailing: phoneStatusCol ? renderCell(phoneStatusCol, item) : undefined,
+          meta: phoneMetaCols.length > 0 ? phoneMetaCols.map((col) => (
+            <div key={col.key} className="flex min-w-0 items-center gap-1.5">
+              <span className="shrink-0">{col.label}:</span>
+              <span className="min-w-0 truncate text-foreground">{renderCell(col, item)}</span>
+            </div>
+          )) : undefined,
+          actions: canEdit || canDelete ? <RowActions name={rowName(item)} {...rowActionsFor(item)} /> : undefined,
+        }))}
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
+        <div className="overflow-x-auto">
+          <Table className="responsive-card-table" data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-secondary/70 hover:bg-secondary/70">
                 {columns.map((col) => (
@@ -417,47 +549,13 @@ export default function CmsPage({
               ) : loadError ? (
                 <TableRow>
                   <TableCell colSpan={columns.length + 1} className="px-4 py-8 text-center sm:px-6 sm:py-16">
-                    <div className="flex flex-col items-center gap-3">
-                      <p className="text-sm text-muted-foreground">{tCommon("somethingWentWrong")}</p>
-                      <Button variant="outline" size="sm" onClick={() => void fetchItems()}>
-                        {tCommon("tryAgain")}
-                      </Button>
-                    </div>
+                    {loadErrorContent}
                   </TableCell>
                 </TableRow>
               ) : items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columns.length + 1} className="px-4 py-8 text-center sm:px-6 sm:py-16">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="workspace-muted-pill mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-3xl sm:h-16 sm:w-16 sm:rounded-3xl">
-                        <Inbox className="h-5 w-5 text-muted-foreground sm:h-7 sm:w-7" />
-                      </div>
-                      {/* Eyebrow duplicates the heading below it — desktop only. */}
-                      <p className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:block sm:text-[11px] sm:tracking-[0.18em]">
-                        {hasActiveFilters ? t("noMatchingItems") : t("noItemsYet")}
-                      </p>
-                      <h2 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
-                        {hasActiveFilters
-                          ? t("noItemsMatchFilters")
-                          : t("noFoundTitle", { title: title.toLowerCase() })}
-                      </h2>
-                      {(hasActiveFilters || allowCreate) && (
-                        <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
-                          {hasActiveFilters
-                            ? t("adjustFiltersMsg")
-                            : t("clickAddNewMsg")}
-                        </p>
-                      )}
-                      {hasActiveFilters && (
-                        <Button size="sm"
-                          onClick={resetFilters}
-                          variant="outline"
-                          className="mt-3 rounded-xl border-border bg-background/70 px-3 text-xs sm:mt-4 sm:px-4 sm:text-sm"
-                        >
-                          {t("clearFilters")}
-                        </Button>
-                      )}
-                    </div>
+                    {emptyContent}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -465,25 +563,7 @@ export default function CmsPage({
                     <TableRow key={String(item._id)}>
                       {columns.map((col) => (
                         <TableCell key={col.key} className="min-w-0">
-                          {col.render
-                            ? col.render(item[col.key], item)
-                            : col.key === "isActive"
-                              ? (
-                                  <Badge variant={item[col.key] ? "default" : "secondary"}>
-                                    {item[col.key] ? t("active") : t("inactive")}
-                                  </Badge>
-                                )
-                              : (col.key === "createdAt" || col.key === "updatedAt" || col.key === "publishedAt" || col.key === "date")
-                                ? (
-                                    <span className="text-sm text-muted-foreground">
-                                      {item[col.key] ? formatDate(new Date(String(item[col.key])), { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-                                    </span>
-                                  )
-                                : (
-                                    <span className="line-clamp-1 max-w-xs">
-                                      {String(item[col.key] ?? "")}
-                                    </span>
-                                  )}
+                          {renderCell(col, item)}
                         </TableCell>
                       ))}
                       <TableCell className="text-right">

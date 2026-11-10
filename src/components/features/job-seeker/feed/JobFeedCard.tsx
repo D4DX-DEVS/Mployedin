@@ -110,6 +110,7 @@ export const JobFeedCard = memo(function JobFeedCard({
           </Badge>
         ) : null
       }
+      bookmark={<SaveJobButton jobId={job._id} />}
       actions={
         <>
           <ShareJob
@@ -121,7 +122,7 @@ export const JobFeedCard = memo(function JobFeedCard({
           />
           {/* Was "Hide" — a session-only dismiss the client asked to remove
               (2026-10-27); a lasting Save takes its place. */}
-          <SaveJobButton jobId={job._id} />
+          <SaveJobButton jobId={job._id} className="max-sm:hidden" />
           <button
             type="button"
             onClick={onApply}

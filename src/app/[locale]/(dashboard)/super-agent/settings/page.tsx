@@ -157,11 +157,11 @@ function SectionCard({ children, className = "" }: { children: React.ReactNode; 
 function SectionHeader({ icon: Icon, title, description }: { icon: typeof Globe; title: string; description?: string }) {
   return (
     <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-border/40">
-      <div className="flex items-center gap-2.5">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+      <div className="flex items-center gap-2.5 max-sm:!flex-nowrap max-sm:items-start">
+        <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-lg bg-primary/10">
           <Icon className="w-4 h-4 text-primary" />
         </div>
-        <div>
+        <div className="min-w-0">
           {/* h2: the settings page renders its h1 in the workspace header, and every
               tab panel hangs directly off it, so section heads are level 2. Size is
               set by `heading-label`, so this does not change the look. */}
@@ -480,9 +480,9 @@ function ProfileTab() {
 
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">{tc("email")}</Label>
-                <div className="flex items-center gap-2 h-10 rounded-xl border border-border bg-muted/30 px-3">
+                <div className="flex items-center gap-2 h-10 rounded-xl border border-border bg-muted/30 px-3 max-sm:!flex-nowrap">
                   <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm text-muted-foreground truncate">{userEmail}</span>
+                  <span className="min-w-0 text-sm text-muted-foreground truncate">{userEmail}</span>
                   <Badge variant="outline" className="ml-auto text-[11px] shrink-0">{t("emailReadOnly")}</Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
@@ -680,9 +680,9 @@ function CommissionTab() {
           </div>
 
           <div className="rounded-xl border border-blue-200/60 bg-blue-50/50 card-pad">
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3 max-sm:!flex-nowrap">
               <AlertTriangle className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-blue-800">{t("howItWorks")}</p>
                 <p className="text-xs text-blue-700 mt-1">
                   {t("commissionRateExplain")}
@@ -1351,7 +1351,6 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
               <Input id="inv-email" type="email" placeholder={t("billingEmailPlaceholder")} value={form.billingEmail} onChange={(e) => update("billingEmail", e.target.value)} maxLength={200} />
             </div>
             <div className="field">
-              <Label htmlFor="inv-phone" className="text-sm font-medium">{t("billingPhone")}</Label>
               <PhoneInput id="inv-phone" label={t("billingPhone")} placeholder={t("billingPhonePlaceholder")} value={form.billingPhone} onChange={(value) => update("billingPhone", value)} />
             </div>
           </div>
@@ -1411,7 +1410,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
           </div>
 
           {/* Tax Configuration */}
-          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad">
+          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad max-sm:rounded-none max-sm:border-0 max-sm:border-t max-sm:bg-transparent max-sm:px-0 max-sm:pb-0">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("taxConfiguration")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="field">
@@ -1433,7 +1432,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/super-agent/settings/invoice-defau
           </div>
 
           {/* Payment Terms */}
-          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad">
+          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad max-sm:rounded-none max-sm:border-0 max-sm:border-t max-sm:bg-transparent max-sm:px-0 max-sm:pb-0">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("paymentTerms")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="field">
@@ -1512,7 +1511,10 @@ function SecurityTab() {
       <ChangeEmailCard />
       <ConnectedAppsCard />
 
-      <PrivacySettingsLink href="/super-agent/settings/privacy" />
+      {/* The global phone rule wraps flex rows; this card is one row (icon, text, chevron). */}
+      <div className="max-sm:[&>a]:!flex-nowrap max-sm:[&>a>span]:!flex-nowrap">
+        <PrivacySettingsLink href="/super-agent/settings/privacy" />
+      </div>
     </>
   );
 }

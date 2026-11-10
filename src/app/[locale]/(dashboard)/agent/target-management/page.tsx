@@ -98,11 +98,11 @@ export default function AgentTargetManagementPage() {
       <WorkspaceHeader
         title={t("agentTitle")}
         context={t("agentContext")}
-        actions={<TargetYearSelect value={year} onChange={setYear} label={t("yearLabel")} years={years} />}
+        actions={<div className="max-sm:[&_button]:w-24"><TargetYearSelect value={year} onChange={setYear} label={t("yearLabel")} years={years} /></div>}
       />
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex rounded-xl border border-border/60 bg-card p-0.5" role="tablist" aria-label={t("tabsLabel")}>
+        <div className="flex rounded-xl border border-border/60 bg-card p-0.5 max-sm:grid max-sm:w-full max-sm:grid-cols-3" role="tablist" aria-label={t("tabsLabel")}>
           {TABS.map(({ key, icon: Icon }) => (
             <Button
               key={key}
@@ -111,7 +111,7 @@ export default function AgentTargetManagementPage() {
               variant={tab === key ? "default" : "ghost"}
               size="sm"
               onClick={() => setTab(key)}
-              className="gap-1.5 rounded-lg max-sm:min-h-11"
+              className="gap-1.5 rounded-lg max-sm:min-h-11 max-sm:px-2"
             >
               <Icon className="h-3.5 w-3.5" /> {t(`tab_${key}`)}
             </Button>
@@ -254,7 +254,8 @@ export default function AgentTargetManagementPage() {
                 />
               </div>
             </div>
-            <Table>
+            <div className="overflow-x-auto">
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="w-16 text-center">{t("rank")}</TableHead>
@@ -294,6 +295,7 @@ export default function AgentTargetManagementPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </div>
         </div>
       )}

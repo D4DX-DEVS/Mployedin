@@ -1,4 +1,4 @@
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { auth } from "@/lib/auth/config";
 import { redirect } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
@@ -30,12 +30,9 @@ export default async function DashboardLayout({
     // BUG-08: a revoked-but-unexpired cookie still decrypts at the edge, so
     // the proxy sends /login -> the dashboard while Node auth() returns null
     // and the dashboard sends it straight back (ERR_TOO_MANY_REDIRECTS).
-    // Clear the stale session cookie so the login page renders once.
-    const store = await cookies();
-    for (const c of store.getAll()) {
-      if (c.name.includes("session-token")) store.delete(c.name);
-    }
-    redirect(`/${paramLocale}/login`);
+    // Clear the stale session cookie so the login page renders once. A layout
+    // cannot modify cookies, so a Route Handler clears them and redirects.
+    redirect(`/api/auth/clear-stale-session?locale=${encodeURIComponent(paramLocale)}`);
   }
 
   const role = (session.user as { role: UserRole }).role;

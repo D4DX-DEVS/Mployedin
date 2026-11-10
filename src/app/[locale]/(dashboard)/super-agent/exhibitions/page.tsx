@@ -11,6 +11,7 @@ import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
@@ -123,6 +124,7 @@ export default function SuperAgentExhibitionsPage() {
   const [countries, setCountries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const { filters, setFilter, resetFilters } = useUrlFilters(
     // Sort: newest request first by default — this is a review queue, and new
@@ -230,6 +232,23 @@ export default function SuperAgentExhibitionsPage() {
     () => [{ value: "all", label: tf("allCountries") }, ...countries.map((c) => ({ value: c, label: c }))],
     [countries, tf],
   );
+  // Shared by the inline bar and the phone filter sheet.
+  const showCountryFilter = countries.length > 1 || filters.country !== "all";
+  const sortOptions = [
+    { value: "createdAt:desc", label: t("sortNewestRequest") },
+    { value: "createdAt:asc", label: t("sortOldestRequest") },
+    { value: "eventStartDate:asc", label: t("sortExhibitionSoonest") },
+    { value: "eventStartDate:desc", label: t("sortExhibitionLatest") },
+  ];
+  const applySort = (v: string) => {
+    const [field, order] = v.split(":");
+    setFilter("sortBy", field);
+    setFilter("sortOrder", order);
+    resetPage();
+  };
+  const clearAllFilters = () => { resetFilters(); resetPage(); };
+  // Sort is not a filter: it does not count.
+  const phoneFilterCount = [filters.status, filters.priority, filters.category, filters.country].filter((v) => v !== "all").length;
 
   const exportColumns = useMemo<ExportColumn<ExhibitionRequest>[]>(() => [
     { header: t("tableHeaderEvent"), key: "eventName" },
@@ -281,68 +300,122 @@ export default function SuperAgentExhibitionsPage() {
       <SuperAgentSection>
         <InlineFilterBar
           className="mb-4"
-          onClear={hasActiveFilters ? () => { resetFilters(); resetPage(); } : undefined}
+          onClear={hasActiveFilters ? clearAllFilters : undefined}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
         >
-          <InlineFilterSearch value={filters.search} onChange={(v) => applyFilter("search", v)} placeholder={t("searchPlaceholder")} />
-          <SearchableSelect
-            id="sa-exhibitions-status"
-            className={INLINE_FILTER_CONTROL}
-            options={statusOptions}
-            value={filters.status}
-            onValueChange={(v) => applyFilter("status", v)}
-            placeholder={tf("allStatuses")}
-          />
-          <SearchableSelect
-            id="sa-exhibitions-priority"
-            className={INLINE_FILTER_CONTROL}
-            options={priorityOptions}
-            value={filters.priority}
-            onValueChange={(v) => applyFilter("priority", v)}
-            placeholder={tf("allPriorities")}
-          />
-          <SearchableSelect
-            id="sa-exhibitions-category"
-            className={INLINE_FILTER_CONTROL}
-            options={categoryOptions}
-            value={filters.category}
-            onValueChange={(v) => applyFilter("category", v)}
-            placeholder={tf("allCategories")}
-          />
-          {/* Only once the team works in more than one country — one option is not a filter. */}
-          {(countries.length > 1 || filters.country !== "all") && (
+          <InlineFilterSearch value={filters.search} onChange={(v) => applyFilter("search", v)} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+          <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+          {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+          <div className="contents max-sm:hidden">
             <SearchableSelect
-              id="sa-exhibitions-country"
+              id="sa-exhibitions-status"
               className={INLINE_FILTER_CONTROL}
-              options={countryOptions}
-              value={filters.country}
-              onValueChange={(v) => applyFilter("country", v)}
-              placeholder={tf("allCountries")}
+              options={statusOptions}
+              value={filters.status}
+              onValueChange={(v) => applyFilter("status", v)}
+              placeholder={tf("allStatuses")}
             />
-          )}
-          {/* Below 1280px the queue is cards with no column headers to click: sort lives here. */}
-          <SearchableSelect
-            id="sa-exhibitions-sort"
-            className={`${INLINE_FILTER_CONTROL} xl:hidden`}
-            ariaLabel={t("sortLabel")}
-            options={[
-              { value: "createdAt:desc", label: t("sortNewestRequest") },
-              { value: "createdAt:asc", label: t("sortOldestRequest") },
-              { value: "eventStartDate:asc", label: t("sortExhibitionSoonest") },
-              { value: "eventStartDate:desc", label: t("sortExhibitionLatest") },
-            ]}
-            value={`${filters.sortBy}:${filters.sortOrder}`}
-            onValueChange={(v) => {
-              const [field, order] = v.split(":");
-              setFilter("sortBy", field);
-              setFilter("sortOrder", order);
-              resetPage();
-            }}
-            placeholder={t("sortNewestRequest")}
-          />
+            <SearchableSelect
+              id="sa-exhibitions-priority"
+              className={INLINE_FILTER_CONTROL}
+              options={priorityOptions}
+              value={filters.priority}
+              onValueChange={(v) => applyFilter("priority", v)}
+              placeholder={tf("allPriorities")}
+            />
+            <SearchableSelect
+              id="sa-exhibitions-category"
+              className={INLINE_FILTER_CONTROL}
+              options={categoryOptions}
+              value={filters.category}
+              onValueChange={(v) => applyFilter("category", v)}
+              placeholder={tf("allCategories")}
+            />
+            {/* Only once the team works in more than one country — one option is not a filter. */}
+            {showCountryFilter && (
+              <SearchableSelect
+                id="sa-exhibitions-country"
+                className={INLINE_FILTER_CONTROL}
+                options={countryOptions}
+                value={filters.country}
+                onValueChange={(v) => applyFilter("country", v)}
+                placeholder={tf("allCountries")}
+              />
+            )}
+            {/* Below 1280px the queue is cards with no column headers to click: sort lives here. */}
+            <SearchableSelect
+              id="sa-exhibitions-sort"
+              className={`${INLINE_FILTER_CONTROL} xl:hidden`}
+              ariaLabel={t("sortLabel")}
+              options={sortOptions}
+              value={`${filters.sortBy}:${filters.sortOrder}`}
+              onValueChange={applySort}
+              placeholder={t("sortNewestRequest")}
+            />
+          </div>
         </InlineFilterBar>
+
+        <PhoneFilterSheet
+          open={filterSheetOpen}
+          onOpenChange={setFilterSheetOpen}
+          activeCount={phoneFilterCount}
+          onClear={clearAllFilters}
+        >
+          <FilterField label={t("sortLabel")} htmlFor="sa-exhibitions-sheet-sort">
+            <SearchableSelect
+              id="sa-exhibitions-sheet-sort"
+              className={SHEET_CONTROL}
+              options={sortOptions}
+              value={`${filters.sortBy}:${filters.sortOrder}`}
+              onValueChange={applySort}
+              placeholder={t("sortNewestRequest")}
+            />
+          </FilterField>
+          <FilterField label={tf("status")} htmlFor="sa-exhibitions-sheet-status">
+            <SearchableSelect
+              id="sa-exhibitions-sheet-status"
+              className={SHEET_CONTROL}
+              options={statusOptions}
+              value={filters.status}
+              onValueChange={(v) => applyFilter("status", v)}
+              placeholder={tf("allStatuses")}
+            />
+          </FilterField>
+          <FilterField label={tf("priority")} htmlFor="sa-exhibitions-sheet-priority">
+            <SearchableSelect
+              id="sa-exhibitions-sheet-priority"
+              className={SHEET_CONTROL}
+              options={priorityOptions}
+              value={filters.priority}
+              onValueChange={(v) => applyFilter("priority", v)}
+              placeholder={tf("allPriorities")}
+            />
+          </FilterField>
+          <FilterField label={tf("category")} htmlFor="sa-exhibitions-sheet-category">
+            <SearchableSelect
+              id="sa-exhibitions-sheet-category"
+              className={SHEET_CONTROL}
+              options={categoryOptions}
+              value={filters.category}
+              onValueChange={(v) => applyFilter("category", v)}
+              placeholder={tf("allCategories")}
+            />
+          </FilterField>
+          {showCountryFilter && (
+            <FilterField label={t("country")} htmlFor="sa-exhibitions-sheet-country">
+              <SearchableSelect
+                id="sa-exhibitions-sheet-country"
+                className={SHEET_CONTROL}
+                options={countryOptions}
+                value={filters.country}
+                onValueChange={(v) => applyFilter("country", v)}
+                placeholder={tf("allCountries")}
+              />
+            </FilterField>
+          )}
+        </PhoneFilterSheet>
 
         {loadError ? (
           <ErrorState description={t("fetchError")} onRetry={() => void fetchItems()} />

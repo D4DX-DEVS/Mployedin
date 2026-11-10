@@ -12,6 +12,7 @@ import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { usePermissions } from "@/hooks/usePermissions";
 import { usePagination } from "@/hooks/usePagination";
@@ -24,6 +25,7 @@ import {
   Plus, Sparkles, RotateCcw, CalendarDays, ArrowRight, Inbox, Eye, BarChart3, FileText, ReceiptText, RefreshCw, ClipboardList, Download, Clock, CheckCircle2, TrendingUp, X, Trash2,
 } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { Button } from "@/components/ui/button";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import {
@@ -76,6 +78,7 @@ interface Invoice {
 // ── Component ────────────────────────────────────────────────────────────────
 export default function AdminInvoicesPage() {
   const t = useTranslations("adminInvoices");
+  const tCommon = useTranslations("common");
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const searchParams = useSearchParams();
@@ -143,6 +146,7 @@ export default function AdminInvoicesPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   // Summary
   const [summary, setSummary] = useState({
@@ -294,6 +298,64 @@ export default function AdminInvoicesPage() {
     title: t("exportTitle"),
     fetchAll: fetchAllInvoices,
   });
+  const sortOptions = [
+    { value: "createdAt", label: t("sortDateAdded") },
+    { value: "dueDate", label: t("tableHeaderDueDate") },
+    { value: "totalAmount", label: t("tableHeaderTotal") },
+    { value: "invoiceNumber", label: t("tableHeaderInvoiceNumber") },
+  ];
+  const phoneFilterCount = (statusFilter ? 1 : 0) + (categoryFilter ? 1 : 0);
+
+  const emptyNode = (
+    <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-3xl p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">{t("noInvoicesFound")}</p><p className="mt-1 text-sm text-muted-foreground">{t("noInvoicesDescription")}</p></div></div>
+  );
+
+  const invoiceActions = (inv: Invoice) => (
+    <RowActions
+      name={inv.invoiceNumber}
+      quick={[{ key: "view", label: t("viewDetails"), icon: Eye, onSelect: () => setSelectedInvoiceId(inv._id) }]}
+      menu={
+        (() => {
+          const items: RowAction[] = [];
+          if (["issued", "sent", "paid", "partially_paid", "overdue"].includes(inv.status)) {
+            items.push({
+              key: "download",
+              label: t("downloadPdf"),
+              icon: Download,
+              onSelect: async () => {
+                try {
+                  const res = await fetch(`/api/invoices/${inv._id}/pdf`);
+                  if (!res.ok) throw new Error(t("failedToDownloadInvoice"));
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `${inv.invoiceNumber}.pdf`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch { toast.error(t("failedToDownloadPdf")); }
+              }
+            });
+          }
+          if (can("invoices", "update")) {
+            if (inv.status === "draft") {
+              items.push({ key: "issue", label: t("issue"), icon: CheckCircle2, onSelect: () => updateStatus(inv._id, "issued") });
+            }
+            if (["issued", "sent"].includes(inv.status)) {
+              items.push({ key: "paid", label: t("markAsPaid"), icon: CheckCircle2, onSelect: () => updateStatus(inv._id, "paid") });
+            }
+            if (!["void", "cancelled", "refunded", "paid", "credit_note"].includes(inv.status)) {
+              items.push({ key: "void", label: t("void"), icon: Trash2, onSelect: async () => {
+                const ok = await confirmDialog(t("confirmVoidMessage"));
+                if (ok) updateStatus(inv._id, "void");
+              }, destructive: true });
+            }
+          }
+          return items;
+        })()
+      }
+    />
+  );
 
   return (
     <div className="page-container">
@@ -396,44 +458,81 @@ export default function AdminInvoicesPage() {
           )}
 
           <InlineFilterBar
-            className="workspace-panel-surface rounded-2xl border-b-0"
+            className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
             onExportCsv={invoices.length > 0 ? handleExportCsv : undefined}
           >
             <InlineFilterSearch
               value={searchTerm}
               onChange={(value) => { setSearchTerm(value); resetPage(); }}
               placeholder={t("searchPlaceholder")}
+              className="max-sm:basis-0"
             />
-            <SearchableSelect
-              id="adm-inv-status"
-              className={INLINE_FILTER_CONTROL}
-              options={STATUS_OPTIONS}
-              value={statusFilter || "all"}
-              onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
-              placeholder={t("statusAllStatuses")}
-            />
-            <SearchableSelect
-              id="adm-inv-cat"
-              className={INLINE_FILTER_CONTROL}
-              options={CATEGORY_OPTIONS}
-              value={categoryFilter || "all"}
-              onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }}
-              placeholder={t("categoryAllCategories")}
-            />
-            <TableSortControl
-              value={sortBy}
-              onValueChange={(v) => { setSortBy(v); resetPage(); }}
-              options={[
-                { value: "createdAt", label: t("sortDateAdded") },
-                { value: "dueDate", label: t("tableHeaderDueDate") },
-                { value: "totalAmount", label: t("tableHeaderTotal") },
-                { value: "invoiceNumber", label: t("tableHeaderInvoiceNumber") },
-              ]}
-              order={sortOrder}
-              onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-              compact
-            />
+            <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+            <div className="contents max-sm:hidden">
+              <SearchableSelect
+                id="adm-inv-status"
+                className={INLINE_FILTER_CONTROL}
+                options={STATUS_OPTIONS}
+                value={statusFilter || "all"}
+                onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
+                placeholder={t("statusAllStatuses")}
+              />
+              <SearchableSelect
+                id="adm-inv-cat"
+                className={INLINE_FILTER_CONTROL}
+                options={CATEGORY_OPTIONS}
+                value={categoryFilter || "all"}
+                onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }}
+                placeholder={t("categoryAllCategories")}
+              />
+              <TableSortControl
+                value={sortBy}
+                onValueChange={(v) => { setSortBy(v); resetPage(); }}
+                options={sortOptions}
+                order={sortOrder}
+                onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+                compact
+              />
+            </div>
           </InlineFilterBar>
+
+          <PhoneFilterSheet
+            open={filterSheetOpen}
+            onOpenChange={setFilterSheetOpen}
+            activeCount={phoneFilterCount}
+            onClear={() => { setStatusFilter(""); setCategoryFilter(""); resetPage(); }}
+          >
+            <FilterField label={tCommon("sortBy")}>
+              <TableSortControl
+                value={sortBy}
+                onValueChange={(v) => { setSortBy(v); resetPage(); }}
+                options={sortOptions}
+                order={sortOrder}
+                onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+                className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+              />
+            </FilterField>
+            <FilterField label={t("tableHeaderStatus")} htmlFor="invoices-sheet-status">
+              <SearchableSelect
+                id="invoices-sheet-status"
+                className={SHEET_CONTROL}
+                options={STATUS_OPTIONS}
+                value={statusFilter || "all"}
+                onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
+                placeholder={t("statusAllStatuses")}
+              />
+            </FilterField>
+            <FilterField label={t("tableHeaderCategory")} htmlFor="invoices-sheet-category">
+              <SearchableSelect
+                id="invoices-sheet-category"
+                className={SHEET_CONTROL}
+                options={CATEGORY_OPTIONS}
+                value={categoryFilter || "all"}
+                onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }}
+                placeholder={t("categoryAllCategories")}
+              />
+            </FilterField>
+          </PhoneFilterSheet>
 
           {attentionFilter && (
             <div className="mb-3 flex items-center">
@@ -449,11 +548,54 @@ export default function AdminInvoicesPage() {
             </div>
           )}
 
+          <PhoneRecordList
+            className="sm:hidden"
+            label={t("title")}
+            loading={loading}
+            empty={emptyNode}
+            items={invoices.map((inv) => {
+              const agentComm = inv.commissions?.find(c => c.role === "agent");
+              const saComm = inv.commissions?.find(c => c.role === "super_agent");
+              return {
+                key: inv._id,
+                title: (
+                  <button type="button" className="text-start font-mono hover:text-primary" onClick={() => setSelectedInvoiceId(inv._id)}>
+                    {inv.invoiceNumber}
+                  </button>
+                ),
+                subtitle: [inv.employerId?.companyName ?? "—", inv.jobId?.title].filter(Boolean).join(" · "),
+                trailing: <StatusBadge status={inv.status} />,
+                actions: invoiceActions(inv),
+                meta: (
+                  <>
+                    <p className="flex min-w-0 items-center gap-1">
+                      <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{t("tableHeaderDueDate")}: {inv.dueDate ? formatListDate(new Date(inv.dueDate), locale) : "—"}</span>
+                    </p>
+                    {inv.taxAmount > 0 && <p className="truncate">{t("tableHeaderTax")}: {inv.currency} {formatCount(inv.taxAmount)}</p>}
+                  </>
+                ),
+                badges: (
+                  <>
+                    <span className="inline-flex rounded-full border border-border/70 bg-secondary/70 px-2 py-0.5 font-medium capitalize">{inv.category?.replace(/_/g, " ")}</span>
+                    {agentComm && <span className="text-sky-600">{t("agentCommissionLabel")}: {agentComm.rate}%</span>}
+                    {saComm && <span className="text-indigo-600">{t("superAgentCommissionLabel")}: {saComm.rate}%</span>}
+                  </>
+                ),
+                stats: [
+                  { label: t("tableHeaderTotal"), value: `${inv.currency} ${formatCount(inv.totalAmount ?? 0)}` },
+                  { label: t("tableHeaderPaid"), value: <span className="text-emerald-600">{inv.currency} {formatCount(inv.paidAmount ?? 0)}</span> },
+                  { label: t("tableHeaderBalance"), value: <span className="text-amber-600">{inv.currency} {formatCount(inv.balanceDue ?? 0)}</span> },
+                ],
+              };
+            })}
+          />
+
           <section className="workspace-panel-surface overflow-hidden rounded-2xl">
 
 
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="overflow-x-auto max-sm:hidden">
+              <Table data-mobile-table="scroll">
                 <TableHeader>
                   <TableRow className="border-border/80 bg-muted/30 hover:bg-muted/30">
                     <TableHead className="md:min-w-[120px]">
@@ -482,7 +624,7 @@ export default function AdminInvoicesPage() {
                   ) : invoices.length === 0 ? (
                     <TableRow className="border-border/70 hover:bg-transparent">
                       <TableCell colSpan={12} className="px-6 py-14 text-center">
-                        <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-3xl p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">{t("noInvoicesFound")}</p><p className="mt-1 text-sm text-muted-foreground">{t("noInvoicesDescription")}</p></div></div>
+                        {emptyNode}
                       </TableCell>
                     </TableRow>
                   ) : invoices.map((inv) => {
@@ -511,50 +653,7 @@ export default function AdminInvoicesPage() {
                         <TableCell><StatusBadge status={inv.status} /></TableCell>
                         <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? formatListDate(new Date(inv.dueDate), locale) : "—"}</TableCell>
                         <TableCell className="text-right" onClick={e => e.stopPropagation()}>
-                          <RowActions
-                            name={inv.invoiceNumber}
-                            quick={[{ key: "view", label: t("viewDetails"), icon: Eye, onSelect: () => setSelectedInvoiceId(inv._id) }]}
-                            menu={
-                              (() => {
-                                const items: RowAction[] = [];
-                                if (["issued", "sent", "paid", "partially_paid", "overdue"].includes(inv.status)) {
-                                  items.push({
-                                    key: "download",
-                                    label: t("downloadPdf"),
-                                    icon: Download,
-                                    onSelect: async () => {
-                                      try {
-                                        const res = await fetch(`/api/invoices/${inv._id}/pdf`);
-                                        if (!res.ok) throw new Error(t("failedToDownloadInvoice"));
-                                        const blob = await res.blob();
-                                        const url = URL.createObjectURL(blob);
-                                        const a = document.createElement("a");
-                                        a.href = url;
-                                        a.download = `${inv.invoiceNumber}.pdf`;
-                                        a.click();
-                                        URL.revokeObjectURL(url);
-                                      } catch { toast.error(t("failedToDownloadPdf")); }
-                                    }
-                                  });
-                                }
-                                if (can("invoices", "update")) {
-                                  if (inv.status === "draft") {
-                                    items.push({ key: "issue", label: t("issue"), icon: CheckCircle2, onSelect: () => updateStatus(inv._id, "issued") });
-                                  }
-                                  if (["issued", "sent"].includes(inv.status)) {
-                                    items.push({ key: "paid", label: t("markAsPaid"), icon: CheckCircle2, onSelect: () => updateStatus(inv._id, "paid") });
-                                  }
-                                  if (!["void", "cancelled", "refunded", "paid", "credit_note"].includes(inv.status)) {
-                                    items.push({ key: "void", label: t("void"), icon: Trash2, onSelect: async () => {
-                                      const ok = await confirmDialog(t("confirmVoidMessage"));
-                                      if (ok) updateStatus(inv._id, "void");
-                                    }, destructive: true });
-                                  }
-                                }
-                                return items;
-                              })()
-                            }
-                          />
+                          {invoiceActions(inv)}
                         </TableCell>
                       </TableRow>
                     );
@@ -563,7 +662,7 @@ export default function AdminInvoicesPage() {
               </Table>
             </div>
 
-            <div className="border-t border-border/80 px-4 py-3 sm:px-5">
+            <div className="border-t border-border/80 px-4 py-3 max-sm:border-t-0 sm:px-5">
               <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
             </div>
           </section>

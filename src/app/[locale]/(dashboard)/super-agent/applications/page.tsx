@@ -20,7 +20,9 @@ import {
 } from "lucide-react";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -77,6 +79,7 @@ export default function SuperAgentApplicationsPage() {
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [agentOptions, setAgentOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: t("allAgentsPlaceholder") }]);
   const [stats, setStats] = useState({ total: 0, shortlisted: 0, hired: 0, conversionRate: 0 });
   const pagination = usePagination();
@@ -149,6 +152,11 @@ export default function SuperAgentApplicationsPage() {
     { label: t("metrics.conversionRate"), value: `${stats.conversionRate}%`, icon: TrendingUp },
   ];
 
+  // Shared by the inline bar and the phone filter sheet.
+  const statusOptions = getStatusOptions(t);
+  const clearAllFilters = () => { resetFilters(); pagination.resetPage(); };
+  const phoneFilterCount = (filters.status !== "all" ? 1 : 0) + (filters.agent !== "all" ? 1 : 0);
+
   return (
     <div className="page-container">
       <SuperAgentPageIntro
@@ -162,7 +170,7 @@ export default function SuperAgentApplicationsPage() {
       <SuperAgentSection>
         <InlineFilterBar
           className="mb-4"
-          onClear={(filters.search || filters.status !== "all" || filters.agent !== "all") ? () => { resetFilters(); pagination.resetPage(); } : undefined}
+          onClear={(filters.search || filters.status !== "all" || filters.agent !== "all") ? clearAllFilters : undefined}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
@@ -171,28 +179,97 @@ export default function SuperAgentApplicationsPage() {
             value={filters.search}
             onChange={(v) => { setFilter("search", v); pagination.resetPage(); }}
             placeholder={t("searchPlaceholder")}
+            className="max-sm:basis-0"
           />
-          <SearchableSelect
-            options={getStatusOptions(t)}
-            value={filters.status}
-            onValueChange={(v) => { setFilter("status", v); pagination.resetPage(); }}
-            placeholder={t("statusPlaceholder")}
-            className={INLINE_FILTER_CONTROL}
-          />
-          <SearchableSelect
-            options={agentOptions}
-            value={filters.agent}
-            onValueChange={(v) => { setFilter("agent", v); pagination.resetPage(); }}
-            placeholder={t("allAgentsPlaceholder")}
-            className={INLINE_FILTER_CONTROL}
-          />
+          <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+          {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+          <div className="contents max-sm:hidden">
+            <SearchableSelect
+              options={statusOptions}
+              value={filters.status}
+              onValueChange={(v) => { setFilter("status", v); pagination.resetPage(); }}
+              placeholder={t("statusPlaceholder")}
+              className={INLINE_FILTER_CONTROL}
+            />
+            <SearchableSelect
+              options={agentOptions}
+              value={filters.agent}
+              onValueChange={(v) => { setFilter("agent", v); pagination.resetPage(); }}
+              placeholder={t("allAgentsPlaceholder")}
+              className={INLINE_FILTER_CONTROL}
+            />
+          </div>
         </InlineFilterBar>
+
+        <PhoneFilterSheet
+          open={filterSheetOpen}
+          onOpenChange={setFilterSheetOpen}
+          activeCount={phoneFilterCount}
+          onClear={clearAllFilters}
+        >
+          <FilterField label={t("tableHeaders.status")} htmlFor="sa-applications-sheet-status">
+            <SearchableSelect
+              id="sa-applications-sheet-status"
+              options={statusOptions}
+              value={filters.status}
+              onValueChange={(v) => { setFilter("status", v); pagination.resetPage(); }}
+              placeholder={t("statusPlaceholder")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+          <FilterField label={t("tableHeaders.agent")} htmlFor="sa-applications-sheet-agent">
+            <SearchableSelect
+              id="sa-applications-sheet-agent"
+              options={agentOptions}
+              value={filters.agent}
+              onValueChange={(v) => { setFilter("agent", v); pagination.resetPage(); }}
+              placeholder={t("allAgentsPlaceholder")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+        </PhoneFilterSheet>
 
         {loadFailed && !loading ? (
           <ErrorState onRetry={() => fetchApplications()} />
         ) : (
-        <div className="overflow-x-auto">
-          <Table>
+        <>
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("pageTitle")}
+          loading={loading}
+          empty={<EmptyState title={t("emptyState.title")} description={t("emptyState.subtitle")} icon={FileText} />}
+          items={applications.map((a) => ({
+            key: a._id,
+            leading: <UserAvatar name={a.candidateName} email={a.candidateEmail} className="h-10 w-10" colorful />,
+            title: (
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <span className="truncate">{a.candidateName}</span>
+                {a.isPriority ? <PriorityBadge size="xs" /> : null}
+              </span>
+            ),
+            subtitle: a.candidateEmail || undefined,
+            trailing: <StatusBadge status={a.status} />,
+            meta: (
+              <>
+                <p className="flex min-w-0 items-center gap-1">
+                  <BriefcaseBusiness className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{[a.jobTitle, a.companyName].filter(Boolean).join(" · ")}</span>
+                </p>
+                <p className="flex min-w-0 items-center gap-1">
+                  <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">
+                    {formatListDate(a.appliedAt)}
+                    {a.agentName ? ` · ${a.agentName}` : ""}
+                    <span className="capitalize">{` · ${(a.source ?? "direct").replace(/_/g, " ")}`}</span>
+                  </span>
+                </p>
+              </>
+            ),
+            stats: a.matchScore != null ? [{ label: t("tableHeaders.matchScore"), value: `${a.matchScore}%` }] : undefined,
+          }))}
+        />
+        <div className="overflow-x-auto max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[180px]">{t("tableHeaders.candidate")}</TableHead>
@@ -268,6 +345,7 @@ export default function SuperAgentApplicationsPage() {
             </TableBody>
           </Table>
         </div>
+        </>
         )}
       </SuperAgentSection>
 

@@ -34,7 +34,9 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
@@ -248,6 +250,7 @@ export default function AgentExhibitionsPage() {
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useUrlFilter("category", "all");
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [showWizard, setShowWizard] = useState(false);
@@ -622,6 +625,29 @@ export default function AgentExhibitionsPage() {
     setDialogContainer(node);
   }, []);
 
+  const statusOptions = [{ value: "all", label: tf("allStatuses") }, ...STATUS_FILTER_KEYS.map(([value, key]) => ({ value, label: t(key) }))];
+  const categoryOptions = [{ value: "all", label: tf("allCategories") }, ...CATEGORY_FILTER_KEYS.map(([value, key]) => ({ value, label: t(key) }))];
+  const phoneFilterCount = (statusFilter !== "all" ? 1 : 0) + (categoryFilter !== "all" ? 1 : 0);
+
+  const requestActions = (item: ExhibitionRequest): { quick: RowAction[]; menu: RowAction[] } => {
+  const quick: RowAction[] = [
+    { key: "view", label: t("viewDetails"), icon: Eye, iconOnly: true, onSelect: () => setDetailItem(item) },
+  ];
+  const menu: RowAction[] = [
+    { key: "copy", label: t("duplicateRequest"), icon: Copy, onSelect: () => handleDuplicate(item) },
+  ];
+  if (["draft", "submitted", "revision_requested"].includes(item.status)) {
+    menu.push({ key: "edit", label: t("editRequest"), icon: Pencil, onSelect: () => startEdit(item) });
+  }
+  if (canReportEvent(item)) {
+    menu.unshift({ key: "complete", label: t("markEventCompleted"), icon: CheckCheck, onSelect: () => setCompleteItem(item) });
+  }
+  if (["draft", "submitted"].includes(item.status)) {
+    menu.push({ key: "delete", label: t("deleteRequest"), icon: Trash2, destructive: true, onSelect: () => handleDelete(item._id) });
+  }
+    return { quick, menu };
+  };
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -646,34 +672,114 @@ export default function AgentExhibitionsPage() {
       {/* Status and category were dropped when the filters left the header
           panel; both still narrow the API request, so they are back here. */}
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={search || statusFilter !== "all" || categoryFilter !== "all" ? () => { setSearch(""); setStatusFilter("all"); setCategoryFilter("all"); resetPage(); } : undefined}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); resetPage(); }} placeholder={t("searchPlaceholder")} />
-        <SearchableSelect
-          id="agent-exhibitions-status"
-          className={INLINE_FILTER_CONTROL}
-          options={[{ value: "all", label: tf("allStatuses") }, ...STATUS_FILTER_KEYS.map(([value, key]) => ({ value, label: t(key) }))]}
-          value={statusFilter}
-          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-          placeholder={tf("allStatuses")}
-        />
-        <SearchableSelect
-          id="agent-exhibitions-category"
-          className={INLINE_FILTER_CONTROL}
-          options={[{ value: "all", label: tf("allCategories") }, ...CATEGORY_FILTER_KEYS.map(([value, key]) => ({ value, label: t(key) }))]}
-          value={categoryFilter}
-          onValueChange={(v) => { setCategoryFilter(v); resetPage(); }}
-          placeholder={tf("allCategories")}
-        />
+        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); resetPage(); }} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            id="agent-exhibitions-status"
+            className={INLINE_FILTER_CONTROL}
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={tf("allStatuses")}
+          />
+          <SearchableSelect
+            id="agent-exhibitions-category"
+            className={INLINE_FILTER_CONTROL}
+            options={categoryOptions}
+            value={categoryFilter}
+            onValueChange={(v) => { setCategoryFilter(v); resetPage(); }}
+            placeholder={tf("allCategories")}
+          />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setStatusFilter("all"); setCategoryFilter("all"); resetPage(); }}
+      >
+        <FilterField label={tf("status")} htmlFor="agent-exhibitions-sheet-status">
+          <SearchableSelect
+            id="agent-exhibitions-sheet-status"
+            className={SHEET_CONTROL}
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={tf("allStatuses")}
+          />
+        </FilterField>
+        <FilterField label={tf("category")} htmlFor="agent-exhibitions-sheet-category">
+          <SearchableSelect
+            id="agent-exhibitions-sheet-category"
+            className={SHEET_CONTROL}
+            options={categoryOptions}
+            value={categoryFilter}
+            onValueChange={(v) => { setCategoryFilter(v); resetPage(); }}
+            placeholder={tf("allCategories")}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("title")}
+        loading={loading}
+        empty={<EmptyState title={t("noRequests")} icon={Inbox} />}
+        items={items.map((item) => {
+          const { quick, menu } = requestActions(item);
+          return {
+            key: item._id,
+            title: (
+              <button type="button" onClick={() => setDetailItem(item)} className="!min-h-0 text-start hover:text-primary hover:underline">
+                {item.eventName}
+              </button>
+            ),
+            subtitle: item.description || undefined,
+            trailing: (
+              <Badge className={`${STATUS_COLORS[item.status] ?? STATUS_COLORS.draft} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>
+                {statusLabel(item.status)}
+              </Badge>
+            ),
+            actions: <RowActions name={item.eventName} quick={quick} menu={menu} />,
+            meta: (
+              <>
+                <p className="flex min-w-0 items-center gap-1">
+                  <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">
+                    {formatListDate(item.eventStartDate, locale)}{item.eventEndDate ? ` – ${formatListDate(item.eventEndDate, locale)}` : ""}
+                    {item.eventEndDate ? ` · ${t("dayCount", { count: dayCount(item.eventStartDate, item.eventEndDate) })}` : ""}
+                  </span>
+                </p>
+                <p className="flex min-w-0 items-center gap-1">
+                  <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{placeText(item) || t("notSpecified")}</span>
+                </p>
+                <p className="font-medium text-foreground">{t("tableHeaderBudget")}: {formatCurrency(item.estimatedBudget, item.budgetCurrency)}</p>
+              </>
+            ),
+            badges: (
+              <>
+                <Badge variant="outline" className="rounded-md border-primary/20 bg-primary/5 px-2 py-0.5 text-[11px] font-medium">
+                  {labelFor(eventCategories, item.eventCategory)}
+                </Badge>
+                <Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold`}>{priorityLabel(item.priority)}</Badge>
+              </>
+            ),
+          };
+        })}
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
         {loading ? (
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeaderEvent")}</TableHead>
@@ -691,7 +797,7 @@ export default function AgentExhibitionsPage() {
             </TableBody>
           </Table>
         ) : items.length === 0 ? (
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeaderEvent")}</TableHead>
@@ -714,7 +820,7 @@ export default function AgentExhibitionsPage() {
           </Table>
         ) : (
           <div className="overflow-x-auto">
-            <Table>
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("tableHeaderEvent")}</TableHead>
@@ -729,21 +835,7 @@ export default function AgentExhibitionsPage() {
               </TableHeader>
               <TableBody>
                 {items.map((item) => {
-                  const quick: RowAction[] = [
-                    { key: "view", label: t("viewDetails"), icon: Eye, iconOnly: true, onSelect: () => setDetailItem(item) },
-                  ];
-                  const menu: RowAction[] = [
-                    { key: "copy", label: t("duplicateRequest"), icon: Copy, onSelect: () => handleDuplicate(item) },
-                  ];
-                  if (["draft", "submitted", "revision_requested"].includes(item.status)) {
-                    menu.push({ key: "edit", label: t("editRequest"), icon: Pencil, onSelect: () => startEdit(item) });
-                  }
-                  if (canReportEvent(item)) {
-                    menu.unshift({ key: "complete", label: t("markEventCompleted"), icon: CheckCheck, onSelect: () => setCompleteItem(item) });
-                  }
-                  if (["draft", "submitted"].includes(item.status)) {
-                    menu.push({ key: "delete", label: t("deleteRequest"), icon: Trash2, destructive: true, onSelect: () => handleDelete(item._id) });
-                  }
+                  const { quick, menu } = requestActions(item);
                   return (
                     <TableRow key={item._id}>
                       <TableCell>

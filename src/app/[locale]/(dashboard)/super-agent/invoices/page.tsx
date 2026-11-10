@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { InvoiceTable } from "@/components/shared/InvoiceTable";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
@@ -71,6 +72,7 @@ export default function SuperAgentInvoicesPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const { displayCurrency } = useCurrencyPreference();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -113,6 +115,8 @@ export default function SuperAgentInvoicesPage() {
   useEffect(() => { document.title = t("pageTitle"); }, [t]);
 
   const hasActiveFilters = Boolean(statusFilter || categoryFilter || dateFrom || dateTo || search.trim());
+  const clearAllFilters = () => { setStatusFilter(""); setCategoryFilter(""); setDateFrom(""); setDateTo(""); setSearchState(""); resetPage(); };
+  const phoneFilterCount = [statusFilter, categoryFilter, dateFrom, dateTo].filter(Boolean).length;
 
   const exportColumns: ExportColumn<Invoice>[] = [
     { header: t("invoiceNumber"), key: "invoiceNumber" },
@@ -196,11 +200,14 @@ export default function SuperAgentInvoicesPage() {
 
       {/* ── Filters (export was built but never passed to the old toolbar) ── */}
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        // Phones: one line of search + Filters + Export, no box around it.
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
-        onClear={hasActiveFilters || search ? () => { setStatusFilter(""); setCategoryFilter(""); setDateFrom(""); setDateTo(""); setSearchState(""); resetPage(); } : undefined}
+        onClear={hasActiveFilters || search ? clearAllFilters : undefined}
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         more={(
           <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
             <div className="flex min-w-0 flex-[1_1_100%] items-center gap-2">
@@ -220,24 +227,63 @@ export default function SuperAgentInvoicesPage() {
           value={search}
           onChange={(v) => { setSearchState(v); resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <SearchableSelect
-          id="sa-inv-status"
-          className={INLINE_FILTER_CONTROL}
-          options={statusOptions}
-          value={statusFilter || "all"}
-          onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
-          placeholder={t("allStatuses")}
-        />
-        <SearchableSelect
-          id="sa-inv-cat"
-          className={INLINE_FILTER_CONTROL}
-          options={categoryOptions}
-          value={categoryFilter || "all"}
-          onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }}
-          placeholder={t("allCategories")}
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            id="sa-inv-status"
+            className={INLINE_FILTER_CONTROL}
+            options={statusOptions}
+            value={statusFilter || "all"}
+            onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
+            placeholder={t("allStatuses")}
+          />
+          <SearchableSelect
+            id="sa-inv-cat"
+            className={INLINE_FILTER_CONTROL}
+            options={categoryOptions}
+            value={categoryFilter || "all"}
+            onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }}
+            placeholder={t("allCategories")}
+          />
+        </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={clearAllFilters}
+      >
+        <FilterField label={tc("status")} htmlFor="sa-inv-sheet-status">
+          <SearchableSelect
+            id="sa-inv-sheet-status"
+            className={SHEET_CONTROL}
+            options={statusOptions}
+            value={statusFilter || "all"}
+            onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
+            placeholder={t("allStatuses")}
+          />
+        </FilterField>
+        <FilterField label={t("category")} htmlFor="sa-inv-sheet-cat">
+          <SearchableSelect
+            id="sa-inv-sheet-cat"
+            className={SHEET_CONTROL}
+            options={categoryOptions}
+            value={categoryFilter || "all"}
+            onValueChange={v => { setCategoryFilter(v === "all" ? "" : v); resetPage(); }}
+            placeholder={t("allCategories")}
+          />
+        </FilterField>
+        <FilterField label={t("filterDateFrom")} htmlFor="sa-inv-sheet-date-from">
+          <DateTimePicker id="sa-inv-sheet-date-from" mode="date" value={dateFrom} onChange={v => { setDateFrom(v); resetPage(); }} className="w-full" />
+        </FilterField>
+        <FilterField label={t("filterDateTo")} htmlFor="sa-inv-sheet-date-to">
+          <DateTimePicker id="sa-inv-sheet-date-to" mode="date" value={dateTo} onChange={v => { setDateTo(v); resetPage(); }} className="w-full" />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {/* Analytics View */}
       {activeView === "analytics" && (

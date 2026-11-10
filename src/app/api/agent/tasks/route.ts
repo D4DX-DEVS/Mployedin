@@ -43,7 +43,9 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
   const kind = url.searchParams.get("kind") ?? "";
 
   const filter: Record<string, unknown> = { userId: ctx.userId };
-  if (status && status !== "all") filter.status = status;
+  // "open" = everything not closed (pending + in progress), the Open card's filter.
+  if (status === "open") filter.status = { $nin: CLOSED_TASK_STATUSES };
+  else if (status && status !== "all") filter.status = status;
   if (priority && priority !== "all") filter.priority = priority;
   if (search) filter.title = { $regex: escapeRegex(search), $options: "i" };
   if (kind === "assigned") filter["assignedBy.userId"] = { $exists: true };
@@ -90,6 +92,7 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
     page,
     totalPages: Math.max(Math.ceil(total / limit), 1),
     stats: {
+      open: (statusCounts.pending ?? 0) + (statusCounts.in_progress ?? 0),
       pending: statusCounts.pending ?? 0,
       inProgress: statusCounts.in_progress ?? 0,
       completed: statusCounts.completed ?? 0,

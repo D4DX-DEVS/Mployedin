@@ -1663,6 +1663,7 @@ export default function EmployerCandidatesPage() {
                 value={locationFilter}
                 onChange={(event) => setLocationFilter(event.target.value)}
                 placeholder={t("filterByLocation")}
+                aria-label={t("filterByLocation")}
                 className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none"
               />
             </div>
@@ -1699,6 +1700,7 @@ export default function EmployerCandidatesPage() {
                 value={aiQuery}
                 onChange={(event) => setAiQuery(event.target.value)}
                 placeholder={t("aiSearchPlaceholder")}
+                aria-label={t("aiSearchLabel")}
                 className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
@@ -1788,6 +1790,7 @@ export default function EmployerCandidatesPage() {
                     value={skillsFilter}
                     onChange={(event) => setSkillsFilter(event.target.value)}
                     placeholder={t("skillsPlaceholder")}
+                    aria-label={t("skillsPlaceholder")}
                     className="h-10 rounded-xl border-border bg-background/80 text-sm shadow-none"
                   />
                   <Button

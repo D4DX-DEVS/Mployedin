@@ -1603,10 +1603,12 @@ export function ApplicationsWorkspace({
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("aiScoreRange")}</label>
             <div className="flex items-center gap-2">
               <input type="number" min={0} max={100} value={scoreRange[0]}
+                aria-label={t("scoreMinLabel")}
                 onChange={(e) => setScoreRange([Math.max(0, +e.target.value), scoreRange[1]])}
                 className="h-11 w-20 sm:h-10 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
               <span className="text-xs text-muted-foreground">{t("rangeTo")}</span>
               <input type="number" min={0} max={100} value={scoreRange[1]}
+                aria-label={t("scoreMaxLabel")}
                 onChange={(e) => setScoreRange([scoreRange[0], Math.min(100, +e.target.value)])}
                 className="h-11 w-20 sm:h-10 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
               <span className="text-xs text-muted-foreground">%</span>
@@ -1627,12 +1629,14 @@ export function ApplicationsWorkspace({
             <div className="flex items-center gap-2">
               <input type="number" min={0} max={50}
                 value={experienceRange[0] ?? ""}
+                aria-label={t("experienceMinLabel")}
                 placeholder={selectedJob ? String(selectedJob.requirements.experienceMin) : t("min")}
                 onChange={(e) => setExperienceRange([e.target.value ? +e.target.value : null, experienceRange[1]])}
                 className="h-11 w-20 sm:h-10 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
               <span className="text-xs text-muted-foreground">{t("rangeTo")}</span>
               <input type="number" min={0} max={50}
                 value={experienceRange[1] ?? ""}
+                aria-label={t("experienceMaxLabel")}
                 placeholder={selectedJob ? String(selectedJob.requirements.experienceMax) : t("max")}
                 onChange={(e) => setExperienceRange([experienceRange[0], e.target.value ? +e.target.value : null])}
                 className="h-11 w-20 sm:h-10 rounded-xl border border-border bg-background/80 px-3 text-sm text-foreground" />
@@ -3824,6 +3828,7 @@ function BulkInterviewScheduleModal({
               ]}
               value={type}
               onValueChange={(v) => setType(v as typeof type)}
+              ariaLabel={t("ivType")}
             />
           </div>
           <div>
@@ -3838,6 +3843,7 @@ function BulkInterviewScheduleModal({
               ]}
               value={String(durationPerCandidate)}
               onValueChange={(v) => setDurationPerCandidate(+v)}
+              ariaLabel={t("bulkIvPerCandidate")}
             />
           </div>
           <div>
@@ -3852,6 +3858,7 @@ function BulkInterviewScheduleModal({
                 { value: "30", label: "30 min" },
               ]}
               value={String(gapMinutes)}
+              ariaLabel={t("bulkIvGapBetween")}
               onValueChange={(v) => setGapMinutes(+v)}
             />
           </div>
@@ -4219,6 +4226,7 @@ function InterviewScheduleModal({
               ]}
               value={type}
               onValueChange={(v) => setType(v as typeof type)}
+              ariaLabel={t("ivType")}
             />
           </div>
           <div>
@@ -4233,6 +4241,7 @@ function InterviewScheduleModal({
               ]}
               value={String(duration)}
               onValueChange={(v) => setDuration(+v)}
+              ariaLabel={t("ivDuration")}
             />
           </div>
         </div>
@@ -4382,6 +4391,7 @@ function OfferCreateModal({
               ]}
               value={period}
               onValueChange={(v) => setPeriod(v as typeof period)}
+              ariaLabel={t("offerPeriodLabel")}
             />
           </div>
         </div>

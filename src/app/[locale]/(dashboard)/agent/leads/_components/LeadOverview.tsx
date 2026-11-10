@@ -54,7 +54,7 @@ export function LeadOverview(props: OverviewProps) {
 
 function Section({ title, icon, action, children }: { title: string; icon: ReactNode; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-xl border border-border/70 bg-background p-4">
+    <section className="rounded-xl border border-border/70 bg-background p-4 max-sm:rounded-none max-sm:border-x-0 max-sm:border-t-0 max-sm:px-0 max-sm:pt-0 max-sm:last:border-b-0">
       <div className="mb-3 flex items-center gap-2">
         <span className="text-muted-foreground [&_svg]:h-4 [&_svg]:w-4" aria-hidden="true">{icon}</span>
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{title}</h3>
@@ -123,7 +123,7 @@ function StatusSection({ lead, stageConfig, actions, canUpdate, t }: OverviewPro
               >
                 {lostStep ? <X className="h-3 w-3" /> : (current || done) ? <Check className="h-3 w-3" /> : null}
               </button>
-              <span className={cn("mt-1.5 w-full truncate px-0.5 text-center text-[10px] sm:text-[11px]", current ? cn("font-semibold", style.color) : "text-muted-foreground")}>
+              <span className={cn("mt-1.5 w-full truncate px-0.5 text-center text-[10px] max-sm:px-0 sm:text-[11px]", current ? cn("font-semibold", style.color) : "text-muted-foreground")}>
                 {style.label}
               </span>
             </li>

@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type React from "react";
 import { Lexend, Manrope, Noto_Sans_Arabic, Noto_Sans_Malayalam } from "next/font/google";
-import Script from "next/script";
 import { cookies, headers } from "next/headers";
 import { ServiceWorkerRegistration } from "@/components/shared/ServiceWorkerRegistration";
 import { ResponsiveTables } from "@/components/shared/ResponsiveTables";
@@ -91,14 +90,12 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={dir} {...a11yProps} suppressHydrationWarning>
       <head>
-        {/* Load the storage fallback before hydration through Next's script
-            loader; a raw inline script here triggers a React client warning. */}
-        <Script
-          id="storage-fallback-init"
-          strategy="beforeInteractive"
-          src="/storage-fallback.js"
-          nonce={nonce}
-        />
+        {/* Storage fallback shim. `async` makes React 19 treat this as a
+            hoistable resource; a sync <script> (or next/script
+            beforeInteractive) in a component triggers the "script tag while
+            rendering" client warning. It is tiny and same-origin, so it runs
+            well before hydration; callers keep their own storage guards. */}
+        <script src="/storage-fallback.js" async nonce={nonce} />
       </head>
       <body
         suppressHydrationWarning

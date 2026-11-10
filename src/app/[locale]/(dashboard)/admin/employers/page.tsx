@@ -7,6 +7,7 @@ import { validatePasswordForForm, PASSWORD_MIN_LENGTH } from "@/lib/security/pas
 import { FormError, formErrorFromResponse } from "@/lib/errors/form-error";
 import { PageHero } from "@/components/shared/PageHero";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -32,7 +33,9 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, LogIn, UserCog, Building2, MapPin, Mail, UserRoundCheck, UserRoundX } from "lucide-react";
+import { Plus, Pencil, Trash2, Inbox, ShieldCheck, ShieldOff, FileText, ExternalLink, Ban, LogIn, UserCog, Building2, MapPin, Mail, UserRoundCheck, UserRoundX, CalendarDays, Briefcase } from "lucide-react";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
+import { cn } from "@/lib/utils";
 import { AssignAgentDialog } from "@/components/features/agent/AssignAgentDialog";
 import { ChangeRegionDialog } from "./_components/ChangeRegionDialog";
 import type { EmployerAgentSummary } from "@/lib/agents/employerAssignment";
@@ -68,6 +71,7 @@ export default function AdminEmployersPage() {
   const { can } = usePermissions();
   const router = useRouter();
   const t = useTranslations("adminEmployers");
+  const tCommon = useTranslations("common");
   const tf = useTranslations("formErrors");
   const locale = useLocale();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -92,6 +96,7 @@ export default function AdminEmployersPage() {
   const [regionItem, setRegionItem] = useState<Employer | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [showAdd, setShowAdd] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [editItem, setEditItem] = useState<Employer | null>(null);
   const [verifyItem, setVerifyItem] = useState<Employer | null>(null);
   const [verifyLoading, setVerifyLoading] = useState(false);
@@ -405,6 +410,28 @@ export default function AdminEmployersPage() {
     return { quick: [quick], menu };
   };
 
+  const statusOptions = [
+    { value: "all", label: t("statusFilterAll") },
+    { value: "active", label: t("statusFilterActive") },
+    { value: "inactive", label: t("statusFilterInactive") },
+  ];
+  const agentOptions = [
+    { value: "all", label: t("agentFilterAllShort") },
+    { value: "none", label: t("agentFilterNone") },
+    { value: "any", label: t("agentFilterAny") },
+  ];
+  const coverageOptions = [
+    { value: "all", label: t("coverageFilterAllShort") },
+    { value: "none", label: t("coverageFilterNone") },
+    { value: "covered", label: t("coverageFilterCovered") },
+  ];
+  const sortOptions = [
+    { value: "companyName", label: t("tableHeaderCompany") },
+    { value: "industry", label: t("tableHeaderIndustry") },
+    { value: "createdAt", label: t("tableHeaderJoined") },
+  ];
+  const phoneFilterCount = (statusFilter !== "all" ? 1 : 0) + (agentFilter !== "all" ? 1 : 0) + (coverageFilter !== "all" ? 1 : 0);
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -458,7 +485,7 @@ export default function AdminEmployersPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={
           search || agentFilter !== "all" || statusFilter !== "all" || coverageFilter !== "all"
             ? () => { setSearch(""); setAgentFilter("all"); setStatusFilter("all"); setCoverageFilter("all"); resetPage(); }
@@ -472,62 +499,165 @@ export default function AdminEmployersPage() {
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <InlineSearchSelect
-          options={[
-            { value: "all", label: t("statusFilterAll") },
-            { value: "active", label: t("statusFilterActive") },
-            { value: "inactive", label: t("statusFilterInactive") },
-          ]}
-          value={statusFilter}
-          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-          placeholder={t("statusFilterLabel")}
-          className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
-        />
-        <InlineSearchSelect
-          options={[
-            { value: "all", label: t("agentFilterAllShort") },
-            { value: "none", label: t("agentFilterNone") },
-            { value: "any", label: t("agentFilterAny") },
-          ]}
-          value={agentFilter}
-          onValueChange={(v) => { setAgentFilter(v); resetPage(); }}
-          placeholder={t("agentFilterLabel")}
-          className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
-        />
-        <InlineSearchSelect
-          options={[
-            { value: "all", label: t("coverageFilterAllShort") },
-            { value: "none", label: t("coverageFilterNone") },
-            { value: "covered", label: t("coverageFilterCovered") },
-          ]}
-          value={coverageFilter}
-          onValueChange={(v) => { setCoverageFilter(v); resetPage(); }}
-          placeholder={t("coverageFilterLabel")}
-          className="h-11 w-44 rounded-lg text-xs sm:h-9 sm:text-sm"
-        />
-        {/* Phones have no column headers to sort by. */}
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(value) => { setSortBy(value); resetPage(); }}
-          options={[
-            { value: "companyName", label: t("tableHeaderCompany") },
-            { value: "industry", label: t("tableHeaderIndustry") },
-            { value: "createdAt", label: t("tableHeaderJoined") },
-          ]}
-          order={order}
-          onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
-          compact
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <InlineSearchSelect
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={t("statusFilterLabel")}
+            className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+          />
+          <InlineSearchSelect
+            options={agentOptions}
+            value={agentFilter}
+            onValueChange={(v) => { setAgentFilter(v); resetPage(); }}
+            placeholder={t("agentFilterLabel")}
+            className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+          />
+          <InlineSearchSelect
+            options={coverageOptions}
+            value={coverageFilter}
+            onValueChange={(v) => { setCoverageFilter(v); resetPage(); }}
+            placeholder={t("coverageFilterLabel")}
+            className="h-11 w-44 rounded-lg text-xs sm:h-9 sm:text-sm"
+          />
+          {/* Phones have no column headers to sort by. */}
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={order}
+            onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+            compact
+          />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setAgentFilter("all"); setStatusFilter("all"); setCoverageFilter("all"); resetPage(); }}
+      >
+        <FilterField label={tCommon("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={order}
+            onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={t("statusFilterLabel")} htmlFor="employers-sheet-status">
+          <InlineSearchSelect
+            id="employers-sheet-status"
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={t("statusFilterLabel")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("tableHeaderAgent")} htmlFor="employers-sheet-agent">
+          <InlineSearchSelect
+            id="employers-sheet-agent"
+            options={agentOptions}
+            value={agentFilter}
+            onValueChange={(v) => { setAgentFilter(v); resetPage(); }}
+            placeholder={t("agentFilterLabel")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("coverageFilterLabel")} htmlFor="employers-sheet-coverage">
+          <InlineSearchSelect
+            id="employers-sheet-coverage"
+            options={coverageOptions}
+            value={coverageFilter}
+            onValueChange={(v) => { setCoverageFilter(v); resetPage(); }}
+            placeholder={t("coverageFilterLabel")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      {!error && (
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("pageTitle")}
+          loading={loading}
+          empty={<EmptyState title={t("noEmployersFound")} icon={Inbox} />}
+          items={employers.map((emp) => ({
+            key: emp._id,
+            leading: <UserAvatar name={emp.companyName || emp.name} email={emp.email ?? emp.contactEmail} className="h-10 w-10" colorful />,
+            title: emp.companyName || emp.name,
+            subtitle: emp.email ?? emp.contactEmail ?? "—",
+            trailing: <StatusBadge status={emp.status ?? (emp.isActive !== false ? "active" : "inactive")} />,
+            actions: canManageRows ? <RowActions name={emp.companyName || emp.name || ""} {...rowActionsFor(emp)} /> : undefined,
+            meta: (
+              <>
+                {emp.industry && (
+                  <p className="flex min-w-0 items-center gap-1">
+                    <Briefcase className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{emp.industry}</span>
+                  </p>
+                )}
+                {(emp.region || emp.location) && (
+                  <p className="flex min-w-0 items-center gap-1">
+                    <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{emp.region ? `${emp.region.cityName}, ${emp.region.countryCode}` : emp.location}</span>
+                  </p>
+                )}
+                {emp.assignedAgent && (
+                  <p className="flex min-w-0 items-center gap-1">
+                    <UserRoundCheck className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">
+                      {emp.assignedAgent.name}
+                      {emp.assignedAgent.superAgentName ? ` · ${t("underSuperAgent", { name: emp.assignedAgent.superAgentName })}` : ""}
+                    </span>
+                  </p>
+                )}
+                <p className={cn("truncate", !emp.region?.superAgents.length && "text-amber-700")}>
+                  {emp.region?.superAgents.length
+                    ? t("regionSuperAgents", { names: emp.region.superAgents.map((s) => s.name).join(", ") })
+                    : emp.region ? t("regionUncovered") : t("regionMissing")}
+                </p>
+                <p className="flex min-w-0 items-center gap-1">
+                  <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{formatListDate(new Date(emp.createdAt), locale)}</span>
+                </p>
+              </>
+            ),
+            badges: emp.domainVerified || !emp.assignedAgent ? (
+              <>
+                {emp.domainVerified && (
+                  <Badge className="gap-1 rounded-full border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                    <ShieldCheck className="h-3 w-3" />
+                    {t("verifiedBadge")}
+                  </Badge>
+                )}
+                {!emp.assignedAgent && (
+                  <Badge variant="outline" className="gap-1.5 rounded-full border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800">
+                    <UserRoundX className="h-3 w-3" />
+                    {t("noAgentBadge")}
+                  </Badge>
+                )}
+              </>
+            ) : undefined,
+          }))}
+        />
+      )}
+
+      <section className={cn("workspace-panel-surface overflow-hidden rounded-2xl", !error && "max-sm:hidden")}>
         {error ? (
           <div className="p-6">
             <ErrorState onRetry={fetchEmployers} />
           </div>
         ) : (
-        <Table>
+        <Table data-mobile-table="scroll">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead className="min-w-[220px]"><SortableTableHeader label={t("tableHeaderCompany")} active={sortBy === "companyName"} order={order} onClick={() => toggleSort("companyName")} /></TableHead>

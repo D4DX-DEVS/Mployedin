@@ -699,6 +699,7 @@ function CompanySettingsPage() {
                           value={form.companySize}
                           onValueChange={(v) => setField("companySize", v)}
                           placeholder={t("selectSize")}
+                          ariaLabel={t("companySize")}
                         />
                       </div>
                       <div>
@@ -743,6 +744,7 @@ function CompanySettingsPage() {
                           value={form.country}
                           onValueChange={(v) => setField("country", v)}
                           placeholder={t("selectCountry")}
+                          ariaLabel={t("country")}
                           searchPlaceholder={t("searchCountries")}
                         />
                       </div>
@@ -930,6 +932,7 @@ function CompanySettingsPage() {
                         ]}
                         value={form.defaultVisibility}
                         onValueChange={(v) => setField("defaultVisibility", v)}
+                        ariaLabel={t("defaultJobVisibility")}
                       />
                     </div>
                     <div>
@@ -939,6 +942,7 @@ function CompanySettingsPage() {
                         value={form.workType}
                         onValueChange={(v) => setField("workType", v)}
                         placeholder={t("selectWorkType")}
+                        ariaLabel={t("preferredWorkType")}
                       />
                     </div>
                   </div>

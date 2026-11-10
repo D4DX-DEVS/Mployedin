@@ -424,7 +424,7 @@ export default function PlacementOnboardingPage() {
                 value={newTaskAssignee || NONE}
                 onValueChange={(v) => setNewTaskAssignee(v === NONE ? "" : v)}
               >
-                <SelectTrigger className="min-w-[150px]">
+                <SelectTrigger className="min-w-[150px]" aria-label={t("assignee")}>
                   <SelectValue placeholder={t("assignee")} />
                 </SelectTrigger>
                 <SelectContent>

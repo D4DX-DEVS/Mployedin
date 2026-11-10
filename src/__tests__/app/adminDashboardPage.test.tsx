@@ -268,13 +268,13 @@ describe("Platform snapshot", () => {
     expect(within(panel).getByText("No change vs previous 30 days")).toBeInTheDocument();
     // No previous figure: say so rather than print an infinite percentage.
     expect(within(panel).getByText("None in the previous 30 days")).toBeInTheDocument();
-    // Phone row and desktop pill each keep the sentence for assistive tech.
+    // The change pill keeps the sentence for assistive tech (one tile layout at every width now).
     expect(within(panel).getAllByText("None in either period").length).toBeGreaterThan(0);
     expect(panel.querySelector('[data-snapshot="activeJobs"] a')?.getAttribute("href")).toBe("/en/admin/jobs?status=active");
     // Jobs created in the period include drafts, so they are not called "opened".
     expect(within(panel).getAllByText("12 created in 30 days").length).toBeGreaterThan(0);
     // The pill never prints a bare dash: none before → the count added; none either side → "No change".
-    const pill = (key: string) => panel.querySelector(`[data-snapshot="${key}"] .hidden.sm\\:block [aria-hidden="true"]:not(svg)`)?.textContent;
+    const pill = (key: string) => panel.querySelector(`[data-snapshot="${key}"] .rounded-full [aria-hidden="true"]:not(svg)`)?.textContent;
     expect(pill("activeJobs")).toBe("+12");
     expect(pill("placements")).toBe("No change");
     expect(pill("interviews")).toBe("No change");

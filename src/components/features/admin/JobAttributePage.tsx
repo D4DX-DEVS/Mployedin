@@ -26,7 +26,9 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { singularizeTitle } from "@/lib/ui/singularize";
 
 interface AttributeItem {
@@ -46,6 +48,7 @@ interface JobAttributePageProps {
 export default function JobAttributePage({ category }: JobAttributePageProps) {
   const t = useTranslations("adminJobAttributes");
   const tf = useTranslations("formErrors");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   /* Heading copy is derived from the category rather than passed in per page.
      The five callers used to hand over title/titleAr/description/descriptionAr
@@ -76,6 +79,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "sortOrder", { allow: ["name", "nameAr", "slug", "sortOrder", "createdAt"] });
   const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "asc", { allow: ["asc", "desc"] });
   const order = sortOrder === "desc" ? "desc" : "asc";
@@ -203,6 +207,13 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
     return { quick, menu };
   };
 
+  const statusOptions = [
+    { value: "all", label: t("all") },
+    { value: "active", label: t("active") },
+    { value: "inactive", label: t("inactive") },
+  ];
+  const phoneFilterCount = (statusFilter !== "all" ? 1 : 0);
+
   return (
     <div className="page-container">
       <PlatformDataTabs />
@@ -234,7 +245,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={hasActiveFilters ? () => { setSearch(""); setStatusFilter("all"); resetPage(); } : undefined}
         clearLabel={t("clear")}
       >
@@ -242,33 +253,89 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
           value={search}
           onChange={(v) => { setSearch(v); resetPage(); }}
           placeholder={`${t("search")} ${displayTitle.toLowerCase()}…`}
+          className="max-sm:basis-0"
         />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "all", label: t("all") },
-            { value: "active", label: t("active") },
-            { value: "inactive", label: t("inactive") },
-          ]}
-          value={statusFilter}
-          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-          placeholder={t("status")}
-        />
-        {/* Sorting lives here as well as on the column heads: phone cards have no heads. */}
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(value) => { setSortBy(value); resetPage(); }}
-          options={sortOptions}
-          order={order}
-          onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
-          className="shrink-0"
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={t("status")}
+          />
+          {/* Sorting lives here as well as on the column heads: phone cards have no heads. */}
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={order}
+            onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+            className="shrink-0"
+          />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setStatusFilter("all"); resetPage(); }}
+      >
+        <FilterField label={tCommon("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={order}
+            onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={t("status")} htmlFor="attributes-sheet-status">
+          <SearchableSelect
+            className={SHEET_CONTROL}
+            id="attributes-sheet-status"
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={t("status")}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      <PhoneRecordList
+        className="sm:hidden"
+        label={displayTitle}
+        loading={loading}
+        empty={
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Inbox className="h-6 w-6 text-muted-foreground/50" />
+            <p className="text-sm font-medium text-foreground">{t("noneFound", { title: displayTitle.toLowerCase() })}</p>
+            <p className="text-xs text-muted-foreground">{t("adjustFilters")}</p>
+          </div>
+        }
+        items={items.map((item) => ({
+          key: `job-attribute-${item._id}`,
+          title: item.name,
+          subtitle: <span dir="rtl">{item.nameAr || "—"}</span>,
+          trailing: <StatusBadge status={item.isActive ? "active" : "inactive"} />,
+          meta: (
+            <>
+              <p className="truncate font-mono">{t("slug")}: {item.slug}</p>
+              <p>{t("order")}: {item.sortOrder}</p>
+            </>
+          ),
+          actions: can("job_attributes", "update") || can("job_attributes", "delete")
+            ? <RowActions name={item.name} {...rowActionsFor(item)} />
+            : undefined,
+        }))}
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl max-sm:hidden">
         {/* Table: semantic table with responsive-card-table */}
-        <div className="overflow-x-auto" data-mobile-table="responsive">
-          <Table className="responsive-card-table">
+        <div className="overflow-x-auto">
+          <Table className="responsive-card-table" data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
                 <TableHead data-label={t("nameEnglish")}><SortableTableHeader label={t("nameEnglish")} active={sortBy === "name"} order={order} onClick={() => toggleSort("name")} /></TableHead>

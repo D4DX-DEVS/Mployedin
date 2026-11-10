@@ -206,17 +206,17 @@ export default function AdminBulkImportPage() {
 
             {/* Template download */}
             <div className="workspace-glass-panel card-pad rounded-2xl">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-stretch">
+                <div className="min-w-0">
                   <p className="text-sm font-medium text-foreground">{t("labelDownloadTemplate")}</p>
                   <p className="text-xs text-muted-foreground">{t("descDownloadTemplate", { type: IMPORT_TYPES.find((o) => o.value === importType)?.label ?? importType })}</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                <Button variant="outline" size="sm" onClick={downloadTemplate} className="shrink-0 max-sm:h-11 max-sm:w-full">
                   <Download className="mr-1 h-3.5 w-3.5" /> {t("labelTemplate")}
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                {t("labelExpectedColumns")}: <code className="rounded bg-muted px-1 py-0.5">{TEMPLATES[importType].join(", ")}</code>
+                {t("labelExpectedColumns")}: <code className="break-words rounded bg-muted px-1 py-0.5">{TEMPLATES[importType].join(", ")}</code>
               </p>
               <p className="mt-1 text-xs text-muted-foreground">{t(`hint.${importType}`)}</p>
             </div>
@@ -244,7 +244,7 @@ export default function AdminBulkImportPage() {
       {/* Step 2: Review */}
       {step === 2 && (
         <section className="workspace-panel-surface rounded-3xl space-y-4 panel-body">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="heading-section font-semibold text-foreground">{t("headingReviewData")}</h2>
               <p className="text-sm text-muted-foreground">{file?.name} · {parsedRows.length} {t("labelRowsFound")}</p>
@@ -262,10 +262,10 @@ export default function AdminBulkImportPage() {
           </div>
 
           <div className="max-h-96 overflow-auto rounded-xl">
-            <Table>
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="w-16">{t("headerRow")}</TableHead>
+                  <TableHead className="w-16 max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{t("headerRow")}</TableHead>
                   <TableHead className="w-16">{t("headerStatus")}</TableHead>
                   {TEMPLATES[importType].map((h) => (
                     <TableHead key={h} className="capitalize">{h.replace(/([A-Z])/g, " $1")}</TableHead>
@@ -276,7 +276,7 @@ export default function AdminBulkImportPage() {
               <TableBody>
                 {parsedRows.slice(0, 100).map((row) => (
                   <TableRow key={row.rowNumber} className={row.status === "error" ? "bg-red-50/50" : ""}>
-                    <TableCell className="text-xs text-muted-foreground">{row.rowNumber}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{row.rowNumber}</TableCell>
                     <TableCell>
                       {row.status === "valid" ? (
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -294,11 +294,11 @@ export default function AdminBulkImportPage() {
             </Table>
           </div>
 
-          <div className="flex items-center justify-between pt-2">
-            <Button variant="outline" onClick={reset}>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+            <Button variant="outline" onClick={reset} className="max-sm:min-h-11">
               <RotateCcw className="mr-1 h-3.5 w-3.5" /> {t("buttonStartOver")}
             </Button>
-            <Button onClick={handleImport} disabled={validCount === 0 || importing}>
+            <Button onClick={handleImport} disabled={validCount === 0 || importing} className="max-sm:min-h-11">
               {importing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1 h-3.5 w-3.5" />}
               {t("buttonImportRecords", { count: validCount })}
             </Button>

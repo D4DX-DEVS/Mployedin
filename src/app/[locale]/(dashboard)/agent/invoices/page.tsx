@@ -19,7 +19,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { InvoiceTable } from "@/components/shared/InvoiceTable";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
-import { useMediaQuery, PHONE_QUERY } from "@/hooks/useMediaQuery";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 
@@ -56,9 +56,9 @@ export default function AgentInvoicesPage() {
   const t = useTranslations("agentInvoices");
   const tc = useTranslations("common");
   const locale = useLocale();
-  // Phones: the status select joins the dates behind Filter, and the view
-  // switch drops its labels, so the toolbar is two lines instead of four.
-  const isPhone = useMediaQuery(PHONE_QUERY);
+  // Phones: status and dates live in the filter sheet, and the view switch
+  // drops its labels, so the toolbar is one line.
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const STATUS_OPTIONS = [
     { value: "all", label: t("statusAll") },
@@ -182,6 +182,7 @@ export default function AgentInvoicesPage() {
       placeholder={t("statusAll")}
     />
   );
+  const phoneFilterCount = [statusFilter, dateFrom, dateTo].filter(Boolean).length;
 
   return (
     <div className="page-container">
@@ -205,16 +206,17 @@ export default function AgentInvoicesPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         more={(
           <div className="flex flex-wrap items-center gap-2">
-            {isPhone && statusSelect}
             <DateTimePicker mode="date" className="h-11 rounded-lg text-sm" value={dateFrom} onChange={(v) => { setDateFrom(v); resetPage(); }} placeholder="From" />
             <span className="text-xs text-muted-foreground">{t("filterDateTo")}</span>
             <DateTimePicker mode="date" className="h-11 rounded-lg text-sm" value={dateTo} onChange={(v) => { setDateTo(v); resetPage(); }} placeholder="To" />
           </div>
         )}
-        moreActiveCount={[dateFrom, dateTo, isPhone && statusFilter].filter(Boolean).length}
+        moreActiveCount={[dateFrom, dateTo].filter(Boolean).length}
         onClear={hasActiveFilters ? () => { setStatusFilter(""); setDateFrom(""); setDateTo(""); resetPage(); } : undefined}
         clearLabel={tc("clear")}
         onExportCsv={handleExportCsv}
@@ -225,19 +227,47 @@ export default function AgentInvoicesPage() {
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        {!isPhone && statusSelect}
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-lg border border-border/70 bg-card">
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">{statusSelect}</div>
+        {/* Phones: the Invoices/Analytics switch takes its own full-width row
+            (labels visible) so the search keeps a usable width beside Filters. */}
+        <div className="flex items-center gap-2 max-sm:order-first max-sm:basis-full">
+          <div className="inline-flex rounded-lg border border-border/70 bg-card max-sm:w-full [&>button]:max-sm:flex-1 [&>button]:max-sm:justify-center">
             <button type="button" aria-label={t("tabButtonInvoices")} aria-pressed={activeView === "table"} onClick={() => setActiveView("table")} className={`inline-flex min-h-11 items-center gap-1 rounded-s-lg px-3 text-xs font-medium transition-colors sm:min-h-9 ${activeView === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              <FileText className="h-3.5 w-3.5" aria-hidden="true" /> <span className="max-sm:hidden">{t("tabButtonInvoices")}</span>
+              <FileText className="h-3.5 w-3.5" aria-hidden="true" /> <span>{t("tabButtonInvoices")}</span>
             </button>
             <button type="button" aria-label={t("tabButtonAnalytics")} aria-pressed={activeView === "analytics"} onClick={() => setActiveView("analytics")} className={`inline-flex min-h-11 items-center gap-1 rounded-e-lg px-3 text-xs font-medium transition-colors sm:min-h-9 ${activeView === "analytics" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-              <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" /> <span className="max-sm:hidden">{t("tabButtonAnalytics")}</span>
+              <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" /> <span>{t("tabButtonAnalytics")}</span>
             </button>
           </div>
         </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setStatusFilter(""); setDateFrom(""); setDateTo(""); resetPage(); }}
+      >
+        <FilterField label={tc("status")} htmlFor="ag-inv-sheet-status">
+          <SearchableSelect
+            id="ag-inv-sheet-status"
+            className={SHEET_CONTROL}
+            options={STATUS_OPTIONS}
+            value={statusFilter || "all"}
+            onValueChange={(v) => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
+            placeholder={t("statusAll")}
+          />
+        </FilterField>
+        <FilterField label={t("filterDateFromLabel")} htmlFor="ag-inv-sheet-from">
+          <DateTimePicker id="ag-inv-sheet-from" mode="date" className={SHEET_CONTROL} value={dateFrom} onChange={(v) => { setDateFrom(v); resetPage(); }} placeholder="From" />
+        </FilterField>
+        <FilterField label={t("filterDateToLabel")} htmlFor="ag-inv-sheet-to">
+          <DateTimePicker id="ag-inv-sheet-to" mode="date" className={SHEET_CONTROL} value={dateTo} onChange={(v) => { setDateTo(v); resetPage(); }} placeholder="To" />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {/* Analytics View */}
       {activeView === "analytics" && (

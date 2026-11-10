@@ -192,6 +192,7 @@ export default function ApplicationsPage() {
         search={searchTerm}
         onSearchChange={(value) => { setSearchTerm(value); resetPage(); }}
         searchPlaceholder={t("searchPlaceholder")}
+        searchLabel={t("searchLabel")}
         right={
           <Button
             variant="outline"
@@ -408,7 +409,7 @@ function ApplicationCard({
           <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-start gap-2">
-                <h3 className="heading-subsection truncate font-semibold leading-5 text-foreground transition-colors group-hover:text-primary">
+                <h3 className="heading-subsection truncate font-semibold leading-5 text-foreground transition-colors group-hover:text-primary max-sm:line-clamp-2 max-sm:whitespace-normal">
                   {jobTitle}
                 </h3>
               </div>
@@ -436,18 +437,30 @@ function ApplicationCard({
                 )}
 
                 <>
-                  <span aria-hidden="true" className="text-muted-foreground/60">•</span>
-                  <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                  {/* On phones the date wraps under the company, so a dot would dangle. */}
+                  <span aria-hidden="true" className="hidden text-muted-foreground/60 sm:inline">•</span>
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap max-sm:basis-full">
                     <Calendar className="h-3 w-3 shrink-0" />
                     {t("appliedDate", { date: appliedDate })}
                   </span>
                 </>
 
                 <StatusBadge status={app.status} size="sm" className="shrink-0" />
+                {/* Phones: the match pill joins the status row so the title gets the full width. */}
+                {app.aiMatchScore != null && app.aiMatchScore > 0 && (
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold leading-none sm:hidden",
+                      scoreTier(app.aiMatchScore)
+                    )}
+                  >
+                    {t("match", { score: app.aiMatchScore.toLocaleString(numberLocale) })}
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1.5 max-sm:hidden">
               {app.aiMatchScore != null && app.aiMatchScore > 0 && (
                 <span
                   className={cn(

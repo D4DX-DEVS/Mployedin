@@ -18,7 +18,8 @@ import { usePagination } from "@/hooks/usePagination";
 import {
   Pencil, Trash2, Ban, Inbox, FileDown, Loader2, Eye, RotateCcw, X, Crown,
 } from "lucide-react";
-import { JobSeekerExpandedRow } from "./_components/JobSeekerExpandedRow";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { JobSeekerMobileList } from "./_components/JobSeekerMobileList";
 import { useConfirm } from "@/hooks/useConfirm";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
@@ -26,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
-import { RowExpandToggle, isRowToggleClick } from "@/components/shared/RowExpandToggle";
+import { isRowToggleClick } from "@/components/shared/RowExpandToggle";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -91,6 +92,7 @@ export default function AdminJobSeekersPage() {
   const tr = useTranslations("adminJobSeekers");
   const tf = useTranslations("formErrors");
   const locale = useLocale();
+  const router = useRouter();
   const { can } = usePermissions();
 
   const availabilityLabels: Record<string, string> = {
@@ -114,7 +116,6 @@ export default function AdminJobSeekersPage() {
   const [jobSeekers, setJobSeekers] = useState<JobSeeker[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editItem, setEditItem] = useState<JobSeeker | null>(null);
   const [viewCv, setViewCv] = useState<{ id: string; name: string } | null>(null);
 
@@ -629,8 +630,7 @@ export default function AdminJobSeekersPage() {
           <JobSeekerMobileList
             seekers={jobSeekers}
             loading={loading}
-            expandedId={expandedId}
-            onToggle={(id) => setExpandedId(expandedId === id ? null : id)}
+            hrefFor={(js) => `/${locale}/admin/job-seekers/${js._id}`}
             availabilityLabels={availabilityLabels}
             empty={(
               <EmptyState
@@ -654,14 +654,6 @@ export default function AdminJobSeekersPage() {
                   return <RowActions name={js.fullName || js.userId?.name || js.email || ""} quick={[]} menu={[...quick, ...menu]} />;
                 })()
               : null)}
-            renderExpanded={(js) => (
-              <JobSeekerExpandedRow
-                seeker={js}
-                locale={locale}
-                availabilityLabel={js.availabilityStatus ? (availabilityLabels[js.availabilityStatus] ?? js.availabilityStatus.replace(/_/g, " ")) : undefined}
-                onViewCv={() => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" })}
-              />
-            )}
           />
         </div>
 
@@ -724,13 +716,13 @@ export default function AdminJobSeekersPage() {
                 </TableCell>
               </TableRow>
             ) : jobSeekers.map((js) => (
-              <Fragment key={js._id}><TableRow className="cursor-pointer hover:bg-muted/30" onClick={(e) => { if (isRowToggleClick(e)) setExpandedId(expandedId === js._id ? null : js._id); }}>
+              <Fragment key={js._id}><TableRow className="cursor-pointer hover:bg-muted/30" onClick={(e) => { if (isRowToggleClick(e)) router.push(`/${locale}/admin/job-seekers/${js._id}`); }}>
                 <TableCell>
                   <div className="flex items-start gap-2">
-                    <RowExpandToggle expanded={expandedId === js._id} onToggle={() => setExpandedId(expandedId === js._id ? null : js._id)} className="mt-1" />
                     <UserAvatar name={js.fullName || js.userId?.name} email={js.email ?? js.userId?.email} className="h-9 w-9 shrink-0" colorful />
                     <div className="flex min-w-0 flex-col items-start gap-1">
-                      <span className="font-medium">{js.fullName || js.userId?.name || "—"}</span>
+                      {/* The full profile opens on its own page (was an inline "advanced view"). */}
+                      <Link href={`/${locale}/admin/job-seekers/${js._id}`} className="font-medium hover:text-primary hover:underline">{js.fullName || js.userId?.name || "—"}</Link>
                       <span className="max-w-[10rem] truncate text-xs text-muted-foreground">{js.email ?? js.userId?.email ?? "—"}</span>
                       <span className="flex flex-wrap items-center gap-1">
                         <StatusBadge status={js.userId?.isActive === false ? "inactive" : (js.status ?? "active")} />
@@ -785,19 +777,6 @@ export default function AdminJobSeekersPage() {
                 </TableCell>
               </TableRow>
 
-              {/* Expanded Row */}
-              {expandedId === js._id && (
-                <TableRow className="bg-muted/10 hover:bg-muted/10">
-                  <TableCell colSpan={columnCount} className="whitespace-normal p-3 sm:p-4">
-                    <JobSeekerExpandedRow
-                      seeker={js}
-                      locale={locale}
-                      availabilityLabel={js.availabilityStatus ? (availabilityLabels[js.availabilityStatus] ?? js.availabilityStatus.replace(/_/g, " ")) : undefined}
-                      onViewCv={() => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" })}
-                    />
-                  </TableCell>
-                </TableRow>
-              )}
               </Fragment>
             ))}
           </TableBody>

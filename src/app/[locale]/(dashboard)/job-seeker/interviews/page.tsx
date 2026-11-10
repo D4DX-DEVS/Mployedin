@@ -62,6 +62,7 @@ type InterviewListResponse = { interviews?: Interview[]; items?: Interview[]; to
 export default function InterviewsPage() {
   const t = useTranslations("jobSeekerInterviews");
   const tj = useTranslations("jobSeekerJourney");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const searchParams = useSearchParams();
@@ -238,6 +239,7 @@ export default function InterviewsPage() {
           search={searchTerm}
           onSearchChange={(v) => { setSearchTerm(v); pagination.resetPage(); }}
           searchPlaceholder={t("searchPlaceholder")}
+          searchLabel={t.has("searchLabel") ? t("searchLabel") : tCommon("search")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}

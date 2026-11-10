@@ -23,7 +23,9 @@ import {
 } from "@/components/ui/dialog";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import type { ExportColumn } from "@/lib/export";
@@ -109,6 +111,7 @@ export default function AgentOffersPage() {
   });
   const [reviseError, setReviseError] = useState("");
   const [revisePending, setRevisePending] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [remindingId, setRemindingId] = useState<string | null>(null);
   const pagination = usePagination();
   const { paginationParams, updateTotal } = pagination;
@@ -307,6 +310,29 @@ export default function AgentOffersPage() {
     filename: "agent-offers",
     title: t("header.title"),
   });
+  const phoneFilterCount = filters.status !== "all" ? 1 : 0;
+
+  const offerActions = (o: OfferItem): { quick: RowAction[]; menu: RowAction[] } => {
+  const quick: RowAction[] = [
+    { key: "view", label: t("actions.view"), icon: Eye, iconOnly: true, onSelect: () => setDetailOffer(o) },
+  ];
+  if ((o.status === "pending" || o.status === "countered") && !isExpired(o)) {
+    quick.push({
+      key: o.status === "countered" ? "respondCounter" : "revise",
+      label: o.status === "countered" ? t("actions.respondCounter") : t("actions.revise"),
+      icon: o.status === "countered" ? ArrowLeftRight : Pencil,
+      onSelect: () => openRevise(o),
+    });
+  }
+  const menu: RowAction[] = [];
+  if (o.status === "pending" && !isExpired(o)) {
+    menu.push({ key: "remind", label: t("actions.remind"), icon: Send, onSelect: () => handleRemind(o._id) });
+  }
+  if ((o.status === "pending" || o.status === "countered") && !isExpired(o)) {
+    menu.push({ key: "withdraw", label: t("actions.withdraw"), icon: X, destructive: true, onSelect: () => handleWithdraw(o._id) });
+  }
+    return { quick, menu };
+  };
 
   return (
     <div className="page-container">
@@ -328,14 +354,70 @@ export default function AgentOffersPage() {
         ]}
       />
 
-      <InlineFilterBar className="workspace-panel-surface rounded-2xl border-b-0" onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}>
-        <InlineFilterSearch value={filters.search} onChange={(v) => updateFilter("search", v)} placeholder={t("filters.searchPlaceholder")} />
-        <SearchableSelect options={statusOptions} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder={t("filters.status")} className="w-36 shrink-0" />
+      <InlineFilterBar className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none" onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}>
+        <InlineFilterSearch value={filters.search} onChange={(v) => updateFilter("search", v)} placeholder={t("filters.searchPlaceholder")} className="max-sm:basis-0" />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect options={statusOptions} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder={t("filters.status")} className="w-36 shrink-0" />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => updateFilter("status", "all")}
+      >
+        <FilterField label={t("filters.status")} htmlFor="agent-offers-sheet-status">
+          <SearchableSelect
+            id="agent-offers-sheet-status"
+            options={statusOptions}
+            value={filters.status}
+            onValueChange={(v) => updateFilter("status", v)}
+            placeholder={t("filters.status")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("header.title")}
+        loading={loading}
+        empty={<EmptyState title={t("empty")} icon={Inbox} />}
+        items={offers.map((o) => {
+          const { quick, menu } = offerActions(o);
+          return {
+            key: o._id,
+            title: o.candidateName,
+            subtitle: [o.jobTitle, o.companyName].filter(Boolean).join(" · "),
+            trailing: (
+              <Badge variant={getStatusBadgeVariant(o.status)}>
+                {isExpired(o) ? t("status.expired") : statusLabel(o.status)}
+              </Badge>
+            ),
+            // A closed offer has only View: labelled, it fills the footer row
+            // instead of a lone eye icon at the end of an empty strip.
+            actions: <RowActions name={o.candidateName} quick={quick.length === 1 && menu.length === 0 ? [{ ...quick[0], iconOnly: false }] : quick} menu={menu} />,
+            meta: (
+              <>
+                <p className="truncate">{t("table.expires")}: {formatListDate(o.expiresAt)} · {t("table.sent")}: {formatListDate(o.createdAt)}</p>
+                {isExpiringSoon(o) && (
+                  <p className="font-semibold text-amber-600">{t("expiringSoon")}</p>
+                )}
+              </>
+            ),
+            stats: [
+              { label: t("table.salary"), value: formatSalary(o) },
+              { label: t("table.startDate"), value: formatListDate(o.startDate) },
+            ],
+          };
+        })}
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
         {loading ? (
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("table.candidate")}</TableHead>
@@ -350,7 +432,7 @@ export default function AgentOffersPage() {
             </TableBody>
           </Table>
         ) : offers.length === 0 ? (
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("table.candidate")}</TableHead>
@@ -370,7 +452,7 @@ export default function AgentOffersPage() {
           </Table>
         ) : (
           <div className="overflow-x-auto">
-            <Table>
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("table.candidate")}</TableHead>
@@ -382,24 +464,7 @@ export default function AgentOffersPage() {
               </TableHeader>
               <TableBody>
                 {offers.map((o) => {
-                  const quick: RowAction[] = [
-                    { key: "view", label: t("actions.view"), icon: Eye, iconOnly: true, onSelect: () => setDetailOffer(o) },
-                  ];
-                  if ((o.status === "pending" || o.status === "countered") && !isExpired(o)) {
-                    quick.push({
-                      key: o.status === "countered" ? "respondCounter" : "revise",
-                      label: o.status === "countered" ? t("actions.respondCounter") : t("actions.revise"),
-                      icon: o.status === "countered" ? ArrowLeftRight : Pencil,
-                      onSelect: () => openRevise(o),
-                    });
-                  }
-                  const menu: RowAction[] = [];
-                  if (o.status === "pending" && !isExpired(o)) {
-                    menu.push({ key: "remind", label: t("actions.remind"), icon: Send, onSelect: () => handleRemind(o._id) });
-                  }
-                  if ((o.status === "pending" || o.status === "countered") && !isExpired(o)) {
-                    menu.push({ key: "withdraw", label: t("actions.withdraw"), icon: X, destructive: true, onSelect: () => handleWithdraw(o._id) });
-                  }
+                  const { quick, menu } = offerActions(o);
                   return (
                     <TableRow key={o._id} className={isExpiringSoon(o) ? "bg-amber-500/10" : undefined}>
                       <TableCell>

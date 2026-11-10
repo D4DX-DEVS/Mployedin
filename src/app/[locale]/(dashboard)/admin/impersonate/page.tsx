@@ -20,7 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { UserCog, Eye, Inbox } from "lucide-react";
+import { UserCog, Eye, Inbox, CalendarDays } from "lucide-react";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { formatListDate } from "@/lib/ui/intlFormat";
 
 interface UserRow {
@@ -127,6 +128,30 @@ export default function AdminUserImpersonatePage() {
     }
   };
 
+  const userActions = (user: (typeof users)[number]) => (
+    <RowActions
+      name={user.name}
+      quick={[
+        {
+          key: "impersonate",
+          label: t("impersonate"),
+          icon: UserCog,
+          iconClassName: "text-amber-700",
+          onSelect: () => impersonate(user._id),
+          pending: impersonating === user._id,
+          disabled: impersonating !== null,
+        },
+        {
+          key: "view",
+          label: t("viewProfileTitle"),
+          icon: Eye,
+          href: `/${locale}/admin/users?search=${encodeURIComponent(user.email)}`,
+          iconOnly: true,
+        },
+      ]}
+    />
+  );
+
   return (
     <div className="page-container">
       {impersonateResult?.success && impersonateResult.target && (
@@ -180,12 +205,34 @@ export default function AdminUserImpersonatePage() {
         className="workspace-panel-surface rounded-2xl border-b-0"
         onClear={search ? () => setSearch("") : undefined}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("title")}
+        loading={loading}
+        empty={<EmptyState title={t("noUsersFound")} description={t("adjustSearch")} icon={Inbox} />}
+        items={users.map((user) => ({
+          key: user._id,
+          leading: <UserAvatar name={user.name} email={user.email} className="h-10 w-10" colorful />,
+          title: user.name,
+          subtitle: user.email,
+          trailing: <StatusBadge status={user.isActive ? "active" : "inactive"} />,
+          actions: userActions(user),
+          meta: (
+            <p className="flex min-w-0 items-center gap-1">
+              <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">{formatListDate(new Date(user.createdAt), locale)}</span>
+            </p>
+          ),
+          badges: <Badge variant="outline" className="text-xs font-medium">{roleLabel(user.role)}</Badge>,
+        }))}
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
         <div className="overflow-x-auto">
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="border-border/80 bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("name")}</TableHead>
@@ -220,27 +267,7 @@ export default function AdminUserImpersonatePage() {
                     <TableCell><StatusBadge status={user.isActive ? "active" : "inactive"} /></TableCell>
                     <TableCell className="text-muted-foreground">{formatListDate(new Date(user.createdAt), locale)}</TableCell>
                     <TableCell>
-                      <RowActions
-                        name={user.name}
-                        quick={[
-                          {
-                            key: "impersonate",
-                            label: t("impersonate"),
-                            icon: UserCog,
-                            iconClassName: "text-amber-700",
-                            onSelect: () => impersonate(user._id),
-                            pending: impersonating === user._id,
-                            disabled: impersonating !== null,
-                          },
-                          {
-                            key: "view",
-                            label: t("viewProfileTitle"),
-                            icon: Eye,
-                            href: `/${locale}/admin/users?search=${encodeURIComponent(user.email)}`,
-                            iconOnly: true,
-                          },
-                        ]}
-                      />
+                      {userActions(user)}
                     </TableCell>
                   </TableRow>
                 ))

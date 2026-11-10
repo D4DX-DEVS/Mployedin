@@ -123,7 +123,7 @@ export function AdminFinanceOverview({ data, show, days, locale, t }: Props) {
               <div className="overflow-x-auto rounded-lg bg-card/80 ring-1 ring-inset ring-border/60">
                 <table className="w-full table-fixed text-xs sm:text-sm" data-mobile-table="scroll">
                   <thead>
-                    <tr className="border-b border-border/60 text-xs text-muted-foreground">
+                    <tr className="border-b border-border/60 text-xs text-muted-foreground max-sm:[&>th]:!normal-case max-sm:[&>th]:!tracking-normal max-sm:[&>th]:![overflow-wrap:normal]">
                       <th scope="col" className="w-12 whitespace-nowrap px-1.5 py-1.5 text-start font-semibold sm:w-28 sm:px-2.5">
                         <span className="max-sm:sr-only">{t("money.currency")}</span>
                       </th>

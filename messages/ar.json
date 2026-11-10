@@ -456,6 +456,11 @@
     "view": "عرض",
     "create": "إنشاء",
     "search": "بحث",
+    "filters": "الفلاتر",
+    "filtersOn": "الفلاتر، {count} مفعّلة",
+    "clearAllFilters": "مسح الكل",
+    "showResults": "عرض النتائج",
+    "filtersSheetDescription": "اختر الفلاتر وطريقة الترتيب لهذه القائمة.",
     "filter": "فلتر",
     "sortBy": "ترتيب حسب",
     "sortByField": "ترتيب حسب {field}",
@@ -4552,7 +4557,9 @@
     "closingButton": "جارٍ الإغلاق…",
     "confirmCloseJob": "إغلاق هذه الوظيفة؟ لن يتمكن المرشحون من التقديم بعد الآن.",
     "toastJobClosed": "تم إغلاق الوظيفة.",
-    "toastFailedClose": "تعذّر إغلاق الوظيفة. يرجى المحاولة مرة أخرى."
+    "toastFailedClose": "تعذّر إغلاق الوظيفة. يرجى المحاولة مرة أخرى.",
+    "salaryVisibilityFilterLabel": "إظهار الراتب",
+    "aiSearchLabel": "البحث بالذكاء الاصطناعي"
   },
   "employerCandidates": {
     "heroTitle": "مطابقة المرشحين",
@@ -4750,7 +4757,8 @@
     "exportExperience": "الخبرة (سنوات)",
     "exportSkills": "المهارات",
     "exportAiMatch": "تطابق الذكاء الاصطناعي",
-    "exportAvailability": "التوفرية"
+    "exportAvailability": "التوفرية",
+    "aiSearchLabel": "البحث بالذكاء الاصطناعي"
   },
   "scorecard": {
     "title": "بطاقة تقييم المقابلة",
@@ -5426,7 +5434,12 @@
     "clearFilters": "مسح الفلاتر",
     "humanReviewChip": "مراجعة مطلوبة",
     "humanReviewTitle": "طلب المرشح مراجعة بشرية",
-    "humanReviewBody": "رفض الفرز الآلي لديك هذا الطلب (التوافق {score}%، والحد لديك {threshold}%). طلب المرشح أن يراجعه شخص، لذا عاد إلى قائمتك. يرجى مراجعته ونقله بنفسك إلى المرحلة المناسبة."
+    "humanReviewBody": "رفض الفرز الآلي لديك هذا الطلب (التوافق {score}%، والحد لديك {threshold}%). طلب المرشح أن يراجعه شخص، لذا عاد إلى قائمتك. يرجى مراجعته ونقله بنفسك إلى المرحلة المناسبة.",
+    "scoreMinLabel": "الحد الأدنى لتقييم الذكاء الاصطناعي",
+    "scoreMaxLabel": "الحد الأقصى لتقييم الذكاء الاصطناعي",
+    "experienceMinLabel": "الحد الأدنى لسنوات الخبرة",
+    "experienceMaxLabel": "الحد الأقصى لسنوات الخبرة",
+    "offerPeriodLabel": "فترة الدفع"
   },
   "employerAnalytics": {
     "title": "مركز قيادة التحليلات",
@@ -5873,6 +5886,9 @@
       "overview": "نظرة عامة",
       "attention": "يحتاج انتباهك",
       "analysis": "تحليل سريع",
+      "overviewShort": "نظرة عامة",
+      "attentionShort": "تنبيهات",
+      "analysisShort": "تحليل",
       "ariaLabel": "أقسام لوحة المعلومات"
     },
     "recent": {
@@ -6666,7 +6682,9 @@
       "allWorkModes": "كل أنماط العمل",
       "locationPlaceholder": "الموقع",
       "skillsPlaceholder": "المهارات، مفصولة بفواصل",
-      "clear": "مسح الفلاتر"
+      "clear": "مسح الفلاتر",
+      "workModeLabel": "نمط العمل",
+      "skillsLabel": "المهارات"
     },
     "results": {
       "eyebrow": "النتائج الحالية",
@@ -7528,7 +7546,8 @@
     "acceptedNextStepBody": "يقوم فريق التوظيف بتسجيل التعيين. وبمجرد إنشائه يمكنك متابعة تاريخ المباشرة وحالة التأشيرة والانضمام من صفحة التعيينات.",
     "viewPlacements": "الذهاب إلى التعيينات",
     "statOffers": "العروض",
-    "chooseCandidate": "اختر مرشحاً"
+    "chooseCandidate": "اختر مرشحاً",
+    "jobFilterLabel": "الوظيفة"
   },
   "employerBackgroundChecks": {
     "agentLabel": "وكيل",
@@ -11473,7 +11492,8 @@
     "target": "الهدف",
     "changeDetail": "التغيير",
     "changeArrow": "{from} ← {to}",
-    "noChangeRecorded": "—"
+    "noChangeRecorded": "—",
+    "actorRoleLabel": "دور المستخدم"
   },
   "adminPlatformData": {
     "tabsLabel": "جداول بيانات المنصة",
@@ -12603,7 +12623,8 @@
     "status_completed": "مكتملة",
     "status_cancelled": "ملغاة",
     "status_no_show": "لم يحضر",
-    "changeStatusFor": "تغيير حالة المقابلة لـ {candidate}"
+    "changeStatusFor": "تغيير حالة المقابلة لـ {candidate}",
+    "superAgentLabel": "الوكيل الرئيسي"
   },
   "adminInvoices": {
     "title": "الفواتير",
@@ -13731,7 +13752,10 @@
     "premiumGranted": "أصبح {name} مميزًا",
     "premiumRevoked": "لم يعد {name} مميزًا",
     "premiumUpdateError": "تعذّر تحديث التمييز. حاول مرة أخرى.",
-    "exportHeaderReferredBy": "أُحيل بواسطة"
+    "exportHeaderReferredBy": "أُحيل بواسطة",
+    "backToList": "العودة إلى الباحثين عن عمل",
+    "openProfile": "فتح الملف الشخصي لـ {name}",
+    "profileNotFound": "تعذّر العثور على هذا الباحث عن عمل. ربما تمت إزالته."
   },
   "adminReports": {
     "reportsAndAnalytics": "تقرير المنصة",
@@ -15106,7 +15130,9 @@
     "ledgerLabel": "دفتر فواتير الفريق",
     "tableTitle": "فواتير الفريق",
     "myCommission": "عمولتي",
-    "emptyStateMessage": "ستظهر فواتير الفريق هنا عندما ينشئها الوكلاء."
+    "emptyStateMessage": "ستظهر فواتير الفريق هنا عندما ينشئها الوكلاء.",
+    "filterDateFrom": "من تاريخ",
+    "filterDateTo": "إلى تاريخ"
   },
   "superAgentExhibitionsAnalytics": {
     "superAgentAnalytics": "تحليلات الوكيل الفائق",
@@ -15411,7 +15437,8 @@
         "onsite": "في الموقع",
         "any": "أي نوع"
       }
-    }
+    },
+    "filterAvailability": "التوفر"
   },
   "superAgentReports": {
     "teamPerformanceSummary": "ملخص أداء الفريق",
@@ -16394,7 +16421,8 @@
     "emptyDescriptionAgent": "أنشئ فاتورتك الأولى لبدء تتبع العمولات.",
     "emptyDescriptionSuperAgent": "ستظهر فواتير الفريق هنا عندما ينشئها الوكلاء.",
     "noResultsTitle": "لا توجد فواتير مطابقة لبحثك",
-    "noResultsDescription": "جرّب مصطلح بحث مختلف أو امسح المرشحات لرؤية المزيد من الفواتير."
+    "noResultsDescription": "جرّب مصطلح بحث مختلف أو امسح المرشحات لرؤية المزيد من الفواتير.",
+    "listLabel": "الفواتير"
   },
   "agentInvoices": {
     "title": "فواتيري والعمولات الخاصة بي",
@@ -16445,7 +16473,9 @@
     "metricPaid": "المدفوع",
     "metricPending": "قيد الانتظار",
     "metricTotalInvoices": "إجمالي الفواتير",
-    "metricRevenueShort": "الإيرادات"
+    "metricRevenueShort": "الإيرادات",
+    "filterDateFromLabel": "من تاريخ",
+    "filterDateToLabel": "إلى تاريخ"
   },
   "agentCommissions": {
     "agentWorkspace": "مساحة العمل للوكيل",
@@ -16505,6 +16535,7 @@
     "statInProgress": "قيد التنفيذ",
     "statCompleted": "مكتملة",
     "statOverdue": "متأخرة",
+    "statOpen": "مفتوحة",
     "createTaskHeading": "إنشاء مهمة",
     "taskTitlePlaceholder": "عنوان المهمة *",
     "taskDescriptionPlaceholder": "الوصف (اختياري)",
@@ -18831,7 +18862,7 @@
     "reason": {
       "followUp": "المتابعة مستحقة",
       "task": "المهمة متأخرة",
-      "interviewOutcome": "لم تُسجَّل النتيجة",
+      "interviewOutcome": "جرت المقابلة ولم تُسجَّل النتيجة",
       "offerResponse": "بانتظار رد المرشح",
       "newCandidate": "لم تتم مراجعته بعد",
       "exhibitionRevision": "أُعيد لإجراء تعديلات"
@@ -21422,7 +21453,8 @@
       "resultCached": "من الذاكرة المؤقتة",
       "logEmpty": "لا مكالمات تطابق هذه التصفية",
       "unpriced": "بلا سعر"
-    }
+    },
+    "colShareShort": "الحصة"
   },
   "adminMarketGaps": {
     "title": "فجوات السوق",
@@ -21547,4 +21579,3 @@
     }
   }
 }
-

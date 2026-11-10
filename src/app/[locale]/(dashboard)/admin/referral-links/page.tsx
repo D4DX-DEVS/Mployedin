@@ -15,6 +15,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { RowActions } from "@/components/shared/RowActions";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -28,8 +29,9 @@ import {
   type ReferralSortField,
 } from "@/hooks/useReferralLinks";
 import {
-  Building2, UserRound, Check, Copy, Link2, TrendingUp, Eye, EyeOff,
+  Building2, UserRound, Check, Copy, Link2, TrendingUp, Eye, EyeOff, CalendarDays,
 } from "lucide-react";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import {
   Select,
   SelectContent,
@@ -69,12 +71,14 @@ function creatorEmail(link: ReferralLinkItem): string {
 
 export default function AdminReferralLinksPage() {
   const t = useTranslations("adminReferralLinks");
+  const tCommon = useTranslations("common");
   const { locale } = useParams<{ locale: string }>();
   const { page, limit, setPage, setLimit, resetPage } = usePagination();
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copyMap, setCopyMap] = useState<Record<string, boolean>>({});
   const [audienceFilter, setAudienceFilter] = useState<ReferralAudience | "">("");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const audienceFilterId = useId();
 
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: ["createdAt", "usedCount", "code", "label"] });
@@ -178,6 +182,26 @@ export default function AdminReferralLinksPage() {
     title: t("exportTitle"),
     fetchAll: fetchAllReferralLinks,
   });
+  const phoneFilterCount = audienceFilter ? 1 : 0;
+  const onAudienceChange = (v: string) => { setAudienceFilter(v === "all" ? "" : (v as ReferralAudience)); resetPage(); };
+  const audienceSelectContent = (
+    <SelectContent>
+      <SelectItem value="all">{t("filterAudienceAll")}</SelectItem>
+      <SelectItem value="employer">{t("filterAudienceEmployer")}</SelectItem>
+      <SelectItem value="job_seeker">{t("filterAudienceJobSeeker")}</SelectItem>
+    </SelectContent>
+  );
+
+  const linkActions = (link: ReferralLinkItem) => (
+    <RowActions
+      name={link.code}
+      labelsFrom="wide"
+      quick={[{ key: "copy", label: copyMap[link.code] ? t("buttonCopied") : t("buttonCopy"), icon: copyMap[link.code] ? Check : Copy, onSelect: () => handleCopy(link) }]}
+      menu={[
+        { key: "toggle", label: link.isActive ? t("buttonDisable") : t("buttonEnable"), icon: link.isActive ? EyeOff : Eye, onSelect: () => void handleToggleActive(link), destructive: link.isActive, pending: updateMutation.isPending && updateMutation.variables?.id === link._id },
+      ]}
+    />
+  );
 
   return (
     <div className="page-container">
@@ -185,7 +209,7 @@ export default function AdminReferralLinksPage() {
       <DashboardPageHeader title={t("pageTitle")} description={t("pageDescription")} compact compactOnMobile metrics={headerMetrics} />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -194,31 +218,100 @@ export default function AdminReferralLinksPage() {
           value={search}
           onChange={(v) => { setSearch(v); resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <Select value={audienceFilter || "all"} onValueChange={(v) => { setAudienceFilter(v === "all" ? "" : (v as ReferralAudience)); resetPage(); }}>
-          <SelectTrigger id={audienceFilterId} className={`${INLINE_FILTER_CONTROL}`}>
-            <SelectValue placeholder={t("filterAudienceAll")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("filterAudienceAll")}</SelectItem>
-            <SelectItem value="employer">{t("filterAudienceEmployer")}</SelectItem>
-            <SelectItem value="job_seeker">{t("filterAudienceJobSeeker")}</SelectItem>
-          </SelectContent>
-        </Select>
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(v) => { setSortBy(v); resetPage(); }}
-          options={sortOptions}
-          order={sortOrder}
-          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-          compact
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <Select value={audienceFilter || "all"} onValueChange={onAudienceChange}>
+            <SelectTrigger id={audienceFilterId} className={`${INLINE_FILTER_CONTROL}`}>
+              <SelectValue placeholder={t("filterAudienceAll")} />
+            </SelectTrigger>
+            {audienceSelectContent}
+          </Select>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            compact
+          />
+        </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setAudienceFilter(""); resetPage(); }}
+      >
+        <FilterField label={tCommon("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={t("tableHeaderAudience")} htmlFor="referral-links-sheet-audience">
+          <Select value={audienceFilter || "all"} onValueChange={onAudienceChange}>
+            <SelectTrigger id="referral-links-sheet-audience" className={SHEET_CONTROL}>
+              <SelectValue placeholder={t("filterAudienceAll")} />
+            </SelectTrigger>
+            {audienceSelectContent}
+          </Select>
+        </FilterField>
+      </PhoneFilterSheet>
+
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("pageTitle")}
+        loading={isLoading}
+        empty={
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Link2 className="h-10 w-10 text-muted-foreground/40" />
+            <p className="font-medium text-foreground">{t("emptyStateHeading")}</p>
+            <p className="text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
+          </div>
+        }
+        items={links.map((link) => ({
+          key: link._id,
+          title: <span className="font-mono">{link.code}</span>,
+          subtitle: [creatorName(link), creatorEmail(link)].filter(Boolean).join(" · "),
+          trailing: <StatusBadge status={linkStatus(link) === "active" ? "active" : "inactive"} />,
+          actions: linkActions(link),
+          meta: (
+            <>
+              {link.label && <p className="truncate text-foreground">{link.label}</p>}
+              <p className="flex min-w-0 items-center gap-1">
+                <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">
+                  {t("tableHeaderCreated")}: {formatDate(link.createdAt)} · {t("tableHeaderExpires")}: {formatDate(link.expiresAt)}
+                </span>
+              </p>
+            </>
+          ),
+          badges: (
+            <>
+              <span className={`rounded-full px-2 py-0.5 font-medium ${link.creatorRole === "super_agent" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                {link.creatorRole === "super_agent" ? t("roleSuperAgent") : t("roleAgent")}
+              </span>
+              <ReferralAudienceChip audience={link.audience} namespace="adminReferralLinks" />
+            </>
+          ),
+          stats: [
+            { label: t("tableHeaderUsed"), value: `${link.usedCount}${link.maxUses > 0 ? ` / ${link.maxUses}` : ""}` },
+            { label: t("registrationsLabel"), value: link.registrations.length },
+          ],
+        }))}
+      />
 
       {/* Table */}
       {isLoading ? (
-        <div className="workspace-panel-surface overflow-hidden rounded-2xl">
-          <Table>
+        <div className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeaderCode")}</TableHead>
@@ -247,14 +340,14 @@ export default function AdminReferralLinksPage() {
           </Table>
         </div>
       ) : links.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-16 text-center">
+        <div className="flex flex-col items-center gap-2 py-16 text-center max-sm:hidden">
           <Link2 className="h-10 w-10 text-muted-foreground/40" />
           <p className="font-medium text-foreground">{t("emptyStateHeading")}</p>
           <p className="text-sm text-muted-foreground">{t("emptyStateDescription")}</p>
         </div>
       ) : (
-        <div className="workspace-panel-surface overflow-hidden rounded-2xl">
-          <Table>
+        <div className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>
@@ -335,14 +428,7 @@ export default function AdminReferralLinksPage() {
                       <TableCell className="text-sm text-muted-foreground">{formatDate(link.createdAt)}</TableCell>
                       <TableCell><StatusBadge status={status === "active" ? "active" : "inactive"} /></TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <RowActions
-                          name={link.code}
-                          labelsFrom="wide"
-                          quick={[{ key: "copy", label: copyMap[link.code] ? t("buttonCopied") : t("buttonCopy"), icon: copyMap[link.code] ? Check : Copy, onSelect: () => handleCopy(link) }]}
-                          menu={[
-                            { key: "toggle", label: link.isActive ? t("buttonDisable") : t("buttonEnable"), icon: link.isActive ? EyeOff : Eye, onSelect: () => void handleToggleActive(link), destructive: link.isActive, pending: updateMutation.isPending && updateMutation.variables?.id === link._id },
-                          ]}
-                        />
+                        {linkActions(link)}
                       </TableCell>
                     </TableRow>
                     {isExpanded && (

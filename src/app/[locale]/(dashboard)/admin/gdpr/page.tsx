@@ -376,7 +376,7 @@ export default function AdminGdprPage() {
               {/* Both skeletons, switched by CSS: `isPhone` is false until hydration, so a phone first painted the desktop table. */}
               <div className="sm:hidden" data-testid="requests-cards-skeleton"><GdprRequestCardsSkeleton /></div>
               <div className="overflow-x-auto max-sm:hidden" data-testid="requests-table-skeleton">
-                <Table>
+                <Table data-mobile-table="scroll">
                   <TableHeader>
                     <TableRow className="bg-muted/30 hover:bg-muted/30">
                       <TableHead>{t("userColumnHeader")}</TableHead>
@@ -417,7 +417,7 @@ export default function AdminGdprPage() {
               />
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table data-mobile-table="scroll">
                   <TableHeader>
                     <TableRow className="bg-muted/30 hover:bg-muted/30">
                       <TableHead>{t("userColumnHeader")}</TableHead>

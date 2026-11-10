@@ -147,9 +147,9 @@ export function SuperAgentMetricsGrid({ items }: { items: SuperAgentMetricItem[]
         // Tighter than `card-pad`: a tile holding one number and one short
         // sentence does not need the full card rhythm, and at 16px padding plus
         // a 30px value these ran ~150px tall in a row of four or five.
-        <div key={item.label} className="workspace-glass-panel rounded-lg p-2.5 sm:rounded-2xl sm:p-3.5">
+        <div key={item.label} className="workspace-glass-panel rounded-lg p-2.5 max-sm:odd:last:col-span-2 sm:rounded-2xl sm:p-3.5">
           {/* Phones get label + value only; the helper sentence is desktop-only. */}
-          <div className="flex flex-col items-start gap-0.5 sm:hidden">
+          <div className="flex h-full flex-col items-start justify-between gap-0.5 sm:hidden">
             <p className="line-clamp-2 w-full text-[11px] font-semibold uppercase leading-tight tracking-wide text-muted-foreground">{item.label}</p>
             <p className="w-full truncate text-lg font-semibold leading-tight tracking-tight text-foreground">{item.value}</p>
           </div>

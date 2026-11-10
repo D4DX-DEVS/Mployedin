@@ -251,7 +251,8 @@ describe("AgentDashboard", () => {
     expect(heading).toHaveTextContent(/^good (morning|afternoon|evening), /i);
     expect(heading.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
     expect(heading.closest("section")).toHaveClass("workspace-header");
-    expect(screen.getByText("1 lead follow-up is due.")).toBeInTheDocument();
+    // Only the context line carries it; the queue panel below holds the link (no duplicate phone banner).
+    expect(screen.getAllByText("1 lead follow-up is due.")).toHaveLength(1);
     // The admin-assigned region leads the context line, parent chain included.
     expect(within(heading.closest("section")!).getByTestId("assigned-region-badge")).toHaveTextContent("Tirur, Kerala, India");
     expect(resolveAssignedRegionsMock).toHaveBeenCalledWith(expect.objectContaining({ _id: "agent-1" }), "en");

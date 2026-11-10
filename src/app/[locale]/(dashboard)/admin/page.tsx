@@ -93,6 +93,11 @@ export default async function AdminDashboardPage({
           attention: t("tabs.attention"),
           analysis: t("tabs.analysis"),
         }}
+        shortLabels={{
+          overview: t("tabs.overviewShort"),
+          attention: t("tabs.attentionShort"),
+          analysis: t("tabs.analysisShort"),
+        }}
         hrefFor={tabHref}
         actions={
           <DashboardToolbar

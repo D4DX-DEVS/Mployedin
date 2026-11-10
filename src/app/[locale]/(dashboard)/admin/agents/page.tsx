@@ -28,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import {
@@ -36,7 +37,9 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
-import { Inbox } from "lucide-react";
+import { Inbox, CalendarDays, UserCog } from "lucide-react";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
+import { cn } from "@/lib/utils";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 
@@ -98,6 +101,7 @@ export default function AdminAgentsPage() {
      and a filter kept only in component state would silently ignore it. */
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [statusFilter, setStatusFilter] = useState("all");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"createdAt" | "name">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
@@ -468,6 +472,17 @@ export default function AdminAgentsPage() {
     return { quick: quick ? [quick] : [], menu };
   };
 
+  const statusOptions = [
+    { value: "all", label: tr("statusFilterAll") },
+    { value: "active", label: tr("active") },
+    { value: "inactive", label: tr("inactive") },
+  ];
+  const sortOptions = [
+    { value: "createdAt", label: tr("joined") },
+    { value: "name", label: tr("name") },
+  ];
+  const phoneFilterCount = statusFilter !== "all" ? 1 : 0;
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -486,7 +501,7 @@ export default function AdminAgentsPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -495,38 +510,103 @@ export default function AdminAgentsPage() {
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={tr("searchAgentPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <InlineSearchSelect
-          options={[
-            { value: "all", label: tr("statusFilterAll") },
-            { value: "active", label: tr("active") },
-            { value: "inactive", label: tr("inactive") },
-          ]}
-          value={statusFilter}
-          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-          placeholder={tr("statusFilterAll")}
-          className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
-        />
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(v) => { setSortBy(v === "name" ? "name" : "createdAt"); resetPage(); }}
-          options={[
-            { value: "createdAt", label: tr("joined") },
-            { value: "name", label: tr("name") },
-          ]}
-          order={sortOrder}
-          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-          compact
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <InlineSearchSelect
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={tr("statusFilterAll")}
+            className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+          />
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v === "name" ? "name" : "createdAt"); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            compact
+          />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setStatusFilter("all"); resetPage(); }}
+      >
+        <FilterField label={tc("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v === "name" ? "name" : "createdAt"); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={tr("status")} htmlFor="agents-sheet-status">
+          <InlineSearchSelect
+            id="agents-sheet-status"
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={tr("statusFilterAll")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      {!error && (
+        <PhoneRecordList
+          className="sm:hidden"
+          label={tr("agents")}
+          loading={loading}
+          empty={<EmptyState title={tr("noAgentsFound")} icon={Inbox} />}
+          items={agents.map((agent) => ({
+            key: agent._id,
+            leading: <UserAvatar name={agent.name} email={agent.email} src={agent.avatar} className="h-10 w-10" colorful />,
+            title: agent.name,
+            subtitle: agent.email,
+            trailing: <StatusBadge status={agent.isActive !== false ? "active" : "inactive"} />,
+            actions: (can("agents", "update") || can("agents", "delete")) ? (
+              <RowActions name={agent.name} {...rowActionsFor(agent)} />
+            ) : undefined,
+            meta: (
+              <>
+                <p className="flex min-w-0 items-center gap-1">
+                  <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{getLocationSummary(agent.agentProfile)}</span>
+                </p>
+                {agent.agentProfile?.superAgentName && (
+                  <p className="flex min-w-0 items-center gap-1">
+                    <UserCog className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{tr("superAgent")}: {agent.agentProfile.superAgentName}</span>
+                  </p>
+                )}
+                <p className="flex min-w-0 items-center gap-1">
+                  <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{tr("joined")}: {formatListDate(new Date(agent.createdAt), locale)}</span>
+                </p>
+              </>
+            ),
+            stats: [
+              { label: tr("commission"), value: agent.agentProfile?.commissionRate != null ? `${agent.agentProfile.commissionRate}%` : "—" },
+            ],
+          }))}
+        />
+      )}
+
+      <section className={cn("workspace-panel-surface overflow-hidden rounded-2xl", !error && "max-sm:hidden")}>
         {error ? (
           <div className="p-6">
             <ErrorState onRetry={fetchAgents} />
           </div>
         ) : (
-        <Table>
+        <Table data-mobile-table="scroll">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>

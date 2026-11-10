@@ -21,8 +21,11 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
+import { useMediaQuery, PHONE_QUERY } from "@/hooks/useMediaQuery";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import {
   Briefcase,
   Building2,
@@ -105,8 +108,11 @@ export default function AgentCandidatesPage() {
   };
   const pathname = usePathname();
   const locale = pathname?.split("/")[1] ?? "en";
+  // Phone cards mount below sm only (false on the server, in jsdom and during hydration).
+  const isPhone = useMediaQuery(PHONE_QUERY);
   const pagination = usePagination();
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   // This page already read jobId and status from the URL on mount but then
@@ -381,6 +387,50 @@ export default function AgentCandidatesPage() {
     fetchAll: fetchAllApplications,
   });
 
+  const statusOptions = STATUS_OPTIONS.map((status) => ({ value: status || "all", label: status ? t(`status_${status}`) : t("filterAllStatuses") }));
+  const phoneFilterCount = statusFilter ? 1 : 0;
+
+  const appActions = (app: ApplicationItem) => {
+    const name = app.jobSeekerId?.userId?.name ?? tc("unknownCandidate");
+    const busy = updatingId === app._id;
+    const nextStage = NEXT_STAGE_KEYS[app.status];
+    const quick: RowAction[] = [];
+    const menu: RowAction[] = [];
+    if (!TERMINAL_STATUSES.has(app.status)) {
+      // The obvious next step stays a labelled button; the rest,
+      // and Reject (its own dialog asks for a reason), go in "…".
+      if (nextStage) {
+        quick.push({
+          key: "advance",
+          label: t(`actionLabel_${app.status}`),
+          icon: app.status === "applied" ? Check : ChevronRight,
+          pending: busy,
+          onSelect: () => advanceStage(app._id, nextStage),
+        });
+      } else if (app.status === "selected") {
+        quick.push({ key: "offer", label: t("makeOfferLabel"), icon: Gift, iconClassName: "text-emerald-700", onSelect: () => openOffer(app) });
+      }
+      if (SCHEDULABLE_STATUSES.has(app.status)) {
+        menu.push({ key: "schedule", label: t("scheduleInterviewTooltip"), icon: CalendarPlus, onSelect: () => openSchedule(app) });
+      }
+      menu.push({
+        key: "reject",
+        label: t("rejectCandidateTooltip"),
+        icon: X,
+        // A lone menu item becomes a button; labelled, it pushed the
+        // seven-column table out of the panel. The ✕ keeps its name
+        // as tooltip and accessible label.
+        iconOnly: true,
+        destructive: true,
+        disabled: busy,
+        onSelect: () => { setRejectError(""); setRejectReason(""); setRejectApp(app); },
+      });
+    }
+    return quick.length + menu.length > 0 ? (
+      <RowActions labelsFrom="wide" name={name} quick={quick} menu={menu} />
+    ) : null;
+  };
+
   return (
     <div className="page-container">
       <WorkspaceHeader
@@ -391,21 +441,24 @@ export default function AgentCandidatesPage() {
       {/* Status was a row of pills inside the list panel; it is a select in the
           filter row like every other list, and the job narrowing a chip there. */}
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={search || statusFilter || jobIdFilter || applicationFilter || candidateFilter ? () => { setSearch(""); setStatusFilter(""); setJobIdFilter(""); clearLinkedFilter(); pagination.resetPage(); } : undefined}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); pagination.resetPage(); }} placeholder={t("searchPlaceholder")} />
-        <SearchableSelect
-          id="agent-candidates-status"
-          className={INLINE_FILTER_CONTROL}
-          options={STATUS_OPTIONS.map((status) => ({ value: status || "all", label: status ? t(`status_${status}`) : t("filterAllStatuses") }))}
-          value={statusFilter || "all"}
-          onValueChange={(v) => { setStatusFilter(v === "all" ? "" : v); pagination.resetPage(); }}
-          placeholder={tc("status")}
-        />
+        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); pagination.resetPage(); }} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            id="agent-candidates-status"
+            className={INLINE_FILTER_CONTROL}
+            options={statusOptions}
+            value={statusFilter || "all"}
+            onValueChange={(v) => { setStatusFilter(v === "all" ? "" : v); pagination.resetPage(); }}
+            placeholder={tc("status")}
+          />
+        </div>
         {jobIdFilter && (
           <Button variant="outline" size="sm" onClick={() => setJobIdFilter("")} className="workspace-tone-sky h-11 max-w-56 rounded-lg border-transparent px-3 hover:opacity-90 sm:h-9">
             <X className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -426,13 +479,82 @@ export default function AgentCandidatesPage() {
         )}
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setStatusFilter(""); pagination.resetPage(); }}
+      >
+        <FilterField label={tc("status")} htmlFor="agent-candidates-sheet-status">
+          <SearchableSelect
+            id="agent-candidates-sheet-status"
+            className={SHEET_CONTROL}
+            options={statusOptions}
+            value={statusFilter || "all"}
+            onValueChange={(v) => { setStatusFilter(v === "all" ? "" : v); pagination.resetPage(); }}
+            placeholder={tc("status")}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      {!error && isPhone && (
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("candidatesPipeline")}
+          loading={loading}
+          empty={<EmptyState title={t("noCandidatesFound")} description={t("noCandidatesHint")} icon={Inbox} />}
+          items={applications.map((app) => {
+            const name = app.jobSeekerId?.userId?.name ?? tc("unknownCandidate");
+            const experience = experienceLabel(app.jobSeekerId);
+            // Phone: with no labelled next step the footer held only the "…"
+            // menu, a bordered strip for one icon; it ends the status chip row.
+            const menuOnly = !TERMINAL_STATUSES.has(app.status) && !NEXT_STAGE_KEYS[app.status] && app.status !== "selected";
+            return {
+              key: app._id,
+              leading: <UserAvatar name={app.jobSeekerId?.userId?.name} className="h-10 w-10" colorful />,
+              title: name,
+              subtitle: [app.jobId?.title ?? "—", app.jobId?.employerId?.companyName].filter(Boolean).join(" · "),
+              actions: menuOnly ? undefined : appActions(app),
+              meta: (
+                <>
+                  {app.jobSeekerId?.currentLocation ? (
+                    <p className="flex min-w-0 items-center gap-1">
+                      <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{app.jobSeekerId.currentLocation}</span>
+                    </p>
+                  ) : null}
+                  <p className="flex min-w-0 items-center gap-1">
+                    <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{t("tableHeaderApplied")}: {formatListDate(app.appliedAt ?? app.createdAt, locale)}</span>
+                  </p>
+                </>
+              ),
+              badges: (
+                <>
+                  <StatusBadge status={app.status} />
+                  {app.isPriority ? <PriorityBadge size="xs" /> : null}
+                  {menuOnly && <div className="ms-auto">{appActions(app)}</div>}
+                </>
+              ),
+              stats: [
+                { label: t("tableHeaderExperience"), value: experience || "—" },
+                {
+                  label: t("tableHeaderAIMatch"),
+                  value: <span className={matchScoreColor(app.aiMatchScore)}>{app.aiMatchScore != null ? `${app.aiMatchScore}%` : "—"}</span>,
+                },
+              ],
+            };
+          })}
+        />
+      )}
+
+      <section className={`workspace-panel-surface overflow-hidden rounded-2xl ${error ? "" : "max-sm:hidden"}`}>
         {error ? (
           <div className="p-6">
             <ErrorState onRetry={loadApplications} />
           </div>
         ) : (
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeaderCandidate")}</TableHead>
@@ -455,40 +577,6 @@ export default function AgentCandidatesPage() {
                 </TableRow>
               ) : applications.map((app) => {
                 const name = app.jobSeekerId?.userId?.name ?? tc("unknownCandidate");
-                const busy = updatingId === app._id;
-                const nextStage = NEXT_STAGE_KEYS[app.status];
-                const quick: RowAction[] = [];
-                const menu: RowAction[] = [];
-                if (!TERMINAL_STATUSES.has(app.status)) {
-                  // The obvious next step stays a labelled button; the rest,
-                  // and Reject (its own dialog asks for a reason), go in "…".
-                  if (nextStage) {
-                    quick.push({
-                      key: "advance",
-                      label: t(`actionLabel_${app.status}`),
-                      icon: app.status === "applied" ? Check : ChevronRight,
-                      pending: busy,
-                      onSelect: () => advanceStage(app._id, nextStage),
-                    });
-                  } else if (app.status === "selected") {
-                    quick.push({ key: "offer", label: t("makeOfferLabel"), icon: Gift, iconClassName: "text-emerald-700", onSelect: () => openOffer(app) });
-                  }
-                  if (SCHEDULABLE_STATUSES.has(app.status)) {
-                    menu.push({ key: "schedule", label: t("scheduleInterviewTooltip"), icon: CalendarPlus, onSelect: () => openSchedule(app) });
-                  }
-                  menu.push({
-                    key: "reject",
-                    label: t("rejectCandidateTooltip"),
-                    icon: X,
-                    // A lone menu item becomes a button; labelled, it pushed the
-                    // seven-column table out of the panel. The ✕ keeps its name
-                    // as tooltip and accessible label.
-                    iconOnly: true,
-                    destructive: true,
-                    disabled: busy,
-                    onSelect: () => { setRejectError(""); setRejectReason(""); setRejectApp(app); },
-                  });
-                }
                 return (
                   <TableRow key={app._id} className="group">
                     <TableCell className="max-w-[200px]">
@@ -542,9 +630,7 @@ export default function AgentCandidatesPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      {quick.length + menu.length > 0 ? (
-                        <RowActions labelsFrom="wide" name={name} quick={quick} menu={menu} />
-                      ) : null}
+                      {appActions(app)}
                     </TableCell>
                   </TableRow>
                 );

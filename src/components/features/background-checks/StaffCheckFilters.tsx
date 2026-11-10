@@ -7,9 +7,11 @@
  * and status. Every filter lives in the URL (the parent owns it).
  */
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { CheckCircle2, Clock, Hourglass, PlayCircle, UserCheck, type LucideIcon } from "lucide-react";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -107,6 +109,7 @@ export function StaffCheckFilterBar({ overview, values, onChange, onClear, activ
   // Cascade: with an employer chosen, only that employer's jobs.
   const jobs = (overview?.jobs ?? []).filter((j) => !values.employerId || j.employerId === values.employerId);
   const openSuffix = (open: number) => t("optionOpen", { open });
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const pickEmployer = (employerId: string) => {
     const job = overview?.jobs.find((j) => j._id === values.jobId);
@@ -114,89 +117,170 @@ export function StaffCheckFilterBar({ overview, values, onChange, onClear, activ
     onChange({ employerId, ...(employerId && job && job.employerId !== employerId ? { jobId: "" } : {}) });
   };
 
+  const employerOptions = [
+    { value: "", label: t("employerAll") },
+    ...employers.map((e) => ({
+      value: e._id,
+      label: `${e.name || t("unknownEmployer")} · ${openSuffix(e.open)}`,
+      triggerLabel: e.name || t("unknownEmployer"),
+    })),
+  ];
+  const jobOptions = [
+    { value: "", label: t("jobAll") },
+    ...jobs.map((j) => {
+      const title = j.title || t("unknownJob");
+      const company = values.employerId ? "" : employerName.get(j.employerId);
+      return {
+        value: j._id,
+        label: `${title}${company ? ` · ${company}` : ""} · ${openSuffix(j.open)}`,
+        triggerLabel: title,
+      };
+    }),
+  ];
+  const pickJob = (jobId: string) => {
+    const job = overview?.jobs.find((j) => j._id === jobId);
+    // Picking a job first fills in its employer, so the two never disagree.
+    onChange({ jobId, ...(job && !values.employerId ? { employerId: job.employerId } : {}) });
+  };
+  const statusItems = (
+    <SelectContent>
+      <SelectItem value="all">{t("statusAll")}</SelectItem>
+      {FILTER_STATUSES.map((value) => (
+        <SelectItem key={value} value={value}>
+          {value === "open" || value === "awaiting_reply" ? t(`statusFilter.${value}`) : t(`status.${value}`)}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  );
+  const typeItems = (
+    <SelectContent>
+      <SelectItem value="all">{t("typeAll")}</SelectItem>
+      {FILTER_TYPES.map((value) => <SelectItem key={value} value={value}>{t(`type.${value}`)}</SelectItem>)}
+    </SelectContent>
+  );
+  const holderItems = (
+    <SelectContent>
+      <SelectItem value="all">{t("holder.all")}</SelectItem>
+      {FILTER_HOLDERS.filter((value) => value !== "me" || overview?.canRun).map((value) => (
+        <SelectItem key={value} value={value}>{t(`holder.${value}`)}</SelectItem>
+      ))}
+    </SelectContent>
+  );
+
+  const phoneFilterCount =
+    (values.employerId ? 1 : 0) +
+    (values.jobId ? 1 : 0) +
+    (values.status !== "all" ? 1 : 0) +
+    (values.checkType !== "all" ? 1 : 0) +
+    (values.holder !== "all" ? 1 : 0);
+
   return (
-    <InlineFilterBar onClear={active ? onClear : undefined} clearLabel={t("clearFilters")} className="px-0 pt-0">
-      <InlineFilterSearch value={values.q} onChange={(q) => onChange({ q })} placeholder={t("searchPlaceholder")} />
-      <SearchableSelect
-        id="staff-bg-employer"
-        ariaLabel={t("employerLabel")}
-        className={FILTER_CONTROL}
-        value={values.employerId}
-        onValueChange={pickEmployer}
-        placeholder={t("employerAll")}
-        searchPlaceholder={t("employerSearch")}
-        loading={!overview}
-        options={[
-          { value: "", label: t("employerAll") },
-          ...employers.map((e) => ({
-            value: e._id,
-            label: `${e.name || t("unknownEmployer")} · ${openSuffix(e.open)}`,
-            triggerLabel: e.name || t("unknownEmployer"),
-          })),
-        ]}
-      />
-      <SearchableSelect
-        id="staff-bg-job"
-        ariaLabel={t("jobLabel")}
-        className={FILTER_CONTROL}
-        value={values.jobId}
-        onValueChange={(jobId) => {
-          const job = overview?.jobs.find((j) => j._id === jobId);
-          // Picking a job first fills in its employer, so the two never disagree.
-          onChange({ jobId, ...(job && !values.employerId ? { employerId: job.employerId } : {}) });
-        }}
-        placeholder={t("jobAll")}
-        searchPlaceholder={t("jobSearch")}
-        loading={!overview}
-        options={[
-          { value: "", label: t("jobAll") },
-          ...jobs.map((j) => {
-            const title = j.title || t("unknownJob");
-            const company = values.employerId ? "" : employerName.get(j.employerId);
-            return {
-              value: j._id,
-              label: `${title}${company ? ` · ${company}` : ""} · ${openSuffix(j.open)}`,
-              triggerLabel: title,
-            };
-          }),
-        ]}
-      />
-      <Select value={values.status} onValueChange={(status) => onChange({ status })}>
-        <SelectTrigger aria-label={t("statusLabel")} className={FILTER_CONTROL}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">{t("statusAll")}</SelectItem>
-          {FILTER_STATUSES.map((value) => (
-            <SelectItem key={value} value={value}>
-              {value === "open" || value === "awaiting_reply" ? t(`statusFilter.${value}`) : t(`status.${value}`)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select value={values.checkType} onValueChange={(checkType) => onChange({ checkType })}>
-        <SelectTrigger aria-label={t("typeLabel")} className={FILTER_CONTROL}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">{t("typeAll")}</SelectItem>
-          {FILTER_TYPES.map((value) => <SelectItem key={value} value={value}>{t(`type.${value}`)}</SelectItem>)}
-        </SelectContent>
-      </Select>
-      <Select value={values.holder} onValueChange={(holder) => onChange({ holder })}>
-        <SelectTrigger aria-label={t("holderLabel")} className={FILTER_CONTROL}>
-          <span className="truncate">
-            <span className="text-muted-foreground">{t("holderLabel")}: </span>
-            {t(`holder.${values.holder}`)}
-          </span>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">{t("holder.all")}</SelectItem>
-          {FILTER_HOLDERS.filter((value) => value !== "me" || overview?.canRun).map((value) => (
-            <SelectItem key={value} value={value}>{t(`holder.${value}`)}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </InlineFilterBar>
+    <>
+      <InlineFilterBar onClear={active ? onClear : undefined} clearLabel={t("clearFilters")} className="px-0 pt-0">
+        <InlineFilterSearch value={values.q} onChange={(q) => onChange({ q })} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            id="staff-bg-employer"
+            ariaLabel={t("employerLabel")}
+            className={FILTER_CONTROL}
+            value={values.employerId}
+            onValueChange={pickEmployer}
+            placeholder={t("employerAll")}
+            searchPlaceholder={t("employerSearch")}
+            loading={!overview}
+            options={employerOptions}
+          />
+          <SearchableSelect
+            id="staff-bg-job"
+            ariaLabel={t("jobLabel")}
+            className={FILTER_CONTROL}
+            value={values.jobId}
+            onValueChange={pickJob}
+            placeholder={t("jobAll")}
+            searchPlaceholder={t("jobSearch")}
+            loading={!overview}
+            options={jobOptions}
+          />
+          <Select value={values.status} onValueChange={(status) => onChange({ status })}>
+            <SelectTrigger aria-label={t("statusLabel")} className={FILTER_CONTROL}>
+              <SelectValue />
+            </SelectTrigger>
+            {statusItems}
+          </Select>
+          <Select value={values.checkType} onValueChange={(checkType) => onChange({ checkType })}>
+            <SelectTrigger aria-label={t("typeLabel")} className={FILTER_CONTROL}>
+              <SelectValue />
+            </SelectTrigger>
+            {typeItems}
+          </Select>
+          <Select value={values.holder} onValueChange={(holder) => onChange({ holder })}>
+            <SelectTrigger aria-label={t("holderLabel")} className={FILTER_CONTROL}>
+              <span className="truncate">
+                <span className="text-muted-foreground">{t("holderLabel")}: </span>
+                {t(`holder.${values.holder}`)}
+              </span>
+            </SelectTrigger>
+            {holderItems}
+          </Select>
+        </div>
+      </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => onChange({ employerId: "", jobId: "", status: "all", checkType: "all", holder: "all" })}
+      >
+        <FilterField label={t("employerLabel")} htmlFor="staff-bg-sheet-employer">
+          <SearchableSelect
+            id="staff-bg-sheet-employer"
+            className={SHEET_CONTROL}
+            value={values.employerId}
+            onValueChange={pickEmployer}
+            placeholder={t("employerAll")}
+            searchPlaceholder={t("employerSearch")}
+            loading={!overview}
+            options={employerOptions}
+          />
+        </FilterField>
+        <FilterField label={t("jobLabel")} htmlFor="staff-bg-sheet-job">
+          <SearchableSelect
+            id="staff-bg-sheet-job"
+            className={SHEET_CONTROL}
+            value={values.jobId}
+            onValueChange={pickJob}
+            placeholder={t("jobAll")}
+            searchPlaceholder={t("jobSearch")}
+            loading={!overview}
+            options={jobOptions}
+          />
+        </FilterField>
+        <FilterField label={t("statusLabel")} htmlFor="staff-bg-sheet-status">
+          <Select value={values.status} onValueChange={(status) => onChange({ status })}>
+            <SelectTrigger id="staff-bg-sheet-status" className={SHEET_CONTROL}>
+              <SelectValue />
+            </SelectTrigger>
+            {statusItems}
+          </Select>
+        </FilterField>
+        <FilterField label={t("typeLabel")} htmlFor="staff-bg-sheet-type">
+          <Select value={values.checkType} onValueChange={(checkType) => onChange({ checkType })}>
+            <SelectTrigger id="staff-bg-sheet-type" className={SHEET_CONTROL}>
+              <SelectValue />
+            </SelectTrigger>
+            {typeItems}
+          </Select>
+        </FilterField>
+        <FilterField label={t("holderLabel")} htmlFor="staff-bg-sheet-holder">
+          <Select value={values.holder} onValueChange={(holder) => onChange({ holder })}>
+            <SelectTrigger id="staff-bg-sheet-holder" className={SHEET_CONTROL}>
+              <SelectValue />
+            </SelectTrigger>
+            {holderItems}
+          </Select>
+        </FilterField>
+      </PhoneFilterSheet>
+    </>
   );
 }

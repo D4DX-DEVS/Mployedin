@@ -249,7 +249,7 @@ export function ProfitReportView({ report, onSelectAgent, headline = "full", cla
             tone="workspace-tone-sky"
           />
           <div className={`mt-4 overflow-x-auto rounded-2xl border border-border/70 ${report.schedule.periods.length > 12 ? "max-h-96 overflow-y-auto" : ""}`}>
-            <Table>
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30">
                   <TableHead>{t("columnPeriod")}</TableHead>
@@ -325,7 +325,7 @@ export function ProfitReportView({ report, onSelectAgent, headline = "full", cla
             <ReportEmpty>{t("noTeam", { year: report.year })}</ReportEmpty>
           ) : (
             <div className="mt-4 overflow-x-auto rounded-2xl border border-border/70">
-              <Table>
+              <Table data-mobile-table="scroll">
                 <TableHeader>
                   <TableRow className="bg-muted/30">
                     <TableHead>{t("columnAgent")}</TableHead>

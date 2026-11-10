@@ -10,6 +10,7 @@ import { PageHero } from "@/components/shared/PageHero";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { ReportKpiGrid, type ReportKpi } from "@/components/features/admin/reports/ReportKpiGrid";
 import { ReportCardHeader, reportCardClassName } from "@/components/features/admin/reports/ReportCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -158,8 +159,39 @@ function EmployerContent() {
               <EmptyState icon={ScrollText} title={te("logEmpty")} />
             ) : (
               <>
-                <div className="mt-4 overflow-x-auto">
-                  <Table>
+                <PhoneRecordList
+                  className="mt-4 sm:hidden"
+                  label={te("logTitle")}
+                  items={log.data.data.map((c) => ({
+                    key: c.id,
+                    title: label(c.feature),
+                    subtitle: (
+                      <>
+                        {c.user}
+                        {c.onBehalf ? <> · {te("behalfLabel")}</> : null}
+                      </>
+                    ),
+                    trailing: (
+                      <span className="text-xs font-medium">
+                        {!c.ok ? te("resultFailed") : c.cacheHit ? te("resultCached") : te("resultOk")}
+                      </span>
+                    ),
+                    meta: (
+                      <>
+                        <p>{formatDateTime(c.at, undefined, locale)}</p>
+                        <p className="truncate">{c.model}</p>
+                        {!c.priced ? <p>{te("colCost")}: {te("unpriced")}</p> : null}
+                      </>
+                    ),
+                    stats: [
+                      { label: te("colIn"), value: formatCount(c.inputTokens, undefined, locale) },
+                      { label: te("colOut"), value: formatCount(c.outputTokens, undefined, locale) },
+                      { label: te("colCost"), value: usd(c.costUsd, locale) },
+                    ],
+                  }))}
+                />
+                <div className="mt-4 overflow-x-auto max-sm:hidden">
+                  <Table data-mobile-table="scroll">
                     <TableHeader>
                       <TableRow>
                         <TableHead>{te("colTime")}</TableHead>

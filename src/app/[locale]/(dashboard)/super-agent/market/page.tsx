@@ -135,7 +135,7 @@ export default function MarketIntelligencePage() {
               <button
                 key={i}
                 onClick={() => { setQuery(q); runQuery(q); }}
-                className="rounded-full border border-border/70 bg-background/85 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground max-sm:whitespace-normal max-sm:h-auto max-sm:text-start max-sm:line-clamp-2"
+                className="rounded-full border border-border/70 bg-background/85 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-secondary/80 hover:text-foreground max-sm:!whitespace-normal max-sm:!h-auto max-sm:!text-xs max-sm:rounded-2xl max-sm:text-start max-sm:leading-snug"
               >
                 {q}
               </button>

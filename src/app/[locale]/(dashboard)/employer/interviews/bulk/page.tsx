@@ -209,7 +209,7 @@ export default function EmployerBulkInterviewPage() {
               <div>
                 <label className="text-xs text-muted-foreground">{t("duration")}</label>
                 <Select value={String(slot.duration)} onValueChange={v => setSlot(s => ({ ...s, duration: parseInt(v) }))}>
-                  <SelectTrigger className="mt-1 w-full">
+                  <SelectTrigger className="mt-1 w-full" aria-label={t("duration")}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -224,7 +224,7 @@ export default function EmployerBulkInterviewPage() {
             <div>
               <label className="text-xs text-muted-foreground">{t("type")}</label>
               <Select value={slot.type} onValueChange={v => setSlot(s => ({ ...s, type: v as InterviewSlot["type"] }))}>
-                <SelectTrigger className="mt-1 w-full">
+                <SelectTrigger className="mt-1 w-full" aria-label={t("type")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

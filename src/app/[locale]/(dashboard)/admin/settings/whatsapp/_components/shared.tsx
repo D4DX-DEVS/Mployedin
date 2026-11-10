@@ -93,12 +93,15 @@ export async function fetchJson<T>(url: string): Promise<T | null> {
 export function SectionCard({ title, icon: Icon, actions, children }: { title: string; icon: ComponentType<LucideProps>; actions?: ReactNode; children: ReactNode }) {
   return (
     <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
-      <div className="border-b border-border/40 flex items-center justify-between gap-2.5 panel-head">
-        <div className="flex items-center gap-2.5">
+      {/* flex-wrap: a long action ("Sync templates from WhatsApp") drops under the title on a phone
+          instead of squeezing it and running off the card's edge. The action sits in a plain block so
+          the admin phone chip rule (flex-wrap > button) does not shrink it. */}
+      <div className="border-b border-border/40 flex flex-wrap items-center justify-between gap-2.5 panel-head">
+        <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10"><Icon className="w-3.5 h-3.5 text-primary" /></div>
           <h2 className="heading-label font-semibold tracking-tight">{title}</h2>
         </div>
-        {actions}
+        {actions ? <div className="max-w-full">{actions}</div> : null}
       </div>
       {children}
     </div>
@@ -107,7 +110,9 @@ export function SectionCard({ title, icon: Icon, actions, children }: { title: s
 
 export function StatCard({ label, value, tone = "text-foreground" }: { label: string; value: string | number; tone?: string }) {
   return (
-    <div className="rounded-xl border border-border/50 bg-card p-4">
+    // Column with the figure pinned to the bottom: a label that wraps ("Not sent (not connected)")
+    // no longer drops its figure below its neighbours'.
+    <div className="flex flex-col justify-between rounded-xl border border-border/50 bg-card p-4">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className={`mt-1 text-2xl font-semibold ${tone}`}>{value}</p>
     </div>

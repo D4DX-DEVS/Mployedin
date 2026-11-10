@@ -20,7 +20,9 @@ import {
 } from "lucide-react";
 import { formatListDate, formatTime } from "@/lib/ui/intlFormat";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -68,6 +70,7 @@ export default function SuperAgentInterviewsPage() {
   const [interviews, setInterviews] = useState<InterviewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [stats, setStats] = useState({ total: 0, scheduled: 0, completed: 0, cancelRate: 0 });
   const pagination = usePagination();
@@ -154,6 +157,9 @@ export default function SuperAgentInterviewsPage() {
     }
   };
 
+  const clearAllFilters = () => { setFilters(INITIAL_FILTERS); pagination.resetPage(); };
+  const phoneFilterCount = [filters.status !== "all", filters.type !== "all", filters.dateFrom, filters.dateTo].filter(Boolean).length;
+
   return (
     <div className="page-container">
       <SuperAgentPageIntro
@@ -164,8 +170,11 @@ export default function SuperAgentInterviewsPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
-        onClear={(filters.search || filters.status !== "all" || filters.type !== "all" || filters.dateFrom || filters.dateTo) ? () => { setFilters(INITIAL_FILTERS); pagination.resetPage(); } : undefined}
+        // Phones: one line of search + Filters + Export, no box around it.
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        onClear={(filters.search || filters.status !== "all" || filters.type !== "all" || filters.dateFrom || filters.dateTo) ? clearAllFilters : undefined}
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         more={(
           <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
             <div className="min-w-0 flex-1 basis-40">
@@ -193,30 +202,116 @@ export default function SuperAgentInterviewsPage() {
           value={filters.search}
           onChange={(v) => updateFilter("search", v)}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <SearchableSelect
-          options={STATUS_OPTIONS}
-          value={filters.status}
-          onValueChange={(v) => updateFilter("status", v)}
-          placeholder={t("allStatuses")}
-          className={INLINE_FILTER_CONTROL}
-        />
-        <SearchableSelect
-          options={TYPE_OPTIONS}
-          value={filters.type}
-          onValueChange={(v) => updateFilter("type", v)}
-          placeholder={t("allTypes")}
-          className={INLINE_FILTER_CONTROL}
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            options={STATUS_OPTIONS}
+            value={filters.status}
+            onValueChange={(v) => updateFilter("status", v)}
+            placeholder={t("allStatuses")}
+            className={INLINE_FILTER_CONTROL}
+          />
+          <SearchableSelect
+            options={TYPE_OPTIONS}
+            value={filters.type}
+            onValueChange={(v) => updateFilter("type", v)}
+            placeholder={t("allTypes")}
+            className={INLINE_FILTER_CONTROL}
+          />
+        </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={clearAllFilters}
+      >
+        <FilterField label={tc("status")} htmlFor="sa-interviews-sheet-status">
+          <SearchableSelect
+            id="sa-interviews-sheet-status"
+            options={STATUS_OPTIONS}
+            value={filters.status}
+            onValueChange={(v) => updateFilter("status", v)}
+            placeholder={t("allStatuses")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("columnType")} htmlFor="sa-interviews-sheet-type">
+          <SearchableSelect
+            id="sa-interviews-sheet-type"
+            options={TYPE_OPTIONS}
+            value={filters.type}
+            onValueChange={(v) => updateFilter("type", v)}
+            placeholder={t("allTypes")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("fromDate")} htmlFor="sa-interviews-sheet-date-from">
+          <DateTimePicker
+            id="sa-interviews-sheet-date-from"
+            mode="date"
+            value={filters.dateFrom}
+            onChange={(v) => updateFilter("dateFrom", v)}
+            className="w-full"
+          />
+        </FilterField>
+        <FilterField label={t("toDate")} htmlFor="sa-interviews-sheet-date-to">
+          <DateTimePicker
+            id="sa-interviews-sheet-date-to"
+            mode="date"
+            value={filters.dateTo}
+            onChange={(v) => updateFilter("dateTo", v)}
+            className="w-full"
+          />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {/* No section heading: it repeated the page title directly under the header. */}
       <SuperAgentSection>
         {loadFailed && !loading ? (
           <ErrorState onRetry={() => fetchInterviews()} />
         ) : (
-        <div className="overflow-x-auto">
-          <Table>
+        <>
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("pageTitle")}
+          loading={loading}
+          empty={<EmptyState title={t("emptyStateTitle")} description={t("emptyStateDescription")} icon={Calendar} />}
+          items={interviews.map((i) => ({
+            key: i._id,
+            leading: <UserAvatar name={i.candidateName} email={i.candidateEmail} className="h-10 w-10" colorful />,
+            title: i.candidateName,
+            subtitle: i.candidateEmail || undefined,
+            trailing: <StatusBadge status={i.status} />,
+            meta: (
+              <>
+                <p className="flex min-w-0 items-center gap-1">
+                  <BriefcaseBusiness className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{[i.jobTitle, i.companyName, i.agentName].filter(Boolean).join(" · ")}</span>
+                </p>
+                <p className="flex min-w-0 items-center gap-1">
+                  <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">
+                    {formatListDate(i.scheduledAt, locale)}{" "}
+                    {formatTime(new Date(i.scheduledAt), { hour: "2-digit", minute: "2-digit" }, locale)}
+                    {i.duration ? ` · ${t("durationMinutes", { duration: i.duration })}` : ""}
+                  </span>
+                </p>
+              </>
+            ),
+            badges: (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-medium capitalize text-muted-foreground [&_svg]:h-3 [&_svg]:w-3">
+                {typeIcon(i.type)} {i.type}
+              </span>
+            ),
+          }))}
+        />
+        <div className="overflow-x-auto max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[180px]">{t("columnCandidate")}</TableHead>
@@ -276,6 +371,7 @@ export default function SuperAgentInterviewsPage() {
             </TableBody>
           </Table>
         </div>
+        </>
         )}
       </SuperAgentSection>
 

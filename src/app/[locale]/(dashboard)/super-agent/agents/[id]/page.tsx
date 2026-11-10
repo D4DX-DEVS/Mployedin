@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CascadingLocationPicker } from "@/components/shared/CascadingLocationPicker";
 import { StepFormDialog } from "@/components/shared/StepFormDialog";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -393,7 +394,7 @@ export default function AgentDetailPage() {
           <span className="text-sm font-semibold text-foreground">{user.isActive ? tc("active") : tc("inactive")}</span>
           <span className="text-xs text-muted-foreground">· {t("commissionLabel")}: {agent.commissionRate ?? 0}%</span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-sm:grid max-sm:!w-[calc(100vw-2rem)] max-sm:max-w-full max-sm:min-w-0 max-sm:grid-cols-2 max-sm:[&>button]:!h-11 max-sm:[&>button]:min-w-0">
           <Button size="sm" onClick={() => setAssignOpen(true)} className="gap-2">
             <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
             {ta("assignButton")}
@@ -510,8 +511,33 @@ export default function AgentDetailPage() {
         </div>
 
         {leads.items.length > 0 ? (
-          <div className="overflow-x-auto rounded-2xl border border-border/60">
-            <Table>
+          <>
+          <PhoneRecordList
+            className="sm:hidden"
+            label={t("pipelineTitle")}
+            items={leads.items.map((l) => ({
+              key: l._id,
+              title: l.companyName,
+              subtitle: l.contactPerson,
+              trailing: <StatusBadge status={l.status} t={t} />,
+              meta: (
+                <>
+                  {(l.country || l.industry) && (
+                    <p className="flex min-w-0 items-center gap-1">
+                      <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{[l.country, l.industry].filter(Boolean).join(" · ")}</span>
+                    </p>
+                  )}
+                  <p className="flex min-w-0 items-center gap-1">
+                    <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{formatListDate(l.createdAt)}{l.source ? ` · ${l.source}` : ""}</span>
+                  </p>
+                </>
+              ),
+            }))}
+          />
+          <div className="overflow-x-auto rounded-2xl border border-border/60 max-sm:hidden">
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("tableColumnCompany")}</TableHead>
@@ -540,6 +566,7 @@ export default function AgentDetailPage() {
               </TableBody>
             </Table>
           </div>
+          </>
         ) : (
           <p className="py-8 text-center text-sm text-muted-foreground">{t("noLeadsYet")}</p>
         )}
@@ -552,8 +579,39 @@ export default function AgentDetailPage() {
         description={t("referralDescription", { signups: referralLinks.totalRegistrations, count: referralLinks.total })}
       >
         {referralLinks.items.length > 0 ? (
-          <div className="overflow-x-auto rounded-2xl border border-border/60">
-            <Table>
+          <>
+          <PhoneRecordList
+            className="sm:hidden"
+            label={t("referralTitle")}
+            items={referralLinks.items.map((rl) => ({
+              key: rl._id,
+              title: <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">{rl.code}</code>,
+              subtitle: rl.label || undefined,
+              trailing: (
+                <span className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                  rl.isActive
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-gray-100 text-gray-600"
+                )}>
+                  <span className={cn("h-1.5 w-1.5 rounded-full", rl.isActive ? "bg-emerald-500" : "bg-gray-400")} />
+                  {rl.isActive ? tc("active") : tc("inactive")}
+                </span>
+              ),
+              meta: (
+                <p className="flex min-w-0 items-center gap-1">
+                  <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{formatListDate(rl.createdAt)}</span>
+                </p>
+              ),
+              stats: [
+                { label: t("tableColumnUsed"), value: rl.usedCount },
+                { label: t("tableColumnRegistrations"), value: rl.registrations?.length ?? 0 },
+              ],
+            }))}
+          />
+          <div className="overflow-x-auto rounded-2xl border border-border/60 max-sm:hidden">
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("tableColumnCode")}</TableHead>
@@ -592,6 +650,7 @@ export default function AgentDetailPage() {
               </TableBody>
             </Table>
           </div>
+          </>
         ) : (
           <p className="py-8 text-center text-sm text-muted-foreground">{t("noReferralLinksYet")}</p>
         )}

@@ -6,6 +6,7 @@ import { AlertTriangle, ScrollText } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -136,7 +137,35 @@ export function LogsTab({ showNotConnected }: { showNotConnected: boolean }) {
         ) : empty ? (
           <div className="p-4"><EmptyState icon={ScrollText} title={filtered ? t("noLogsFiltered") : t("noLogs")} /></div>
         ) : (
-          <Table className="responsive-card-table">
+          <>
+          <PhoneRecordList
+            className="p-3 sm:hidden"
+            label={t("logsTitle")}
+            loading={loading}
+            items={logs.map((log) => ({
+              key: log._id,
+              title: <span className="font-mono text-xs" dir="ltr">{log.to}</span>,
+              subtitle: (
+                <>
+                  {log.kind === "template" ? t("kindTemplate") : t("kindText")}
+                  {log.templateName ? <> · <span className="font-mono" dir="ltr">{log.templateName}</span></> : null}
+                </>
+              ),
+              trailing: (
+                <Badge variant="outline" className={`gap-1 ${statusTone(log.status)}`}>
+                  {log.status === "failed" && <AlertTriangle className="h-3 w-3" aria-hidden="true" />}
+                  {statusLabel(log.status, t)}
+                </Badge>
+              ),
+              meta: (
+                <>
+                  <p>{formatDateTime(log.sentAt, undefined, locale)} · {sourceLabel(log.source, t)}</p>
+                  {detailOf(log, t) !== "—" && <p>{detailOf(log, t)}</p>}
+                </>
+              ),
+            }))}
+          />
+          <Table data-mobile-table="scroll" className="max-sm:hidden">
             <TableHeader>
               <TableRow>
                 <TableHead>{t("colTime")}</TableHead>
@@ -171,6 +200,7 @@ export function LogsTab({ showNotConnected }: { showNotConnected: boolean }) {
               )}
             </TableBody>
           </Table>
+          </>
         )}
       </div>
       {!failed && !empty && (

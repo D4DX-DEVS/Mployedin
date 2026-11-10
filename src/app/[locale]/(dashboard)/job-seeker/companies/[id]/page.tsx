@@ -175,7 +175,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
 
       <div className="min-h-screen bg-background">
         <div className="border-b border-border bg-muted/20">
-          <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
+          <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3 text-xs text-muted-foreground max-sm:px-0">
             <Link href={`/${locale}/job-seeker/jobs`} className="transition-colors hover:text-foreground">
               {tn("jobSearch")}
             </Link>
@@ -184,13 +184,13 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
           </div>
         </div>
 
-        <div className="mx-auto max-w-6xl px-4 py-5 sm:py-8">
+        <div className="mx-auto max-w-6xl px-4 py-5 max-sm:px-0 max-sm:py-4 sm:py-8">
           <section className="overflow-hidden rounded-lg sm:rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
             <div className="h-20 sm:h-28 md:h-36 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.24),_transparent_40%),linear-gradient(135deg,_rgba(15,23,42,0.08),_rgba(37,99,235,0.12))]" />
 
             <div className="px-4 pb-4 sm:px-6 sm:pb-6 md:px-8 md:pb-8">
               <div className="-mt-12 flex flex-col gap-4 sm:-mt-14 md:-mt-16 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
-                <div className="flex items-end gap-3 sm:gap-4">
+                <div className="flex items-end gap-3 max-sm:flex-col max-sm:items-start sm:gap-4">
                   <div className="flex h-20 w-20 sm:h-24 sm:w-24 md:h-28 md:w-28 items-center justify-center overflow-hidden rounded-xl sm:rounded-3xl border border-border/70 bg-background text-xl sm:text-2xl font-semibold text-foreground shadow-[0_18px_40px_rgba(15,23,42,0.12)]">
                     {employer.logo ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -204,7 +204,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                     <div className="inline-flex rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
                       {t("companyProfile")}
                     </div>
-                    <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl lg:text-[2.25rem]">
+                    <h1 className="mt-3 text-2xl font-semibold max-sm:mt-2 tracking-tight text-foreground sm:text-3xl lg:text-[2.25rem]">
                       {employer.companyName}
                     </h1>
                     <div className="mt-2 flex flex-wrap gap-2 text-sm text-muted-foreground">

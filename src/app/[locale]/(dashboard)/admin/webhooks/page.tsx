@@ -28,12 +28,14 @@ import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
@@ -74,6 +76,7 @@ interface WebhookItem {
 export default function AdminWebhooksPage() {
   const t = useTranslations("webhooks");
   const ta = useTranslations("a11y");
+  const tCommon = useTranslations("common");
   const {
     page, limit, total, totalPages,
     setPage, setLimit, updateTotal, resetPage, paginationParams,
@@ -93,6 +96,7 @@ export default function AdminWebhooksPage() {
      ?status=failing; in component state that filter would be ignored on arrival. */
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
   const [eventFilter, setEventFilter] = useState("all");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: ["createdAt", "name", "lastTriggeredAt"] });
   const [sortOrderParam, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
   const sortOrder: "asc" | "desc" = sortOrderParam === "asc" ? "asc" : "desc";
@@ -361,6 +365,126 @@ export default function AdminWebhooksPage() {
     }
   };
 
+  const statusFilterOptions = [
+    { value: "all", label: t("allStatuses") },
+    { value: "active", label: t("active") },
+    { value: "inactive", label: t("inactive") },
+    { value: "failing", label: t("failingStatus") },
+  ];
+  const eventFilterOptions = [
+    { value: "all", label: t("allEvents") },
+    ...EVENTS.map((ev) => ({ value: ev, label: ev })),
+  ];
+  const sortOptions = [
+    { value: "createdAt", label: t("sortDateAdded") },
+    { value: "lastTriggeredAt", label: t("lastTriggered") },
+    { value: "name", label: t("name") },
+  ];
+  const phoneFilterCount = (statusFilter !== "all" ? 1 : 0) + (eventFilter !== "all" ? 1 : 0);
+
+
+  const rowActionsFor = (webhook: WebhookItem): { quick: RowAction[]; menu: RowAction[] } => {
+    const menu: RowAction[] = [];
+
+    // Send test ping
+    menu.push({
+      key: "test",
+      label: t("a11ySendTestPing"),
+      icon: Send,
+      onSelect: () => handleTestPing(webhook._id),
+      pending: testingId === webhook._id,
+    });
+
+    // Replay failed (only if last delivery failed)
+    if (webhook.lastStatus === "failed") {
+      menu.push({
+        key: "redeliver",
+        label: t("a11yRedeliver"),
+        icon: RotateCcw,
+        onSelect: () => handleRedeliver(webhook._id),
+        pending: redeliveringId === webhook._id,
+      });
+    }
+
+    // View delivery log - QUICK ACTION
+    const viewAction: RowAction = {
+      key: "view",
+      label: t("a11yViewDeliveryLog"),
+      icon: Eye,
+      onSelect: () => openDeliveryLog(webhook),
+    };
+
+    // Rotate secret
+    menu.push({
+      key: "rotate",
+      label: t("a11yRotateSecret"),
+      icon: KeyRound,
+      onSelect: () => handleRotateSecret(webhook._id),
+    });
+
+    // Edit
+    menu.push({
+      key: "edit",
+      label: t("edit"),
+      icon: Pencil,
+      onSelect: () => openEdit(webhook),
+    });
+
+    // Delete
+    menu.push({
+      key: "delete",
+      label: ta("delete"),
+      icon: Trash2,
+      onSelect: () => handleDelete(webhook._id),
+      destructive: true,
+    });
+
+    return { quick: [viewAction], menu };
+  };
+
+  const emptyState = (
+    <div className="flex flex-col items-center gap-3 text-muted-foreground">
+      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-muted/50">
+        <Inbox className="h-7 w-7 opacity-40" />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-foreground">{t("noWebhooksFound")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {activeFilterCount > 0 ? t("tryAdjustingFilters") : t("webhooksWillAppearWhenConfigured")}
+        </p>
+      </div>
+      {activeFilterCount > 0 && (
+        <Button variant="outline" size="dense" onClick={clearAllFilters} className="mt-1 rounded-lg text-xs">
+          {t("clearFiltersButton")}
+        </Button>
+      )}
+    </div>
+  );
+
+  const activeToggle = (wh: WebhookItem) => (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => handleToggleActive(wh)}
+            className="inline-flex items-center gap-1 text-xs"
+            aria-label={wh.isActive ? t("clickToDisable") : t("clickToEnable")}
+          >
+            {wh.isActive ? (
+              <ToggleRight className="h-5 w-5 text-emerald-500" />
+            ) : (
+              <ToggleLeft className="h-5 w-5 text-muted-foreground" />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {wh.isActive ? t("clickToDisable") : t("clickToEnable")}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+
   return (
     <div className="page-container">
 
@@ -557,7 +681,7 @@ export default function AdminWebhooksPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={activeFilterCount > 0 ? clearAllFilters : undefined}
         clearLabel={t("clearNFilters", { count: activeFilterCount })}
       >
@@ -565,44 +689,74 @@ export default function AdminWebhooksPage() {
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <SearchableSelect
-          id="webhook-status-filter"
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "all", label: t("allStatuses") },
-            { value: "active", label: t("active") },
-            { value: "inactive", label: t("inactive") },
-            { value: "failing", label: t("failingStatus") },
-          ]}
-          value={statusFilter}
-          onValueChange={(value) => { setStatusFilter(value); resetPage(); }}
-          placeholder={t("allStatuses")}
-        />
-        <SearchableSelect
-          id="webhook-event-filter"
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "all", label: t("allEvents") },
-            ...EVENTS.map((ev) => ({ value: ev, label: ev })),
-          ]}
-          value={eventFilter}
-          onValueChange={(value) => { setEventFilter(value); resetPage(); }}
-          placeholder={t("allEvents")}
-        />
-        <TableSortControl
-          value={sortBy}
-          onValueChange={setSortBy}
-          options={[
-            { value: "createdAt", label: t("sortDateAdded") },
-            { value: "lastTriggeredAt", label: t("lastTriggered") },
-            { value: "name", label: t("name") },
-          ]}
-          order={sortOrder}
-          onOrderChange={setSortOrder}
-          compact
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            id="webhook-status-filter"
+            className={INLINE_FILTER_CONTROL}
+            options={statusFilterOptions}
+            value={statusFilter}
+            onValueChange={(value) => { setStatusFilter(value); resetPage(); }}
+            placeholder={t("allStatuses")}
+          />
+          <SearchableSelect
+            id="webhook-event-filter"
+            className={INLINE_FILTER_CONTROL}
+            options={eventFilterOptions}
+            value={eventFilter}
+            onValueChange={(value) => { setEventFilter(value); resetPage(); }}
+            placeholder={t("allEvents")}
+          />
+          <TableSortControl
+            value={sortBy}
+            onValueChange={setSortBy}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={setSortOrder}
+            compact
+          />
+        </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setStatusFilter("all"); setEventFilter("all"); resetPage(); }}
+      >
+        <FilterField label={tCommon("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={setSortBy}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={setSortOrder}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={tCommon("status")} htmlFor="webhooks-sheet-status">
+          <SearchableSelect
+            id="webhooks-sheet-status"
+            className={SHEET_CONTROL}
+            options={statusFilterOptions}
+            value={statusFilter}
+            onValueChange={(value) => { setStatusFilter(value); resetPage(); }}
+            placeholder={t("allStatuses")}
+          />
+        </FilterField>
+        <FilterField label={t("eventsLabel")} htmlFor="webhooks-sheet-event">
+          <SearchableSelect
+            id="webhooks-sheet-event"
+            className={SHEET_CONTROL}
+            options={eventFilterOptions}
+            value={eventFilter}
+            onValueChange={(value) => { setEventFilter(value); resetPage(); }}
+            placeholder={t("allEvents")}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
       <section className="workspace-panel-surface overflow-hidden rounded-2xl border-t-0 rounded-t-none">
@@ -611,8 +765,44 @@ export default function AdminWebhooksPage() {
             <ErrorState onRetry={fetchWebhooks} />
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
+          <>
+          <PhoneRecordList
+            className="p-3 sm:hidden"
+            label={t("name")}
+            loading={loading}
+            empty={emptyState}
+            items={filteredWebhooks.map((wh) => ({
+              key: wh._id,
+              title: wh.name,
+              subtitle: <span className="font-mono" dir="ltr">{wh.url}</span>,
+              actions: (
+                <>
+                  {activeToggle(wh)}
+                  <RowActions name={wh.name} labelsFrom="wide" {...rowActionsFor(wh)} />
+                </>
+              ),
+              meta: (
+                <p>
+                  {t("lastTriggered")}:{" "}
+                  {wh.lastTriggeredAt
+                    ? formatDate(new Date(wh.lastTriggeredAt), { day: "2-digit", month: "short", year: "numeric" })
+                    : "—"}
+                  {wh.lastStatus && (
+                    <span className={`ml-1 ${wh.lastStatus === "success" ? "text-status-selected" : "text-red-500"}`}>
+                      ({wh.lastStatus})
+                    </span>
+                  )}
+                </p>
+              ),
+              badges: wh.events.length > 0 ? wh.events.map((ev) => (
+                <Badge key={ev} variant="secondary" className="text-[11px]" title={ev}>
+                  {formatActionCode(ev)}
+                </Badge>
+              )) : undefined,
+            }))}
+          />
+          <div className="overflow-x-auto max-sm:hidden">
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="min-w-[160px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]">
@@ -633,84 +823,10 @@ export default function AdminWebhooksPage() {
                 ) : filteredWebhooks.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={6} className="h-44 text-center">
-                      <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-muted/50">
-                          <Inbox className="h-7 w-7 opacity-40" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{t("noWebhooksFound")}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {activeFilterCount > 0 ? t("tryAdjustingFilters") : t("webhooksWillAppearWhenConfigured")}
-                          </p>
-                        </div>
-                        {activeFilterCount > 0 && (
-                          <Button variant="outline" size="dense" onClick={clearAllFilters} className="mt-1 rounded-lg text-xs">
-                            {t("clearFiltersButton")}
-                          </Button>
-                        )}
-                      </div>
+                      {emptyState}
                     </TableCell>
                   </TableRow>
                 ) : filteredWebhooks.map((wh) => {
-                  const rowActionsFor = (webhook: WebhookItem): { quick: RowAction[]; menu: RowAction[] } => {
-                    const menu: RowAction[] = [];
-
-                    // Send test ping
-                    menu.push({
-                      key: "test",
-                      label: t("a11ySendTestPing"),
-                      icon: Send,
-                      onSelect: () => handleTestPing(webhook._id),
-                      pending: testingId === webhook._id,
-                    });
-
-                    // Replay failed (only if last delivery failed)
-                    if (webhook.lastStatus === "failed") {
-                      menu.push({
-                        key: "redeliver",
-                        label: t("a11yRedeliver"),
-                        icon: RotateCcw,
-                        onSelect: () => handleRedeliver(webhook._id),
-                        pending: redeliveringId === webhook._id,
-                      });
-                    }
-
-                    // View delivery log - QUICK ACTION
-                    const viewAction: RowAction = {
-                      key: "view",
-                      label: t("a11yViewDeliveryLog"),
-                      icon: Eye,
-                      onSelect: () => openDeliveryLog(webhook),
-                    };
-
-                    // Rotate secret
-                    menu.push({
-                      key: "rotate",
-                      label: t("a11yRotateSecret"),
-                      icon: KeyRound,
-                      onSelect: () => handleRotateSecret(webhook._id),
-                    });
-
-                    // Edit
-                    menu.push({
-                      key: "edit",
-                      label: t("edit"),
-                      icon: Pencil,
-                      onSelect: () => openEdit(webhook),
-                    });
-
-                    // Delete
-                    menu.push({
-                      key: "delete",
-                      label: ta("delete"),
-                      icon: Trash2,
-                      onSelect: () => handleDelete(webhook._id),
-                      destructive: true,
-                    });
-
-                    return { quick: [viewAction], menu };
-                  };
-
                   return (
                     <TableRow key={wh._id} className="group transition-colors">
                       <TableCell className="px-4 py-3 font-medium">{wh.name}</TableCell>
@@ -729,27 +845,7 @@ export default function AdminWebhooksPage() {
                         </div>
                       </TableCell>
                       <TableCell className="px-4 py-3 text-center">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                onClick={() => handleToggleActive(wh)}
-                                className="inline-flex items-center gap-1 text-xs"
-                                aria-label={wh.isActive ? t("clickToDisable") : t("clickToEnable")}
-                              >
-                                {wh.isActive ? (
-                                  <ToggleRight className="h-5 w-5 text-emerald-500" />
-                                ) : (
-                                  <ToggleLeft className="h-5 w-5 text-muted-foreground" />
-                                )}
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {wh.isActive ? t("clickToDisable") : t("clickToEnable")}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        {activeToggle(wh)}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-center text-xs text-muted-foreground">
                         {wh.lastTriggeredAt
@@ -770,6 +866,7 @@ export default function AdminWebhooksPage() {
               </TableBody>
             </Table>
           </div>
+          </>
         )}
       </section>
       <PaginationControls

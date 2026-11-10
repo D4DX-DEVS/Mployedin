@@ -159,10 +159,10 @@ export default function SuperAgentReportsPage() {
               </div>
             ) : (
               <div className="overflow-x-auto rounded-2xl border border-border/60">
-                <Table>
+                <Table data-mobile-table="scroll">
                   <TableHeader>
                     <TableRow className="bg-muted/30 hover:bg-muted/30">
-                      <TableHead>{t("month")}</TableHead>
+                      <TableHead className="max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{t("month")}</TableHead>
                       <TableHead className="text-end">{t("newLeads")}</TableHead>
                       <TableHead className="text-end">{t("placements")}</TableHead>
                       <TableHead className="text-end">{t("commission")}</TableHead>
@@ -172,7 +172,7 @@ export default function SuperAgentReportsPage() {
                   <TableBody>
                     {monthlyTrends.map((m) => (
                       <TableRow key={m.month} className="bg-transparent">
-                        <TableCell className="whitespace-nowrap font-medium text-foreground">{monthLabel(m.month, locale)}</TableCell>
+                        <TableCell className="whitespace-nowrap font-medium text-foreground max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{monthLabel(m.month, locale)}</TableCell>
                         <TableCell className="text-end tabular-nums text-muted-foreground">{m.leads}</TableCell>
                         <TableCell className="text-end tabular-nums text-muted-foreground">{m.placements}</TableCell>
                         <TableCell className="text-end tabular-nums text-muted-foreground">{formatCurrency(m.revenue, currency)}</TableCell>

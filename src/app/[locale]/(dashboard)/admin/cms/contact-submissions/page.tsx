@@ -27,7 +27,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Inbox, Eye, Trash2, Mail, MailOpen, MessageSquare, Send } from "lucide-react";
+import { Inbox, Eye, Trash2, Mail, MailOpen, MessageSquare, Send, CalendarDays } from "lucide-react";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import {
   type CmsFilterField,
   type CmsFilterValues,
@@ -36,6 +37,7 @@ import {
   getDefaultCmsFilterValues,
 } from "@/components/features/admin/CmsHeroFilters";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { formatCount, formatDate, formatDateTime } from "@/lib/ui/intlFormat";
@@ -58,6 +60,7 @@ interface ContactItem {
 
 export default function ContactSubmissionsPage() {
   const t = useTranslations("adminCmsContactSubmissions");
+  const tCommon = useTranslations("common");
   const { can } = usePermissions();
   const [items, setItems] = useState<ContactItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +81,7 @@ export default function ContactSubmissionsPage() {
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   /** Same column flips it; a new text column starts A–Z, the date newest first. */
   const sortByColumn = (field: string) => {
     if (field === sortBy) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -86,20 +90,28 @@ export default function ContactSubmissionsPage() {
   };
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
+  const statusOptions = [
+    { value: "all", label: t("allMessagesOption") },
+    { value: "unread", label: t("unreadOption") },
+    { value: "read", label: t("readOption") },
+  ];
+  const sortOptions = [
+    { value: "createdAt", label: t("tableHeaderDate") },
+    { value: "name", label: t("tableHeaderName") },
+    { value: "email", label: t("tableHeaderEmail") },
+    { value: "subject", label: t("tableHeaderSubject") },
+  ];
   const contactFilterFields: CmsFilterField[] = [
     { type: "search", placeholder: t("searchPlaceholder") },
     {
       type: "status",
       label: t("readStatusLabel"),
-      options: [
-        { value: "all", label: t("allMessagesOption") },
-        { value: "unread", label: t("unreadOption") },
-        { value: "read", label: t("readOption") },
-      ],
+      options: statusOptions,
     },
   ];
 
   const hasActiveFilters = cmsFiltersAreActive(filterValues, contactFilterFields);
+  const phoneFilterCount = filterValues.status !== getDefaultCmsFilterValues().status ? 1 : 0;
 
   const resetFilters = useCallback(() => {
     setFilterValues(getDefaultCmsFilterValues());
@@ -201,6 +213,58 @@ export default function ContactSubmissionsPage() {
 
   const unreadCount = items.filter((i) => !i.isRead).length;
 
+  const rowActionsFor = (row: ContactItem): { quick: RowAction[]; menu: RowAction[] } => {
+    const quick: RowAction[] = [];
+    const menu: RowAction[] = [];
+
+    quick.push({
+      key: "view",
+      label: t("viewButtonTitle"),
+      icon: Eye,
+      onSelect: () => handleView(row),
+    });
+
+    if (can("cms", "delete")) {
+      menu.push({
+        key: "delete",
+        label: t("deleteButtonTitle"),
+        icon: Trash2,
+        onSelect: () => handleDelete(row._id),
+        destructive: true,
+      });
+    }
+
+    return { quick, menu };
+  };
+
+  const emptyNode = (
+    <div className="flex flex-col items-center gap-2">
+      <div className="workspace-muted-pill mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-3xl">
+        <Inbox className="h-7 w-7 text-muted-foreground" />
+      </div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {hasActiveFilters ? t("emptyStateNoMatchingLabel") : t("emptyStateNoMessagesLabel")}
+      </p>
+      <h2 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
+        {hasActiveFilters ? t("emptyStateNoMatchingTitle") : t("emptyStateNoContactsTitle")}
+      </h2>
+      <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+        {hasActiveFilters
+          ? t("emptyStateNoMatchingDesc")
+          : t("emptyStateNoContactsDesc")}
+      </p>
+      {hasActiveFilters && (
+        <Button size="sm"
+          onClick={resetFilters}
+          variant="outline"
+          className="mt-4 rounded-xl border-border bg-background/70 px-4 text-sm"
+        >
+          {t("clearFiltersButton")}
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -223,7 +287,7 @@ export default function ContactSubmissionsPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={hasActiveFilters ? resetFilters : undefined}
         clearLabel={t("clearFiltersButton")}
       >
@@ -231,37 +295,95 @@ export default function ContactSubmissionsPage() {
           value={filterValues.search}
           onChange={(value) => { handleFilterChange({ ...filterValues, search: value }); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <SearchableSelect
-          id="contact-status-filter"
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "all", label: t("allMessagesOption") },
-            { value: "unread", label: t("unreadOption") },
-            { value: "read", label: t("readOption") },
-          ]}
-          value={filterValues.status}
-          onValueChange={(value) => { handleFilterChange({ ...filterValues, status: value }); }}
-          placeholder={t("readStatusLabel")}
-        />
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(value) => { setSortBy(value); resetPage(); }}
-          options={[
-            { value: "createdAt", label: t("tableHeaderDate") },
-            { value: "name", label: t("tableHeaderName") },
-            { value: "email", label: t("tableHeaderEmail") },
-            { value: "subject", label: t("tableHeaderSubject") },
-          ]}
-          order={sortOrder}
-          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-          compact
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            id="contact-status-filter"
+            className={INLINE_FILTER_CONTROL}
+            options={statusOptions}
+            value={filterValues.status}
+            onValueChange={(value) => { handleFilterChange({ ...filterValues, status: value }); }}
+            placeholder={t("readStatusLabel")}
+          />
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            compact
+          />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl border-t-0 rounded-t-none">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={resetFilters}
+      >
+        <FilterField label={tCommon("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={t("readStatusLabel")} htmlFor="contact-sheet-status">
+          <SearchableSelect
+            id="contact-sheet-status"
+            className={SHEET_CONTROL}
+            options={statusOptions}
+            value={filterValues.status}
+            onValueChange={(value) => { handleFilterChange({ ...filterValues, status: value }); }}
+            placeholder={t("readStatusLabel")}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("contactInbox")}
+        loading={loading}
+        empty={emptyNode}
+        items={items.map((item) => ({
+          key: item._id,
+          leading: <UserAvatar name={item.name} email={item.email} className="h-10 w-10" colorful />,
+          title: (
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              {item.isRead
+                ? <MailOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                : <Mail className="h-3.5 w-3.5 shrink-0 text-primary" />}
+              <span className={item.isRead ? "truncate font-medium" : "truncate"}>{item.name}</span>
+            </span>
+          ),
+          subtitle: item.email,
+          actions: <RowActions name={item.name} {...rowActionsFor(item)} />,
+          meta: (
+            <>
+              <p className="truncate text-foreground">{item.subject || "—"}</p>
+              <p className="flex min-w-0 items-center gap-1">
+                <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{formatDate(new Date(item.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</span>
+              </p>
+            </>
+          ),
+          badges: item.repliedAt ? (
+            <span className="rounded-full bg-status-selected-bg px-2 py-0.5 font-medium text-status-selected">
+              {t("repliedBadge")}
+            </span>
+          ) : undefined,
+        }))}
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl border-t-0 rounded-t-none max-sm:hidden">
         <div className="overflow-x-auto">
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="border-border/80 bg-muted/30 hover:bg-muted/30">
                 <TableHead className="w-[30px]"></TableHead>
@@ -294,58 +416,11 @@ export default function ContactSubmissionsPage() {
               ) : items.length === 0 ? (
                 <TableRow className="border-border/70 hover:bg-transparent">
                   <TableCell colSpan={6} className="px-6 py-16 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="workspace-muted-pill mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-3xl">
-                        <Inbox className="h-7 w-7 text-muted-foreground" />
-                      </div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        {hasActiveFilters ? t("emptyStateNoMatchingLabel") : t("emptyStateNoMessagesLabel")}
-                      </p>
-                      <h2 className="heading-subsection mt-1 font-semibold tracking-tight text-foreground">
-                        {hasActiveFilters ? t("emptyStateNoMatchingTitle") : t("emptyStateNoContactsTitle")}
-                      </h2>
-                      <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">
-                        {hasActiveFilters
-                          ? t("emptyStateNoMatchingDesc")
-                          : t("emptyStateNoContactsDesc")}
-                      </p>
-                      {hasActiveFilters && (
-                        <Button size="sm"
-                          onClick={resetFilters}
-                          variant="outline"
-                          className="mt-4 rounded-xl border-border bg-background/70 px-4 text-sm"
-                        >
-                          {t("clearFiltersButton")}
-                        </Button>
-                      )}
-                    </div>
+                    {emptyNode}
                   </TableCell>
                 </TableRow>
               ) : (
                 items.map((item) => {
-                  const rowActionsFor = (row: ContactItem): { quick: RowAction[]; menu: RowAction[] } => {
-                    const quick: RowAction[] = [];
-                    const menu: RowAction[] = [];
-
-                    quick.push({
-                      key: "view",
-                      label: t("viewButtonTitle"),
-                      icon: Eye,
-                      onSelect: () => handleView(row),
-                    });
-
-                    if (can("cms", "delete")) {
-                      menu.push({
-                        key: "delete",
-                        label: t("deleteButtonTitle"),
-                        icon: Trash2,
-                        onSelect: () => handleDelete(row._id),
-                        destructive: true,
-                      });
-                    }
-
-                    return { quick, menu };
-                  };
 
                   return (
                     <TableRow key={item._id} className={`border-border/70 ${!item.isRead ? "bg-primary/5" : ""}`}>

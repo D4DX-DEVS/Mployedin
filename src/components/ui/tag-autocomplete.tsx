@@ -153,6 +153,7 @@ export function TagAutocomplete({
             <button
               type="button"
               onClick={() => remove(tag)}
+              data-tag-remove=""
               className="text-muted-foreground hover:text-foreground"
               aria-label={`Remove ${tag}`}
             >

@@ -25,8 +25,10 @@ import { formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableSortControl } from "@/components/shared/TableSortControl";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 
 interface CountryOption {
   _id: string;
@@ -53,6 +55,7 @@ interface CityItem {
 export default function CitiesPage() {
   const t = useTranslations("adminLocationData");
   const tf = useTranslations("formErrors");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -62,6 +65,7 @@ export default function CitiesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<string>("all");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "sortOrder", { allow: ["name", "nameAr", "slug", "sortOrder"] });
   const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "asc", { allow: ["asc", "desc"] });
   const order = sortOrder === "desc" ? "desc" : "asc";
@@ -287,6 +291,16 @@ export default function CitiesPage() {
     return "—";
   };
 
+  const countryOptions = [{ value: "all", label: t("allCountries") }, ...countries.map((c) => ({ value: c._id, label: c.name }))];
+  const stateOptions = [{ value: "all", label: t("allStates") }, ...filteredStates.map((s) => ({ value: s._id, label: s.name }))];
+  const statusOptions = [
+    { value: "all", label: t("all") },
+    { value: "active", label: t("active") },
+    { value: "inactive", label: t("inactive") },
+  ];
+  const sortOptions = [{ value: "sortOrder", label: t("sortOrder") }, { value: "name", label: t("cityNameEn") }, { value: "nameAr", label: t("cityNameAr") }, { value: "slug", label: t("slug") }];
+  const phoneFilterCount = (countryFilter !== "all" ? 1 : 0) + (stateFilter !== "all" ? 1 : 0) + (statusFilter !== "all" ? 1 : 0);
+
   return (
     <div className="page-container">
       <PlatformDataTabs />
@@ -316,7 +330,7 @@ export default function CitiesPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={hasActiveFilters ? () => { setCountryFilter("all"); setStateFilter("all"); setSearch(""); setStatusFilter("all"); resetPage(); } : undefined}
         clearLabel={t("clear")}
       >
@@ -324,51 +338,121 @@ export default function CitiesPage() {
           value={search}
           onChange={(v) => { setSearch(v); resetPage(); }}
           placeholder={t("searchCities")}
+          className="max-sm:basis-0"
         />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          id="admin-cities-country"
-          options={[{ value: "all", label: t("allCountries") }, ...countries.map((c) => ({ value: c._id, label: c.name }))]}
-          value={countryFilter}
-          onValueChange={(v) => { setCountryFilter(v); setStateFilter("all"); resetPage(); }}
-          placeholder={t("allCountries")}
-        />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          id="admin-cities-state"
-          options={[{ value: "all", label: t("allStates") }, ...filteredStates.map((s) => ({ value: s._id, label: s.name }))]}
-          value={stateFilter}
-          onValueChange={(v) => { setStateFilter(v); resetPage(); }}
-          placeholder={t("allStates")}
-        />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          id="admin-cities-status"
-          options={[
-            { value: "all", label: t("all") },
-            { value: "active", label: t("active") },
-            { value: "inactive", label: t("inactive") },
-          ]}
-          value={statusFilter}
-          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-          placeholder={t("status")}
-        />
-        {/* Sorting lives here as well as on the column heads: phone cards have no heads. */}
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(value) => { setSortBy(value); resetPage(); }}
-          options={[{ value: "sortOrder", label: t("sortOrder") }, { value: "name", label: t("cityNameEn") }, { value: "nameAr", label: t("cityNameAr") }, { value: "slug", label: t("slug") }]}
-          order={order}
-          onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
-          className="shrink-0"
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            id="admin-cities-country"
+            options={countryOptions}
+            value={countryFilter}
+            onValueChange={(v) => { setCountryFilter(v); setStateFilter("all"); resetPage(); }}
+            placeholder={t("allCountries")}
+          />
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            id="admin-cities-state"
+            options={stateOptions}
+            value={stateFilter}
+            onValueChange={(v) => { setStateFilter(v); resetPage(); }}
+            placeholder={t("allStates")}
+          />
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            id="admin-cities-status"
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={t("status")}
+          />
+          {/* Sorting lives here as well as on the column heads: phone cards have no heads. */}
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={order}
+            onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+            className="shrink-0"
+          />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-3xl">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setCountryFilter("all"); setStateFilter("all"); setStatusFilter("all"); resetPage(); }}
+      >
+        <FilterField label={tCommon("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+            options={sortOptions}
+            order={order}
+            onOrderChange={(value) => { setSortOrder(value); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={t("colCountry")} htmlFor="cities-sheet-country">
+          <SearchableSelect
+            className={SHEET_CONTROL}
+            id="cities-sheet-country"
+            options={countryOptions}
+            value={countryFilter}
+            onValueChange={(v) => { setCountryFilter(v); setStateFilter("all"); resetPage(); }}
+            placeholder={t("allCountries")}
+          />
+        </FilterField>
+        <FilterField label={t("colState")} htmlFor="cities-sheet-state">
+          <SearchableSelect
+            className={SHEET_CONTROL}
+            id="cities-sheet-state"
+            options={stateOptions}
+            value={stateFilter}
+            onValueChange={(v) => { setStateFilter(v); resetPage(); }}
+            placeholder={t("allStates")}
+          />
+        </FilterField>
+        <FilterField label={t("status")} htmlFor="cities-sheet-status">
+          <SearchableSelect
+            className={SHEET_CONTROL}
+            id="cities-sheet-status"
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
+            placeholder={t("status")}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("citiesTitle")}
+        loading={loading}
+        empty={
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Inbox className="h-5 w-5 text-muted-foreground/50" />
+            <p className="text-xs font-medium text-foreground">{t("noCitiesFound")}</p>
+            <p className="text-xs text-muted-foreground">{t("adjustFiltersCity")}</p>
+          </div>
+        }
+        items={items.map((item) => ({
+          key: `city-${item._id}`,
+          title: item.name,
+          subtitle: getStateName(item),
+          trailing: <StatusBadge status={item.isActive ? "active" : "inactive"} />,
+          actions: can("location_data", "update") || can("location_data", "delete")
+            ? <RowActions name={item.name} {...rowActionsFor(item)} />
+            : undefined,
+        }))}
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-3xl max-sm:hidden">
 
         {/* Table: semantic table with responsive-card-table */}
-        <div className="overflow-x-auto" data-mobile-table="responsive">
-          <Table className="responsive-card-table">
+        <div className="overflow-x-auto">
+          <Table className="responsive-card-table" data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/72 hover:bg-secondary/72">
                 <TableHead data-label={t("colCity")}>{t("colCity")}</TableHead>

@@ -42,7 +42,7 @@ export default function AgentTargetReportPage() {
       <WorkspaceHeader
         title={t("agentReportTitle")}
         context={t("agentReportContext", { year })}
-        actions={<TargetYearSelect value={year} onChange={setYear} label={t("yearLabel")} years={years} />}
+        actions={<div className="max-sm:[&_button]:w-24"><TargetYearSelect value={year} onChange={setYear} label={t("yearLabel")} years={years} /></div>}
       />
 
       {isError && !data ? (

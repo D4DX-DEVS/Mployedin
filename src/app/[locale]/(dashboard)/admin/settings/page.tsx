@@ -688,7 +688,11 @@ export default function AdminSettingsPage() {
             <div className="space-y-4">
               <TwoFactorCard />
               <ChangeEmailCard />
-              <ConnectedAppsCard />
+              {/* Shared card (employer renders it too), so the phone fixes are scoped here: long
+                  scope chips wrap instead of running off the card, and app rows drop their inner box. */}
+              <div className="contents max-sm:[&_li_li]:!whitespace-normal max-sm:[&_li_li]:!rounded-xl max-sm:[&>section>ul>li:last-child]:border-b-0 max-sm:[&>section>ul>li]:rounded-none max-sm:[&>section>ul>li]:border-x-0 max-sm:[&>section>ul>li]:border-t-0 max-sm:[&>section>ul>li]:bg-transparent max-sm:[&>section>ul>li]:px-0">
+                <ConnectedAppsCard />
+              </div>
             </div>
           )}
 

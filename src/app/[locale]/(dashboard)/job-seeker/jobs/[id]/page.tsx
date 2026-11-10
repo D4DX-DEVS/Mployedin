@@ -13,6 +13,7 @@ import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
 import { SkillInsights } from "@/components/features/job-seeker/skills/SkillInsights";
 import { JobMatchCard } from "@/components/features/job-seeker/skills/JobMatchCard";
+import { JobMatchBanner } from "@/components/features/job-seeker/skills/JobMatchBanner";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { ShareJob } from "@/components/shared/ShareJob";
 import { SaveJobButton } from "@/components/features/job-seeker/saved/SaveJobButton";
@@ -117,6 +118,12 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
   const { locale, id } = await params;
   const t = await getTranslations("jobSeekerJobDetail");
   const tc = await getTranslations("common");
+  // Phone-only labels reuse existing strings from sibling namespaces.
+  const tCard = await getTranslations("jobCard");
+  const tAgentJobs = await getTranslations("agentJobs");
+  const tFeed = await getTranslations("jobFeed.sidebar");
+  const tPrefs = await getTranslations("jobSeekerExtra.preferences");
+  const tEasyApply = await getTranslations("easyApply");
 
   await connectDB();
   const job = await Job.findById(id)
@@ -160,6 +167,27 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
     ? t("remote")
     : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || "Location flexible";
   const employerLocation = [employer?.city, employer?.country].filter(Boolean).join(", ");
+
+  // Phone header and "Job overview": only facts the job already carries.
+  const employmentLabel = job.employmentType ? tCard(`employment.${job.employmentType}` as "employment.full_time") : null;
+  const workModeLabel = job.workMode ? tAgentJobs(`workModes.${job.workMode}` as "workModes.onsite") : null;
+  const experienceLabel =
+    job.requirements?.experienceMin != null
+      ? `${job.requirements.experienceMin}–${job.requirements.experienceMax ?? "+"} ${t("yearsExperience")}`
+      : null;
+  const companyInitials = (employer?.companyName ?? job.title)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w: string) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  const overviewFacts: Array<{ label: string; value: string }> = [];
+  if (salary) overviewFacts.push({ label: tFeed("salary"), value: salary });
+  if (experienceLabel) overviewFacts.push({ label: t("experience"), value: experienceLabel });
+  if (employmentLabel) overviewFacts.push({ label: tPrefs("jobType"), value: employmentLabel });
+  if (workModeLabel) overviewFacts.push({ label: tAgentJobs("filters.workModeLabel"), value: workModeLabel });
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -206,7 +234,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
 
       <div className="min-h-screen bg-background">
         <div className="border-b border-border bg-muted/20">
-          <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3 text-xs text-muted-foreground">
+          <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-3 text-xs text-muted-foreground max-sm:px-0">
             <Link href={`/${locale}/job-seeker/jobs`} className="hover:text-foreground transition-colors">
               {t("jobSearch")}
             </Link>
@@ -215,16 +243,20 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        <div className="mx-auto max-w-6xl px-4 py-5 sm:py-8">
+        <div className="mx-auto max-w-6xl px-4 py-5 max-sm:px-0 max-sm:py-4 sm:py-8">
           <section className="overflow-hidden rounded-2xl sm:rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] px-4 py-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)] sm:px-8 sm:py-7">
             <div>
               <div>
-                <div className="inline-flex rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                <div className="inline-flex rounded-full border border-primary/10 bg-primary/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary max-sm:hidden">
                   {t("jobDetail")}
                 </div>
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <div className="mt-4 flex flex-col gap-3 max-sm:mt-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary sm:hidden">
+                      {companyInitials}
+                    </div>
                   <div className="min-w-0">
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl lg:text-[2.25rem]">
+                    <h1 className="text-2xl font-semibold tracking-tight text-foreground max-sm:text-xl max-sm:leading-7 sm:text-3xl lg:text-[2.25rem]">
                       {job.title}
                     </h1>
                     {employer?._id ? (
@@ -237,6 +269,13 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                     ) : (
                       <p className="mt-2 text-sm sm:text-base font-medium text-muted-foreground">{employer?.companyName}</p>
                     )}
+                    {/* Phones: location · work mode · type · posted as one quiet line. */}
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground sm:hidden">
+                      {[...new Set([locationLabel, workModeLabel, employmentLabel].filter(Boolean))].join(" · ")}
+                      {" · "}
+                      <RelativeDate date={job.createdAt} prefix="Posted" />
+                    </p>
+                  </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {(employer?.domainVerified || employer?.isAgentVerified) && (
@@ -244,7 +283,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                         {t("verifiedEmployer")}
                       </span>
                     )}
-                    <SaveJobButton jobId={String(job._id)} />
+                    <SaveJobButton jobId={String(job._id)} className="max-sm:hidden" />
                     <ShareJob
                       jobId={String(job._id)}
                       jobTitle={job.title}
@@ -254,7 +293,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                   </div>
                 </div>
 
-                <div className="mt-5 flex flex-wrap gap-2 text-sm text-muted-foreground">
+                <div className="mt-5 flex flex-wrap gap-2 text-sm text-muted-foreground max-sm:hidden">
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/90 px-3 py-1.5">
                     <MapPin className="h-4 w-4" />
                     {locationLabel}
@@ -295,10 +334,41 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 </div>
               </div>
             </div>
+            <div className="mt-3 space-y-3 sm:hidden">
+              <JobMatchBanner jobId={String(job._id)} />
+              <div className="flex items-center gap-2">
+                <a
+                  href="#quick-apply"
+                  className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm"
+                >
+                  {tEasyApply("applyNow")}
+                </a>
+                <SaveJobButton jobId={String(job._id)} className="w-11 shrink-0 px-0" />
+              </div>
+            </div>
           </section>
 
-          <div className="mt-5 sm:mt-6 grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.7fr)_320px] lg:grid-rows-[auto_1fr]">
+          <div className="mt-5 sm:mt-6 grid gap-5 max-sm:grid-cols-[minmax(0,1fr)] max-sm:gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.7fr)_320px] lg:grid-rows-[auto_1fr]">
             <div className="space-y-5 sm:space-y-6 lg:col-start-1 lg:row-start-1 lg:self-start">
+              {overviewFacts.length > 0 && (
+                <section className="card-base rounded-xl panel-body sm:hidden">
+                  <h2 className="heading-section font-semibold tracking-tight text-foreground">
+                    {t.has("jobOverview") ? t("jobOverview") : t("overview")}
+                  </h2>
+                  <dl className="mt-3 divide-y divide-border/60">
+                    {overviewFacts.map((fact) => (
+                      <div key={fact.label} className="flex items-baseline justify-between gap-3 py-2 text-sm">
+                        <dt className="text-muted-foreground">{fact.label}</dt>
+                        <dd className="text-end font-medium text-foreground">{fact.value}</dd>
+                      </div>
+                    ))}
+                    <div className="flex items-baseline justify-between gap-3 py-2 text-sm">
+                      <dt className="text-muted-foreground">{tAgentJobs("table.posted")}</dt>
+                      <dd className="text-end font-medium text-foreground"><RelativeDate date={job.createdAt} /></dd>
+                    </div>
+                  </dl>
+                </section>
+              )}
               <section className="card-base rounded-xl sm:rounded-3xl panel-body">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("overview")}</div>
                 <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("whatThisRoleCovers")}</h2>
@@ -478,7 +548,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
             </div>
 
             <div className="space-y-4 sm:space-y-5 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-start">
-              <aside className="rounded-xl sm:rounded-3xl border border-border/70 bg-background/95 shadow-[0_16px_40px_rgba(15,23,42,0.07)] panel-body">
+              <aside id="quick-apply" className="scroll-mt-20 rounded-xl sm:rounded-3xl border border-border/70 bg-background/95 shadow-[0_16px_40px_rgba(15,23,42,0.07)] panel-body">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("quickApply")}</div>
                   <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("applyWithYourProfile")}</h2>

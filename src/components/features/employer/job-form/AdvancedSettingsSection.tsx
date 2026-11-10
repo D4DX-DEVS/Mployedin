@@ -152,6 +152,7 @@ export function AdvancedSettingsSection() {
                       shouldValidate: false,
                     })
                   }
+                  ariaLabel={t("visibility")}
                 />
               </div>
 
@@ -216,6 +217,7 @@ export function AdvancedSettingsSection() {
                     onValueChange={(v) =>
                       setValue("agentId", v === "" ? undefined : v, { shouldValidate: false })
                     }
+                    ariaLabel={t("assignAgent")}
                   />
                   <p className="text-xs text-muted-foreground">
                     {t("assignAgentHint")}

@@ -417,6 +417,7 @@ export default function BackgroundChecksPage() {
                 value={applicationId}
                 onValueChange={setApplicationId}
                 placeholder={t("fields.selectCandidate")}
+                ariaLabel={t("fields.candidate")}
                 options={applications.map((a) => ({
                   value: a._id,
                   label: `${candidateName(a)} — ${a.jobId?.title ?? ""}`,

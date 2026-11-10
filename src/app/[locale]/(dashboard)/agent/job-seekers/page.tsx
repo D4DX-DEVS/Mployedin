@@ -23,11 +23,13 @@ import { ArrowRight, BriefcaseBusiness, Handshake, Edit2, Eye, Inbox, MapPin, Us
 import { useTableExport } from "@/hooks/useTableExport";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { ReferSeekerDialog } from "@/components/features/agent/ReferSeekerDialog";
@@ -158,6 +160,7 @@ export default function AgentJobSeekersPage() {
 
   // Filter state
   const [showFilters, setShowFilters] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [availability, setAvailability] = useUrlFilter("availability", "");
   const [minProfile, setMinProfile] = useState(0);
   const [maxProfile, setMaxProfile] = useState(100);
@@ -352,6 +355,66 @@ export default function AgentJobSeekersPage() {
     ? { referralSummary: profileRow.referralSummary, inArea: profileRow.staffAccess === "area" }
     : undefined;
 
+  const phoneFilterCount = [availability, jobType, hiringStatus, locationFilter, skillsFilter].filter(Boolean).length;
+
+  const seekerActions = (s: JobSeeker, phone = false) => {
+    const actions: RowAction[] = [{
+      key: "view",
+      label: t("viewProfile"),
+      icon: Eye,
+      iconOnly: true,
+      onSelect: () => setProfileSeekerId(s._id),
+    }];
+    const menuActions: RowAction[] = [];
+    const isPremium = (s.badges ?? []).includes("premium");
+    if (can("job_seekers", "update")) {
+      if (s.staffAccess !== "area") {
+        menuActions.push({
+          key: "premium",
+          label: isPremium ? t("removePremium") : t("makePremium"),
+          icon: Crown,
+          iconClassName: "text-amber-600",
+          pending: premiumPendingId === s._id,
+          disabled: premiumPendingId === s._id,
+          onSelect: () => { void togglePremium(s); },
+        });
+        actions.push({
+          key: "edit",
+          label: tc("edit"),
+          icon: Edit2,
+          iconOnly: true,
+          onSelect: () => { setEditSeeker(s); setModalOpen(true); },
+        });
+      }
+    }
+    // Phone card with nothing but View: a lone eye icon in a footer row of
+    // its own read as a stray button, so there it is labelled and fills the row.
+    const quick = phone && actions.length === 1 && menuActions.length === 0
+      ? [{ ...actions[0], iconOnly: false }]
+      : actions;
+    return <RowActions name={s.userId?.name ?? "job seeker"} quick={quick} menu={menuActions} labelsFrom="wide" />;
+  };
+
+  const emptyState = (
+    view === "area" && activeFilterCount === 0 && !search ? (
+      <EmptyState
+        icon={MapPin}
+        title={areaAssigned ? t("areaEmptyTitle") : t("areaNoRegionTitle")}
+        description={areaAssigned ? t("areaEmptyDescription") : t("areaNoRegionDescription")}
+      />
+    ) : (
+      <EmptyState
+        icon={Inbox}
+        title={t("noJobSeekersFound")}
+        action={activeFilterCount > 0 ? (
+          <Button variant="outline" onClick={clearFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
+            {t("clearAllFilters")}
+          </Button>
+        ) : undefined}
+      />
+    )
+  );
+
   return (
     <div className="page-container">
       {/* Hero */}
@@ -381,7 +444,9 @@ export default function AgentJobSeekersPage() {
       <WorkspaceTabs tabs={viewTabs} ariaLabel={t("viewLabel")} activeKey={view} />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         more={(
           <>
             <SearchableSelect
@@ -448,7 +513,9 @@ export default function AgentJobSeekersPage() {
           value={search}
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         {/* Dashboard deep-link chips: the metric links here with ?onboarded=1 /
             ?premium=1, so the active filter must be visible and removable. */}
         {onboardedOnly === "1" && (
@@ -468,8 +535,168 @@ export default function AgentJobSeekersPage() {
         <CandidateDataNotice variant="candidateList" compact />
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        <Table className="compact-phone-cards">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => {
+          setAvailability("");
+          setJobType("");
+          setHiringStatus("");
+          setLocationFilter("");
+          setSkillsFilter("");
+          pagination.resetPage();
+        }}
+      >
+        <FilterField label={t("filterSortLabel")} htmlFor="agent-seekers-sheet-sort">
+          <Select value={sortBy} onValueChange={(v) => { setSortBy(v); pagination.resetPage(); }}>
+            <SelectTrigger id="agent-seekers-sheet-sort" className={SHEET_CONTROL}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterField>
+        <FilterField label={t("filterAvailabilityLabel")} htmlFor="agent-seekers-sheet-availability">
+          <SearchableSelect
+            id="agent-seekers-sheet-availability"
+            className={SHEET_CONTROL}
+            options={AVAILABILITY_OPTIONS}
+            value={availability}
+            onValueChange={(v) => { setAvailability(v); pagination.resetPage(); }}
+            placeholder={t("filterAvailabilityPlaceholder")}
+          />
+        </FilterField>
+        <FilterField label={t("filterJobTypeLabel")} htmlFor="agent-seekers-sheet-jobtype">
+          <SearchableSelect
+            id="agent-seekers-sheet-jobtype"
+            className={SHEET_CONTROL}
+            options={JOB_TYPE_OPTIONS}
+            value={jobType}
+            onValueChange={(v) => { setJobType(v); pagination.resetPage(); }}
+            placeholder={t("filterJobTypePlaceholder")}
+          />
+        </FilterField>
+        <FilterField label={t("hiringStatusLabel")} htmlFor="agent-seekers-sheet-hiringStatus">
+          <SearchableSelect
+            id="agent-seekers-sheet-hiringStatus"
+            className={SHEET_CONTROL}
+            options={HIRING_STATUS_OPTIONS}
+            value={hiringStatus}
+            onValueChange={(v) => { setHiringStatus(v); pagination.resetPage(); }}
+            placeholder={t("filterHiringStatus")}
+          />
+        </FilterField>
+        <FilterField label={tc("location")} htmlFor="agent-seekers-sheet-location">
+          <Input
+            id="agent-seekers-sheet-location"
+            placeholder={t("filterLocationPlaceholder")}
+            value={locationFilter}
+            onChange={(e) => { setLocationFilter(e.target.value); pagination.resetPage(); }}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("filterSkillsLabel")} htmlFor="agent-seekers-sheet-skills">
+          <Input
+            id="agent-seekers-sheet-skills"
+            placeholder={t("filterSkillsPlaceholder")}
+            value={skillsFilter}
+            onChange={(e) => { setSkillsFilter(e.target.value); pagination.resetPage(); }}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("heroTitle")}
+        loading={loading}
+        empty={emptyState}
+        items={seekers.map((s) => {
+          const isPremium = (s.badges ?? []).includes("premium");
+          const line = [getCurrentTitle(s), experienceLabel(s)].filter(Boolean).join(" · ");
+          return {
+            key: s._id,
+            leading: <UserAvatar name={s.userId?.name} email={s.userId?.email} className="h-10 w-10" colorful />,
+            title: (
+              <button
+                type="button"
+                onClick={() => setProfileSeekerId(s._id)}
+                className="block max-w-full break-words text-start line-clamp-2 !min-h-0 hover:text-primary hover:underline"
+              >
+                {s.userId?.name ?? "—"}
+              </button>
+            ),
+            subtitle: s.userId?.email ?? "—",
+            trailing: s.hiringStatus ? (
+              <StatusBadge
+                status={s.hiringStatus}
+                label={t(hiringStatusLabelKeyMap[s.hiringStatus as keyof typeof hiringStatusLabelKeyMap] || "hiringStatus.waiting")}
+                className={`whitespace-nowrap ${hiringStatusClassMap[s.hiringStatus as keyof typeof hiringStatusClassMap] || "status-pending"}`}
+              />
+            ) : undefined,
+            actions: seekerActions(s, true),
+            meta: (
+              <>
+                {line && (
+                  <p className="flex min-w-0 items-center gap-1">
+                    <BriefcaseBusiness className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span dir="auto" className="truncate">{line}</span>
+                  </p>
+                )}
+                {s.currentLocation && (
+                  <p className="flex min-w-0 items-center gap-1">
+                    <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span dir="auto" className="truncate">{s.currentLocation}</span>
+                  </p>
+                )}
+                {(s.skills ?? []).length > 0 && (
+                  <p className="truncate">{(s.skills ?? []).slice(0, 3).join(" · ")}{(s.skills ?? []).length > 3 ? ` +${s.skills.length - 3}` : ""}</p>
+                )}
+              </>
+            ),
+            badges: (
+              <>
+                {s.availabilityStatus ? (
+                  <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none ${
+                    s.availabilityStatus === "immediately" ? "bg-status-selected-bg text-status-selected"
+                    : s.availabilityStatus === "not_available" ? "bg-status-rejected-bg text-status-rejected"
+                    : "bg-status-shortlisted-bg text-status-shortlisted"
+                  }`}>
+                    {availabilityLabel(s.availabilityStatus)}
+                  </span>
+                ) : null}
+                {isPremium && (
+                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-medium leading-none text-amber-800">
+                    <Crown className="h-3 w-3" aria-hidden="true" />
+                    {t("premiumChip")}
+                  </span>
+                )}
+                <ReferralSourceChip namespace="agentJobSeekers" summary={s.referralSummary} />
+                {s.staffAccess === "area" && (
+                  <span
+                    className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-medium leading-none text-primary"
+                    title={t("inYourAreaViewOnly")}
+                  >
+                    <MapPin className="h-3 w-3" aria-hidden="true" />
+                    {t("inYourAreaChip")}
+                  </span>
+                )}
+              </>
+            ),
+            stats: [
+              { label: t("tableHeaderProfile"), value: `${s.profileCompleteness ?? 0}%` },
+              { label: t("tableHeaderJoined"), value: formatListDate(s.createdAt, locale) },
+            ],
+          };
+        })}
+      />
+
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
+        <Table className="compact-phone-cards" data-mobile-table="scroll">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>{tc("name")}</TableHead>
@@ -487,55 +714,11 @@ export default function AgentJobSeekersPage() {
             ) : seekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={6} className="py-12">
-                  {view === "area" && activeFilterCount === 0 && !search ? (
-                    <EmptyState
-                      icon={MapPin}
-                      title={areaAssigned ? t("areaEmptyTitle") : t("areaNoRegionTitle")}
-                      description={areaAssigned ? t("areaEmptyDescription") : t("areaNoRegionDescription")}
-                    />
-                  ) : (
-                    <EmptyState
-                      icon={Inbox}
-                      title={t("noJobSeekersFound")}
-                      action={activeFilterCount > 0 ? (
-                        <Button variant="outline" onClick={clearFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
-                          {t("clearAllFilters")}
-                        </Button>
-                      ) : undefined}
-                    />
-                  )}
+                  {emptyState}
                 </TableCell>
               </TableRow>
             ) : seekers.map((s) => {
-              const actions: RowAction[] = [{
-                key: "view",
-                label: t("viewProfile"),
-                icon: Eye,
-                iconOnly: true,
-                onSelect: () => setProfileSeekerId(s._id),
-              }];
-              const menuActions: RowAction[] = [];
               const isPremium = (s.badges ?? []).includes("premium");
-              if (can("job_seekers", "update")) {
-                if (s.staffAccess !== "area") {
-                  menuActions.push({
-                    key: "premium",
-                    label: isPremium ? t("removePremium") : t("makePremium"),
-                    icon: Crown,
-                    iconClassName: "text-amber-600",
-                    pending: premiumPendingId === s._id,
-                    disabled: premiumPendingId === s._id,
-                    onSelect: () => { void togglePremium(s); },
-                  });
-                  actions.push({
-                    key: "edit",
-                    label: tc("edit"),
-                    icon: Edit2,
-                    iconOnly: true,
-                    onSelect: () => { setEditSeeker(s); setModalOpen(true); },
-                  });
-                }
-              }
 
               return (
                 <TableRow key={s._id} className="group">
@@ -648,7 +831,7 @@ export default function AgentJobSeekersPage() {
                     <span className="mt-1 block text-xs text-muted-foreground">{formatListDate(s.createdAt, locale)}</span>
                   </TableCell>
                   <TableCell className="text-right">
-                    <RowActions name={s.userId?.name ?? "job seeker"} quick={actions} menu={menuActions} labelsFrom="wide" />
+                    {seekerActions(s)}
                   </TableCell>
                 </TableRow>
               );

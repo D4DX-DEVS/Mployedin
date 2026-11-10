@@ -29,7 +29,9 @@ import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -103,6 +105,7 @@ export default function SuperAgentJobSeekersPage() {
   // compact cards with role / profile / date folded into one line.
   const isPhone = useMediaQuery(PHONE_QUERY);
   const [referOpen, setReferOpen] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [selectedSeekerId, setSelectedSeekerId] = useState<string | null>(null);
   const [cvSeeker, setCvSeeker] = useState<{ id: string; name: string } | null>(null);
   const pagination = usePagination();
@@ -242,6 +245,12 @@ export default function SuperAgentJobSeekersPage() {
     title: t("pageTitle"),
   });
 
+  // Shared by the inline bar and the phone filter sheet.
+  const premiumOptions = [
+    { value: "all", label: t("premium.filterAny") },
+    { value: "premium", label: t("premium.filterOnly", { count: totalStats.premium }) },
+  ];
+  const agentOptions = [{ value: "all", label: t("byAgent.filterAll") }, ...teamAgents.map((a) => ({ value: a.id, label: a.name }))];
   const dropdownFilters = (
     <>
           <SearchableSelect
@@ -266,10 +275,7 @@ export default function SuperAgentJobSeekersPage() {
             className={INLINE_FILTER_CONTROL}
           />
           <SearchableSelect
-            options={[
-              { value: "all", label: t("premium.filterAny") },
-              { value: "premium", label: t("premium.filterOnly", { count: totalStats.premium }) },
-            ]}
+            options={premiumOptions}
             value={filters.premium}
             onValueChange={(v) => updateFilter("premium", v)}
             placeholder={t("premium.filterAny")}
@@ -277,7 +283,7 @@ export default function SuperAgentJobSeekersPage() {
             className={INLINE_FILTER_CONTROL}
           />
           <SearchableSelect
-            options={[{ value: "all", label: t("byAgent.filterAll") }, ...teamAgents.map((a) => ({ value: a.id, label: a.name }))]}
+            options={agentOptions}
             value={filters.agent}
             onValueChange={(v) => updateFilter("agent", v)}
             placeholder={t("byAgent.filterAll")}
@@ -326,25 +332,86 @@ export default function SuperAgentJobSeekersPage() {
       <WorkspaceTabs tabs={viewTabs} ariaLabel={t("area.viewLabel")} activeKey={view} />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        // Phones: one line of search + Filters + Export, no box around it.
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={(filters.search || filters.country !== "all" || filters.experienceMin !== "all" || filters.availability !== "all" || filters.premium !== "all" || filters.agent !== "all") ? handleClearFilters : undefined}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
-        more={isPhone ? dropdownFilters : undefined}
-        moreActiveCount={isPhone ? dropdownActiveCount : 0}
       >
         <InlineFilterSearch
           value={filters.search}
           onChange={(v) => updateFilter("search", v)}
           placeholder={t("searchPlaceholder")}
-          className="max-sm:flex-[1_1_7rem]"
+          className="max-sm:basis-0"
         />
-        {!isPhone && dropdownFilters}
+        <PhoneFiltersButton activeCount={dropdownActiveCount} onClick={() => setFilterSheetOpen(true)} />
+        {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+        <div className="contents max-sm:hidden">
+          {dropdownFilters}
+        </div>
         {/* Privacy detail at the point candidate data is shown, as an icon +
             popover. It was a full-width text banner above the metrics. */}
         {isPhone && <CandidateDataNotice variant="candidateList" compact />}
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={dropdownActiveCount}
+        onClear={handleClearFilters}
+      >
+        <FilterField label={tc("country")} htmlFor="sa-seekers-sheet-country">
+          <SearchableSelect
+            id="sa-seekers-sheet-country"
+            options={countryOptions}
+            value={filters.country}
+            onValueChange={(v) => updateFilter("country", v)}
+            placeholder={t("allCountries")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("experience")} htmlFor="sa-seekers-sheet-experience">
+          <SearchableSelect
+            id="sa-seekers-sheet-experience"
+            options={EXPERIENCE_OPTIONS}
+            value={filters.experienceMin}
+            onValueChange={(v) => updateFilter("experienceMin", v)}
+            placeholder={t("allExperience")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("filterAvailability")} htmlFor="sa-seekers-sheet-availability">
+          <SearchableSelect
+            id="sa-seekers-sheet-availability"
+            options={AVAILABILITY_OPTIONS}
+            value={filters.availability}
+            onValueChange={(v) => updateFilter("availability", v)}
+            placeholder={t("allAvailability")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("premium.filterLabel")} htmlFor="sa-seekers-sheet-premium">
+          <SearchableSelect
+            id="sa-seekers-sheet-premium"
+            options={premiumOptions}
+            value={filters.premium}
+            onValueChange={(v) => updateFilter("premium", v)}
+            placeholder={t("premium.filterAny")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("byAgent.filterLabel")} htmlFor="sa-seekers-sheet-agent">
+          <SearchableSelect
+            id="sa-seekers-sheet-agent"
+            options={agentOptions}
+            value={filters.agent}
+            onValueChange={(v) => updateFilter("agent", v)}
+            placeholder={t("byAgent.filterAll")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {/* Heading kept for screen readers only, the same convention agents,
           commissions and leads already use: this is the page's one list
@@ -354,8 +421,89 @@ export default function SuperAgentJobSeekersPage() {
         {loadFailed && !loading ? (
           <ErrorState onRetry={() => fetchSeekers()} />
         ) : (
-        <div className="overflow-x-auto">
-          <Table className="compact-phone-cards">
+        <>
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("pageTitle")}
+          loading={loading}
+          empty={view === "area" && !filters.search && filters.country === "all" && filters.experienceMin === "all" && filters.availability === "all" && filters.premium === "all" && filters.agent === "all" ? (
+            <EmptyState
+              title={areaAssigned ? t("area.emptyTitle") : t("area.noRegionTitle")}
+              description={areaAssigned ? t("area.emptyDescription") : t("area.noRegionDescription")}
+              icon={MapPin}
+            />
+          ) : (
+            <EmptyState title={t("noJobSeekersFound")} description={t("tryAdjustingFilters")} icon={Users} />
+          )}
+          items={seekers.map((s) => {
+            const actions: RowAction[] = [
+              {
+                key: "view",
+                label: t("viewProfile"),
+                icon: Eye,
+                iconOnly: true,
+                onSelect: () => setSelectedSeekerId(s._id),
+              },
+            ];
+            return {
+              key: s._id,
+              leading: <UserAvatar name={s.fullName} email={s.email} className="h-10 w-10" colorful />,
+              title: s.fullName,
+              subtitle: s.email,
+              actions: <RowActions name={s.fullName ?? "job seeker"} quick={actions} />,
+              meta: (
+                <>
+                  <p className="flex min-w-0 items-center gap-1">
+                    <Briefcase className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">
+                      {s.currentJobTitle || "—"}
+                      {s.experienceYears ? ` · ${s.experienceYears} ${t("yearsAbbr")}` : ""}
+                    </span>
+                  </p>
+                  {(s.location || s.country) && (
+                    <p className="flex min-w-0 items-center gap-1">
+                      <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{[s.location, s.country].filter(Boolean).join(", ")}</span>
+                    </p>
+                  )}
+                </>
+              ),
+              badges: (s.premium || s.referralSummary || s.agent || s.inArea) ? (
+                <>
+                  {s.premium && (
+                    <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium leading-none text-amber-800">
+                      <Crown className="h-3 w-3" aria-hidden="true" />
+                      {t("premium.chip")}
+                    </span>
+                  )}
+                  {s.referralSummary ? (
+                    <ReferralSourceChip namespace="superAgentJobSeekers" summary={s.referralSummary} />
+                  ) : s.agent ? (
+                    <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      <UserCheck className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{s.agent.via === "added" ? t("byAgent.added", { name: s.agent.name }) : t("byAgent.assigned", { name: s.agent.name })}</span>
+                    </span>
+                  ) : null}
+                  {s.inArea && (
+                    <span
+                      className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                      title={t("area.chipHint")}
+                    >
+                      <MapPin className="h-3 w-3" aria-hidden="true" />
+                      {t("area.chip")}
+                    </span>
+                  )}
+                </>
+              ) : undefined,
+              stats: [
+                { label: t("profile"), value: `${s.profileCompletion ?? 0}%` },
+                { label: tc("date"), value: formatListDate(s.createdAt) },
+              ],
+            };
+          })}
+        />
+        <div className="overflow-x-auto max-sm:hidden">
+          <Table className="compact-phone-cards" data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[180px]">{tc("name")}</TableHead>
@@ -504,6 +652,7 @@ export default function SuperAgentJobSeekersPage() {
             </TableBody>
           </Table>
         </div>
+        </>
         )}
       </SuperAgentSection>
 

@@ -173,7 +173,7 @@ export function LeadWorkspace({
               <TabsTrigger value="activity">{t("tabActivity")}</TabsTrigger>
               <TabsTrigger value="notes">{notesCount > 0 ? t("tabNotesCount", { count: notesCount }) : t("tabNotes")}</TabsTrigger>
             </TabsList>
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 max-sm:px-4">
               <TabsContent value="overview" className="mt-0">
                 <LeadOverview
                   lead={lead}
@@ -199,7 +199,7 @@ export function LeadWorkspace({
 
         {/* Footer */}
         {lead && !failed && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border/70 px-5 py-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border/70 px-5 py-3 max-sm:grid max-sm:grid-cols-2 max-sm:px-4 max-sm:[&>*:last-child]:col-span-2 max-sm:[&>*:last-child]:ms-0">
             {state.canUpdate && (
               <>
                 <Button type="button" variant="outline" onClick={() => actions.edit(lead)} className="gap-1.5">

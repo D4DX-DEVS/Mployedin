@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { CalendarClock, Pause, Pencil, Play, Plus, Send, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { RowActions } from "@/components/shared/RowActions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -180,6 +181,30 @@ export function SchedulesTab() {
     return repeat ? describeRepeat(repeat, t, locale) : t("repeatCustom");
   };
 
+  const actionsOf = (s: WaSchedule) => {
+    const busy = Boolean(pending[s._id]);
+    const spent = isSpentOneOff(s, now);
+    return (
+      <RowActions
+        name={s.name}
+        quick={[
+          { key: "edit", label: t("editSchedule"), icon: Pencil, iconOnly: true, onSelect: () => openEdit(s) },
+          { key: "run", label: t("runNow"), icon: Send, onSelect: () => runNow(s), pending: pending[s._id] === "run", disabled: busy },
+        ]}
+        menu={[
+          // The server refuses to resume a fired one-off (its time is past); Edit with a new time is the way back.
+          ...(spent ? [] : [{ key: "toggle", label: s.enabled ? t("pause") : t("resume"), icon: s.enabled ? Pause : Play, onSelect: () => toggle(s), disabled: busy }]),
+          { key: "delete", label: t("deleteSchedule"), icon: Trash2, destructive: true, onSelect: () => remove(s), disabled: busy },
+        ]}
+      />
+    );
+  };
+  const statusBadgeOf = (s: WaSchedule) => {
+    const spent = isSpentOneOff(s, now);
+    // A fired one-off is switched off by the runner: it is done, not paused, and cannot be resumed.
+    return <Badge variant={s.enabled ? "success" : "secondary"}>{s.enabled ? t("scheduleActive") : spent ? t("scheduleCompleted") : t("schedulePaused")}</Badge>;
+  };
+
   return (
     <>
       <SectionCard
@@ -200,7 +225,56 @@ export function SchedulesTab() {
           ) : !loading && schedules?.length === 0 ? (
             <div className="p-4"><EmptyState icon={CalendarClock} title={t("noSchedules")} /></div>
           ) : (
-            <Table className="responsive-card-table">
+            <>
+            <PhoneRecordList
+              className="p-3 sm:hidden"
+              label={t("schedulesTitle")}
+              loading={loading || !schedules}
+              items={(schedules ?? []).map((s) => ({
+                key: s._id,
+                title: s.name,
+                subtitle: <TemplateLabel name={s.template.templateName} language={s.template.language} locale={locale} nameClassName="font-mono" />,
+                trailing: statusBadgeOf(s),
+                actions: actionsOf(s),
+                meta: (
+                  <>
+                    <p>
+                      {s.kind === "once" ? t("kindOnce") : t("kindRecurring")}
+                      {" · "}
+                      {s.kind === "once" ? (
+                        s.runAt ? formatDateTime(s.runAt, WITH_ZONE, locale) : "—"
+                      ) : (
+                        <>
+                          <span>{repeatOf(s)}</span> · <bdi>{zoneName(s.timezone)}</bdi>
+                        </>
+                      )}
+                    </p>
+                    <p>{t("colAudience")}: {audienceOf(s)}</p>
+                    <p>{t("colNextRun")}: {s.enabled && s.nextRunAt ? formatDateTime(s.nextRunAt, WITH_ZONE, locale) : "—"}</p>
+                    <p>
+                      {t("colLastRun")}:{" "}
+                      {s.lastRunAt ? (
+                        <>
+                          {s.lastRunStatus && <span className={runTone(s.lastRunStatus)}>{runStatusLabel(s.lastRunStatus, t)}</span>}
+                          {" · "}
+                          {formatDateTime(s.lastRunAt, WITH_ZONE, locale)}
+                        </>
+                      ) : s.lastRunStatus === "error" ? (
+                        <>
+                          <span className={runTone("error")}>{runStatusLabel("error", t)}</span> · {t("scheduleNothingSent")}
+                        </>
+                      ) : (
+                        t("never")
+                      )}
+                    </p>
+                    {s.lastRunAt && s.lastRunSummary && (
+                      <p>{t("runSummary", { sent: s.lastRunSummary.sent, failed: s.lastRunSummary.failed, skipped: s.lastRunSummary.skipped })}</p>
+                    )}
+                  </>
+                ),
+              }))}
+            />
+            <Table data-mobile-table="scroll" className="max-sm:hidden">
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("fieldName")}</TableHead>
@@ -217,8 +291,6 @@ export function SchedulesTab() {
                   <TableBodySkeleton rows={3} cols={7} />
                 ) : (
                   schedules.map((s) => {
-                    const busy = Boolean(pending[s._id]);
-                    const spent = isSpentOneOff(s, now);
                     return (
                       <TableRow key={s._id}>
                         <TableCell>
@@ -227,10 +299,7 @@ export function SchedulesTab() {
                             <TemplateLabel name={s.template.templateName} language={s.template.language} locale={locale} nameClassName="font-mono" />
                           </span>
                         </TableCell>
-                        <TableCell>
-                          {/* A fired one-off is switched off by the runner: it is done, not paused, and cannot be resumed. */}
-                          <Badge variant={s.enabled ? "success" : "secondary"}>{s.enabled ? t("scheduleActive") : spent ? t("scheduleCompleted") : t("schedulePaused")}</Badge>
-                        </TableCell>
+                        <TableCell>{statusBadgeOf(s)}</TableCell>
                         <TableCell>
                           <span>{s.kind === "once" ? t("kindOnce") : t("kindRecurring")}</span>
                           <span className="block text-[11px] text-muted-foreground">
@@ -272,18 +341,7 @@ export function SchedulesTab() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <RowActions
-                            name={s.name}
-                            quick={[
-                              { key: "edit", label: t("editSchedule"), icon: Pencil, iconOnly: true, onSelect: () => openEdit(s) },
-                              { key: "run", label: t("runNow"), icon: Send, onSelect: () => runNow(s), pending: pending[s._id] === "run", disabled: busy },
-                            ]}
-                            menu={[
-                              // The server refuses to resume a fired one-off (its time is past); Edit with a new time is the way back.
-                              ...(spent ? [] : [{ key: "toggle", label: s.enabled ? t("pause") : t("resume"), icon: s.enabled ? Pause : Play, onSelect: () => toggle(s), disabled: busy }]),
-                              { key: "delete", label: t("deleteSchedule"), icon: Trash2, destructive: true, onSelect: () => remove(s), disabled: busy },
-                            ]}
-                          />
+                          {actionsOf(s)}
                         </TableCell>
                       </TableRow>
                     );
@@ -291,6 +349,7 @@ export function SchedulesTab() {
                 )}
               </TableBody>
             </Table>
+            </>
           )}
         </div>
       </SectionCard>

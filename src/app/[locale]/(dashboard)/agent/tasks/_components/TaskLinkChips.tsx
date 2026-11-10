@@ -49,7 +49,9 @@ export function TaskLinkChips({ locale, links }: TaskLinkChipsProps) {
   }
 
   return (
-    <ul className="mt-1.5 flex flex-wrap items-center gap-1.5" aria-label={t("linkedRecords")}>
+    // w-full: the chips start their own row under the priority and
+    // assigned-by badges; mixed into that row they wrapped one per line.
+    <ul className="mt-1.5 flex w-full flex-wrap items-center gap-1.5 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:[scrollbar-width:none]" aria-label={t("linkedRecords")}>
       {chips.map(({ key, icon: Icon, text, href, aria }) => (
         <li key={key} className="min-w-0 max-w-full">
           {key === "employer" && href && links.employer ? (
@@ -59,7 +61,7 @@ export function TaskLinkChips({ locale, links }: TaskLinkChipsProps) {
               href={href}
               aria-label={aria}
               title={aria}
-              className="inline-flex min-h-8 max-w-full items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex min-h-8 max-w-full items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-7 max-sm:px-2 max-sm:text-[11px]"
             >
               <Icon className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="truncate">{text}</span>
@@ -81,7 +83,7 @@ export function TaskLinkChips({ locale, links }: TaskLinkChipsProps) {
 }
 
 const CHIP_CLASS =
-  "inline-flex min-h-8 max-w-full items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "inline-flex min-h-8 max-w-full items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-sm:min-h-7 max-sm:px-2 max-sm:text-[11px]";
 
 /** wa.me wants the number in international form, digits only. */
 const whatsappHref = (phone: string) => `https://wa.me/${phone.replace(/[^\d]/g, "")}`;
@@ -106,7 +108,7 @@ function EmployerContactMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className={CHIP_CLASS} aria-label={t("employerMenuLabel", { name })} title={t("employerMenuLabel", { name })}>
+        <button type="button" className={`${CHIP_CLASS} !min-h-8`} aria-label={t("employerMenuLabel", { name })} title={t("employerMenuLabel", { name })}>
           <Building2 className="size-3.5 shrink-0" aria-hidden="true" />
           <span className="truncate">{name}</span>
           <ChevronDown className="size-3 shrink-0 opacity-70" aria-hidden="true" />

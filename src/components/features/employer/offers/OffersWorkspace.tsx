@@ -281,6 +281,7 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
               value={jobFilter}
               onValueChange={setUrlJobFilter}
               placeholder={t("allJobs")}
+              ariaLabel={t("jobFilterLabel")}
             />
             <SearchableSelect
               className={INLINE_FILTER_CONTROL}
@@ -288,6 +289,7 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
               value={statusFilter}
               onValueChange={setStatusFilter}
               placeholder={t("allStatuses")}
+              ariaLabel={t("status")}
             />
           </InlineFilterBar>
       )}
