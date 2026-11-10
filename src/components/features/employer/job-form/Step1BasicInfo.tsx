@@ -270,6 +270,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             value={category ?? ""}
             onValueChange={(v) => setValue("category", v, { shouldValidate: true })}
             placeholder={t("categoryPlaceholder")}
+            ariaLabel={t("category")}
           />
           <p className="text-xs text-muted-foreground">
             {t("categoryHint")}
@@ -285,6 +286,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
           value={watch("employmentType") ?? ""}
           onValueChange={(v) => setValue("employmentType", v as JobFormValues["employmentType"], { shouldValidate: true })}
           placeholder={t("employmentTypePlaceholder")}
+          ariaLabel={t("employmentType")}
         />
         <p className="text-xs text-muted-foreground">
           {t("employmentTypeHint")}
@@ -524,6 +526,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
               })
             }
             placeholder={loadingAgents ? t("loadingAgents") : t("noAgent")}
+            ariaLabel={t("assignAgent")}
           />
           <p className="text-xs text-muted-foreground">
             {t("assignAgentHint")}

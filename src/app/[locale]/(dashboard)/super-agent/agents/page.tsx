@@ -38,6 +38,8 @@ import { AIExplainButton } from "@/components/shared/AIExplainButton";
 import { cn } from "@/lib/utils";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
@@ -167,6 +169,7 @@ export default function SuperAgentAgentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   const { filters, setFilter, resetFilters } = useUrlFilters(
@@ -356,6 +359,35 @@ export default function SuperAgentAgentsPage() {
   /* Sort order for the column heads: the filter state carries strings. */
   const sortOrder = filters.sortOrder === "asc" ? "asc" : "desc";
 
+  // Shared by the inline bar and the phone filter sheet.
+  const sortOptions = getSortOptions(t, tc);
+  const sortOrderOptions = [
+    { value: "asc", label: t("ascending") },
+    { value: "desc", label: t("descending") },
+  ];
+  const statusOptions = [
+    { value: "", label: tc("all") },
+    { value: "active", label: tc("active") },
+    { value: "inactive", label: t("badgeDeactivated") },
+  ];
+  const performanceOptions = getPerformanceOptions(t);
+  const leadsRangeOptions = getLeadsRangeOptions(t);
+  const convRateOptions = getConvRateOptions(t);
+  const showRegionFilter = regionOptions.length > 1 || Boolean(filters.region);
+  const regionSelectOptions = [
+    { value: "", label: t("allRegions") },
+    ...regionOptions.map((r) => ({ value: r.id, label: regionLabel(r) })),
+  ];
+  const clearAllFilters = () => { resetFilters(); resetPage(); };
+  // Sort is not a filter: it does not count.
+  const phoneFilterCount = [
+    filters.status,
+    filters.performance,
+    filters.region,
+    filters.leadsMin || filters.leadsMax,
+    filters.convRateMin || filters.convRateMax,
+  ].filter(Boolean).length;
+
   return (
     <div className="page-container">
       {/* The "Roster / N visible rows / stays in sync with pagination" box is
@@ -396,7 +428,9 @@ export default function SuperAgentAgentsPage() {
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
-          onClear={(activeFilterCount > 0 || filters.search || filters.performance) ? () => { resetFilters(); resetPage(); } : undefined}
+          onClear={(activeFilterCount > 0 || filters.search || filters.performance) ? clearAllFilters : undefined}
+          moreToggleClassName="max-sm:hidden"
+          moreClassName="max-sm:hidden"
           more={(
             <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
               <div className="grid min-w-0 flex-[1_1_100%] gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -404,7 +438,7 @@ export default function SuperAgentAgentsPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterLeadsCount")}</label>
                   <SearchableSelect
-                    options={getLeadsRangeOptions(t)}
+                    options={leadsRangeOptions}
                     value={leadsRangeValue}
                     onValueChange={handleLeadsRange}
                     placeholder={t("any")}
@@ -416,7 +450,7 @@ export default function SuperAgentAgentsPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterConversionRate")}</label>
                   <SearchableSelect
-                    options={getConvRateOptions(t)}
+                    options={convRateOptions}
                     value={convRateValue}
                     onValueChange={handleConvRateRange}
                     placeholder={t("any")}
@@ -428,7 +462,7 @@ export default function SuperAgentAgentsPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("sortBy")}</label>
                   <SearchableSelect
-                    options={getSortOptions(t, tc)}
+                    options={sortOptions}
                     value={filters.sortBy}
                     onValueChange={(v) => { setFilter("sortBy", v); resetPage(); }}
                     placeholder={tc("name")}
@@ -440,10 +474,7 @@ export default function SuperAgentAgentsPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("sortOrder")}</label>
                   <SearchableSelect
-                    options={[
-                      { value: "asc", label: t("ascending") },
-                      { value: "desc", label: t("descending") },
-                    ]}
+                    options={sortOrderOptions}
                     value={filters.sortOrder}
                     onValueChange={(v) => { setFilter("sortOrder", v); resetPage(); }}
                     placeholder={t("ascending")}
@@ -481,42 +512,163 @@ export default function SuperAgentAgentsPage() {
             value={filters.search}
             onChange={(v) => { setFilter("search", v); resetPage(); }}
             placeholder={t("searchAgentsPlaceholder")}
+            className="max-sm:basis-0"
           />
-          <SearchableSelect
-            options={[
-              { value: "", label: tc("all") },
-              { value: "active", label: tc("active") },
-              { value: "inactive", label: t("badgeDeactivated") },
-            ]}
-            value={filters.status}
-            onValueChange={(v) => { setFilter("status", v); resetPage(); }}
-            placeholder={tc("all")}
-            className={INLINE_FILTER_CONTROL}
-          />
-          <SearchableSelect
-            options={getPerformanceOptions(t)}
-            value={filters.performance}
-            onValueChange={(v) => { setFilter("performance", v); resetPage(); }}
-            placeholder={t("allAgents")}
-            className={INLINE_FILTER_CONTROL}
-          />
-          {(regionOptions.length > 1 || filters.region) && (
+          <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+          {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+          <div className="contents max-sm:hidden">
             <SearchableSelect
-              options={[
-                { value: "", label: t("allRegions") },
-                ...regionOptions.map((r) => ({ value: r.id, label: regionLabel(r) })),
-              ]}
-              value={filters.region}
-              onValueChange={(v) => { setFilter("region", v); resetPage(); }}
-              placeholder={t("allRegions")}
-              ariaLabel={t("region")}
+              options={statusOptions}
+              value={filters.status}
+              onValueChange={(v) => { setFilter("status", v); resetPage(); }}
+              placeholder={tc("all")}
               className={INLINE_FILTER_CONTROL}
             />
-          )}
+            <SearchableSelect
+              options={performanceOptions}
+              value={filters.performance}
+              onValueChange={(v) => { setFilter("performance", v); resetPage(); }}
+              placeholder={t("allAgents")}
+              className={INLINE_FILTER_CONTROL}
+            />
+            {showRegionFilter && (
+              <SearchableSelect
+                options={regionSelectOptions}
+                value={filters.region}
+                onValueChange={(v) => { setFilter("region", v); resetPage(); }}
+                placeholder={t("allRegions")}
+                ariaLabel={t("region")}
+                className={INLINE_FILTER_CONTROL}
+              />
+            )}
+          </div>
         </InlineFilterBar>
 
-        <div className="overflow-x-auto">
-          <Table>
+        <PhoneFilterSheet
+          open={filterSheetOpen}
+          onOpenChange={setFilterSheetOpen}
+          activeCount={phoneFilterCount}
+          onClear={clearAllFilters}
+        >
+          <FilterField label={t("sortBy")} htmlFor="sa-agents-sheet-sort-by">
+            <SearchableSelect
+              id="sa-agents-sheet-sort-by"
+              options={sortOptions}
+              value={filters.sortBy}
+              onValueChange={(v) => { setFilter("sortBy", v); resetPage(); }}
+              placeholder={tc("name")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+          <FilterField label={t("sortOrder")} htmlFor="sa-agents-sheet-sort-order">
+            <SearchableSelect
+              id="sa-agents-sheet-sort-order"
+              options={sortOrderOptions}
+              value={filters.sortOrder}
+              onValueChange={(v) => { setFilter("sortOrder", v); resetPage(); }}
+              placeholder={t("ascending")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+          <FilterField label={tc("status")} htmlFor="sa-agents-sheet-status">
+            <SearchableSelect
+              id="sa-agents-sheet-status"
+              options={statusOptions}
+              value={filters.status}
+              onValueChange={(v) => { setFilter("status", v); resetPage(); }}
+              placeholder={tc("all")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+          <FilterField label={t("filterPerformance")} htmlFor="sa-agents-sheet-performance">
+            <SearchableSelect
+              id="sa-agents-sheet-performance"
+              options={performanceOptions}
+              value={filters.performance}
+              onValueChange={(v) => { setFilter("performance", v); resetPage(); }}
+              placeholder={t("allAgents")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+          {showRegionFilter && (
+            <FilterField label={t("region")} htmlFor="sa-agents-sheet-region">
+              <SearchableSelect
+                id="sa-agents-sheet-region"
+                options={regionSelectOptions}
+                value={filters.region}
+                onValueChange={(v) => { setFilter("region", v); resetPage(); }}
+                placeholder={t("allRegions")}
+                className={SHEET_CONTROL}
+              />
+            </FilterField>
+          )}
+          <FilterField label={t("filterLeadsCount")} htmlFor="sa-agents-sheet-leads">
+            <SearchableSelect
+              id="sa-agents-sheet-leads"
+              options={leadsRangeOptions}
+              value={leadsRangeValue}
+              onValueChange={handleLeadsRange}
+              placeholder={t("any")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+          <FilterField label={t("filterConversionRate")} htmlFor="sa-agents-sheet-conv-rate">
+            <SearchableSelect
+              id="sa-agents-sheet-conv-rate"
+              options={convRateOptions}
+              value={convRateValue}
+              onValueChange={handleConvRateRange}
+              placeholder={t("any")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+        </PhoneFilterSheet>
+
+        {/* Phones: one card per agent. The table-to-card fallback re-flowed this
+            table's cells into a card with the avatar beside empty lines. */}
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("pageTitle")}
+          loading={loading}
+          empty={<EmptyState title={t("noAgentsFound")} description={t("noAgentsFoundHelper")} icon={Users2} />}
+          items={agents.map((a) => {
+            const badges = getPerformanceBadge(a);
+            return {
+              key: a._id,
+              href: `/${locale}/super-agent/agents/${a.agentId}`,
+              leading: <UserAvatar name={a.name} email={a.email} className="h-10 w-10" colorful />,
+              title: a.name,
+              subtitle: a.email,
+              actions: (
+                <AIExplainButton
+                  rowData={aiRowData(a)}
+                  entityLabel={t("entityLabelAgentPerformance")}
+                  context={t("aiExplainContext")}
+                />
+              ),
+              meta: (a.regions ?? []).length > 0 ? (
+                <p className="flex min-w-0 items-center gap-1">
+                  <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{(a.regions ?? []).map(regionLabel).join(" · ")}</span>
+                </p>
+              ) : (
+                <p>{t("noRegion")}</p>
+              ),
+              badges: badges.length > 0 ? badges.map((b) => (
+                <span key={b.label} className={cn("rounded-full px-2 py-0.5 font-medium", b.className)}>{b.label}</span>
+              )) : undefined,
+              stats: [
+                { label: t("leads"), value: a.leadsCount ?? 0 },
+                { label: t("conversions"), value: a.conversions ?? 0 },
+                { label: t("placements"), value: a.placements ?? 0 },
+                { label: t("convRateShort"), value: a.leadsCount > 0 ? `${Math.round((a.conversions / a.leadsCount) * 100)}%` : "—" },
+              ],
+            };
+          })}
+        />
+
+        <div className="overflow-x-auto max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>

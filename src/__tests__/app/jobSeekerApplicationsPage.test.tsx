@@ -198,7 +198,8 @@ describe("ApplicationsPage", () => {
 
     expect(detailToggle).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByRole("heading", { name: /my applications/i })).toBeInTheDocument();
-    expect(screen.getByText("35% match")).toBeInTheDocument();
+    // Two copies: the phone one sits in the status row, the desktop one beside the title (CSS shows one).
+    expect(screen.getAllByText("35% match").length).toBeGreaterThan(0);
     expect(screen.getByText(/Kochi, India/i)).toBeInTheDocument();
     expect(screen.getByText(/Applied [A-Z][a-z]{2} \d{1,2}/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /withdraw/i })).toBeInTheDocument();

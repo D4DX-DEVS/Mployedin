@@ -368,7 +368,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   ];
 
   return (
-    <div className="page-container dashboard-overview-page">
+    <div className="page-container dashboard-overview-page agent-home">
       <AgentSmartHeader
         greeting={greeting}
         counts={queueCounts}

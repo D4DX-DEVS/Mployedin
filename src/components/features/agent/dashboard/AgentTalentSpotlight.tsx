@@ -80,11 +80,11 @@ export function AgentTalentSpotlight({
 
   return (
     <DashboardSection headingId="agent-talent-spotlight" title={t("title")} description={t("description")}>
-      <div className="grid grid-cols-1 gap-3 p-3 sm:p-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 p-3 max-sm:gap-0 max-sm:p-0 sm:p-4 lg:grid-cols-2">
         {panels.map((panel) => {
           const Icon = panel.icon;
           return (
-            <div key={panel.key} className="flex min-w-0 flex-col rounded-xl border border-border/60 bg-background">
+            <div key={panel.key} className="flex min-w-0 flex-col rounded-xl border border-border/60 bg-background max-sm:rounded-none max-sm:border-0 max-sm:border-t max-sm:bg-transparent max-sm:first:border-t-0">
               <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${panel.tile}`}>
                   <Icon className={`h-5 w-5 ${panel.accent}`} aria-hidden="true" />
@@ -92,7 +92,7 @@ export function AgentTalentSpotlight({
                 <div className="min-w-0 flex-1">
                   <p className="flex items-baseline gap-2">
                     <span className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">{panel.count}</span>
-                    <span className="truncate text-sm font-semibold text-foreground">{t(panel.key)}</span>
+                    <span className="truncate text-sm font-semibold text-foreground max-sm:whitespace-normal max-sm:leading-tight">{t(panel.key)}</span>
                   </p>
                   <p className="truncate text-xs text-muted-foreground">{panel.detail}</p>
                 </div>

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { ReportCardHeader, reportCardClassName } from "@/components/features/admin/reports/ReportCard";
 import { AI_USAGE_GROUPS, type AiUsageGroup } from "@/lib/admin/aiUsageConstants";
 import type { UsageRow, UsageSummary } from "@/components/features/admin/ai-usage/useAiUsage";
@@ -120,10 +121,10 @@ export function UsageTable(p: Props) {
           <EmptyState icon={Users} title={t("empty")} description={t("emptyHint")} />
         ) : (
           <div className="mt-4 overflow-x-auto">
-            <Table>
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("colFeature")}</TableHead>
+                  <TableHead className="max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{t("colFeature")}</TableHead>
                   <TableHead className="text-end">{t("colSeekers")}</TableHead>
                   <TableHead className="text-end">{t("colCalls")}</TableHead>
                   <TableHead className="text-end">{t("colSpend")}</TableHead>
@@ -133,7 +134,7 @@ export function UsageTable(p: Props) {
               <TableBody>
                 {p.data.seekerFeatures.map((f) => (
                   <TableRow key={f.feature}>
-                    <TableCell>{t(`features.${f.feature}` as never)}</TableCell>
+                    <TableCell className="max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{t(`features.${f.feature}` as never)}</TableCell>
                     <TableCell className="text-end tabular-nums">{formatCount(f.users, undefined, p.locale)}</TableCell>
                     <TableCell className="text-end tabular-nums">{formatCount(f.calls, undefined, p.locale)}</TableCell>
                     <TableCell className="text-end font-semibold tabular-nums">{usd(f.costUsd, p.locale)}</TableCell>
@@ -148,8 +149,32 @@ export function UsageTable(p: Props) {
         <EmptyState icon={Users} title={p.search ? t("noMatches") : t("empty")} description={p.search ? undefined : t("emptyHint")} />
       ) : (
         <>
-          <div className="mt-4 overflow-x-auto">
-            <Table>
+          <PhoneRecordList
+            className="mt-4 sm:hidden"
+            label={t("whoTitle")}
+            items={p.data.rows.map((r) => ({
+              key: r.id,
+              href: p.group === "employer" ? `/${p.locale}/admin/ai-usage/${r.id}?month=${p.month}` : undefined,
+              title: r.name,
+              subtitle: r.sub || undefined,
+              trailing: <Change row={r} locale={p.locale} />,
+              meta: isStaff ? (
+                <>
+                  <p>{t("splitBehalf", { amount: usd(r.behalfCostUsd, p.locale), count: r.employerCount })}</p>
+                  <p>{t("splitOwn", { amount: usd(r.ownCostUsd, p.locale) })}</p>
+                </>
+              ) : undefined,
+              stats: [
+                { label: t("colCalls"), value: formatCount(r.calls, undefined, p.locale) },
+                { label: t("colTokens"), value: compact(r.tokens, p.locale) },
+                { label: t("colSpend"), value: usd(r.costUsd, p.locale) },
+                // "Share of total" truncated in the quarter-width phone cell.
+                ...(isStaff ? [] : [{ label: t.has("colShareShort") ? t("colShareShort") : t("colShare"), value: `${r.share}%` }]),
+              ],
+            }))}
+          />
+          <div className="mt-4 overflow-x-auto max-sm:hidden">
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow>
                   <TableHead>{personHead}</TableHead>

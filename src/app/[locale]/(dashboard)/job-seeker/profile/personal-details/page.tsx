@@ -420,7 +420,7 @@ export default function PersonalDetailsPage() {
             onChange={(e) => setField("permanentAddress", e.target.value)}
             maxLength={500}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormInput
               label={t("hometown")}
               placeholder={t("hometownPlaceholder")}
@@ -452,8 +452,9 @@ export default function PersonalDetailsPage() {
             )}
 
             {form.languages.map((entry, idx) => (
-              <div key={idx} className="flex items-end gap-3">
-                <div className="flex-1">
+              <div key={idx} className="flex flex-wrap items-end gap-x-3 gap-y-2 sm:flex-nowrap">
+                {/* Phones: the language takes its own line; proficiency + remove share the next. */}
+                <div className="flex-1 max-sm:basis-full">
                   <FormInput
                     label={idx === 0 ? t("language") : undefined}
                     aria-label={idx === 0 ? undefined : t("language")}
@@ -463,7 +464,7 @@ export default function PersonalDetailsPage() {
                     maxLength={100}
                   />
                 </div>
-                <div className="w-44 shrink-0">
+                <div className="w-44 shrink-0 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
                   <FormSelect
                     label={idx === 0 ? t("proficiency") : undefined}
                     options={proficiencyOptions}
@@ -476,7 +477,7 @@ export default function PersonalDetailsPage() {
                 <button
                   type="button"
                   onClick={() => removeLanguage(idx)}
-                  className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
+                  className="mb-0.5 flex h-10 w-10 shrink-0 max-sm:h-11 max-sm:w-11 max-sm:mb-0 items-center justify-center rounded-lg border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
                   aria-label={t("removeLanguage")}
                 >
                   <Trash2 className="h-4 w-4" />

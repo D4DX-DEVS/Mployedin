@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,11 @@ interface TableToolbarProps {
   search?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
+  /**
+   * Opt-in: a visible label over the search box on phones (UK WCAG 3.3.2 —
+   * a placeholder is not a label). Pages that omit it render exactly as before.
+   */
+  searchLabel?: string;
   onExportCsv?: () => void;
   onExportExcel?: () => void;
   onExportPdf?: () => void;
@@ -52,6 +57,7 @@ export function TableToolbar({
   search,
   onSearchChange,
   searchPlaceholder,
+  searchLabel,
   onExportCsv,
   onExportExcel,
   onExportPdf,
@@ -71,16 +77,23 @@ export function TableToolbar({
   const hasExport = onExportCsv || onExportExcel || onExportPdf;
   const usesCompactAdminLayout = Boolean(title || description || actions || filterContent);
   const [filtersOpen, setFiltersOpen] = useState(defaultFiltersOpen);
+  const searchId = useId();
 
   const searchControl = onSearchChange ? (
     // toolbar-search-field marks *this* field for the shared mobile toolbar
     // CSS (full-width row, own line). Custom controls passed via `actions`
     // (e.g. an inline AI search box) must not match that rule, or they get
     // forced full-width inside a non-wrapping row and overlap their sibling.
-    <div className="relative toolbar-search-field">
-      <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" aria-hidden="true" />
+    <div className={cn("relative toolbar-search-field", searchLabel && "max-sm:flex max-sm:flex-col max-sm:gap-1.5")}>
+      {searchLabel && (
+        <label htmlFor={searchId} className="text-sm font-medium text-foreground sm:hidden">
+          {searchLabel}
+        </label>
+      )}
+      <Search className={cn("absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50", searchLabel && "max-sm:top-auto max-sm:bottom-3.5 max-sm:translate-y-0")} aria-hidden="true" />
       <Input
-        aria-label={resolvedSearchPlaceholder}
+        id={searchLabel ? searchId : undefined}
+        aria-label={searchLabel ?? resolvedSearchPlaceholder}
         placeholder={resolvedSearchPlaceholder}
         value={search ?? ""}
         onChange={(e) => onSearchChange(e.target.value)}
@@ -206,6 +219,8 @@ export function TableToolbar({
         hasLeftColumn
           ? "flex flex-row items-center justify-between gap-2 sm:gap-3"
           : "flex items-center justify-end gap-3",
+        // With a phone label over the search box, the buttons line up with the box, not the label.
+        hasLeftColumn && searchLabel && "max-sm:items-end",
         className,
       )}
     >

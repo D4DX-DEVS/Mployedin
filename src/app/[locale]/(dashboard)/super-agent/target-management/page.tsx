@@ -40,6 +40,7 @@ import {
 import { formatDate } from "@/lib/ui/intlFormat";
 import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
@@ -374,7 +375,7 @@ export default function SuperAgentTargetProfilesPage() {
         <Button variant="outline" size="sm" onClick={handleResetDashboard} aria-label={t("reset")} className="h-10 rounded-xl" disabled={!hasActiveDashboardFilters}>
           <RotateCcw className="h-3.5 w-3.5 sm:me-1.5" /> <span className="hidden sm:inline">{t("reset")}</span>
         </Button>
-        <div className="flex rounded-xl border border-border/60 bg-background p-0.5" role="tablist" aria-label={t("tabsLabel")}>
+        <div className="flex rounded-xl border border-border/60 bg-background p-0.5 max-sm:order-first max-sm:min-w-[13.5rem] max-sm:flex-[1_1_0%]" role="tablist" aria-label={t("tabsLabel")}>
           {(["own", "team", "analytics"] as const).map((key) => (
             <Button
               key={key}
@@ -383,7 +384,7 @@ export default function SuperAgentTargetProfilesPage() {
               variant={tab === key ? "default" : "ghost"}
               size="sm"
               onClick={() => setTab(key)}
-              className="h-9 flex-1 rounded-lg px-3"
+              className="h-9 flex-1 rounded-lg px-3 max-sm:flex-auto max-sm:px-2"
             >
               {t(key === "own" ? "mine" : key)}
             </Button>
@@ -454,8 +455,8 @@ export default function SuperAgentTargetProfilesPage() {
             <FileText className="h-4 w-4" /> <span className="hidden sm:inline">{t("openReport")}</span>
           </Button>
         </Link>
-        <Button className="gap-0 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 sm:gap-2 sm:px-4" onClick={() => openDistributeFor()} aria-label={t("distribute")}>
-          <SplitSquareVertical className="h-4 w-4" /> <span className="hidden sm:inline">{t("distribute")}</span>
+        <Button className="gap-1.5 rounded-xl bg-blue-700 px-3 text-white hover:bg-blue-800 max-sm:order-first max-sm:h-10 sm:gap-2 sm:px-4" onClick={() => openDistributeFor()}>
+          <SplitSquareVertical className="h-4 w-4" /> <span>{t("distribute")}</span>
         </Button>
       </div>
 
@@ -573,10 +574,10 @@ export default function SuperAgentTargetProfilesPage() {
 
               <SuperAgentSection eyebrow={t("rankingsEyebrow")} title={t("teamPerformanceLeaderboard")}>
                 <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
-                  <Table>
+                  <Table data-mobile-table="scroll">
                     <TableHeader>
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableHead className="w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("rank")}</TableHead>
+                        <TableHead className="max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("rank")}</TableHead>
                         <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>
                         <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("progress")}</TableHead>
                         <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("risk")}</TableHead>
@@ -585,7 +586,7 @@ export default function SuperAgentTargetProfilesPage() {
                     <TableBody>
                       {analytics.agentRankings.slice(0, 5).map((agent) => (
                         <TableRow key={agent._id} className="group">
-                          <TableCell className="text-center text-sm font-bold tabular-nums">#{agent.rank}</TableCell>
+                          <TableCell className="max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card text-center text-sm font-bold tabular-nums">#{agent.rank}</TableCell>
                           <TableCell>
                             <div className="flex min-w-0 items-center gap-2">
                               <UserAvatar name={agent.assigneeName} className="h-8 w-8 shrink-0" colorful />
@@ -676,8 +677,88 @@ export default function SuperAgentTargetProfilesPage() {
           </section>
 
           {/* Agent table */}
-          <div className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm">
-            <Table>
+          <PhoneRecordList
+            className="sm:hidden"
+            label={t("saTitle")}
+            loading={teamLoading}
+            empty={teamFiltersActive ? (
+              <TargetEmptyState
+                title={t("noAgentsMatchFilters")}
+                description={t("noMatchHint")}
+                action={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setTeamSearch("");
+                      setTeamRiskFilter("all");
+                      setTeamCompletionFilter("all");
+                      setTeamTerritoryFilter("all");
+                    }}
+                    className="mt-2 rounded-lg"
+                  >
+                    {t("clearFilters")}
+                  </Button>
+                }
+              />
+            ) : (
+              <TargetEmptyState
+                title={t("noAgentTargets")}
+                description={ownProfile ? t("distributeEmptyHint") : t("saNoTargetHint")}
+                action={ownProfile ? (
+                  <Button size="sm" onClick={() => openDistributeFor()} className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
+                    <SplitSquareVertical className="h-4 w-4" /> {t("distribute")}
+                  </Button>
+                ) : undefined}
+              />
+            )}
+            items={teamProfiles.map((agent) => ({
+              key: agent._id,
+              leading: <UserAvatar name={agent.assigneeName} email={agent.assigneeEmail} className="h-10 w-10" colorful />,
+              title: agent.assigneeName,
+              subtitle: agent.assigneeEmail,
+              actions: (
+                <RowActions
+                  name={agent.assigneeName}
+                  labelsFrom="wide"
+                  quick={[{ key: "view", label: t("viewDetails"), icon: Eye, onSelect: () => setDetailAgent(agent) }]}
+                  menu={[
+                    { key: "adjust", label: t("adjustTarget"), icon: Pencil, onSelect: () => openDistributeFor(agent.assigneeName) },
+                    { key: "report", label: t("openAgentReport"), icon: FileText, href: reportHref(agent.assigneeId) },
+                  ]}
+                />
+              ),
+              meta: (
+                <>
+                  <p className="flex min-w-0 items-center gap-1">
+                    <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">
+                      {territoryOf(agent) && territoryOf(agent) !== "Unassigned" ? territoryOf(agent) : t("unassigned")}
+                      {` · ${monthStatus(agent)}`}
+                    </span>
+                  </p>
+                  <p className="truncate">{t("colUpdate")}: {lastUpdate(agent)}</p>
+                  <CompactProgress
+                    achieved={agent.profitAchieved}
+                    target={agent.profitTarget}
+                    progress={agent.profitProgress}
+                    currency={agent.currency}
+                    className="min-w-0 pt-1"
+                  />
+                </>
+              ),
+              badges: (
+                <>
+                  <PerformanceBadge pct={agent.profitProgress} />
+                  <CompletionBadge stage={getCompletionStage(agent.profitProgress)} />
+                  <RiskBadge risk={agent.riskScore} />
+                  <IncentiveTierBadge tier={agent.incentiveTier ?? "none"} />
+                </>
+              ),
+            }))}
+          />
+          <div className="min-w-0 rounded-2xl border border-border/60 bg-card shadow-sm max-sm:hidden">
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("agent")}</TableHead>

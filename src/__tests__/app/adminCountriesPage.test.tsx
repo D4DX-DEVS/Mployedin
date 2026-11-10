@@ -121,7 +121,8 @@ describe("AdminCountriesPage", () => {
       expect(fetchMock).toHaveBeenCalledWith("/api/admin/location-data/countries?page=1&limit=10&sortBy=sortOrder&sortOrder=asc");
     });
 
-    expect(await screen.findByText("United Arab Emirates")).toBeInTheDocument();
+    // Phone cards repeat the name; one or more matches means it rendered.
+    expect((await screen.findAllByText("United Arab Emirates")).length).toBeGreaterThan(0);
     expect(screen.getByText("971")).toBeInTheDocument();
     expect(screen.getByTestId("pagination-controls")).toBeInTheDocument();
     expect(paginationState.updateTotal).toHaveBeenCalledWith(1);

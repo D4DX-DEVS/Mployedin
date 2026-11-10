@@ -23,13 +23,14 @@ export function BrowseSection({ locale }: BrowseSectionProps) {
     <section className="container mx-auto px-4 pt-12 sm:px-6 lg:pt-16">
       <div className="flex flex-col gap-7 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-[2]">
-          <h2 className="text-3xl font-extrabold tracking-[-0.02em] text-foreground sm:text-4xl">{t("jobsByFunctionalArea")}</h2>
-          <div className="mt-5 flex flex-wrap gap-2.5">
+          <h2 className="text-3xl font-extrabold tracking-[-0.02em] text-foreground max-sm:text-2xl sm:text-4xl">{t("jobsByFunctionalArea")}</h2>
+          {/* Phones: two scrolling rows instead of a ragged wrap down the page. */}
+          <div className="mt-5 flex flex-wrap gap-2.5 max-sm:-mx-4 max-sm:grid max-sm:auto-cols-max max-sm:grid-flow-col max-sm:grid-rows-2 max-sm:justify-items-start max-sm:gap-2 max-sm:overflow-x-auto max-sm:px-4 max-sm:pb-1 max-sm:[scrollbar-width:none]">
             {AREA_KEYS.map((key) => (
               <Link
                 key={key}
                 href={jobsLink(t(key))}
-                className="inline-flex min-h-11 items-center rounded-2xl border border-border/70 bg-card px-4 text-sm font-bold text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary"
+                className="inline-flex min-h-11 items-center whitespace-nowrap rounded-2xl border border-border/70 bg-card px-4 text-sm font-bold max-sm:min-h-10 max-sm:px-3.5 max-sm:text-[13px] text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary"
               >
                 {t(key)}
               </Link>
@@ -37,12 +38,12 @@ export function BrowseSection({ locale }: BrowseSectionProps) {
           </div>
 
           <h2 className="mt-9 text-2xl font-extrabold tracking-[-0.01em] text-foreground">{t("jobsByIndustry")}</h2>
-          <div className="mt-4 flex flex-wrap gap-2.5">
+          <div className="mt-4 flex flex-wrap gap-2.5 max-sm:-mx-4 max-sm:grid max-sm:auto-cols-max max-sm:grid-flow-col max-sm:grid-rows-2 max-sm:justify-items-start max-sm:gap-2 max-sm:overflow-x-auto max-sm:px-4 max-sm:pb-1 max-sm:[scrollbar-width:none]">
             {INDUSTRY_KEYS.map((key) => (
               <Link
                 key={key}
                 href={jobsLink(t(key))}
-                className="inline-flex min-h-11 items-center rounded-full border border-border/70 bg-card px-4 text-sm font-bold text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary"
+                className="inline-flex min-h-11 items-center whitespace-nowrap rounded-full border border-border/70 bg-card px-4 text-sm font-bold max-sm:min-h-10 max-sm:px-3.5 max-sm:text-[13px] text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:text-primary"
               >
                 {t(key)}
               </Link>

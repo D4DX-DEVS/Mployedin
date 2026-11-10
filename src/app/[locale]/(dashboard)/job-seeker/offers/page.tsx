@@ -68,6 +68,7 @@ type OfferListResponse = { offers?: Offer[]; total?: number; pagination?: { tota
 export default function OffersPage() {
   const t = useTranslations("jobSeekerOffers");
   const tj = useTranslations("jobSeekerJourney");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
@@ -294,6 +295,7 @@ export default function OffersPage() {
           search={searchTerm}
           onSearchChange={(v) => { setSearchTerm(v); pagination.resetPage(); }}
           searchPlaceholder={t("searchPlaceholder")}
+          searchLabel={t.has("searchLabel") ? t("searchLabel") : tCommon("search")}
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}

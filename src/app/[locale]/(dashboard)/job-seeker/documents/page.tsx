@@ -119,6 +119,7 @@ interface ExtractedData {
 export default function JobSeekerDocumentsPage() {
   const t = useTranslations("jobSeekerExtra.documents");
   const { confirm, ConfirmDialogNode } = useConfirm();
+  const tCommon = useTranslations("common");
   const tConfirm = useTranslations("confirm");
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
@@ -528,8 +529,8 @@ export default function JobSeekerDocumentsPage() {
         )}
 
         {/* ── Uploaded Documents List ── */}
-        <div className="card-base">
-          <div className="flex items-center justify-between gap-4 p-4 border-b flex-col sm:flex-row">
+        <div className="card-base max-sm:!p-0">
+          <div className="flex items-center justify-between gap-4 p-4 border-b flex-col sm:flex-row max-sm:items-stretch max-sm:gap-3">
             <h3 className="font-semibold flex items-center gap-2">
               <FolderOpen className="h-4 w-4" />
               {t("myDocuments")}
@@ -538,14 +539,18 @@ export default function JobSeekerDocumentsPage() {
               )}
             </h3>
             {documents.length > 0 && (
-              <div className="w-full sm:w-56">
+              <div className="w-full sm:w-56 max-sm:space-y-1.5">
+                <label htmlFor="seeker-documents-search" className="text-sm font-medium text-foreground sm:hidden">
+                  {t.has("searchLabel") ? t("searchLabel") : tCommon("search")}
+                </label>
                 <input
+                  id="seeker-documents-search"
                   type="text"
                   placeholder={t("searchPlaceholder") ?? "Search documents..."}
                   aria-label={t("searchPlaceholder")}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary max-sm:h-11"
                 />
               </div>
             )}
@@ -592,7 +597,7 @@ export default function JobSeekerDocumentsPage() {
                           href={`/api/job-seeker/documents/${doc.id}/download`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors max-sm:flex max-sm:h-11 max-sm:w-11 max-sm:items-center max-sm:justify-center"
                           title={t("view")}
                         >
                           <Eye className="h-4 w-4" />

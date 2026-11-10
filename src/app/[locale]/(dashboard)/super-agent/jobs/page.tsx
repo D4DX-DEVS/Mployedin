@@ -64,9 +64,11 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
 import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -188,6 +190,7 @@ export default function SuperAgentJobsPage() {
   const [jobs, setJobs] = useState<RegionalJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   /* ── URL-based filters for status and search ── */
   const [jobStatus, setJobStatusState] = useUrlFilter("status", "all" as JobStatus);
@@ -401,6 +404,66 @@ export default function SuperAgentJobsPage() {
     return count;
   }, [jobStatus, employmentType, workMode, country, city, skills, salaryMin, salaryMax, currency, experienceMin, experienceMax, dateFrom, dateTo, searchQuery, aiActive]);
 
+  /* Phone filter sheet: the filters it holds (sort, search and the AI filter do not count). */
+  const phoneFilterCount = [
+    jobStatus !== "all", employmentType !== "all", workMode !== "all", country, city, skills,
+    salaryMin || salaryMax, currency, experienceMin || experienceMax, dateFrom || dateTo,
+  ].filter(Boolean).length;
+
+  /* Shared by the inline bar, its More panel and the phone filter sheet. */
+  const employmentTypeOptions: { value: EmploymentType; label: string }[] = [
+    { value: "all", label: t("allTypes") },
+    { value: "full_time", label: t("fullTime") },
+    { value: "part_time", label: t("partTime") },
+    { value: "contract", label: t("contract") },
+    { value: "internship", label: t("internship") },
+    { value: "freelance", label: t("freelance") },
+  ];
+  const workModeOptions: { value: WorkMode; label: string }[] = [
+    { value: "all", label: t("allModes") },
+    { value: "onsite", label: t("onsite") },
+    { value: "hybrid", label: t("hybrid") },
+    { value: "remote", label: t("remote") },
+  ];
+  const sortByOptions: { value: SortBy; label: string }[] = [
+    { value: "createdAt", label: t("sortDateCreated") },
+    { value: "title", label: t("sortTitle") },
+    { value: "salary", label: t("sortSalary") },
+    { value: "views", label: t("sortViews") },
+    { value: "status", label: tc("status") },
+  ];
+  const sortOrderOptions: { value: SortOrder; label: string }[] = [
+    { value: "desc", label: t("newestFirst") },
+    { value: "asc", label: t("oldestFirst") },
+  ];
+  const currencyCodes = ["AED", "USD", "INR", "EUR", "GBP", "SAR", "QAR", "KWD", "BHD", "OMR"];
+  const statusPills = [
+    { key: "all" as const, labelKey: "statusFilterAll", count: counts.total, icon: Briefcase },
+    { key: "active" as const, labelKey: "statusFilterActive", count: counts.active, icon: CheckCircle2 },
+    { key: "draft" as const, labelKey: "statusFilterDraft", count: counts.draft, icon: FileText },
+    { key: "paused" as const, labelKey: "statusFilterPaused", count: counts.paused, icon: Pause },
+    { key: "closed" as const, labelKey: "statusFilterClosed", count: counts.closed, icon: X },
+    { key: "expired" as const, labelKey: "statusFilterExpired", count: counts.expired, icon: Clock },
+  ] as const;
+  const renderStatusPills = () => statusPills.map(({ key, labelKey, count, icon: Icon }) => (
+    <button
+      key={key}
+      onClick={() => { setJobStatusState(key); resetPage(); }}
+      aria-pressed={jobStatus === key}
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-9 ${
+        jobStatus === key
+          ? "bg-primary text-primary-foreground"
+          : "border border-border/60 bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+      }`}
+    >
+      <span><Icon className="h-3 w-3" /></span>
+      {t(labelKey)}
+      <span className={`rounded-full px-1.5 py-0.5 text-[11px] ${
+        jobStatus === key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+      }`}>{count}</span>
+    </button>
+  ));
+
   /* ── Detail dialog ── */
   const openDetail = async (jobId: string) => {
     setDetailLoading(true);
@@ -565,6 +628,8 @@ export default function SuperAgentJobsPage() {
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
           onClear={hasFilters ? clearFilters : undefined}
+          moreToggleClassName="max-sm:hidden"
+          moreClassName="max-sm:hidden"
           more={(
             <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
               <div className="grid min-w-0 flex-[1_1_100%] grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -587,12 +652,7 @@ export default function SuperAgentJobsPage() {
                   <Select value={employmentType} onValueChange={(v) => { setEmploymentType(v as EmploymentType); resetPage(); }}>
                     <SelectTrigger id={employmentTypeId} className="h-9 text-sm"><SelectValue placeholder={t("jobTypePlaceholder")} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t("allTypes")}</SelectItem>
-                      <SelectItem value="full_time">{t("fullTime")}</SelectItem>
-                      <SelectItem value="part_time">{t("partTime")}</SelectItem>
-                      <SelectItem value="contract">{t("contract")}</SelectItem>
-                      <SelectItem value="internship">{t("internship")}</SelectItem>
-                      <SelectItem value="freelance">{t("freelance")}</SelectItem>
+                      {employmentTypeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -601,10 +661,7 @@ export default function SuperAgentJobsPage() {
                   <Select value={workMode} onValueChange={(v) => { setWorkMode(v as WorkMode); resetPage(); }}>
                     <SelectTrigger id={workModeId} className="h-9 text-sm"><SelectValue placeholder={t("workModePlaceholder")} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t("allModes")}</SelectItem>
-                      <SelectItem value="onsite">{t("onsite")}</SelectItem>
-                      <SelectItem value="hybrid">{t("hybrid")}</SelectItem>
-                      <SelectItem value="remote">{t("remote")}</SelectItem>
+                      {workModeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -614,11 +671,7 @@ export default function SuperAgentJobsPage() {
                     <Select value={sortBy} onValueChange={(v) => { setSortBy(v as SortBy); resetPage(); }}>
                       <SelectTrigger id={sortById} className="h-9 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="createdAt">{t("sortDateCreated")}</SelectItem>
-                        <SelectItem value="title">{t("sortTitle")}</SelectItem>
-                        <SelectItem value="salary">{t("sortSalary")}</SelectItem>
-                        <SelectItem value="views">{t("sortViews")}</SelectItem>
-                        <SelectItem value="status">{tc("status")}</SelectItem>
+                        {sortByOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -627,8 +680,7 @@ export default function SuperAgentJobsPage() {
                     <Select value={sortOrder} onValueChange={(v) => { setSortOrder(v as SortOrder); resetPage(); }}>
                       <SelectTrigger id={orderByid} className="h-9 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="desc">{t("newestFirst")}</SelectItem>
-                        <SelectItem value="asc">{t("oldestFirst")}</SelectItem>
+                        {sortOrderOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -664,16 +716,7 @@ export default function SuperAgentJobsPage() {
                     <SelectTrigger id={currencyId} className="h-9 text-sm"><SelectValue placeholder={t("anyCurrency")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="any">{t("anyCurrency")}</SelectItem>
-                      <SelectItem value="AED">AED</SelectItem>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="INR">INR</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="GBP">GBP</SelectItem>
-                      <SelectItem value="SAR">SAR</SelectItem>
-                      <SelectItem value="QAR">QAR</SelectItem>
-                      <SelectItem value="KWD">KWD</SelectItem>
-                      <SelectItem value="BHD">BHD</SelectItem>
-                      <SelectItem value="OMR">OMR</SelectItem>
+                      {currencyCodes.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -800,38 +843,161 @@ export default function SuperAgentJobsPage() {
             value={searchQuery}
             onChange={handleSearchChange}
             placeholder={t("searchPlaceholder")}
+            className="max-sm:basis-0"
           />
-          {/* Status quick-filter pills */}
-          {([
-            { key: "all" as const, labelKey: "statusFilterAll", count: counts.total, icon: Briefcase },
-            { key: "active" as const, labelKey: "statusFilterActive", count: counts.active, icon: CheckCircle2 },
-            { key: "draft" as const, labelKey: "statusFilterDraft", count: counts.draft, icon: FileText },
-            { key: "paused" as const, labelKey: "statusFilterPaused", count: counts.paused, icon: Pause },
-            { key: "closed" as const, labelKey: "statusFilterClosed", count: counts.closed, icon: X },
-            { key: "expired" as const, labelKey: "statusFilterExpired", count: counts.expired, icon: Clock },
-          ] as const).map(({ key, labelKey, count, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => { setJobStatusState(key); resetPage(); }}
-              aria-pressed={jobStatus === key}
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors min-h-9 ${
-                jobStatus === key
-                  ? "bg-primary text-primary-foreground"
-                  : "border border-border/60 bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-              }`}
-            >
-              <span><Icon className="h-3 w-3" /></span>
-              {t(labelKey)}
-              <span className={`rounded-full px-1.5 py-0.5 text-[11px] ${
-                jobStatus === key ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
-              }`}>{count}</span>
-            </button>
-          ))}
+          <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+          {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+          <div className="contents max-sm:hidden">
+            {/* Status quick-filter pills */}
+            {renderStatusPills()}
+          </div>
         </InlineFilterBar>
+
+        <PhoneFilterSheet
+          open={filterSheetOpen}
+          onOpenChange={setFilterSheetOpen}
+          activeCount={phoneFilterCount}
+          onClear={clearFilters}
+        >
+          <FilterField label={t("sortByLabel")} htmlFor="sa-jobs-sheet-sort-by">
+            <Select value={sortBy} onValueChange={(v) => { setSortBy(v as SortBy); resetPage(); }}>
+              <SelectTrigger id="sa-jobs-sheet-sort-by" className={SHEET_CONTROL}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {sortByOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label={t("orderLabel")} htmlFor="sa-jobs-sheet-order">
+            <Select value={sortOrder} onValueChange={(v) => { setSortOrder(v as SortOrder); resetPage(); }}>
+              <SelectTrigger id="sa-jobs-sheet-order" className={SHEET_CONTROL}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {sortOrderOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label={tc("status")}>
+            <div role="group" aria-label={tc("status")} className="flex flex-wrap gap-2">
+              {renderStatusPills()}
+            </div>
+          </FilterField>
+          <FilterField label={t("employmentTypeLabel")} htmlFor="sa-jobs-sheet-type">
+            <Select value={employmentType} onValueChange={(v) => { setEmploymentType(v as EmploymentType); resetPage(); }}>
+              <SelectTrigger id="sa-jobs-sheet-type" className={SHEET_CONTROL}><SelectValue placeholder={t("jobTypePlaceholder")} /></SelectTrigger>
+              <SelectContent>
+                {employmentTypeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label={t("workModeLabel")} htmlFor="sa-jobs-sheet-mode">
+            <Select value={workMode} onValueChange={(v) => { setWorkMode(v as WorkMode); resetPage(); }}>
+              <SelectTrigger id="sa-jobs-sheet-mode" className={SHEET_CONTROL}><SelectValue placeholder={t("workModePlaceholder")} /></SelectTrigger>
+              <SelectContent>
+                {workModeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label={tc("country")} htmlFor="sa-jobs-sheet-country">
+            <Input id="sa-jobs-sheet-country" placeholder={t("countryPlaceholder")} value={country} onChange={(e) => setCountry(e.target.value)} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("cityLabel")} htmlFor="sa-jobs-sheet-city">
+            <Input id="sa-jobs-sheet-city" placeholder={t("cityPlaceholder")} value={city} onChange={(e) => setCity(e.target.value)} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("skillsLabel")} htmlFor="sa-jobs-sheet-skills">
+            <Input id="sa-jobs-sheet-skills" placeholder={t("skillsPlaceholder")} value={skills} onChange={(e) => setSkills(e.target.value)} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("currencyLabel")} htmlFor="sa-jobs-sheet-currency">
+            <Select value={currency || "any"} onValueChange={(v) => setCurrency(v === "any" ? "" : v)}>
+              <SelectTrigger id="sa-jobs-sheet-currency" className={SHEET_CONTROL}><SelectValue placeholder={t("anyCurrency")} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">{t("anyCurrency")}</SelectItem>
+                {currencyCodes.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label={t("salaryMinLabel")} htmlFor="sa-jobs-sheet-salary-min">
+            <Input id="sa-jobs-sheet-salary-min" type="number" placeholder={t("minSalaryPlaceholder")} value={salaryMin} onChange={(e) => setSalaryMin(e.target.value)} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("salaryMaxLabel")} htmlFor="sa-jobs-sheet-salary-max">
+            <Input id="sa-jobs-sheet-salary-max" type="number" placeholder={t("maxSalaryPlaceholder")} value={salaryMax} onChange={(e) => setSalaryMax(e.target.value)} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("experienceMinLabel")} htmlFor="sa-jobs-sheet-exp-min">
+            <Input id="sa-jobs-sheet-exp-min" type="number" placeholder="0" value={experienceMin} onChange={(e) => setExperienceMin(e.target.value)} className={SHEET_CONTROL} min="0" />
+          </FilterField>
+          <FilterField label={t("experienceMaxLabel")} htmlFor="sa-jobs-sheet-exp-max">
+            <Input id="sa-jobs-sheet-exp-max" type="number" placeholder="20" value={experienceMax} onChange={(e) => setExperienceMax(e.target.value)} className={SHEET_CONTROL} min="0" />
+          </FilterField>
+          <FilterField label={t("dateFromLabel")} htmlFor="sa-jobs-sheet-date-from">
+            <DateTimePicker id="sa-jobs-sheet-date-from" mode="date" value={dateFrom} onChange={setDateFrom} className="w-full" />
+          </FilterField>
+          <FilterField label={t("dateToLabel")} htmlFor="sa-jobs-sheet-date-to">
+            <DateTimePicker id="sa-jobs-sheet-date-to" mode="date" value={dateTo} onChange={setDateTo} className="w-full" />
+          </FilterField>
+        </PhoneFilterSheet>
         {/* One table for every state: the loading copy had its own header with
             no sort buttons, and the empty state replaced the table outright. */}
-        <div className="overflow-x-auto">
-            <Table>
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("pageTitle")}
+          loading={loading}
+          empty={
+            <EmptyState
+              title={t("noJobsFound")}
+              description={aiActive ? t("noJobsMatchedAiSearch") : t("noJobsMatchFilters")}
+              icon={Briefcase}
+            />
+          }
+          items={jobs.map((job) => ({
+            key: job._id,
+            leading: <UserAvatar name={job.employerId?.companyName ?? job.employerId?.name ?? job.title} className="h-10 w-10" colorful />,
+            title: job.title,
+            subtitle: job.employerId?.companyName ?? job.employerId?.name ?? "—",
+            trailing: <StatusBadge status={job.status ?? "draft"} />,
+            actions: (
+              <RowActions
+                name={job.title}
+                quick={[
+                  { key: "view", label: t("viewJobDetailsButton"), icon: Eye, iconOnly: true, onSelect: () => openDetail(job._id) },
+                  ...(job.status === "active" ? [{ key: "share", label: t("shareJobButton"), icon: Share2, iconOnly: true, onSelect: () => setShareJob(job) }] : []),
+                  { key: "matches", label: t("findCandidatesButton"), icon: UserSearch, iconOnly: true, onSelect: () => router.push(`/${locale}/super-agent/jobs/${job._id}/matches`) },
+                ]}
+              />
+            ),
+            meta: (
+              <>
+                <p className="flex min-w-0 items-center gap-1">
+                  <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">
+                    {formatLocation(job.location)}
+                    {` · ${formatEmploymentType(job.employmentType)}`}
+                    {job.workMode ? <span className="capitalize">{` · ${job.workMode}`}</span> : null}
+                  </span>
+                </p>
+                <p className="flex min-w-0 items-center gap-1">
+                  <DollarSign className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{formatSalary(job.salary)}</span>
+                </p>
+                <p className="flex min-w-0 items-center gap-1">
+                  <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{formatDate(new Date(job.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</span>
+                </p>
+              </>
+            ),
+            badges: job.tags && job.tags.length > 0 ? (
+              <>
+                {job.tags.slice(0, 3).map((tag) => (
+                  <span key={tag} className="inline-block rounded bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                    {tag}
+                  </span>
+                ))}
+                {job.tags.length > 3 && (
+                  <span className="text-[11px] text-muted-foreground">+{job.tags.length - 3}</span>
+                )}
+              </>
+            ) : undefined,
+          }))}
+        />
+        <div className="overflow-x-auto max-sm:hidden">
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>

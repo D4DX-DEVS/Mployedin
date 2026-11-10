@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -84,7 +84,14 @@ export function DashboardPageHeader({
   compactMetrics = false,
 }: DashboardPageHeaderProps) {
   const Heading = headingLevel === 2 ? "h2" : "h1";
-  const metricCompact = compact || compactMetrics;
+  // A one-row phone strip gives each figure ~83px (four) or ~110px (three).
+  // That fits "26" or "74%", not "AED 247.2K" — money cut into the screen edge
+  // on admin/invoices. Only keep the single row when every value is a short
+  // plain number/string; anything longer (or a rich node) goes two-up.
+  const metricsAreShort = (metrics ?? []).every(
+    (m) => (typeof m.value === "number" || typeof m.value === "string") && String(m.value).length <= 5,
+  );
+  const metricCompact = (compact || compactMetrics) && metricsAreShort;
   return (
     <section
       data-dashboard-page-header="component"
@@ -101,7 +108,10 @@ export function DashboardPageHeader({
       <div className={cn(
         "flex gap-3 lg:flex-row lg:items-center lg:justify-between",
         inlineActions ? "flex-row items-start justify-between" : "flex-col",
-        compact && "flex-row items-center justify-between gap-2 sm:gap-3"
+        compact && "flex-row items-center justify-between gap-2 sm:gap-3",
+        // Phones: actions that do not fit beside the title drop to their own
+        // row instead of crushing it ("Agent Performa / nce" on super-agent/agents).
+        (compact || inlineActions) && "max-sm:flex-wrap"
       )}>
         {/* `basis-0 lg:min-w-[16rem]`: the summary+actions block beside this one
             is `shrink-0`, so when the row overflowed every pixel of the shortfall
@@ -109,7 +119,11 @@ export function DashboardPageHeader({
             is a full sentence that never wraps, that squeezed "Employer
             Relationships" into a ~100px column — one or two characters per line,
             a 479px header. A floor here makes the row wrap instead of crushing. */}
-        <div data-header-identity="" className="dashboard-page-header-identity min-w-0 max-w-3xl flex-1 basis-0 lg:min-w-[16rem]">
+        <div data-header-identity="" className="dashboard-page-header-identity min-w-0 max-w-3xl flex-1 basis-0 max-sm:min-w-[min(100%,var(--header-title-min))] lg:min-w-[16rem]"
+          // Phones: reserve roughly the title's one-line width (icon + ~0.66rem
+          // per character at 20px) so it never breaks mid-word; actions that
+          // do not fit beside it wrap to their own row.
+          style={{ "--header-title-min": `${3.25 + title.length * 0.66}rem` } as CSSProperties}>
           <span data-header-icon="" className="dashboard-page-header-icon" aria-hidden="true">
             {Icon ? <Icon className="h-5 w-5" /> : <PageNavIcon className="h-5 w-5" />}
           </span>
@@ -183,12 +197,15 @@ export function DashboardPageHeader({
             "mt-3 grid border-y border-border/60 sm:mt-4",
             metrics.length === 1 && "grid-cols-1",
             metrics.length === 2 && "grid-cols-2",
-            metrics.length === 3 && (metricCompact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3"),
+            metrics.length === 3 && (metricCompact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3 max-sm:[&>*:last-child]:col-span-2"),
             metrics.length === 4 && (metricCompact ? "grid-cols-4" : "grid-cols-2 md:grid-cols-4"),
             // 5-6 metrics go three-across on a compact phone rather than 2xN:
             // the admin exhibitions and target headers spent 3 rows on six
             // figures before the list started.
             metrics.length >= 5 && (metricCompact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"),
+            // Two-up on phones: no divider on the right-hand edge, and a rule
+            // between rows so the 2x2 reads as a grid, not loose figures.
+            !metricCompact && metrics.length >= 3 && "max-sm:[&>*:nth-child(2n)]:border-e-0 max-sm:[&>*:nth-child(n+3)]:border-t",
             metricsClassName
           )}
         >

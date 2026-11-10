@@ -75,10 +75,12 @@ export function AgentRolePerformance({ rows, locale }: AgentRolePerformanceProps
             <li key={row.jobId}>
               <Link
                 href={`/${locale}/agent/jobs/${row.jobId}`}
-                className="group flex min-h-12 items-center gap-3 px-4 py-2 transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 sm:px-5"
+                className="group flex min-h-12 items-center gap-3 px-4 py-2 max-sm:flex-wrap max-sm:gap-y-1.5 transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 sm:px-5"
               >
                 {/* Title and status share one line: the stacked chip made every
                     row 80px, and three rows do not need that. */}
+                {/* Phones: the title gets the full row and the three figures sit on a
+                    line of their own; side by side they cut the title to "App T…". */}
                 <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="truncate text-sm font-semibold text-foreground">{row.title}</span>
                   <span
@@ -87,7 +89,7 @@ export function AgentRolePerformance({ rows, locale }: AgentRolePerformanceProps
                     {statusLabel(row.status)}
                   </span>
                 </span>
-                <dl className="grid shrink-0 grid-cols-3 gap-3 text-end sm:gap-4">
+                <dl className="grid shrink-0 grid-cols-3 gap-3 text-end max-sm:order-last max-sm:w-full max-sm:text-start sm:gap-4">
                   <div className="sm:min-w-[3.5rem]">
                     <dt className="text-[11px] font-medium text-muted-foreground sm:sr-only">{t("applications")}</dt>
                     <dd className="text-sm font-semibold tabular-nums text-foreground">{row.applications}</dd>

@@ -104,7 +104,7 @@ export function TestTab({ mode }: { mode?: "live" | "mock" }) {
           <div className="space-y-1">
             <Label htmlFor="wa-test-template">{t("testTemplate")}</Label>
             <Select value={selected} onValueChange={pick}>
-              <SelectTrigger id="wa-test-template"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="wa-test-template" className="!flex-nowrap [&>span]:min-w-0 [&>span]:truncate"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={SANDBOX}>{t("testSandboxTemplate")}</SelectItem>
                 {templates.map((x) => (
@@ -125,7 +125,7 @@ export function TestTab({ mode }: { mode?: "live" | "mock" }) {
           </div>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" onClick={send} disabled={sending || !to.trim()}>
+          <Button type="button" onClick={send} disabled={sending || !to.trim()} className="max-sm:min-h-11">
             <Send className="w-3.5 h-3.5" /> {sending ? t("testSending") : t("testSend")}
           </Button>
           {result && (

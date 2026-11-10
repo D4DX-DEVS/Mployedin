@@ -319,11 +319,13 @@ export default function AdminMatchingWeightTemplatesPage() {
                 key={t._id}
                 className="rounded-2xl border border-border bg-background/80 transition-all hover:border-sky-500/25 panel-body"
               >
-                <div className="flex items-start justify-between gap-4">
+                {/* Phone: the three icon buttons move to a footer row; beside the text they squeezed it
+                    to half the card and pushed the name under its icon. */}
+                <div className="flex items-start justify-between gap-4 max-sm:flex-col max-sm:items-stretch max-sm:gap-0">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Scale className="h-4 w-4 text-sky-600" />
-                      <h2 className="text-sm font-semibold text-foreground">{t.name}</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Scale className="h-4 w-4 shrink-0 text-sky-600" />
+                      <h2 className="min-w-0 text-sm font-semibold text-foreground max-sm:basis-[calc(100%-1.5rem)]">{t.name}</h2>
                       {t.isDefault && (
                         <Badge variant="secondary" className="gap-1 text-[11px]">
                           <Shield className="h-3 w-3" /> {tr("defaultBadge")}
@@ -347,12 +349,12 @@ export default function AdminMatchingWeightTemplatesPage() {
                       {tr("topPriorityLabel", { weightLabel: weightLabels[topWeight], percentage: t.weights[topWeight] })}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 max-sm:mt-3 max-sm:justify-end max-sm:border-t max-sm:border-border/60 max-sm:pt-2">
                     <Button aria-label={isExpanded ? ta("collapse") : ta("expand")}
                       variant="ghost"
                       size="sm"
                       onClick={() => setExpandedId(isExpanded ? null : t._id)}
-                      className="h-8 w-8 rounded-lg p-0"
+                      className="h-8 w-8 rounded-lg p-0 max-sm:size-11"
                     >
                       {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </Button>
@@ -360,7 +362,7 @@ export default function AdminMatchingWeightTemplatesPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => openEdit(t)}
-                      className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-sky-600"
+                      className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-sky-600 max-sm:size-11"
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
@@ -370,7 +372,7 @@ export default function AdminMatchingWeightTemplatesPage() {
                       onClick={() => handleDelete(t._id, t.name)}
                       disabled={deleteMut.isPending}
                       aria-label={tr("deleteButtonLabel")}
-                      className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-red-500"
+                      className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:text-red-500 max-sm:size-11"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

@@ -29,8 +29,10 @@ import {
 import { formatCurrency } from "@/lib/currency";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { InlinePicker } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -70,6 +72,7 @@ export default function SuperAgentCommissionsPage() {
   const [currencyFilter, setCurrencyFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
   // Override rate display (read-only, set by admin)
@@ -167,6 +170,33 @@ export default function SuperAgentCommissionsPage() {
     { label: t("kpiApproved"), value: statusCounts.approved ?? 0, note: t("kpiApprovedHelper"), icon: CheckCircle2 },
   ];
 
+  // Shared by the inline bar and the phone filter sheet.
+  const statusPills = ["", "pending", "approved", "paid", "disputed", "clawed_back"] as const;
+  const typeOptions = [
+    { value: "all", label: t("filterTypeAllTypes") },
+    { value: "placement", label: t("filterTypePlacement") },
+    { value: "override", label: t("filterTypeOverride") },
+    { value: "bonus", label: t("filterTypeBonus") },
+  ];
+  const currencyOptions = [
+    { value: "all", label: t("filterCurrencyAll") },
+    ...["AED", "USD", "EUR", "SAR", "INR"].map((c) => ({ value: c, label: c })),
+  ];
+  const clearAllFilters = () => { setStatusFilterState(""); setTypeFilter(""); setCurrencyFilter(""); setDateFrom(""); setDateTo(""); resetPage(); };
+  const phoneFilterCount = [statusFilter, typeFilter, currencyFilter, dateFrom, dateTo].filter(Boolean).length;
+  const renderStatusPills = () => statusPills.map((s) => (
+    <Button
+      key={s}
+      onClick={() => { setStatusFilterState(s); resetPage(); }}
+      aria-pressed={statusFilter === s}
+      variant={statusFilter === s ? "default" : "outline"}
+      size="sm"
+      className={statusFilter === s ? "h-9 shrink-0 rounded-lg px-2 text-xs sm:px-3 sm:text-sm" : "h-9 shrink-0 rounded-lg border-border/70 bg-card px-2 text-xs text-muted-foreground hover:bg-secondary/80 hover:text-foreground sm:px-3 sm:text-sm"}
+    >
+      {s === "" ? tc("all") : t(`status_${s}`)}
+    </Button>
+  ));
+
   return (
     <div className="page-container">
       {/* Hero carries the title and one description. The "Finance lane" summary
@@ -193,7 +223,9 @@ export default function SuperAgentCommissionsPage() {
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
-          onClear={(statusFilter || typeFilter || currencyFilter || dateFrom || dateTo) ? () => { setStatusFilterState(""); setTypeFilter(""); setCurrencyFilter(""); setDateFrom(""); setDateTo(""); resetPage(); } : undefined}
+          onClear={(statusFilter || typeFilter || currencyFilter || dateFrom || dateTo) ? clearAllFilters : undefined}
+          moreToggleClassName="max-sm:hidden"
+          moreClassName="max-sm:hidden"
           more={(
             <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
               <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-end gap-3">
@@ -204,10 +236,7 @@ export default function SuperAgentCommissionsPage() {
                       <SelectValue placeholder={t("filterTypeAllTypes")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t("filterTypeAllTypes")}</SelectItem>
-                      <SelectItem value="placement">{t("filterTypePlacement")}</SelectItem>
-                      <SelectItem value="override">{t("filterTypeOverride")}</SelectItem>
-                      <SelectItem value="bonus">{t("filterTypeBonus")}</SelectItem>
+                      {typeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -218,12 +247,7 @@ export default function SuperAgentCommissionsPage() {
                       <SelectValue placeholder={t("filterCurrencyAll")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t("filterCurrencyAll")}</SelectItem>
-                      <SelectItem value="AED">AED</SelectItem>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="SAR">SAR</SelectItem>
-                      <SelectItem value="INR">INR</SelectItem>
+                      {currencyOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -244,20 +268,53 @@ export default function SuperAgentCommissionsPage() {
             value={searchQuery}
             onChange={(v) => { setSearchQuery(v); resetPage(); }}
             placeholder={t("searchPlaceholder")}
+            className="max-sm:basis-0"
           />
-          {(["", "pending", "approved", "paid", "disputed", "clawed_back"] as const).map((s) => (
-            <Button
-              key={s}
-              onClick={() => { setStatusFilterState(s); resetPage(); }}
-              aria-pressed={statusFilter === s}
-              variant={statusFilter === s ? "default" : "outline"}
-              size="sm"
-              className={statusFilter === s ? "h-9 shrink-0 rounded-lg px-2 text-xs sm:px-3 sm:text-sm" : "h-9 shrink-0 rounded-lg border-border/70 bg-card px-2 text-xs text-muted-foreground hover:bg-secondary/80 hover:text-foreground sm:px-3 sm:text-sm"}
-            >
-              {s === "" ? tc("all") : t(`status_${s}`)}
-            </Button>
-          ))}
+          <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+          {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+          <div className="contents max-sm:hidden">
+            {renderStatusPills()}
+          </div>
         </InlineFilterBar>
+
+        <PhoneFilterSheet
+          open={filterSheetOpen}
+          onOpenChange={setFilterSheetOpen}
+          activeCount={phoneFilterCount}
+          onClear={clearAllFilters}
+        >
+          <FilterField label={tc("status")}>
+            <div role="group" aria-label={tc("status")} className="flex flex-wrap gap-2">
+              {renderStatusPills()}
+            </div>
+          </FilterField>
+          <FilterField label={t("filterTypeLabel")} htmlFor="sa-commissions-sheet-type">
+            <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v === "all" ? "" : v); resetPage(); }}>
+              <SelectTrigger id="sa-commissions-sheet-type" className={SHEET_CONTROL}>
+                <SelectValue placeholder={t("filterTypeAllTypes")} />
+              </SelectTrigger>
+              <SelectContent>
+                {typeOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label={t("filterCurrencyLabel")} htmlFor="sa-commissions-sheet-currency">
+            <Select value={currencyFilter} onValueChange={(v) => { setCurrencyFilter(v === "all" ? "" : v); resetPage(); }}>
+              <SelectTrigger id="sa-commissions-sheet-currency" className={SHEET_CONTROL}>
+                <SelectValue placeholder={t("filterCurrencyAll")} />
+              </SelectTrigger>
+              <SelectContent>
+                {currencyOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label={t("filterDateFrom")} htmlFor="sa-commissions-sheet-date-from">
+            <DateTimePicker id="sa-commissions-sheet-date-from" mode="date" value={dateFrom} onChange={(v) => { setDateFrom(v); resetPage(); }} className="w-full" />
+          </FilterField>
+          <FilterField label={t("filterDateTo")} htmlFor="sa-commissions-sheet-date-to">
+            <DateTimePicker id="sa-commissions-sheet-date-to" mode="date" value={dateTo} onChange={(v) => { setDateTo(v); resetPage(); }} className="w-full" />
+          </FilterField>
+        </PhoneFilterSheet>
 
         {/* Override rate as one compact line, not a bordered panel inside a
             titled section. It is read-only config, so it states the value and
@@ -283,8 +340,57 @@ export default function SuperAgentCommissionsPage() {
           )}
         </div>
 
-          <div className="overflow-x-auto">
-            <Table>
+          <PhoneRecordList
+            className="sm:hidden"
+            label={t("pageTitle")}
+            loading={loading}
+            empty={<EmptyState title={t("emptyStateTitle")} description={t("emptyStateMessage")} icon={Coins} />}
+            items={commissions.map((c) => {
+              const agentName = c.agentId?.fullName ?? c.agentId?.userId?.name ?? "—";
+              return {
+                key: c._id,
+                leading: <UserAvatar name={agentName} email={c.agentId?.userId?.email} className="h-10 w-10" colorful />,
+                title: agentName,
+                subtitle: c.agentId?.userId?.email || undefined,
+                trailing: c.status === "pending" ? undefined : <StatusBadge status={c.status} />,
+                actions: c.status === "pending" ? (
+                  <InlinePicker
+                    name={agentName}
+                    picker={{
+                      label: tc("changeStatus"),
+                      value: c.status,
+                      options: [
+                        { value: "pending", label: t("status_pending") },
+                        { value: "approved", label: t("status_approved") },
+                        { value: "disputed", label: t("status_disputed") },
+                      ],
+                      onChange: (next) => { if (next !== "pending") void updateStatus(c._id, next); },
+                      display: <StatusBadge status={c.status} />,
+                      pending: updatingId === c._id,
+                      disabled: updatingId === c._id,
+                    }}
+                  />
+                ) : undefined,
+                meta: (
+                  <>
+                    <p className="flex min-w-0 items-center gap-1">
+                      <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">
+                        {formatDate(new Date(c.createdAt), { day: "2-digit", month: "short", year: "numeric" })}
+                        <span className="capitalize">{` · ${(c.type ?? "placement").replace(/_/g, " ")}`}</span>
+                      </span>
+                    </p>
+                    {c.notes && <p className="truncate">{c.notes}</p>}
+                    {c.status === "approved" && <p>{t("awaitingPayout")}</p>}
+                  </>
+                ),
+                stats: [{ label: t("tableHeaderAmount"), value: formatCurrency(c.amount, c.currency ?? currencyCode) }],
+              };
+            })}
+          />
+
+          <div className="overflow-x-auto max-sm:hidden">
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("tableHeaderAgent")}</TableHead>

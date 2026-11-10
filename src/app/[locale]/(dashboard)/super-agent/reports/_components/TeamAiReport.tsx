@@ -86,10 +86,10 @@ export function TeamAiReport() {
       <div className="mt-6 space-y-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold text-foreground">{t("customReport")}</p>
+          <label htmlFor="sa-team-custom-report" className="text-sm font-semibold text-foreground">{t("customReport")}</label>
         </div>
         <textarea
-          aria-label={t("customReport")}
+          id="sa-team-custom-report"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           rows={3}

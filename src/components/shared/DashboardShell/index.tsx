@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Sparkles } from "lucide-react";
 import { Sidebar, MobileMenuButton } from "@/components/shared/Sidebar";
 import { CommandMenuTrigger } from "@/components/shared/CommandMenu";
 import { CreateMenu } from "@/components/shared/CreateMenu";
@@ -87,6 +88,7 @@ export function DashboardShell({
   statementPublished = false,
 }: DashboardShellProps) {
   const tNav = useTranslations("nav");
+  const tCopilot = useTranslations("copilot");
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const unreadMessageCount = useUnreadMessageCount();
@@ -289,6 +291,21 @@ export function DashboardShell({
                       each page already renders in its own header. Creating on a
                       wide screen goes through the page action or ⌘K; phones keep
                       the raised Create in the tab bar below. */}
+                  {/* Phones: the Copilot opens from the top bar. The floating
+                      button covered card actions and pagination on every list;
+                      CSS hides it wherever this launcher is present. Employer
+                      keeps its floating button (frozen reference layout). */}
+                  {!(userRole === "employer" || hasEmployerNavigation) && (
+                    <button
+                      type="button"
+                      data-copilot-launcher=""
+                      onClick={() => window.dispatchEvent(new Event("mployedin:open-copilot"))}
+                      aria-label={tCopilot("openCopilot")}
+                      className="flex h-11 w-11 items-center justify-center rounded-lg text-primary transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+                    >
+                      <Sparkles className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  )}
                   {dashboardRoot && (
                     <MessagesIndicator navGroups={navGroups} rootHref={`/${locale}${dashboardRoot}`} />
                   )}
@@ -322,7 +339,7 @@ export function DashboardShell({
         {/* Page content */}
           {isJobSeeker ? (
             <>
-              <main id={MAIN_CONTENT_ID} className="dashboard-main isolate flex-1 bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+              <main id={MAIN_CONTENT_ID} data-workspace="staff" className="dashboard-main isolate flex-1 bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
                 <PageNavIconProvider icon={pageNavIcon}>{children}</PageNavIconProvider>
               </main>
               <JobSeekerBottomNav locale={locale} navGroups={navGroups} counts={navCounts} />
@@ -330,7 +347,7 @@ export function DashboardShell({
           ) : (
             // `relative` keeps absolute descendants (sr-only labels) inside this
             // scroller; without it they anchor to <body> and stretch the page.
-            <main id={MAIN_CONTENT_ID} className={`dashboard-main relative isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
+            <main id={MAIN_CONTENT_ID} data-workspace={hasEmployerNavigation || userRole === "employer" ? "employer" : "staff"} className={`dashboard-main relative isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
               <PageNavIconProvider icon={pageNavIcon}>{children}</PageNavIconProvider>
             </main>
           )}

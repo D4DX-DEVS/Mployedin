@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import {
   CheckCircle2, Clock, AlertCircle, Pencil,
   Trash2, Inbox, DollarSign, Sparkles, RotateCcw,
-  TrendingUp, Users,
+  TrendingUp, Users, Briefcase, CalendarDays, UserRound,
 } from "lucide-react";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ import { TableBodySkeleton } from "@/components/ui/loading";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -113,6 +115,7 @@ export default function AdminPlacementsPage() {
   const [dateTo, setDateTo] = useState("");
   const [salaryMin, setSalaryMin] = useState("");
   const [salaryMax, setSalaryMax] = useState("");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [editItem, setEditItem] = useState<Placement | null>(null);
 
   const [aiInsights, setAiInsights] = useState<string | null>(null);
@@ -332,6 +335,46 @@ export default function AdminPlacementsPage() {
     title: t("exportTitle"),
     fetchAll: fetchAllPlacements,
   });
+  const visaFilterOptions = [{ value: "", label: t("allVisaStatuses") }, ...visaStatusOptions];
+  const commissionFilterOptions = [
+    { value: "", label: t("allCommission") },
+    { value: "true", label: t("paid") },
+    { value: "false", label: t("unpaid") },
+  ];
+  const currencyFilterOptions = [
+    { value: "", label: t("allCurrencies") },
+    { value: "AED", label: "AED" },
+    { value: "USD", label: "USD" },
+    { value: "EUR", label: "EUR" },
+    { value: "SAR", label: "SAR" },
+  ];
+  const sortOptions = [
+    { value: "createdAt", label: t("sortDateAdded") },
+    { value: "startDate", label: t("exportHeaderStartDate") },
+    { value: "salary", label: t("salary") },
+  ];
+  const phoneFilterCount = activeFilterCount;
+
+  const emptyNode = (
+    <div className="flex flex-col items-center gap-3 text-muted-foreground">
+      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-muted/50">
+        <Inbox className="h-7 w-7 opacity-40" />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-foreground">{t("noPlacementsFound")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {activeFilterCount > 0
+            ? t("tryAdjustingFilters")
+            : t("placementsWillAppear")}
+        </p>
+      </div>
+      {activeFilterCount > 0 && (
+        <Button variant="outline" size="dense" onClick={clearFilters} className="mt-1 rounded-lg text-xs">
+          {t("clearFilters")}
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <div className="page-container">
@@ -376,7 +419,9 @@ export default function AdminPlacementsPage() {
 
       {/* ─── Filters ──────────────────────────────────────────────────── */}
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         more={(
           <>
             <DateTimePicker
@@ -425,59 +470,182 @@ export default function AdminPlacementsPage() {
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          options={[{ value: "", label: t("allVisaStatuses") }, ...visaStatusOptions]}
-          value={visaFilter}
-          onValueChange={(v) => { setVisaFilter(v); resetPage(); }}
-          placeholder={t("allVisaStatuses")}
-        />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "", label: t("allCommission") },
-            { value: "true", label: t("paid") },
-            { value: "false", label: t("unpaid") },
-          ]}
-          value={commissionFilter}
-          onValueChange={(v) => { setCommissionFilter(v); resetPage(); }}
-          placeholder={t("allCommission")}
-        />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "", label: t("allCurrencies") },
-            { value: "AED", label: "AED" },
-            { value: "USD", label: "USD" },
-            { value: "EUR", label: "EUR" },
-            { value: "SAR", label: "SAR" },
-          ]}
-          value={currencyFilter}
-          onValueChange={(v) => { setCurrencyFilter(v); resetPage(); }}
-          placeholder={t("allCurrencies")}
-        />
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(v) => { setSortBy(v); resetPage(); }}
-          options={[
-            { value: "createdAt", label: t("sortDateAdded") },
-            { value: "startDate", label: t("exportHeaderStartDate") },
-            { value: "salary", label: t("salary") },
-          ]}
-          order={sortOrder}
-          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-          compact
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            options={visaFilterOptions}
+            value={visaFilter}
+            onValueChange={(v) => { setVisaFilter(v); resetPage(); }}
+            placeholder={t("allVisaStatuses")}
+          />
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            options={commissionFilterOptions}
+            value={commissionFilter}
+            onValueChange={(v) => { setCommissionFilter(v); resetPage(); }}
+            placeholder={t("allCommission")}
+          />
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            options={currencyFilterOptions}
+            value={currencyFilter}
+            onValueChange={(v) => { setCurrencyFilter(v); resetPage(); }}
+            placeholder={t("allCurrencies")}
+          />
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            compact
+          />
+        </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={clearFilters}
+      >
+        <FilterField label={tc("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v); resetPage(); }}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={t("exportHeaderVisaStatus")} htmlFor="placements-sheet-visa">
+          <SearchableSelect
+            id="placements-sheet-visa"
+            className={SHEET_CONTROL}
+            options={visaFilterOptions}
+            value={visaFilter}
+            onValueChange={(v) => { setVisaFilter(v); resetPage(); }}
+            placeholder={t("allVisaStatuses")}
+          />
+        </FilterField>
+        <FilterField label={t("commission")} htmlFor="placements-sheet-commission">
+          <SearchableSelect
+            id="placements-sheet-commission"
+            className={SHEET_CONTROL}
+            options={commissionFilterOptions}
+            value={commissionFilter}
+            onValueChange={(v) => { setCommissionFilter(v); resetPage(); }}
+            placeholder={t("allCommission")}
+          />
+        </FilterField>
+        <FilterField label={t("currency")} htmlFor="placements-sheet-currency">
+          <SearchableSelect
+            id="placements-sheet-currency"
+            className={SHEET_CONTROL}
+            options={currencyFilterOptions}
+            value={currencyFilter}
+            onValueChange={(v) => { setCurrencyFilter(v); resetPage(); }}
+            placeholder={t("allCurrencies")}
+          />
+        </FilterField>
+        <FilterField label={t("from")} htmlFor="placements-sheet-from">
+          <DateTimePicker
+            id="placements-sheet-from"
+            mode="date"
+            value={dateFrom}
+            onChange={(v) => { setDateFrom(v); resetPage(); }}
+            placeholder={t("from")}
+            className="w-full [&_button]:h-11 [&_button]:rounded-xl [&_button]:bg-card"
+          />
+        </FilterField>
+        <FilterField label={t("to")} htmlFor="placements-sheet-to">
+          <DateTimePicker
+            id="placements-sheet-to"
+            mode="date"
+            value={dateTo}
+            onChange={(v) => { setDateTo(v); resetPage(); }}
+            placeholder={t("to")}
+            className="w-full [&_button]:h-11 [&_button]:rounded-xl [&_button]:bg-card"
+          />
+        </FilterField>
+        <FilterField label={t("minSalaryPlaceholder")} htmlFor="placements-sheet-salary-min">
+          <Input
+            id="placements-sheet-salary-min"
+            type="number"
+            inputMode="numeric"
+            placeholder={t("minSalaryPlaceholder")}
+            value={salaryMin}
+            onChange={(e) => { setSalaryMin(e.target.value); resetPage(); }}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("maxSalaryPlaceholder")} htmlFor="placements-sheet-salary-max">
+          <Input
+            id="placements-sheet-salary-max"
+            type="number"
+            inputMode="numeric"
+            placeholder={t("maxSalaryPlaceholder")}
+            value={salaryMax}
+            onChange={(e) => { setSalaryMax(e.target.value); resetPage(); }}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {/* ─── Table ────────────────────────────────────────────────────── */}
       {loadFailed && !loading ? (
         <ErrorState onRetry={() => void load()} />
       ) : (
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <>
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("placementTracking")}
+        loading={loading}
+        empty={emptyNode}
+        items={placements.map((p) => ({
+          key: p._id,
+          leading: <UserAvatar name={p.candidateName} email={p.candidateEmail} className="h-10 w-10" colorful />,
+          title: p.candidateName ?? t("dashSeparator"),
+          subtitle: p.candidateEmail,
+          trailing: <StatusBadge status={p.commissionPaid ? "paid" : "pending"} />,
+          actions: <RowActions name={p.candidateName ?? t("dashSeparator")} {...rowActionsFor(p)} />,
+          meta: (
+            <>
+              <p className="flex min-w-0 items-center gap-1">
+                <Briefcase className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{p.jobTitle ?? t("dashSeparator")} · {p.companyName ?? t("dashSeparator")}</span>
+              </p>
+              <p className="flex min-w-0 items-center gap-1">
+                <UserRound className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{t("agent")}: {p.agentName ?? t("dashSeparator")}</span>
+              </p>
+              <p className="flex min-w-0 items-center gap-1">
+                <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{formatListDate(new Date(p.startDate), locale)}</span>
+              </p>
+            </>
+          ),
+          stats: [
+            { label: t("salary"), value: `${formatCount(salaryAmount(p.salary) ?? 0)} ${salaryCurrency(p)}` },
+            {
+              label: t("visa"),
+              value: (
+                <span className="inline-flex items-center gap-1">
+                  {VISA_ICONS[p.visaStatus]}
+                  <span className="truncate">{visaStatusOptions.find((o) => o.value === p.visaStatus)?.label ?? t("dashSeparator")}</span>
+                </span>
+              ),
+            },
+          ],
+        }))}
+      />
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
         <div className="overflow-x-auto">
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 {[t("candidate"), t("role"), t("company"), t("agent")].map((h) => (
@@ -500,24 +668,7 @@ export default function AdminPlacementsPage() {
               ) : placements.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={9} className="h-44 text-center">
-                    <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-muted/50">
-                        <Inbox className="h-7 w-7 opacity-40" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{t("noPlacementsFound")}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {activeFilterCount > 0
-                            ? t("tryAdjustingFilters")
-                            : t("placementsWillAppear")}
-                        </p>
-                      </div>
-                      {activeFilterCount > 0 && (
-                        <Button variant="outline" size="dense" onClick={clearFilters} className="mt-1 rounded-lg text-xs">
-                          {t("clearFilters")}
-                        </Button>
-                      )}
-                    </div>
+                    {emptyNode}
                   </TableCell>
                 </TableRow>
               ) : placements.map((p) => (
@@ -559,6 +710,7 @@ export default function AdminPlacementsPage() {
           </Table>
         </div>
       </section>
+      </>
       )}
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />

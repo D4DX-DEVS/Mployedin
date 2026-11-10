@@ -30,9 +30,11 @@ import { formatCurrency } from "@/lib/currency";
 import { ReferralLinkDialog } from "@/components/features/super-agent/ReferralLinkDialog";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
 import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ClientPlanChip, ClientPlanRequests, useClientPlans } from "@/components/features/subscription/ClientPlans";
@@ -166,6 +168,7 @@ export default function SuperAgentEmployersPage() {
   // onboarding modal, which previously opened only from this page's own button.
   const [onboardOpen, setOnboardOpen] = useQueryFlag("new");
   const [referralDialogOpen, setReferralDialogOpen] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [currencyCode, setCurrencyCode] = useState("AED");
   const [switchingEmployerId, setSwitchingEmployerId] = useState<string | null>(null);
 
@@ -278,6 +281,17 @@ export default function SuperAgentEmployersPage() {
 
   const activeFilterCount = countActiveFilters(filters);
 
+  // Shared by the inline bar and the phone filter sheet.
+  const sortOrderOptions = [
+    { value: "asc", label: t("ascending") },
+    { value: "desc", label: t("descending") },
+  ];
+  const industryOptions = [{ value: "", label: t("allIndustries") }, ...facets.industries.map((i) => ({ value: i, label: i }))];
+  const locationOptions = [{ value: "", label: t("allLocations") }, ...facets.locations.map((l) => ({ value: l, label: l }))];
+  const clearAllFilters = () => { resetFilters(); resetPage(); };
+  // Sort is not a filter: it does not count.
+  const phoneFilterCount = [filters.industry, filters.location, filters.status, filters.verified].filter(Boolean).length;
+
   const exportColumns: ExportColumn<Record<string, unknown>>[] = useMemo(() => [
     { header: t("companyHeader"), key: "companyName", formatter: (_v, row) => String((row as unknown as Employer).companyName ?? (row as unknown as Employer).name ?? "") },
     { header: tc("email"), key: "email" },
@@ -368,7 +382,9 @@ export default function SuperAgentEmployersPage() {
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
-          onClear={(activeFilterCount > 0 || filters.search) ? () => { resetFilters(); resetPage(); } : undefined}
+          onClear={(activeFilterCount > 0 || filters.search) ? clearAllFilters : undefined}
+          moreToggleClassName="max-sm:hidden"
+          moreClassName="max-sm:hidden"
           more={(
             <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
               <div className="grid min-w-0 flex-[1_1_100%] gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -400,10 +416,7 @@ export default function SuperAgentEmployersPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("sortOrderLabel")}</label>
                   <SearchableSelect
-                    options={[
-                      { value: "asc", label: t("ascending") },
-                      { value: "desc", label: t("descending") },
-                    ]}
+                    options={sortOrderOptions}
                     value={filters.sortOrder}
                     onValueChange={(v) => { setFilter("sortOrder", v); resetPage(); }}
                     placeholder={t("ascending")}
@@ -440,34 +453,186 @@ export default function SuperAgentEmployersPage() {
             value={filters.search}
             onChange={(v) => { setFilter("search", v); resetPage(); }}
             placeholder={t("searchPlaceholder")}
+            className="max-sm:basis-0"
           />
-          <SearchableSelect
-            options={[{ value: "", label: t("allIndustries") }, ...facets.industries.map((i) => ({ value: i, label: i }))]}
-            value={filters.industry}
-            onValueChange={(v) => { setFilter("industry", v); resetPage(); }}
-            placeholder={t("allIndustries")}
-            searchPlaceholder={t("searchIndustry")}
-            className={INLINE_FILTER_CONTROL}
-          />
-          <SearchableSelect
-            options={[{ value: "", label: t("allLocations") }, ...facets.locations.map((l) => ({ value: l, label: l }))]}
-            value={filters.location}
-            onValueChange={(v) => { setFilter("location", v); resetPage(); }}
-            placeholder={t("allLocations")}
-            searchPlaceholder={t("searchLocation")}
-            className={INLINE_FILTER_CONTROL}
-          />
-          <SearchableSelect
-            options={statusOptions}
-            value={filters.status}
-            onValueChange={(v) => { setFilter("status", v); resetPage(); }}
-            placeholder={tc("all")}
-            className={INLINE_FILTER_CONTROL}
-          />
+          <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+          {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+          <div className="contents max-sm:hidden">
+            <SearchableSelect
+              options={industryOptions}
+              value={filters.industry}
+              onValueChange={(v) => { setFilter("industry", v); resetPage(); }}
+              placeholder={t("allIndustries")}
+              searchPlaceholder={t("searchIndustry")}
+              className={INLINE_FILTER_CONTROL}
+            />
+            <SearchableSelect
+              options={locationOptions}
+              value={filters.location}
+              onValueChange={(v) => { setFilter("location", v); resetPage(); }}
+              placeholder={t("allLocations")}
+              searchPlaceholder={t("searchLocation")}
+              className={INLINE_FILTER_CONTROL}
+            />
+            <SearchableSelect
+              options={statusOptions}
+              value={filters.status}
+              onValueChange={(v) => { setFilter("status", v); resetPage(); }}
+              placeholder={tc("all")}
+              className={INLINE_FILTER_CONTROL}
+            />
+          </div>
         </InlineFilterBar>
 
-        <div className="overflow-x-auto">
-          <Table>
+        <PhoneFilterSheet
+          open={filterSheetOpen}
+          onOpenChange={setFilterSheetOpen}
+          activeCount={phoneFilterCount}
+          onClear={clearAllFilters}
+        >
+          <FilterField label={t("sortByLabel")} htmlFor="sa-employers-sheet-sort-by">
+            <SearchableSelect
+              id="sa-employers-sheet-sort-by"
+              options={sortOptions}
+              value={filters.sortBy}
+              onValueChange={(v) => { setFilter("sortBy", v); resetPage(); }}
+              placeholder={tc("name")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+          <FilterField label={t("sortOrderLabel")} htmlFor="sa-employers-sheet-sort-order">
+            <SearchableSelect
+              id="sa-employers-sheet-sort-order"
+              options={sortOrderOptions}
+              value={filters.sortOrder}
+              onValueChange={(v) => { setFilter("sortOrder", v); resetPage(); }}
+              placeholder={t("ascending")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+          <FilterField label={t("industryLabel")} htmlFor="sa-employers-sheet-industry">
+            <SearchableSelect
+              id="sa-employers-sheet-industry"
+              options={industryOptions}
+              value={filters.industry}
+              onValueChange={(v) => { setFilter("industry", v); resetPage(); }}
+              placeholder={t("allIndustries")}
+              searchPlaceholder={t("searchIndustry")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+          <FilterField label={t("locationLabel")} htmlFor="sa-employers-sheet-location">
+            <SearchableSelect
+              id="sa-employers-sheet-location"
+              options={locationOptions}
+              value={filters.location}
+              onValueChange={(v) => { setFilter("location", v); resetPage(); }}
+              placeholder={t("allLocations")}
+              searchPlaceholder={t("searchLocation")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+          <FilterField label={tc("status")} htmlFor="sa-employers-sheet-status">
+            <SearchableSelect
+              id="sa-employers-sheet-status"
+              options={statusOptions}
+              value={filters.status}
+              onValueChange={(v) => { setFilter("status", v); resetPage(); }}
+              placeholder={tc("all")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+          <FilterField label={t("verificationLabel")} htmlFor="sa-employers-sheet-verified">
+            <SearchableSelect
+              id="sa-employers-sheet-verified"
+              options={verifiedOptions}
+              value={filters.verified}
+              onValueChange={(v) => { setFilter("verified", v); resetPage(); }}
+              placeholder={tc("all")}
+              className={SHEET_CONTROL}
+            />
+          </FilterField>
+        </PhoneFilterSheet>
+
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("pageTitle")}
+          loading={loading}
+          empty={view === "region" && activeFilterCount === 0 && !filters.search ? (
+            <EmptyState
+              title={regionAssigned ? t("area.emptyTitle") : t("area.noRegionTitle")}
+              description={regionAssigned ? t("area.emptyDescription") : t("area.noRegionDescription")}
+              icon={MapPin}
+            />
+          ) : (
+            <EmptyState title={t("noEmployersFound")} description={t("noEmployersHint")} icon={Building2} />
+          )}
+          items={employers.map((em) => ({
+            key: em._id,
+            leading: <UserAvatar name={em.companyName ?? em.name} className="h-10 w-10" colorful />,
+            title: em.companyName ?? em.name,
+            subtitle: em.email,
+            trailing: <StatusBadge status={em.isActive ? "active" : "inactive"} />,
+            actions: (
+              <RowActions
+                name={em.companyName ?? em.name}
+                quick={em.canEnterAccount ? [
+                  {
+                    key: "switch",
+                    label: t("switchButtonAriaLabel", { company: em.companyName ?? em.name }),
+                    icon: LogIn,
+                    iconOnly: true,
+                    pending: switchingEmployerId === em._id,
+                    disabled: switchingEmployerId === em._id || !em.isActive,
+                    onSelect: () => { void handleSwitchToEmployerView(em._id); },
+                  },
+                ] : []}
+                menu={em.userId && (!em.assignedAgent?.name || em.canEnterAccount) ? [
+                  {
+                    key: "assign",
+                    label: em.assignedAgent?.name ? t("assignAgent.change") : t("assignAgent.assign"),
+                    icon: UserCog,
+                    onSelect: () => setAssigning({ userId: em.userId!, companyName: em.companyName ?? em.name }),
+                  },
+                ] : []}
+              />
+            ),
+            meta: (
+              <>
+                {(em.industry || em.location) && (
+                  <p className="flex min-w-0 items-center gap-1">
+                    <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{[em.industry, em.location].filter(Boolean).join(" · ")}</span>
+                  </p>
+                )}
+                <p className="flex min-w-0 items-center gap-1">
+                  <UserCog className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{t("agentHeader")}: {em.assignedAgent?.name ?? t("unassigned")}</span>
+                </p>
+              </>
+            ),
+            badges: (
+              <>
+                <ClientPlanChip plan={em.userId ? clientPlans?.get(em.userId) : undefined} known={Boolean(clientPlans && em.userId)} />
+                {em.isAgentVerified && (
+                  <span className="text-[11px] bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full font-medium">{t("verified")}</span>
+                )}
+                {em.inRegion && (
+                  <span
+                    className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                    title={t("area.chipHint")}
+                  >
+                    <MapPin className="h-3 w-3" aria-hidden="true" />
+                    {t("area.chip")}
+                  </span>
+                )}
+              </>
+            ),
+          }))}
+        />
+
+        <div className="overflow-x-auto max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[180px]">

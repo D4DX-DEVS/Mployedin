@@ -177,6 +177,7 @@ function QuickButton({ action, labelClass }: { action: RowAction; labelClass: st
         aria-label={action.label}
         title={action.label}
         data-table-action=""
+        data-icon-only={action.iconOnly ? "" : undefined}
         {...(action.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       >
         {body}
@@ -194,6 +195,7 @@ function QuickButton({ action, labelClass }: { action: RowAction; labelClass: st
       aria-expanded={action.expanded}
       title={action.label}
       data-table-action=""
+      data-icon-only={action.iconOnly ? "" : undefined}
     >
       {body}
     </Button>

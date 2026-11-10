@@ -68,7 +68,7 @@ Return a JSON object with EXACTLY this structure (no extra fields, no markdown):
       "employmentType": "full_time | part_time | contract | internship | freelance",
       "workMode": "onsite | hybrid | remote",
       "responsibilities": ["string array, one duty per item, in the document's own words"],
-      "qualifications": ["string array: every qualification, eligibility or experience line in the document (degree, licence, years of experience, language ability, certification), copied as written"],
+      "qualifications": ["string array: every qualification, eligibility or experience line in the document (degree, licence, years of experience, language ability, certification), copied as written; list each requirement once, never repeat or reword the same line, and do not repeat the education/experience that already has its own field"],
       "benefits": ["string array"],
       "vacancies": 1,
       "tags": ["string array of relevant tags"],

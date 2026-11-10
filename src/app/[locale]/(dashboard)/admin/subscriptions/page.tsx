@@ -22,8 +22,11 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePagination } from "@/hooks/usePagination";
@@ -227,6 +230,7 @@ export default function AdminSubscriptionsPage() {
                 value={searchQuery}
                 onChange={setSearchQuery}
                 placeholder={t("searchPlaceholder")}
+                className="max-sm:basis-0"
               />
             </InlineFilterBar>
             {filteredResults.length > 0 && !selectedUser && (
@@ -269,6 +273,8 @@ export default function AdminSubscriptionsPage() {
 
 function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
   const t = useTranslations("adminSubscriptions");
+  const tCommon = useTranslations("common");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [filters, setFilters] = useState<AdminSubscriptionsFilters>({
     sortBy: "createdAt", sortOrder: "desc",
@@ -287,6 +293,9 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
   /** Only arrives from the admin dashboard's "ending within 7 days" row. */
   const [expiring, setExpiring] = useUrlFilter("expiring", "", { allow: ["7d", "30d"] });
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Phone cards open the same detail panel the desktop row expands, in a dialog.
+  const [phoneDetail, setPhoneDetail] = useState<AdminSubscriptionItem | null>(null);
+  const locale = useLocale();
 
   // Search box drives the query directly — the Apply Filters button lives inside the
   // collapsed filter panel, so typing has to filter on its own.
@@ -370,6 +379,41 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
     title: t("exportTitleSubscribers"),
     fetchAll: fetchAllSubscriptions,
   });
+  const sortOptions = [
+    { value: "createdAt", label: t("sortDateAdded") },
+    { value: "startDate", label: t("tableHeaderStart") },
+    { value: "endDate", label: t("tableHeaderEnd") },
+  ];
+  const phoneFilterCount = [filters.status, filters.planId, filters.autoRenew, dateFrom, dateTo].filter(Boolean).length;
+  const onStatusChange = (v: string) => { setFilters((f) => ({ ...f, status: v === "all" ? undefined : v })); resetPage(); };
+  const onPlanChange = (v: string) => { setFilters((f) => ({ ...f, planId: v === "all" ? undefined : v })); resetPage(); };
+  const onAutoRenewChange = (v: string) => { setFilters((f) => ({ ...f, autoRenew: v === "all" ? undefined : v })); resetPage(); };
+  const onDateFromChange = (v: string) => { setDateFrom(v); setFilters((f) => ({ ...f, dateFrom: v || undefined })); resetPage(); };
+  const onDateToChange = (v: string) => { setDateTo(v); setFilters((f) => ({ ...f, dateTo: v || undefined })); resetPage(); };
+  const statusSelectContent = (
+    <SelectContent>
+      <SelectItem value="all">{t("allStatusesOption")}</SelectItem>
+      <SelectItem value="active">{t("statusActiveOption")}</SelectItem>
+      <SelectItem value="expired">{t("statusExpiredOption")}</SelectItem>
+      <SelectItem value="cancelled">{t("statusCancelledOption")}</SelectItem>
+      <SelectItem value="suspended">{t("statusSuspendedOption")}</SelectItem>
+    </SelectContent>
+  );
+  const planSelectContent = (
+    <SelectContent>
+      <SelectItem value="all">{t("allPlansOption")}</SelectItem>
+      {allPlans.map((p) => (
+        <SelectItem key={p._id} value={p._id}>{p.name}</SelectItem>
+      ))}
+    </SelectContent>
+  );
+  const autoRenewSelectContent = (
+    <SelectContent>
+      <SelectItem value="all">{t("allFilter")}</SelectItem>
+      <SelectItem value="true">{t("autoRenewYesOption")}</SelectItem>
+      <SelectItem value="false">{t("autoRenewNoOption")}</SelectItem>
+    </SelectContent>
+  );
 
   return (
     <section className="space-y-4">
@@ -407,6 +451,8 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
             onExportExcel={exportExcel}
             onExportPdf={exportPdf}
             moreActiveCount={[filters.status, filters.planId, filters.autoRenew, dateFrom, dateTo].filter(Boolean).length}
+            moreToggleClassName="max-sm:hidden"
+            moreClassName="max-sm:hidden"
             more={
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 {/* Status */}
@@ -414,16 +460,10 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
                   <label className="text-xs text-muted-foreground mb-1 block">{t("tableHeaderStatus")}</label>
                   <Select
                     value={filters.status ?? "all"}
-                    onValueChange={(v) => { setFilters((f) => ({ ...f, status: v === "all" ? undefined : v })); resetPage(); }}
+                    onValueChange={onStatusChange}
                   >
                     <SelectTrigger className="rounded-xl h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t("allStatusesOption")}</SelectItem>
-                      <SelectItem value="active">{t("statusActiveOption")}</SelectItem>
-                      <SelectItem value="expired">{t("statusExpiredOption")}</SelectItem>
-                      <SelectItem value="cancelled">{t("statusCancelledOption")}</SelectItem>
-                      <SelectItem value="suspended">{t("statusSuspendedOption")}</SelectItem>
-                    </SelectContent>
+                    {statusSelectContent}
                   </Select>
                 </div>
 
@@ -432,15 +472,10 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
                   <label className="text-xs text-muted-foreground mb-1 block">{t("planLabel")}</label>
                   <Select
                     value={filters.planId ?? "all"}
-                    onValueChange={(v) => { setFilters((f) => ({ ...f, planId: v === "all" ? undefined : v })); resetPage(); }}
+                    onValueChange={onPlanChange}
                   >
                     <SelectTrigger className="rounded-xl h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t("allPlansOption")}</SelectItem>
-                      {allPlans.map((p) => (
-                        <SelectItem key={p._id} value={p._id}>{p.name}</SelectItem>
-                      ))}
-                    </SelectContent>
+                    {planSelectContent}
                   </Select>
                 </div>
 
@@ -449,14 +484,10 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
                   <label className="text-xs text-muted-foreground mb-1 block">{t("autoRenewLabel")}</label>
                   <Select
                     value={filters.autoRenew ?? "all"}
-                    onValueChange={(v) => { setFilters((f) => ({ ...f, autoRenew: v === "all" ? undefined : v })); resetPage(); }}
+                    onValueChange={onAutoRenewChange}
                   >
                     <SelectTrigger className="rounded-xl h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t("allFilter")}</SelectItem>
-                      <SelectItem value="true">{t("autoRenewYesOption")}</SelectItem>
-                      <SelectItem value="false">{t("autoRenewNoOption")}</SelectItem>
-                    </SelectContent>
+                    {autoRenewSelectContent}
                   </Select>
                 </div>
 
@@ -468,7 +499,7 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
                       <DateTimePicker
                         mode="date"
                         value={dateFrom}
-                        onChange={(v) => { setDateFrom(v); setFilters((f) => ({ ...f, dateFrom: v || undefined })); resetPage(); }}
+                        onChange={onDateFromChange}
                         placeholder={t("dateRangeLabel")}
                         className="rounded-xl h-9"
                       />
@@ -478,7 +509,7 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
                       <DateTimePicker
                         mode="date"
                         value={dateTo}
-                        onChange={(v) => { setDateTo(v); setFilters((f) => ({ ...f, dateTo: v || undefined })); resetPage(); }}
+                        onChange={onDateToChange}
                         placeholder={t("dateRangeLabel")}
                         className="rounded-xl h-9"
                       />
@@ -492,7 +523,9 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
               value={searchInput}
               onChange={(v) => { setSearchInput(v); resetPage(); }}
               placeholder={t("searchPlaceholder")}
+              className="max-sm:basis-0"
             />
+            <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
             {expiring && (
               <button
                 type="button"
@@ -504,25 +537,165 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             )}
-            <TableSortControl
-              value={sortBy}
-              onValueChange={(value) => setSort(value, sortOrder)}
-              options={[
-                { value: "createdAt", label: t("sortDateAdded") },
-                { value: "startDate", label: t("tableHeaderStart") },
-                { value: "endDate", label: t("tableHeaderEnd") },
-              ]}
-              order={sortOrder}
-              onOrderChange={(next) => setSort(sortBy, next)}
-              compact
-            />
+            <div className="contents max-sm:hidden">
+              <TableSortControl
+                value={sortBy}
+                onValueChange={(value) => setSort(value, sortOrder)}
+                options={sortOptions}
+                order={sortOrder}
+                onOrderChange={(next) => setSort(sortBy, next)}
+                compact
+              />
+            </div>
             <span className="whitespace-nowrap text-xs text-muted-foreground">
               {total} {total !== 1 ? t("subscriberCountPlural") : t("subscriberCountLabel")}
             </span>
           </InlineFilterBar>
 
+          <PhoneFilterSheet
+            open={filterSheetOpen}
+            onOpenChange={setFilterSheetOpen}
+            activeCount={phoneFilterCount}
+            onClear={clearFilters}
+          >
+            <FilterField label={tCommon("sortBy")}>
+              <TableSortControl
+                value={sortBy}
+                onValueChange={(value) => setSort(value, sortOrder)}
+                options={sortOptions}
+                order={sortOrder}
+                onOrderChange={(next) => setSort(sortBy, next)}
+                className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+              />
+            </FilterField>
+            <FilterField label={t("tableHeaderStatus")} htmlFor="subscriptions-sheet-status">
+              <Select value={filters.status ?? "all"} onValueChange={onStatusChange}>
+                <SelectTrigger id="subscriptions-sheet-status" className={SHEET_CONTROL}><SelectValue /></SelectTrigger>
+                {statusSelectContent}
+              </Select>
+            </FilterField>
+            <FilterField label={t("planLabel")} htmlFor="subscriptions-sheet-plan">
+              <Select value={filters.planId ?? "all"} onValueChange={onPlanChange}>
+                <SelectTrigger id="subscriptions-sheet-plan" className={SHEET_CONTROL}><SelectValue /></SelectTrigger>
+                {planSelectContent}
+              </Select>
+            </FilterField>
+            <FilterField label={t("autoRenewLabel")} htmlFor="subscriptions-sheet-auto-renew">
+              <Select value={filters.autoRenew ?? "all"} onValueChange={onAutoRenewChange}>
+                <SelectTrigger id="subscriptions-sheet-auto-renew" className={SHEET_CONTROL}><SelectValue /></SelectTrigger>
+                {autoRenewSelectContent}
+              </Select>
+            </FilterField>
+            <FilterField label={t("dateRangeLabel")} htmlFor="subscriptions-sheet-date-from">
+              <div className="flex items-center gap-2">
+                <DateTimePicker
+                  id="subscriptions-sheet-date-from"
+                  mode="date"
+                  value={dateFrom}
+                  onChange={onDateFromChange}
+                  placeholder={t("dateRangeLabel")}
+                  className="min-w-0 flex-1 [&_button]:h-11 [&_button]:rounded-xl [&_button]:bg-card"
+                />
+                <span className="text-xs text-muted-foreground">{t("dateRangeToLabel")}</span>
+                <DateTimePicker
+                  mode="date"
+                  value={dateTo}
+                  onChange={onDateToChange}
+                  placeholder={t("dateRangeLabel")}
+                  className="min-w-0 flex-1 [&_button]:h-11 [&_button]:rounded-xl [&_button]:bg-card"
+                />
+              </div>
+            </FilterField>
+          </PhoneFilterSheet>
+
+        {/* ── Phone cards ── */}
+        <PhoneRecordList
+          className="p-3 sm:hidden"
+          label={t("tableHeaderUser")}
+          loading={isLoading}
+          empty={
+            <div className="text-center text-muted-foreground">
+              <Crown className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              {t("noSubscriptionsFound")}
+            </div>
+          }
+          items={subscriptions.map((sub) => {
+            const user = sub.userId;
+            const snap = sub.planSnapshot;
+            const days = daysUntil(sub.endDate);
+            const sCfg = STATUS_CONFIG[sub.status] ?? STATUS_CONFIG.active;
+            const SIcon = sCfg.icon;
+            return {
+              key: sub._id,
+              leading: (
+                <div className="h-10 w-10 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-500">
+                  {sub.targetRole === "employer" ? <Briefcase className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                </div>
+              ),
+              title: user?.name ?? (user ? "—" : t("deletedAccount")),
+              subtitle: user?.email ?? (user ? "—" : t("deletedAccountHint")),
+              trailing: (
+                <Badge className={`${sCfg.color} border text-xs`}>
+                  <SIcon className="h-3 w-3 mr-1" />
+                  {sub.status}
+                </Badge>
+              ),
+              actions: (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  aria-label={t("detailsTab")}
+                  onClick={() => setPhoneDetail(sub)}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+              ),
+              meta: (
+                <>
+                  <p className="flex min-w-0 items-center gap-1">
+                    <Crown className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">
+                      {snap?.name ?? "—"} · {snap?.price > 0 ? `${snap.price} ${snap.currency}${t("pricePerLabel")}${snap.billingCycle}` : t("priceFreeLabel")}
+                    </span>
+                  </p>
+                  <p className="flex min-w-0 items-center gap-1">
+                    <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{formatListDate(sub.startDate, locale)} – {formatListDate(sub.endDate, locale)}</span>
+                  </p>
+                </>
+              ),
+              badges: (
+                <>
+                  <Badge variant="outline" className="whitespace-nowrap text-xs">
+                    {sub.targetRole === "employer" ? t("employerBadge") : t("jobSeekerBadge")}
+                  </Badge>
+                  <Badge variant="outline" className={`text-xs ${sub.autoRenew ? "text-emerald-500 border-emerald-500/30" : "text-muted-foreground"}`}>
+                    {sub.autoRenew ? t("autoRenewYes") : t("autoRenewNo")}
+                  </Badge>
+                  {sub.status === "active" && (
+                    <span className={`text-xs font-medium ${days <= 7 ? "text-red-400" : days <= 30 ? "text-amber-400" : "text-foreground"}`}>
+                      {t("tableHeaderDaysLeft")}: {days > 0 ? `${days}${t("daysLabelShort")}` : t("todayLabel")}
+                    </span>
+                  )}
+                </>
+              ),
+            };
+          })}
+        />
+        <Dialog open={!!phoneDetail} onOpenChange={(open) => { if (!open) setPhoneDetail(null); }}>
+          <DialogContent className="max-h-[90dvh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{phoneDetail?.userId?.name ?? t("deletedAccount")}</DialogTitle>
+              <DialogDescription>{phoneDetail?.planSnapshot?.name ?? "—"}</DialogDescription>
+            </DialogHeader>
+            {phoneDetail && <ExpandedDetail sub={phoneDetail} />}
+          </DialogContent>
+        </Dialog>
+
         {/* ── Table ── */}
-        <Table>
+        <Table data-mobile-table="scroll" className="max-sm:hidden">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead className="w-8" />
@@ -781,7 +954,7 @@ function ExpandedDetail({ sub }: { sub: AdminSubscriptionItem }) {
             <p className="text-sm text-muted-foreground text-center py-4">{t("noInvoicesYet")}</p>
           ) : (
             <>
-              <Table>
+              <Table data-mobile-table="scroll">
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t("invoiceHeaderNumber")}</TableHead>

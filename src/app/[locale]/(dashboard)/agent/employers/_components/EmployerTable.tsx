@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { ArrowRight, Award, BriefcaseBusiness, Building2, CalendarClock, Check, Edit2, LogIn, MapPin, Trash2, UserPlus, type LucideIcon } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -95,11 +96,81 @@ export function EmployerTable({
     );
   };
 
+  const emptyState = (
+    <EmptyState
+      title={hasActiveFilters ? t("noResultsTitle") : t("emptyStateTitle")}
+      description={hasActiveFilters ? t("noResultsDescription") : t("emptyStateDescription")}
+      icon={Building2}
+    />
+  );
+
   return (
-    <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+    <>
+    <PhoneRecordList
+      className="sm:hidden"
+      label={t("heroTitle")}
+      loading={loading}
+      empty={emptyState}
+      items={employers.map((em) => {
+        const { quick, menu } = rowActions(em);
+        const activity = em.activity ?? NO_ACTIVITY;
+        const plan = em.userId ? plans?.get(em.userId) : undefined;
+        return {
+          key: em._id,
+          leading: <UserAvatar name={em.companyName ?? em.name} email={em.email} className="h-10 w-10" colorful />,
+          title: em.companyName ?? em.name,
+          subtitle: em.email,
+          actions: <RowActions name={em.companyName ?? em.name} quick={quick} menu={menu} />,
+          meta: (
+            <>
+              {(em.industry || em.location) && (
+                <p className="flex min-w-0 items-center gap-1">
+                  <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{[em.industry, em.location].filter(Boolean).join(" · ")}</span>
+                </p>
+              )}
+              <p className="flex min-w-0 items-center gap-1">
+                <BriefcaseBusiness className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">
+                  {t("activityOpenJobs", { count: activity.openJobs })} · {t("activityNewApplicants", { count: activity.newApplicants })}
+                </span>
+              </p>
+              <p className="flex min-w-0 items-center gap-1">
+                <CalendarClock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">
+                  {t("activityInterviews", { count: activity.upcomingInterviews })} · {t("activityHires", { count: activity.hires })}
+                </span>
+              </p>
+            </>
+          ),
+          badges: (
+            <>
+              <StatusBadge status={em.isActive ? "active" : "inactive"} />
+              {em.isAgentVerified && (
+                <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-status-selected">
+                  <Check className="h-3 w-3" aria-hidden="true" />
+                  {tc("verified")}
+                </span>
+              )}
+              {!em.assignedToMe && (
+                <span
+                  title={t("cardRegionOnly")}
+                  className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground"
+                >
+                  <MapPin className="h-3 w-3" aria-hidden="true" />
+                  {t("inYourRegion")}
+                </span>
+              )}
+              <ClientPlanChip plan={plan} known={Boolean(plans && em.userId)} />
+            </>
+          ),
+        };
+      })}
+    />
+    <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
       <div className="overflow-x-auto">
         <TooltipProvider delayDuration={200}>
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[200px]">{t("exportColumnCompany")}</TableHead>
@@ -190,5 +261,6 @@ export function EmployerTable({
         </TooltipProvider>
       </div>
     </section>
+    </>
   );
 }

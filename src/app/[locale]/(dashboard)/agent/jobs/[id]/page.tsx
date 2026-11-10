@@ -16,6 +16,7 @@ import Link from "next/link";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { useMediaQuery, PHONE_QUERY } from "@/hooks/useMediaQuery";
 import { JOB_STATUS_BADGE_CLASS, jobStatusLabelKey } from "@/components/features/employer/jobs/jobStatus";
+import { dedupeListItems } from "@/lib/jobs/descriptionSections";
 import { useAgentJobActions } from "../_components/useAgentJobActions";
 
 export default function AgentJobDetailPage() {
@@ -24,6 +25,7 @@ export default function AgentJobDetailPage() {
   const { data: job, isLoading: loading } = useJobDetail(id);
   const t = useTranslations("agentJobDetail");
   const tJobs = useTranslations("employerJobs");
+  const tWs = useTranslations("employerJobWorkspace");
   const [openingEmployerView, setOpeningEmployerView] = useState(false);
   const queryClient = useQueryClient();
   const isPhone = useMediaQuery(PHONE_QUERY);
@@ -226,6 +228,23 @@ export default function AgentJobDetailPage() {
           {job.description}
         </div>
       </div>
+
+      {([
+        ["overviewResponsibilities", job.responsibilities],
+        ["overviewQualifications", job.qualifications],
+        ["overviewBenefits", job.benefits],
+      ] as const).map(([key, list]) => {
+        const items = dedupeListItems(list ?? []);
+        if (items.length === 0) return null;
+        return (
+          <div key={key} className="card-base panel-body">
+            <h2 className="heading-section font-semibold text-foreground mb-3">{tWs(key)}</h2>
+            <ul className="list-inside list-disc space-y-1.5 text-sm text-foreground/80">
+              {items.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+        );
+      })}
 
       {/* Requirements */}
       {job.requirements && (

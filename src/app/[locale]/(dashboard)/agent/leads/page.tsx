@@ -37,10 +37,12 @@ import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions, InlinePicker, type RowAction } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { HIRING_RANGES, knownStageDetails, missingStageFields } from "@/lib/leads/stageRules";
 import {
@@ -190,7 +192,9 @@ function DroppableKanbanColumn({
       </div>
 
       {/* Cards */}
-      <div className="flex-1 space-y-1.5 overflow-y-auto p-1.5" style={{ maxHeight: "calc(100vh - 236px)" }}>
+      {/* Phone: columns stack, so a capped column became a scroll box inside
+          the page scroll with its last card cut off; it grows instead. */}
+      <div className="flex-1 space-y-1.5 overflow-y-auto p-1.5 max-sm:!max-h-none max-sm:!overflow-visible" style={{ maxHeight: "calc(100vh - 236px)" }}>
         {leads.length === 0 ? (
           <div className={`flex flex-col items-center gap-1.5 rounded-lg border border-dashed py-5 text-center transition-colors ${isOver ? "border-primary/60 bg-primary/5" : "border-transparent"}`}>
             <div className={`rounded-full p-2 ${config.bgColor}`}>
@@ -246,6 +250,7 @@ export default function AgentLeadsPage() {
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
   const [exhibitionFilter, setExhibitionFilter] = useUrlFilter("exhibitionId", "all");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [followUpFilter, setFollowUpFilter] = useUrlFilter("followUp", "all");
   // Set only by the agent home's cards ("converted today", "active this week").
   const [periodFilter, setPeriodFilter] = useUrlFilter("period", "all");
@@ -799,6 +804,85 @@ export default function AgentLeadsPage() {
     scoringId: scoringLeadId,
     convertingId: convertingLeadId,
   };
+  const phoneFilterCount = [statusFilter !== "all", exhibitionFilter !== "all", followUpFilter === "due"].filter(Boolean).length;
+  const toggleFollowUpFilter = () => setFollowUpFilter(followUpFilter === "due" ? "all" : "due");
+  const followUpToggleClass = `inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 text-sm font-semibold transition sm:h-9 ${
+    followUpFilter === "due"
+      ? "border-status-rejected/30 bg-status-rejected-bg text-status-rejected"
+      : "border-border bg-background/70 text-muted-foreground hover:text-foreground"
+  }`;
+
+  const tableRowActions = (lead: Lead): { quick: RowAction[]; menu: RowAction[] } => {
+    const rowActions: { quick: RowAction[]; menu: RowAction[] } = {
+      quick: [],
+      menu: [],
+    };
+
+    rowActions.quick.push({
+      key: "open",
+      label: t("openLead"),
+      icon: PanelRightOpen,
+      iconOnly: true,
+      onSelect: () => openWorkspace(lead),
+    });
+
+    // Quick action: Edit
+    if (can("leads", "update")) {
+      rowActions.quick.push({
+        key: "edit",
+        label: tc("edit"),
+        icon: Pencil,
+        iconOnly: true,
+        onSelect: () => openEdit(lead),
+      });
+    }
+
+    // Menu actions
+    rowActions.menu.push({
+      key: "score",
+      label: t("aiScore"),
+      icon: Flame,
+      pending: scoringLeadId === lead._id,
+      onSelect: () => scoreLead(lead._id),
+    });
+
+    // An employer account follows a Won lead (Mark Won offers it).
+    if (lead.status === "converted" && !lead.convertedToEmployerId && can("leads", "update")) {
+      rowActions.menu.push({
+        key: "convert",
+        label: t("createEmployerAccount"),
+        icon: Building2,
+        pending: convertingLeadId === lead._id,
+        onSelect: () => convertLead(lead),
+      });
+    }
+
+    if (can("leads", "delete")) {
+      rowActions.menu.push({
+        key: "delete",
+        label: tc("delete"),
+        icon: Trash2,
+        onSelect: () => handleDelete(lead._id),
+        destructive: true,
+      });
+    }
+    return rowActions;
+  };
+
+  const stagePicker = (lead: Lead) => (
+    <InlinePicker
+      name={lead.companyName}
+      picker={{
+        label: t("currentStage", { stage: STAGE_CONFIG[lead.status].label }),
+        value: lead.status,
+        options: STAGES.map((s) => ({ value: s, label: STAGE_CONFIG[s].label })),
+        onChange: (next) => { void requestStageChange(lead, next as LeadStatus); },
+        display: <StatusBadge status={lead.status} />,
+        pending: updating === lead._id,
+        disabled: updating === lead._id || !can("leads", "update"),
+      }}
+    />
+  );
 
   return (
     <div className="page-container">
@@ -834,7 +918,7 @@ export default function AgentLeadsPage() {
       {/* ──── Filters (InlineFilterBar) ──── */}
       {/* Both views: the board's stage fetches read the same search, stage,
           exhibition and follow-up filters as the table. */}
-      <InlineFilterBar className="workspace-panel-surface rounded-2xl border-b-0 mb-3"
+      <InlineFilterBar className="workspace-panel-surface rounded-2xl border-b-0 mb-3 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onExportCsv={viewMode === "board" ? () => void exportBoard("csv") : handleExportCsv}
         onExportExcel={viewMode === "board" ? () => void exportBoard("excel") : handleExportExcel}
         onExportPdf={viewMode === "board" ? () => void exportBoard("pdf") : handleExportPdf}
@@ -850,43 +934,43 @@ export default function AgentLeadsPage() {
           value={search}
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}>
-          <SelectTrigger aria-label={t("tableHeaderStage")} className={INLINE_FILTER_CONTROL}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("allStages")}</SelectItem>
-            {STAGES.map((s) => (
-              <SelectItem key={s} value={s}>{STAGE_CONFIG[s].label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={exhibitionFilter} onValueChange={(v) => { setExhibitionFilter(v); pagination.resetPage(); }}>
-          <SelectTrigger aria-label={t("allExhibitions")} className={`${INLINE_FILTER_CONTROL} truncate`} title={exhibitions.find((e) => e._id === exhibitionFilter)?.eventName}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("allExhibitions")}</SelectItem>
-            {exhibitions.map((e) => (
-              <SelectItem key={e._id} value={e._id}>{e.eventName}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <button
-          type="button"
-          onClick={() => setFollowUpFilter(followUpFilter === "due" ? "all" : "due")}
-          aria-pressed={followUpFilter === "due"}
-          title={t("dueFollowUpsHint")}
-          className={`inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 text-sm font-semibold transition sm:h-9 ${
-            followUpFilter === "due"
-              ? "border-status-rejected/30 bg-status-rejected-bg text-status-rejected"
-              : "border-border bg-background/70 text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <AlertTriangle className="h-3.5 w-3.5" />
-          {t("dueFollowUps")}
-        </button>
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}>
+            <SelectTrigger aria-label={t("tableHeaderStage")} className={INLINE_FILTER_CONTROL}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("allStages")}</SelectItem>
+              {STAGES.map((s) => (
+                <SelectItem key={s} value={s}>{STAGE_CONFIG[s].label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={exhibitionFilter} onValueChange={(v) => { setExhibitionFilter(v); pagination.resetPage(); }}>
+            <SelectTrigger aria-label={t("allExhibitions")} className={`${INLINE_FILTER_CONTROL} truncate`} title={exhibitions.find((e) => e._id === exhibitionFilter)?.eventName}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("allExhibitions")}</SelectItem>
+              {exhibitions.map((e) => (
+                <SelectItem key={e._id} value={e._id}>{e.eventName}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <button
+            type="button"
+            onClick={toggleFollowUpFilter}
+            aria-pressed={followUpFilter === "due"}
+            title={t("dueFollowUpsHint")}
+            className={followUpToggleClass}
+          >
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {t("dueFollowUps")}
+          </button>
+        </div>
         {(periodFilter === "converted_today" || periodFilter === "active_week") && (
           <button
             type="button"
@@ -901,6 +985,50 @@ export default function AgentLeadsPage() {
           </button>
         )}
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setStatusFilter("all"); setExhibitionFilter("all"); setFollowUpFilter("all"); pagination.resetPage(); }}
+      >
+        <FilterField label={t("tableHeaderStage")} htmlFor="agent-leads-sheet-stage">
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); pagination.resetPage(); }}>
+            <SelectTrigger id="agent-leads-sheet-stage" className={SHEET_CONTROL}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("allStages")}</SelectItem>
+              {STAGES.map((s) => (
+                <SelectItem key={s} value={s}>{STAGE_CONFIG[s].label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterField>
+        <FilterField label={t("fieldExhibition")} htmlFor="agent-leads-sheet-exhibition">
+          <Select value={exhibitionFilter} onValueChange={(v) => { setExhibitionFilter(v); pagination.resetPage(); }}>
+            <SelectTrigger id="agent-leads-sheet-exhibition" className={`${SHEET_CONTROL} truncate`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("allExhibitions")}</SelectItem>
+              {exhibitions.map((e) => (
+                <SelectItem key={e._id} value={e._id}>{e.eventName}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterField>
+        <button
+          type="button"
+          onClick={toggleFollowUpFilter}
+          aria-pressed={followUpFilter === "due"}
+          title={t("dueFollowUpsHint")}
+          className={`${followUpToggleClass} w-full justify-start rounded-xl`}
+        >
+          <AlertTriangle className="h-3.5 w-3.5" />
+          {t("dueFollowUps")}
+        </button>
+      </PhoneFilterSheet>
 
       {/* ──── Content Area ──── */}
       {loading && viewMode === "board" ? (
@@ -976,14 +1104,80 @@ export default function AgentLeadsPage() {
       ) : (
         /* ──── TABLE VIEW ──── */
         <>
-          <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+          {!error && (
+            <PhoneRecordList
+              className="sm:hidden"
+              label={t("pageTitle")}
+              loading={loading}
+              empty={
+                <EmptyState
+                  title={hasActiveFilters ? t("noResultsTitle") : t("emptyPipelineTitle")}
+                  description={hasActiveFilters ? t("noResultsDescription") : t("emptyPipelineDescription")}
+                  icon={Inbox}
+                />
+              }
+              items={leads.map((lead) => {
+                const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
+                return {
+                  key: lead._id,
+                  leading: <UserAvatar name={lead.companyName} className="h-10 w-10" colorful />,
+                  title: (
+                    <button
+                      type="button"
+                      onClick={() => openWorkspace(lead)}
+                      className="max-w-full !justify-start text-start hover:text-primary hover:underline"
+                    >
+                      {lead.companyName}
+                    </button>
+                  ),
+                  subtitle: [lead.contactPerson, lead.industry].filter(Boolean).join(" · ") || undefined,
+                  actions: <RowActions name={lead.companyName} {...tableRowActions(lead)} />,
+                  meta: (
+                    <>
+                      {lead.contactEmail && (
+                        <p className="flex min-w-0 items-center gap-1">
+                          <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{lead.contactEmail}</span>
+                        </p>
+                      )}
+                      {lead.country && (
+                        <p className="flex min-w-0 items-center gap-1">
+                          <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{lead.country}</span>
+                        </p>
+                      )}
+                      {lead.followUpAt && (
+                        <p className={`flex min-w-0 items-center gap-1 ${isOverdue ? "font-medium text-rose-700" : ""}`}>
+                          <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                          <span className="truncate">{t("tableHeaderFollowUp")}: {formatListDate(new Date(lead.followUpAt))}</span>
+                          {isOverdue && <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />}
+                        </p>
+                      )}
+                    </>
+                  ),
+                  badges: (
+                    <>
+                      {stagePicker(lead)}
+                      {lead.score != null && (
+                        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${TEMP_STYLES[lead.qualificationLevel ?? "cold"] ?? TEMP_STYLES.cold}`}>
+                          <Gauge className="h-3 w-3" />{lead.score}
+                        </span>
+                      )}
+                    </>
+                  ),
+                };
+              })}
+            />
+          )}
+
+          <section className={`workspace-panel-surface overflow-hidden rounded-2xl ${error ? "" : "max-sm:hidden"}`}>
             {error ? (
               <div className="p-6">
                 <ErrorState onRetry={() => void fetchLeads()} />
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table data-mobile-table="scroll">
                   <TableHeader>
                     <TableRow className="bg-muted/30 hover:bg-muted/30">
                       <TableHead>{t("tableHeaderCompany")}</TableHead>
@@ -1010,61 +1204,8 @@ export default function AgentLeadsPage() {
                         </TableCell>
                       </TableRow>
                     ) : leads.map((lead) => {
-                      const config = STAGE_CONFIG[lead.status];
                       const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
-                      const rowActions: { quick: RowAction[]; menu: RowAction[] } = {
-                        quick: [],
-                        menu: [],
-                      };
-
-                      rowActions.quick.push({
-                        key: "open",
-                        label: t("openLead"),
-                        icon: PanelRightOpen,
-                        iconOnly: true,
-                        onSelect: () => openWorkspace(lead),
-                      });
-
-                      // Quick action: Edit
-                      if (can("leads", "update")) {
-                        rowActions.quick.push({
-                          key: "edit",
-                          label: tc("edit"),
-                          icon: Pencil,
-                          iconOnly: true,
-                          onSelect: () => openEdit(lead),
-                        });
-                      }
-
-                      // Menu actions
-                      rowActions.menu.push({
-                        key: "score",
-                        label: t("aiScore"),
-                        icon: Flame,
-                        pending: scoringLeadId === lead._id,
-                        onSelect: () => scoreLead(lead._id),
-                      });
-
-                      // An employer account follows a Won lead (Mark Won offers it).
-                      if (lead.status === "converted" && !lead.convertedToEmployerId && can("leads", "update")) {
-                        rowActions.menu.push({
-                          key: "convert",
-                          label: t("createEmployerAccount"),
-                          icon: Building2,
-                          pending: convertingLeadId === lead._id,
-                          onSelect: () => convertLead(lead),
-                        });
-                      }
-
-                      if (can("leads", "delete")) {
-                        rowActions.menu.push({
-                          key: "delete",
-                          label: tc("delete"),
-                          icon: Trash2,
-                          onSelect: () => handleDelete(lead._id),
-                          destructive: true,
-                        });
-                      }
+                      const rowActions = tableRowActions(lead);
 
                       return (
                         <TableRow
@@ -1093,18 +1234,7 @@ export default function AgentLeadsPage() {
 
                           {/* Stage: column 2, so a collapsed phone card shows it */}
                           <TableCell>
-                            <InlinePicker
-                              name={lead.companyName}
-                              picker={{
-                                label: t("currentStage", { stage: config.label }),
-                                value: lead.status,
-                                options: STAGES.map((s) => ({ value: s, label: STAGE_CONFIG[s].label })),
-                                onChange: (next) => { void requestStageChange(lead, next as LeadStatus); },
-                                display: <StatusBadge status={lead.status} />,
-                                pending: updating === lead._id,
-                                disabled: updating === lead._id || !can("leads", "update"),
-                              }}
-                            />
+                            {stagePicker(lead)}
                           </TableCell>
 
                           {/* Contact */}

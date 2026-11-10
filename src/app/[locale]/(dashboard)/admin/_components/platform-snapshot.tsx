@@ -28,12 +28,14 @@ const ICON_TONE = "bg-primary/10 text-primary";
  * also has wider columns.
  */
 function layout(count: number, index: number): { grid: string; cell: string } {
-  const lastOdd = count % 2 === 1 && index === count - 1 ? "sm:max-lg:col-span-2" : "";
+  // Phones: 2x2 tiles (the design's "four numbers in a two-by-two grid"); an
+  // odd last tile spans the row. Was one full-width row per metric.
+  const lastOdd = count % 2 === 1 && index === count - 1 ? "max-lg:col-span-2" : "";
   if (count === 5) {
-    return { grid: "sm:max-lg:grid-cols-2 lg:grid-cols-6 xl:grid-cols-5", cell: `${lastOdd} ${index < 3 ? "lg:col-span-2" : "lg:col-span-3"} xl:col-span-1` };
+    return { grid: "max-lg:grid-cols-2 lg:grid-cols-6 xl:grid-cols-5", cell: `${lastOdd} ${index < 3 ? "lg:col-span-2" : "lg:col-span-3"} xl:col-span-1` };
   }
   const wide = count >= 4 ? "lg:grid-cols-4" : count === 3 ? "lg:grid-cols-3" : count === 2 ? "lg:grid-cols-2" : "";
-  return { grid: `sm:max-lg:grid-cols-2 ${wide}`, cell: lastOdd };
+  return { grid: `max-lg:grid-cols-2 ${wide}`, cell: lastOdd };
 }
 
 /**
@@ -60,18 +62,6 @@ function trend(window: WindowedCount, days: number, t: DashboardTranslator) {
   const compact =
     direction !== "flat" && change.kind === "percent" ? `${value}%` : t("snapshot.changeShortCount", { value, direction });
   return { change, direction, Icon, tone, text, compact };
-}
-
-/** Compact phone suffix; the full comparison remains available to assistive tech. Nothing either side prints nothing. */
-function ShortChange({ window, days, t }: { window: WindowedCount; days: number; t: DashboardTranslator }) {
-  const { change, Icon, tone, text, compact } = trend(window, days, t);
-  if (change.kind === "none") return <span className="sr-only">{text}</span>;
-  return (
-    <span className={`inline-flex shrink-0 items-center gap-0.5 font-semibold ${tone}`} aria-label={text} title={text}>
-      {Icon && <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />}
-      <span aria-hidden="true">{compact}</span>
-    </span>
-  );
 }
 
 /** A compact delta pill; the full comparison is retained as a label and tooltip. */
@@ -123,34 +113,19 @@ export function AdminPlatformSnapshot({ data, keys, days, locale, t }: Props) {
                 href={`/${locale}${card.path}`}
                 className="group flex h-full min-w-0 flex-col rounded-lg bg-card/80 p-2.5 ring-1 ring-inset ring-border/60 transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                {/* Phones: one row per metric. */}
-                <span className="flex items-center gap-2.5 [flex-wrap:nowrap] sm:hidden">
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${ICON_TONE}`}>
-                    <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs font-semibold text-foreground">{t(`snapshot.${key}`)}</span>
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground [flex-wrap:nowrap]">
-                      <span className="truncate">{t(`snapshot.added.${key}`, { count: metric.added.current, days })}</span>
-                      <ShortChange window={metric.added} days={days} t={t} />
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-lg font-semibold tabular-nums text-foreground">{formatCount(metric.total)}</span>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground rtl:rotate-180" aria-hidden="true" />
-                </span>
-                <span className="hidden items-center gap-2 [flex-wrap:nowrap] sm:flex">
+                <span className="flex items-center gap-2 [flex-wrap:nowrap]">
                   <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${ICON_TONE}`}>
                     <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">{t(`snapshot.${key}`)}</span>
                   <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 rtl:rotate-180" aria-hidden="true" />
                 </span>
-                <span className="mt-1.5 hidden flex-wrap items-baseline gap-x-2 sm:flex">
+                <span className="mt-1.5 flex flex-wrap items-baseline gap-x-2">
                   <span className="text-xl font-semibold tabular-nums tracking-tight text-foreground sm:text-2xl">{formatCount(metric.total)}</span>
                   <span className="text-xs text-muted-foreground">{t(`snapshot.scope.${card.scope}`)}</span>
                 </span>
-                <span className="mt-1 hidden text-xs text-foreground sm:block">{t(`snapshot.added.${key}`, { count: metric.added.current, days })}</span>
-                <span className="hidden sm:block">
+                <span className="mt-1 text-xs text-foreground">{t(`snapshot.added.${key}`, { count: metric.added.current, days })}</span>
+                <span className="block">
                   <Change window={metric.added} days={days} t={t} />
                 </span>
               </Link>

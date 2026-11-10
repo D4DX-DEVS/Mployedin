@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { PageHero } from "@/components/shared/PageHero";
 import {
   Bell, Mail, Clock, Users, Send, BarChart3, Shield, Loader2,
@@ -417,9 +418,33 @@ function EmailLogsTab() {
         </Button>
       </div>
 
-      <div className="rounded-xl border border-border/50 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+      {/* Phone: one card per email (subject, recipient, source, status) — the generic table-to-card
+          fallback showed only time and recipient and hid the status behind a tap. */}
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("emailLogsTableSubjectHeader")}
+        loading={loading}
+        empty={<p className="text-center text-sm text-muted-foreground">{t("emailLogsEmptyMessage")}</p>}
+        items={logs.map((log) => ({
+          key: log._id,
+          title: log.subject,
+          subtitle: log.to,
+          trailing: (
+            <Badge variant="outline" className={`text-[11px] px-1.5 py-0 ${log.status === "sent" || log.status === "delivered" ? "text-green-600 border-green-200" : "text-red-600 border-red-200"}`}>
+              {log.status}
+            </Badge>
+          ),
+          meta: (
+            <>
+              <p>{formatDateTime(new Date(log.sentAt))} · {log.source}</p>
+              {log.errorMessage ? <p className="break-words text-red-600">{log.errorMessage}</p> : null}
+            </>
+          ),
+        }))}
+      />
+      <div className="rounded-xl border border-border/50 overflow-hidden max-sm:border-0">
+        <div className="overflow-x-auto max-sm:hidden">
+          <table className="w-full text-xs" data-mobile-table="scroll">
             <thead className="bg-muted/40">
               <tr>
                 <th className="text-left px-3 py-2 font-medium text-muted-foreground">{t("emailLogsTableTimeHeader")}</th>
@@ -537,10 +562,19 @@ function UserOverridesTab({ config, onRefresh }: { config: SystemConfigData | nu
       <SectionCard title={t("addUserOverrideTitle")} icon={UserX}>
         <div className="p-5 space-y-3">
           <p className="text-xs text-muted-foreground">{t("addUserOverrideDescription")}</p>
+          {/* Visible labels on phones (placeholders alone vanish once typed into, WCAG 3.3.2);
+              screen-reader-only from sm up so the desktop row is unchanged. */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Input placeholder={t("userIdPlaceholder")} value={userId} onChange={(e) => setUserId(e.target.value)} className="text-sm" />
+            <div className="space-y-1 sm:space-y-0">
+            <label htmlFor="override-user-id" className="block text-xs font-medium text-muted-foreground sm:sr-only">{t("userIdPlaceholder")}</label>
+            <Input id="override-user-id" placeholder={t("userIdPlaceholder")} value={userId} onChange={(e) => setUserId(e.target.value)} className="text-sm" />
+            </div>
+            <div className="space-y-1 sm:space-y-0">
+            {t.has("overrideActionLabel") ? (
+              <label htmlFor="override-action" className="block text-xs font-medium text-muted-foreground sm:sr-only">{t("overrideActionLabel")}</label>
+            ) : null}
             <Select value={action} onValueChange={setAction}>
-              <SelectTrigger className="text-sm">
+              <SelectTrigger id="override-action" className="text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -549,9 +583,13 @@ function UserOverridesTab({ config, onRefresh }: { config: SystemConfigData | nu
                 <SelectItem value="force_instant">{t("forceInstantOption")}</SelectItem>
               </SelectContent>
             </Select>
-            <Input placeholder={t("reasonPlaceholder")} value={reason} onChange={(e) => setReason(e.target.value)} className="text-sm" />
+            </div>
+            <div className="space-y-1 sm:space-y-0">
+            <label htmlFor="override-reason" className="block text-xs font-medium text-muted-foreground sm:sr-only">{t("reasonPlaceholder")}</label>
+            <Input id="override-reason" placeholder={t("reasonPlaceholder")} value={reason} onChange={(e) => setReason(e.target.value)} className="text-sm" />
+            </div>
           </div>
-          <Button onClick={addOverride} disabled={submitting || !userId || !reason} size="sm" className="gap-2">
+          <Button onClick={addOverride} disabled={submitting || !userId || !reason} size="sm" className="gap-2 max-sm:min-h-11 max-sm:w-full">
             <Shield className="w-3.5 h-3.5" /> {t("addOverrideButton")}
           </Button>
         </div>
@@ -608,9 +646,13 @@ function TestEmailTab() {
     <SectionCard title={t("sendTestEmailTitle")} icon={Send}>
       <div className="p-5 space-y-4">
         <p className="text-xs text-muted-foreground">{t("sendTestEmailDescription")}</p>
-        <div className="flex items-center gap-3">
-          <Input type="email" placeholder={t("testEmailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} className="max-w-sm" />
-          <Button onClick={send} disabled={sending || !email} size="sm" className="gap-2">
+        {/* Phone: field over a full-width button; side by side the button ran off the card. */}
+        {t.has("testEmailLabel") ? (
+          <label htmlFor="test-email-to" className="block text-xs font-medium text-muted-foreground sm:sr-only">{t("testEmailLabel")}</label>
+        ) : null}
+        <div className="flex items-center gap-3 max-sm:flex-col max-sm:items-stretch">
+          <Input id="test-email-to" type="email" placeholder={t("testEmailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} className="max-w-sm max-sm:max-w-none" />
+          <Button onClick={send} disabled={sending || !email} size="sm" className="gap-2 max-sm:min-h-11">
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} {t("sendTestButton")}
           </Button>
         </div>
@@ -660,7 +702,7 @@ function FlowStep({ n, title, desc }: { n: number; title: string; desc: string }
   return (
     <div className="flex items-start gap-3">
       <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">{n}</div>
-      <div><p className="font-medium text-sm">{title}</p><p className="text-xs text-muted-foreground">{desc}</p></div>
+      <div className="min-w-0 flex-1"><p className="font-medium text-sm">{title}</p><p className="text-xs text-muted-foreground">{desc}</p></div>
     </div>
   );
 }

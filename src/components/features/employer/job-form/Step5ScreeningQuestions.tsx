@@ -298,7 +298,7 @@ export function Step5ScreeningQuestions() {
                       }
                     }}
                   >
-                    <SelectTrigger className="h-9 w-auto rounded-xl">
+                    <SelectTrigger className="h-9 w-auto rounded-xl" aria-label={t("answerType")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

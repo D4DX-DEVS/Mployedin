@@ -171,8 +171,8 @@ export default function AgentReportsPage() {
               { label: t("overdueFollowups"), value: analytics.kpis.overdueFollowUps, icon: <Flame className="h-4 w-4" />, alert: analytics.kpis.overdueFollowUps > 0 },
               { label: t("scheduledInterviews"), value: analytics.kpis.scheduledInterviews, icon: <CalendarCheck2 className="h-4 w-4" /> },
             ].map((s) => (
-              <div key={s.label} className={`min-w-0 workspace-glass-panel card-pad rounded-2xl ${s.alert ? "border-amber-500/30" : ""}`}>
-                <div className="flex items-center gap-2 text-muted-foreground">{s.icon}<p className="text-[11px] font-semibold uppercase tracking-[0.16em]">{s.label}</p></div>
+              <div key={s.label} className={`flex min-w-0 flex-col justify-between workspace-glass-panel card-pad rounded-2xl ${s.alert ? "border-amber-500/30" : ""}`}>
+                <div className="flex items-center gap-2 text-muted-foreground">{s.icon}<p className="text-[11px] font-semibold uppercase tracking-[0.16em] max-sm:tracking-[0.06em]">{s.label}</p></div>
                 <p className={`mt-2 text-xl sm:text-2xl font-semibold ${s.alert ? "text-amber-600" : "text-foreground"}`}>{s.value}</p>
               </div>
             ))}
@@ -222,7 +222,7 @@ export default function AgentReportsPage() {
             const professionLabel = (p: string) =>
               p === "__other__" ? t("professionOther") : p === "__not_specified__" ? t("professionNotSpecified") : p;
             return (
-              <section className="workspace-panel-surface rounded-3xl panel-body" aria-labelledby="report-seekers-heading">
+              <section className="workspace-panel-surface rounded-3xl panel-body max-sm:!border-0 max-sm:!bg-transparent max-sm:!shadow-none max-sm:!p-0" aria-labelledby="report-seekers-heading">
                 <div className="mb-4 flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" aria-hidden="true" />
                   <h2 id="report-seekers-heading" className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("seekersHeading")}</h2>
@@ -232,9 +232,9 @@ export default function AgentReportsPage() {
                     <Link
                       key={tile.key}
                       href={tile.href}
-                      className="min-w-0 workspace-glass-panel card-pad rounded-2xl transition-colors hover:border-primary/25 hover:bg-card"
+                      className="flex min-w-0 flex-col workspace-glass-panel card-pad rounded-2xl transition-colors hover:border-primary/25 hover:bg-card"
                     >
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{tile.label}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground max-sm:min-h-[3em] max-sm:tracking-[0.06em]">{tile.label}</p>
                       <p className="mt-2 text-xl font-semibold tabular-nums text-foreground sm:text-2xl">{tile.value}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{tile.hint}</p>
                     </Link>
@@ -267,21 +267,21 @@ export default function AgentReportsPage() {
           })()}
 
           {/* ─── Commission Summary ─── */}
-          <section className="workspace-panel-surface rounded-3xl panel-body">
+          <section className="workspace-panel-surface rounded-3xl panel-body max-sm:!border-0 max-sm:!bg-transparent max-sm:!shadow-none max-sm:!p-0">
             <div className="flex items-center gap-2 mb-4">
               <CircleDollarSign className="h-4 w-4 text-primary" />
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("commissionSummary")}</p>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {[
                 { label: t("commissionPending"), data: analytics.commissions.pending, color: "text-status-shortlisted" },
                 { label: t("commissionApproved"), data: analytics.commissions.approved, color: "text-status-applied" },
                 { label: t("commissionPaid"), data: analytics.commissions.paid, color: "text-status-selected" },
               ].map((c) => (
                 <div key={c.label} className="min-w-0 workspace-glass-panel card-pad rounded-2xl text-center">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{c.label}</p>
+                  <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground max-sm:tracking-normal">{c.label}</p>
                   <p className={`mt-2 text-xl sm:text-2xl font-semibold ${c.color}`}>{c.data?.count ?? 0}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{formatCurrency((c.data?.total ?? 0), currencyCode)}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">{formatCurrency((c.data?.total ?? 0), currencyCode)}</p>
                 </div>
               ))}
             </div>
@@ -293,10 +293,10 @@ export default function AgentReportsPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("monthlyTrends")}</p>
               <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("sixMonthPerformance")}</h2>
               <div className="mt-5 overflow-x-auto rounded-3xl border border-border/60">
-                <Table>
+                <Table data-mobile-table="scroll">
                   <TableHeader>
                     <TableRow className="bg-muted/30 hover:bg-muted/30">
-                      <TableHead>{t("month")}</TableHead>
+                      <TableHead className="max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{t("month")}</TableHead>
                       <TableHead className="text-right">{t("leads")}</TableHead>
                       <TableHead className="text-right">{t("applications")}</TableHead>
                       <TableHead className="text-right">{t("placements")}</TableHead>
@@ -306,7 +306,7 @@ export default function AgentReportsPage() {
                   <TableBody>
                     {analytics.monthlyTrends.map((m) => (
                       <TableRow key={m.month} className="bg-transparent">
-                        <TableCell className="font-medium text-foreground">{m.month}</TableCell>
+                        <TableCell className="font-medium text-foreground max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{m.month}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{m.leads}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{m.applications}</TableCell>
                         <TableCell className="text-right text-muted-foreground">{m.placements}</TableCell>
@@ -330,7 +330,7 @@ export default function AgentReportsPage() {
       )}
 
       {/* ─── AI Report Section ─── */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body max-sm:!border-0 max-sm:!bg-transparent max-sm:!shadow-none max-sm:!p-0">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("aiPoweredReports")}</p>
         <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{t("generateCustomReports")}</h2>
         <p className="mt-1 text-sm text-muted-foreground max-sm:hidden">{t("reportsFromLiveData")}</p>

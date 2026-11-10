@@ -49,19 +49,19 @@ export function BenefitsSection({ locale, audience }: BenefitsSectionProps) {
         </Link>
       </div>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
+      <div className="mt-8 grid gap-4 max-sm:mt-6 max-sm:gap-3 md:grid-cols-3">
         {benefits.map((benefit) => {
           const Icon = benefit.icon;
           return (
             <article
               key={benefit.title}
-              className="group flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-6 transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_20px_50px_-34px_hsl(var(--brand-blue-dark)/0.45)]"
+              className="group flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-6 max-sm:grid max-sm:grid-cols-[2.75rem_minmax(0,1fr)] max-sm:gap-x-3 max-sm:gap-y-1 max-sm:p-4 transition-all hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_20px_50px_-34px_hsl(var(--brand-blue-dark)/0.45)]"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl max-sm:row-span-2 bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                 <Icon className="h-5 w-5" aria-hidden="true" />
               </span>
-              <h3 className="text-xl font-extrabold text-foreground">{benefit.title}</h3>
-              <p className="text-base leading-7 text-muted-foreground">{benefit.description}</p>
+              <h3 className="text-xl font-extrabold text-foreground max-sm:text-base max-sm:leading-snug">{benefit.title}</h3>
+              <p className="text-base leading-7 text-muted-foreground max-sm:col-start-2 max-sm:text-sm max-sm:leading-6">{benefit.description}</p>
             </article>
           );
         })}

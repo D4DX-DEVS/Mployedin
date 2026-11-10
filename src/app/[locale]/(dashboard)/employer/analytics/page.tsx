@@ -571,6 +571,7 @@ function PipelineTab({
             value={selectedJobId}
             onValueChange={setSelectedJobId}
             placeholder={t("allJobs")}
+            ariaLabel={t("selectedJob")}
             options={[
               { value: "", label: t("allJobs") },
               ...jobOptions.map((j) => ({ value: j.jobId, label: `${j.title} (${j.total})` })),

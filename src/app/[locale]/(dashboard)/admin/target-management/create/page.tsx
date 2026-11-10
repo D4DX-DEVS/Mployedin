@@ -273,7 +273,8 @@ export default function CreateTargetProfilePage() {
       <div className="workspace-glass-panel rounded-2xl panel-body">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <div className="workspace-tone-sky rounded-xl p-2.5">
+            {/* PageHeader already shows the page icon; on a phone this second tile sat alone on its own row. */}
+            <div className="workspace-tone-sky rounded-xl p-2.5 max-sm:hidden">
               <Target className="h-5 w-5" />
             </div>
             <PageHeader title={t("createTitle")} description={t("createDescription")} />
@@ -391,8 +392,10 @@ export default function CreateTargetProfilePage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 border-b border-border/70">
+            {/* Phone: its own stacked layout (max-sm: below) instead of the generic table-to-card
+                fallback, which ran name, email and area into one truncated line and hid the schedule. */}
+            <table className="w-full text-sm max-sm:block" data-mobile-table="scroll">
+              <thead className="bg-muted/40 border-b border-border/70 max-sm:hidden">
                 <tr>
                   <th className="px-4 py-3 text-start text-[11px] font-semibold uppercase tracking-wider text-muted-foreground min-w-[200px]">
                     {t("supervisorTableHeader")}
@@ -408,10 +411,10 @@ export default function CreateTargetProfilePage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/50">
+              <tbody className="divide-y divide-border/50 max-sm:block">
                 {filteredSupervisors.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                  <tr className="max-sm:block">
+                    <td colSpan={4} className="px-4 py-10 text-center text-sm text-muted-foreground max-sm:block">
                       {t("noSupervisorsMatchFilters")}
                     </td>
                   </tr>
@@ -436,12 +439,12 @@ export default function CreateTargetProfilePage() {
                   })
                 )}
               </tbody>
-              <tfoot className="bg-muted/30 border-t-2 border-border">
-                <tr>
-                  <td className="px-4 py-3 text-sm font-semibold text-foreground">
+              <tfoot className="bg-muted/30 border-t-2 border-border max-sm:block">
+                <tr className="max-sm:flex max-sm:items-center max-sm:justify-between max-sm:gap-3">
+                  <td className="px-4 py-3 text-sm font-semibold text-foreground max-sm:block max-sm:pe-0">
                     {t("totalLabel")} ({t("supervisorCountLabel", { count: validRows.length })})
                   </td>
-                  <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums" colSpan={3}>
+                  <td className="px-4 py-3 text-center text-sm font-bold text-foreground tabular-nums max-sm:block max-sm:ps-0 max-sm:text-end" colSpan={3}>
                     {totalsByCurrency.length === 0
                       ? "—"
                       : totalsByCurrency.map(([currency, amount]) => formatProfit(amount, currency, locale)).join(" · ")}
@@ -503,11 +506,11 @@ function SupervisorTargetRow({
 
   return (
     <>
-      <tr className={`transition-colors ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
-        <td className="px-4 py-3">
-          <div>
+      <tr className={`transition-colors max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:items-end max-sm:gap-x-3 max-sm:gap-y-2 max-sm:px-4 max-sm:py-3 ${hasTarget ? "bg-sky-50/50" : "hover:bg-muted/20"}`}>
+        <td className="px-4 py-3 max-sm:col-span-2 max-sm:block max-sm:p-0">
+          <div className="min-w-0">
             <p className="font-medium text-foreground">{supervisor.name}</p>
-            <p className="text-[11px] text-muted-foreground">{supervisor.email}</p>
+            <p className="break-all text-[11px] text-muted-foreground">{supervisor.email}</p>
             {supervisor.territory && (
               <p className="text-[11px] text-muted-foreground mt-0.5">{supervisor.territory}</p>
             )}
@@ -519,9 +522,13 @@ function SupervisorTargetRow({
           </div>
         </td>
 
-        <td className="px-4 py-3">
+        <td className="px-4 py-3 max-sm:col-start-1 max-sm:row-start-2 max-sm:block max-sm:p-0">
+          <Label htmlFor={`target-amount-${supervisor.id}`} className="mb-1 block text-xs font-medium text-muted-foreground sm:hidden">
+            {t("profitTargetLabel", { currency: supervisor.currency })}
+          </Label>
           <div className="relative">
             <Input
+              id={`target-amount-${supervisor.id}`}
               type="number"
               aria-label={t("profitTargetLabel", { currency: supervisor.currency })}
               min={0}
@@ -531,7 +538,7 @@ function SupervisorTargetRow({
               onChange={(e) => onUpdateTarget(supervisor.id, Number(e.target.value) || 0)}
               placeholder="0"
               disabled={locked}
-              className="h-9 w-full rounded-lg border-border bg-background pe-12 text-center text-sm tabular-nums"
+              className="h-9 w-full rounded-lg border-border bg-background pe-12 text-center text-sm tabular-nums max-sm:h-11"
             />
             <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-[11px] font-medium text-muted-foreground">
               {supervisor.currency}
@@ -539,7 +546,7 @@ function SupervisorTargetRow({
           </div>
         </td>
 
-        <td className="px-4 py-3">
+        <td className="px-4 py-3 max-sm:col-span-2 max-sm:row-start-3 max-sm:block max-sm:p-0">
           <ScheduleControls
             draft={row.draft}
             year={year}
@@ -550,13 +557,13 @@ function SupervisorTargetRow({
           {hasTarget && issue ? <p role="alert" className="mt-1 text-[11px] font-medium text-rose-600">{issue}</p> : null}
         </td>
 
-        <td className="px-4 py-3 text-center">
+        <td className="px-4 py-3 text-center max-sm:col-start-2 max-sm:row-start-2 max-sm:block max-sm:p-0">
           <Button
             type="button"
             aria-label={ta("toggleBreakdown")}
             variant={row.showSchedule ? "default" : "outline"}
             size="dense"
-            className="rounded-lg text-xs gap-1"
+            className="rounded-lg text-xs gap-1 max-sm:h-11 max-sm:px-3"
             onClick={() => onToggleSchedule(supervisor.id)}
             disabled={!hasTarget}
           >
@@ -567,8 +574,8 @@ function SupervisorTargetRow({
       </tr>
 
       {row.showSchedule && hasTarget && (
-        <tr className="bg-muted/10">
-          <td colSpan={4} className="px-4 py-3">
+        <tr className="bg-muted/10 max-sm:block">
+          <td colSpan={4} className="px-4 py-3 max-sm:block">
             <SchedulePeriodsEditor
               draft={row.draft}
               year={year}

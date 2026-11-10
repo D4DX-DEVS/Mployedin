@@ -111,12 +111,12 @@ function SectionCard({ children, className = "" }: { children: React.ReactNode; 
 
 function SectionHeader({ icon: Icon, title, description }: { icon: typeof Globe; title: string; description?: string }) {
   return (
-    <div className="px-6 py-4 border-b border-border/40">
+    <div className="px-6 py-4 border-b border-border/40 max-sm:px-4">
       <div className="flex items-center gap-2.5">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 shrink-0">
           <Icon className="w-4 h-4 text-primary" />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <h3 className="heading-label font-semibold tracking-tight">{title}</h3>
           {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
         </div>
@@ -315,7 +315,7 @@ function ProfileTab() {
       {/* Role Badge Hero with Avatar */}
       <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-primary/[0.06] via-primary/[0.03] to-transparent">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/[0.04] rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="p-6 flex items-center gap-4">
+        <div className="p-6 max-sm:p-4 flex items-center gap-4">
           {/* Avatar */}
           <div className="relative group shrink-0">
             <div className="w-20 h-20 rounded-2xl border-2 border-primary/20 bg-muted/30 flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary/40 shadow-sm">
@@ -393,7 +393,7 @@ function ProfileTab() {
       {/* Editable Profile Fields */}
       <SectionCard>
         <SectionHeader icon={UserCircle} title={t("profile.basicTitle")} description={t("profile.basicDescription")} />
-        <div className="p-6 space-y-5">
+        <div className="p-6 max-sm:p-4 space-y-5">
           {profileLoading ? (
             <div className="h-24 animate-pulse rounded-xl bg-muted/30" />
           ) : (
@@ -515,7 +515,7 @@ function RegionTab() {
     <>
       <SectionCard>
         <SectionHeader icon={Globe} title={t("region.title")} description={t("region.description")} />
-        <div className="p-6 space-y-6">
+        <div className="p-6 max-sm:p-4 space-y-6">
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="field">
               <Label htmlFor="country" className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -573,15 +573,15 @@ function RegionTab() {
       {/* Currency Preview */}
       <SectionCard>
         <SectionHeader icon={DollarSign} title={t("region.previewTitle")} description={t("region.previewDescription")} />
-        <div className="p-6">
-          <div className="grid gap-4 sm:grid-cols-3">
+        <div className="p-6 max-sm:p-4">
+          <div className="grid gap-4 sm:grid-cols-3 max-sm:gap-0 max-sm:divide-y max-sm:divide-border/50">
             {[12500, 85000, 250000].map((amount) => {
               const info = SUPPORTED_CURRENCIES.find((c) => c.code === currencyCode);
               const symbol = info?.symbol ?? currencyCode;
               return (
-                <div key={amount} className="rounded-xl border border-border/50 bg-muted/20 card-pad">
+                <div key={amount} className="rounded-xl border border-border/50 bg-muted/20 card-pad max-sm:flex max-sm:items-center max-sm:justify-between max-sm:gap-3 max-sm:rounded-none max-sm:!border-0 max-sm:!bg-transparent max-sm:px-0">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("region.sample")}</p>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
+                  <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground max-sm:mt-0 max-sm:text-lg">
                     {symbol} {amount.toLocaleString(numberLocale)}
                   </p>
                 </div>
@@ -623,7 +623,7 @@ function CommissionTab() {
     <>
       <SectionCard>
         <SectionHeader icon={Percent} title={t("commission.title")} description={t("commission.description")} />
-        <div className="p-6 space-y-6">
+        <div className="p-6 max-sm:p-4 space-y-6">
           <div className="max-w-md space-y-3">
             <Label className="flex items-center gap-2 text-sm font-medium text-foreground">
               <Percent className="h-4 w-4 text-muted-foreground" />
@@ -642,13 +642,13 @@ function CommissionTab() {
           {commissionRate > 0 && (
             <div>
               <p className="text-sm font-medium text-foreground mb-3">{t("commission.projected")}</p>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-3 max-sm:gap-0 max-sm:divide-y max-sm:divide-border/50">
                 {[50000, 120000, 300000].map((salary) => {
                   const commission = salary * (commissionRate / 100);
                   const info = SUPPORTED_CURRENCIES.find((c) => c.code === currencyCode);
                   const symbol = info?.symbol ?? currencyCode;
                   return (
-                    <div key={salary} className="rounded-xl border border-border/50 bg-muted/20 card-pad">
+                    <div key={salary} className="rounded-xl border border-border/50 bg-muted/20 card-pad max-sm:rounded-none max-sm:!border-0 max-sm:!bg-transparent max-sm:px-0">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         {t("commission.onPlacement", { amount: `${symbol} ${salary.toLocaleString(numberLocale)}` })}
                       </p>
@@ -806,7 +806,7 @@ function NotificationsTab() {
       {(prefs.emailFrequency === "daily" || prefs.emailFrequency === "weekly") && (
         <SectionCard>
           <SectionHeader icon={Clock} title={t("notifications.digestTitle")} description={t("notifications.digestDescription")} />
-          <div className="p-6 grid gap-6 sm:grid-cols-2">
+          <div className="p-6 max-sm:p-4 grid gap-6 sm:grid-cols-2">
             <div className="field">
               <Label className="text-sm font-medium text-foreground">{t("notifications.digestTime")}</Label>
               <DateTimePicker
@@ -1000,7 +1000,7 @@ function AvailabilityTab() {
     <>
       <SectionCard>
         <SectionHeader icon={MapPin} title={t("availability.timezoneTitle")} description={t("availability.timezoneDescription")} />
-        <div className="p-6">
+        <div className="p-6 max-sm:p-4">
           <Select value={zones.value} onValueChange={setTimezone}>
             <SelectTrigger aria-label={t("availability.timezoneTitle")} className="h-11 max-w-md">
               <SelectValue />
@@ -1016,7 +1016,7 @@ function AvailabilityTab() {
 
       <SectionCard>
         <SectionHeader icon={Clock} title={t("availability.hoursTitle")} description={t("availability.hoursDescription")} />
-        <div className="p-6 space-y-6">
+        <div className="p-6 max-sm:p-4 space-y-6">
           <div className="grid gap-6 sm:grid-cols-2 max-w-md">
             <div className="space-y-2">
               <Label className="text-sm font-medium text-foreground">{t("availability.startTime")}</Label>
@@ -1038,7 +1038,7 @@ function AvailabilityTab() {
 
           <div className="space-y-3">
             <Label className="text-sm font-medium text-foreground">{t("availability.workingDays")}</Label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 max-sm:grid max-sm:grid-cols-4">
               {DAYS_OF_WEEK.map((day) => {
                 const active = workingDays.includes(day);
                 return (
@@ -1047,7 +1047,7 @@ function AvailabilityTab() {
                     type="button"
                     aria-pressed={active}
                     onClick={() => toggleDay(day)}
-                    className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                    className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all max-sm:min-h-11 max-sm:px-2 ${
                       active
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border/50 text-muted-foreground hover:border-border"
@@ -1253,7 +1253,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
       {/* Billing Entity */}
       <SectionCard>
         <SectionHeader icon={FileText} title={t("invoice.billingTitle")} description={t("invoice.billingDescription")} />
-        <div className="p-6 space-y-5">
+        <div className="p-6 max-sm:p-4 space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="field">
               <Label htmlFor="inv-company" className="text-sm font-medium">{t("invoice.companyName")}</Label>
@@ -1268,7 +1268,6 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
               <Input id="inv-email" type="email" placeholder={t("invoice.billingEmailPlaceholder")} value={form.billingEmail} onChange={(e) => update("billingEmail", e.target.value)} maxLength={200} />
             </div>
             <div className="field">
-              <Label htmlFor="inv-phone" className="text-sm font-medium">{t("invoice.billingPhone")}</Label>
               <PhoneInput id="inv-phone" label={t("invoice.billingPhone")} placeholder={t("invoice.billingPhonePlaceholder")} value={form.billingPhone} onChange={(value) => update("billingPhone", value)} />
             </div>
           </div>
@@ -1303,7 +1302,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
       {/* Invoice Preferences */}
       <SectionCard>
         <SectionHeader icon={Receipt} title={t("invoice.preferencesTitle")} description={t("invoice.preferencesDescription")} />
-        <div className="p-6 space-y-5">
+        <div className="p-6 max-sm:p-4 space-y-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="field">
               <Label htmlFor="inv-category" className="text-sm font-medium">{t("invoice.defaultType")}</Label>
@@ -1330,7 +1329,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
           </div>
 
           {/* Tax Configuration */}
-          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad">
+          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad max-sm:rounded-none max-sm:border-x-0 max-sm:border-b-0 max-sm:bg-transparent max-sm:px-0 max-sm:pb-0">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("invoice.taxConfiguration")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="field">
@@ -1352,7 +1351,7 @@ function InvoiceDefaultsTab({ apiBase = "/api/agent/settings/invoice-defaults" }
           </div>
 
           {/* Payment Terms */}
-          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad">
+          <div className="rounded-xl border border-border/50 bg-muted/10 space-y-4 card-pad max-sm:rounded-none max-sm:border-x-0 max-sm:border-b-0 max-sm:bg-transparent max-sm:px-0 max-sm:pb-0">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("invoice.paymentTerms")}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="field">
@@ -1405,7 +1404,7 @@ function SecurityTab() {
     <>
       <SectionCard>
         <SectionHeader icon={Shield} title={t("security.accountTitle")} description={t("security.accountDescription")} />
-        <div className="p-6 space-y-4">
+        <div className="p-6 max-sm:p-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
               <Calendar className="w-4 h-4 text-muted-foreground" />
@@ -1427,7 +1426,7 @@ function SecurityTab() {
 
       <SectionCard>
         <SectionHeader icon={Shield} title={t("security.title")} description={t("security.description")} />
-        <div className="p-6 space-y-4">
+        <div className="p-6 max-sm:p-4 space-y-4">
           <div className="flex items-center justify-between rounded-xl border border-border/50 bg-muted/20 card-pad">
             <div className="flex items-start gap-3">
               <Shield className="w-4 h-4 text-muted-foreground mt-0.5" />
@@ -1486,6 +1485,7 @@ export default function AgentSettingsPage() {
                 className={`
                   flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all duration-150
                   whitespace-nowrap lg:whitespace-normal min-w-[140px] lg:min-w-0 group
+                  max-sm:min-w-0 max-sm:min-h-11 max-sm:shrink-0 max-sm:gap-2 max-sm:px-3 max-sm:py-1.5
                   ${isActive
                     ? "bg-primary/[0.08] text-primary shadow-sm border border-primary/15"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent"
@@ -1493,7 +1493,7 @@ export default function AgentSettingsPage() {
                 `}
               >
                 <div className={`
-                  flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors
+                  flex items-center justify-center w-8 h-8 max-sm:w-7 max-sm:h-7 rounded-lg shrink-0 transition-colors
                   ${isActive ? "bg-primary/15" : "bg-muted/60 group-hover:bg-muted"}
                 `}>
                   <Icon className={`w-4 h-4 ${isActive ? "text-primary" : ""}`} />
@@ -1505,7 +1505,7 @@ export default function AgentSettingsPage() {
                 <span className="hidden lg:block text-xs text-muted-foreground ml-auto">
                   <ChevronRight className={`w-3.5 h-3.5 transition-transform ${isActive ? "text-primary" : ""}`} />
                 </span>
-                <span className="lg:hidden text-xs font-medium">{label.split(" ")[0]}</span>
+                <span className="lg:hidden text-xs font-medium max-sm:text-sm">{label.split(" ")[0]}</span>
               </button>
             );
           })}

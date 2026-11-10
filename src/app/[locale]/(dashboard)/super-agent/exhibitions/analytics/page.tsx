@@ -29,6 +29,7 @@ import {
   YAxis,
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -325,12 +326,12 @@ export default function SuperAgentExhibitionAnalyticsPage() {
         </div>
 
         <div className="flex flex-col rounded-3xl border bg-card shadow-sm card-pad">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
+          <div className="mb-4 flex items-center justify-between gap-3 max-sm:!flex-nowrap max-sm:items-start">
+            <div className="min-w-0 flex-1">
               <h2 className="heading-section font-semibold tracking-tight">{t("requestPipelineTitle")}</h2>
               <p className="text-sm text-muted-foreground">{t("requestPipelineDescription")}</p>
             </div>
-            <Activity className="h-5 w-5 text-primary" />
+            <Activity className="h-5 w-5 shrink-0 text-primary" />
           </div>
           <div className="flex flex-1 flex-col justify-between gap-4">
             {statusBreakdown.map((item) => (
@@ -417,10 +418,30 @@ export default function SuperAgentExhibitionAnalyticsPage() {
             </div>
             <Trophy className="h-5 w-5 shrink-0 text-primary" />
           </div>
-          <Table>
+          <PhoneRecordList
+            className="sm:hidden"
+            label={t("topAgentsTitle")}
+            empty={<p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("noExhibitionActivity")}</p>}
+            items={topAgents.map((agent) => ({
+              key: agent.agentId,
+              leading: (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
+                  {agent.name.slice(0, 1).toUpperCase()}
+                </div>
+              ),
+              title: agent.name,
+              subtitle: t("agentApprovedOfDecided", { approved: agent.approved, decided: agent.decided }),
+              stats: [
+                { label: t("requestsColumn"), value: agent.total },
+                { label: t("approvalColumn"), value: agent.decided > 0 ? `${agent.approvalRate}%` : "—" },
+                { label: t("budgetColumn"), value: formatCurrency(agent.totalBudget, currencyCode) },
+              ],
+            }))}
+          />
+          <Table data-mobile-table="scroll" className="max-sm:hidden">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead>{t("agentColumn")}</TableHead>
+                <TableHead className="max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{t("agentColumn")}</TableHead>
                 <TableHead className="text-center">{t("requestsColumn")}</TableHead>
                 <TableHead className="text-center">{t("approvalColumn")}</TableHead>
                 <TableHead className="text-right">{t("budgetColumn")}</TableHead>
@@ -429,7 +450,7 @@ export default function SuperAgentExhibitionAnalyticsPage() {
             <TableBody>
               {topAgents.map((agent) => (
                 <TableRow key={agent.agentId}>
-                  <TableCell>
+                  <TableCell className="max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
                         {agent.name.slice(0, 1).toUpperCase()}

@@ -195,6 +195,7 @@ function CardSkeleton() {
 
 export function JobFeedPage({ locale }: { locale: string }) {
   const t = useTranslations("jobFeed");
+  const tSidebar = useTranslations("jobFeed.sidebar");
   const qc = useQueryClient();
   const searchParams = useSearchParams();
   const employerIdParam = searchParams.get("employerId")?.trim() ?? "";
@@ -338,6 +339,8 @@ export function JobFeedPage({ locale }: { locale: string }) {
   ];
   const totalPoolPages = data?.pages[0]?.totalPoolPages ?? 1;
   const totalJobs = data?.pages[0]?.totalJobs ?? 0;
+  const activeFilterTotal =
+    filters.workTypes.length + filters.matchRanges.length + filters.dateRanges.length + filters.experienceLevels.length;
   const matchedCount = data?.pages[0]?.matchedCount ?? 0;
   const strongMatches = data?.pages[0]?.strongMatches ?? 0;
   const newThisWeek = data?.pages[0]?.newThisWeek ?? 0;
@@ -351,7 +354,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
   return (
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-xl sm:rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] shadow-[0_20px_60px_rgba(15,23,42,0.06)] panel-body">
+      <section className="overflow-hidden rounded-xl sm:rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.05] shadow-[0_20px_60px_rgba(15,23,42,0.06)] panel-body max-sm:overflow-visible max-sm:!border-0 max-sm:!bg-none max-sm:!p-0 max-sm:!shadow-none">
         <div className="space-y-3 sm:space-y-4">
             <div className="space-y-2">
               {/* Badge is decorative — dropped on phones so the hero is title +
@@ -372,7 +375,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
             {/* Three side-by-side tiles on phones — stacked full-width blocks pushed
                 the actual job list a full screen down. Hints hide below sm. */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-3 gap-2 max-sm:hidden sm:gap-3">
               <div className="rounded-xl border border-border/60 bg-background/90 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-2.5">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.18em]">
                   {t("stats.liveMatches")}
@@ -410,11 +413,18 @@ export function JobFeedPage({ locale }: { locale: string }) {
 
             {/* Search and the preferences link share one row on phones. */}
             <div className="flex flex-row items-center gap-2 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-3">
-              <form role="search" onSubmit={handleSearchSubmit} className="relative min-w-0 flex-1">
+              <form role="search" onSubmit={handleSearchSubmit} className="min-w-0 flex-1 max-sm:space-y-2">
+                {/* Phones: a visible label (UK 3.3.2) and a full-width Search button. */}
+                <label htmlFor="seeker-job-search" className="text-sm font-medium text-foreground sm:hidden">
+                  {t("search.ariaLabel")}
+                </label>
+                <div className="relative">
                 <Search className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   ref={searchInputRef}
+                  id="seeker-job-search"
                   type="search"
+                  enterKeyHint="search"
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -442,9 +452,14 @@ export function JobFeedPage({ locale }: { locale: string }) {
                     <X className="h-4 w-4" />
                   </button>
                 )}
+                </div>
+                <button type="submit" className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm sm:hidden">
+                  <Search className="h-4 w-4" aria-hidden />
+                  {t("search.ariaLabel")}
+                </button>
               </form>
 
-              <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:justify-end">
+              <div className="flex shrink-0 flex-col gap-3 max-sm:hidden sm:flex-row lg:justify-end">
                 <button
                   onClick={() => setFiltersOpen(true)}
                   aria-label={t("actions.mobileFilters")}
@@ -571,25 +586,70 @@ export function JobFeedPage({ locale }: { locale: string }) {
                   flattened to a bare row below sm. */}
               <div className="rounded-3xl border-border/60 bg-card px-4 py-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)] max-sm:rounded-none max-sm:bg-transparent max-sm:px-0 max-sm:py-0 max-sm:shadow-none sm:border sm:px-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  <div className="scrollbar-none flex items-center gap-2.5 max-sm:-mx-4 max-sm:overflow-x-auto max-sm:px-4">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground max-sm:hidden">
                       {t("sort.label")}
                     </span>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 max-sm:gap-2">
                       {(["match", "latest", "salary"] as SortMode[]).map((mode) => (
                         <button
                           key={mode}
                           onClick={() => { setSortMode(mode); setPoolPage(1); }}
-                          className={`rounded-full px-3.5 py-2 text-xs font-medium transition-all ${
+                          aria-pressed={sortMode === mode}
+                          className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-medium transition-all max-sm:border ${
                             sortMode === mode
-                              ? "bg-primary text-primary-foreground shadow-sm"
-                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                              ? "bg-primary text-primary-foreground shadow-sm max-sm:border-primary"
+                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground max-sm:border-border max-sm:bg-card"
                           }`}
                         >
                           {sortLabels[mode]}
                         </button>
                       ))}
+                      {/* Phones: the work-type filters ride in the same chip row. */}
+                      {(["remote", "onsite"] as const).map((type) => {
+                        const on = filters.workTypes.includes(type);
+                        return (
+                          <button
+                            key={type}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                workTypes: on ? prev.workTypes.filter((w) => w !== type) : [...prev.workTypes, type],
+                              }))
+                            }
+                            className={`shrink-0 whitespace-nowrap rounded-full border px-3.5 py-2 text-xs font-medium transition-all sm:hidden ${
+                              on ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground"
+                            }`}
+                          >
+                            {tSidebar(type)}
+                          </button>
+                        );
+                      })}
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 sm:hidden">
+                    <h2 className="text-base font-semibold text-foreground">
+                      {t.has("phone.jobsForYou")
+                        ? t("phone.jobsForYou", { count: totalJobs })
+                        : t("sort.count", { visible: visibleJobs.length, total: totalJobs })}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={() => setFiltersOpen(true)}
+                      aria-label={t("actions.mobileFilters")}
+                      className={`relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
+                        activeFilterTotal > 0 ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-card text-foreground"
+                      }`}
+                    >
+                      <SlidersHorizontal className="h-4 w-4" aria-hidden />
+                      {activeFilterTotal > 0 && (
+                        <span className="absolute -end-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">
+                          {activeFilterTotal}
+                        </span>
+                      )}
+                    </button>
                   </div>
                   <span className="text-xs text-muted-foreground hidden sm:inline">
                     {totalPoolPages > 1

@@ -42,7 +42,7 @@ export function ApplicationJourneyShell({ locale, context, toolbar, filters, foo
 
   return (
     <div className="page-container">
-      <section className="card-base overflow-hidden rounded-3xl border border-border/70 shadow-[0_8px_24px_rgba(15,23,42,0.05)] max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:shadow-none panel-body">
+      <section className="card-base overflow-hidden rounded-3xl border border-border/70 shadow-[0_8px_24px_rgba(15,23,42,0.05)] max-sm:rounded-none max-sm:!border-0 max-sm:!bg-transparent max-sm:!shadow-none max-sm:!p-0 panel-body">
         <div className="border-b border-border/60 px-3.5 py-3 max-sm:px-0 sm:px-4 sm:py-3.5 lg:px-5 lg:py-4">
           <div className="flex flex-col gap-2.5">
             <div className="min-w-0">

@@ -184,7 +184,7 @@ export function OtherConsentsTable({ pagination, onView }: OtherConsentsTablePro
 
         {state.status === "loading" && (
           <div className="overflow-x-auto max-sm:hidden" data-testid="other-consents-skeleton">
-            <Table>
+            <Table data-mobile-table="scroll">
               {header(false)}
               <TableBody>
                 {Array.from({ length: Math.min(limit, 10) }).map((_, i) => (
@@ -217,7 +217,7 @@ export function OtherConsentsTable({ pagination, onView }: OtherConsentsTablePro
 
         {state.status === "ready" && state.rows.length > 0 && !isPhone && (
           <div className="overflow-x-auto">
-            <Table>
+            <Table data-mobile-table="scroll">
               {header(true)}
               <TableBody>
                 {state.rows.map((row) => (

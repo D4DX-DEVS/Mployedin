@@ -70,7 +70,7 @@ export default function SavedJobsPage() {
         description={data ? t("count", { count: data.total }) : t("description")}
       />
 
-      <section className="workspace-panel-surface rounded-3xl panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none">
         {isPending ? (
           <ListSkeleton count={4} itemClassName="h-32" />
         ) : isError ? (
@@ -112,13 +112,14 @@ export default function SavedJobsPage() {
                       <Badge variant="secondary" className="py-0 text-[11px]">{t("closed")}</Badge>
                     )
                   }
+                  bookmark={<SaveJobButton jobId={job._id} />}
                   actions={
                     <>
-                      <SaveJobButton jobId={job._id} />
-                      <Button asChild size="sm" className="min-h-11 rounded-xl px-4">
+                      <SaveJobButton jobId={job._id} className="max-sm:hidden" />
+                      <Button asChild size="sm" className="min-h-11 rounded-xl px-4 max-sm:min-h-10 max-sm:px-3 max-sm:text-xs">
                         <Link href={`/${locale}/job-seeker/jobs/${job._id}`}>
                           {t("viewJob")}
-                          <ArrowRight className="ms-1.5 size-4 rtl:rotate-180" aria-hidden="true" />
+                          <ArrowRight className="ms-1.5 size-4 rtl:rotate-180 max-sm:hidden" aria-hidden="true" />
                         </Link>
                       </Button>
                     </>

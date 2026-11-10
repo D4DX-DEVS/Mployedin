@@ -16,7 +16,8 @@ import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { Pencil, Trash2, Clock3, CheckCircle2, WalletCards, ReceiptText, Inbox } from "lucide-react";
+import { Pencil, Trash2, Clock3, CheckCircle2, WalletCards, ReceiptText, Inbox, CalendarDays } from "lucide-react";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { useConfirm } from "@/hooks/useConfirm";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import {
@@ -25,6 +26,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import {
   CommissionActionDialog, type CommissionActionMode, type CommissionActionTarget, type CommissionActionValues,
@@ -83,6 +85,7 @@ export default function AdminCommissionsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState("");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [summary, setSummary] = useState<CommissionSummary>({ pending: 0, approved: 0, paid: 0, currency: "AED" });
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [editItem, setEditItem] = useState<Commission | null>(null);
@@ -238,6 +241,16 @@ export default function AdminCommissionsPage() {
   };
 
   const hasActiveFilters = Boolean(status || typeFilter || searchTerm || dateFrom || dateTo || currencyFilter);
+  const phoneFilterCount = [status, typeFilter, currencyFilter, dateFrom, dateTo].filter(Boolean).length;
+  const clearAllFilters = () => {
+    setStatus("");
+    setTypeFilter("");
+    setSearchTerm("");
+    setCurrencyFilter("");
+    setDateFrom("");
+    setDateTo("");
+    resetPage();
+  };
 
   // Lines keep their invoice's currency and nothing converts, so each card lists
   // one figure per currency ("AED 1,200 · INR 6,000") instead of adding them up.
@@ -323,6 +336,18 @@ export default function AdminCommissionsPage() {
     return { quick, menu };
   };
 
+  const emptyNode = (
+    <div className="flex flex-col items-center gap-3 text-center">
+      <div className="workspace-muted-pill rounded-3xl p-3">
+        <Inbox className="h-6 w-6" />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-foreground">{t("noCommissionsFound")}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("noCommissionsHint")}</p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -336,16 +361,10 @@ export default function AdminCommissionsPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
-        onClear={hasActiveFilters ? () => {
-          setStatus("");
-          setTypeFilter("");
-          setSearchTerm("");
-          setCurrencyFilter("");
-          setDateFrom("");
-          setDateTo("");
-          resetPage();
-        } : undefined}
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
+        onClear={hasActiveFilters ? clearAllFilters : undefined}
         clearLabel={t("clearFiltersButton")}
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
@@ -399,27 +418,144 @@ export default function AdminCommissionsPage() {
           value={searchTerm}
           onChange={(value) => { setSearchTerm(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <SearchableSelect
-          id="admin-commissions-status-filter"
-          className={INLINE_FILTER_CONTROL}
-          options={STATUS_OPTIONS}
-          value={status || "all"}
-          onValueChange={(value) => {
-            setStatus(value === "all" ? "" : value);
-            resetPage();
-          }}
-          placeholder={t("allStatuses")}
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            id="admin-commissions-status-filter"
+            className={INLINE_FILTER_CONTROL}
+            options={STATUS_OPTIONS}
+            value={status || "all"}
+            onValueChange={(value) => {
+              setStatus(value === "all" ? "" : value);
+              resetPage();
+            }}
+            placeholder={t("allStatuses")}
+          />
+        </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={clearAllFilters}
+      >
+        <FilterField label={t("tableHeaderStatus")} htmlFor="commissions-sheet-status">
+          <SearchableSelect
+            id="commissions-sheet-status"
+            className={SHEET_CONTROL}
+            options={STATUS_OPTIONS}
+            value={status || "all"}
+            onValueChange={(value) => {
+              setStatus(value === "all" ? "" : value);
+              resetPage();
+            }}
+            placeholder={t("allStatuses")}
+          />
+        </FilterField>
+        <FilterField label={t("tableHeaderType")} htmlFor="commissions-sheet-type">
+          <SearchableSelect
+            id="commissions-sheet-type"
+            className={SHEET_CONTROL}
+            options={TYPE_OPTIONS}
+            value={typeFilter || "all"}
+            onValueChange={(value) => {
+              setTypeFilter(value === "all" ? "" : value);
+              resetPage();
+            }}
+            placeholder={t("allTypes")}
+          />
+        </FilterField>
+        <FilterField label={t("exportHeaderCurrency")} htmlFor="commissions-sheet-currency">
+          <SearchableSelect
+            id="commissions-sheet-currency"
+            className={SHEET_CONTROL}
+            options={CURRENCY_OPTIONS}
+            value={currencyFilter || "all"}
+            onValueChange={(value) => {
+              setCurrencyFilter(value === "all" ? "" : value);
+              resetPage();
+            }}
+            placeholder={t("allCurrencies")}
+          />
+        </FilterField>
+        <FilterField label={t("dateFromLabel")} htmlFor="commissions-sheet-from">
+          <DateTimePicker
+            id="commissions-sheet-from"
+            mode="date"
+            value={dateFrom}
+            onChange={(v) => { setDateFrom(v); resetPage(); }}
+            placeholder={t("dateFromLabel")}
+            className="w-full"
+            modal
+          />
+        </FilterField>
+        <FilterField label={t("dateToLabel")} htmlFor="commissions-sheet-to">
+          <DateTimePicker
+            id="commissions-sheet-to"
+            mode="date"
+            value={dateTo}
+            onChange={(v) => { setDateTo(v); resetPage(); }}
+            placeholder={t("dateToLabel")}
+            className="w-full"
+            modal
+          />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {errorMessage ? (
         <ErrorState title={t("failedLoadCommissions")} onRetry={fetchCommissions} />
       ) : null}
 
+      <PhoneRecordList
+        className="sm:hidden"
+        label={t("commissionsTitle")}
+        loading={loading}
+        empty={emptyNode}
+        items={commissions.map((c) => ({
+          key: c._id,
+          title: <span className={c.recipientName ? undefined : "text-muted-foreground"}>{c.recipientName ?? t("recipientNone")}</span>,
+          subtitle: c.recipientRole === "super_agent" ? t("recipientSuperAgent") : c.recipientRole === "agent" ? t("recipientAgent") : t("recipientNoneHint"),
+          trailing: <StatusBadge status={c.status} />,
+          actions: <RowActions name={recipientLabel(c)} {...rowActionsFor(c)} />,
+          meta: (
+            <>
+              <p className="flex min-w-0 items-center gap-1">
+                <ReceiptText className="h-3 w-3 shrink-0" aria-hidden="true" />
+                {c.invoice ? (
+                  <Link href={`/${locale}/admin/invoices?invoice=${c.invoice._id}`} className="truncate font-medium text-primary underline-offset-4 hover:underline">
+                    {c.invoice.invoiceNumber ?? t("viewInvoice")}
+                  </Link>
+                ) : (
+                  <span className="truncate">{t("noInvoice")}</span>
+                )}
+              </p>
+              <p className="flex min-w-0 items-center gap-1">
+                <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate">{formatDate(new Date(c.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</span>
+              </p>
+              <p className="truncate">{c.rate ? t("rateValue", { rate: c.rate }) : t("rateNotSet")}</p>
+              {c.status === "paid" && c.paymentRef ? (
+                <p className="truncate" title={c.paymentRef}>{t("paidRef", { ref: c.paymentRef })}</p>
+              ) : null}
+            </>
+          ),
+          badges: (
+            <span className="inline-flex rounded-full border border-border/70 bg-secondary/70 px-2 py-0.5 font-medium text-foreground">
+              {TYPE_LABELS[c.type ?? "placement"] ?? c.type}
+            </span>
+          ),
+          stats: [
+            { label: t("tableHeaderAmount"), value: `${c.currency ?? "USD"} ${formatCount(c.amount)}` },
+          ],
+        }))}
+      />
+
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-        <div className="overflow-x-auto">
-          <Table>
+        <div className="overflow-x-auto max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="border-border/80 bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeaderRecipient")}</TableHead>
@@ -437,15 +573,7 @@ export default function AdminCommissionsPage() {
               ) : commissions.length === 0 ? (
                 <TableRow className="border-border/70 hover:bg-transparent">
                   <TableCell colSpan={7} className="px-6 py-14 text-center">
-                    <div className="flex flex-col items-center gap-3 text-center">
-                      <div className="workspace-muted-pill rounded-3xl p-3">
-                        <Inbox className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{t("noCommissionsFound")}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{t("noCommissionsHint")}</p>
-                      </div>
-                    </div>
+                    {emptyNode}
                   </TableCell>
                 </TableRow>
               ) : commissions.map((c) => (
@@ -494,7 +622,7 @@ export default function AdminCommissionsPage() {
           </Table>
         </div>
 
-        <div className="border-t border-border/80 px-4 py-3 sm:px-5">
+        <div className="border-t border-border/80 px-4 py-3 max-sm:border-t-0 sm:px-5">
           <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
         </div>
       </section>

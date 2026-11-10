@@ -184,10 +184,10 @@ export default function ApplicationFeedbackPage() {
           ].map(({ label, value, set }) => (
             <div key={label} className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">{label}</span>
-              <div className="flex gap-1">
+              <div className="flex gap-1 max-sm:gap-0.5">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <button key={s} type="button" onClick={() => set(s)} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                    <Star className={`w-5 h-5 ${s <= value ? "fill-amber-400 text-amber-400" : "text-muted-foreground/20"}`} />
+                  <button key={s} type="button" onClick={() => set(s)} aria-label={`${label}: ${t("rateStarsAria", { count: s })}`} aria-pressed={s <= value} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 max-sm:flex max-sm:w-8 max-sm:items-center max-sm:justify-center">
+                    <Star aria-hidden="true" className={`w-5 h-5 max-sm:h-6 max-sm:w-6 ${s <= value ? "fill-amber-400 text-amber-400" : "text-muted-foreground/20"}`} />
                   </button>
                 ))}
               </div>
@@ -204,10 +204,11 @@ export default function ApplicationFeedbackPage() {
 
         {/* Comment */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">
+          <label htmlFor="seeker-feedback-comment" className="text-sm font-medium">
             {t("additionalComments")} <span className="text-muted-foreground font-normal">{t("optional")}</span>
           </label>
           <Textarea
+            id="seeker-feedback-comment"
             placeholder={t("commentPlaceholder")}
             value={comment}
             onChange={(e) => setComment(e.target.value)}

@@ -76,7 +76,9 @@ export function AgentAccounts({ rows, locale }: AgentAccountsProps) {
                 />
                 <dl className="grid w-full shrink-0 grid-cols-4 gap-2 sm:w-auto sm:gap-4 sm:text-end">
                   {columns.map((column) => (
-                    <div key={column.key} className="sm:min-w-[5.5rem]">
+                    // Phones: label on top, figure pinned to the bottom of the cell, so the four
+                    // numbers share one line however many lines each label wraps to.
+                    <div key={column.key} className="flex flex-col justify-between gap-0.5 sm:block sm:min-w-[5.5rem]">
                       <dt className="text-[11px] font-medium leading-tight text-muted-foreground sm:sr-only">{column.label}</dt>
                       <dd
                         className={`text-sm font-semibold tabular-nums ${row[column.key] > 0 ? "text-foreground" : "text-muted-foreground"}`}

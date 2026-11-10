@@ -320,6 +320,7 @@ export default function TeamActivityLogsPage() {
               resetPage();
             }}
             placeholder={t("allMembers")}
+            ariaLabel={t("teamMember")}
           />
         </div>
 
@@ -334,6 +335,7 @@ export default function TeamActivityLogsPage() {
               resetPage();
             }}
             placeholder={t("allResources")}
+            ariaLabel={t("resource")}
           />
         </div>
 

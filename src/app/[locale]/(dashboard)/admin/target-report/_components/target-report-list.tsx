@@ -9,6 +9,7 @@ import { ChevronDown, Users } from "lucide-react";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { ReportCardHeader, ReportEmpty, reportCardClassName } from "@/components/features/admin/reports/ReportCard";
 import { ProfitReportView } from "@/components/features/targets/ProfitReportView";
 import { TargetHeadline, type HeadlineData } from "@/components/features/targets/TargetProgress";
@@ -98,6 +99,8 @@ export function TargetReportList({ people, year, locale }: { people: TargetPerso
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<RoleFilter>("all");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const phoneFilterCount = role !== "all" ? 1 : 0;
   const [status, setStatus] = useState<StatusFilter>("all");
   const [opened, setOpened] = useState<Set<string>>(() => new Set(people.length <= OPEN_ALL_UP_TO ? people.map((person) => person.id) : []));
 
@@ -181,6 +184,13 @@ export function TargetReportList({ people, year, locale }: { people: TargetPerso
     filename: `target-report-${year}`,
     title: t("exportTitle", { year }),
   });
+  const roleSelectContent = (
+    <SelectContent>
+      <SelectItem value="all">{t("roleAll")}</SelectItem>
+      <SelectItem value="super_agent">{t("roleSuperAgents")}</SelectItem>
+      <SelectItem value="agent">{t("roleAgents")}</SelectItem>
+    </SelectContent>
+  );
 
   return (
     <section className={reportCardClassName} aria-label={t("people")}>
@@ -197,18 +207,33 @@ export function TargetReportList({ people, year, locale }: { people: TargetPerso
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPdf}
           >
-            <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPeople")} />
-            <Select value={role} onValueChange={(value) => setRole(value as RoleFilter)}>
-              <SelectTrigger aria-label={t("roleFilterLabel")} className={INLINE_FILTER_CONTROL}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("roleAll")}</SelectItem>
-                <SelectItem value="super_agent">{t("roleSuperAgents")}</SelectItem>
-                <SelectItem value="agent">{t("roleAgents")}</SelectItem>
-              </SelectContent>
-            </Select>
+            <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPeople")} className="max-sm:basis-0" />
+            <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+            <div className="contents max-sm:hidden">
+              <Select value={role} onValueChange={(value) => setRole(value as RoleFilter)}>
+                <SelectTrigger aria-label={t("roleFilterLabel")} className={INLINE_FILTER_CONTROL}>
+                  <SelectValue />
+                </SelectTrigger>
+                {roleSelectContent}
+              </Select>
+            </div>
           </InlineFilterBar>
+
+          <PhoneFilterSheet
+            open={filterSheetOpen}
+            onOpenChange={setFilterSheetOpen}
+            activeCount={phoneFilterCount}
+            onClear={() => setRole("all")}
+          >
+            <FilterField label={t("roleFilterLabel")} htmlFor="target-report-sheet-role">
+              <Select value={role} onValueChange={(value) => setRole(value as RoleFilter)}>
+                <SelectTrigger id="target-report-sheet-role" className={SHEET_CONTROL}>
+                  <SelectValue />
+                </SelectTrigger>
+                {roleSelectContent}
+              </Select>
+            </FilterField>
+          </PhoneFilterSheet>
 
           <div role="group" aria-label={t("statusFilterLabel")} className="mt-3 flex flex-wrap gap-2">
             {(["all", ...STATUSES] as StatusFilter[]).map((option) => {
@@ -242,8 +267,10 @@ export function TargetReportList({ people, year, locale }: { people: TargetPerso
                 const panelId = `target-panel-${person.id}`;
                 return (
                   <li key={person.id} id={`target-${person.id}`} className={cn("scroll-mt-24", nested && "ms-4 sm:ms-8")}>
-                    <article className="rounded-2xl border border-border/70 bg-card">
-                      <div className="space-y-4 p-4">
+                    {/* Phone: the card's own box goes (a divider stays) — inside the section card, around the
+                        report's own panels and tiles, it was a fourth nested frame eating 34px of width. */}
+                    <article className="rounded-2xl border border-border/70 bg-card max-sm:rounded-none max-sm:border-x-0 max-sm:border-t-0 max-sm:bg-transparent">
+                      <div className="space-y-4 p-4 max-sm:px-0">
                         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
                           <div className="min-w-0">
                             <Link
@@ -267,7 +294,7 @@ export function TargetReportList({ people, year, locale }: { people: TargetPerso
                           aria-expanded={isOpen}
                           aria-controls={panelId}
                           onClick={() => toggle(person.id)}
-                          className="inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
+                          className="inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-primary transition-colors hover:text-primary/80 max-sm:min-h-11"
                         >
                           {isOpen ? t("hideReport") : t("showReport")}
                           <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} aria-hidden />
@@ -275,7 +302,7 @@ export function TargetReportList({ people, year, locale }: { people: TargetPerso
                       </div>
 
                       {isOpen ? (
-                        <div id={panelId} className="border-t border-border/70 bg-background/40 p-4">
+                        <div id={panelId} className="border-t border-border/70 bg-background/40 p-4 max-sm:bg-transparent max-sm:px-0">
                           <OpenedReport id={person.id} onOpenAgent={openAgent} />
                         </div>
                       ) : null}

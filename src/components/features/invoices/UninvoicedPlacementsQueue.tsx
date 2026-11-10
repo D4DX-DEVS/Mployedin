@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { INTERNATIONAL_TAX_PRESETS } from "@/lib/invoices/taxPresets";
 import {
@@ -277,11 +278,11 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
             {t("placementsPending", { count: total })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
-              className="h-9 w-48 rounded-lg pl-8 text-sm"
+              className="h-9 w-full rounded-lg pl-8 text-sm sm:w-48"
               aria-label={t("searchPlacements")}
               placeholder={t("searchPlacements")}
               value={search}
@@ -330,8 +331,102 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
 
       {/* Table */}
       <section className="overflow-hidden rounded-2xl border border-border/70 bg-card">
-        <div className="overflow-x-auto">
-          <Table>
+        <PhoneRecordList
+          className="p-3 sm:hidden"
+          label={t("uninvoicedPlacements")}
+          loading={loading}
+          empty={
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="rounded-3xl bg-emerald-50 p-3">
+                <FileText className="h-6 w-6 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">{t("allPlacementsInvoiced")}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("noPendingPlacements")}</p>
+              </div>
+            </div>
+          }
+          items={placements.map((p) => {
+            const isSelected = selected.has(p._id);
+            const taxInfo = getTaxInfo(p.employerCountry);
+            const estTax = taxInfo ? Math.round(p.salary * taxInfo.defaultRate / 100) : 0;
+            const commissionParts = [
+              p.agentRate > 0 ? `A: ${p.agentRate}%` : null,
+              p.superAgentRate > 0 ? `SA: ${p.superAgentRate}%` : null,
+            ].filter(Boolean);
+            return {
+              key: `uninvoiced-placement-${p._id}`,
+              leading: (
+                <button
+                  type="button"
+                  aria-label={ta("selectRow")}
+                  aria-pressed={isSelected}
+                  onClick={() => toggleSelect(p._id)}
+                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/70"
+                >
+                  {isSelected ? (
+                    <CheckSquare className="h-5 w-5 text-emerald-600" />
+                  ) : (
+                    <Square className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </button>
+              ),
+              title: p.jobTitle,
+              subtitle: [p.employerName, p.employerCountry].filter(Boolean).join(" · "),
+              trailing: <StatusBadge status={p.visaStatus} />,
+              meta: (
+                <>
+                  <p className="flex min-w-0 items-center gap-1">
+                    <Users className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{t("candidate")}: {p.candidateName}</span>
+                  </p>
+                  <p className="flex min-w-0 items-center gap-1">
+                    <Briefcase className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">
+                      {t("agent")}: {p.agentName}{p.superAgentName ? ` · SA: ${p.superAgentName}` : ""}
+                    </span>
+                  </p>
+                  <p>{t("placedDate")} {formatDate(new Date(p.placedAt))}</p>
+                </>
+              ),
+              badges: (
+                <>
+                  {taxInfo ? (
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      taxInfo.taxType === "vat" ? "border border-sky-200 bg-sky-50 text-sky-700" :
+                      taxInfo.taxType === "gst" ? "border border-violet-200 bg-violet-50 text-violet-700" :
+                      taxInfo.taxType === "reverse_charge" ? "border border-amber-200 bg-amber-50 text-amber-700" :
+                      "border border-border bg-secondary text-muted-foreground"
+                    }`}>
+                      {taxInfo.label}
+                    </span>
+                  ) : null}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleQuickGenerate(p)}
+                    disabled={quickGenerating === p._id}
+                    className="h-8 gap-1 px-2 text-[11px] font-medium text-emerald-600 hover:bg-emerald-50"
+                  >
+                    {quickGenerating === p._id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Zap className="h-3 w-3" />
+                    )}
+                    Quick
+                  </Button>
+                </>
+              ),
+              stats: [
+                { label: t("amount"), value: fmt(p.salary, p.currency) },
+                { label: t("estTotal"), value: fmt(p.salary + estTax, p.currency) },
+                { label: t("commission"), value: commissionParts.length > 0 ? commissionParts.join(" · ") : "—" },
+              ],
+            };
+          })}
+        />
+        <div className="overflow-x-auto max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="border-border/80 bg-secondary/60 hover:bg-secondary/60">
                 <TableHead className="w-12">

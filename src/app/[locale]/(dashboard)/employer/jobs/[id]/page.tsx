@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useJobDetail } from "@/hooks/useJobs";
 import { useJobHiringSummary, type JobHiringSummary } from "@/hooks/useJobHiringSummary";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { dedupeListItems } from "@/lib/jobs/descriptionSections";
 import { POSTERS_ENABLED } from "@/lib/features/posterFeature";
 
 interface AttentionItem {
@@ -237,7 +238,7 @@ export default function JobOverviewPage() {
               <GraduationCap className="h-4 w-4 text-muted-foreground" aria-hidden /> {t("overviewQualifications")}
             </h2>
             <ul className="list-inside list-disc space-y-1.5 text-sm text-foreground/80">
-              {job.qualifications.map((q, i) => <li key={i}>{q}</li>)}
+              {dedupeListItems(job.qualifications).map((q, i) => <li key={i}>{q}</li>)}
             </ul>
           </section>
         )}

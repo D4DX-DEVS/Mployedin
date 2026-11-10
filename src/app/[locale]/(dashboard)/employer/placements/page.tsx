@@ -155,6 +155,7 @@ export default function EmployerPlacementsPage() {
           value={filter}
           onValueChange={setFilter}
           placeholder={t("filterAll")}
+          ariaLabel={t("status")}
         />
         <SearchableSelect
           className={INLINE_FILTER_CONTROL}
@@ -162,6 +163,7 @@ export default function EmployerPlacementsPage() {
           value={visaFilter}
           onValueChange={setVisaFilter}
           placeholder={t("visaAll")}
+          ariaLabel={t("visaStatusLabel")}
         />
       </InlineFilterBar>
 

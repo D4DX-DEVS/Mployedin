@@ -553,11 +553,12 @@ export default function JobSeekerSkillsPage() {
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
                 1
               </div>
-              <label className="text-sm font-semibold">
+              <label htmlFor="seeker-skills-target-role" className="text-sm font-semibold">
                 {t("targetRole")}
               </label>
             </div>
             <Input
+              id="seeker-skills-target-role"
               value={targetRole}
               onChange={(e) => {
                 setTargetRole(e.target.value);
@@ -600,7 +601,7 @@ export default function JobSeekerSkillsPage() {
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
                 2
               </div>
-              <label className="text-sm font-semibold">
+              <label htmlFor="seeker-skills-add" className="text-sm font-semibold">
                 {t("currentSkills")}
               </label>
               {saveStatus === "saving" && (
@@ -614,6 +615,7 @@ export default function JobSeekerSkillsPage() {
             </div>
             <div className="flex items-center gap-2">
               <Input
+                id="seeker-skills-add"
                 value={newSkill}
                 onChange={(e) => setNewSkill(e.target.value)}
                 onKeyDown={(e) => {
@@ -623,7 +625,6 @@ export default function JobSeekerSkillsPage() {
                   }
                 }}
                 placeholder={t("addSkillPlaceholder")}
-                aria-label={t("addSkillPlaceholder")}
                 className="h-11"
               />
               <Button
@@ -648,6 +649,7 @@ export default function JobSeekerSkillsPage() {
                     <button
                       type="button"
                       onClick={() => removeSkill(skill)}
+                      data-tag-remove=""
                       className="rounded-full p-0.5 hover:bg-primary/20"
                       aria-label={t("removeSkillAria", { skill })}
                     >

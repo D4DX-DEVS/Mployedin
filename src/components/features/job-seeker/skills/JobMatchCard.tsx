@@ -72,7 +72,7 @@ export function JobMatchCard({ jobId }: { jobId: string }) {
   const ai = data.aiAdjustment ?? 0;
 
   return (
-    <section className="card-base rounded-xl sm:rounded-3xl panel-body" aria-labelledby="job-match-heading">
+    <section id="job-match" className="card-base scroll-mt-20 rounded-xl sm:rounded-3xl panel-body" aria-labelledby="job-match-heading">
       <div className="flex items-center gap-2">
         <Gauge className="size-4 text-primary" aria-hidden="true" />
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("eyebrow")}</div>

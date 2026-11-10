@@ -23,7 +23,9 @@ import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { isRowToggleClick } from "@/components/shared/RowExpandToggle";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
@@ -146,6 +148,7 @@ export default function AdminExhibitionsPage() {
   const [budgetRange, setBudgetRange] = useState("all");
   const [reviewerFilter, setReviewerFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const debouncedSearch = useDebounce(search.trim(), 300);
   const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
 
@@ -386,6 +389,58 @@ export default function AdminExhibitionsPage() {
   const activeFilterCount =
     advancedFilterCount + [statusFilter, priorityFilter, stageFilter].filter((value) => value !== "all").length + (search.trim() ? 1 : 0);
 
+  const phoneFilterCount = advancedFilterCount
+    + [boardView ? "all" : statusFilter, priorityFilter, boardView ? "all" : stageFilter].filter((value) => value !== "all").length;
+  const dateRangeOptions = [
+    { value: "all", label: t("anyDate") },
+    { value: "7", label: t("last7Days") },
+    { value: "30", label: t("last30Days") },
+    { value: "90", label: t("last90Days") },
+  ];
+  const countrySelectOptions = [{ value: "all", label: t("allCountries") }, ...countryOptions.map((country) => ({ value: country, label: country }))];
+  const budgetOptions = [
+    { value: "all", label: t("anyBudget") },
+    { value: "0-10000", label: t("under10k") },
+    { value: "10000-50000", label: t("from10kTo50k") },
+    { value: "50000-999999999", label: t("from50kPlus") },
+  ];
+  const reviewerOptions = [
+    { value: "all", label: t("anyReviewer") },
+    { value: "unassigned", label: t("unassigned") },
+    { value: "assigned", label: t("assignedStatus") },
+  ];
+  const statusOptions = [
+    { value: "all", label: t("allStatus") },
+    { value: "submitted", label: t("submitted") },
+    { value: "under_review", label: t("underReview") },
+    { value: "approved", label: t("financeReviewStatus") },
+    { value: "revision_requested", label: t("needsRevision") },
+    { value: "budget_approved", label: t("statusBudgetApproved") },
+    { value: "completed", label: t("completedStatus") },
+    { value: "rejected", label: t("rejected") },
+    { value: "archived", label: t("statusArchived") },
+  ];
+  const priorityOptions = [
+    { value: "all", label: t("allPriority") },
+    { value: "low", label: t("low") },
+    { value: "medium", label: t("medium") },
+    { value: "high", label: t("high") },
+    { value: "critical", label: t("critical") },
+  ];
+  const stageOptions = [
+    { value: "all", label: t("allStages") },
+    { value: "team_leader", label: t("teamLeaderReview") },
+    { value: "finance", label: t("financeReviewStage") },
+    { value: "event", label: t("stageEvent") },
+    { value: "completed", label: t("completedStage") },
+  ];
+  const sortOptions = [
+    { value: "createdAt", label: t("sortSubmitted") },
+    { value: "eventStartDate", label: t("sortEventDate") },
+    { value: "estimatedBudget", label: t("sortBudget") },
+    { value: "eventName", label: t("sortEventName") },
+  ];
+
   const resetFilters = () => {
     setSearch("");
     setStatusFilter("all");
@@ -525,7 +580,9 @@ export default function AdminExhibitionsPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         onClear={activeFilterCount > 0 ? resetFilters : undefined}
         clearLabel={t("resetFilters")}
         onExportCsv={handleExportCsv}
@@ -538,12 +595,7 @@ export default function AdminExhibitionsPage() {
             <SearchableSelect
               id="admin-exhibitions-date"
               className={INLINE_FILTER_CONTROL}
-              options={[
-                { value: "all", label: t("anyDate") },
-                { value: "7", label: t("last7Days") },
-                { value: "30", label: t("last30Days") },
-                { value: "90", label: t("last90Days") },
-              ]}
+              options={dateRangeOptions}
               value={dateRange}
               onValueChange={setDateRange}
               placeholder={t("dateRange")}
@@ -551,7 +603,7 @@ export default function AdminExhibitionsPage() {
             <SearchableSelect
               id="admin-exhibitions-country"
               className={INLINE_FILTER_CONTROL}
-              options={[{ value: "all", label: t("allCountries") }, ...countryOptions.map((country) => ({ value: country, label: country }))]}
+              options={countrySelectOptions}
               value={countryFilter}
               onValueChange={setCountryFilter}
               placeholder={t("country")}
@@ -559,12 +611,7 @@ export default function AdminExhibitionsPage() {
             <SearchableSelect
               id="admin-exhibitions-budget"
               className={INLINE_FILTER_CONTROL}
-              options={[
-                { value: "all", label: t("anyBudget") },
-                { value: "0-10000", label: t("under10k") },
-                { value: "10000-50000", label: t("from10kTo50k") },
-                { value: "50000-999999999", label: t("from50kPlus") },
-              ]}
+              options={budgetOptions}
               value={budgetRange}
               onValueChange={setBudgetRange}
               placeholder={t("budgetRange")}
@@ -572,11 +619,7 @@ export default function AdminExhibitionsPage() {
             <SearchableSelect
               id="admin-exhibitions-reviewer"
               className={INLINE_FILTER_CONTROL}
-              options={[
-                { value: "all", label: t("anyReviewer") },
-                { value: "unassigned", label: t("unassigned") },
-                { value: "assigned", label: t("assignedStatus") },
-              ]}
+              options={reviewerOptions}
               value={reviewerFilter}
               onValueChange={setReviewerFilter}
               placeholder={t("assignedReviewer")}
@@ -584,73 +627,143 @@ export default function AdminExhibitionsPage() {
           </>
         )}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchRequestsAgentsEvents")} />
-        {!boardView && (
-        <SearchableSelect
-          id="admin-exhibitions-status"
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "all", label: t("allStatus") },
-            { value: "submitted", label: t("submitted") },
-            { value: "under_review", label: t("underReview") },
-            { value: "approved", label: t("financeReviewStatus") },
-            { value: "revision_requested", label: t("needsRevision") },
-            { value: "budget_approved", label: t("statusBudgetApproved") },
-            { value: "completed", label: t("completedStatus") },
-            { value: "rejected", label: t("rejected") },
-            { value: "archived", label: t("statusArchived") },
-          ]}
-          value={statusFilter}
-          onValueChange={setStatusFilter}
-          placeholder={t("allStatus")}
-        />
-        )}
-        <SearchableSelect
-          id="admin-exhibitions-priority"
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "all", label: t("allPriority") },
-            { value: "low", label: t("low") },
-            { value: "medium", label: t("medium") },
-            { value: "high", label: t("high") },
-            { value: "critical", label: t("critical") },
-          ]}
-          value={priorityFilter}
-          onValueChange={setPriorityFilter}
-          placeholder={t("allPriority")}
-        />
-        {!boardView && (
-        <SearchableSelect
-          id="admin-exhibitions-stage"
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "all", label: t("allStages") },
-            { value: "team_leader", label: t("teamLeaderReview") },
-            { value: "finance", label: t("financeReviewStage") },
-            { value: "event", label: t("stageEvent") },
-            { value: "completed", label: t("completedStage") },
-          ]}
-          value={stageFilter}
-          onValueChange={setStageFilter}
-          placeholder={t("allStages")}
-        />
-        )}
-        {!boardView && (
-        <TableSortControl
-          value={sortBy}
-          onValueChange={setSortBy}
-          options={[
-            { value: "createdAt", label: t("sortSubmitted") },
-            { value: "eventStartDate", label: t("sortEventDate") },
-            { value: "estimatedBudget", label: t("sortBudget") },
-            { value: "eventName", label: t("sortEventName") },
-          ]}
-          order={order}
-          onOrderChange={setSortOrder}
-          compact
-        />
-        )}
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchRequestsAgentsEvents")} className="max-sm:basis-0" />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          {!boardView && (
+          <SearchableSelect
+            id="admin-exhibitions-status"
+            className={INLINE_FILTER_CONTROL}
+            options={statusOptions}
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+            placeholder={t("allStatus")}
+          />
+          )}
+          <SearchableSelect
+            id="admin-exhibitions-priority"
+            className={INLINE_FILTER_CONTROL}
+            options={priorityOptions}
+            value={priorityFilter}
+            onValueChange={setPriorityFilter}
+            placeholder={t("allPriority")}
+          />
+          {!boardView && (
+          <SearchableSelect
+            id="admin-exhibitions-stage"
+            className={INLINE_FILTER_CONTROL}
+            options={stageOptions}
+            value={stageFilter}
+            onValueChange={setStageFilter}
+            placeholder={t("allStages")}
+          />
+          )}
+          {!boardView && (
+          <TableSortControl
+            value={sortBy}
+            onValueChange={setSortBy}
+            options={sortOptions}
+            order={order}
+            onOrderChange={setSortOrder}
+            compact
+          />
+          )}
+        </div>
       </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={resetFilters}
+      >
+        {!boardView && (
+          <FilterField label={tc("sortBy")}>
+            <TableSortControl
+              value={sortBy}
+              onValueChange={setSortBy}
+              options={sortOptions}
+              order={order}
+              onOrderChange={setSortOrder}
+              className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+            />
+          </FilterField>
+        )}
+        {!boardView && (
+          <FilterField label={t("status")} htmlFor="exhibitions-sheet-status">
+            <SearchableSelect
+              id="exhibitions-sheet-status"
+              className={SHEET_CONTROL}
+              options={statusOptions}
+              value={statusFilter}
+              onValueChange={setStatusFilter}
+              placeholder={t("allStatus")}
+            />
+          </FilterField>
+        )}
+        <FilterField label={t("priorityHeader")} htmlFor="exhibitions-sheet-priority">
+          <SearchableSelect
+            id="exhibitions-sheet-priority"
+            className={SHEET_CONTROL}
+            options={priorityOptions}
+            value={priorityFilter}
+            onValueChange={setPriorityFilter}
+            placeholder={t("allPriority")}
+          />
+        </FilterField>
+        {!boardView && (
+          <FilterField label={t("approvalStage")} htmlFor="exhibitions-sheet-stage">
+            <SearchableSelect
+              id="exhibitions-sheet-stage"
+              className={SHEET_CONTROL}
+              options={stageOptions}
+              value={stageFilter}
+              onValueChange={setStageFilter}
+              placeholder={t("allStages")}
+            />
+          </FilterField>
+        )}
+        <FilterField label={t("dateRange")} htmlFor="exhibitions-sheet-date">
+          <SearchableSelect
+            id="exhibitions-sheet-date"
+            className={SHEET_CONTROL}
+            options={dateRangeOptions}
+            value={dateRange}
+            onValueChange={setDateRange}
+            placeholder={t("dateRange")}
+          />
+        </FilterField>
+        <FilterField label={t("country")} htmlFor="exhibitions-sheet-country">
+          <SearchableSelect
+            id="exhibitions-sheet-country"
+            className={SHEET_CONTROL}
+            options={countrySelectOptions}
+            value={countryFilter}
+            onValueChange={setCountryFilter}
+            placeholder={t("country")}
+          />
+        </FilterField>
+        <FilterField label={t("budgetRange")} htmlFor="exhibitions-sheet-budget">
+          <SearchableSelect
+            id="exhibitions-sheet-budget"
+            className={SHEET_CONTROL}
+            options={budgetOptions}
+            value={budgetRange}
+            onValueChange={setBudgetRange}
+            placeholder={t("budgetRange")}
+          />
+        </FilterField>
+        <FilterField label={t("assignedReviewer")} htmlFor="exhibitions-sheet-reviewer">
+          <SearchableSelect
+            id="exhibitions-sheet-reviewer"
+            className={SHEET_CONTROL}
+            options={reviewerOptions}
+            value={reviewerFilter}
+            onValueChange={setReviewerFilter}
+            placeholder={t("assignedReviewer")}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {boardView ? (
         <ExhibitionBoard
@@ -685,14 +798,81 @@ export default function AdminExhibitionsPage() {
         </div>
       )}
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl border-t-0 rounded-t-none">
+      {!loadError && (
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("exhibitionOperationsCenter")}
+          loading={loading}
+          empty={
+            <EmptyState
+              title={t("noExhibitionRequestsFound")}
+              description={t("adjustFiltersOrResetTheQueue")}
+              action={activeFilterCount > 0 ? (
+                <Button variant="outline" size="sm" onClick={resetFilters}>{t("resetFilters")}</Button>
+              ) : undefined}
+            />
+          }
+          items={items.map((item) => {
+            const stage = getStage(item);
+            const sla = getSla(item);
+            const statusLabel = STATUS_LABEL_KEYS[item.status] && t(STATUS_LABEL_KEYS[item.status]) !== t(stage.labelKey)
+              ? t(STATUS_LABEL_KEYS[item.status])
+              : null;
+            return {
+              key: item._id,
+              title: (
+                <button type="button" className="text-start hover:text-primary" onClick={() => openDetail(item)}>
+                  {item.eventName}
+                </button>
+              ),
+              subtitle: [t(CATEGORY_LABEL_KEYS[item.eventCategory] ?? "otherCategory"), item.eventStartDate ? formatDate(item.eventStartDate, locale) : null].filter(Boolean).join(" · "),
+              actions: <RowActions name={item.eventName} labelsFrom="wide" {...rowActionsFor(item)} />,
+              meta: (
+                <>
+                  <p className="truncate">{[item.agentId?.name ?? "-", item.agentId?.email].filter(Boolean).join(" · ")}</p>
+                  {statusLabel && <p className="truncate">{statusLabel}</p>}
+                  {item.approvedBudget != null && (
+                    <p className="font-medium text-emerald-600">
+                      {t("approved")}: {formatMoney(item.approvedBudget, item.budgetCurrency)}
+                    </p>
+                  )}
+                </>
+              ),
+              badges: (
+                <>
+                  <Badge className={`${STATUS_BADGES[item.status] ?? ""} whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold`} dot>
+                    {t(stage.labelKey)}
+                  </Badge>
+                  <Badge className={`${PRIORITY_BADGES[item.priority] ?? PRIORITY_BADGES.medium} shrink-0 rounded-md px-1.5 py-0 text-[11px] font-semibold`}>
+                    {t(PRIORITY_LABEL_KEYS[item.priority] ?? "medium")}
+                  </Badge>
+                </>
+              ),
+              stats: [
+                { label: t("budget"), value: formatMoney(item.estimatedBudget, item.budgetCurrency) },
+                {
+                  label: t("sla"),
+                  value: (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${sla.tone}`} aria-hidden="true" />
+                      <span className={`text-xs ${sla.className}`}>{t(sla.labelKey, { days: sla.days })}</span>
+                    </span>
+                  ),
+                },
+              ],
+            };
+          })}
+        />
+      )}
+
+      <section className={cn("workspace-panel-surface overflow-hidden rounded-2xl border-t-0 rounded-t-none", !loadError && "max-sm:hidden")}>
         {loadError ? (
           <div className="p-6">
             <ErrorState description={t("couldNotLoadExhibitionRequests")} onRetry={() => void fetchItems()} />
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <Table>
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="w-11 px-3 py-3 sm:px-3">

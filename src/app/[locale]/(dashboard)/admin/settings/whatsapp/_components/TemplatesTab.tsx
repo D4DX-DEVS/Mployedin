@@ -122,10 +122,10 @@ export function TemplatesTab({ mode }: { mode?: "live" | "mock" }) {
           ) : !loading && templates.length === 0 ? (
             <div className="p-4"><EmptyState icon={FileText} title={t("noTemplates")} /></div>
           ) : (
-            <Table className="responsive-card-table">
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("colName")}</TableHead>
+                  <TableHead className="max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{t("colName")}</TableHead>
                   <TableHead>{t("colStatus")}</TableHead>
                   <TableHead>{t("colLanguage")}</TableHead>
                   <TableHead>{t("colCategory")}</TableHead>
@@ -141,7 +141,7 @@ export function TemplatesTab({ mode }: { mode?: "live" | "mock" }) {
                   templates.map((x) => (
                     // (name, language) is the identity: a sync can delete and re-create rows, so _id is not stable.
                     <TableRow key={`${x.name}::${x.language}`}>
-                      <TableCell className="break-all font-mono text-xs" dir="ltr" title={x.bodyText}>{x.name}</TableCell>
+                      <TableCell className="break-all font-mono text-xs max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:max-w-40 max-sm:bg-card" dir="ltr" title={x.bodyText}>{x.name}</TableCell>
                       <TableCell>
                         <Badge variant={statusVariant(x.status)}>{templateStatusLabel(x.status, t)}</Badge>
                       </TableCell>

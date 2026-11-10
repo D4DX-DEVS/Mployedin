@@ -456,6 +456,11 @@
     "view": "View",
     "create": "Create",
     "search": "Search",
+    "filters": "Filters",
+    "filtersOn": "Filters, {count} on",
+    "clearAllFilters": "Clear all",
+    "showResults": "Show results",
+    "filtersSheetDescription": "Choose filters and sorting for this list.",
     "filter": "Filter",
     "sortBy": "Sort By",
     "sortByField": "Sort by {field}",
@@ -4552,7 +4557,9 @@
     "closingButton": "Closing…",
     "confirmCloseJob": "Close this job? Candidates can no longer apply.",
     "toastJobClosed": "Job closed.",
-    "toastFailedClose": "We couldn't close the job. Please try again."
+    "toastFailedClose": "We couldn't close the job. Please try again.",
+    "salaryVisibilityFilterLabel": "Salary visibility",
+    "aiSearchLabel": "AI search"
   },
   "employerCandidates": {
     "heroTitle": "Candidate Matching",
@@ -4750,7 +4757,8 @@
     "exportExperience": "Experience (yrs)",
     "exportSkills": "Skills",
     "exportAiMatch": "AI Match",
-    "exportAvailability": "Availability"
+    "exportAvailability": "Availability",
+    "aiSearchLabel": "AI search"
   },
   "scorecard": {
     "title": "Interview Scorecard",
@@ -5426,7 +5434,12 @@
     "clearFilters": "Clear filters",
     "humanReviewChip": "Review requested",
     "humanReviewTitle": "The candidate asked for a human review",
-    "humanReviewBody": "Your automatic screening rejected this application (match {score}%, your line {threshold}%). The candidate asked for a person to look again, so it is back in your queue. Please review it and move it to the right stage yourself."
+    "humanReviewBody": "Your automatic screening rejected this application (match {score}%, your line {threshold}%). The candidate asked for a person to look again, so it is back in your queue. Please review it and move it to the right stage yourself.",
+    "scoreMinLabel": "Minimum AI score",
+    "scoreMaxLabel": "Maximum AI score",
+    "experienceMinLabel": "Minimum years of experience",
+    "experienceMaxLabel": "Maximum years of experience",
+    "offerPeriodLabel": "Pay period"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
@@ -5873,6 +5886,9 @@
       "overview": "Overview",
       "attention": "Needs your attention",
       "analysis": "Quick analysis",
+      "overviewShort": "Overview",
+      "attentionShort": "Attention",
+      "analysisShort": "Analysis",
       "ariaLabel": "Dashboard sections"
     },
     "recent": {
@@ -6666,7 +6682,9 @@
       "allWorkModes": "All work modes",
       "locationPlaceholder": "Location",
       "skillsPlaceholder": "Skills, comma separated",
-      "clear": "Clear filters"
+      "clear": "Clear filters",
+      "workModeLabel": "Work mode",
+      "skillsLabel": "Skills"
     },
     "results": {
       "eyebrow": "Current results",
@@ -7528,7 +7546,8 @@
     "acceptedNextStepBody": "Your recruitment team records the placement. Once it exists you can track the start date, visa status and onboarding under Placements.",
     "viewPlacements": "Go to placements",
     "statOffers": "Offers",
-    "chooseCandidate": "Choose a candidate"
+    "chooseCandidate": "Choose a candidate",
+    "jobFilterLabel": "Job"
   },
   "employerBackgroundChecks": {
     "agentLabel": "Agent",
@@ -11473,7 +11492,8 @@
     "target": "Target",
     "changeDetail": "Change",
     "changeArrow": "{from} → {to}",
-    "noChangeRecorded": "—"
+    "noChangeRecorded": "—",
+    "actorRoleLabel": "Actor role"
   },
   "adminPlatformData": {
     "tabsLabel": "Platform data tables",
@@ -12603,7 +12623,8 @@
     "status_completed": "Completed",
     "status_cancelled": "Cancelled",
     "status_no_show": "No show",
-    "changeStatusFor": "Change interview status for {candidate}"
+    "changeStatusFor": "Change interview status for {candidate}",
+    "superAgentLabel": "Super agent"
   },
   "adminInvoices": {
     "title": "Invoices",
@@ -13731,7 +13752,10 @@
     "premiumGranted": "{name} is now premium",
     "premiumRevoked": "{name} is no longer premium",
     "premiumUpdateError": "Couldn't update premium. Try again.",
-    "exportHeaderReferredBy": "Referred by"
+    "exportHeaderReferredBy": "Referred by",
+    "backToList": "Back to job seekers",
+    "openProfile": "Open profile of {name}",
+    "profileNotFound": "We couldn't find this job seeker. They may have been removed."
   },
   "adminReports": {
     "reportsAndAnalytics": "Platform Report",
@@ -15106,7 +15130,9 @@
     "ledgerLabel": "Team Invoice Ledger",
     "tableTitle": "Team Invoices",
     "myCommission": "My Commission",
-    "emptyStateMessage": "Team invoices will appear here when agents create them."
+    "emptyStateMessage": "Team invoices will appear here when agents create them.",
+    "filterDateFrom": "From date",
+    "filterDateTo": "To date"
   },
   "superAgentExhibitionsAnalytics": {
     "superAgentAnalytics": "Super Agent Analytics",
@@ -15411,7 +15437,8 @@
         "onsite": "On-site",
         "any": "Any"
       }
-    }
+    },
+    "filterAvailability": "Availability"
   },
   "superAgentReports": {
     "teamPerformanceSummary": "Team performance summary",
@@ -16394,7 +16421,8 @@
     "emptyDescriptionAgent": "Create your first invoice to start tracking commissions.",
     "emptyDescriptionSuperAgent": "Team invoices will appear here when agents create them.",
     "noResultsTitle": "No invoices match your search",
-    "noResultsDescription": "Try a different search term or clear the filters to see more invoices."
+    "noResultsDescription": "Try a different search term or clear the filters to see more invoices.",
+    "listLabel": "Invoices"
   },
   "agentInvoices": {
     "title": "My Invoices & Commissions",
@@ -16445,7 +16473,9 @@
     "metricPaid": "Paid",
     "metricPending": "Pending",
     "metricTotalInvoices": "Total Invoices",
-    "metricRevenueShort": "Revenue"
+    "metricRevenueShort": "Revenue",
+    "filterDateFromLabel": "From date",
+    "filterDateToLabel": "To date"
   },
   "agentCommissions": {
     "agentWorkspace": "Agent workspace",
@@ -16505,6 +16535,7 @@
     "statInProgress": "In Progress",
     "statCompleted": "Completed",
     "statOverdue": "Overdue",
+    "statOpen": "Open",
     "createTaskHeading": "Create Task",
     "taskTitlePlaceholder": "Task title *",
     "taskDescriptionPlaceholder": "Description (optional)",
@@ -18831,7 +18862,7 @@
     "reason": {
       "followUp": "Follow-up due",
       "task": "Task overdue",
-      "interviewOutcome": "No outcome recorded",
+      "interviewOutcome": "Interview held, result not recorded",
       "offerResponse": "Awaiting candidate reply",
       "newCandidate": "Not reviewed yet",
       "exhibitionRevision": "Sent back for changes"
@@ -21422,7 +21453,8 @@
       "resultCached": "Cached",
       "logEmpty": "No calls match these filters",
       "unpriced": "no price"
-    }
+    },
+    "colShareShort": "Share"
   },
   "adminMarketGaps": {
     "title": "Market gaps",
@@ -21547,4 +21579,3 @@
     }
   }
 }
-

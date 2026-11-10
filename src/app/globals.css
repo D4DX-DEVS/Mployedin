@@ -1832,6 +1832,33 @@ input::placeholder {
   padding: 0;
 }
 
+/* Job-seeker phones: a tag chip's remove (x) button took the global 44px
+   button floor, so each chip in Preferences / Personal details rendered ~50px
+   tall and wide. The chip keeps its size; the x keeps a 44px hit area through
+   an overlay instead. Scoped to the seeker frame (employer pages unchanged).
+   Unlayered, so it beats the layered 44px rule. */
+@media (max-width: 639px) {
+  .job-seeker-route-content [data-tag-remove] {
+    position: relative;
+    min-height: 0;
+    min-width: 0;
+  }
+  /* The chips share a line with the 44px text input; centre them instead of
+     stretching them to its height. */
+  .job-seeker-route-content :has(> span > [data-tag-remove]) {
+    align-items: center;
+  }
+  .job-seeker-route-content [data-tag-remove]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2rem;
+    height: 2.75rem;
+    transform: translate(-50%, -50%);
+  }
+}
+
 @layer components {
 
 /* Mobile-first workspace density and overflow safeguards. These rules live
@@ -2216,6 +2243,24 @@ input::placeholder {
   .copilot-panel {
     inset-inline-end: 1rem;
     inset-block-end: 1rem;
+  }
+}
+
+/* Phones (non-employer roles): the Copilot opens from the top-bar launcher,
+   so the floating button goes — it sat on card actions and pagination — and
+   the panel takes the whole screen instead of a 400px box over the page. */
+@media (max-width: 639px) {
+  body:has([data-copilot-launcher]) .copilot-fab-button {
+    display: none !important;
+  }
+  .copilot-panel {
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
@@ -3697,6 +3742,50 @@ table.workspace-list-table tbody tr:focus-visible {
   }
 }
 
+/* ── Phone filter row (lists on PhoneFilterSheet) ─────────────────────────
+   A bar that carries the phone Filters button is one line of search + Filters
+   + Export on phones; its panel box (padding + bottom rule) inset it 16px from
+   the cards below and drew a stray line. Scoped by :has() so lists that have
+   not moved to the sheet — employer's included — keep their box. Same layer
+   and !important as the admin/super-agent panel rules it has to beat. */
+@layer components {
+  @media (max-width: 639px) {
+    .dashboard-main .panel-head:has([data-phone-filters]) {
+      padding: 0 0 0.75rem !important;
+      border: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    /* The sheet has its own "Clear all"; the bar's reset beside Filters
+       squeezed the search to "Search can". */
+    .dashboard-main .panel-head:has([data-phone-filters]) [data-filter-clear] {
+      display: none !important;
+    }
+  }
+}
+
+/* Agent home on phones: the cards carry their own 16px inner padding, so the
+   16px page gutter on top cost ~32px of a 375px screen (owner, 2026-11-10).
+   An 8px outer gutter here; other pages keep theirs. */
+@media (max-width: 639px) {
+  .dashboard-main .agent-home {
+    margin-inline: calc(0.5rem - var(--page-gutter));
+  }
+  /* Section headers: "View all" stays on the title line; the description
+     runs full width underneath (it used to push the link onto a third line). */
+  .agent-home [data-dashboard-overview-header] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0.5rem;
+    row-gap: 0;
+  }
+  .agent-home [data-dashboard-overview-header] > div:first-child { display: contents; }
+  .agent-home [data-dashboard-overview-header] > div:first-child > h2 { grid-column: 1; grid-row: 1; }
+  .agent-home [data-dashboard-overview-header] > div:first-child > p { grid-column: 1 / -1; grid-row: 2; }
+  .agent-home [data-dashboard-overview-header] > div:last-child:not(:first-child) { grid-column: 2; grid-row: 1; }
+}
+
 /* rebuild r2 */
 
 /* rebuild r3 */
@@ -4750,6 +4839,45 @@ table.workspace-list-table tbody tr:focus-visible {
     overflow: visible;
     -webkit-line-clamp: unset;
   }
+  /* The four shortcuts (Post job, Add lead, Target, Commission) were bare
+     icons on phones. They take their own row of four, each with its label. */
+  .agent-smart-header .workspace-header-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    margin-inline-start: 0;
+  }
+  /* The five figures as small cards, icon over number over label. Words never
+     split ("Employer / s" at 360px): the label keeps whole words. */
+  .agent-smart-header .workspace-header-metrics {
+    gap: 0.375rem;
+    padding-top: 0.25rem;
+    border-top: 0;
+  }
+  .agent-smart-header .workspace-header-metric,
+  .agent-smart-header .workspace-header-metric:last-child {
+    padding: 0.5rem 0.125rem;
+    border: 1px solid hsl(var(--border) / 0.7);
+    border-radius: 0.75rem;
+    background: hsl(var(--card));
+  }
+  .agent-smart-header .workspace-header-metric-icon {
+    display: block;
+    order: -1;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-bottom: 0.125rem;
+    color: hsl(var(--primary));
+  }
+  .agent-smart-header .workspace-header-metric[data-tone="success"] .workspace-header-metric-icon { color: hsl(var(--status-selected)); }
+  .agent-smart-header .workspace-header-metric[data-tone="info"] .workspace-header-metric-icon { color: hsl(262 83% 58%); }
+  .agent-smart-header .workspace-header-metric[data-tone="warning"] .workspace-header-metric-icon { color: hsl(var(--status-shortlisted)); }
+  .agent-smart-header .workspace-header-metric[data-tone="danger"] .workspace-header-metric-icon { color: hsl(var(--destructive)); }
+  .agent-smart-header .workspace-header-metric-label {
+    overflow-wrap: normal;
+    word-break: keep-all;
+    letter-spacing: -0.01em;
+  }
 }
 
 /* An EmptyState inside a full-width table row on phones: the generic "plain
@@ -4781,3 +4909,31 @@ table.workspace-list-table tbody tr:focus-visible {
 }
 
 /* rebuild nudge 2026-10-13 pagination phone centre */
+
+/* Phones, staff workspaces (employer is frozen): a clickable figure kept its
+   0.5rem radius, so the divider beside it bent into a "(" (agent Interviews,
+   Tasks). Straight cells, and the active one marked by an underline. */
+@media (max-width: 639px) {
+  .dashboard-main[data-workspace="staff"] .workspace-header-metric.is-clickable { border-radius: 0; }
+  .dashboard-main[data-workspace="staff"] .workspace-header-metric.is-active {
+    background: hsl(var(--primary) / 0.06);
+    box-shadow: inset 0 -2px 0 hsl(var(--primary));
+  }
+}
+
+/* Phone record cards: the footer buttons share the row. Text buttons grow so
+   a wrapped button fills its own line instead of hanging at the end of a
+   ragged one; icon-only buttons and the "more" trigger keep their size. */
+@media (max-width: 639px) {
+  /* Only a wrapper holding a text button spans the row; a lone icon button
+     stays at the end instead of being stranded at the start. */
+  .phone-record-actions > :is(div, span):has(> :is(button, a):not([data-icon-only]):not([aria-haspopup="menu"]):not(.h-10.w-10):not(.h-9.w-9):not(.h-8.w-8)) { width: 100%; }
+  .phone-record-actions > :is(button, a),
+  .phone-record-actions > * > :is(button, a) {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .phone-record-actions :is([data-icon-only], [aria-haspopup="menu"], .h-10.w-10, .h-9.w-9, .h-8.w-8, .size-9, .size-10, .size-11) {
+    flex: 0 0 auto !important;
+  }
+}

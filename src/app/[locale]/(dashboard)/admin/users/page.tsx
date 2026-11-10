@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { InlinePicker, RowActions, type RowAction } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
@@ -41,7 +42,9 @@ import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { assignmentHref } from "@/lib/admin/assignmentLinks";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import type { UserRole, PermissionMode, CustomPermissions } from "@/types/user";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, Clock, CalendarDays } from "lucide-react";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
+import { cn } from "@/lib/utils";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 
 interface User {
@@ -84,6 +87,7 @@ const DIALOG_FOOT = "-mx-4 border-t border-border/60 px-4 pt-3 sm:-mx-6 sm:px-6"
 
 export default function AdminUsersPage() {
   const t = useTranslations("adminUsers");
+  const tCommon = useTranslations("common");
   const tf = useTranslations("formErrors");
   const locale = useLocale();
   const router = useRouter();
@@ -106,6 +110,7 @@ export default function AdminUsersPage() {
   const [roleChangingId, setRoleChangingId] = useState<string | null>(null);
   const [bulkAction, setBulkAction] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   // Create user modal state
   const [showCreate, setShowCreate] = useState(false);
@@ -647,6 +652,40 @@ export default function AdminUsersPage() {
     return { quick: [quick], menu };
   };
 
+  // Shared by the desktop filter bar and the phone filter sheet.
+  const roleOptions = [
+    { value: "all", label: t("allRoles") },
+    ...ROLES.map((r) => ({ value: r, label: roleLabel(r) })),
+    { value: "unknown", label: t("unknownRole") },
+  ];
+  const statusOptions = [
+    { value: "all", label: t("allStatus") },
+    { value: "true", label: t("active") },
+    { value: "false", label: t("inactive") },
+  ];
+  const sortOptions = [
+    { value: "createdAt", label: t("joinedTableHeader") },
+    { value: "lastLogin", label: t("exportHeaderLastLogin") },
+    { value: "name", label: t("userTableHeader") },
+    { value: "role", label: t("roleTableHeader") },
+  ];
+  const phoneFilterCount = (roleFilter !== "all" ? 1 : 0) + (activeFilter !== "all" ? 1 : 0);
+
+  const rolePicker = (user: (typeof users)[number]) => (
+    <InlinePicker
+      name={user.name || user.email}
+      align="start"
+      picker={{
+        label: `${t("changeRole")}: ${user.name || user.email}`,
+        value: user.role,
+        display: <Badge className={`${ROLE_COLORS[user.role] ?? ""} border text-xs`}>{roleLabel(user.role)}</Badge>,
+        options: ROLES.map((r) => ({ value: r, label: roleLabel(r) })),
+        onChange: (r) => { void changeUserRole(user, r); },
+        pending: roleChangingId === user._id,
+      }}
+    />
+  );
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -665,7 +704,8 @@ export default function AdminUsersPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        // Phones: one line of search + Filters + Export, no box around it.
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -674,45 +714,121 @@ export default function AdminUsersPage() {
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          // Phones: share the line with Filters instead of wrapping under it.
+          className="max-sm:basis-0"
         />
-        <InlineSearchSelect
-          options={[
-            { value: "all", label: t("allRoles") },
-            ...ROLES.map((r) => ({ value: r, label: roleLabel(r) })),
-            { value: "unknown", label: t("unknownRole") },
-          ]}
-          value={roleFilter}
-          onValueChange={(v) => { setRoleFilter(v); resetPage(); }}
-          placeholder={t("allRoles")}
-          className="h-11 w-40 rounded-lg text-xs sm:h-9 sm:text-sm"
-        />
-        <InlineSearchSelect
-          options={[
-            { value: "all", label: t("allStatus") },
-            { value: "true", label: t("active") },
-            { value: "false", label: t("inactive") },
-          ]}
-          value={activeFilter}
-          onValueChange={(v) => { setActiveFilter(v); resetPage(); }}
-          placeholder={t("allStatus")}
-          className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
-        />
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(v) => { setSortBy(v); resetPage(); }}
-          options={[
-            { value: "createdAt", label: t("joinedTableHeader") },
-            { value: "lastLogin", label: t("exportHeaderLastLogin") },
-            { value: "name", label: t("userTableHeader") },
-            { value: "role", label: t("roleTableHeader") },
-          ]}
-          order={order}
-          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-          compact
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+        <div className="contents max-sm:hidden">
+          <InlineSearchSelect
+            options={roleOptions}
+            value={roleFilter}
+            onValueChange={(v) => { setRoleFilter(v); resetPage(); }}
+            placeholder={t("allRoles")}
+            className="h-11 w-40 rounded-lg text-xs sm:h-9 sm:text-sm"
+          />
+          <InlineSearchSelect
+            options={statusOptions}
+            value={activeFilter}
+            onValueChange={(v) => { setActiveFilter(v); resetPage(); }}
+            placeholder={t("allStatus")}
+            className="h-11 w-32 rounded-lg text-xs sm:h-9 sm:text-sm"
+          />
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v); resetPage(); }}
+            options={sortOptions}
+            order={order}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            compact
+          />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setRoleFilter("all"); setActiveFilter("all"); resetPage(); }}
+      >
+        <FilterField label={tCommon("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v); resetPage(); }}
+            options={sortOptions}
+            order={order}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={t("roleTableHeader")} htmlFor="users-sheet-role">
+          <InlineSearchSelect
+            id="users-sheet-role"
+            options={roleOptions}
+            value={roleFilter}
+            onValueChange={(v) => { setRoleFilter(v); resetPage(); }}
+            placeholder={t("allRoles")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("statusTableHeader")} htmlFor="users-sheet-status">
+          <InlineSearchSelect
+            id="users-sheet-status"
+            options={statusOptions}
+            value={activeFilter}
+            onValueChange={(v) => { setActiveFilter(v); resetPage(); }}
+            placeholder={t("allStatus")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      {!error && (
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("userManagement")}
+          loading={loading}
+          empty={<EmptyState title={t("noUsers")} icon={Inbox} />}
+          items={users.map((user) => {
+            const joined = formatListDate(new Date(user.createdAt), locale);
+            const lastLogin = user.lastLogin ? formatListDate(new Date(user.lastLogin), locale) : null;
+            return {
+              key: user._id,
+              leading: <UserAvatar name={user.name} email={user.email} src={user.avatar} className="h-10 w-10" colorful />,
+              title: user.name || t("unnamed"),
+              subtitle: user.email,
+              trailing: (
+                <Badge className={`text-[11px] ${user.isActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}`}>
+                  {user.isActive ? t("active") : t("inactive")}
+                </Badge>
+              ),
+              actions: <RowActions name={user.name || user.email} {...rowActionsFor(user)} />,
+              meta: (
+                <>
+                  <p className="flex min-w-0 items-center gap-1">
+                    <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{t("exportHeaderLastLogin")}: {lastLogin ?? t("never")}</span>
+                  </p>
+                  <p className="flex min-w-0 items-center gap-1">
+                    <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{t("joinedTableHeader")}: {joined}</span>
+                  </p>
+                </>
+              ),
+              badges: (
+                <>
+                  {rolePicker(user)}
+                  {user.permissionMode === "custom" && (
+                    <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-600">{t("customPermissions")}</Badge>
+                  )}
+                </>
+              ),
+            };
+          })}
+        />
+      )}
+
+      <section className={cn("workspace-panel-surface overflow-hidden rounded-2xl", !error && "max-sm:hidden")}>
 
         {/* Bulk Actions Bar */}
         {selected.length > 0 && (
@@ -743,7 +859,7 @@ export default function AdminUsersPage() {
             <ErrorState onRetry={fetchUsers} />
           </div>
         ) : (
-        <Table>
+        <Table data-mobile-table="scroll">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>
@@ -815,18 +931,7 @@ export default function AdminUsersPage() {
                     <div className="flex items-center gap-1.5">
                       {/* Same pill as a row status: current role + chevron, one click to
                           open, one to pick; changeUserRole still confirms first. */}
-                      <InlinePicker
-                        name={user.name || user.email}
-                        align="start"
-                        picker={{
-                          label: `${t("changeRole")}: ${user.name || user.email}`,
-                          value: user.role,
-                          display: <Badge className={`${ROLE_COLORS[user.role] ?? ""} border text-xs`}>{roleLabel(user.role)}</Badge>,
-                          options: ROLES.map((r) => ({ value: r, label: roleLabel(r) })),
-                          onChange: (r) => { void changeUserRole(user, r); },
-                          pending: roleChangingId === user._id,
-                        }}
-                      />
+                      {rolePicker(user)}
                       {user.permissionMode === "custom" && (
                         <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-600">{t("customPermissions")}</Badge>
                       )}

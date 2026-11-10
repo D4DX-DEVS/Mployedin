@@ -62,12 +62,14 @@ export function TemplateCard({ template, pendingAction, onEdit, onAction, onDele
   return (
     <article
       className={cn(
-        "rounded-2xl border bg-background/80 panel-body transition-colors",
+        // Phone: a column whose header row dissolves (max-sm:contents) so the edit/menu buttons can
+        // drop to the card's foot instead of floating on a row of their own mid-card.
+        "rounded-2xl border bg-background/80 panel-body transition-colors max-sm:flex max-sm:flex-col",
         archived ? "border-dashed border-border opacity-80" : "border-border hover:border-sky-500/25",
       )}
       aria-labelledby={`wf-template-${template._id}`}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 max-sm:contents sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <GitBranch className="h-4 w-4 shrink-0 text-sky-600" aria-hidden="true" />
@@ -82,7 +84,7 @@ export function TemplateCard({ template, pendingAction, onEdit, onAction, onDele
           </div>
           {template.description && <p className="text-xs text-muted-foreground">{template.description}</p>}
         </div>
-        <div className="flex shrink-0 items-center gap-1 self-end sm:self-start">
+        <div className="flex shrink-0 items-center gap-1 self-end max-sm:order-last max-sm:mt-2 sm:self-start">
           <RowActions
             name={template.name}
             quick={[{ key: "edit", label: t("actionEdit"), icon: Edit2, onSelect: onEdit, iconOnly: true }]}

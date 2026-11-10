@@ -11,7 +11,7 @@ import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { readQuery } from "@/lib/ui/urlQuery";
 import {
   Plus, Clock, AlertCircle, CheckCircle2,
-  Trash2, Calendar, PlayCircle, UserCheck, Undo2, XCircle, Eye,
+  Trash2, Calendar, UserCheck, Undo2, Eye,
 } from "lucide-react";
 import { STATUS_DOT, TaskStatusBadge, TaskStatusDialog, type AgentTaskStatus, type StatusChange } from "@/components/features/tasks/TaskStatusDialog";
 import { csrfFetch } from "@/lib/security/csrf-client";
@@ -23,10 +23,12 @@ import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { useConfirm } from "@/hooks/useConfirm";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions, type RowPicker } from "@/components/shared/RowActions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -80,7 +82,7 @@ export default function AgentTasksPage() {
   const { confirm, ConfirmDialogNode } = useConfirm();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [stats, setStats] = useState({ pending: 0, inProgress: 0, completed: 0, failed: 0, overdue: 0 });
+  const [stats, setStats] = useState({ open: 0, pending: 0, inProgress: 0, completed: 0, failed: 0, overdue: 0 });
   const [loading, setLoading] = useState(true);
   // Filters live in the query string so the dashboard queue and the nav badge
   // can link straight to "overdue tasks" instead of dropping the agent on an
@@ -90,6 +92,7 @@ export default function AgentTasksPage() {
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   // assigned = from a super agent / admin (notifications link here); personal = own to-dos.
   const [kindFilter, setKindFilter] = useUrlFilter("kind", "all");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   // Every status change confirms with an optional note (kept in the task's
   // history); Completed / Failed on an assigned task goes to review.
   const [statusChange, setStatusChange] = useState<StatusChange | null>(null);
@@ -119,7 +122,7 @@ export default function AgentTasksPage() {
         const data = await res.json();
         setTasks(data.items ?? []);
         updateTotal(data.total ?? 0);
-        setStats(data.stats ?? { pending: 0, inProgress: 0, completed: 0, failed: 0, overdue: 0 });
+        setStats(data.stats ?? { open: 0, pending: 0, inProgress: 0, completed: 0, failed: 0, overdue: 0 });
       }
     } catch {
       toast.error(t("loadTasksFailed"));
@@ -178,6 +181,46 @@ export default function AgentTasksPage() {
   // BUG-11: filtered-to-zero must not show first-use copy.
   const hasActiveFilters =
     search.trim().length > 0 || statusFilter !== "all" || dueFilter !== "all" || kindFilter !== "all";
+  // The filter offers Open and Overdue next to the real statuses so the cards
+  // and the dropdown always say the same thing. Overdue is a due-date filter
+  // underneath, so the dropdown value is derived from both.
+  const statusOptions = (() => {
+    const [all, ...rest] = getStatusOptions(t);
+    return [all, { value: "open", label: t("statOpen") }, { value: "overdue", label: t("statOverdue") }, ...rest];
+  })();
+  const statusSelectValue = dueFilter === "overdue" ? "overdue" : statusFilter;
+  const pickStatus = (v: string) => {
+    if (v === "overdue") { setStatusFilter("all"); setDueFilter("overdue"); }
+    else { setStatusFilter(v); setDueFilter("all"); }
+    resetPage();
+  };
+  const kindOptions = [
+    { value: "all", label: t("kindAll") },
+    { value: "assigned", label: t("kindAssigned") },
+    { value: "personal", label: t("kindPersonal") },
+  ];
+  const phoneFilterCount = (statusSelectValue !== "all" ? 1 : 0) +(kindFilter !== "all" ? 1 : 0);
+
+  const taskActions = (task: Task) => {
+    const assigned = Boolean(task.assignedBy);
+    return (
+      <RowActions
+        name={task.title}
+        labelsFrom="wide"
+        quick={[{ key: "details", label: t("detailsAction"), icon: Eye, onSelect: () => setDetailsTask(task) }]}
+        menu={[
+          // An assigned task belongs to whoever gave it: no delete.
+          ...(assigned ? [] : [{
+            key: "delete",
+            label: tc("delete"),
+            icon: Trash2,
+            destructive: true,
+            onSelect: () => { void deleteTask(task._id); },
+          }]),
+        ]}
+      />
+    );
+  };
 
   return (
     <>
@@ -195,70 +238,168 @@ export default function AgentTasksPage() {
         }
         // The strip used to be four dead numbers. Each cell is now the filter
         // it describes, so "Overdue 6" is the way into those six tasks.
+        // Three cards, not five: Open (pending + in progress), Overdue (the
+        // late part of Open) and Completed. Pending / In progress / Failed
+        // stay in the status filter, so nothing is counted twice up here.
         metrics={[
           {
-            label: t("statPending"), value: stats.pending, icon: Clock, tone: "warning",
-            onClick: () => setStatusFilter(statusFilter === "pending" ? "all" : "pending"),
-            active: statusFilter === "pending",
+            label: t("statOpen"), value: stats.open, icon: Clock, tone: "warning",
+            onClick: () => pickStatus(statusSelectValue === "open" ? "all" : "open"),
+            active: statusSelectValue === "open",
           },
           {
-            label: t("statInProgress"), value: stats.inProgress, icon: PlayCircle, tone: "primary",
-            onClick: () => setStatusFilter(statusFilter === "in_progress" ? "all" : "in_progress"),
-            active: statusFilter === "in_progress",
+            label: t("statOverdue"), value: stats.overdue, icon: AlertCircle, tone: "danger",
+            onClick: () => pickStatus(statusSelectValue === "overdue" ? "all" : "overdue"),
+            active: statusSelectValue === "overdue",
           },
           {
             label: t("statCompleted"), value: stats.completed, icon: CheckCircle2, tone: "success",
-            onClick: () => setStatusFilter(statusFilter === "completed" ? "all" : "completed"),
-            active: statusFilter === "completed",
-          },
-          {
-            label: t("statFailed"), value: stats.failed, icon: XCircle, tone: "danger",
-            onClick: () => setStatusFilter(statusFilter === "failed" ? "all" : "failed"),
-            active: statusFilter === "failed",
-          },
-          {
-            label: t("statOverdue"), value: stats.overdue, icon: AlertCircle, tone: "info",
-            onClick: () => setDueFilter(dueFilter === "overdue" ? "all" : "overdue"),
-            active: dueFilter === "overdue",
+            onClick: () => pickStatus(statusSelectValue === "completed" ? "all" : "completed"),
+            active: statusSelectValue === "completed",
           },
         ]}
       />
 
       {/* Filters */}
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={hasActiveFilters ? () => { setSearch(""); setStatusFilter("all"); setDueFilter("all"); setKindFilter("all"); resetPage(); } : undefined}
       >
         <InlineFilterSearch
           value={search}
           onChange={(v) => { setSearch(v); resetPage(); }}
           placeholder={t("searchPlaceholder")}
+          className="max-sm:basis-0"
         />
-        <SearchableSelect
-          options={getStatusOptions(t)}
-          value={statusFilter}
-          onValueChange={(v) => { setStatusFilter(v); resetPage(); }}
-          placeholder={tc("status")}
-          ariaLabel={tc("status")}
-          className={INLINE_FILTER_CONTROL}
-        />
-        <SearchableSelect
-          options={[
-            { value: "all", label: t("kindAll") },
-            { value: "assigned", label: t("kindAssigned") },
-            { value: "personal", label: t("kindPersonal") },
-          ]}
-          value={kindFilter}
-          onValueChange={(v) => { setKindFilter(v); resetPage(); }}
-          ariaLabel={t("kindLabel")}
-          className={INLINE_FILTER_CONTROL}
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            options={statusOptions}
+            value={statusSelectValue}
+            onValueChange={pickStatus}
+            placeholder={tc("status")}
+            ariaLabel={tc("status")}
+            className={INLINE_FILTER_CONTROL}
+          />
+          <SearchableSelect
+            options={kindOptions}
+            value={kindFilter}
+            onValueChange={(v) => { setKindFilter(v); resetPage(); }}
+            ariaLabel={t("kindLabel")}
+            className={INLINE_FILTER_CONTROL}
+          />
+        </div>
       </InlineFilterBar>
 
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={() => { setStatusFilter("all"); setDueFilter("all"); setKindFilter("all"); resetPage(); }}
+      >
+        <FilterField label={tc("status")} htmlFor="agent-tasks-sheet-status">
+          <SearchableSelect
+            id="agent-tasks-sheet-status"
+            options={statusOptions}
+            value={statusSelectValue}
+            onValueChange={pickStatus}
+            placeholder={tc("status")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("kindLabel")} htmlFor="agent-tasks-sheet-kind">
+          <SearchableSelect
+            id="agent-tasks-sheet-kind"
+            options={kindOptions}
+            value={kindFilter}
+            onValueChange={(v) => { setKindFilter(v); resetPage(); }}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      {/* Phone: one card per task; the table from sm up */}
+      <PhoneRecordList
+        className="sm:hidden"
+        compact
+        label={t("pageTitle")}
+        loading={loading}
+        empty={
+          <EmptyState
+            title={hasActiveFilters ? t("noResultsTitle") : t("emptyStateTitle")}
+            description={hasActiveFilters ? t("noResultsDescription") : t("emptyStateDescription")}
+            icon={Calendar}
+          />
+        }
+        items={tasks.map((task) => {
+          const assigned = Boolean(task.assignedBy);
+          const assignerName = task.assignedBy?.name ?? "";
+          const closed = task.status === "completed" || task.status === "failed";
+          return {
+            key: task._id,
+            title: (
+              <button
+                type="button"
+                onClick={() => setDetailsTask(task)}
+                className={`block max-w-full truncate rounded text-start hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${closed && task.reviewStatus !== "awaiting_review" ? "line-through text-muted-foreground" : "text-foreground"}`}
+              >
+                {task.title}
+              </button>
+            ),
+            subtitle: task.description || undefined,
+            trailing: <RowActions name={task.title} picker={statusPickerFor(task)} />,
+            // The title already opens details; only own tasks need the footer (for Delete).
+            actions: assigned ? undefined : taskActions(task),
+            meta: (
+              <>
+                {task.reviewStatus === "returned" && task.reviewComment && (
+                  <p className="mt-1 flex items-start gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">
+                    <Undo2 className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="break-words"><span className="font-semibold">{t("returnedReasonLabel")}</span> {task.reviewComment}</span>
+                  </p>
+                )}
+              </>
+            ),
+            badges: (
+              <>
+                <span className={`inline-flex w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${PRIORITY_COLORS[task.priority]}`}>
+                  {t(`priorityLabel${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}`)}
+                </span>
+                {task.dueDate && (
+                  <span
+                    title={`${t("columnDueDate")}: ${formatListDate(new Date(task.dueDate))}`}
+                    className={`inline-flex items-center gap-1 whitespace-nowrap text-[11px] ${new Date(task.dueDate) < new Date() && !closed ? "font-semibold text-red-500" : "text-muted-foreground"}`}
+                  >
+                    <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="sr-only">{t("columnDueDate")}:</span>
+                    {formatListDate(new Date(task.dueDate))}
+                  </span>
+                )}
+                {assigned && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                    <UserCheck className="h-3 w-3" aria-hidden="true" />
+                    {task.assignedBy?.role === "admin"
+                      ? t("assignedByAdmin", { name: assignerName })
+                      : t("assignedBySuperAgent", { name: assignerName })}
+                  </span>
+                )}
+                {task.reviewStatus === "approved" && (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">{t("reviewApproved")}</span>
+                )}
+                {task.reviewStatus === "returned" && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">{t("reviewReturned")}</span>
+                )}
+                <TaskLinkChips locale={locale} links={task.links} />
+              </>
+            ),
+          };
+        })}
+      />
+
       {/* Table section */}
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
         <div className="overflow-x-auto">
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[200px]">{t("columnTask")}</TableHead>
@@ -352,21 +493,7 @@ export default function AgentTasksPage() {
                       ) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <RowActions
-                        name={task.title}
-                        labelsFrom="wide"
-                        quick={[{ key: "details", label: t("detailsAction"), icon: Eye, onSelect: () => setDetailsTask(task) }]}
-                        menu={[
-                          // An assigned task belongs to whoever gave it: no delete.
-                          ...(assigned ? [] : [{
-                            key: "delete",
-                            label: tc("delete"),
-                            icon: Trash2,
-                            destructive: true,
-                            onSelect: () => { void deleteTask(task._id); },
-                          }]),
-                        ]}
-                      />
+                      {taskActions(task)}
                     </TableCell>
                   </TableRow>
                   );

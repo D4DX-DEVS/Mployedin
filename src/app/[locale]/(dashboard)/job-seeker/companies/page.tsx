@@ -48,6 +48,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 export default function CompaniesListPage() {
   const t = useTranslations("jobSeekerCompanies");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -112,17 +113,24 @@ export default function CompaniesListPage() {
           two of them made those two read as a different product. */}
       <PageHeader title={t("title")} description={t("description")} />
 
-      <section className="workspace-panel-surface rounded-3xl panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
+          <div className="flex-1 max-sm:space-y-1.5">
+            {/* Phones: a visible label (a placeholder is not a label). */}
+            <label htmlFor="seeker-company-search" className="text-sm font-medium text-foreground sm:hidden">
+              {t.has("searchLabel") ? t("searchLabel") : tCommon("search")}
+            </label>
+            <div className="relative">
             <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              id="seeker-company-search"
               placeholder={t("searchPlaceholder")}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="ps-9"
               aria-label={t("searchPlaceholder")}
             />
+            </div>
           </div>
           {/* Select and Reset share a row on phones so the filter bar stays two
               lines instead of three. */}
@@ -152,7 +160,7 @@ export default function CompaniesListPage() {
         )}
       </section>
 
-      <section className="workspace-panel-surface rounded-3xl panel-body">
+      <section className="workspace-panel-surface rounded-3xl panel-body max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none">
         {loading ? (
           <ListSkeleton count={6} layout="grid" itemClassName="h-32" />
         ) : loadError ? (

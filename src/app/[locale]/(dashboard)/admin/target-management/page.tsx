@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { RowActions } from "@/components/shared/RowActions";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { TARGET_PROFILE_SORT_FIELDS, type TargetProfileSortField } from "@/lib/targets/profileSortFields";
@@ -133,6 +135,7 @@ export default function AdminTargetManagementPage() {
   const [riskFilter, setRiskFilter] = useState<"all" | "high" | "medium" | "low">("all");
   const [completionFilter, setCompletionFilter] = useState<"all" | CompletionStage>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "", { allow: SORT_FIELDS });
   const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
   const order = sortOrder === "asc" ? "asc" : "desc";
@@ -421,6 +424,26 @@ export default function AdminTargetManagementPage() {
   // Phones: bare compact numbers; the currency is named in the line under the risk chips.
   const profitRatioPhone = `${formatProfit(totals?.profit.achieved ?? 0, null, intlLocale, "compact")} / ${formatProfit(totals?.profit.target ?? 0, null, intlLocale, "compact")}`;
 
+  const completionFilterOptions = [
+    { value: "all", label: t("allStages") },
+    { value: "not_started", label: t("notStarted") },
+    { value: "in_progress", label: t("inProgress") },
+    { value: "completed", label: t("completed") },
+  ];
+  const riskFilterOptions = [
+    { value: "all", label: t("allRisk") },
+    { value: "high", label: t("highRisk") },
+    { value: "medium", label: t("mediumRisk") },
+    { value: "low", label: t("lowRisk") },
+  ];
+  const regionFilterOptions = [
+    { value: "", label: t("allRegions") },
+    ...regionOptions.map((region) => ({ value: region, label: region })),
+  ];
+  const phoneFilterCount = (yearFilter !== currentYear ? 1 : 0) + (regionFilter ? 1 : 0)
+    + (riskFilter !== "all" ? 1 : 0) + (completionFilter !== "all" ? 1 : 0);
+  const clearToolbarFilters = () => { setYearFilter(currentYear); setRegionFilter(""); setRiskFilter("all"); setCompletionFilter("all"); };
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -471,31 +494,23 @@ export default function AdminTargetManagementPage() {
 
       {/* Toolbar */}
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
-        onClear={yearFilter !== currentYear || !!regionFilter || riskFilter !== "all" || completionFilter !== "all" ? () => { setYearFilter(currentYear); setRegionFilter(""); setRiskFilter("all"); setCompletionFilter("all"); } : undefined}
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        onClear={yearFilter !== currentYear || !!regionFilter || riskFilter !== "all" || completionFilter !== "all" ? clearToolbarFilters : undefined}
         clearLabel={t("resetFilters")}
         moreLabel={t("advancedFilters")}
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         more={(
           <>
             <SearchableSelect
-              options={[
-                { value: "all", label: t("allStages") },
-                { value: "not_started", label: t("notStarted") },
-                { value: "in_progress", label: t("inProgress") },
-                { value: "completed", label: t("completed") },
-              ]}
+              options={completionFilterOptions}
               value={completionFilter}
               onValueChange={(value) => setCompletionFilter(value as "all" | CompletionStage)}
               placeholder={t("stageLabel")}
               className={INLINE_FILTER_CONTROL}
             />
             <SearchableSelect
-              options={[
-                { value: "all", label: t("allRisk") },
-                { value: "high", label: t("highRisk") },
-                { value: "medium", label: t("mediumRisk") },
-                { value: "low", label: t("lowRisk") },
-              ]}
+              options={riskFilterOptions}
               value={riskFilter}
               onValueChange={(value) => setRiskFilter(value as "all" | "high" | "medium" | "low")}
               placeholder={t("riskLabel")}
@@ -508,36 +523,97 @@ export default function AdminTargetManagementPage() {
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder={t("searchSupervisors")}
+          className="max-sm:basis-0"
         />
-        <TargetYearSelect
-          value={String(yearFilter)}
-          onChange={(value) => setYearFilter(Number.parseInt(value, 10) || currentYear)}
-          label={t("a11yYear")}
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <TargetYearSelect
+            value={String(yearFilter)}
+            onChange={(value) => setYearFilter(Number.parseInt(value, 10) || currentYear)}
+            label={t("a11yYear")}
+          />
+          {regionOptions.length > 0 && (
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <SearchableSelect
+                options={regionFilterOptions}
+                value={regionFilter}
+                onValueChange={setRegionFilter}
+                placeholder={t("regionLabel")}
+                className="h-11 w-40 rounded-xl"
+              />
+            </div>
+          )}
+          <TableSortControl
+            value={sortBy || "dateAdded"}
+            onValueChange={(v) => { setSortBy(v === "dateAdded" ? "" : v); resetPage(); }}
+            options={sortOptions}
+            order={order}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            compact
+          />
+        </div>
+      </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={clearToolbarFilters}
+      >
+        <FilterField label={tc("sortBy")}>
+          <TableSortControl
+            value={sortBy || "dateAdded"}
+            onValueChange={(v) => { setSortBy(v === "dateAdded" ? "" : v); resetPage(); }}
+            options={sortOptions}
+            order={order}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={t("yearLabel")}>
+          {/* TargetYearSelect takes no className/id; size its trigger from here. */}
+          <div className="[&>button]:h-11 [&>button]:w-full [&>button]:bg-card">
+            <TargetYearSelect
+              value={String(yearFilter)}
+              onChange={(value) => setYearFilter(Number.parseInt(value, 10) || currentYear)}
+              label={t("a11yYear")}
+            />
+          </div>
+        </FilterField>
         {regionOptions.length > 0 && (
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <FilterField label={t("regionLabel")} htmlFor="target-management-sheet-region">
             <SearchableSelect
-              options={[
-                { value: "", label: t("allRegions") },
-                ...regionOptions.map((region) => ({ value: region, label: region })),
-              ]}
+              id="target-management-sheet-region"
+              options={regionFilterOptions}
               value={regionFilter}
               onValueChange={setRegionFilter}
               placeholder={t("regionLabel")}
-              className="h-11 w-40 rounded-xl"
+              className={SHEET_CONTROL}
             />
-          </div>
+          </FilterField>
         )}
-        <TableSortControl
-          value={sortBy || "dateAdded"}
-          onValueChange={(v) => { setSortBy(v === "dateAdded" ? "" : v); resetPage(); }}
-          options={sortOptions}
-          order={order}
-          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-          compact
-        />
-      </InlineFilterBar>
+        <FilterField label={t("stageLabel")} htmlFor="target-management-sheet-stage">
+          <SearchableSelect
+            id="target-management-sheet-stage"
+            options={completionFilterOptions}
+            value={completionFilter}
+            onValueChange={(value) => setCompletionFilter(value as "all" | CompletionStage)}
+            placeholder={t("stageLabel")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("riskLabel")} htmlFor="target-management-sheet-risk">
+          <SearchableSelect
+            id="target-management-sheet-risk"
+            options={riskFilterOptions}
+            value={riskFilter}
+            onValueChange={(value) => setRiskFilter(value as "all" | "high" | "medium" | "low")}
+            placeholder={t("riskLabel")}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {/* View switch on the left, page actions on the right. */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
@@ -681,8 +757,73 @@ export default function AdminTargetManagementPage() {
           {/* Region rides in the Supervisor cell (the Region filter and search
               still cover it) so the nine columns fit the panel at desktop widths;
               narrower screens scroll inside the panel, never the page. */}
-          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
-            <Table className="sm:[&_td]:px-3 sm:[&_th]:px-3">
+          <PhoneRecordList
+            className="sm:hidden"
+            label={t("supervisorHeader")}
+            loading={loading}
+            empty={
+              <TargetEmptyState
+                title={t("noTargets")}
+                description={t("emptyStateTargetProfile")}
+                action={
+                  <Link href={`/${locale}/admin/target-management/create`}>
+                    <Button size="sm" className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
+                      <Plus className="h-4 w-4" /> {t("newTargetProfileButton")}
+                    </Button>
+                  </Link>
+                }
+              />
+            }
+            items={filteredProfiles.map((row) => ({
+              key: row._id,
+              href: `/${locale}/admin/target-management/${row._id}`,
+              title: row.assigneeName,
+              subtitle: row.assigneeEmail,
+              trailing: <PerformanceBadge pct={row.profitProgress} />,
+              actions: (
+                <RowActions
+                  name={row.assigneeName}
+                  labelsFrom="wide"
+                  quick={[{ key: "view", label: t("a11yViewDetails"), icon: Eye, href: `/${locale}/admin/target-management/${row._id}` }]}
+                  menu={[
+                    { key: "edit", label: t("a11yEdit"), icon: Pencil, onSelect: () => openEdit(row) },
+                    { key: "reassign", label: t("a11yReassign"), icon: SplitSquareVertical, onSelect: () => openReassign(row._id) },
+                    { key: "cancel", label: t("a11yCancel"), icon: Trash2, onSelect: () => handleCancel(row._id), destructive: true },
+                  ]}
+                />
+              ),
+              meta: (
+                <>
+                  <CompactProgress
+                    achieved={row.profitAchieved}
+                    target={row.profitTarget}
+                    progress={row.profitProgress}
+                    currency={row.currency}
+                    className="min-w-0"
+                  />
+                  <p className="mt-1">
+                    {t("scheduleHeader")}: {tr(`period_${row.periodType}`)} · <span className="tabular-nums">{row.periods.length}</span>
+                  </p>
+                </>
+              ),
+              badges: (
+                <>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums">
+                    <UsersRound className="h-3 w-3" aria-hidden="true" /> {row.teamSize}
+                  </span>
+                  {row.region && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                      <MapPin className="h-3 w-3" aria-hidden="true" /> {row.region}
+                    </span>
+                  )}
+                  <RiskBadge risk={row.riskScore} />
+                  <IncentiveTierBadge tier={row.incentiveTier ?? "none"} />
+                </>
+              ),
+            }))}
+          />
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card max-sm:hidden">
+            <Table data-mobile-table="scroll" className="sm:[&_td]:px-3 sm:[&_th]:px-3">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{sortHeader("name", t("supervisorHeader"))}</TableHead>
@@ -829,7 +970,7 @@ export default function AdminTargetManagementPage() {
       {tab === "leaderboard" && (
         <div className="space-y-4">
           <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-            <Table>
+            <Table data-mobile-table="scroll">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead className="w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("rank")}</TableHead>

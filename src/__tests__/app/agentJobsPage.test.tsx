@@ -134,7 +134,10 @@ describe("AgentJobsPage", () => {
     expect(params.has("search")).toBe(false);
     expect(screen.queryByRole("button", { name: /clear filters/i })).toBeNull();
     // The old toggle read "Filters 1" here: the employer default "all" counted.
-    expect(screen.getByRole("button", { name: /filters/i }).textContent).not.toMatch(/\d/);
+    // Desktop "More filters" toggle and the phone Filters button: neither shows a count.
+    for (const button of screen.getAllByRole("button", { name: /filters/i })) {
+      expect(button.textContent).not.toMatch(/\d/);
+    }
   });
 
   it("filters the list by status from the header tiles", async () => {

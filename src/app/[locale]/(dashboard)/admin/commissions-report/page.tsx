@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ReportTabs } from "@/components/features/admin/ReportTabs";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { useLocale, useTranslations } from "next-intl";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -369,10 +370,36 @@ export default function AdminCommissionsReportPage() {
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder={t("searchPlaceholder")}
+            className="max-sm:basis-0"
           />
         </InlineFilterBar>
-        <div className="overflow-x-auto">
-          <Table>
+        <PhoneRecordList
+          className="p-3 sm:hidden"
+          label={t("agentBreakdownTitle")}
+          loading={loading}
+          empty={<p className="text-center text-sm text-muted-foreground">{t("noCommissionData", { year: yearFilter })}</p>}
+          items={filteredAgents.map((agent) => ({
+            key: agent.agentId,
+            title: agent.agentName,
+            subtitle: agent.agentEmail,
+            meta: (
+              <>
+                <p className="truncate">{t("superAgentTableHeader")}: {agent.superAgentName || "—"}</p>
+                <p className="truncate">
+                  {t("countTableHeader")}: {agent.count} · {t("avgRateTableHeader")}: {agent.avgRate ? `${Number(agent.avgRate).toFixed(1)}%` : "—"}
+                </p>
+              </>
+            ),
+            stats: [
+              { label: t("totalTableHeader"), value: money(agent.total, "standard") },
+              { label: t("pendingTableHeader"), value: <span className="text-amber-600">{money(agent.pending, "standard")}</span> },
+              { label: t("approvedTableHeader"), value: <span className="text-indigo-600">{money(agent.approved, "standard")}</span> },
+              { label: t("paidTableHeader"), value: <span className="text-emerald-600">{money(agent.paid, "standard")}</span> },
+            ],
+          }))}
+        />
+        <div className="overflow-x-auto max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("agentTableHeader")}</TableHead>

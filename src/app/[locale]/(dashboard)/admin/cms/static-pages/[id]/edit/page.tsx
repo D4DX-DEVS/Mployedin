@@ -174,15 +174,15 @@ export default function EditStaticPage() {
 
         {/* Body English */}
         <section className="workspace-panel-surface rounded-3xl panel-body">
-          <div className="flex items-center justify-between">
-            <h2 className="heading-section font-semibold tracking-tight">
+          <div className="flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-stretch max-sm:gap-2">
+            <h2 className="heading-section min-w-0 font-semibold tracking-tight">
               {t("bodyEnHeading")} <span className="text-destructive">{t("required")}</span>
             </h2>
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-secondary/50 p-0.5">
+            <div className="flex shrink-0 items-center gap-1 rounded-lg border border-border bg-secondary/50 p-0.5 max-sm:w-full">
               <button
                 type="button"
                 onClick={() => setBodyTab("code")}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex flex-row items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 max-sm:flex-1 ${
                   bodyTab === "code"
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -193,7 +193,7 @@ export default function EditStaticPage() {
               <button
                 type="button"
                 onClick={() => setBodyTab("preview")}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex flex-row items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 max-sm:flex-1 ${
                   bodyTab === "preview"
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -228,13 +228,13 @@ export default function EditStaticPage() {
 
         {/* Body Arabic */}
         <section className="workspace-panel-surface rounded-3xl panel-body">
-          <div className="flex items-center justify-between">
-            <h2 className="heading-section font-semibold tracking-tight">{t("bodyArHeading")}</h2>
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-secondary/50 chip-pad">
+          <div className="flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-stretch max-sm:gap-2">
+            <h2 className="heading-section min-w-0 font-semibold tracking-tight">{t("bodyArHeading")}</h2>
+            <div className="flex shrink-0 items-center gap-1 rounded-lg border border-border bg-secondary/50 chip-pad max-sm:w-full">
               <button
                 type="button"
                 onClick={() => setBodyArTab("code")}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex flex-row items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 max-sm:flex-1 ${
                   bodyArTab === "code"
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -245,7 +245,7 @@ export default function EditStaticPage() {
               <button
                 type="button"
                 onClick={() => setBodyArTab("preview")}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex flex-row items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors max-sm:min-h-11 max-sm:flex-1 ${
                   bodyArTab === "preview"
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"

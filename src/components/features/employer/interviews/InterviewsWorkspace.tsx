@@ -738,6 +738,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                 value={status || "all"}
                 onValueChange={(v) => { setStatus(v === "all" ? "" : v); setPage(1); }}
                 placeholder={t("allStatuses")}
+                ariaLabel={t("statusLabel")}
               />
             </div>
             <div>
@@ -753,6 +754,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                 value={typeFilter || "all"}
                 onValueChange={(v) => { setTypeFilter(v === "all" ? "" : v); setPage(1); }}
                 placeholder={t("allTypes")}
+                ariaLabel={t("typeLabel")}
               />
             </div>
             <div>
@@ -769,6 +771,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                 value={outcomeFilter || "all"}
                 onValueChange={(v) => { setOutcomeFilter(v === "all" ? "" : v); setPage(1); }}
                 placeholder={t("allOutcomes")}
+                ariaLabel={t("outcomeLabel")}
               />
             </div>
             <div>
@@ -816,6 +819,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                   value={aiSearchQuery}
                   onChange={(e) => setAiSearchQuery(e.target.value)}
                   placeholder="e.g. &quot;candidates with React skills scheduled next week&quot;"
+                  aria-label={t("aiSearch")}
                   className="h-10 flex-1 rounded-xl border border-border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && aiSearchQuery.trim()) {
@@ -1583,7 +1587,7 @@ function InterviewActionModal({
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("durationMin")}</label>
                   <Select value={String(duration)} onValueChange={(v) => setDuration(Number(v))}>
-                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm">
+                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm" aria-label={t("durationMin")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1596,7 +1600,7 @@ function InterviewActionModal({
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("typeLabel")}</label>
                   <Select value={type} onValueChange={setType}>
-                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm">
+                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm" aria-label={t("typeLabel")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1651,7 +1655,7 @@ function InterviewActionModal({
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("currency")}</label>
                   <Select value={salaryCurrency} onValueChange={setSalaryCurrency}>
-                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm">
+                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm" aria-label={t("currency")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1664,7 +1668,7 @@ function InterviewActionModal({
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("period")}</label>
                   <Select value={salaryPeriod} onValueChange={setSalaryPeriod}>
-                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm">
+                    <SelectTrigger className="h-auto rounded-xl py-2 text-sm" aria-label={t("period")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

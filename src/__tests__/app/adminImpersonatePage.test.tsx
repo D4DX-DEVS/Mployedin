@@ -7,6 +7,10 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 
+// These tests cover the desktop table. jsdom applies no Tailwind, so the phone
+// card list (sm:hidden) would render beside it and repeat every name; its own
+// behaviour is covered in phoneRecordList.test.tsx.
+jest.mock("@/components/shared/PhoneRecordList", () => ({ PhoneRecordList: () => null }));
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock("@/components/shared/DashboardPageHeader", () => ({
   DashboardPageHeader: ({ title }: { title: string }) => <h1>{title}</h1>,

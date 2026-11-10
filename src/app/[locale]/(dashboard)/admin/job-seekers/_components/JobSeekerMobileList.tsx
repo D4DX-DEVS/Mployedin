@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronDown, Crown } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, Crown } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
@@ -28,12 +29,11 @@ interface JobSeekerMobileListProps<T extends MobileSeeker> {
   loading: boolean;
   /** Shown when the list is empty (already carries its own actions). */
   empty: ReactNode;
-  expandedId: string | null;
-  onToggle: (id: string) => void;
+  /** The seeker's detail page: the full profile opens there, not inline. */
+  hrefFor: (seeker: T) => string;
   availabilityLabels: Record<string, string>;
   /** Row actions as one compact "…" menu; null when the viewer has none. */
   renderActions: (seeker: T) => ReactNode;
-  renderExpanded: (seeker: T) => ReactNode;
 }
 
 const AVAILABILITY_TONE: Record<string, string> = {
@@ -54,11 +54,9 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
   seekers,
   loading,
   empty,
-  expandedId,
-  onToggle,
+  hrefFor,
   availabilityLabels,
   renderActions,
-  renderExpanded,
 }: JobSeekerMobileListProps<T>) {
   const tr = useTranslations("adminJobSeekers");
 
@@ -79,7 +77,6 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
       {seekers.map((js) => {
         const name = js.fullName || js.userId?.name || "—";
         const email = js.email ?? js.userId?.email;
-        const expanded = expandedId === js._id;
         const role = js.experience?.[0]?.jobTitle || js.headline?.slice(0, 60);
         const edu = js.education?.[0];
         const degree = edu?.degree ? `${edu.degree}${edu.field ? ` - ${edu.field}` : ""}` : null;
@@ -90,10 +87,9 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
           // a "…" on a line of its own wasted a third of every card.
           <li key={js._id} className="rounded-xl border border-border/70 bg-card p-3 shadow-sm">
             <div className="flex items-start gap-1">
-            <button
-              type="button"
-              onClick={() => onToggle(js._id)}
-              aria-expanded={expanded}
+            <Link
+              href={hrefFor(js)}
+              aria-label={tr("openProfile", { name })}
               className="flex min-h-11 w-full min-w-0 items-start gap-3 rounded-lg text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <UserAvatar name={name} email={email} className="h-10 w-10 shrink-0" colorful />
@@ -101,11 +97,8 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
                 <span className="truncate text-sm font-semibold text-foreground">{name}</span>
                 <span className="truncate text-xs text-muted-foreground">{email ?? "—"}</span>
               </span>
-              <ChevronDown
-                className={`mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`}
-                aria-hidden="true"
-              />
-            </button>
+              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground rtl:rotate-180" aria-hidden="true" />
+            </Link>
             {actions && <div className="-me-1 -mt-1 shrink-0">{actions}</div>}
             </div>
 
@@ -137,7 +130,6 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
               {js.referralSummary && <ReferralSourceChip namespace="adminJobSeekers" summary={js.referralSummary} />}
             </div>
 
-            {expanded && <div className="mt-3 rounded-xl bg-muted/30 p-3">{renderExpanded(js)}</div>}
           </li>
         );
       })}

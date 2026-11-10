@@ -240,6 +240,20 @@ export function mergeUniqueItems(existing: readonly string[], add: readonly stri
 }
 
 /**
+ * A list for display without repeats: drops items already said by a longer
+ * item ("BCA / MCA" next to "BCA / MCA degree (Computer Science)") and exact
+ * repeats. Order of what is kept is unchanged.
+ */
+export function dedupeListItems(items: readonly string[]): string[] {
+  const keys = items.map(itemKey);
+  return items.filter((_, i) => {
+    const k = keys[i];
+    if (!k) return false;
+    return !keys.some((other, j) => j !== i && (other === k ? j < i : other.length > k.length && other.includes(k)));
+  });
+}
+
+/**
  * `existing` plus the new items, or null when they don't all fit the field
  * (too many, or one too long) — then the caller leaves the description alone
  * rather than lose part of it.

@@ -18,6 +18,7 @@ import { ToolProposalCard } from "./ToolProposalCard";
 import { CopilotViewCard } from "./CopilotViewCard";
 import { loadChats, persistChats, removeLegacyChats, type SavedChat } from "./chatStorage";
 import { sameOriginPath } from "./links";
+import { roleFromPathname } from "./suggestionRole";
 import { COPILOT_EXECUTED_EVENT, COPILOT_LEAD_DRAFT_EVENT, COPILOT_LEAD_DRAFT_KEY } from "./events";
 import type { CopilotStreamFrame, TranscriptItem } from "./types";
 import { formatDate } from "@/lib/ui/intlFormat";
@@ -32,16 +33,6 @@ const FAB_POS_KEY = "ui:copilot-fab-pos";
 let idCounter = 0;
 const nextId = () => `ci-${Date.now()}-${idCounter++}`;
 
-type SuggestionRole = "employer" | "jobSeeker" | "agent" | "superAgent" | "admin" | "default";
-
-function roleFromPathname(pathname: string): SuggestionRole {
-  if (pathname.includes("/super-agent")) return "superAgent";
-  if (pathname.includes("/job-seeker")) return "jobSeeker";
-  if (pathname.includes("/employer")) return "employer";
-  if (pathname.includes("/agent")) return "agent";
-  if (pathname.includes("/admin")) return "admin";
-  return "default";
-}
 
 // ponytail: in-flight items restored from storage can never resolve — mark them settled
 function settleRestoredItem(item: TranscriptItem): TranscriptItem {
@@ -656,23 +647,29 @@ export function Copilot({ className }: CopilotProps) {
           <Button
             variant="ghost"
             size="icon"
-            className={cn("h-7 w-7", showHistory && "bg-muted text-foreground")}
+            className={cn("h-7 w-7 max-sm:h-11 max-sm:w-11", showHistory && "bg-muted text-foreground")}
             onClick={toggleHistory}
             title={t("history")}
             aria-label={t("history")}
           >
             <History className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={resetChat} title={t("newChat")} aria-label={t("newChat")}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 max-sm:h-11 max-sm:w-11" onClick={resetChat} title={t("newChat")} aria-label={t("newChat")}>
             <RotateCcw className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 max-sm:h-11 max-sm:w-11"
             onClick={() => {
               setOpen(false);
-              requestAnimationFrame(() => triggerRef.current?.focus());
+              // Phones hide the floating button (top-bar launcher instead):
+              // return focus to whichever opener is actually on screen.
+              requestAnimationFrame(() => {
+                const fab = triggerRef.current;
+                if (fab && fab.offsetParent !== null) fab.focus();
+                else document.querySelector<HTMLElement>("[data-copilot-launcher]")?.focus();
+              });
             }}
             title={t("close")}
             aria-label={t("close")}
@@ -863,6 +860,7 @@ export function Copilot({ className }: CopilotProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t("placeholder")}
+            aria-label={t("placeholder")}
             rows={1}
             className="min-h-8 flex-1 resize-none border-0 bg-transparent p-1 text-sm shadow-none focus-visible:ring-0"
           />
@@ -897,7 +895,7 @@ export function Copilot({ className }: CopilotProps) {
           onPointerUp={handleFabPointerUp}
           style={fabPos ? { left: fabPos.x, top: fabPos.y, right: "auto", bottom: "auto" } : undefined}
           className={cn(
-            "fixed z-[70] flex h-12 w-12 touch-none items-center justify-center rounded-full bg-white shadow-lg transition-transform hover:scale-105 active:scale-95",
+            "copilot-fab-button fixed z-[70] flex h-12 w-12 touch-none items-center justify-center rounded-full bg-white shadow-lg transition-transform hover:scale-105 active:scale-95",
             !fabPos && "copilot-fab"
           )}
           aria-label={t("openCopilot")}

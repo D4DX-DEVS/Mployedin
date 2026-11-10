@@ -70,8 +70,8 @@ export function CommissionCountryRules({ rules, onChange }: CommissionCountryRul
 
   return (
     <div className="panel-body space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      <div className="flex items-center justify-between gap-3 max-sm:flex-col max-sm:items-stretch">
+        <div className="min-w-0">
           <h2 className="heading-section font-semibold text-foreground flex items-center gap-2">
             <Percent className="h-4 w-4 text-primary" />
             {t("commissionOverridesTitle")}
@@ -81,6 +81,7 @@ export function CommissionCountryRules({ rules, onChange }: CommissionCountryRul
         <Button
           variant="outline"
           size="sm"
+          className="shrink-0 max-sm:min-h-11"
           onClick={() => onChange([...rules, { countryCode: "", rate: 0, label: "" }])}
         >
           <Plus className="h-4 w-4 mr-1" /> {t("addCommissionButton")}
@@ -96,7 +97,11 @@ export function CommissionCountryRules({ rules, onChange }: CommissionCountryRul
             <span />
           </div>
           {rules.map((rule, idx) => (
-            <div key={idx} className="grid grid-cols-[1fr_96px_40px] sm:grid-cols-[1fr_96px_1fr_40px] gap-2 items-center">
+            // Phone: country + delete on one line, rate + label under it, each with a visible label
+            // (the column headers above are desktop-only).
+            <div key={idx} className="grid grid-cols-[1fr_1fr_44px] items-end gap-2 max-sm:border-b max-sm:border-border/60 max-sm:pb-3 max-sm:last-of-type:border-0 sm:grid-cols-[1fr_96px_1fr_40px] sm:items-center">
+              <div className="col-span-2 min-w-0 sm:col-span-1">
+              <label htmlFor={`commission-rule-country-${idx}`} className="mb-1 block text-xs font-medium text-muted-foreground sm:hidden">{t("countryHeader")}</label>
               <SearchableSelect
                 id={`commission-rule-country-${idx}`}
                 ariaLabel={t("countryHeader")}
@@ -105,7 +110,11 @@ export function CommissionCountryRules({ rules, onChange }: CommissionCountryRul
                 onValueChange={(value) => update(idx, { countryCode: value })}
                 placeholder={t("countryPlaceholder")}
               />
+              </div>
+              <div className="col-start-1 row-start-2 min-w-0 sm:col-start-auto sm:row-start-auto">
+              <label htmlFor={`commission-rule-rate-${idx}`} className="mb-1 block text-xs font-medium text-muted-foreground sm:hidden">{t("rateHeader")}</label>
               <Input
+                id={`commission-rule-rate-${idx}`}
                 aria-label={t("rateHeader")}
                 type="number"
                 min={0}
@@ -114,18 +123,22 @@ export function CommissionCountryRules({ rules, onChange }: CommissionCountryRul
                 value={rule.rate}
                 onChange={(e) => update(idx, { rate: parseFloat(e.target.value) || 0 })}
               />
+              </div>
+              <div className="col-span-2 col-start-2 row-start-2 min-w-0 sm:col-span-1 sm:col-start-auto sm:row-start-auto">
+              <label htmlFor={`commission-rule-label-${idx}`} className="mb-1 block text-xs font-medium text-muted-foreground sm:hidden">{t("labelHeader")}</label>
               <Input
+                id={`commission-rule-label-${idx}`}
                 aria-label={t("labelHeader")}
                 placeholder={t("labelPlaceholder")}
                 value={rule.label}
                 onChange={(e) => update(idx, { label: e.target.value })}
-                className="col-span-2 row-start-2 sm:col-span-1 sm:row-start-auto"
               />
+              </div>
               <Button
                 aria-label={ta("delete")}
                 variant="ghost"
                 size="sm"
-                className="col-start-3 row-start-1 sm:col-start-auto sm:row-start-auto text-destructive hover:text-destructive p-1"
+                className="col-start-3 row-start-1 sm:col-start-auto sm:row-start-auto text-destructive hover:text-destructive p-1 max-sm:size-11"
                 onClick={() => onChange(rules.filter((_, i) => i !== idx))}
               >
                 <Trash2 className="h-4 w-4" />

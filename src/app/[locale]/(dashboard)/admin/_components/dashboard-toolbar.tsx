@@ -38,15 +38,15 @@ export function DashboardToolbar({ updatedLabel, updatedAt, labels }: DashboardT
   };
 
   return (
-    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto" data-dashboard-toolbar>
-      <time dateTime={updatedAt} className="me-1 basis-full text-xs text-muted-foreground sm:basis-auto" aria-live="polite">
+    <div className="flex w-full items-center gap-2 sm:w-auto" data-dashboard-toolbar>
+      <time dateTime={updatedAt} className="me-1 min-w-0 flex-1 truncate text-xs text-muted-foreground sm:flex-none" aria-live="polite">
         {pending ? labels.refreshing : updatedLabel}
       </time>
       <Button
         type="button"
         variant="outline"
         size="iconDense"
-        className="shrink-0"
+        className="shrink-0 max-sm:h-11 max-sm:w-11"
         aria-label={pending ? labels.refreshing : labels.refresh}
         title={pending ? labels.refreshing : labels.refresh}
         disabled={pending}
@@ -61,7 +61,7 @@ export function DashboardToolbar({ updatedLabel, updatedAt, labels }: DashboardT
         {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
       </Button>
       <Select value={period} onValueChange={changePeriod} disabled={pending}>
-        <SelectTrigger className="h-9 w-[10.5rem] flex-1 gap-1.5 text-sm sm:flex-none" aria-label={labels.period}>
+        <SelectTrigger className="h-11 w-auto shrink-0 gap-1.5 text-sm sm:h-9 sm:w-[10.5rem]" aria-label={labels.period}>
           <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <SelectValue />
         </SelectTrigger>

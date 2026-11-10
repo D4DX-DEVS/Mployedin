@@ -8,7 +8,10 @@ import { useTranslations } from "next-intl";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
+  Bookmark,
   CalendarDays,
+  FileText,
+  Sparkles,
   CheckCircle2,
   ChevronRight,
   MessageSquare,
@@ -25,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { DashboardNextAction } from "@/components/shared/DashboardOverview";
 import { JobSummaryCard } from "@/components/features/job-seeker/JobSummaryCard";
 import { SaveJobButton } from "@/components/features/job-seeker/saved/SaveJobButton";
+import { useSavedJobIds } from "@/components/features/job-seeker/saved/useSavedJobs";
 
 /**
  * The seeker's home page.
@@ -147,15 +151,27 @@ function timeAgo(iso: string, locale: string, translate: any): string {
   return translate("time.weeksAgo", { value: formatRelativeValue(weeks) });
 }
 
+function initialsOfName(value: string): string {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 export function JobSeekerHomePage({
   locale,
   initialData,
   userName,
+  userImage,
 }: {
   locale: string;
   initialData?: InitialHomeData;
   userName?: string;
-  /** Kept for call-site compatibility; the home page no longer renders an avatar. */
+  /** Phones only: the avatar beside the greeting. */
   userImage?: string;
 }) {
   const [profile, setProfile] = useState<ProfileData | null>(initialData?.profile ?? null);
@@ -179,6 +195,11 @@ export function JobSeekerHomePage({
 
   const t = useTranslations("jobSeekerHome");
   const tCard = useTranslations("jobCard");
+  // Phone-only labels reuse strings that already exist elsewhere, so no new keys.
+  const tProfileExtra = useTranslations("jobSeekerExtra.profile");
+  const tSaved = useTranslations("savedJobs");
+  const tEasyApply = useTranslations("easyApply");
+  const { ids: savedIds, ready: savedReady } = useSavedJobIds();
   const router = useRouter();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const formatNumber = (value: number) => value.toLocaleString(numberLocale);
@@ -440,28 +461,72 @@ export function JobSeekerHomePage({
   }
   const nextAction = pendingActions[0];
 
+  // Phone header line: the seeker's role and where they are, when known.
+  const phoneSubtitle = [primaryRole, profile?.currentLocation].filter(Boolean).join(" · ") || null;
+
+  const phoneStats: Array<{ href: string; icon: LucideIcon; value: number; label: string }> = [];
+  if (recommendation) {
+    phoneStats.push({ href: `/${locale}/job-seeker/jobs`, icon: Sparkles, value: recommendation.recommendedCount, label: tEasyApply("recommended") });
+  }
+  if (typeof stats?.applicationsSent?.count === "number") {
+    phoneStats.push({ href: `/${locale}/job-seeker/applications`, icon: FileText, value: stats.applicationsSent.count, label: t("statuses.applied") });
+  }
+  if (savedReady) {
+    phoneStats.push({ href: `/${locale}/job-seeker/saved-jobs`, icon: Bookmark, value: savedIds.size, label: tSaved("saved") });
+  }
+
   return (
     <div className="page-container dashboard-overview-page">
       {/* Search first. This is a job board, so the page opens with the thing
           the seeker came to do rather than with statistics about them. */}
-      <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08),0_1px_3px_-1px_rgba(15,23,42,0.06)] sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
+      {/* Phones: no boxed hero. The greeting sits on the page beside the
+          avatar, and search, chips and stats follow as their own rows. */}
+      <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08),0_1px_3px_-1px_rgba(15,23,42,0.06)] max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3 max-sm:flex-nowrap max-sm:items-center">
+          <Avatar className="h-12 w-12 shrink-0 border border-border/60 sm:hidden">
+            <AvatarImage src={userImage ?? ""} alt="" className="bg-card object-contain" />
+            <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">{initialsOfName(userName ?? name)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 max-sm:flex-1">
             {/* data-greeting: one step smaller on phones (globals.css). At 24px
                 "Good afternoon, <8-letter name>" still wrapped at 375px. */}
             <h1 data-greeting="true" className="heading-page text-foreground text-balance wrap-break-word">
               {dayPart ? t(`greeting.${dayPart}`, { name }) : t("greeting.hello", { name })}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">{t("greeting.subtitle")}</p>
+            <p className={cn("mt-1 text-sm text-muted-foreground", phoneSubtitle && "max-sm:hidden")}>{t("greeting.subtitle")}</p>
+            {phoneSubtitle && <p className="mt-0.5 truncate text-sm capitalize text-muted-foreground sm:hidden">{phoneSubtitle}</p>}
           </div>
           <Link
             href={`/${locale}/job-seeker/preferences`}
-            className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary hover:underline"
+            className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary hover:underline max-sm:hidden"
           >
             <SlidersHorizontal className="h-4 w-4" aria-hidden />
             {t("greeting.editPreferences")}
           </Link>
         </div>
+
+        {completion < 100 && (
+          <Link
+            href={`/${locale}/job-seeker/profile`}
+            className="mt-4 flex items-center gap-3 rounded-2xl border border-border/70 bg-card px-4 py-3 shadow-xs sm:hidden"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-sm font-semibold text-foreground">{tProfileExtra("profileCompletion")}</span>
+                <span className="text-sm font-semibold text-primary">{formatNumber(completion)}%</span>
+              </div>
+              <Progress
+                value={completion}
+                className="mt-2 h-1.5"
+                aria-label={t("profileCard.profileCompletenessAria", { completion: formatNumber(completion) })}
+              />
+              {missingDetails > 0 && (
+                <p className="mt-1.5 truncate text-xs text-muted-foreground">{t("profileMini.detailLeft", { count: missingDetails })}</p>
+              )}
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl:rotate-180" aria-hidden />
+          </Link>
+        )}
 
         <form
           role="search"
@@ -476,13 +541,19 @@ export function JobSeekerHomePage({
           }}
           className="mt-4 flex flex-col gap-2 sm:flex-row"
         >
+          {/* Visible on phones (a placeholder is not a label); desktop keeps the aria-label. */}
+          <label htmlFor="seeker-home-search" className="text-sm font-medium text-foreground sm:hidden">
+            {t("search.label")}
+          </label>
           <div className="relative min-w-0 flex-1">
             <Search
               className="pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-muted-foreground"
               aria-hidden
             />
             <input
+              id="seeker-home-search"
               type="search"
+              enterKeyHint="search"
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
               placeholder={t("search.placeholder")}
@@ -490,25 +561,58 @@ export function JobSeekerHomePage({
               className="min-h-11 w-full rounded-xl border border-border/70 bg-muted/30 pe-3 ps-9 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring/40"
             />
           </div>
-          <Button type="submit" className="min-h-11 shrink-0 rounded-xl px-5 shadow-xs">
+          {/* Phones submit with the keyboard's Search key; the button is desktop-only. */}
+          <Button type="submit" className="min-h-11 shrink-0 rounded-xl px-5 shadow-xs max-sm:hidden">
             {t("search.submit")}
           </Button>
         </form>
 
         {preferenceChips.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="scrollbar-none mt-3 flex flex-wrap gap-2 max-sm:-mx-4 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-4">
             {preferenceChips.map((chip, idx) => (
               <Link
                 key={`${chip}-${idx}`}
                 href={`/${locale}/job-seeker/preferences`}
-                className="inline-flex items-center rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs font-medium capitalize text-muted-foreground transition-all hover:border-primary/40 hover:bg-card hover:text-foreground hover:shadow-xs"
+                className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full max-sm:min-h-9 border border-border/70 bg-muted/40 px-3 py-1 text-xs font-medium capitalize text-muted-foreground transition-all hover:border-primary/40 hover:bg-card hover:text-foreground hover:shadow-xs"
               >
                 {chip}
               </Link>
             ))}
           </div>
         )}
+        {/* Phones: three small tiles, each a way into its list. A tile shows
+            only once its count has actually loaded. */}
+        {phoneStats.length > 0 && (
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:hidden">
+            {phoneStats.map((stat) => (
+              <Link
+                key={stat.href}
+                href={stat.href}
+                className="flex min-w-0 flex-col justify-between gap-1 rounded-xl border border-border/70 bg-card px-2.5 py-2"
+              >
+                <stat.icon className="h-4 w-4 text-primary" aria-hidden />
+                <span className="text-lg font-semibold leading-6 text-foreground">{formatNumber(stat.value)}</span>
+                <span className="truncate text-xs text-muted-foreground">{stat.label}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
+
+      {/* Phones: just the waiting action, as one full-width banner. */}
+      {nextAction && (
+        <Link
+          href={nextAction.href}
+          className="flex items-center gap-3 rounded-2xl bg-primary px-4 py-3 text-primary-foreground shadow-sm sm:hidden"
+        >
+          <nextAction.icon className="h-5 w-5 shrink-0" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">{nextAction.title}</span>
+            <span className="block truncate text-xs text-primary-foreground/85">{nextAction.description}</span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 rtl:rotate-180" aria-hidden />
+        </Link>
+      )}
 
       {/* At most one, and only when something is really waiting. */}
       {nextAction && (
@@ -522,12 +626,12 @@ export function JobSeekerHomePage({
           href={nextAction.href}
           icon={nextAction.icon}
           badge={nextAction.badge}
-          className="shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08),0_1px_3px_-1px_rgba(15,23,42,0.06)] border-border/80"
+          className="shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08),0_1px_3px_-1px_rgba(15,23,42,0.06)] border-border/80 max-sm:hidden"
         />
       )}
 
       <section aria-labelledby="job-seeker-recommended" className="min-w-0">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 max-sm:flex-nowrap">
           <h2 id="job-seeker-recommended" className="heading-section font-semibold tracking-tight">
             {t("recommendedJobs.eyebrow")}
           </h2>
@@ -582,13 +686,14 @@ export function JobSeekerHomePage({
                       ? { _id: job.employerId._id, name: job.employerId.companyName, logo: job.employerId.logo }
                       : null,
                   }}
+                  bookmark={<SaveJobButton jobId={job._id} />}
                   actions={
                     <>
-                      <SaveJobButton jobId={job._id} />
-                      <Button asChild size="sm" className="min-h-11 rounded-xl px-4">
+                      <SaveJobButton jobId={job._id} className="max-sm:hidden" />
+                      <Button asChild size="sm" className="min-h-11 rounded-xl px-4 max-sm:min-h-10 max-sm:px-3 max-sm:text-xs">
                         <Link href={`/${locale}/job-seeker/jobs/${job._id}`}>
                           {tCard("viewJob")}
-                          <ArrowRight className="ms-1.5 h-4 w-4" aria-hidden />
+                          <ArrowRight className="ms-1.5 h-4 w-4 max-sm:hidden" aria-hidden />
                         </Link>
                       </Button>
                     </>
@@ -658,7 +763,7 @@ export function JobSeekerHomePage({
           as part of the recommendations. */}
       {appliedJobs.length > 0 && (
         <section aria-labelledby="job-seeker-recent-applications" className="min-w-0">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 max-sm:flex-nowrap">
             <h2 id="job-seeker-recent-applications" className="heading-section font-semibold tracking-tight">
               {t("recentApplications.title")}
             </h2>
@@ -737,7 +842,7 @@ export function JobSeekerHomePage({
           number used to appear as a sidebar card, a progress bar and a five-row
           checklist on this page alone. */}
       {completion < 100 && (
-        <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-background p-4">
+        <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-background p-4 max-sm:hidden">
           <div className="min-w-[200px] flex-1">
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-sm font-semibold text-foreground">{t("profileMini.title")}</span>

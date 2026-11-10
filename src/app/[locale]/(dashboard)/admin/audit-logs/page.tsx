@@ -6,7 +6,9 @@ import { PageHero } from "@/components/shared/PageHero";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { toast } from "sonner";
-import { Search, Clock, CornerDownRight } from "lucide-react";
+import { Search, Clock, CornerDownRight, Target, Globe } from "lucide-react";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
+import { cn } from "@/lib/utils";
 import { formatActionCode } from "@/lib/admin/actionLabels";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Input } from "@/components/ui/input";
@@ -15,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { TableSortControl, SortableTableHeader } from "@/components/shared/TableSortControl";
 import { usePagination } from "@/hooks/usePagination";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -66,6 +69,7 @@ function formatChangeValue(value: unknown): string {
 
 export default function AuditLogsPage() {
   const t = useTranslations("adminAuditLogs");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
 
   /**
@@ -123,6 +127,7 @@ export default function AuditLogsPage() {
   const [country, setCountry] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [sortOrderParam, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
   const sortOrder: "asc" | "desc" = sortOrderParam === "asc" ? "asc" : "desc";
@@ -244,6 +249,29 @@ export default function AuditLogsPage() {
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
+  const clearAllFilters = () => {
+    setActorSearch("");
+    setActorRole("all");
+    setResource("all");
+    setAction("");
+    setCountry("");
+    setFromDate("");
+    setToDate("");
+    resetPage();
+  };
+  const roleOptions = [
+    { value: "all", label: t("allRoles") },
+    { value: "admin", label: t("roleAdmin") },
+    { value: "super_agent", label: t("roleSuperAgent") },
+    { value: "agent", label: t("roleAgent") },
+    { value: "employer", label: t("roleEmployer") },
+    { value: "job_seeker", label: t("roleJobSeeker") },
+    { value: "system", label: t("roleSystem") },
+  ];
+  const sortOptions = [{ value: "createdAt", label: t("timestamp") }];
+  const phoneFilterCount = (actorRole !== "all" ? 1 : 0) + (resource !== "all" ? 1 : 0)
+    + (action ? 1 : 0) + (country ? 1 : 0) + (fromDate ? 1 : 0) + (toDate ? 1 : 0);
+
   return (
     <div className="page-container">
       <PageHero
@@ -254,19 +282,12 @@ export default function AuditLogsPage() {
       />
 
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         onClear={
           (resource !== "all" || !!action || !!country || !!fromDate || !!toDate || !!actorSearch || actorRole !== "all")
-            ? () => {
-              setActorSearch("");
-              setActorRole("all");
-              setResource("all");
-              setAction("");
-              setCountry("");
-              setFromDate("");
-              setToDate("");
-              resetPage();
-            }
+            ? clearAllFilters
             : undefined
         }
         onExportCsv={handleExportCsv}
@@ -319,47 +340,178 @@ export default function AuditLogsPage() {
           value={actorSearch}
           onChange={(value) => { setActorSearch(value); resetPage(); }}
           placeholder={t("filterByActor")}
+          className="max-sm:basis-0"
         />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          options={[
-            { value: "all", label: t("allRoles") },
-            { value: "admin", label: t("roleAdmin") },
-            { value: "super_agent", label: t("roleSuperAgent") },
-            { value: "agent", label: t("roleAgent") },
-            { value: "employer", label: t("roleEmployer") },
-            { value: "job_seeker", label: t("roleJobSeeker") },
-            { value: "system", label: t("roleSystem") },
-          ]}
-          value={actorRole}
-          onValueChange={(v) => { setActorRole(v); resetPage(); }}
-          placeholder={t("allRoles")}
-        />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          options={resourceOptions}
-          value={resource}
-          onValueChange={(v) => { setResource(v); resetPage(); }}
-          placeholder={t("allResources")}
-        />
-        <TableSortControl
-          value="createdAt"
-          onValueChange={() => undefined}
-          options={[{ value: "createdAt", label: t("timestamp") }]}
-          order={sortOrder}
-          onOrderChange={changeSortOrder}
-          compact
-        />
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            options={roleOptions}
+            value={actorRole}
+            onValueChange={(v) => { setActorRole(v); resetPage(); }}
+            placeholder={t("allRoles")}
+          />
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            options={resourceOptions}
+            value={resource}
+            onValueChange={(v) => { setResource(v); resetPage(); }}
+            placeholder={t("allResources")}
+          />
+          <TableSortControl
+            value="createdAt"
+            onValueChange={() => undefined}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={changeSortOrder}
+            compact
+          />
+        </div>
       </InlineFilterBar>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl">
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={clearAllFilters}
+      >
+        <FilterField label={tCommon("sortBy")}>
+          <TableSortControl
+            value="createdAt"
+            onValueChange={() => undefined}
+            options={sortOptions}
+            order={sortOrder}
+            onOrderChange={changeSortOrder}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
+        <FilterField label={t("actorRoleLabel")} htmlFor="audit-logs-sheet-role">
+          <SearchableSelect
+            id="audit-logs-sheet-role"
+            className={SHEET_CONTROL}
+            options={roleOptions}
+            value={actorRole}
+            onValueChange={(v) => { setActorRole(v); resetPage(); }}
+            placeholder={t("allRoles")}
+          />
+        </FilterField>
+        <FilterField label={t("resource")} htmlFor="audit-logs-sheet-resource">
+          <SearchableSelect
+            id="audit-logs-sheet-resource"
+            className={SHEET_CONTROL}
+            options={resourceOptions}
+            value={resource}
+            onValueChange={(v) => { setResource(v); resetPage(); }}
+            placeholder={t("allResources")}
+          />
+        </FilterField>
+        <FilterField label={t("action")} htmlFor="audit-logs-sheet-action">
+          <Input
+            id="audit-logs-sheet-action"
+            placeholder={t("filterByAction")}
+            value={action}
+            onChange={(e) => { setAction(e.target.value); resetPage(); }}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
+        <FilterField label={t("country")} htmlFor="audit-logs-sheet-country">
+          <Input
+            id="audit-logs-sheet-country"
+            placeholder={t("countryCodeExample")}
+            value={country}
+            onChange={(e) => { setCountry(e.target.value.toUpperCase()); resetPage(); }}
+            className={SHEET_CONTROL + " uppercase"}
+            maxLength={2}
+          />
+        </FilterField>
+        <FilterField label={t("from")} htmlFor="audit-logs-sheet-from">
+          <DateTimePicker
+            id="audit-logs-sheet-from"
+            mode="date"
+            value={fromDate}
+            onChange={(v) => { setFromDate(v); resetPage(); }}
+            placeholder={t("from")}
+            className="w-full"
+            modal
+          />
+        </FilterField>
+        <FilterField label={t("to")} htmlFor="audit-logs-sheet-to">
+          <DateTimePicker
+            id="audit-logs-sheet-to"
+            mode="date"
+            value={toDate}
+            onChange={(v) => { setToDate(v); resetPage(); }}
+            placeholder={t("to")}
+            className="w-full"
+            modal
+          />
+        </FilterField>
+      </PhoneFilterSheet>
+
+      {!error && (
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("auditLogs")}
+          loading={loading}
+          empty={<EmptyState title={t("noAuditLogEntriesFound")} />}
+          items={logs.map((log) => {
+            const change = describeChange(log);
+            const target = log.meta?.targetName || log.meta?.targetEmail
+              ? [log.meta.targetName, log.meta.targetEmail].filter(Boolean).map(String).join(" · ")
+              : log.resourceId;
+            return {
+              key: log._id,
+              title: formatActionCode(log.action),
+              subtitle: log.actorId ? (
+                <span>
+                  {log.actorId.name ?? t("unknown")}
+                  {log.actorId.email ? ` · ${log.actorId.email}` : ""}
+                </span>
+              ) : t("system"),
+              trailing: (
+                <Badge className={`${RESOURCE_COLOR[log.resource] ?? "bg-muted text-muted-foreground"} border-0 text-xs`}>
+                  {log.resource}
+                </Badge>
+              ),
+              meta: (
+                <>
+                  {log.onBehalfOfId && (
+                    <p className="text-amber-600">
+                      <CornerDownRight className="me-1 inline h-3 w-3 align-[-2px] rtl:-scale-x-100" aria-hidden="true" />{t("onBehalfOf")} {log.onBehalfOfId.name ?? log.onBehalfOfId.email ?? log.onBehalfOfRole}
+                    </p>
+                  )}
+                  {target && (
+                    <p className="flex min-w-0 items-center gap-1">
+                      <Target className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{target}</span>
+                    </p>
+                  )}
+                  <div className="text-foreground">{change ?? <span className="text-muted-foreground">{t("noChangeRecorded")}</span>}</div>
+                  <p className="flex min-w-0 items-center gap-1">
+                    <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{formatListDate(log.createdAt, locale)} {formatTime(log.createdAt, { hour: "2-digit", minute: "2-digit", second: "2-digit" }, locale)}</span>
+                  </p>
+                  {(log.ipAddress || log.country) && (
+                    <p className="flex min-w-0 items-center gap-1 font-mono">
+                      <Globe className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{[log.ipAddress, log.country].filter(Boolean).join(" · ")}</span>
+                    </p>
+                  )}
+                </>
+              ),
+            };
+          })}
+        />
+      )}
+
+      <section className={cn("workspace-panel-surface overflow-hidden rounded-2xl", !error && "max-sm:hidden")}>
         {error ? (
           <div className="p-6">
             <ErrorState onRetry={fetchLogs} />
           </div>
         ) : (
         <div className="overflow-x-auto">
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>

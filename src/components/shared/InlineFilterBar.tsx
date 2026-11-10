@@ -159,6 +159,7 @@ export function InlineFilterBar({
                 variant="ghost"
                 size="sm"
                 onClick={onClear}
+                data-filter-clear=""
                 aria-label={clearLabel ?? t("clear")}
                 className="h-11 gap-1.5 px-2.5 text-xs text-muted-foreground sm:h-9"
               >

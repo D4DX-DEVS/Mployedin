@@ -27,13 +27,13 @@ export interface ReportKpi {
  */
 export function ReportKpiGrid({ kpis, ariaLabel }: { kpis: ReportKpi[]; ariaLabel: string }) {
   return (
-    <section className="grid grid-cols-4 gap-1.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4" aria-label={ariaLabel}>
+    <section className={`grid ${kpis.length === 3 ? "grid-cols-3" : "grid-cols-4"} gap-1.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4`} aria-label={ariaLabel}>
       {kpis.map((kpi) => {
         const body = (
           <>
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 flex-1 flex-col items-center sm:block">
-                <p className="order-2 line-clamp-2 text-[10px] font-semibold leading-tight text-muted-foreground sm:text-xs">
+                <p className="order-2 line-clamp-3 text-[10px] font-semibold leading-tight text-muted-foreground sm:line-clamp-2 sm:text-xs">
                   <span className={`me-1.5 hidden h-2 w-2 rounded-full align-middle sm:inline-block ${kpi.dot}`} />
                   {kpi.label}
                 </p>

@@ -22,8 +22,10 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -156,6 +158,7 @@ export default function SuperAgentPlacementsPage() {
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [search, setSearchState] = useUrlFilter("search", "", { debounceMs: 400 });
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
 
@@ -276,6 +279,43 @@ export default function SuperAgentPlacementsPage() {
 
   const activeFilterCount = countActiveFilters(filters);
 
+  // Shared by the inline bar, its More panel and the phone filter sheet.
+  const currencyOptions = getCurrencyOptions(t);
+  const agentFilterOptions = [{ value: "", label: t("filterAgentPlaceholder") }, ...agents.map((a) => ({ value: a._id, label: a.name || a.email }))];
+  const employerFilterOptions = [{ value: "", label: t("filterEmployerPlaceholder") }, ...employers.map((e) => ({ value: e._id, label: e.companyName }))];
+  const sortSelectOptions = [
+    { value: "createdAt", label: t("sortDateCreated") },
+    { value: "placedAt", label: t("sortPlacedDate") },
+    { value: "startDate", label: t("sortStartDate") },
+    { value: "salary", label: t("sortSalary") },
+  ];
+  const sortOrderOptions = [{ value: "desc", label: t("sortNewestFirst") }, { value: "asc", label: t("sortOldestFirst") }];
+  const commissionOptions = [
+    { value: "", label: tc("all") },
+    { value: "true", label: t("commissionPaid") },
+    { value: "false", label: t("unpaid") },
+  ];
+  const renderCommissionToggle = () => commissionOptions.map((opt) => (
+    <button
+      key={opt.value}
+      type="button"
+      onClick={() => updateFilter("commissionPaid", filters.commissionPaid === opt.value ? "" : opt.value)}
+      aria-pressed={filters.commissionPaid === opt.value}
+      className={`rounded-xl border px-3.5 py-2 text-xs font-medium transition-all ${
+        filters.commissionPaid === opt.value
+          ? "border-primary/30 bg-primary/10 text-primary"
+          : "border-border/70 bg-card text-muted-foreground hover:border-border hover:bg-secondary/80"
+      }`}
+    >
+      {opt.label}
+    </button>
+  ));
+  // Phones: the filters the sheet holds (sort does not count; visa lives in the pills above).
+  const phoneFilterCount = [
+    filters.commissionPaid, filters.currency, filters.salaryMin, filters.salaryMax,
+    filters.agentId, filters.employerId, filters.dateFrom, filters.dateTo,
+  ].filter(Boolean).length;
+
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     { header: t("exportCandidate"), key: "candidateName", formatter: (_v, row) => getCandidateName(row as unknown as Placement) },
     { header: t("exportJob"), key: "jobTitle", formatter: (_v, row) => getJobTitle(row as unknown as Placement) },
@@ -333,7 +373,7 @@ export default function SuperAgentPlacementsPage() {
             inside the toolbar's `left` slot — sharing that row with the search,
             filter and export controls squeezed the column and clipped the last
             pill mid-word at 1440px. */}
-        <div className="scrollbar-none -mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1">
+        <div role="group" aria-label={t("exportVisaStatus")} className="scrollbar-none -mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1 max-sm:flex-wrap max-sm:overflow-visible">
           {VISA_STATUSES.map((s) => {
             const active = filters.visaStatus === s;
             return (
@@ -342,7 +382,7 @@ export default function SuperAgentPlacementsPage() {
                 type="button"
                 onClick={() => updateFilter("visaStatus", active ? "" : s)}
                 aria-pressed={active}
-                className={`flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 text-sm transition-colors ${active ? "border-primary/35 bg-primary/10 font-semibold text-primary" : "border-border/70 bg-card text-muted-foreground hover:bg-secondary/80 hover:text-foreground"}`}
+                className={`flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 text-sm transition-colors max-sm:px-2.5 max-sm:text-xs ${active ? "border-primary/35 bg-primary/10 font-semibold text-primary" : "border-border/70 bg-card text-muted-foreground hover:bg-secondary/80 hover:text-foreground"}`}
               >
                 {visaLabels[s]}
                 <span className={`text-xs font-semibold tabular-nums ${active ? "text-primary" : "text-foreground/70"}`}>{visaCounts[s] ?? 0}</span>
@@ -358,6 +398,8 @@ export default function SuperAgentPlacementsPage() {
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
           onClear={(activeFilterCount > 0 || filters.visaStatus || search || filters.commissionPaid) ? resetFilters : undefined}
+          moreToggleClassName="max-sm:hidden"
+          moreClassName="max-sm:hidden"
           more={(
             <div className="flex min-w-0 flex-[1_1_100%] flex-wrap items-center gap-2">
               {/* Salary Summary */}
@@ -371,7 +413,7 @@ export default function SuperAgentPlacementsPage() {
               <div className="grid min-w-0 flex-[1_1_100%] grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterCurrency")}</label>
-                  <SearchableSelect options={getCurrencyOptions(t)} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder={t("filterCurrencyPlaceholder")} searchPlaceholder={t("filterCurrencySearch")} />
+                  <SearchableSelect options={currencyOptions} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder={t("filterCurrencyPlaceholder")} searchPlaceholder={t("filterCurrencySearch")} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterSalaryMin")}</label>
@@ -383,11 +425,11 @@ export default function SuperAgentPlacementsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterAgent")}</label>
-                  <SearchableSelect options={[{ value: "", label: t("filterAgentPlaceholder") }, ...agents.map((a) => ({ value: a._id, label: a.name || a.email }))]} value={filters.agentId} onValueChange={(v) => updateFilter("agentId", v)} placeholder={t("filterAgentPlaceholder")} searchPlaceholder={t("filterAgentSearch")} />
+                  <SearchableSelect options={agentFilterOptions} value={filters.agentId} onValueChange={(v) => updateFilter("agentId", v)} placeholder={t("filterAgentPlaceholder")} searchPlaceholder={t("filterAgentSearch")} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterEmployer")}</label>
-                  <SearchableSelect options={[{ value: "", label: t("filterEmployerPlaceholder") }, ...employers.map((e) => ({ value: e._id, label: e.companyName }))]} value={filters.employerId} onValueChange={(v) => updateFilter("employerId", v)} placeholder={t("filterEmployerPlaceholder")} searchPlaceholder={t("filterEmployerSearch")} />
+                  <SearchableSelect options={employerFilterOptions} value={filters.employerId} onValueChange={(v) => updateFilter("employerId", v)} placeholder={t("filterEmployerPlaceholder")} searchPlaceholder={t("filterEmployerSearch")} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterPlacedFrom")}</label>
@@ -399,16 +441,11 @@ export default function SuperAgentPlacementsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterSortBy")}</label>
-                  <SearchableSelect options={[
-                    { value: "createdAt", label: t("sortDateCreated") },
-                    { value: "placedAt", label: t("sortPlacedDate") },
-                    { value: "startDate", label: t("sortStartDate") },
-                    { value: "salary", label: t("sortSalary") },
-                  ]} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder={t("sortDateCreated")} />
+                  <SearchableSelect options={sortSelectOptions} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder={t("sortDateCreated")} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">{t("filterSortOrder")}</label>
-                  <SearchableSelect options={[{ value: "desc", label: t("sortNewestFirst") }, { value: "asc", label: t("sortOldestFirst") }]} value={filters.sortOrder} onValueChange={(v) => updateFilter("sortOrder", v)} placeholder={t("sortNewestFirst")} />
+                  <SearchableSelect options={sortOrderOptions} value={filters.sortOrder} onValueChange={(v) => updateFilter("sortOrder", v)} placeholder={t("sortNewestFirst")} />
                 </div>
               </div>
 
@@ -436,30 +473,98 @@ export default function SuperAgentPlacementsPage() {
             value={search}
             onChange={(v) => { setSearchState(v); resetPage(); }}
             placeholder={t("searchPlaceholder")}
+            className="max-sm:basis-0"
           />
-          {/* Commission Toggle */}
-          {[
-            { value: "", label: tc("all") },
-            { value: "true", label: t("commissionPaid") },
-            { value: "false", label: t("unpaid") },
-          ].map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => updateFilter("commissionPaid", filters.commissionPaid === opt.value ? "" : opt.value)}
-              aria-pressed={filters.commissionPaid === opt.value}
-              className={`rounded-xl border px-3.5 py-2 text-xs font-medium transition-all ${
-                filters.commissionPaid === opt.value
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border/70 bg-card text-muted-foreground hover:border-border hover:bg-secondary/80"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
+          <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+          {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
+          <div className="contents max-sm:hidden">
+            {/* Commission Toggle */}
+            {renderCommissionToggle()}
+          </div>
         </InlineFilterBar>
-        <div className="overflow-x-auto">
-          <Table>
+
+        <PhoneFilterSheet
+          open={filterSheetOpen}
+          onOpenChange={setFilterSheetOpen}
+          activeCount={phoneFilterCount}
+          onClear={resetFilters}
+        >
+          <FilterField label={t("filterSortBy")} htmlFor="sa-placements-sheet-sort-by">
+            <SearchableSelect id="sa-placements-sheet-sort-by" options={sortSelectOptions} value={filters.sortBy} onValueChange={(v) => updateFilter("sortBy", v)} placeholder={t("sortDateCreated")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterSortOrder")} htmlFor="sa-placements-sheet-sort-order">
+            <SearchableSelect id="sa-placements-sheet-sort-order" options={sortOrderOptions} value={filters.sortOrder} onValueChange={(v) => updateFilter("sortOrder", v)} placeholder={t("sortNewestFirst")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("columnCommission")}>
+            <div role="group" aria-label={t("columnCommission")} className="flex flex-wrap gap-2">
+              {renderCommissionToggle()}
+            </div>
+          </FilterField>
+          <FilterField label={t("filterCurrency")} htmlFor="sa-placements-sheet-currency">
+            <SearchableSelect id="sa-placements-sheet-currency" options={currencyOptions} value={filters.currency} onValueChange={(v) => updateFilter("currency", v)} placeholder={t("filterCurrencyPlaceholder")} searchPlaceholder={t("filterCurrencySearch")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterSalaryMin")} htmlFor="sa-placements-sheet-salary-min">
+            <Input id="sa-placements-sheet-salary-min" type="number" min={0} placeholder={t("filterSalaryMinPlaceholder")} value={filters.salaryMin} onChange={(e) => updateFilter("salaryMin", e.target.value)} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterSalaryMax")} htmlFor="sa-placements-sheet-salary-max">
+            <Input id="sa-placements-sheet-salary-max" type="number" min={0} placeholder={t("filterSalaryMaxPlaceholder")} value={filters.salaryMax} onChange={(e) => updateFilter("salaryMax", e.target.value)} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterAgent")} htmlFor="sa-placements-sheet-agent">
+            <SearchableSelect id="sa-placements-sheet-agent" options={agentFilterOptions} value={filters.agentId} onValueChange={(v) => updateFilter("agentId", v)} placeholder={t("filterAgentPlaceholder")} searchPlaceholder={t("filterAgentSearch")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterEmployer")} htmlFor="sa-placements-sheet-employer">
+            <SearchableSelect id="sa-placements-sheet-employer" options={employerFilterOptions} value={filters.employerId} onValueChange={(v) => updateFilter("employerId", v)} placeholder={t("filterEmployerPlaceholder")} searchPlaceholder={t("filterEmployerSearch")} className={SHEET_CONTROL} />
+          </FilterField>
+          <FilterField label={t("filterPlacedFrom")} htmlFor="sa-placements-sheet-from">
+            <DateTimePicker id="sa-placements-sheet-from" value={filters.dateFrom} onChange={(v) => updateFilter("dateFrom", v)} placeholder={t("filterPlacedFromPlaceholder")} mode="date" className="w-full" />
+          </FilterField>
+          <FilterField label={t("filterPlacedTo")} htmlFor="sa-placements-sheet-to">
+            <DateTimePicker id="sa-placements-sheet-to" value={filters.dateTo} onChange={(v) => updateFilter("dateTo", v)} placeholder={t("filterPlacedToPlaceholder")} mode="date" className="w-full" />
+          </FilterField>
+        </PhoneFilterSheet>
+        <PhoneRecordList
+          className="sm:hidden"
+          label={t("pageTitle")}
+          loading={loading}
+          empty={
+            <EmptyState
+              title={t("emptyStateTitle")}
+              description={
+                filters.search || filters.visaStatus || activeFilterCount > 0
+                  ? t("emptyStateFiltered")
+                  : t("emptyStateDefault")
+              }
+              icon={Trophy}
+            />
+          }
+          items={placements.map((p) => ({
+            key: p._id,
+            leading: <UserAvatar name={getCandidateName(p)} email={p.candidateEmail} className="h-10 w-10" colorful />,
+            title: getCandidateName(p),
+            subtitle: p.candidateEmail || undefined,
+            trailing: <StatusBadge status={getVisaStatus(p)} />,
+            meta: (
+              <>
+                <p className="truncate">{[getJobTitle(p), getCompanyName(p)].filter(Boolean).join(" · ")}</p>
+                <p className="truncate">
+                  {t("columnStartDate")}: {p.startDate ? formatDate(new Date(p.startDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                  {" · "}
+                  {p.placedAt ? formatDate(new Date(p.placedAt), { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                </p>
+              </>
+            ),
+            badges: p.commissionPaid ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                <ShieldCheck className="h-3 w-3" /> {t("commissionBadgePaid")}{p.commissionAmount ? ` · ${formatCount(p.commissionAmount)}` : ""}
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">{t("commissionBadgeUnpaid")}</span>
+            ),
+            stats: [{ label: t("columnSalary"), value: formatPlacementSalary(p) }],
+          }))}
+        />
+        <div className="overflow-x-auto max-sm:hidden">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[180px]">{t("columnCandidate")}</TableHead>

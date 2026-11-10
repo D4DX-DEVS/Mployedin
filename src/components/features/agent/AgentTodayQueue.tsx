@@ -59,6 +59,16 @@ export const AGENT_QUEUE_COUNT_HREFS: Record<CountKey, string> = {
   exhibitionRevisions: "/agent/exhibitions?status=revision_requested",
 };
 
+/** Chip tint by urgency: overdue work red, waiting on a reply blue, new things green. */
+const COUNT_TONE: Record<CountKey, { chip: string; badge: string }> = {
+  dueFollowUps: { chip: "border-red-500/30 bg-red-500/10 text-red-800", badge: "bg-red-500/15 text-red-700" },
+  overdueTasks: { chip: "border-red-500/30 bg-red-500/10 text-red-800", badge: "bg-red-500/15 text-red-700" },
+  interviewsAwaitingOutcome: { chip: "border-sky-500/30 bg-sky-500/10 text-sky-900", badge: "bg-sky-500/15 text-sky-700" },
+  offersAwaitingResponse: { chip: "border-sky-500/30 bg-sky-500/10 text-sky-900", badge: "bg-sky-500/15 text-sky-700" },
+  exhibitionRevisions: { chip: "border-amber-500/30 bg-amber-500/10 text-amber-900", badge: "bg-amber-500/15 text-amber-800" },
+  newCandidates: { chip: "border-emerald-500/30 bg-emerald-500/10 text-emerald-900", badge: "bg-emerald-500/15 text-emerald-700" },
+};
+
 /** Display order — most time-critical first. */
 export const AGENT_QUEUE_COUNT_ORDER: readonly CountKey[] = [
   "dueFollowUps",
@@ -122,13 +132,14 @@ export function AgentTodayQueue({ items, counts, locale, labels }: AgentTodayQue
           "0" chips was noise (owner, 2026-09-24). */}
       {AGENT_QUEUE_COUNT_ORDER.some((key) => counts[key] > 0) && (
       <ul className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-        {AGENT_QUEUE_COUNT_ORDER.filter((key) => counts[key] > 0).map((key) => (
-          <li key={key} className="min-w-0">
+        {AGENT_QUEUE_COUNT_ORDER.filter((key) => counts[key] > 0).map((key, index, shown) => (
+          // An odd last chip takes the whole row on phones instead of half of it.
+          <li key={key} className={`min-w-0 ${shown.length % 2 === 1 && index === shown.length - 1 ? "col-span-2" : ""}`}>
             <Link
               href={`/${locale}${AGENT_QUEUE_COUNT_HREFS[key]}`}
-              className="flex h-full min-h-11 w-full min-w-0 !flex-nowrap items-center rounded-2xl border sm:inline-flex sm:min-h-9 sm:w-auto sm:rounded-full border-border/70 bg-background/70 gap-1.5 py-1 pe-2.5 ps-1.5 text-[11px] font-medium text-muted-foreground sm:gap-2 sm:pe-3 sm:ps-2 sm:text-xs transition-colors hover:border-primary/30 hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              className={`flex h-full min-h-11 w-full min-w-0 !flex-nowrap items-center rounded-2xl border sm:inline-flex sm:min-h-9 sm:w-auto sm:rounded-full gap-1.5 py-1 pe-2.5 ps-1.5 text-[11px] font-medium sm:gap-2 ${COUNT_TONE[key].chip} sm:pe-3 sm:ps-2 sm:text-xs transition-colors hover:brightness-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500`}
             >
-              <span className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-semibold tabular-nums text-primary">
+              <span className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums ${COUNT_TONE[key].badge}`}>
                 {counts[key]}
               </span>
               <span className="min-w-0 !whitespace-normal text-start leading-tight">{labels.summary[key]}</span>
@@ -160,7 +171,7 @@ export function AgentTodayQueue({ items, counts, locale, labels }: AgentTodayQue
                       <span className="truncate text-sm font-semibold text-foreground">
                         {item.subject || labels.kind[item.kind]}
                       </span>
-                      <span className="ms-auto shrink-0 text-xs font-medium tabular-nums text-status-rejected">
+                      <span className="ms-auto shrink-0 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium tabular-nums text-red-700">
                         {labels.lateness[`${item.kind}-${item.id}`]}
                       </span>
                     </span>

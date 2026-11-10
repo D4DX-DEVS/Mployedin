@@ -11,6 +11,10 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 
 import AdminCommissionsReportPage from "@/app/[locale]/(dashboard)/admin/commissions-report/page";
 
+// These tests cover the desktop table. jsdom applies no Tailwind, so the phone
+// card list (sm:hidden) would render beside it and repeat every name; its own
+// behaviour is covered in phoneRecordList.test.tsx.
+jest.mock("@/components/shared/PhoneRecordList", () => ({ PhoneRecordList: () => null }));
 jest.mock("next/navigation", () => ({
   usePathname: () => "/en/admin/commissions-report",
 }));

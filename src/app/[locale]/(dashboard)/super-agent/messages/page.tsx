@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
-import { MessageSquare } from "lucide-react";
+import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UnifiedMessagesPage } from "@/components/features/dm/UnifiedMessagesPage";
 import { MessageAgentsDialog } from "@/components/features/super-agent/MessageAgentsDialog";
@@ -24,9 +24,9 @@ export default function SuperAgentMessagesPage() {
         showCustomerCare={false}
         dmActions={(
           // One message to every agent in the team, or to the ones ticked.
-          <Button size="sm" variant="outline" onClick={() => setMessageOpen(true)} className="gap-1.5" aria-label={tm("openButton")}>
-            <MessageSquare className="h-4 w-4" aria-hidden="true" />
-            <span className="max-sm:sr-only">{tm("openButton")}</span>
+          <Button size="sm" variant="outline" onClick={() => setMessageOpen(true)} className="gap-1.5 max-sm:h-11">
+            <Users className="h-4 w-4" aria-hidden="true" />
+            <span>{tm("openButton")}</span>
           </Button>
         )}
       />

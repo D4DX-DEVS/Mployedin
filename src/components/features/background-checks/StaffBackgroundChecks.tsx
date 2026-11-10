@@ -292,7 +292,7 @@ export function StaffBackgroundChecks() {
             </ul>
 
             <div className="workspace-subtle-surface mt-4 hidden overflow-x-auto rounded-3xl sm:block">
-              <Table>
+              <Table data-mobile-table="scroll">
                 <TableHeader>
                   <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
                     <TableHead>{t("colCandidate")}</TableHead>

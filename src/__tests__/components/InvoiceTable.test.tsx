@@ -58,7 +58,8 @@ describe("InvoiceTable", () => {
     setPhoneWidth(false);
     const onSelect = jest.fn();
     render(<InvoiceTable invoices={[invoice]} loading={false} role="agent" onSelect={onSelect} />);
-    fireEvent.click(screen.getByText("INV-0001"));
+    // The phone card list repeats the number; the row click lives in the table.
+    fireEvent.click(within(screen.getByRole("table")).getByText("INV-0001"));
     expect(onSelect).toHaveBeenCalledWith("inv-1");
   });
 
@@ -66,7 +67,8 @@ describe("InvoiceTable", () => {
     setPhoneWidth(true);
     const onSelect = jest.fn();
     render(<InvoiceTable invoices={[invoice]} loading={false} role="agent" onSelect={onSelect} />);
-    fireEvent.click(screen.getByText("INV-0001"));
+    // Phones get the card list; tapping the card text must not open the invoice.
+    fireEvent.click(within(screen.getByRole("list")).getByText("INV-0001"));
     expect(onSelect).not.toHaveBeenCalled();
   });
 

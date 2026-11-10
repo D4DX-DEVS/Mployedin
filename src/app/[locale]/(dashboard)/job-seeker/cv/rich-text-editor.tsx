@@ -105,14 +105,14 @@ export function RichTextEditor({
   return (
     <div className={cn("rounded-md border bg-background", className)}>
       {/* Toolbar */}
-      <div className="flex items-center gap-0.5 border-b px-1.5 py-1">
+      <div className="flex flex-wrap items-center gap-0.5 border-b px-1.5 py-1">
         <ToolbarButton onClick={() => exec("bold")} icon={Bold} label={t("bold")} />
         <ToolbarButton onClick={() => exec("italic")} icon={Italic} label={t("italic")} />
         <ToolbarButton onClick={() => exec("underline")} icon={UnderlineIcon} label={t("underline")} />
-        <span className="mx-1 h-4 w-px bg-border" />
+        <span className="mx-1 h-4 w-px bg-border max-sm:hidden" />
         <ToolbarButton onClick={() => exec("insertUnorderedList")} icon={List} label={t("bulletList")} />
         <ToolbarButton onClick={() => exec("insertOrderedList")} icon={ListOrdered} label={t("numberedList")} />
-        <span className="mx-1 h-4 w-px bg-border" />
+        <span className="mx-1 h-4 w-px bg-border max-sm:hidden" />
         <Popover open={linkOpen} onOpenChange={(open) => { if (open) saveSelection(); setLinkOpen(open); }}>
           <PopoverTrigger asChild>
             <button

@@ -330,6 +330,7 @@ export default function SuperAgentCommissionsReportPage() {
                   value={searchQuery}
                   onChange={setSearchQuery}
                   placeholder={t("searchAgentPlaceholder")}
+                  className="max-sm:basis-0"
                 />
               </InlineFilterBar>
             </div>
@@ -343,10 +344,10 @@ export default function SuperAgentCommissionsReportPage() {
           />
         ) : (
           <div className="overflow-x-auto">
-          <Table>
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead>{t("tableColumnAgent")}</TableHead>
+                <TableHead className="max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{t("tableColumnAgent")}</TableHead>
                 <TableHead className="text-right">{t("tableColumnTotal")}</TableHead>
                 <TableHead className="text-right">{t("tableColumnPending")}</TableHead>
                 <TableHead className="text-right">{t("tableColumnApproved")}</TableHead>
@@ -367,7 +368,7 @@ export default function SuperAgentCommissionsReportPage() {
                 ) : (
                   filteredAgents.map((agent) => (
                     <TableRow key={agent.agentId} className="group">
-                      <TableCell>
+                      <TableCell className="max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">
                         <div className="flex min-w-0 items-center gap-3">
                           <UserAvatar name={agent.agentName} email={agent.agentEmail} className="h-9 w-9 shrink-0" colorful />
                           <div className="min-w-0 space-y-0.5">
@@ -391,7 +392,7 @@ export default function SuperAgentCommissionsReportPage() {
               {!loading && filteredAgents.length > 0 && (
                 <TableFooter>
                   <TableRow>
-                    <TableCell className="font-medium">{t("tableTotalRow")}</TableCell>
+                    <TableCell className="font-medium max-sm:sticky max-sm:start-0 max-sm:z-[1] max-sm:bg-card">{t("tableTotalRow")}</TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">{fmt(teamTotals.total, currency)}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmt(teamTotals.pending, currency)}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmt(teamTotals.approved, currency)}</TableCell>

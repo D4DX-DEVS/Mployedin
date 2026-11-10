@@ -32,6 +32,7 @@ import { AI_SCORE_BANDS, useAiFilterSearch, type AiApplicationFilters } from "@/
 import { useTableExport } from "@/hooks/useTableExport";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate, formatListDate } from "@/lib/ui/intlFormat";
@@ -214,6 +215,7 @@ export default function AdminApplicationsPage() {
   const [stale, setStale] = useUrlFilter("stale", "");
   // Starts open when the URL already carries an advanced filter, so it is never set-but-hidden.
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(() => Boolean(scoreRange || dateFrom || dateTo));
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   /* Selection and inline detail. The admin list had neither: changing twenty
      applications meant twenty interactions, and reading a candidate meant
@@ -522,6 +524,7 @@ export default function AdminApplicationsPage() {
     { value: "", label: t("filterAllEmployers") },
     ...employers.map((e) => ({ value: e._id, label: e.companyName })),
   ];
+  const phoneFilterCount = [status, employerId, source, scoreRange, dateFrom, dateTo].filter(Boolean).length;
 
   return (
     <div className="page-container">
@@ -664,7 +667,9 @@ export default function AdminApplicationsPage() {
 
       {/* ─── Filters ──────────────────────────────────────────────────── */}
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        moreToggleClassName="max-sm:hidden"
+        moreClassName="max-sm:hidden"
         more={(
           <>
             <SearchableSelect
@@ -707,48 +712,138 @@ export default function AdminApplicationsPage() {
           placeholder={t("searchPlaceholder")}
           onAskAi={(q) => { void ai.askAi(q); }}
           pending={ai.pending}
-          className="flex-[2_1_20rem]"
+          className="flex-[2_1_20rem] max-sm:basis-0"
           inputClassName="h-11 rounded-lg bg-card sm:h-9"
         />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          options={STATUS_OPTIONS}
-          value={status}
-          onValueChange={(v) => { setStatus(v); resetPage(); }}
-          placeholder={t("allStatuses")}
-        />
-        {employerOptions.length > 2 && (
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <div className="contents max-sm:hidden">
           <SearchableSelect
             className={INLINE_FILTER_CONTROL}
-            options={employerOptions}
-            value={employerId}
-            onValueChange={(v) => { setEmployerId(v); resetPage(); }}
-            placeholder={t("allEmployers")}
+            options={STATUS_OPTIONS}
+            value={status}
+            onValueChange={(v) => { setStatus(v); resetPage(); }}
+            placeholder={t("allStatuses")}
           />
-        )}
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          options={SOURCE_OPTIONS}
-          value={source}
-          onValueChange={(v) => { setSource(v); resetPage(); }}
-          placeholder={t("allSources")}
-        />
+          {employerOptions.length > 2 && (
+            <SearchableSelect
+              className={INLINE_FILTER_CONTROL}
+              options={employerOptions}
+              value={employerId}
+              onValueChange={(v) => { setEmployerId(v); resetPage(); }}
+              placeholder={t("allEmployers")}
+            />
+          )}
+          <SearchableSelect
+            className={INLINE_FILTER_CONTROL}
+            options={SOURCE_OPTIONS}
+            value={source}
+            onValueChange={(v) => { setSource(v); resetPage(); }}
+            placeholder={t("allSources")}
+          />
+          {jobIdFilter && (
+            <Badge variant="secondary" className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium">
+              {t("selectedJobOnly")}
+            </Badge>
+          )}
+          {/* Sort sits with the filters, like every admin list, with its own
+              direction button; it used to hide behind "Advanced filters". */}
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v); resetPage(); }}
+            options={SORT_OPTIONS}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            compact
+          />
+        </div>
+      </InlineFilterBar>
+
+      <PhoneFilterSheet
+        open={filterSheetOpen}
+        onOpenChange={setFilterSheetOpen}
+        activeCount={phoneFilterCount}
+        onClear={clearAllFilters}
+      >
+        <FilterField label={tc("sortBy")}>
+          <TableSortControl
+            value={sortBy}
+            onValueChange={(v) => { setSortBy(v); resetPage(); }}
+            options={SORT_OPTIONS}
+            order={sortOrder}
+            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
+            className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
+          />
+        </FilterField>
         {jobIdFilter && (
-          <Badge variant="secondary" className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium">
+          <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[11px] font-medium">
             {t("selectedJobOnly")}
           </Badge>
         )}
-        {/* Sort sits with the filters, like every admin list, with its own
-            direction button; it used to hide behind "Advanced filters". */}
-        <TableSortControl
-          value={sortBy}
-          onValueChange={(v) => { setSortBy(v); resetPage(); }}
-          options={SORT_OPTIONS}
-          order={sortOrder}
-          onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-          compact
-        />
-      </InlineFilterBar>
+        <FilterField label={t("status")} htmlFor="applications-sheet-status">
+          <SearchableSelect
+            id="applications-sheet-status"
+            className={SHEET_CONTROL}
+            options={STATUS_OPTIONS}
+            value={status}
+            onValueChange={(v) => { setStatus(v); resetPage(); }}
+            placeholder={t("allStatuses")}
+          />
+        </FilterField>
+        {employerOptions.length > 2 && (
+          <FilterField label={t("exportHeaderCompany")} htmlFor="applications-sheet-employer">
+            <SearchableSelect
+              id="applications-sheet-employer"
+              className={SHEET_CONTROL}
+              options={employerOptions}
+              value={employerId}
+              onValueChange={(v) => { setEmployerId(v); resetPage(); }}
+              placeholder={t("allEmployers")}
+            />
+          </FilterField>
+        )}
+        <FilterField label={t("exportHeaderSource")} htmlFor="applications-sheet-source">
+          <SearchableSelect
+            id="applications-sheet-source"
+            className={SHEET_CONTROL}
+            options={SOURCE_OPTIONS}
+            value={source}
+            onValueChange={(v) => { setSource(v); resetPage(); }}
+            placeholder={t("allSources")}
+          />
+        </FilterField>
+        <FilterField label={t("scoreRange")} htmlFor="applications-sheet-score">
+          <SearchableSelect
+            id="applications-sheet-score"
+            className={SHEET_CONTROL}
+            options={SCORE_RANGE_OPTIONS}
+            value={scoreRange}
+            onValueChange={(v) => { setScoreRange(v); resetPage(); }}
+            placeholder={t("allScores")}
+          />
+        </FilterField>
+        <FilterField label={t("fromDate")} htmlFor="applications-sheet-from">
+          <DateTimePicker
+            id="applications-sheet-from"
+            mode="date"
+            value={dateFrom}
+            onChange={(v) => { setDateFrom(v); resetPage(); }}
+            placeholder={t("fromDate")}
+            className="w-full"
+            modal
+          />
+        </FilterField>
+        <FilterField label={t("toDate")} htmlFor="applications-sheet-to">
+          <DateTimePicker
+            id="applications-sheet-to"
+            mode="date"
+            value={dateTo}
+            onChange={(v) => { setDateTo(v); resetPage(); }}
+            placeholder={t("toDate")}
+            className="w-full"
+            modal
+          />
+        </FilterField>
+      </PhoneFilterSheet>
 
       {/* ─── Application List ─────────────────────────────────────────── */}
       {/* Error first: an empty list and a failed load are different things, and
