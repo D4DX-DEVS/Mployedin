@@ -188,6 +188,8 @@ export interface IJob extends Document {
   uniqueViews: number;
   tags: string[];
   visibility: JobVisibility;
+  /** false = seekers see "Mployedin" instead of the company. undefined = legacy, disclosed. */
+  discloseCompany?: boolean;
   category?: string;
   isFeatured?: boolean;
   featuredUntil?: Date;
@@ -347,6 +349,8 @@ const JobSchema = new Schema<IJob>(
     uniqueViews: { type: Number, default: 0 },
     tags: [String],
     visibility: { type: String, enum: ["public", "private", "invite_only"], default: "public" },
+    // No schema default on purpose: jobs saved before this setting must stay disclosed.
+    discloseCompany: { type: Boolean },
     category: String,
     isFeatured: { type: Boolean, default: false },
     featuredUntil: { type: Date },

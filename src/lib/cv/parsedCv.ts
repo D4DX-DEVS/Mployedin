@@ -251,6 +251,20 @@ export function resumeUrlOf(documents: ReadonlyArray<{ url?: string; type?: stri
   return documents?.find((doc) => doc.type === "resume" && doc.url)?.url ?? null;
 }
 
+/**
+ * The CV that belongs to one application: the resume sent with it. Only an
+ * application sent with none (older auto-applied and assistant ones) falls
+ * back to the seeker's Profile CV. Scoring has always read it in this order;
+ * the employer's "View CV" used the opposite one and so could show a
+ * different file from the one that was sent and scored.
+ */
+export function applicationCvUrlOf(
+  documents: ReadonlyArray<{ url?: string; type?: string }> | null | undefined,
+  profileCvUrl: string | null | undefined,
+): string | null {
+  return resumeUrlOf(documents) ?? profileCvUrl ?? null;
+}
+
 type SeekerDoc = Record<string, unknown>;
 
 interface DatedEntry {

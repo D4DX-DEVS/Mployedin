@@ -240,7 +240,8 @@ export default function AgentReferralLinksPage() {
 
       {/* Filters */}
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0"
+        // Phone: no panel around the search row (a box holding a box).
+        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onExportCsv={handleExportCsv}
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
@@ -279,7 +280,7 @@ export default function AgentReferralLinksPage() {
               <>
                 <p className="flex min-w-0 items-center gap-1">
                   <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{t("tableHeaderExpires")}: {link.expiresAt ? formatListDate(new Date(link.expiresAt)) : "—"}</span>
+                  <span className="truncate">{link.expiresAt ? `${t("tableHeaderExpires")}: ${formatListDate(new Date(link.expiresAt))}` : t("noExpiry")}</span>
                 </p>
                 {/* The registrations toggle sits on the Used line it expands;
                     in the footer it wrapped onto a row of its own. */}

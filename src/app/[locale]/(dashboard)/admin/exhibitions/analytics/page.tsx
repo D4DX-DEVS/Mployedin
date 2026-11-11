@@ -29,6 +29,7 @@ import { Progress } from "@/components/ui/progress";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { formatCurrency } from "@/lib/currency";
 import { TeamPerformanceReport, formatMoneyByCurrency, type TeamRow } from "./_components/TeamPerformanceReport";
+import { InlineLabelled } from "@/components/shared/LabelledControl";
 
 interface KPIs {
   totalRequests: number;
@@ -105,6 +106,7 @@ const EMPTY_OUTCOMES: Outcomes = {
 
 export default function AdminExhibitionAnalyticsPage() {
   const t = useTranslations("adminExhibitionsAnalytics");
+  const tc = useTranslations("common");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState(String(new Date().getFullYear()));
@@ -236,14 +238,20 @@ export default function AdminExhibitionAnalyticsPage() {
         title={t("pageTitle")}
         description={t("pageDescription")}
         actions={(
-          <div className="min-w-[10rem]">
-            <SearchableSelect
-              options={YEAR_OPTIONS}
-              value={year}
-              onValueChange={setYear}
-              placeholder={t("selectYearPlaceholder")}
-            />
-          </div>
+          <InlineLabelled label={tc("year")}>
+            {(id) => (
+              <div className="min-w-[8rem]">
+                <SearchableSelect
+                  id={id}
+                  ariaLabel={tc("year")}
+                  options={YEAR_OPTIONS}
+                  value={year}
+                  onValueChange={setYear}
+                  placeholder={t("selectYearPlaceholder")}
+                />
+              </div>
+            )}
+          </InlineLabelled>
         )}
         metrics={[
           { label: t("requestsLabel"), value: kpis.totalRequests, note: strongestMonth ? t("requestsBusiestMonth", { month: strongestMonth.month }) : t("requestsNoData"), icon: Target, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
@@ -431,7 +439,7 @@ export default function AdminExhibitionAnalyticsPage() {
 
 function MiniMetric({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-muted/30 chip-pad">
+    <div className="rounded-2xl border border-border/60 bg-muted/30 chip-pad max-sm:rounded-lg max-sm:border-0 max-sm:bg-muted/40">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
       {sub ? <p className="mt-1 text-xs text-muted-foreground">{sub}</p> : null}

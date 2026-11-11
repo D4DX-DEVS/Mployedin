@@ -62,6 +62,8 @@ const DECISION_ERROR_KEYS: Record<string, "cannotEraseAdmin" | "decisionStale" |
 
 /** Mirrors GDPR_REQUEST_STATUSES; the model file cannot be imported client-side. */
 const GDPR_STATUS_VALUES = ["pending", "in_progress", "completed", "rejected", "cancelled"] as const;
+const GDPR_TABS = ["requests", "consent"] as const;
+type GdprTab = (typeof GDPR_TABS)[number];
 
 // No "Retention policies" tab: it rendered six hardcoded rows claiming
 // auto-delete for applications, CVs and messages that no job performs, with a
@@ -80,7 +82,9 @@ export default function AdminGdprPage() {
   // before then (skeletons, the filter row, the panel) is switched by CSS, so a
   // phone's first paint (and a page without scripts) is already the phone layout.
   const isPhone = useMediaQuery(PHONE_QUERY);
-  const [activeTab, setActiveTab] = useState<"requests" | "consent">("requests");
+  // In the URL (?tab=consent) so a reload, the back button or a shared link opens the same tab.
+  const [tabParam, setActiveTab] = useUrlFilter("tab", "requests", { allow: GDPR_TABS });
+  const activeTab: GdprTab = tabParam === "consent" ? "consent" : "requests";
   const [requests, setRequests] = useState<GdprRequestRow[]>([]);
   // The request in the details dialog. Kept after closing so the dialog keeps
   // its content while it animates out; `viewOpen` is what opens and closes it.
@@ -293,6 +297,8 @@ export default function AdminGdprPage() {
         {TABS.map((tab) => (
           <button
             key={tab.key}
+            type="button"
+            aria-pressed={activeTab === tab.key}
             onClick={() => { setActiveTab(tab.key); pagination.resetPage(); }}
             className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === tab.key

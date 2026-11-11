@@ -95,11 +95,12 @@ export default function AgentChatPage() {
 
   return (
     <div className="page-container flex flex-col">
-      <AgentSectionTabs tabs={AGENT_INBOX_TABS} ariaLabelKey="inboxTabsLabel" />
+      {/* Title first, then the Direct / Team channels tabs. */}
       <WorkspaceHeader
         title={t("teamChannelsHeading")}
         context={t("onlineCount", { count: online })}
       />
+      <AgentSectionTabs tabs={AGENT_INBOX_TABS} ariaLabelKey="inboxTabsLabel" />
 
       <div className="workspace-panel-surface flex sm:min-h-96 flex-1 gap-0 overflow-hidden rounded-3xl max-sm:flex-none">
         <aside className={`${showChannels ? "flex" : "hidden"} workspace-subtle-surface sm:flex w-full sm:w-60 shrink-0 flex-col border-r border-border`}>

@@ -39,7 +39,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useTableExport } from "@/hooks/useTableExport";
-import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL, INLINE_FILTER_FIELD } from "@/components/shared/InlineFilterBar";
 import { RowActions } from "@/components/shared/RowActions";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -61,6 +61,7 @@ import {
   type InvoiceFactKey,
   type TotalRow,
 } from "@/lib/invoices/presentation";
+import { StackedLabelled } from "@/components/shared/LabelledControl";
 
 /** Translation keys for the category-aware fact list. */
 const FACT_LABEL_KEYS: Record<InvoiceFactKey, string> = {
@@ -1019,15 +1020,19 @@ export default function EmployerInvoicesPage() {
           onChange={(v) => { setSearchInput(v); resetPage(); }}
           placeholder={t("searchPlaceholder")}
         />
-        <SearchableSelect
-          id="emp-inv-status"
-          className={INLINE_FILTER_CONTROL}
-          options={[{ value: "all", label: t("allStatuses") }, { value: "issued", label: t("issued") }, { value: "sent", label: t("sent") }, { value: "paid", label: t("paidStatus") }, { value: "partially_paid", label: t("partiallyPaid") }, { value: "overdue", label: t("overdueStatus") }]}
-          value={statusFilter || "all"}
-          onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
-          placeholder={t("allStatuses")}
-          ariaLabel={t("status")}
-        />
+        <StackedLabelled label={t("status")} className={INLINE_FILTER_FIELD}>
+          {(id) => (
+            <SearchableSelect
+              id={id}
+              className={`${INLINE_FILTER_CONTROL} w-full max-w-none`}
+              options={[{ value: "all", label: t("allStatuses") }, { value: "issued", label: t("issued") }, { value: "sent", label: t("sent") }, { value: "paid", label: t("paidStatus") }, { value: "partially_paid", label: t("partiallyPaid") }, { value: "overdue", label: t("overdueStatus") }]}
+              value={statusFilter || "all"}
+              onValueChange={v => { setStatusFilter(v === "all" ? "" : v); resetPage(); }}
+              placeholder={t("allStatuses")}
+              ariaLabel={t("status")}
+            />
+          )}
+        </StackedLabelled>
       </InlineFilterBar>
 
       {/* Summary Cards */}

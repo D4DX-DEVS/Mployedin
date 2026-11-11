@@ -246,7 +246,8 @@ export default function AdminTerritoryPage() {
         </FilterField>
       </PhoneFilterSheet>
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl border-t-0 rounded-t-none">
+      {/* Phone: no panel box around the record cards (box-in-box). */}
+      <section className="workspace-panel-surface overflow-hidden rounded-2xl border-t-0 rounded-t-none max-sm:!overflow-visible max-sm:!rounded-none max-sm:!border-0 max-sm:!bg-transparent max-sm:!shadow-none">
         {loadError ? (
           <div className="p-6">
             <ErrorState onRetry={() => void fetchTerritories()} />
@@ -254,7 +255,7 @@ export default function AdminTerritoryPage() {
         ) : (
           <>
           <PhoneRecordList
-            className="p-3 sm:hidden"
+            className="p-3 sm:hidden max-sm:p-0"
             label={t("columnTerritory")}
             loading={loading}
             empty={emptyState}

@@ -11,6 +11,7 @@ import React from "react";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { render } from "@testing-library/react";
+import { HIDDEN_COMPANY_LOGO } from "@/lib/jobs/companyDisclosure";
 
 import { BannerCarousel } from "@/components/features/public/landing/BannerCarousel";
 import { PostsSection, TestimonialsSection } from "@/components/features/public/landing/CmsSections";
@@ -155,7 +156,13 @@ function srcOf(tag: string): string {
 }
 
 const SAME_ORIGIN_LITERAL = /^["']\/(?!\/)[^"'\\]*["']$/;
-const rawImages = (source: string) => imgTags(source).map(srcOf).filter((src) => !SAME_ORIGIN_LITERAL.test(src));
+// Named constants for our own files, by the name a page writes in src={...}.
+// Each is checked below to really be a same-origin path, so one cannot be
+// turned into a third-party address without failing this guard.
+const SAME_ORIGIN_CONSTANTS: Record<string, string> = { "{HIDDEN_COMPANY_LOGO}": HIDDEN_COMPANY_LOGO };
+const isSameOrigin = (src: string) =>
+  SAME_ORIGIN_LITERAL.test(src) || (src in SAME_ORIGIN_CONSTANTS && SAME_ORIGIN_LITERAL.test(JSON.stringify(SAME_ORIGIN_CONSTANTS[src])));
+const rawImages = (source: string) => imgTags(source).map(srcOf).filter((src) => !isSameOrigin(src));
 
 describe("the <img> scanner this guard relies on", () => {
   it("finds self-closing and plain tags, and reads brace and quoted src values", () => {
@@ -174,6 +181,12 @@ describe("the <img> scanner this guard relies on", () => {
     expect(rawImages('<img src="//i.pravatar.cc/1" />')).toEqual(['"//i.pravatar.cc/1"']);
     expect(rawImages('<img src="https://i.pravatar.cc/1">')).toEqual(['"https://i.pravatar.cc/1"']);
     expect(rawImages("<img src={post.cover}>")).toEqual(["{post.cover}"]);
+  });
+
+  it("accepts a named constant only while it holds a same-origin path", () => {
+    expect(HIDDEN_COMPANY_LOGO).toMatch(/^\/(?!\/)/);
+    expect(rawImages("<img src={HIDDEN_COMPANY_LOGO} />")).toEqual([]);
+    expect(rawImages("<img src={OTHER_LOGO} />")).toEqual(["{OTHER_LOGO}"]);
   });
 });
 

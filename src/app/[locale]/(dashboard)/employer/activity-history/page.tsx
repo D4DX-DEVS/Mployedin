@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { StackedLabelled } from "@/components/shared/LabelledControl";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -173,35 +174,39 @@ export default function ActivityHistoryPage() {
       {/* Phones: both selects + Refresh share one row (labels hidden, the
           select values already say All Actions / All Roles). */}
       <div className="workspace-toolbar">
-        <div className="min-w-0 flex-1 sm:flex-none">
-          <Select value={actionFilter} onValueChange={setActionFilter}>
-            <SelectTrigger className="w-full sm:w-[150px] h-11 rounded-xl text-sm sm:h-10" aria-label={t("actionType")}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("allActions")}</SelectItem>
-              <SelectItem value="start">{t("start")}</SelectItem>
-              <SelectItem value="exit">{t("exit")}</SelectItem>
-              <SelectItem value="create">{t("created")}</SelectItem>
-              <SelectItem value="update">{t("updated")}</SelectItem>
-              <SelectItem value="delete">{t("deleted")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <StackedLabelled label={t("actionType")} className="min-w-0 flex-1 sm:flex-none">
+          {(id) => (
+            <Select value={actionFilter} onValueChange={setActionFilter}>
+              <SelectTrigger id={id} className="w-full sm:w-[150px] h-11 rounded-xl text-sm sm:h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allActions")}</SelectItem>
+                <SelectItem value="start">{t("start")}</SelectItem>
+                <SelectItem value="exit">{t("exit")}</SelectItem>
+                <SelectItem value="create">{t("created")}</SelectItem>
+                <SelectItem value="update">{t("updated")}</SelectItem>
+                <SelectItem value="delete">{t("deleted")}</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </StackedLabelled>
 
-        <div className="min-w-0 flex-1 sm:flex-none">
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-full sm:w-[150px] h-11 rounded-xl text-sm sm:h-10" aria-label={t("role")}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("allRoles")}</SelectItem>
-              <SelectItem value="admin">{t("roleAdmin")}</SelectItem>
-              <SelectItem value="super_agent">{t("roleSuperAgent")}</SelectItem>
-              <SelectItem value="agent">{t("roleAgent")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <StackedLabelled label={t("role")} className="min-w-0 flex-1 sm:flex-none">
+          {(id) => (
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger id={id} className="w-full sm:w-[150px] h-11 rounded-xl text-sm sm:h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allRoles")}</SelectItem>
+                <SelectItem value="admin">{t("roleAdmin")}</SelectItem>
+                <SelectItem value="super_agent">{t("roleSuperAgent")}</SelectItem>
+                <SelectItem value="agent">{t("roleAgent")}</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </StackedLabelled>
 
         <Button
           variant="outline"

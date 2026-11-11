@@ -260,7 +260,8 @@ export function JobSeekerHomePage({
           });
         }
         const rawApps: Array<{
-          jobId?: { _id?: string; title?: string; employer?: { companyName?: string; logo?: string } };
+          // The list route masks a hidden company for seekers (lib/applications/seekerView.ts).
+          jobId?: { _id?: string; title?: string; employerId?: { companyName?: string; logo?: string } | string };
           status?: string;
           createdAt?: string;
         }> = appsData?.applications ?? [];
@@ -275,14 +276,17 @@ export function JobSeekerHomePage({
               seenJobIds.add(id);
               return true;
             })
-            .map((a) => ({
-              _id: String(a.jobId!._id),
-              title: String(a.jobId!.title ?? ""),
-              companyName: a.jobId!.employer?.companyName,
-              companyLogo: a.jobId!.employer?.logo,
-              status: String(a.status ?? "applied"),
-              appliedAt: a.createdAt,
-            }))
+            .map((a) => {
+              const employer = typeof a.jobId!.employerId === "object" ? a.jobId!.employerId : undefined;
+              return {
+                _id: String(a.jobId!._id),
+                title: String(a.jobId!.title ?? ""),
+                companyName: employer?.companyName,
+                companyLogo: employer?.logo,
+                status: String(a.status ?? "applied"),
+                appliedAt: a.createdAt,
+              };
+            })
             .slice(0, 5)
         );
       } catch {

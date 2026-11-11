@@ -20,6 +20,10 @@ export const CLIENT_NAMESPACES = {
     // common: the Dialog close label (the sign-up consent dialog in EasyApply).
     "a11y", "auth", "calendar", "common", "companyReviews", "easyApply", "errorBoundary", "footer",
     "landing", "nav", "publicJobDetail", "salaryExplorer", "similarJobs", "socialShare",
+    // The headings a CV PDF is printed with: a signed-in seeker can send the CV
+    // they built on Mployedin from the public job page (EasyApply). Two
+    // sub-trees, not the whole builder namespace.
+    "cvBuilderPage.previewSections", "cvBuilderPage.proficiency",
   ],
   auth: [
     "a11y", "agentRegister", "auth", "calendar", "common", "confirmEmailChange", "employerRegister",
@@ -32,10 +36,26 @@ export const CLIENT_NAMESPACES = {
 
 export type ClientMessageGroup = keyof typeof CLIENT_NAMESPACES;
 
+/**
+ * An entry is a namespace ("auth") or a dotted path to one sub-tree of it
+ * ("cvBuilderPage.previewSections"), for a group that reads a handful of
+ * strings from a large namespace.
+ */
 export function pickMessages(messages: AbstractIntlMessages, group: ClientMessageGroup): AbstractIntlMessages {
   const picked: AbstractIntlMessages = {};
-  for (const ns of CLIENT_NAMESPACES[group]) {
-    if (ns in messages) picked[ns] = messages[ns];
+  for (const entry of CLIENT_NAMESPACES[group]) {
+    const keys = entry.split(".");
+    let source: unknown = messages;
+    for (const key of keys) {
+      source = source && typeof source === "object" ? (source as Record<string, unknown>)[key] : undefined;
+    }
+    if (source === undefined) continue;
+    let target = picked as Record<string, unknown>;
+    for (const key of keys.slice(0, -1)) {
+      if (typeof target[key] !== "object" || target[key] === null) target[key] = {};
+      target = target[key] as Record<string, unknown>;
+    }
+    target[keys[keys.length - 1]] = source;
   }
   return picked;
 }

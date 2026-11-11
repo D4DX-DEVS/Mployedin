@@ -7,8 +7,10 @@ import User from "@/models/User";
 import SuperAgent from "@/models/SuperAgent";
 import { getAgentSeekerArea, getSuperAgentScope, getSuperAgentTerritory, seekerRegionMatch } from "@/lib/auth/agentRestrictions";
 import { decorateReferralSummaries, type ReferralViewer } from "@/lib/referrals/summary";
-import { computeHiringStatus, HIRING_STATUSES } from "@/lib/jobseekers/hiringStatus";
-import { applicationStatusesBySeeker } from "@/lib/jobseekers/hiringStatus.server";
+import { computeHiringStatus, pickHiringApplication, HIRING_STATUSES } from "@/lib/jobseekers/hiringStatus";
+import { applicationStatusesBySeeker, applicationsBySeeker } from "@/lib/jobseekers/hiringStatus.server";
+import { cleanRoleTitle } from "@/lib/jobseekers/roleTitle";
+import { suggestedRolesFor } from "@/lib/jobseekers/suggestedRole.server";
 import mongoose from "mongoose";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { isKnownCountry, locationSearchRegex } from "@/lib/i18n/locations";
@@ -291,6 +293,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           { "experience.jobTitle": { $regex: pattern, $options: "i" } },
           { "experience.location": { $regex: pattern, $options: "i" } },
           { headline: { $regex: pattern, $options: "i" } },
+          // The list shows a preferred role when there is no job history, so it must be findable.
+          { preferredRoles: { $regex: pattern, $options: "i" } },
           { "education.degree": { $regex: pattern, $options: "i" } },
           { "education.field": { $regex: pattern, $options: "i" } },
           { nationality: { $regex: pattern, $options: "i" } },
@@ -348,7 +352,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           languages: 1, certifications: 1,
           profileCompleteness: 1, availabilityStatus: 1, badges: 1,
           totalExperienceYears: 1, preferredJobType: 1,
-          preferredLocations: 1,
+          preferredLocations: 1, preferredRoles: 1,
           "cv.originalUrl": 1,
           referral: 1, isAgentReferred: 1, agentId: 1,
           createdAt: 1,
@@ -395,12 +399,35 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const owned = ownsRow;
     const marked: Array<Record<string, unknown>> = owned ? rows.map((row) => ({ ...row, staffAccess: owned(row) ? "own" : "area" })) : rows;
 
-    // Where each seeker on this page stands across their applications.
-    const statuses = await applicationStatusesBySeeker(rows.map((row) => row._id));
-    const withHiringStatus: Array<Record<string, unknown>> = marked.map((row) => ({
-      ...row,
-      hiringStatus: computeHiringStatus(statuses.get(String(row._id)) ?? []),
-    }));
+    // Where each seeker on this page stands across their applications, and
+    // which job that status comes from (the newest application at that stage).
+    const applications = await applicationsBySeeker(rows.map((row) => row._id));
+
+    // A guessed role for those who named none (no job history, no preferred
+    // role) — from the skills they list. Shown as a guess; never searched on.
+    const hasStatedRole = (row: Record<string, unknown>) => {
+      const experience = (row.experience as Array<{ jobTitle?: string }> | undefined) ?? [];
+      const preferred = (row.preferredRoles as string[] | undefined) ?? [];
+      return experience.some((e) => cleanRoleTitle(e.jobTitle)) || preferred.some((r) => r.trim());
+    };
+    const suggestions = await suggestedRolesFor(
+      rows
+        .filter((row) => !hasStatedRole(row))
+        .map((row) => ({ id: String(row._id), skills: (row.skills as string[] | undefined) ?? [] })),
+    ).catch(() => new Map<string, string>());
+
+    const withHiringStatus: Array<Record<string, unknown>> = marked.map((row) => {
+      const apps = applications.get(String(row._id)) ?? [];
+      const hiringStatus = computeHiringStatus(apps.map((a) => a.status));
+      const job = pickHiringApplication(apps, hiringStatus);
+      return {
+        ...row,
+        suggestedRole: suggestions.get(String(row._id)),
+        hiringStatus,
+        hiringJob: job ? { title: job.jobTitle, company: job.company } : undefined,
+        applicationCount: apps.length,
+      };
+    });
 
     return NextResponse.json({
       items: await decorateReferralSummaries(withHiringStatus, viewer),

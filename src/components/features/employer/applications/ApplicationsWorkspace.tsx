@@ -134,6 +134,7 @@ import type { ApplicationStatus } from "@/models/Application";
 import { CandidateJourney } from "@/components/features/employer/applications/CandidateJourney";
 import { useContainerWide } from "@/hooks/useContainerWide";
 import { ViewerZoneHint, WorkspaceModal } from "@/components/features/employer/applications/WorkspaceModal";
+import { StackedLabelled } from "@/components/shared/LabelledControl";
 
 /**
  * Verification state that travels with the candidate.
@@ -371,6 +372,7 @@ export function ApplicationsWorkspace({
   const jobPinned = Boolean(jobId);
   const { can } = usePermissions();
   const t = useTranslations("employerApplications");
+  const tCommon = useTranslations("common");
   const ta = useTranslations("employerAts");
   const tw = useTranslations("employerJobWorkspace");
   const tc = useTranslations("employerCommon");
@@ -1417,18 +1419,23 @@ export function ApplicationsWorkspace({
           inputClassName="sm:h-10"
         />
         {!embedded && (
-          <SearchableSelect
-            className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
-            options={jobOptions}
-            value={jobFilter}
-            onValueChange={(v) => {
-              setJobFilter(v);
-              setExperienceRange([null, null]);
-              setSkillsFilter([]);
-            }}
-            placeholder={t("selectJob")}
-            ariaLabel={t("selectJob")}
-          />
+          <StackedLabelled label={tCommon("job")} className="workspace-toolbar-select">
+            {(id) => (
+              <SearchableSelect
+                id={id}
+                className="w-full h-11 rounded-xl border-border bg-background sm:h-10"
+                options={jobOptions}
+                value={jobFilter}
+                onValueChange={(v) => {
+                  setJobFilter(v);
+                  setExperienceRange([null, null]);
+                  setSkillsFilter([]);
+                }}
+                placeholder={t("selectJob")}
+                ariaLabel={t("selectJob")}
+              />
+            )}
+          </StackedLabelled>
         )}
         <Button
           type="button"

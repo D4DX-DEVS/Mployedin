@@ -44,6 +44,8 @@ export interface Job {
   qualifications?: string[];
   benefits?: string[];
   learningOutcomes?: string[];
+  /** The questions applicants answer when they apply. */
+  screeningQuestions?: { id?: string; label?: string }[];
   duration?: string;
   workflowMode?: string;
   updatedAt?: string;

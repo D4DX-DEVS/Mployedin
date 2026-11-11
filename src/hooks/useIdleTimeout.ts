@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { signOut } from "next-auth/react";
 import { logoutCleanup } from "@/lib/consent/logoutCleanup";
-import { resetSignOutInProgress } from "@/lib/consent/deviceStorage";
+import { isSignOutInProgress, resetSignOutInProgress } from "@/lib/consent/deviceStorage";
 
 const ACTIVITY_EVENTS = [
   "mousedown",
@@ -48,6 +48,9 @@ export function useIdleTimeout({
   const signingOutRef = useRef(false);
 
   const updateActivity = useCallback(() => {
+    // A sign-out has wiped this key; writing it again while "Logging out..." waits
+    // for the server would leave it on the device for the next person.
+    if (isSignOutInProgress()) return;
     const now = Date.now().toString();
     try {
       localStorage.setItem(STORAGE_KEY, now);

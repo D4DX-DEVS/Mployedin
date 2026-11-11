@@ -233,7 +233,10 @@ describe("cookie choice lookup", () => {
     await lookUp();
 
     const result = await within(lookupGroup()).findByRole("listitem");
-    expect(within(result).getByText(formatDateTime(rejectedAll.createdAt))).toBeInTheDocument();
+    // Written like the list's dates (month name, never 10/18 vs 18/10), down to the second.
+    const when = formatDateTime(rejectedAll.createdAt, { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit" });
+    expect(when).toMatch(/^Oct 18, 2026, \d{1,2}:00:00/);
+    expect(within(result).getByText(when)).toBeInTheDocument();
     expect(within(result).getByText("Cookie wording v1")).toBeInTheDocument();
     expect(within(result).getByText("English")).toBeInTheDocument();
     expect(within(result).getByText("Same wording as today")).toBeInTheDocument();

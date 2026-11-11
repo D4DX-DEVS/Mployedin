@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   SuperAgentPageIntro,
@@ -34,7 +34,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   SplitSquareVertical, TrendingUp, RotateCcw, Download,
-  Search, AlertCircle, CheckCircle2, ClipboardList, MapPin, Mail,
+  AlertCircle, CheckCircle2, ClipboardList, MapPin, Mail,
   Eye, SlidersHorizontal, CircleDollarSign, Users, Wallet, FileText, Pencil,
 } from "lucide-react";
 import { formatDate } from "@/lib/ui/intlFormat";
@@ -45,6 +45,8 @@ import { TableBodySkeleton } from "@/components/ui/loading";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import type { EnrichedProfile as EngineProfile } from "@/lib/targets/profileAchievementCalculator";
+import { SearchField } from "@/components/shared/SearchField";
+import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -365,7 +367,7 @@ export default function SuperAgentTargetProfilesPage() {
         </Badge>
       </SuperAgentPageIntro>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={cn("flex flex-wrap gap-2", tab === "team" && showTeamFilters ? "items-end" : "items-center")}>
         <TargetYearSelect
           value={String(yearFilter)}
           onChange={(value) => setYearFilter(Number.parseInt(value, 10) || currentYear)}
@@ -404,16 +406,13 @@ export default function SuperAgentTargetProfilesPage() {
         )}
         {tab === "team" && showTeamFilters ? (
           <>
-            <div className="relative min-w-[220px] flex-1 basis-full sm:basis-auto">
-              <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                aria-label={t("searchAgentsTerritory")}
-                value={teamSearch}
-                onChange={(e) => setTeamSearch(e.target.value)}
-                placeholder={t("searchAgentsTerritory")}
-                className="h-10 rounded-xl border-border bg-background ps-9 text-sm"
-              />
-            </div>
+            <SearchField
+              className="min-w-[220px] flex-1 basis-full sm:basis-auto"
+              value={teamSearch}
+              onValueChange={setTeamSearch}
+              placeholder={t("searchAgentsTerritory")}
+              inputClassName="h-10 rounded-xl border-border bg-background text-sm"
+            />
             <SearchableSelect
               options={territoryOptions}
               value={teamTerritoryFilter}

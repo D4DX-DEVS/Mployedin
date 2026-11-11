@@ -17,7 +17,8 @@ import { jobFormSchema, JOB_FORM_STEPS, type JobFormValues } from "./jobFormSche
 import { useJobFormDraft, useDebounce } from "./useJobFormDraft";
 import type { StoredDraft } from "./jobDraftStorage";
 import { jobLandingHref, postSuccessToastOptions } from "./postSuccessToast";
-import { STEP_FIELDS, STEP_FOR_PATH, firstInvalidStep } from "./jobFormSteps";
+import { STEP_FIELDS, STEP_FOR_PATH, assistantStartersForStep, firstInvalidStep, stepToViewAssistChanges } from "./jobFormSteps";
+import type { JobAssistChangeField } from "@/lib/ai/jobAssist";
 import { StepIndicator } from "./StepIndicator";
 import { Step1BasicInfo } from "./Step1BasicInfo";
 import { Step2JobDetails } from "./Step2JobDetails";
@@ -92,6 +93,7 @@ const DEFAULT_JOB_FORM_VALUES: JobFormValues = {
   vacancies: undefined,
   maxApplicants: undefined,
   showSalary: true,
+  discloseCompany: false,
   tags: [],
   expiresAt: "",
   agentId: undefined,
@@ -135,6 +137,8 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   const t = useTranslations("employerJobForm");
   const tAts = useTranslations("employerAts");
   const [currentStep, setCurrentStep] = useState(1);
+  // The step pane is the scroller (the action bar stays pinned under it).
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -183,7 +187,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
     },
     useJobAssistantErrorText(),
   );
-  const assistantQuickActions = useJobAssistantQuickActions();
+  const assistantQuickActions = useJobAssistantQuickActions(assistantStartersForStep(currentStep));
 
   const { draftId, savedIndicator, saveDraft, loadDraft, autosaveLocal, clearDraft } = useJobFormDraft(locale);
 
@@ -330,7 +334,9 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
     if (step > currentStep) {
       // Validate current step fields before advancing
       const fields = STEP_FIELDS[currentStep] ?? [];
-      const isValid = await trigger(fields);
+      // shouldFocus: a step now holds two sections, so the field at fault can
+      // be a screen away; take the employer to it instead of leaving them to hunt.
+      const isValid = await trigger(fields, { shouldFocus: true });
       // Some fields (Advanced settings, the step 2 lists) show no message of
       // their own, so a blocked Next must say why rather than do nothing.
       if (!isValid) {
@@ -341,16 +347,24 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
       setCompletedSteps((prev) => new Set([...prev, currentStep]));
     }
     setCurrentStep(step);
-    document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+    scrollerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleNext() {
     await goToStep(currentStep + 1);
   }
 
+  // "View changes" in the assistant: open the step that holds what it wrote.
+  // No validation on the way: this is a look, and Post still checks every step.
+  const viewAssistantChanges = useCallback((fields: JobAssistChangeField[]) => {
+    setSubmitError("");
+    setCurrentStep((step) => stepToViewAssistChanges(fields, step));
+    scrollerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
   function handlePrev() {
     setCurrentStep((s) => Math.max(1, s - 1));
-    document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+    scrollerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   // ─── Draft Save ───────────────────────────────────────────────────────────────
@@ -567,18 +581,18 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
           />
         );
       case 2:
-        return <Step2JobDetails key="step2" />;
-      case 3:
+        // Two sections on one page: what the job is, then who it needs.
         return (
-          <Step3Requirements
-            key="step3"
-            suggestedSkills={aiSuggestions?.skills ?? []}
-          />
+          <div key="step2" className="space-y-6 sm:space-y-8">
+            <Step2JobDetails />
+            <div className="border-t border-border/70" aria-hidden="true" />
+            <Step3Requirements suggestedSkills={aiSuggestions?.skills ?? []} />
+          </div>
         );
-      case 4:
-        return <Step4SalarySettings key="step4" />;
-      case 5:
-        return <Step5ScreeningQuestions key="step5" />;
+      case 3:
+        // Screening questions and Advanced settings follow in their own
+        // cards below this one.
+        return <Step4SalarySettings key="step3" />;
       default:
         return null;
     }
@@ -589,9 +603,13 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
   }, []);
 
   return (
-    <JobAssistantProvider assistant={assistant} quickActions={assistantQuickActions} posterText={posterText}>
-    <div className="flex h-full flex-col">
-    <div className="flex-1 overflow-y-auto">
+    <JobAssistantProvider assistant={assistant} quickActions={assistantQuickActions} posterText={posterText} onViewChanges={viewAssistantChanges}>
+    <div className="flex h-full flex-col" data-fills-workspace="">
+    {/* `relative`: Radix switches and selects carry a hidden absolutely
+        positioned input. Without a positioned scroller it anchored to <main>,
+        so one sitting below the fold made <main> scroll too and left a blank
+        band under the action bar (owner, 2026-11-11). */}
+    <div ref={scrollerRef} className="relative min-h-0 flex-1 overflow-y-auto">
     <div className="page-container">
       <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-background to-primary/5 shadow-sm card-pad">
         <PageHeader
@@ -627,7 +645,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
         />
 
         {pendingDraft && (
-          <div className="mt-3 flex flex-col gap-2 rounded-xl border border-border/70 bg-background/85 shadow-sm chip-pad sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-3 flex flex-col gap-2 rounded-xl bg-primary/5 chip-pad sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground sm:text-sm">
               {t("draftFound", {
                 when: new Date(pendingDraft.savedAt).toLocaleDateString(locale === "ar" ? "ar" : "en-US", {
@@ -654,7 +672,7 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
           />
         )}
 
-        <div className="mt-3 rounded-xl border border-border/70 bg-background/85 shadow-sm chip-pad">
+        <div className="mt-4">
           <StepIndicator
             steps={localizedSteps}
             currentStep={currentStep}
@@ -815,11 +833,17 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
                 </AnimatePresence>
               </div>
 
-              {/* Advanced settings only on step 4 */}
-              {currentStep === 4 && (
-                <div className="mt-3">
-                  <AdvancedSettingsSection />
-                </div>
+              {/* Last step: Advanced settings (collapsed), then the optional
+                  screening questions in their own card. */}
+              {currentStep === 3 && (
+                <>
+                  <div className="mt-3">
+                    <AdvancedSettingsSection />
+                  </div>
+                  <div className="mt-3 rounded-2xl border border-border bg-background shadow-sm panel-body">
+                    <Step5ScreeningQuestions />
+                  </div>
+                </>
               )}
 
               {submitError && (
@@ -829,8 +853,11 @@ export function JobFormWizard({ locale, useAiPrefill = false, basePath = "employ
               )}
             </div>
 
-            {/* Right sidebar — smart panels */}
-            <div className="w-full space-y-3 xl:sticky xl:top-4 xl:self-start">
+            {/* Right sidebar — smart panels. Sticky, and it scrolls inside
+                itself: taller than the screen (four panels on a 900px
+                display), its lower panels were cut off until the very end of
+                the step. 10.5rem = top bar + action bar + the gaps around it. */}
+            <div className="w-full space-y-3 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-10.5rem)] xl:self-start xl:overflow-y-auto xl:pe-1">
               <JobAssistantInline />
               <JobQualityScore values={formValues} />
               <InclusiveWordingPanel values={formValues} />

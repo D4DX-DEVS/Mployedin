@@ -254,7 +254,12 @@ export function RequirementsChecklist({
                   <p className="flex flex-wrap items-center gap-x-1.5 text-xs font-medium text-foreground">
                     <span className="min-w-0 break-words">{title(check)}</span>
                     <span className={cn("text-[11px] font-semibold", tone)}>
-                      {check.key === "cv" ? t(`cvState.${cvStateOf(check.actual)}`) : t(`itemStatus.${check.status}`)}
+                      {check.key === "cv"
+                        ? t(`cvState.${cvStateOf(check.actual)}`)
+                        : check.key === "location" && check.status === "unknown" && check.actual
+                          ? // The candidate did state a place; it just could not be matched to the job's.
+                            t("itemStatus.cantCompare")
+                          : t(`itemStatus.${check.status}`)}
                     </span>
                     {check.hard ? (
                       <span className="rounded border border-border px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">

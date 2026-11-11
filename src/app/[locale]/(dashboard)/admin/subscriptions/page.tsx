@@ -135,8 +135,9 @@ export default function AdminSubscriptionsPage() {
   const overview = stats?.overview;
   const expiringSoonCount = stats?.expiringSoonCount ?? stats?.expiringSoon?.length ?? 0;
 
+  // Phone: three equal tabs on one row (they ran off the screen edge).
   const viewTabs = (
-    <div className="flex gap-2">
+    <div className="flex gap-2 max-sm:grid max-sm:w-full max-sm:grid-cols-3 max-sm:[&>button]:h-auto max-sm:[&>button]:min-h-11 max-sm:[&>button]:whitespace-normal max-sm:[&>button]:px-1.5 max-sm:[&>button]:leading-tight max-sm:[&_svg]:hidden">
       <Button
         size="sm"
         variant={activeTab === "table" ? "default" : "outline"}
@@ -184,20 +185,21 @@ export default function AdminSubscriptionsPage() {
       />
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* Phone: one figure strip with straight dividers, not four boxed cards. */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 max-sm:grid-cols-4 max-sm:gap-0 max-sm:divide-x max-sm:divide-border max-sm:border-y max-sm:border-border rtl:max-sm:divide-x-reverse">
         {[
           { label: t("totalSubscribersLabel"), value: overview?.total ?? 0, icon: Users, color: "text-sky-500 bg-sky-500/10" },
           { label: t("activeLabel"), value: overview?.active ?? 0, icon: CheckCircle, color: "text-emerald-500 bg-emerald-500/10" },
           { label: t("expiringLabel"), value: expiringSoonCount, icon: AlertTriangle, color: "text-amber-500 bg-amber-500/10" },
           { label: t("cancelledLabel"), value: overview?.cancelled ?? 0, icon: XCircle, color: "text-red-500 bg-red-500/10" },
         ].map((kpi) => (
-          <div key={kpi.label} className="rounded-2xl border border-border/60 bg-card flex items-center gap-3 card-pad">
-            <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${kpi.color}`}>
+          <div key={kpi.label} className="rounded-2xl border border-border/60 bg-card flex items-center gap-3 card-pad max-sm:items-start max-sm:justify-center max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:px-1 max-sm:py-2 max-sm:text-center">
+            <div className={`h-10 w-10 rounded-xl flex items-center justify-center max-sm:hidden ${kpi.color}`}>
               <kpi.icon className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-2xl font-bold">{kpi.value}</p>
-              <p className="text-xs text-muted-foreground">{kpi.label}</p>
+            <div className="min-w-0">
+              <p className="text-2xl font-bold max-sm:text-lg">{kpi.value}</p>
+              <p className="text-xs text-muted-foreground max-sm:line-clamp-2 max-sm:text-[11px] max-sm:leading-tight">{kpi.label}</p>
             </div>
           </div>
         ))}
@@ -444,7 +446,8 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
       </div>
 
       {/* ── Table Card ── */}
-      <div className="workspace-panel-surface overflow-hidden rounded-2xl">
+      {/* Phone: the panel box drops (display: contents) so the record cards are the only box. */}
+      <div className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:contents">
           <InlineFilterBar
             onClear={hasActiveFilters ? clearFilters : undefined}
             onExportCsv={exportCsv}
@@ -547,7 +550,8 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
                 compact
               />
             </div>
-            <span className="whitespace-nowrap text-xs text-muted-foreground">
+            {/* Phone: the pager under the list carries the count; on the search line it crushed the box. */}
+            <span className="whitespace-nowrap text-xs text-muted-foreground max-sm:hidden">
               {total} {total !== 1 ? t("subscriberCountPlural") : t("subscriberCountLabel")}
             </span>
           </InlineFilterBar>
@@ -610,7 +614,7 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
 
         {/* ── Phone cards ── */}
         <PhoneRecordList
-          className="p-3 sm:hidden"
+          className="p-3 sm:hidden max-sm:p-0"
           label={t("tableHeaderUser")}
           loading={isLoading}
           empty={
@@ -643,13 +647,12 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
               actions: (
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9"
-                  aria-label={t("detailsTab")}
+                  variant="outline"
+                  className="min-h-11 w-full gap-2"
                   onClick={() => setPhoneDetail(sub)}
                 >
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-4 w-4" aria-hidden="true" />
+                  {t("detailsTab")}
                 </Button>
               ),
               meta: (

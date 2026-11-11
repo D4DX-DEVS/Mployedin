@@ -8,6 +8,7 @@ import { AlertCircle, ArrowRight, BookOpen, Briefcase, CalendarRange, CheckCircl
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScreeningSummary } from "@/components/features/employer/screening/ScreeningSummary";
 import { useJobDetail } from "@/hooks/useJobs";
 import { useJobHiringSummary, type JobHiringSummary } from "@/hooks/useJobHiringSummary";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
@@ -303,6 +304,19 @@ export default function JobOverviewPage() {
                 </div>
               )}
             </div>
+          </section>
+        )}
+
+        {/* The job's screening questions and how applicants answered them,
+            on the job itself: this summary used to live only on Insights →
+            Screening Answers, behind a second job picker (owner, 2026-11-11). */}
+        {(job.screeningQuestions?.length ?? 0) > 0 && (
+          <section aria-labelledby="job-screening-heading" className="card-base panel-body">
+            <h2 id="job-screening-heading" className="heading-section mb-1 flex items-center gap-2 font-semibold text-foreground">
+              <ClipboardList className="h-4 w-4 text-muted-foreground" aria-hidden /> {t("overviewScreening")}
+            </h2>
+            <p className="mb-3 text-sm text-muted-foreground">{t("overviewScreeningDesc")}</p>
+            <ScreeningSummary jobId={id} />
           </section>
         )}
 

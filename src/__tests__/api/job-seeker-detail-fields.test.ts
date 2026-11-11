@@ -20,6 +20,8 @@ jest.mock("@/lib/jobSeeker/staffAccess", () => ({ canStaffAccessSeeker: jest.fn(
 jest.mock("@/models/User", () => ({ __esModule: true, default: {} }));
 jest.mock("@/models/ProfileView", () => ({ __esModule: true, default: {} }));
 jest.mock("@/models/Employer", () => ({ __esModule: true, default: {} }));
+// The route also lists where the seeker stands on each job they applied to.
+jest.mock("@/lib/jobseekers/hiringStatus.server", () => ({ applicationsBySeeker: jest.fn(async () => new Map()) }));
 
 const SEEKER_ID = "64b0000000000000000000d1";
 const STORED = {

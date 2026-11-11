@@ -11,6 +11,15 @@ import { GooglePopupBlockedError } from "@/lib/firebase/googlePopupBlocked";
 import { GoogleWindowNotice, GOOGLE_WINDOW_NOTICE_ID } from "@/components/features/auth/GoogleWindowNotice";
 import { navigateWithPageLoad } from "@/lib/browser/navigateWithPageLoad";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import {
+  BUILT_CV_KEY,
+  CV_UPLOAD_ACCEPT,
+  PROFILE_CV_KEY,
+  defaultCvKey,
+  isAcceptedCvFile,
+  uploadedResumes,
+} from "@/lib/applications/cvChoice";
+import { useCvPdfLabels } from "@/app/[locale]/(dashboard)/job-seeker/cv/use-cv-pdf-labels";
 import { isInAppBrowser, inAppBrowserName } from "@/lib/browser/inAppBrowser";
 import { getCaptchaToken } from "@/lib/browser/captcha";
 import { CaptchaNotice } from "@/components/shared/CaptchaNotice";
@@ -48,6 +57,8 @@ interface ProfileDocument {
   name: string;
   category: string;
   url: string;
+  /** Set on the stored copy of the CV built on Mployedin. */
+  builtHash?: string;
 }
 
 interface JobSeekerProfile {
@@ -57,6 +68,8 @@ interface JobSeekerProfile {
   skills?: string[];
   documents?: ProfileDocument[];
   cvUrl?: string | null;
+  /** The seeker saved a CV in the builder, so it can be sent from here. */
+  hasBuiltCv?: boolean;
   socialLinks?: { label: string; url: string }[];
 }
 
@@ -82,7 +95,6 @@ interface CvExtractResponse {
 }
 
 // Sentinel keys for the CV selector
-const PROFILE_CV_KEY = "__profile_cv__";
 const NO_CV_KEY = "__none__";
 
 /**
@@ -109,6 +121,7 @@ function EasyApplyFlow({
 }: EasyApplyProps & { askSignupConsent: () => Promise<boolean> }) {
   const t = useTranslations("easyApply");
   const { data: session, status, update } = useSession();
+  const cvPdfLabels = useCvPdfLabels();
   // A job an agent shared carries ?ref=: applying here as a new seeker
   // credits that agent, like a /register?ref= sign-up.
   const referralCredentials = useJobShareReferral();
@@ -221,14 +234,14 @@ function EasyApplyFlow({
             skills: js.skills ?? [],
             documents: docs,
             cvUrl: js.cvUrl ?? null,
+            hasBuiltCv: js.hasBuiltCv === true,
             socialLinks: js.socialLinks ?? [],
           });
           setDocuments(docs);
-          // Default-select a CV: parsed profile CV first, else a resume document
-          const resumeDoc = docs.find((d) => d.category === "resume");
-          if (js.cvUrl) setSelectedCvKey(PROFILE_CV_KEY);
-          else if (resumeDoc) setSelectedCvKey(resumeDoc.id);
-          else setSelectedCvKey(NO_CV_KEY);
+          // The same CV is preselected on every apply screen (cvChoice.ts).
+          setSelectedCvKey(
+            defaultCvKey({ documents: docs, hasProfileCv: !!js.cvUrl, hasBuiltCv: js.hasBuiltCv === true }) || NO_CV_KEY,
+          );
           // Pre-fill portfolio from social links if present
           const portfolio = (js.socialLinks ?? []).find((l: { label: string; url: string }) =>
             /portfolio|website|behance|dribbble|github/i.test(l.label)
@@ -703,7 +716,7 @@ function EasyApplyFlow({
           {anonCvFile ? (
             <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2.5">
               <FileText className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{anonCvFile.name}</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-foreground"><bdi>{anonCvFile.name}</bdi></span>
               <button
                 type="button"
                 onClick={() => anonCvInputRef.current?.click()}
@@ -878,7 +891,7 @@ function EasyApplyFlow({
           <input
             ref={anonCvInputRef}
             type="file"
-            accept=".pdf,.doc,.docx"
+            accept={CV_UPLOAD_ACCEPT}
             className="hidden"
             onChange={(e) => {
               setAnonCvFile(e.target.files?.[0] ?? null);
@@ -1096,6 +1109,11 @@ function EasyApplyFlow({
   }
 
   async function uploadDocument(file: File, category: "resume" | "other"): Promise<ProfileDocument | null> {
+    // The formats the server takes, said before an upload it would refuse.
+    if (!isAcceptedCvFile(file)) {
+      setError(t("errors.unsupportedFile"));
+      return null;
+    }
     const fd = new FormData();
     fd.append("file", file);
     fd.append("category", category);
@@ -1158,7 +1176,25 @@ function EasyApplyFlow({
 
       // Collect document ids: any selected additional docs + a selected CV document
       const docIdSet = new Set(selectedDocIds);
-      if (selectedCvKey !== PROFILE_CV_KEY && selectedCvKey !== NO_CV_KEY) {
+      if (selectedCvKey === BUILT_CV_KEY) {
+        // The CV built on Mployedin, made from the profile as it is now; its
+        // stored copy is reused while nothing changed. Loaded only here, so
+        // the page does not carry the PDF renderer. No CV, no application:
+        // the seeker chose to send this one.
+        const { BuiltCvError, ensureBuiltCvDocument } = await import("@/app/[locale]/(dashboard)/job-seeker/cv/built-cv");
+        try {
+          const built = await ensureBuiltCvDocument({
+            identity: { fullName: profile?.name ?? "", email: profile?.email ?? "", photo: session?.user?.image ?? "" },
+            labels: cvPdfLabels,
+            documents,
+          });
+          setDocuments((prev) => [...prev.filter((d) => !d.builtHash), built]);
+          docIdSet.add(built.id);
+        } catch (err) {
+          setError((err instanceof BuiltCvError && err.message) || t("errors.builtCvFailed"));
+          return;
+        }
+      } else if (selectedCvKey !== PROFILE_CV_KEY && selectedCvKey !== NO_CV_KEY) {
         docIdSet.add(selectedCvKey);
       }
       const documentIds = Array.from(docIdSet);
@@ -1189,8 +1225,13 @@ function EasyApplyFlow({
         setError(
           known === "planLimitReached" ? t("errors.planLimitReached")
             : known === "jobClosed" ? t("errors.jobClosed")
-              : data?.error ?? t("errors.applyFailed"),
+              : known === "documentNotFound" ? t("errors.documentNotFound")
+                : data?.error ?? t("errors.applyFailed"),
         );
+        // The chosen CV was deleted or replaced since the page loaded: reload
+        // the seeker's CVs (the profile effect runs again) so the list and the
+        // preselected one are what is there now.
+        if (known === "documentNotFound") setProfile(null);
         return;
       }
       setApplied(true);
@@ -1202,9 +1243,12 @@ function EasyApplyFlow({
   }
 
   // CV options: parsed profile CV + any resume-category documents
-  const resumeDocs = documents.filter((d) => d.category === "resume");
+  // The stored copy of the built CV is not listed as a file of its own: "CV
+  // built on Mployedin" stands for it and always sends the current one.
+  const resumeDocs = uploadedResumes(documents);
   const otherDocs = documents.filter((d) => d.category !== "resume");
   const hasProfileCv = !!profile?.cvUrl;
+  const hasBuiltCv = profile?.hasBuiltCv === true;
 
   return (
     <div className="space-y-4">
@@ -1259,6 +1303,22 @@ function EasyApplyFlow({
                 {t("profileCvLabel")}
               </label>
             )}
+            {hasBuiltCv && (
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="cv-choice"
+                  checked={selectedCvKey === BUILT_CV_KEY}
+                  onChange={() => setSelectedCvKey(BUILT_CV_KEY)}
+                  className="mt-0.5 accent-primary"
+                />
+                <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span>
+                  {t("builtCv")}
+                  <span className="block text-xs text-muted-foreground">{t("builtCvHint")}</span>
+                </span>
+              </label>
+            )}
             {resumeDocs.map((d) => (
               <label key={d.id} className="flex items-center gap-2 text-sm">
                 <input
@@ -1269,10 +1329,10 @@ function EasyApplyFlow({
                   className="accent-primary"
                 />
                 <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="truncate">{d.name}</span>
+                <span className="truncate"><bdi>{d.name}</bdi></span>
               </label>
             ))}
-            {!hasProfileCv && resumeDocs.length === 0 && (
+            {!hasProfileCv && !hasBuiltCv && resumeDocs.length === 0 && (
               <p className="flex items-center gap-1 text-xs text-muted-foreground/70">
                 <FileText className="h-3 w-3" /> {t("noCvOnFile")}
               </p>
@@ -1281,7 +1341,7 @@ function EasyApplyFlow({
           <input
             ref={cvInputRef}
             type="file"
-            accept=".pdf,.doc,.docx"
+            accept={CV_UPLOAD_ACCEPT}
             className="hidden"
             onChange={handleCvUpload}
           />
@@ -1316,7 +1376,7 @@ function EasyApplyFlow({
                     className="accent-primary"
                   />
                   <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="truncate">{d.name}</span>
+                  <span className="truncate"><bdi>{d.name}</bdi></span>
                 </label>
               ))}
             </div>
@@ -1328,7 +1388,7 @@ function EasyApplyFlow({
           <input
             ref={docInputRef}
             type="file"
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+            accept={CV_UPLOAD_ACCEPT}
             className="hidden"
             onChange={handleDocUpload}
           />

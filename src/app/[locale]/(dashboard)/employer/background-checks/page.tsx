@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { Search } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { CheckDetailPanel } from "@/components/features/background-checks/CheckDetailPanel";
+import { SearchField } from "@/components/shared/SearchField";
 
 type CheckType = "background" | "reference" | "both";
 type CheckStatus = "pending" | "in_progress" | "completed" | "cancelled";
@@ -295,16 +296,13 @@ export default function BackgroundChecksPage() {
         <>
           {/* List toolbar — search and date range sit with the list, not in a card of their own */}
           <div className="workspace-toolbar">
-            <div className="workspace-toolbar-search">
-              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input
-                placeholder={t("searchPlaceholder")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-11 rounded-xl border-border bg-background ps-9 sm:h-10"
-                aria-label={t("searchPlaceholder")}
-              />
-            </div>
+            <SearchField
+              className="workspace-toolbar-search"
+              placeholder={t("searchPlaceholder")}
+              value={search}
+              onValueChange={setSearch}
+              inputClassName="h-11 rounded-xl border-border bg-background sm:h-10"
+            />
             {/* Whose queue. A colleague usually wants only their own checks,
                 and the owner usually wants all of them. */}
             <div className="flex items-center gap-1 rounded-xl border border-border p-1">

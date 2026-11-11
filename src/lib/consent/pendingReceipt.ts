@@ -1,7 +1,7 @@
 "use client";
 
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { readConsent } from "./client";
+import { readConsent, restoreNewerChoice } from "./client";
 import { RECEIPT_ID_PATTERN } from "./receiptId";
 import type { ConsentState } from "./state";
 
@@ -67,6 +67,16 @@ export function receiptBody(consent: ConsentState, locale: ReceiptLocale, source
   });
 }
 
+/** The choice reference a receipt body names, or null for a body that is not one. */
+function receiptIdOf(body: string): string | null {
+  try {
+    const id = (JSON.parse(body) as { receiptId?: unknown } | null)?.receiptId;
+    return typeof id === "string" ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 /** One attempt. Never throws. */
 export async function postReceipt(body: string): Promise<ReceiptOutcome> {
   try {
@@ -75,6 +85,15 @@ export async function postReceipt(body: string): Promise<ReceiptOutcome> {
       headers: { "Content-Type": "application/json" },
       body,
     });
+    // The answer carries the cookie for the choice that was sent; a newer choice made meanwhile stays in force.
+    const answeredId = receiptIdOf(body);
+    const restored = answeredId ? restoreNewerChoice(answeredId) : null;
+    if (restored) {
+      // Put back by script, so ask the server to set it once more (the route stores a receipt once per
+      // reference, so this repeat only re-issues the cookie). Not awaited: this answer is not about it.
+      const again = { ...(JSON.parse(body) as Record<string, unknown>), receiptId: restored.id, preferences: restored.preferences, media: restored.media, version: restored.v };
+      void postReceipt(JSON.stringify(again)).catch(() => undefined);
+    }
     if (res.ok) return "sent";
     return res.status === 429 || res.status >= 500 ? "retry" : "drop";
   } catch {

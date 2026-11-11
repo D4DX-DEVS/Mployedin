@@ -21,6 +21,8 @@ export interface IBrandPosterSpec {
   look: "bold" | "clean" | "urgent";
   headline: string;
   locale: "en" | "ar";
+  /** Show the employer's logo and name; otherwise Mployedin's. Absent on older posters = shown. */
+  showEmployer?: boolean;
   /** The kit as it was when the poster was made, so later kit edits don't repaint old posters. */
   kit: {
     logoUrl?: string;
@@ -76,6 +78,7 @@ const BrandPosterSpecSchema = new Schema<IBrandPosterSpec>(
     look: { type: String, enum: ["bold", "clean", "urgent"], required: true },
     headline: { type: String, required: true, maxlength: 80 },
     locale: { type: String, enum: ["en", "ar"], default: "en" },
+    showEmployer: { type: Boolean },
     kit: {
       logoUrl: { type: String, maxlength: 2048 },
       displayName: { type: String, maxlength: 60 },

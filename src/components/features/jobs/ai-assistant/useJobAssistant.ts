@@ -14,6 +14,8 @@ export interface JobAssistantMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** What the bubble shows when it is not `content`: a one-tap starter shows its label, and the model still gets the full instruction. */
+  shown?: string;
   /** Fields this answer changed in the form (assistant messages only). */
   changed?: JobAssistChangeField[];
   /** Puts those fields back as they were; only the latest answer keeps one. */
@@ -39,7 +41,7 @@ interface UseJobAssistantOptions {
 export interface JobAssistantState {
   messages: JobAssistantMessage[];
   busy: boolean;
-  ask: (instruction: string) => Promise<void>;
+  ask: (instruction: string, shown?: string) => Promise<void>;
   undo: (messageId: string) => void;
 }
 
@@ -72,14 +74,14 @@ export function useJobAssistant({ getJob, applyChanges, supportedFields, getSour
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
-  const ask = useCallback(async (instruction: string) => {
+  const ask = useCallback(async (instruction: string, shown?: string) => {
     const text = instruction.trim();
     if (!text || busy) return;
     const history = messagesRef.current
       .filter((m) => !m.failed)
       .slice(-8)
       .map((m) => ({ role: m.role, content: m.content.slice(0, 2000) }));
-    setMessages((prev) => [...prev, { id: nextId(), role: "user", content: text }]);
+    setMessages((prev) => [...prev, { id: nextId(), role: "user", content: text, ...(shown ? { shown } : {}) }]);
     setBusy(true);
     try {
       const source = getSource?.()?.trim();

@@ -4,6 +4,7 @@ import Job from "@/models/Job";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { getClientIp } from "@/lib/security/clientIp";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { maskJobEmployer } from "@/lib/jobs/companyDisclosure";
 
 /**
  * GET /api/jobs/[id]/similar
@@ -56,7 +57,7 @@ export async function GET(
       },
     ],
   })
-    .select("title location salary requirements.skills tags employerId createdAt")
+    .select("title location salary requirements.skills tags employerId discloseCompany createdAt")
     .populate("employerId", "companyName logo")
     .sort({ createdAt: -1 })
     .limit(20)
@@ -72,7 +73,8 @@ export async function GET(
       return { ...s, overlap };
     })
     .sort((a, b) => b.overlap - a.overlap)
-    .slice(0, 6);
+    .slice(0, 6)
+    .map((s) => maskJobEmployer(s as unknown as Record<string, unknown>));
 
   return NextResponse.json({ jobs: scored });
 }

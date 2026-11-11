@@ -12,6 +12,7 @@ import {
   RECOMMENDED_JOB_SELECT,
 } from "@/lib/jobRecommendations";
 import { scoreSeekerPool } from "@/lib/matching/seekerMatches";
+import { maskJobEmployer } from "@/lib/jobs/companyDisclosure";
 import { restrictToIds, vectorRetrievalEnabled, vectorRetrieveJobs } from "@/lib/matching/vectorRetrieval";
 import type { UserRole } from "@/models/User";
 
@@ -176,7 +177,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     startIndex = idx + 1;
   }
 
-  const page = scored.slice(startIndex, startIndex + limit);
+  const page = scored
+    .slice(startIndex, startIndex + limit)
+    .map((job) => maskJobEmployer(job as unknown as Record<string, unknown>) as unknown as typeof job);
   const nextCursor =
     page.length > 0 && startIndex + page.length < poolTotal
       ? String(page[page.length - 1]._id)

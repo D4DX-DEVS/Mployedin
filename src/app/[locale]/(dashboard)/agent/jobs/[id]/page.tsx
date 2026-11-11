@@ -5,8 +5,9 @@ import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Building2, DollarSign, Edit2, Loader2, Send, Trash2, Users, Eye, Tag, Clock, UserSearch,
+  ArrowLeft, Building2, DollarSign, Edit2, Loader2, Send, Trash2, Users, Eye, Tag, Clock, UserSearch, ImagePlus,
 } from "lucide-react";
+import { POSTERS_ENABLED } from "@/lib/features/posterFeature";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
@@ -26,7 +27,10 @@ export default function AgentJobDetailPage() {
   const t = useTranslations("agentJobDetail");
   const tJobs = useTranslations("employerJobs");
   const tWs = useTranslations("employerJobWorkspace");
-  const [openingEmployerView, setOpeningEmployerView] = useState(false);
+  // Which employer-view destination is opening ("" = the job page), so the
+  // spinner sits on the button that was pressed.
+  const [openingTarget, setOpeningTarget] = useState<string | null>(null);
+  const openingEmployerView = openingTarget === "";
   const queryClient = useQueryClient();
   const isPhone = useMediaQuery(PHONE_QUERY);
   const draftActions = useAgentJobActions(() => { void queryClient.invalidateQueries({ queryKey: jobKeys.details() }); });
@@ -34,10 +38,10 @@ export default function AgentJobDetailPage() {
   // The employer's own job page (applications, interviews, offers, hires,
   // posting, setup) in "view as employer" mode: the tenant view an agent
   // already uses from their employers list, landing on this job.
-  async function openEmployerView() {
+  async function openEmployerView(subPath = "") {
     const employerId = job?.employerId?._id;
     if (!employerId) return;
-    setOpeningEmployerView(true);
+    setOpeningTarget(subPath);
     try {
       const res = await fetch("/api/tenant/switch", {
         method: "POST",
@@ -46,15 +50,15 @@ export default function AgentJobDetailPage() {
       });
       if (!res.ok) {
         toast.error(t("openEmployerViewError"));
-        setOpeningEmployerView(false);
+        setOpeningTarget(null);
         return;
       }
       // A full navigation: the client router can still hold the redirect it
       // was given for /employer before the tenant-view cookie existed.
-      window.location.assign(`/${locale}/employer/jobs/${id}`);
+      window.location.assign(`/${locale}/employer/jobs/${id}${subPath}`);
     } catch {
       toast.error(t("openEmployerViewError"));
-      setOpeningEmployerView(false);
+      setOpeningTarget(null);
     }
   }
 
@@ -190,11 +194,26 @@ export default function AgentJobDetailPage() {
                 <span className="hidden sm:inline">{t("findCandidates")}</span>
               </Button>
             </Link>}
+            {/* Straight to the poster maker: it lives in the employer's job
+                page, which used to mean opening that view, then scrolling its
+                tabs to Posting, then Create poster. */}
+            {POSTERS_ENABLED && job.viewerCanManage ? (
+              <Button
+                variant="outline"
+                onClick={() => { void openEmployerView("/poster"); }}
+                disabled={openingTarget !== null}
+                aria-label={tWs("postingCreatePoster")}
+                className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4"
+              >
+                {openingTarget === "/poster" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ImagePlus className="h-4 w-4" aria-hidden />}
+                <span className="hidden sm:inline">{tWs("postingCreatePoster")}</span>
+              </Button>
+            ) : null}
             {job.viewerCanManage ? (
               <Button
                 variant={job.status === "draft" ? "outline" : "default"}
                 onClick={() => { void openEmployerView(); }}
-                disabled={openingEmployerView}
+                disabled={openingTarget !== null}
                 aria-label={t("openEmployerView")}
                 className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4"
               >

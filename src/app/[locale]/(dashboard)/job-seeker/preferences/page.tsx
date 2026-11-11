@@ -186,11 +186,14 @@ function Section({
   title,
   description,
   children,
+  labelFor,
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
   children: React.ReactNode;
+  /** Id of the section's single input: the title becomes its visible label. */
+  labelFor?: string;
 }) {
   return (
     <div className="min-w-0 rounded-xl border border-border bg-card shadow-sm panel-body">
@@ -199,7 +202,11 @@ function Section({
           {icon}
         </div>
         <div>
-          <p className="text-sm font-semibold leading-tight">{title}</p>
+          {labelFor ? (
+            <label htmlFor={labelFor} className="block text-sm font-semibold leading-tight">{title}</label>
+          ) : (
+            <p className="text-sm font-semibold leading-tight">{title}</p>
+          )}
           <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
         </div>
       </div>
@@ -545,8 +552,10 @@ export default function JobPreferencesPage() {
           icon={<Target className="h-4 w-4" />}
           title={t("preferredRoles")}
           description={t("preferredRolesDescription")}
+          labelFor="pref-roles"
         >
           <TagAutocomplete
+            id="pref-roles"
             type="roles"
             value={prefs.preferredRoles}
             onChange={(next) => setPrefs((p) => ({ ...p, preferredRoles: next }))}
@@ -562,8 +571,10 @@ export default function JobPreferencesPage() {
           icon={<MapPin className="h-4 w-4" />}
           title={t("preferredLocations")}
           description={t("preferredLocationsDescription")}
+          labelFor="pref-locations"
         >
           <TagAutocomplete
+            id="pref-locations"
             type="countries"
             value={prefs.preferredCountries}
             onChange={(next) => setPrefs((p) => ({ ...p, preferredCountries: next }))}
@@ -619,11 +630,11 @@ export default function JobPreferencesPage() {
           {/* Manual input */}
           <div className="grid min-w-0 grid-cols-2 gap-3 pt-1 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label htmlFor="pref-salary-min" className="mb-1 block text-xs font-medium text-muted-foreground">
                 {t("minimum")}
               </label>
               <Input
-                aria-label={t("minimum")}
+                id="pref-salary-min"
                 aria-invalid={fieldErrors.preferredSalary ? true : undefined}
                 aria-describedby={fieldErrors.preferredSalary ? "pref-salary-error" : undefined}
                 type="number"
@@ -643,11 +654,11 @@ export default function JobPreferencesPage() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label htmlFor="pref-salary-max" className="mb-1 block text-xs font-medium text-muted-foreground">
                 {t("maximum")}
               </label>
               <Input
-                aria-label={t("maximum")}
+                id="pref-salary-max"
                 aria-invalid={fieldErrors.preferredSalary ? true : undefined}
                 aria-describedby={fieldErrors.preferredSalary ? "pref-salary-error" : undefined}
                 type="number"
@@ -667,10 +678,12 @@ export default function JobPreferencesPage() {
               />
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label htmlFor="pref-salary-currency" className="mb-1 block text-xs font-medium text-muted-foreground">
                 {t("currency")}
               </label>
               <SearchableSelect
+                id="pref-salary-currency"
+                ariaLabel={t("currency")}
                 className="h-9 text-sm"
                 options={CURRENCIES.map((c) => ({ value: c, label: c }))}
                 value={prefs.preferredSalary.currency}
@@ -751,10 +764,12 @@ export default function JobPreferencesPage() {
           {activelyLooking && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-1">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <label htmlFor="pref-availability" className="mb-1 block text-xs font-medium text-muted-foreground">
                   {t("availability")}
                 </label>
                 <SearchableSelect
+                  id="pref-availability"
+                  ariaLabel={t("availability")}
                   className="h-9 text-sm"
                   options={AVAILABILITY_OPTIONS.filter((o) => o.value !== "not_available").map((opt) => ({ value: opt.value, label: t(`availabilityOptions.${opt.value}`) }))}
                   value={prefs.availabilityStatus}
@@ -764,11 +779,11 @@ export default function JobPreferencesPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <label htmlFor="pref-notice" className="mb-1 block text-xs font-medium text-muted-foreground">
                   {t("noticePeriod")}
                 </label>
                 <Input
-                  aria-label={t("noticePeriod")}
+                  id="pref-notice"
                   aria-invalid={fieldErrors.noticePeriod ? true : undefined}
                   aria-describedby={fieldErrors.noticePeriod ? "pref-notice-error" : "pref-notice-hint"}
                   type="number"

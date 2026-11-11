@@ -215,6 +215,8 @@ export const jobFormSchema = z.object({
     .optional(),
   maxApplicants: z.number().int().min(1).max(10000).optional(),
   showSalary: z.boolean().default(true),
+  /** Off by default: seekers see "Mployedin" instead of the company. Applications still go to the poster. */
+  discloseCompany: z.boolean().default(false),
   expiresAt: z.string().optional(),
   tags: z.array(z.string().max(50)).max(20).default([]),
   agentId: z.string().optional(),
@@ -249,10 +251,8 @@ export type JobFormValues = z.infer<typeof jobFormSchema>;
 
 export const JOB_FORM_STEPS = [
   { id: 1, label: "Basic Info", fields: ["title", "category", "location"] },
-  { id: 2, label: "Job Details", fields: ["description"] },
-  { id: 3, label: "Requirements", fields: ["requirements"] },
-  { id: 4, label: "Salary & Settings", fields: ["salary", "vacancies"] },
-  { id: 5, label: "Screening Questions", fields: ["screeningQuestions"] },
+  { id: 2, label: "Details & Requirements", fields: ["description", "requirements"] },
+  { id: 3, label: "Pay & Screening", fields: ["salary", "vacancies", "screeningQuestions"] },
 ] as const;
 
 /** Format salary for display */

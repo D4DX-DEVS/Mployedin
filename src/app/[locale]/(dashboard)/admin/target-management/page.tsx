@@ -571,10 +571,12 @@ export default function AdminTargetManagementPage() {
             className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
           />
         </FilterField>
-        <FilterField label={t("yearLabel")}>
-          {/* TargetYearSelect takes no className/id; size its trigger from here. */}
+        <FilterField label={t("yearLabel")} htmlFor="target-management-sheet-year">
+          {/* TargetYearSelect takes no className; size its trigger from here. */}
           <div className="[&>button]:h-11 [&>button]:w-full [&>button]:bg-card">
             <TargetYearSelect
+              id="target-management-sheet-year"
+              showLabel={false}
               value={String(yearFilter)}
               onChange={(value) => setYearFilter(Number.parseInt(value, 10) || currentYear)}
               label={t("a11yYear")}
@@ -617,7 +619,8 @@ export default function AdminTargetManagementPage() {
 
       {/* View switch on the left, page actions on the right. */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
-        <div className="flex rounded-xl border border-border/60 bg-card p-0.5">
+        {/* Phone: tabs and actions each fill their own row evenly. */}
+        <div className="flex rounded-xl border border-border/60 bg-card p-0.5 max-sm:w-full max-sm:[&>button]:flex-1">
           <Button variant={tab === "dashboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("dashboard")} className="rounded-lg gap-1.5">
             <BarChart3 className="h-3.5 w-3.5" /> {t("dashboardTab")}
           </Button>
@@ -625,15 +628,15 @@ export default function AdminTargetManagementPage() {
             <Award className="h-3.5 w-3.5" /> {t("leaderboardTab")}
           </Button>
         </div>
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2 ms-auto">
-          <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={handleExport} disabled={profiles.length === 0} title={tc("export")}>
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2 ms-auto max-sm:w-full">
+          <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3 max-sm:size-10" onClick={handleExport} disabled={profiles.length === 0} title={tc("export")}>
             <Download className="h-4 w-4" /> <span className="hidden sm:inline">{tc("export")}</span>
           </Button>
-          <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3" onClick={() => setCloneOpen((open) => !open)} aria-expanded={cloneOpen} title={t("cloneYear", { year: yearFilter - 1 })}>
+          <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3 max-sm:size-10" onClick={() => setCloneOpen((open) => !open)} aria-expanded={cloneOpen} title={t("cloneYear", { year: yearFilter - 1 })}>
             <Copy className="h-4 w-4" /> <span className="hidden sm:inline">{t("cloneYear", { year: yearFilter - 1 })}</span>
           </Button>
-          <Link href={`/${locale}/admin/target-management/create`} className="min-w-0">
-            <Button size="sm" className="gap-1 rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:gap-2 sm:px-4 sm:text-sm">
+          <Link href={`/${locale}/admin/target-management/create`} className="min-w-0 max-sm:flex-1">
+            <Button size="sm" className="gap-1 rounded-lg bg-primary px-2 max-sm:h-10 max-sm:w-full text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:gap-2 sm:px-4 sm:text-sm">
               <Plus className="h-4 w-4 shrink-0" /> {t("newTargetProfile")}
             </Button>
           </Link>

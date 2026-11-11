@@ -315,10 +315,10 @@ function ProfileTab() {
       {/* Role Badge Hero with Avatar */}
       <div className="relative overflow-hidden rounded-xl border border-border/50 bg-gradient-to-r from-primary/[0.06] via-primary/[0.03] to-transparent">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/[0.04] rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="p-6 max-sm:p-4 flex items-center gap-4">
+        <div className="p-6 max-sm:p-4 flex items-center gap-4 max-sm:items-start">
           {/* Avatar */}
           <div className="relative group shrink-0">
-            <div className="w-20 h-20 rounded-2xl border-2 border-primary/20 bg-muted/30 flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary/40 shadow-sm">
+            <div className="w-20 h-20 max-sm:w-16 max-sm:h-16 rounded-2xl border-2 border-primary/20 bg-muted/30 flex items-center justify-center overflow-hidden transition-colors group-hover:border-primary/40 shadow-sm">
               {displayUrl ? (
                 <img src={toSafeImageSrc(displayUrl)} alt={t("profile.photoAlt")} className="w-full h-full object-cover" />
               ) : (
@@ -335,7 +335,7 @@ function ProfileTab() {
               onClick={() => inputRef.current?.click()}
               disabled={uploading}
               aria-label={t("changePhoto")}
-              className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="absolute -bottom-2 -right-2 w-10 h-10 max-sm:!min-h-0 max-sm:!min-w-0 max-sm:w-8 max-sm:h-8 max-sm:-bottom-1.5 max-sm:-right-1.5 tap-target-box rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
               <Camera className="w-4 h-4" />
             </button>

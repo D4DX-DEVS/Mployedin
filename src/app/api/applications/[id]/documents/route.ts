@@ -5,6 +5,8 @@ import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { isStoredFileUrl } from "@/lib/storage/spaces";
+import { claimSeekerFiles } from "@/lib/cv/fileClaims";
 import { verifyApplicationReadAccess } from "@/lib/applications/staffScope";
 import { z } from "zod";
 import type { UserRole } from "@/models/User";
@@ -67,7 +69,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   }
 
   // Verify ownership
-  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id documents.url cv.originalUrl").lean();
   if (!seeker || String(application.jobSeekerId) !== String(seeker._id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -84,6 +86,28 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   const parsed = documentSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid document data", details: parsed.error.flatten() }, { status: 400 });
+  }
+
+  // A link to another site is the seeker's to give. The address of a file in
+  // OUR storage is different: the download routes sign or stream whatever an
+  // application lists, so it must be one of this seeker's own files — not an
+  // address they came by, attached here to be handed back to them.
+  if (isStoredFileUrl(parsed.data.url)) {
+    const own = seeker as { documents?: { url?: string }[]; cv?: { originalUrl?: string } };
+    const ownUrls = new Set<string>([
+      ...(own.documents ?? []).map((d) => d.url ?? ""),
+      own.cv?.originalUrl ?? "",
+      ...((application.documents ?? []) as { url?: string }[]).map((d) => d.url ?? ""),
+    ]);
+    if (!ownUrls.has(parsed.data.url)) {
+      return NextResponse.json({ error: "That link is not one of your files." }, { status: 400 });
+    }
+    // Held while it is added (lib/cv/fileClaims.ts). A file the application
+    // already lists is safe as it is.
+    const alreadyListed = ((application.documents ?? []) as { url?: string }[]).some((d) => d.url === parsed.data.url);
+    if (!alreadyListed && (await claimSeekerFiles(seeker._id, [parsed.data.url])).length > 0) {
+      return NextResponse.json({ error: "That file is no longer in your documents." }, { status: 400 });
+    }
   }
 
   if ((application.documents?.length ?? 0) >= MAX_DOCUMENTS) {

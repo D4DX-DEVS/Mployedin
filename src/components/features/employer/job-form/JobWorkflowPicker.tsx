@@ -47,7 +47,7 @@ export function JobWorkflowPicker() {
   };
 
   return (
-    <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
+    <div className="space-y-1.5 rounded-xl bg-muted/40 card-pad">
       <p className="flex items-center gap-2 text-sm font-medium">
         <GitBranch className="h-4 w-4 text-sky-600" aria-hidden="true" />
         {t("jobFormLabel")}

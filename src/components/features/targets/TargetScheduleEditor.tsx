@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,28 +56,41 @@ export function ScheduleControls({ draft, year, profitTarget, onChange, disabled
 }) {
   const t = useTranslations("profitTargets");
   const tr = useTranslations("profitReport");
+  const uid = useId();
 
+  // Both callers are table rows that turn into cards on phones, where the
+  // "Schedule" column header is gone: the labels show there and stay for
+  // screen readers from sm up. (`aria-label` was not a SearchableSelect prop,
+  // so these were only ever named by their placeholder.)
   return (
-    <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-      <SearchableSelect
-        options={PERIOD_TYPES.map((type) => ({ value: type, label: tr(`period_${type}`) }))}
-        value={draft.periodType}
-        onValueChange={(value) => onChange(withPeriodType(draft, year, profitTarget, value as PeriodType))}
-        placeholder={t("periodTypeLabel")}
-        className="h-9 min-w-32 flex-1 rounded-lg text-xs"
-        disabled={disabled}
-        aria-label={t("periodTypeLabel")}
-      />
-      {draft.periodType !== "annual" && (
+    <div className={`flex flex-wrap items-end gap-2 ${className}`}>
+      <div className="min-w-32 flex-1">
+        <label htmlFor={`${uid}-period`} className="mb-1 block text-[11px] font-medium text-muted-foreground sm:sr-only">{t("periodTypeLabel")}</label>
         <SearchableSelect
-          options={STRATEGIES.map((strategy) => ({ value: strategy, label: t(`strategy_${strategy}`) }))}
-          value={draft.strategy}
-          onValueChange={(value) => onChange(withStrategy(draft, profitTarget, value as SplitStrategy))}
-          placeholder={t("strategyLabel")}
-          className="h-9 min-w-28 flex-1 rounded-lg text-xs"
+          id={`${uid}-period`}
+          options={PERIOD_TYPES.map((type) => ({ value: type, label: tr(`period_${type}`) }))}
+          value={draft.periodType}
+          onValueChange={(value) => onChange(withPeriodType(draft, year, profitTarget, value as PeriodType))}
+          placeholder={t("periodTypeLabel")}
+          className="h-9 w-full rounded-lg text-xs"
           disabled={disabled}
-          aria-label={t("strategyLabel")}
+          ariaLabel={t("periodTypeLabel")}
         />
+      </div>
+      {draft.periodType !== "annual" && (
+        <div className="min-w-28 flex-1">
+          <label htmlFor={`${uid}-split`} className="mb-1 block text-[11px] font-medium text-muted-foreground sm:sr-only">{t("strategyLabel")}</label>
+          <SearchableSelect
+            id={`${uid}-split`}
+            options={STRATEGIES.map((strategy) => ({ value: strategy, label: t(`strategy_${strategy}`) }))}
+            value={draft.strategy}
+            onValueChange={(value) => onChange(withStrategy(draft, profitTarget, value as SplitStrategy))}
+            placeholder={t("strategyLabel")}
+            className="h-9 w-full rounded-lg text-xs"
+            disabled={disabled}
+            ariaLabel={t("strategyLabel")}
+          />
+        </div>
       )}
     </div>
   );

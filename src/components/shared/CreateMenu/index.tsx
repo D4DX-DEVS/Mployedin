@@ -56,7 +56,7 @@ export function CreateMenu({ locale, userRole, variant = "topbar", className }: 
           aria-label={t("createMenu")}
           className={cn(
             isBottomBar
-              ? "flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95"
+              ? "flex size-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/85 text-primary-foreground shadow-lg shadow-primary/35 ring-4 ring-background transition-transform active:scale-90 data-[state=open]:rotate-45"
               : "inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90",
             className
           )}

@@ -278,7 +278,7 @@ export function JobSummaryCard({
 
           {/* Match, age and the surface's own buttons — one column on a wide
               screen, one wrapped row on a phone. */}
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 max-sm:flex-nowrap sm:flex-col sm:items-end sm:justify-start">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 max-sm:flex-col max-sm:items-stretch sm:flex-col sm:items-end sm:justify-start">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-end">
               {statusSlot}
               {showMatchScore && typeof job.matchScore === "number" && (
@@ -298,7 +298,17 @@ export function JobSummaryCard({
               )}
             </div>
 
-            {actions && <div className="flex items-center gap-1.5 sm:mt-1">{actions}</div>}
+            {/* Phone: actions are the card's footer row — full card width (pulled
+                back past the 44px mark + 12px gap), under a divider, buttons
+                sharing the row evenly. Same shape as PhoneRecordList. */}
+            {actions && (
+              <div
+                data-card-footer
+                className="flex items-center gap-1.5 max-sm:-ms-14 max-sm:mt-1 max-sm:border-t max-sm:border-border/70 max-sm:pt-2.5 max-sm:[&>*]:min-w-0 max-sm:[&>*]:flex-1 max-sm:[&_button]:w-full max-sm:[&_a]:w-full sm:mt-1"
+              >
+                {actions}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -119,10 +119,13 @@ export function DashboardPageHeader({
             is a full sentence that never wraps, that squeezed "Employer
             Relationships" into a ~100px column — one or two characters per line,
             a 479px header. A floor here makes the row wrap instead of crushing. */}
-        <div data-header-identity="" className="dashboard-page-header-identity min-w-0 max-w-3xl flex-1 basis-0 max-sm:min-w-[min(100%,var(--header-title-min))] lg:min-w-[16rem]"
+        <div data-header-identity="" className="dashboard-page-header-identity min-w-0 max-w-3xl flex-1 basis-0 max-sm:min-w-[min(100%_-_3.25rem,var(--header-title-min))] lg:min-w-[16rem]"
           // Phones: reserve roughly the title's one-line width (icon + ~0.66rem
           // per character at 20px) so it never breaks mid-word; actions that
-          // do not fit beside it wrap to their own row.
+          // do not fit beside it wrap to their own row. The reserve stops 3.25rem
+          // short of the row so an icon-only action (refresh) still fits beside
+          // a long title, which then wraps between words instead of leaving the
+          // icon alone on a row ("Notification Control Center").
           style={{ "--header-title-min": `${3.25 + title.length * 0.66}rem` } as CSSProperties}>
           <span data-header-icon="" className="dashboard-page-header-icon" aria-hidden="true">
             {Icon ? <Icon className="h-5 w-5" /> : <PageNavIcon className="h-5 w-5" />}
@@ -202,7 +205,9 @@ export function DashboardPageHeader({
             // 5-6 metrics go three-across on a compact phone rather than 2xN:
             // the admin exhibitions and target headers spent 3 rows on six
             // figures before the list started.
+            // The two-up phone grid leaves an odd last figure alone; let it span the row.
             metrics.length >= 5 && (metricCompact ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"),
+            metrics.length === 5 && !metricCompact && "max-sm:[&>*:last-child]:col-span-2",
             // Two-up on phones: no divider on the right-hand edge, and a rule
             // between rows so the 2x2 reads as a grid, not loose figures.
             !metricCompact && metrics.length >= 3 && "max-sm:[&>*:nth-child(2n)]:border-e-0 max-sm:[&>*:nth-child(n+3)]:border-t",
@@ -237,7 +242,8 @@ export function DashboardPageHeader({
                   {/* Word-wrap instead of truncate on label + value: long labels like
                       "Total Applications" rendered as "Total Applica…" on phones, which said nothing. */}
                   <p data-header-metric-label="" className={cn(
-                    "line-clamp-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
+                    // break-words: "Avg Registrations/Link" has no break point and overflowed its cell.
+                    "line-clamp-2 break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
                     // Label reads under the value on compact phones, and loses the
                     // 0.14em tracking that would push it past an 83px column.
                     metricCompact && "order-2 tracking-normal sm:order-none sm:tracking-[0.14em]"

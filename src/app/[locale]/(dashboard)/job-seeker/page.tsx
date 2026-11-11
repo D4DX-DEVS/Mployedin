@@ -8,6 +8,7 @@ import ProfileView from "@/models/ProfileView";
 // Registered for the recent-applications populate (jobId → Job → employerId).
 import "@/models/Job";
 import "@/models/Employer";
+import { HIDDEN_COMPANY_NAME, displayCompanyLogo, isCompanyHidden } from "@/lib/jobs/companyDisclosure";
 import { JobSeekerHomePage } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import type { InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import { setRequestLocale } from "next-intl/server";
@@ -85,7 +86,7 @@ export default async function JobSeekerPage({
     }),
     Application.find({ jobSeekerId: seekerId })
       .select("jobId status createdAt")
-      .populate({ path: "jobId", select: "title employerId", populate: { path: "employerId", select: "companyName logo" } })
+      .populate({ path: "jobId", select: "title employerId discloseCompany", populate: { path: "employerId", select: "companyName logo" } })
       .sort({ createdAt: -1 })
       .limit(5)
       .lean(),
@@ -137,12 +138,13 @@ export default async function JobSeekerPage({
     appliedJobs: (appliedApps as Array<Record<string, unknown>>).map((app) => {
       const job = app.jobId as Record<string, unknown> | null;
       const emp = job?.employerId as { companyName?: string; logo?: string } | null;
+      const disclosure = job as { discloseCompany?: boolean } | null;
       const appliedDate = app.createdAt instanceof Date ? app.createdAt : new Date(String(app.createdAt ?? ""));
       return {
         _id: String(job?._id ?? ""),
         title: String(job?.title ?? ""),
-        companyName: emp?.companyName ?? undefined,
-        companyLogo: emp?.logo ?? undefined,
+        companyName: isCompanyHidden(disclosure) ? HIDDEN_COMPANY_NAME : (emp?.companyName ?? undefined),
+        companyLogo: displayCompanyLogo(disclosure, emp?.logo),
         status: String(app.status ?? "applied"),
         appliedAt: isNaN(appliedDate.getTime()) ? undefined : appliedDate.toISOString(),
       };

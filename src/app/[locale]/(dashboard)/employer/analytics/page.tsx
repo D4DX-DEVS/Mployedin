@@ -34,7 +34,7 @@ import {
   Zap,
   Sparkles,
   Award,
-  Search,
+  
   ChevronLeft,
   ChevronRight,
   type LucideIcon,
@@ -60,6 +60,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
+import { SearchField } from "@/components/shared/SearchField";
 
 type DateRange = "7d" | "30d" | "90d" | "180d" | "custom";
 
@@ -563,10 +564,11 @@ function PipelineTab({
       {jobOptions.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <label htmlFor="employer-analytics-job" className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {t("selectedJob")}
-          </span>
+          </label>
           <SearchableSelect
+            id="employer-analytics-job"
             className="min-w-0 flex-1 sm:w-72 sm:flex-none"
             value={selectedJobId}
             onValueChange={setSelectedJobId}
@@ -669,7 +671,7 @@ function PipelineTab({
 
       {jobOptions.length > 0 && (
         <AnalyticsPanel className="overflow-hidden p-0">
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 panel-head">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between sm:gap-4 panel-head">
             <AnalyticsSectionHeader
               title={t("perJobBreakdown")}
               description={t("perJobBreakdownDesc")}
@@ -677,17 +679,13 @@ function PipelineTab({
               eyebrow={t("jobDetail")}
               compact
             />
-            <div className="relative w-full sm:w-64">
-              <Search className="pointer-events-none absolute start-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground sm:h-4 sm:w-4" />
-              <input
-                type="search"
-                value={perJobSearchInput}
-                onChange={(e) => setPerJobSearchInput(e.target.value)}
-                placeholder={t("searchJobs")}
-                aria-label={t("searchJobs")}
-                className="w-full rounded-lg border border-border bg-background/80 py-1.5 pe-3 ps-8 text-xs text-foreground placeholder:text-muted-foreground focus:border-sky-500/40 focus:outline-none focus:ring-2 focus:ring-sky-500/20 sm:rounded-xl sm:py-2 sm:ps-9 sm:text-sm"
-              />
-            </div>
+            <SearchField
+              className="w-full sm:w-64"
+              value={perJobSearchInput}
+              onValueChange={setPerJobSearchInput}
+              placeholder={t("searchJobs")}
+              inputClassName="h-11 rounded-lg bg-background/80 text-sm sm:h-9 sm:rounded-xl"
+            />
           </div>
 
           {/* Desktop: full comparison table */}

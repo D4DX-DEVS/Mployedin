@@ -423,6 +423,14 @@
     "citySearching": "Searching…"
   },
   "common": {
+    "refresh": "Refresh",
+    "year": "Year",
+    "period": "Period",
+    "month": "Month",
+    "job": "Job",
+    "industry": "Industry",
+    "start": "Start",
+    "end": "End",
     "opensInNewTab": "(opens in a new tab)",
     "passwordEmailsAlwaysArrive": "Password emails always arrive, even if this is off.",
     "stepProgress": "Step {current} of {total}",
@@ -852,6 +860,7 @@
       "title": "Apply to {company}",
       "theEmployer": "the employer",
       "profileCv": "Profile CV",
+      "builtCv": "CV built on Mployedin",
       "back": "Back",
       "next": "Next",
       "submit": "Submit application",
@@ -859,6 +868,7 @@
       "cv": {
         "heading": "Resume",
         "subtitle": "Choose the CV to send with this application.",
+        "builtCvHint": "Made from your profile, in the design you saved in the CV builder.",
         "uploadCv": "Upload a different CV",
         "uploading": "Uploading…",
         "noCv": "No CV on file yet — upload one to continue.",
@@ -904,6 +914,9 @@
         "planLimitReached": "You've reached your plan's application limit. Upgrade your plan to continue applying.",
         "jobClosed": "This job is no longer taking applications.",
         "selectCv": "Please select or upload a CV first.",
+        "builtCvFailed": "We couldn't prepare your Mployedin CV. Choose another CV or try again.",
+        "documentNotFound": "That CV is no longer in your documents. Choose your CV again, then submit.",
+        "unsupportedFile": "That file type isn't supported. Upload a PDF, a Word .docx file or an image (JPG, PNG, WebP). Older .doc files need to be saved as .docx or PDF first.",
         "requiredQuestion": "Please answer: {label}"
       }
     }
@@ -1789,7 +1802,10 @@
         "edit": "Edit",
         "add": "Add",
         "update": "Update",
-        "uploadToAutofill": "Upload CV to auto-fill"
+        "uploadToAutofill": "Upload CV to auto-fill",
+        "showAll": "Show all ({count})",
+        "showLess": "Show less",
+        "readMore": "Read more"
       },
       "languagesSection": {
         "title": "Languages & Links",
@@ -2771,15 +2787,20 @@
     "jobCreator": {
       "title": "AI Job Creator",
       "description": "Answer a few basics by typing, voice, or uploading a job poster. AI will prefill the full job form for review before anything is saved.",
-      "initialMessage": "Hello! I can draft this job with a few basics first.\n\nTell me the role, location, top skills, and any salary or openings if you want to share them. You can type, use voice, or upload a job poster.\n\nFor example: \"Senior React developer in Kochi, hybrid, Node and React, salary optional, 2 openings.\"",
+      "initialMessage": "Hello! I can draft this job with a few basics first.\n\nTell me the role, the location and the main skills. Salary and number of openings are optional.",
       "inputPlaceholder": "Describe the role, location, skills, and optional salary or openings...",
       "draftReady": "Draft details are ready to review in the form.",
-      "draftReadyPanel": "Draft ready — check the Job Preview panel on the right →",
+      "examplesTitle": "Or start from an example:",
+      "examples": { "teacher": "Science teacher in Kuwait City, 5+ years, onsite, KWD 800 a month", "sales": "Sales executive in Dubai, 2 years experience, 3 openings", "developer": "Senior React developer, remote, Node and React" },
+      "voiceLanguageShort": "Voice:",
+      "writingDraft": "Filling in the job details…",
+      "draftReadyPanel": "Draft ready. Review it in Job Preview",
       "failedOpenForm": "We couldn't open the review form. Please try again.",
       "toastThreadUnavailable": "This AI conversation draft is no longer available — it may have expired or been discarded.",
       "uploadJobPoster": "Upload Job Poster",
       "uploadJobPosterHint": "Upload a job poster (image/PDF) — AI extracts the details",
-      "uploadJobPosterLabel": "AI Scan",
+      "uploadJobPosterShort": "Upload",
+      "uploadJobPosterLabel": "Upload poster",
       "toastInvalidType": "Unsupported file type. Please upload a PDF, image, or .docx file.",
       "toastTooLarge": "File is too large. Maximum size is 10 MB.",
       "toastExtractFailed": "Could not extract job details from the file. Please try again.",
@@ -2790,7 +2811,7 @@
       "uploadExtractedOne": "Uploaded poster detected as: {title}. Review the draft in the panel on the right →",
       "uploadExtractedMany": "Uploaded file contains {count} jobs. Pick which ones to keep below.",
       "jobPreview": "Job Preview",
-      "aiWillAsk": "AI will ask for these basics first:",
+      "aiWillAsk": "Tell the AI these and it drafts the rest:",
       "roleAndTeam": "Role and team",
       "locationAndWork": "Location and work setup",
       "keySkills": "Key skills and requirements",
@@ -2824,7 +2845,7 @@
       "reviewInForm": "Review in Full Form",
       "createAllDrafts": "Create All {count} Drafts",
       "orManualForm": "Or use manual form",
-      "manualJobForm": "→ Manual Job Form",
+      "manualJobForm": "Manual job form",
       "detectedLanguage": "Detected language: {lang}",
       "streamError": "Stream error",
       "thinking": "Thinking…",
@@ -2837,9 +2858,12 @@
       "langTamil": "Tamil",
       "langTelugu": "Telugu",
       "langUrdu": "Urdu",
-      "enterToSend": "Press Enter to send, use Shift+Enter for a new line, or tap the mic to dictate a longer brief.",
+      "enterToSend": "Enter to send · Shift+Enter for a new line",
       "tapSendWhenReady": "Tap send when you're ready.",
       "eyebrow": "AI job creation",
+      "discloseCompany": "Show company details",
+      "discloseCompanyOn": "Job seekers see your company name, logo and details.",
+      "discloseCompanyOff": "Job seekers see \"Mployedin\" instead of your company. Applications still come to you.",
       "chooseNextStep": "Nothing is saved yet. Post it now, keep it as a draft, or review every field in the full form first.",
       "saveAsDraft": "Save as draft",
       "savingDraft": "Saving…",
@@ -4383,6 +4407,7 @@
     "logoutConfirm": "Are you sure you want to log out of your account?",
     "cancel": "Cancel",
     "loggingOut": "Logging out...",
+    "logoutFailed": "We couldn't log you out. Check your connection and try again.",
     "resetTitle": "Reset Password",
     "resetDescription": "A password reset link will be sent to your email address",
     "resetSuccess": "Reset link sent! Check your email.",
@@ -4960,6 +4985,9 @@
     "messagesTab": "Messages",
     "supportTab": "Support",
     "searchPlaceholder": "Search conversations…",
+    "searchLabel": "Search conversations",
+    "newChat": "New Chat",
+    "searchHint": "Name or message",
     "noConversationsSearch": "No conversations match your search.",
     "noSupportTickets": "No support tickets yet. Click \"New Ticket\" to contact support.",
     "noConversations": "No conversations yet. Start one with the \"New Chat\" button above.",
@@ -6026,7 +6054,7 @@
     "toolbar": {
       "refresh": "Refresh",
       "refreshing": "Refreshing…",
-      "period": "Reporting period",
+      "period": "Period",
       "periods": {
         "7d": "Last 7 days",
         "30d": "Last 30 days",
@@ -8015,10 +8043,8 @@
     "review": "review",
     "steps": {
       "1": "Basic Info",
-      "2": "Job Details",
-      "3": "Requirements",
-      "4": "Salary & Settings",
-      "5": "Screening Questions"
+      "2": "Details & Requirements",
+      "3": "Pay & Screening"
     },
     "stepIndicator": {
       "step": "Step {step}"
@@ -8283,6 +8309,9 @@
       "salaryPackage": "Salary Package",
       "shareSalary": "Share salary publicly",
       "shareSalaryHint": "Visible salary ranges usually improve trust and application quality.",
+      "discloseCompany": "Show company details",
+      "discloseCompanyOn": "Job seekers see your company name, logo and details.",
+      "discloseCompanyOff": "Job seekers see \"Mployedin\" instead of your company. Applications still come to you.",
       "currency": "Currency",
       "payPeriod": "Pay Period",
       "salaryPeriods": {
@@ -14452,6 +14481,7 @@
     "notificationsChangedElsewhere": "Your notification settings changed in another place. We reloaded the latest ones, so please review them and save again."
   },
   "superAgentJobs": {
+    "aiSearchLabel": "AI search",
     "totalJobsLabel": "Total Jobs",
     "totalJobsHelper": "All jobs in your region.",
     "activeJobsHelper": "Live jobs visible to seekers.",
@@ -15410,6 +15440,23 @@
       "retry": "Try again",
       "unnamed": "Unnamed job seeker",
       "noRole": "No current role on the profile",
+      "preferredRoles": "Looking for",
+      "applications": {
+        "title": "Applications",
+        "empty": "Has not applied to any job yet.",
+        "updated": "Updated {date}",
+        "status": {
+          "applied": "Applied",
+          "shortlisted": "Shortlisted",
+          "interview_scheduled": "Interview scheduled",
+          "selected": "Selected",
+          "offer": "Offer made",
+          "hired": "Placed",
+          "rejected": "Not progressed",
+          "withdrawn": "Withdrawn",
+          "other": "In review"
+        }
+      },
       "noCv": "No CV uploaded yet",
       "notProvided": "Not provided",
       "present": "Present",
@@ -16117,6 +16164,10 @@
     "resultsTitle": "Review profile strength before the next match",
     "resultsPagination": "{total} profiles across {pages} pages",
     "tableHeaderTitle": "Title",
+    "preferredRole": "Preferred",
+    "suggestedRole": "Suggested",
+    "suggestedRoleHint": "A guess from their skills — they have not stated a role.",
+    "moreApplications": "{count, plural, one {+# more application} other {+# more applications}}",
     "tableHeaderExperience": "Experience",
     "experienceYears": "{count, plural, one {# yr} other {# yrs}}",
     "experienceMonths": "{count, plural, one {# mo} other {# mos}}",
@@ -16703,6 +16754,7 @@
     "tableHeaderUsed": "Used",
     "tableHeaderMaxUses": "Max Uses",
     "tableHeaderExpires": "Expires",
+    "noExpiry": "No expiry",
     "exportYes": "Yes",
     "exportNo": "No",
     "labelCreated": "Created",
@@ -18470,6 +18522,8 @@
     "applyingAs": "Applying as",
     "profileCv": "CV / Resume",
     "profileCvLabel": "Profile CV",
+    "builtCv": "CV built on Mployedin",
+    "builtCvHint": "Made from your profile, in the design you saved in the CV builder.",
     "noCvOnFile": "No CV on file yet — upload one below.",
     "uploading": "Uploading…",
     "uploadDifferentCv": "Upload a different CV",
@@ -18497,6 +18551,9 @@
       "applyFailed": "We couldn't apply. Please try again.",
       "planLimitReached": "You've reached your plan's application limit. Upgrade your plan to continue applying.",
       "jobClosed": "This job is no longer taking applications.",
+      "builtCvFailed": "We couldn't prepare your Mployedin CV. Choose another CV or try again.",
+      "documentNotFound": "That CV is no longer in your documents. Choose your CV again, then submit.",
+      "unsupportedFile": "That file type isn't supported. Upload a PDF, a Word .docx file or an image (JPG, PNG, WebP). Older .doc files need to be saved as .docx or PDF first.",
       "networkError": "Network error. Please try again.",
       "couldNotExtract": "We couldn't read your CV automatically. You can still apply — add your details below.",
       "invalidEmail": "Please enter a valid email address.",
@@ -19086,6 +19143,8 @@
     "overviewEducation": "Education",
     "overviewLanguages": "Languages",
     "overviewTags": "Tags",
+    "overviewScreening": "Screening questions",
+    "overviewScreeningDesc": "What you asked applicants and how they answered. To read one candidate's own answers, open them in Applications.",
     "applicationsHeading": "Applications for this job",
     "viewAllApplications": "View all applications",
     "openThisJob": "Open this job",
@@ -19374,7 +19433,8 @@
       "met": "Met",
       "partial": "Close",
       "not_met": "Not met",
-      "unknown": "Not stated"
+      "unknown": "Not stated",
+      "cantCompare": "Can't compare"
     },
     "check": {
       "experience": "Experience",
@@ -19556,6 +19616,7 @@
     "moderateError": "We couldn't update the review. Please try again."
   },
   "aiFilterSearch": {
+    "fieldLabel": "Search or ask AI",
     "askAi": "Ask AI",
     "askingAi": "Asking AI…",
     "askAiHint": "Turn what you typed into filters",
@@ -19914,6 +19975,26 @@
     "unknownCandidate": "Candidate"
   },
   "agentJobMatches": {
+    "showDetails": "Show full match",
+    "hideDetails": "Hide full match",
+    "lines": {
+      "title": "What the job asks for, checked",
+      "summary": "{has} of {total} found on the profile",
+      "note": "Checked by comparing the profile's skills, roles, education and CV with each line. A guide, not a verdict.",
+      "verdict": { "has": "Has", "partial": "Partly", "missing": "Doesn't have", "unknown": "Can't tell" },
+      "detail": {
+        "education": "Asks {required} · has {actual}",
+        "educationNone": "Asks {required} · no education on the profile",
+        "experience": "Asks {required}+ years · has {actual}",
+        "experienceNone": "Asks {required}+ years · no experience stated",
+        "languageHas": "Speaks {list}",
+        "languageMissing": "Not listed: {list}",
+        "found": "On the profile: {list}",
+        "notFound": "Nothing mentions: {list}",
+        "personal": "A personal quality — judge it at interview",
+        "thin": "The profile has too little detail to check this"
+      }
+    },
     "title": "Matching candidates",
     "backToJob": "Back to job",
     "refreshing": "Refreshing…",
@@ -20982,10 +21063,11 @@
     "subtitle": "Tell it what to write or change. It fills in the form, and you check it before saving.",
     "open": "AI assistant",
     "emptyHint": "Ask in your own words, or start with one of these:",
-    "placeholder": "For example: add the benefits, health cover and an annual flight",
+    "placeholder": "e.g. add health cover to the benefits",
     "inputLabel": "Message the AI assistant",
     "send": "Send",
     "thinking": "Working on it…",
+    "viewChanges": "View changes",
     "undo": "Undo",
     "updated": "Updated: {fields}",
     "doneNoReply": "Done.",
@@ -21324,6 +21406,8 @@
     "brandMployedin": "Mployedin",
     "brandMployedinHint": "Mployedin blue with your company name",
     "setUpKit": "Set up your brand kit",
+    "showEmployer": "Show employer details",
+    "showEmployerHint": "On: your company logo and name appear on the poster. Off: the Mployedin logo and name appear instead.",
     "style": "Style",
     "look_bold": "Bold",
     "look_clean": "Clean",
@@ -21579,3 +21663,10 @@
     }
   }
 }
+
+
+
+
+
+
+

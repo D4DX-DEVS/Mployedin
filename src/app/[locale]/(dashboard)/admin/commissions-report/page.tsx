@@ -26,6 +26,7 @@ import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineF
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { InlineLabelled } from "@/components/shared/LabelledControl";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -141,6 +142,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function AdminCommissionsReportPage() {
   const t = useTranslations("adminCommissionsReport");
+  const tc = useTranslations("common");
   const ta = useTranslations("a11y");
   const locale = useLocale();
   const currentYear = new Date().getFullYear();
@@ -237,17 +239,21 @@ export default function AdminCommissionsReportPage() {
         description={t("reportDescription", { year: yearFilter })}
         actions={(
           <>
-            <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
-              <SelectTrigger aria-label={t("yearFilterLabel")} className="h-10 w-28 rounded-xl border-border/70 bg-background/90">
-                <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {yearOptions.map((y) => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <InlineLabelled label={tc("year")}>
+              {(id) => (
+                <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
+                  <SelectTrigger id={id} className="h-10 w-28 rounded-xl border-border/70 bg-background/90">
+                    <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((y) => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </InlineLabelled>
             {/* Only when the year holds more than one currency: amounts in
                 different currencies are shown one currency at a time. */}
             {data && data.currencies.length > 1 ? (

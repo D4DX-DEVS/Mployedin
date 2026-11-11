@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MPLOYEDIN_LOGO_URL, type BrandKit, type PosterContact } from "@/lib/brand/brandKit";
 import { POSTER_FONT_VARIABLES } from "@/lib/brand/posterFontFaces";
@@ -60,6 +61,7 @@ export function PosterStudio({ jobId }: { jobId: string }) {
   const [headlineEdited, setHeadlineEdited] = useState(false);
   const [size, setSize] = useState<PosterSize>("square");
   const [layout, setLayout] = useState<BrandLayout>(DEFAULT_BRAND_LAYOUT);
+  const [showEmployer, setShowEmployer] = useState(false);
   const [saved, setSaved] = useState<Saved | null>(null);
   const [qr, setQr] = useState<string>();
 
@@ -76,7 +78,7 @@ export function PosterStudio({ jobId }: { jobId: string }) {
   }, [jobId]);
 
   // Any change after saving makes a new poster.
-  useEffect(() => setSaved(null), [effectiveSource, look, posterLocale, headline, layout]);
+  useEffect(() => setSaved(null), [effectiveSource, look, posterLocale, headline, layout, showEmployer]);
 
   const rawJob = (jobQuery.data?.job ?? jobQuery.data) as Record<string, unknown> | undefined;
   const employer = rawJob?.employerId && typeof rawJob.employerId === "object" ? (rawJob.employerId as { companyName?: string; logo?: string }) : null;
@@ -99,7 +101,7 @@ export function PosterStudio({ jobId }: { jobId: string }) {
         await fetch("/api/employers/posters/brand", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId, source: effectiveSource, layout, look, headline, locale: posterLocale }),
+          body: JSON.stringify({ jobId, source: effectiveSource, layout, look, headline, locale: posterLocale, showEmployer }),
         }),
       ),
     onSuccess: (s) => {
@@ -209,6 +211,14 @@ export function PosterStudio({ jobId }: { jobId: string }) {
                   )}
                 </fieldset>
 
+                <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="studio-show-employer" className="text-sm font-semibold">{t("showEmployer")}</Label>
+                    <p className="text-xs text-muted-foreground">{t("showEmployerHint")}</p>
+                  </div>
+                  <Switch id="studio-show-employer" checked={showEmployer} onCheckedChange={setShowEmployer} />
+                </div>
+
                 <fieldset className="space-y-2">
                   <legend className="text-sm font-semibold">{t("style")}</legend>
                   <div className="grid grid-cols-3 gap-2">
@@ -302,6 +312,7 @@ export function PosterStudio({ jobId }: { jobId: string }) {
                           height={height}
                           logoUrl={logo}
                           platformLogoUrl={MPLOYEDIN_LOGO_URL}
+                          showEmployer={showEmployer}
                         />
                         <span className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-muted-foreground">
                           {layout === l && <Check className="size-3.5 text-primary" aria-hidden />}

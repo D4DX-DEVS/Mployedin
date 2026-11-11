@@ -7,7 +7,6 @@ import { MapPin, Wifi, Sparkles, UserCog, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { getLocalizedCountryName } from "@/lib/i18n/locations";
@@ -171,18 +170,23 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
       transition={{ duration: 0.25 }}
       className="space-y-3 sm:space-y-5"
     >
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 sm:flex-row sm:items-center sm:justify-between card-pad">
+      {/* The step opens on its first field. "Show company details" moved to
+          the last step, beside the other publishing choices (owner,
+          2026-11-11): it was the first thing on the form, above the job title. */}
+      <div className="flex flex-col gap-2 border-b border-border/70 pb-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
           <h2 className="heading-section font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
             {t("description")}
           </p>
         </div>
-        <div className="rounded-xl border border-border/70 bg-background text-xs text-muted-foreground sm:max-w-xs chip-pad">
-          {suggestions
-            ? t("suggestionHint")
-            : t("defaultHint")}
-        </div>
+        {/* Only when there is something to act on: the AI's suggestions for this title. */}
+        {suggestions && (
+          <p className="inline-flex items-center gap-1.5 text-xs font-medium text-primary sm:max-w-xs">
+            <Sparkles className="size-4 shrink-0" aria-hidden="true" />
+            {t("suggestionHint")}
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(15rem,0.9fr)]">
@@ -278,6 +282,8 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
         </div>
       </div>
 
+      {/* Two short optional fields share a row. */}
+      <div className="grid gap-4 sm:grid-cols-2">
       {/* Employment Type */}
       <div className="space-y-1.5">
         <Label className="text-sm font-medium">{t("employmentType")} <span className="text-xs text-muted-foreground font-normal">({t("optional")})</span></Label>
@@ -306,9 +312,10 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
           {t("durationHint")}
         </p>
       </div>
+      </div>
 
       {/* Location */}
-      <div className="rounded-2xl border border-border/70 bg-muted/20 card-pad">
+      <div className="border-t border-border/70 pt-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-1">
             <Label className="flex items-center gap-1.5 text-sm font-medium">
@@ -412,7 +419,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             take it" — a remote job can still be limited by work authorisation,
             payroll entity or timezone, and the matcher will not guess. */}
         {watch("location.isRemote") && (
-          <div className="mt-4 space-y-3 rounded-xl border border-border/70 bg-background card-pad">
+          <div className="mt-4 space-y-3 rounded-xl bg-muted/40 card-pad">
             <div className="space-y-1">
               <Label className="text-sm font-medium">{t("remoteScopeLabel")}</Label>
               <p className="text-xs text-muted-foreground">{t("remoteScopeHint")}</p>
@@ -509,7 +516,7 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
 
       {/* Assign Agent (optional) */}
       {agents.length > 0 && (
-        <div className="space-y-2 rounded-2xl border border-dashed border-border/80 bg-background/60 card-pad">
+        <div className="space-y-2 border-t border-border/70 pt-5">
           <Label className="flex items-center gap-1.5 text-sm font-medium">
             <UserCog className="w-3.5 h-3.5" />
             {t("assignAgent")} <span className="text-xs text-muted-foreground font-normal">({t("optional")})</span>

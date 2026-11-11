@@ -13,6 +13,7 @@ import {
   RECOMMENDED_JOB_SELECT,
 } from "@/lib/jobRecommendations";
 import { scoreSeekerPool } from "@/lib/matching/seekerMatches";
+import { maskJobEmployer } from "@/lib/jobs/companyDisclosure";
 
 /**
  * GET /api/job-seeker/recommended-jobs
@@ -70,7 +71,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // it lists and counts recommended jobs only. It used to return the top of
   // the whole pool, and count anything sharing one skill as a match.
   const recommended = pool.jobs.filter((job) => job.recommended);
-  const items = recommended.slice(0, itemLimit);
+  const items = recommended
+    .slice(0, itemLimit)
+    .map((job) => maskJobEmployer(job as unknown as Record<string, unknown>));
 
   return NextResponse.json({
     items,

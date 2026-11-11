@@ -394,6 +394,71 @@ describe("POST /api/consent/receipt", () => {
     });
   });
 
+  describe("re-issues the choice cookie from the server (Safari keeps a script-written cookie 7 days only)", () => {
+    const DAY_S = 86400;
+    const setCookie = (res: Response) => res.headers.get("set-cookie");
+    const maxAge = (header: string) => Number(/Max-Age=(\d+)/i.exec(header)?.[1]);
+
+    // A choice made a moment ago: the helper's fixed date would be past its six months one day, and these would start failing.
+    beforeEach(() => {
+      consentCookie = cookieFor(validBody, { at: new Date().toISOString() });
+    });
+
+    it("sends the stored choice back as mpl_consent, unchanged, readable by the page", async () => {
+      const res = await post(makeRequest(validBody));
+      const header = setCookie(res);
+      expect(res.status).toBe(204);
+      expect(header).toContain(`mpl_consent=${consentCookie}`);
+      expect(header).toMatch(/Path=\//i);
+      expect(header).toMatch(/SameSite=Lax/i);
+      // The banner and every consent check read it in the browser.
+      expect(header).not.toMatch(/HttpOnly/i);
+    });
+
+    it("keeps the original end date: six months from when the choice was made, not from now", async () => {
+      consentCookie = cookieFor(validBody, { at: new Date(Date.now() - 10 * DAY_S * 1000).toISOString() });
+      const header = setCookie(await post(makeRequest(validBody)))!;
+      expect(Math.abs(maxAge(header) - 172 * DAY_S)).toBeLessThan(60);
+    });
+
+    it("never gives more than six months, whatever date the cookie claims", async () => {
+      consentCookie = cookieFor(validBody, { at: "2031-01-01T00:00:00.000Z" });
+      expect(maxAge(setCookie(await post(makeRequest(validBody)))!)).toBe(182 * DAY_S);
+      consentCookie = cookieFor(validBody, { at: "not a date" });
+      expect(maxAge(setCookie(await post(makeRequest(validBody)))!)).toBe(182 * DAY_S);
+    });
+
+    it("does not bring back a choice that is already past its six months", async () => {
+      consentCookie = cookieFor(validBody, { at: new Date(Date.now() - 200 * DAY_S * 1000).toISOString() });
+      const res = await post(makeRequest(validBody));
+      expect(res.status).toBe(204);
+      expect(setCookie(res)).toBeNull();
+    });
+
+    it("marks it Secure on https (the proxy's forwarded protocol), not on plain http", async () => {
+      expect(setCookie(await post(makeRequest(validBody)))).not.toMatch(/Secure/i);
+      expect(setCookie(await post(makeRequest(validBody, undefined, { "x-forwarded-proto": "https" })))).toMatch(/; Secure/i);
+    });
+
+    it("still re-issues it when the receipt can't be stored: the choice must not depend on the database", async () => {
+      receiptUpsertMock.mockRejectedValue(new Error("db down"));
+      const res = await post(makeRequest(validBody));
+      expect(res.status).toBe(500);
+      expect(setCookie(res)).toContain(`mpl_consent=${consentCookie}`);
+    });
+
+    it("sets nothing when the request is refused (no cookie, a different choice, a bad body, rate limited)", async () => {
+      consentCookie = undefined;
+      expect(setCookie(await post(makeRequest(validBody)))).toBeNull();
+      consentCookie = cookieFor({ ...validBody, media: true });
+      expect(setCookie(await post(makeRequest(validBody)))).toBeNull();
+      consentCookie = cookieFor(validBody, { at: new Date().toISOString() });
+      expect(setCookie(await post(makeRequest({ ...validBody, version: 0 })))).toBeNull();
+      rateLimitMock.mockResolvedValue({ allowed: false, remaining: 0, resetAt: Date.now() + 60_000 });
+      expect(setCookie(await post(makeRequest(validBody)))).toBeNull();
+    });
+  });
+
   it("hashes the banner text per locale, so en and ar receipts differ", async () => {
     await post(makeRequest(validBody));
     await post(makeRequest({ ...validBody, locale: "ar" }));

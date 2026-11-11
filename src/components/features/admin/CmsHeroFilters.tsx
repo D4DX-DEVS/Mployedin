@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { ChevronDown, ChevronUp, SlidersHorizontal, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, SlidersHorizontal, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SearchField } from "@/components/shared/SearchField";
 
 export type CmsFilterField =
   | {
@@ -176,16 +177,12 @@ export default function CmsHeroFilters({
           )}
         >
           {hasSearch && (
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder={searchPlaceholder}
-                aria-label={searchPlaceholder}
-                value={values.search}
-                onChange={(e) => onChange({ ...values, search: e.target.value })}
-                className="h-11 rounded-xl border-border bg-card pl-9 text-sm shadow-none"
-              />
-            </div>
+            <SearchField
+              placeholder={searchPlaceholder}
+              value={values.search}
+              onValueChange={(search) => onChange({ ...values, search })}
+              inputClassName="h-11 rounded-xl border-border bg-card text-sm shadow-none"
+            />
           )}
 
           {gridFields.length > 0 && (

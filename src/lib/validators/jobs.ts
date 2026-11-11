@@ -110,6 +110,7 @@ export const jobCreateSchema = z.object({
   showSalary: z.boolean().optional(),
   tags: z.array(z.string().max(50)).max(20).optional(),
   visibility: z.enum(["public", "private", "invite_only"]).optional(),
+  discloseCompany: z.boolean().optional(),
   status: z.enum(["draft", "active"]).optional(),
   screeningQuestions: z.array(screeningQuestionSchema).max(20).optional(),
   // Extraction draft write-back: when this job is created from an active AI
@@ -142,6 +143,7 @@ export const jobUpdateSchema = z.object({
   maxApplicants: z.number().int().min(1).max(10000).optional(),
   showSalary: z.boolean().optional(),
   visibility: z.enum(["public", "private", "invite_only"]).optional(),
+  discloseCompany: z.boolean().optional(),
   screeningQuestions: z.array(screeningQuestionSchema).max(20).optional(),
   // Picked in the job form while the job is still a draft (publish goes through PATCH).
   workflowTemplateId: commonSchemas.objectId.nullable().optional(),

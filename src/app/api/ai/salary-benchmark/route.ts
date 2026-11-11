@@ -101,7 +101,16 @@ Base the numbers on real market data for this currency and period. For example i
       // Contributor tier: the prompt above is role/location/seniority/currency
       // only — no candidate or employer personal data — so it is safe to let
       // Meta train on it in exchange for the cheaper rate.
-      rawText = (await generateText(prompt, GEMINI_MODELS.cheap, 400)).trim();
+      try {
+        rawText = (await generateText(prompt, GEMINI_MODELS.cheap, 400)).trim();
+      } catch (firstErr) {
+        // A busy or timed-out provider usually answers a second ask. One retry
+        // after a short pause, so a blip is not shown as "no market data"
+        // (owner saw 503s here, 2026-11-11).
+        logger.warn({ err: firstErr }, "[Salary Benchmark] provider call failed, retrying once");
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        rawText = (await generateText(prompt, GEMINI_MODELS.cheap, 400)).trim();
+      }
     } catch (err) {
       logger.warn({ err }, "[Salary Benchmark] provider call failed");
       return NextResponse.json({ error: "Benchmark unavailable" }, { status: 503 });

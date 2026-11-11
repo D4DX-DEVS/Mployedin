@@ -11,18 +11,20 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
 
   await connectDB();
   const seeker = await JobSeeker.findOne({ userId: ctx.userId })
-    .select("fullName phone skills documents cv socialLinks")
+    .select("fullName phone skills documents cv socialLinks cvDesign")
     .lean();
 
   if (!seeker) {
     return NextResponse.json({ jobSeeker: null });
   }
 
-  const documents = (seeker.documents ?? []).map((d: { id: string; name: string; category: string; url: string }) => ({
+  const documents = (seeker.documents ?? []).map((d: { id: string; name: string; category: string; url: string; builtHash?: string }) => ({
     id: d.id,
     name: d.name,
     category: d.category,
     url: d.url,
+    // The stored copy of the CV built on Mployedin (see cv/built-cv.ts).
+    ...(d.builtHash ? { builtHash: d.builtHash } : {}),
   }));
 
   return NextResponse.json(
@@ -33,6 +35,9 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
         skills: seeker.skills ?? [],
         documents,
         cvUrl: seeker.cv?.originalUrl ?? null,
+        // The builder saves its design with the profile, so a saved design
+        // means there is a built CV to offer.
+        hasBuiltCv: !!seeker.cvDesign,
         socialLinks: (seeker.socialLinks ?? []).map((l: { label: string; url: string }) => ({ label: l.label, url: l.url })),
       },
     },

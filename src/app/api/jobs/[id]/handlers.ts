@@ -13,6 +13,7 @@ import { getScopedEmployerIds, getSuperAgentBook } from "@/lib/auth/agentRestric
 import { canTransitionJobStatus, expiryExtended } from "@/lib/jobs/statusTransitions";
 import { isEmployerPublishGated, PUBLISH_GATE_ERROR } from "@/lib/employers/publishGate";
 import { stripPrivateJobFields } from "@/lib/jobs/visibility";
+import { maskJobEmployer } from "@/lib/jobs/companyDisclosure";
 import { mergeScreeningKnockouts, splitScreeningQuestions, type KnockoutRule } from "@/lib/matching/knockouts";
 import { queueApplicantRescore } from "@/lib/inngest/rescoreJobApplicants";
 import { memberMayAccessJob } from "@/lib/permissions/team";
@@ -93,6 +94,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 
   if (!isOwnerSide) {
     stripPrivateJobFields(job as Record<string, unknown>);
+    maskJobEmployer(job as Record<string, unknown>);
   } else {
     // The owner's editors edit a question and its deal-breaker rule as one.
     const record = job as Record<string, unknown>;
@@ -190,7 +192,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const allowedFields = [
     "title", "description", "category", "location", "requirements",
     "salary", "status", "expiresAt", "tags", "vacancies",
-    "maxApplicants", "showSalary", "visibility", "screeningQuestions",
+    "maxApplicants", "showSalary", "visibility", "discloseCompany", "screeningQuestions",
     "employmentType", "workMode", "duration", "responsibilities",
     "qualifications", "benefits", "learningOutcomes",
   ];

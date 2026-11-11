@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { defaultApplicationCv } from "@/lib/applications/cvChoice";
+import { claimSeekerFiles } from "@/lib/cv/fileClaims";
 import { AWAITING_REVIEW_STATUSES, STALE_APPLICATION_MS } from "@/lib/admin/platformAlerts";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
@@ -558,7 +560,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         .populate({
           path: "jobId",
           // requirements powers the "matching skills" column in the employer list
-          select: "title location salary category employerId requirements",
+          // discloseCompany: a seeker's row shows "Mployedin" for a hidden company.
+          select: "title location salary category employerId requirements discloseCompany",
           populate: { path: "employerId", select: "companyName logo" },
         })
         .populate({
@@ -769,6 +772,21 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Already applied to this job" }, { status: 409 });
   }
 
+  // The seeker picked these files. One that is no longer among their documents
+  // (deleted or replaced in another tab) used to be skipped silently, and the
+  // "nothing selected" fallback below then sent every other resume instead.
+  if (documentIds?.length) {
+    const ownIds = new Set(
+      ((seeker as { documents?: { id?: string }[] }).documents ?? []).map((d) => d.id),
+    );
+    if (documentIds.some((id: string) => !ownIds.has(id))) {
+      return NextResponse.json(
+        { error: "That file is no longer in your documents. Choose your CV again and resubmit.", code: "DOCUMENT_NOT_FOUND" },
+        { status: 400 },
+      );
+    }
+  }
+
   // Validate required screening questions are answered, and that typed
   // questions (number/date) received parseable values.
   const jobScreeningQuestions = (job as Record<string, unknown>).screeningQuestions as Array<{ id: string; label: string; required: boolean; type?: string }> | undefined;
@@ -830,7 +848,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const profileCvUrl = seekerDoc.cv?.originalUrl;
-  if (includeProfileCv && profileCvUrl) {
+  if (includeProfileCv) {
+    // Chosen, but removed since the form opened: refused like a missing file,
+    // not swapped for another resume.
+    if (!profileCvUrl) {
+      return NextResponse.json(
+        { error: "Your Profile CV is no longer on file. Choose your CV again and resubmit.", code: "DOCUMENT_NOT_FOUND" },
+        { status: 400 },
+      );
+    }
     appDocuments.push({ name: "CV", url: profileCvUrl, type: "resume" });
   }
 
@@ -838,17 +864,24 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     appDocuments.push({ name: "Portfolio", url: portfolioUrl, type: "portfolio" });
   }
 
-  // Fallback: if the seeker selected nothing, attach their resume documents and/or
-  // parsed CV so the employer always receives a CV.
-  if (appDocuments.length === 0) {
-    for (const d of profileDocs) {
-      if ((d.category ?? d.type) === "resume") {
-        appDocuments.push({ name: d.name, url: d.url, type: "resume" });
-      }
-    }
-    if (appDocuments.length === 0 && profileCvUrl) {
-      appDocuments.push({ name: "CV", url: profileCvUrl, type: "resume" });
-    }
+  // No CV was chosen (a client that names none): attach one, by the rule every
+  // apply path shares, so the employer always receives a CV — also when other
+  // files or a portfolio link were attached. This used to attach every resume
+  // the seeker had uploaded, and none at all beside another attachment.
+  const choseCv = !!includeProfileCv || appDocuments.some((d) => d.type === "resume");
+  if (!choseCv) {
+    appDocuments.unshift(...defaultApplicationCv(seekerDoc));
+  }
+
+  // Hold the seeker's files while the application is saved, so replacing or
+  // deleting one in another tab cannot delete it from under this application.
+  // One removed since it was read above is refused like a missing file.
+  const seekerFileUrls = appDocuments.filter((d) => d.type !== "portfolio").map((d) => d.url);
+  if ((await claimSeekerFiles(seeker._id, seekerFileUrls)).length > 0) {
+    return NextResponse.json(
+      { error: "That file is no longer in your documents. Choose your CV again and resubmit.", code: "DOCUMENT_NOT_FOUND" },
+      { status: 400 },
+    );
   }
 
   const { signals, score: bScore } = computeBehaviorSignals({

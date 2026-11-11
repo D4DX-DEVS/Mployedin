@@ -6,20 +6,28 @@ import { uploadFile } from "@/lib/storage/spaces";
 import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { createHash, randomUUID } from "crypto";
-import { cvStatusesFor, registerCvDocument, releaseSeekerFile } from "@/lib/cv/cvDocuments";
+import { cvStatusesFor, registerCvDocument } from "@/lib/cv/cvDocuments";
+import { removeSeekerDocuments } from "@/lib/cv/fileClaims";
 import { limitCvUpload } from "@/lib/cv/uploadLimit";
+import { CV_UPLOAD_MIME_TYPES } from "@/lib/applications/cvChoice";
 import logger from "@/lib/logger";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-// uploadFile() re-checks every file against ALLOWED_FILE_TYPES.cv, magic bytes
-// included; legacy .doc was listed here but never got past that check.
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-];
+// The list the file pickers offer (cvChoice.ts), so a seeker is never offered
+// a format this route refuses. uploadFile() re-checks every file against
+// ALLOWED_FILE_TYPES.cv, magic bytes included.
+const ALLOWED_TYPES: readonly string[] = CV_UPLOAD_MIME_TYPES;
+
+/**
+ * A stored built CV is only cleared once it is this old. Two applications
+ * sent at the same moment (two tabs) each store a copy; clearing the other
+ * tab's copy at once deleted a file whose application was still being
+ * created, leaving that application pointing at nothing. A copy this old has
+ * long since been attached — and releaseSeekerFile then keeps its file. A copy
+ * an application is being saved with at that moment is kept by its claim
+ * (lib/cv/fileClaims.ts).
+ */
+const BUILT_COPY_GRACE_MS = 10 * 60 * 1000;
 const VALID_CATEGORIES = [
   "resume",
   "college_certificate",
@@ -29,6 +37,9 @@ const VALID_CATEGORIES = [
 ] as const;
 
 type DocCategory = (typeof VALID_CATEGORIES)[number];
+
+// Marks the stored copy of the CV built on Mployedin (cv/built-cv.ts).
+const BUILT_HASH_PATTERN = /^[0-9a-f]{8,64}$/;
 
 // GET /api/job-seeker/documents — list uploaded documents
 async function getHandler(_req: NextRequest, ctx: { userId: string; role: string; locale: string }) {
@@ -83,13 +94,29 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   if (!VALID_CATEGORIES.includes(category as DocCategory)) {
     return NextResponse.json({ error: "Invalid category" }, { status: 400 });
   }
+  // The CV built on Mployedin, rendered to PDF by the apply dialog.
+  const builtHashField = formData.get("builtHash");
+  const builtHash = typeof builtHashField === "string" && builtHashField ? builtHashField : null;
+  if (builtHash && (category !== "resume" || file.type !== "application/pdf" || !BUILT_HASH_PATTERN.test(builtHash))) {
+    return NextResponse.json({ error: "Invalid CV" }, { status: 400 });
+  }
 
   // Limit to 20 documents per user
   const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id documents");
   if (!seeker) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
-  if ((seeker.documents?.length ?? 0) >= 20) {
+  // The limit is on the seeker's own files. The stored built CV is kept apart:
+  // there is only ever one (a new one takes the place of the last) and the
+  // apply dialog does not list it as a file, so it must not use up a slot.
+  const storedBuilt: { id: string; url?: string; uploadedAt?: Date | string }[] = (seeker.documents ?? []).filter(
+    (d: { builtHash?: string }) => !!d.builtHash,
+  );
+  const settledBefore = Date.now() - BUILT_COPY_GRACE_MS;
+  const replaced = builtHash
+    ? storedBuilt.filter((d) => !d.uploadedAt || new Date(d.uploadedAt).getTime() < settledBefore)
+    : [];
+  if (!builtHash && (seeker.documents?.length ?? 0) - storedBuilt.length >= 20) {
     return NextResponse.json({ error: "Maximum 20 documents allowed" }, { status: 400 });
   }
 
@@ -115,12 +142,25 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     url: result.url,
     size: file.size,
     uploadedAt: new Date(),
+    ...(builtHash ? { builtHash } : {}),
   };
 
   await JobSeeker.updateOne(
     { userId: ctx.userId },
     { $push: { documents: doc } }
   );
+
+  // The earlier built CV goes only now that the new one is stored — and its
+  // file stays if an application was sent with it (the employer keeps that
+  // CV) or is being saved with it right now. Tidying up must not fail the
+  // upload: the new CV is stored, and a leftover copy is cleared by the next one.
+  if (replaced.length > 0) {
+    try {
+      await removeSeekerDocuments(seeker._id, replaced.map((d) => d.id));
+    } catch (err) {
+      logger.warn({ err, userId: ctx.userId }, "[cv] could not clear the previous built CV");
+    }
+  }
 
   // A resume can be sent with an application, so it is read like the profile CV.
   if (fingerprint) {
@@ -175,16 +215,10 @@ async function deleteHandler(req: NextRequest, ctx: { userId: string; role: stri
     return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
-  // Delete from storage — unless an application was sent with it: the
-  // employer keeps what they received.
-  if (doc.url) {
-    await releaseSeekerFile(seeker._id, doc.url);
-  }
-
-  await JobSeeker.updateOne(
-    { userId: ctx.userId },
-    { $pull: { documents: { id } } }
-  );
+  // Off the record first, then out of storage — unless an application was
+  // sent with it (the employer keeps what they received) or is being saved
+  // with it in another tab right now (lib/cv/fileClaims.ts).
+  await removeSeekerDocuments(seeker._id, [id]);
 
   await logActivity({
     ...actorFromCtx(ctx),

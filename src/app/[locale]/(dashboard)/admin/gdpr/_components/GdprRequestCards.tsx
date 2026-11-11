@@ -84,7 +84,8 @@ export function GdprRequestCards({ requests, onView, actionsFor }: GdprRequestCa
             name={r.userName}
             labelsFrom="always"
             // "flex-flow", not "flex-wrap": the phone filter-chip rule shrinks any button inside a flex-wrap row to 30px.
-            className="mt-3 justify-start gap-2 [flex-flow:row_wrap] [&_button]:min-h-11 [&_button]:min-w-11"
+            // Footer row under a divider; the buttons share it evenly.
+            className="mt-2.5 justify-start gap-2 border-t border-border/60 pt-2.5 [flex-flow:row_wrap] [&_button]:min-h-11 [&_button]:min-w-11 [&_button:not([aria-haspopup])]:flex-1"
             quick={[{ key: "view", label: t("viewButton"), icon: Eye, onSelect: () => onView(r) }]}
             menu={actionsFor(r)}
           />

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Fragment, Suspense, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Briefcase, Building2, Loader2, MapPin, RefreshCw, Search, UserX } from "lucide-react";
@@ -10,6 +10,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
+import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,6 +28,7 @@ import {
 } from "@/components/features/admin/market-gaps/useMarketGaps";
 import { GapSheet } from "./_components/gap-sheet";
 import { gapSentence } from "./_components/gap-text";
+import { SearchField } from "@/components/shared/SearchField";
 
 const PRIORITY_TONE: Record<string, string> = {
   high: "bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200",
@@ -56,6 +58,7 @@ function MarketGapsContent() {
   const [pageSize, setPageSize] = useState(20);
   const [sheet, setSheet] = useState<{ id: string; mode: "view" | "assign" | "dismiss" } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     const id = setTimeout(() => { setSearch(draft); setPage(1); }, 300);
@@ -93,6 +96,57 @@ function MarketGapsContent() {
     : [];
 
   const sentence = (g: GapRow) => gapSentence(t as never, g);
+
+  // One definition for both layouts: the desktop bar and the phone sheet.
+  const filterFields = data ? [
+    {
+      id: "gap-territory", label: t("filterTerritory"), width: "w-48",
+      render: (id: string | undefined, cls: string) => (
+        <Select value={territory} onValueChange={filter(setTerritory)}>
+          <SelectTrigger id={id} aria-label={t("filterTerritory")} className={cls}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("allTerritories")}</SelectItem>
+            {data.territories.map((x) => <SelectItem key={x.id} value={x.id}>{x.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      ),
+    },
+    {
+      id: "gap-kind", label: t("filterKind"), width: "w-48",
+      render: (id: string | undefined, cls: string) => (
+        <Select value={kind} onValueChange={filter(setKind)}>
+          <SelectTrigger id={id} aria-label={t("filterKind")} className={cls}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("allKinds")}</SelectItem>
+            {GAP_KINDS.map((k) => <SelectItem key={k} value={k}>{t(`kind.${k}`)}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      ),
+    },
+    {
+      id: "gap-status", label: t("filterStatus"), width: "w-40",
+      render: (id: string | undefined, cls: string) => (
+        <Select value={status} onValueChange={filter(setStatus)}>
+          <SelectTrigger id={id} aria-label={t("filterStatus")} className={cls}><SelectValue /></SelectTrigger>
+          <SelectContent>{GAP_STATUS_FILTERS.map((x) => <SelectItem key={x} value={x}>{t(`status.${x}`)}</SelectItem>)}</SelectContent>
+        </Select>
+      ),
+    },
+    {
+      id: "gap-priority", label: t("filterPriority"), width: "w-40",
+      render: (id: string | undefined, cls: string) => (
+        <Select value={priority} onValueChange={filter(setPriority)}>
+          <SelectTrigger id={id} aria-label={t("filterPriority")} className={cls}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("allPriorities")}</SelectItem>
+            {GAP_PRIORITIES.map((x) => <SelectItem key={x} value={x}>{t(`priority.${x}`)}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      ),
+    },
+  ] : [];
+  // Sheet count leaves out search (it stays on the phone line) and the area chip.
+  const sheetActiveCount = [territory !== "all", kind !== "all", status !== "open", priority !== "all"].filter(Boolean).length;
   const maxArea = Math.max(1, ...(data?.snapshot?.areas.map((a) => a.seekers) ?? [1]), data?.snapshot?.noAreaCount ?? 0);
 
   return (
@@ -124,33 +178,25 @@ function MarketGapsContent() {
         <div className={`space-y-6 transition-opacity ${isFetching ? "opacity-60" : ""}`} aria-busy={isFetching}>
           {!data.snapshot ? <p className="rounded-2xl border border-dashed border-border/70 p-4 text-sm text-muted-foreground">{t("neverBuilt")}</p> : null}
 
-          <section className={`${reportCardClassName} gap-3`} aria-label={t("filterKind")}>
+          {/* Phone: search + one Filters button on a line; the four selects move
+              into a sheet with visible labels. Desktop keeps the inline bar. */}
+          <div className="flex items-end gap-2 sm:hidden">
+            <SearchField className="flex-1" value={draft} onValueChange={setDraft} placeholder={t("search")} inputClassName="h-11 rounded-lg" />
+            <PhoneFiltersButton activeCount={sheetActiveCount} onClick={() => setFiltersOpen(true)} />
+          </div>
+          <PhoneFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} activeCount={sheetActiveCount} onClear={reset}>
+            {filterFields.map((field) => (
+              <FilterField key={field.id} label={field.label} htmlFor={`phone-${field.id}`}>
+                {field.render(`phone-${field.id}`, SHEET_CONTROL)}
+              </FilterField>
+            ))}
+          </PhoneFilterSheet>
+
+          <section className={`${reportCardClassName} gap-3 max-sm:hidden`} aria-label={t("filterKind")}>
             <div className="flex flex-wrap items-end gap-3">
-              <Select value={territory} onValueChange={filter(setTerritory)}>
-                <SelectTrigger aria-label={t("filterTerritory")} className="h-10 w-48 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("allTerritories")}</SelectItem>
-                  {data.territories.map((x) => <SelectItem key={x.id} value={x.id}>{x.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={kind} onValueChange={filter(setKind)}>
-                <SelectTrigger aria-label={t("filterKind")} className="h-10 w-48 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("allKinds")}</SelectItem>
-                  {GAP_KINDS.map((k) => <SelectItem key={k} value={k}>{t(`kind.${k}`)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={status} onValueChange={filter(setStatus)}>
-                <SelectTrigger aria-label={t("filterStatus")} className="h-10 w-40 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>{GAP_STATUS_FILTERS.map((s) => <SelectItem key={s} value={s}>{t(`status.${s}`)}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={priority} onValueChange={filter(setPriority)}>
-                <SelectTrigger aria-label={t("filterPriority")} className="h-10 w-40 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("allPriorities")}</SelectItem>
-                  {GAP_PRIORITIES.map((p) => <SelectItem key={p} value={p}>{t(`priority.${p}`)}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              {filterFields.map((field) => (
+                <Fragment key={field.id}>{field.render(undefined, `h-10 ${field.width} text-sm`)}</Fragment>
+              ))}
               <div className="relative w-full sm:w-64">
                 <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("search")} aria-label={t("search")} className="h-10 ps-9" />
@@ -175,10 +221,10 @@ function MarketGapsContent() {
                       </div>
                       <p className="font-semibold leading-snug">{sentence(g)}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2 max-sm:w-full">
+                    <div className="flex flex-wrap gap-2 max-sm:w-full max-sm:border-t max-sm:border-border/60 max-sm:pt-3">
                       <Button variant="outline" className="min-h-10 max-sm:min-h-11 max-sm:flex-1" onClick={() => setSheet({ id: g.id, mode: "view" })}>{t("view")}</Button>
                       <Button className="min-h-10 max-sm:min-h-11 max-sm:flex-1" onClick={() => setSheet({ id: g.id, mode: "assign" })}>{t("assign")}</Button>
-                      <Button variant="ghost" className="min-h-10 max-sm:min-h-11 max-sm:flex-1" onClick={() => setSheet({ id: g.id, mode: "dismiss" })}>{t("dismiss")}</Button>
+                      <Button variant="ghost" className="min-h-10 max-sm:min-h-11 max-sm:flex-1 max-sm:border max-sm:border-border" onClick={() => setSheet({ id: g.id, mode: "dismiss" })}>{t("dismiss")}</Button>
                     </div>
                   </li>
                 ))}

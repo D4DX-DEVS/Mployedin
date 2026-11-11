@@ -5,8 +5,12 @@ import Job from "@/models/Job";
 import Application from "@/models/Application";
 import { ActivityEvent, ACTIVITY_PRIORITY } from "@/models/ActivityEvent";
 import Employer from "@/models/Employer";
+import { displayCompanyName } from "@/lib/jobs/companyDisclosure";
 import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
+import { defaultApplicationCv } from "@/lib/applications/cvChoice";
+import { claimSeekerFiles } from "@/lib/cv/fileClaims";
+import logger from "@/lib/logger";
 import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import { buildRecommendedJobQuery } from "@/lib/jobRecommendations";
 import { JOB_MATCH_FIELDS } from "@/lib/matching/constants";
@@ -119,6 +123,19 @@ export const autoApplyFunction = inngest.createFunction(
 
     if (picks.length === 0) return { skipped: "no eligible jobs" };
 
+    // The CV these applications carry. It is stored on each one, so the employer
+    // is shown the file that was sent even after the seeker replaces it. They
+    // used to carry none: the employer saw whatever the profile held that day,
+    // or nothing at all for a seeker whose CV was an uploaded resume.
+    // Read again in each step (steps can run long after the seeker was read)
+    // and held while the application is saved (lib/cv/fileClaims.ts).
+    type SeekerFiles = { documents?: { name: string; url: string; category?: string; type?: string; builtHash?: string }[]; cv?: { originalUrl?: string } };
+    const currentCv = async () => {
+      const files = (await JobSeeker.findById(seeker._id).select("documents cv.originalUrl").lean()) as SeekerFiles | null;
+      const cv = defaultApplicationCv(files ?? {});
+      return (await claimSeekerFiles(seeker._id, cv.map((d) => d.url))).length > 0 ? null : cv;
+    };
+
     let applied = 0;
     for (const { job, score, breakdown } of picks) {
       const jobId = String(job._id);
@@ -126,12 +143,21 @@ export const autoApplyFunction = inngest.createFunction(
         const dupe = await Application.findOne({ jobSeekerId: seeker._id, jobId: job._id }).lean();
         if (dupe) return;
 
+        // Removed in the instant between reading and holding it: not this job
+        // now; the next run applies with whatever CV the seeker has then.
+        const applicationCv = await currentCv();
+        if (!applicationCv) {
+          logger.warn({ jobSeekerId: String(seeker._id), jobId }, "[auto-apply] CV changed while applying; skipped");
+          return;
+        }
+
         const employer = await Employer.findById(job.employerId).select("companyName").lean() as { companyName?: string } | null;
-        const company = employer?.companyName ?? "";
+        // Shown on the seeker's activity feed, so a hidden company stays hidden.
+        const company = displayCompanyName(job as { discloseCompany?: boolean }, employer?.companyName, "");
 
         const { signals: bSignals, score: bScore } = computeBehaviorSignals({
           profileCompleteness: (seeker as { profileCompleteness?: number }).profileCompleteness ?? 0,
-          documents: [],
+          documents: applicationCv,
           source: "auto_apply",
           autoApplied: true,
           lastActiveAt: (seeker as { updatedAt?: Date }).updatedAt,
@@ -150,6 +176,7 @@ export const autoApplyFunction = inngest.createFunction(
           scoredVia: "engine",
           matchBreakdown: breakdown,
           appliedAt: now,
+          documents: applicationCv,
           statusHistory: [{ status: "applied", changedAt: now }],
           behaviorSignals: bSignals,
           behaviorScore: bScore,

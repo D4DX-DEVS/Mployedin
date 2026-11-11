@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { CircleDollarSign, Clock, Gauge, Search, Target, TrendingUp, Trophy, Wallet, Zap } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { CircleDollarSign, Clock, Gauge, Target, TrendingUp, Trophy, Wallet, Zap } from "lucide-react";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   CompletionBadge, IncentiveTierBadge, KpiCard, MonthlyDistributionGrid, PerformanceBadge,
@@ -19,6 +19,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { Button } from "@/components/ui/button";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import type { EnrichedProfile, MonthlyAchievement } from "@/lib/targets/profileAchievementCalculator";
+import { SearchField } from "@/components/shared/SearchField";
 
 interface OwnResponse {
   profile: EnrichedProfile | null;
@@ -243,16 +244,13 @@ export default function AgentTargetManagementPage() {
                 <p className="text-sm font-semibold">{t("leaderboard")}</p>
                 <p className="text-xs text-muted-foreground">{t("leaderboardHint")}</p>
               </div>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={t("searchAgents")}
-                  aria-label={t("searchAgents")}
-                  className="h-11 rounded-xl border-border bg-background ps-9 text-sm"
-                />
-              </div>
+              <SearchField
+                className="w-full sm:w-64"
+                value={search}
+                onValueChange={setSearch}
+                placeholder={t("searchAgents")}
+                inputClassName="h-11 rounded-xl border-border bg-background text-sm"
+              />
             </div>
             <div className="overflow-x-auto">
             <Table data-mobile-table="scroll">

@@ -45,6 +45,14 @@ import { escapeRegex } from "@/lib/security/sanitize";
 
 const CHAT_MODEL = GEMINI_MODELS.flash;
 
+/** Pause before the single repeat of a chat request the provider was too busy for. */
+const PROVIDER_RETRY_DELAY_MS = 400;
+
+/** Timeouts, rate limits and provider-side errors: worth one more try. */
+function isBusyProviderStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
+}
+
 async function handlePOST(req: NextRequest) {
   try {
     const session = await auth();
@@ -825,18 +833,32 @@ ${interviewLines ? `\n### Upcoming Interviews\n${interviewLines}` : ""}`;
     const startedAt = Date.now();
     // The shared transport: OpenRouter or Google, whichever serves text, with
     // the shared timeout on the wait for the first response.
-    const upstream = await chatCompletionsFetch(
-      {
-        model: CHAT_MODEL,
-        messages: chatMessages,
-        // Thinking (when enabled via env) shares max_tokens with the answer, so
-        // completionBudget adds headroom only in that case.
-        max_tokens: completionBudget(AI_TOKEN_LIMITS.chat, chatReasoningEffort()),
-        reasoning_effort: chatReasoningEffort(),
-        stream: true,
-      },
-      "ai-chat"
-    );
+    const askProvider = () =>
+      chatCompletionsFetch(
+        {
+          model: CHAT_MODEL,
+          messages: chatMessages,
+          // Thinking (when enabled via env) shares max_tokens with the answer, so
+          // completionBudget adds headroom only in that case.
+          max_tokens: completionBudget(AI_TOKEN_LIMITS.chat, chatReasoningEffort()),
+          reasoning_effort: chatReasoningEffort(),
+          stream: true,
+        },
+        "ai-chat"
+      );
+
+    let upstream = await askProvider();
+    // A busy or rate-limited provider answers within a second or two, and the
+    // same request then goes through: the user used to get "something went
+    // wrong" and had to press Retry themselves (owner, 2026-11-11). One more
+    // try, before any byte has been streamed. A refusal (400/401/402/403) is
+    // returned as it is: asking again cannot change it.
+    if (isBusyProviderStatus(upstream.status)) {
+      logger.warn({ status: upstream.status }, "[AI Chat] AI provider busy, asking once more");
+      await upstream.body?.cancel().catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, PROVIDER_RETRY_DELAY_MS));
+      upstream = await askProvider();
+    }
 
     if (!upstream.ok) {
       const err = await upstream.text();

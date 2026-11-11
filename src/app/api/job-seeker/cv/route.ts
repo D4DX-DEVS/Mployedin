@@ -7,7 +7,8 @@ import { uploadFile } from "@/lib/storage/spaces";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateUploadedFile } from "@/lib/security/file-validation";
 import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
-import { registerCvDocument, releaseSeekerFile } from "@/lib/cv/cvDocuments";
+import { registerCvDocument } from "@/lib/cv/cvDocuments";
+import { releaseUnlessClaimed } from "@/lib/cv/fileClaims";
 import { limitCvUpload } from "@/lib/cv/uploadLimit";
 import logger from "@/lib/logger";
 
@@ -42,8 +43,6 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   const limited = await limitCvUpload({ userId: ctx.userId, role: ctx.role, jobSeekerId: seeker._id, fingerprint });
   if (limited) return limited;
 
-  const previousUrl = seeker.cv?.originalUrl;
-
   let result: { url: string };
   try {
     result = await uploadFile(file, { folder: "cvs", private: true });
@@ -51,7 +50,10 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
     return uploadErrorResponse(err);
   }
 
-  await JobSeeker.updateOne(
+  // One atomic swap that also returns the CV it replaced, claim included: an
+  // application being saved with the old file at this moment keeps it
+  // (lib/cv/fileClaims.ts).
+  const before = (await JobSeeker.findOneAndUpdate(
     { userId: ctx.userId },
     {
       // cv.contentHash stays the auto-fill's "already extracted" marker; the
@@ -59,9 +61,11 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
       $set: { "cv.originalUrl": result.url },
       // New CV → old ATS analysis and text are stale. Nothing is parsed yet:
       // the reader sets the text and parsedAt when it has read this file.
-      $unset: { "cv.atsScore": "", "cv.atsReport": "", "cv.rawText": "", "cv.atsAnalyzedAt": "", "cv.parsedAt": "" },
-    }
-  );
+      $unset: { "cv.atsScore": "", "cv.atsReport": "", "cv.rawText": "", "cv.atsAnalyzedAt": "", "cv.parsedAt": "", "cv.attachedAt": "" },
+    },
+    { new: false, projection: { "cv.originalUrl": 1, "cv.attachedAt": 1 } },
+  ).lean()) as { cv?: { originalUrl?: string; attachedAt?: Date } } | null;
+  const previous = before?.cv;
 
   // Read it off the request path; the upload succeeds even if queueing fails
   // (the backfill reads anything left "uploaded").
@@ -82,8 +86,8 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
   // Only now that the new CV is stored and recorded is the old object disposable —
   // unless an application was sent with it: the employer keeps that CV.
-  if (previousUrl && previousUrl !== result.url) {
-    await releaseSeekerFile(seeker._id, previousUrl);
+  if (previous?.originalUrl && previous.originalUrl !== result.url) {
+    await releaseUnlessClaimed(seeker._id, { url: previous.originalUrl, attachedAt: previous.attachedAt });
   }
 
   await logActivity({

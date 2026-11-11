@@ -552,29 +552,32 @@ export default function SuperAgentJobsPage() {
 
         {/* ── AI Search Row: one input with the submit inside it ── */}
         <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end">
-          <div className="relative min-w-0 flex-1">
-            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-            <Input
-              aria-label={t("aiSearchPlaceholder")}
-              value={aiQuery}
-              onChange={(e) => setAiQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
-              placeholder={t("aiSearchPlaceholder")}
-              className="h-11 rounded-lg bg-background/85 pl-9 pe-14 text-sm shadow-none"
-            />
-            <Button
-              onClick={() => handleAiSearch()}
-              disabled={aiLoading || !aiQuery.trim()}
-              size="sm"
-              aria-label={tc("search")}
-              className="absolute right-1.5 top-1/2 h-8 w-9 -translate-y-1/2 rounded-md px-0 disabled:opacity-60"
-            >
-              {aiLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
+          <div className="min-w-0 flex-1">
+            <label htmlFor="sa-jobs-ai-search" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{t("aiSearchLabel")}</label>
+            <div className="relative">
+              <Sparkles className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+              <Input
+                id="sa-jobs-ai-search"
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
+                placeholder={t("aiSearchPlaceholder")}
+                className="h-11 rounded-lg bg-background/85 ps-9 pe-14 text-sm shadow-none"
+              />
+              <Button
+                onClick={() => handleAiSearch()}
+                disabled={aiLoading || !aiQuery.trim()}
+                size="sm"
+                aria-label={tc("search")}
+                className="absolute end-1.5 top-1/2 h-8 w-9 -translate-y-1/2 rounded-md px-0 disabled:opacity-60"
+              >
+                {aiLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 

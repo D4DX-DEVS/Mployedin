@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import SavedJob from "@/models/SavedJob";
 import { seekerProfileId } from "@/lib/savedJobs/seeker";
+import { maskJobEmployer } from "@/lib/jobs/companyDisclosure";
 
 // The sizes PaginationControls offers.
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -58,6 +59,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             location: "$job.location",
             salary: "$job.salary",
             requirements: { skills: "$job.requirements.skills" },
+            discloseCompany: "$job.discloseCompany",
             employerId: { $first: "$employer" },
           },
         },
@@ -66,6 +68,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     SavedJob.aggregate<{ total: number }>([...pipeline, { $count: "total" }]),
   ]);
   const total = counted[0]?.total ?? 0;
+  // A job posted with the company hidden shows "Mployedin" and its mark here too.
+  for (const row of rows as Array<{ job: Record<string, unknown> }>) maskJobEmployer(row.job);
 
   return NextResponse.json({ items: rows, total, page, totalPages: Math.ceil(total / limit) });
 });

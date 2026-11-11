@@ -116,7 +116,7 @@ async function choose(page: Page, trigger: ReturnType<Page["locator"]>, label: s
  * that lands while the step is still settling is swallowed.
  */
 async function nextStep(page: Page, to: number) {
-  const reached = page.getByText(`Step ${to} of 5`).locator("visible=true");
+  const reached = page.getByText(`Step ${to} of 3`).locator("visible=true");
   await expect(async () => {
     if ((await reached.count()) === 0) {
       await page.getByRole("toolbar").getByRole("button", { name: "Next", exact: true }).locator("visible=true").first().click();
@@ -191,8 +191,8 @@ test.describe("agent posts the employer's way (item 2)", () => {
 
     const picker = page.locator("#job-form-employer");
     await expect(picker).toContainText(AGENT_EMPLOYER_NAME);
-    // Same five steps as the employer's wizard.
-    await expect(page.getByText("Step 1 of 5").locator("visible=true").first()).toBeVisible();
+    // Same three steps as the employer's wizard.
+    await expect(page.getByText("Step 1 of 3").locator("visible=true").first()).toBeVisible();
     const templatesRequest = page.waitForRequest((r) => r.url().includes(`/api/employers/job-templates?employerId=${AGENT_EMPLOYER_ID}`));
     await page.getByRole("button", { name: /load template/i }).click();
     expect((await (await templatesRequest).response())?.status()).toBe(200);
@@ -314,9 +314,8 @@ test.describe("agent publishes, ranks and invites (items 2 + 3, writes)", () => 
       "Build and run our web platform end to end: React and Next.js front end, Node.js APIs, MongoDB. " +
         "This posting was created by an automated end-to-end test and is deleted when the test finishes.",
     );
-    await nextStep(page, 3);
 
-    // Step 3 — skills the seeded test seeker has, so the ranking has a known match.
+    // Same step — skills the seeded test seeker has, so the ranking has a known match.
     // The placeholder disappears once a skill is added, so hold on to the input itself.
     const skillInput = await page.getByPlaceholder("Type a skill and press Enter (e.g. React, Python)").elementHandle();
     for (const skill of ["React.js", "TypeScript", "Node.js", "MongoDB", "Next.js"]) {
@@ -324,10 +323,8 @@ test.describe("agent publishes, ranks and invites (items 2 + 3, writes)", () => 
       await skillInput!.press("Enter");
     }
     await expect(page.getByText("5 skills added")).toBeVisible();
-    await nextStep(page, 4);
-
-    // Steps 4 and 5 keep their defaults.
-    await nextStep(page, 5);
+    // Step 3 (pay, settings, screening questions) keeps its defaults.
+    await nextStep(page, 3);
     const responsePromise = page.waitForResponse((r) => /\/api\/jobs(\/[a-f0-9]{24})?$/.test(new URL(r.url()).pathname) && ["POST", "PATCH"].includes(r.request().method()));
     await page.getByRole("toolbar").getByRole("button", { name: "Post Job", exact: true }).locator("visible=true").first().click();
     const response = await responsePromise;

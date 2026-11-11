@@ -250,7 +250,7 @@ describe("AdminTargetReportPage", () => {
       fireEvent.click(within(section).getByRole("button", { name: /^Behind/ }));
       await waitFor(() => expect(within(section).getAllByRole("article")).toHaveLength(2));
 
-      fireEvent.change(within(section).getByRole("textbox", { name: "Search by name or email" }), { target: { value: "sam@" } });
+      fireEvent.change(within(section).getByPlaceholderText("Search by name or email"), { target: { value: "sam@" } });
       await waitFor(() => expect(within(section).getAllByRole("article")).toHaveLength(1));
       expect(within(section).getByText("Sam Stalled").closest("a")?.getAttribute("href")).toBe("/en/admin/target-management/p-low");
     });

@@ -115,7 +115,7 @@ async function autoDraftHandler(req: NextRequest, ctx: { userId: string; role: U
     } else {
       // Drafts are intentionally partial (description/location may be empty) —
       // schema validation would 500 a title-only draft. Publishing re-validates.
-      await new Job(draftData).save({ validateBeforeSave: false });
+      await new Job({ ...draftData, discloseCompany: false }).save({ validateBeforeSave: false });
     }
 
     return new NextResponse(null, { status: 204 });

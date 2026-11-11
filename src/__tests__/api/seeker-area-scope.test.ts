@@ -20,6 +20,13 @@ jest.mock("@/lib/referrals/summary", () => ({ decorateReferralSummaries: jest.fn
 // The list adds each seeker's hiring status from their applications.
 const applicationAggregate = jest.fn(async (_pipeline?: unknown) => [] as unknown[]);
 jest.mock("@/models/Application", () => ({ __esModule: true, default: { aggregate: (p: unknown) => applicationAggregate(p) } }));
+// ...and lists the jobs each one applied to — not what these tests are about.
+jest.mock("@/lib/jobseekers/hiringStatus.server", () => ({
+  ...jest.requireActual("@/lib/jobseekers/hiringStatus.server"),
+  applicationsBySeeker: jest.fn(async () => new Map()),
+}));
+// ...and guesses a role for those who named none.
+jest.mock("@/lib/jobseekers/suggestedRole.server", () => ({ suggestedRolesFor: jest.fn(async () => new Map()) }));
 jest.mock("@/models/User", () => ({ __esModule: true, default: { collection: { name: "users" } } }));
 
 const AGENT_DOC = "660000000000000000000001";

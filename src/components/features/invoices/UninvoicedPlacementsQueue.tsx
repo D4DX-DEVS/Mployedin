@@ -18,11 +18,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Check, CheckSquare, Square, FileText, Zap, Loader2, Search,
+  Check, CheckSquare, Square, FileText, Zap, Loader2, 
   Users, Building2, Briefcase, Receipt, AlertTriangle,
   ChevronDown, ChevronUp, Globe, Calculator,
 } from "lucide-react";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { SearchField } from "@/components/shared/SearchField";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface UninvoicedPlacement {
@@ -278,17 +279,14 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
             {t("placementsPending", { count: total })}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full sm:w-auto">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="h-9 w-full rounded-lg pl-8 text-sm sm:w-48"
-              aria-label={t("searchPlacements")}
-              placeholder={t("searchPlacements")}
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            />
-          </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <SearchField
+            className="w-full sm:w-48"
+            placeholder={t("searchPlacements")}
+            value={search}
+            onValueChange={(value) => { setSearch(value); setPage(1); }}
+            inputClassName="h-11 w-full rounded-lg text-sm sm:h-9"
+          />
           {selected.size > 0 && (
             <Button
               onClick={() => setShowBulkModal(true)}

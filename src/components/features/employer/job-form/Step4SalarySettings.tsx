@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { useFormContext } from "react-hook-form";
 import { useLocale, useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { AlertTriangle, DollarSign, Users } from "lucide-react";
+import { AlertTriangle, Building2, DollarSign, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -38,8 +38,8 @@ export function Step4SalarySettings() {
   const salaryMin = watch("salary.min");
   const salaryMax = watch("salary.max");
   const vacancies = watch("vacancies");
-  const showSalary = watch("showSalary") ?? true;
-  const hasVacancyCount = vacancies != null;
+  const discloseCompany = watch("discloseCompany") ?? false;
+  const showSalary = watch("showSalary") ?? true;  const hasVacancyCount = vacancies != null;
   const locationCountry = watch("location.country") ?? "";
   const locationCity = watch("location.city") ?? "";
   const locationStr = [locationCity, locationCountry].filter(Boolean).join(", ");
@@ -86,7 +86,7 @@ export function Step4SalarySettings() {
       transition={{ duration: 0.25 }}
       className="space-y-3 sm:space-y-5"
     >
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 lg:flex-row lg:items-center lg:justify-between card-pad">
+      <div className="flex flex-col gap-2 border-b border-border/70 pb-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1">
           <h2 className="heading-section font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
@@ -95,25 +95,19 @@ export function Step4SalarySettings() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            {showSalary ? t("salaryVisible") : t("salaryHidden")}
-          </Badge>
-          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
             {formattedRange ?? t("addSalaryRange")}
-          </Badge>
-          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            {hasVacancyCount ? t("openings", { count: vacancies ?? 0 }) : t("openingsHidden")}
           </Badge>
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.9fr)]">
-        <div className="space-y-3 sm:space-y-4 rounded-2xl border border-border bg-background shadow-sm card-pad">
+      <div className="grid gap-x-8 gap-y-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.9fr)]">
+        <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <DollarSign className="w-4 h-4 text-muted-foreground" />
             {t("salaryPackage")}
           </div>
 
-          <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 chip-pad">
+          <div className="flex items-center gap-3 rounded-xl bg-muted/40 chip-pad">
             <div className="flex-1">
               <Label htmlFor="show-salary" className="text-sm font-medium">
                 {t("shareSalary")}
@@ -266,7 +260,7 @@ export function Step4SalarySettings() {
                 </div>
               )}
 
-              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 chip-pad">
+              <div className="flex items-center gap-3 rounded-xl bg-muted/40 chip-pad">
                 <div className="flex-1">
                   <Label htmlFor="is-negotiable" className="text-sm font-medium">
                     {t("negotiable")}
@@ -299,7 +293,7 @@ export function Step4SalarySettings() {
             </>
           ) : (
             <div className="space-y-3">
-              <div className="rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground chip-pad">
+              <div className="text-xs text-muted-foreground">
                 {t("undisclosedHint")}
               </div>
               {salaryRequired && (
@@ -312,13 +306,13 @@ export function Step4SalarySettings() {
           )}
         </div>
 
-        <div className="space-y-3 sm:space-y-4 rounded-2xl border border-border bg-background shadow-sm card-pad">
+        <div className="space-y-3 sm:space-y-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Users className="w-4 h-4 text-muted-foreground" />
             {t("hiringPlan")}
           </div>
 
-          <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 chip-pad">
+          <div className="flex items-center gap-3 rounded-xl bg-muted/40 chip-pad">
             <div className="flex-1">
               <Label htmlFor="track-openings" className="text-sm font-medium">
                 {t("trackOpenings")}
@@ -339,7 +333,7 @@ export function Step4SalarySettings() {
           </div>
 
           {hasVacancyCount ? (
-            <div className="space-y-3 rounded-xl border border-border/70 bg-background chip-pad">
+            <div className="space-y-3">
               <Input
                 id="vacancies"
                 type="number"
@@ -362,15 +356,33 @@ export function Step4SalarySettings() {
               </p>
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground chip-pad">
+            <div className="text-xs text-muted-foreground">
               {t("noOpeningsHint")}
             </div>
           )}
 
-          <div className="rounded-xl border border-border/70 bg-muted/20 text-xs text-muted-foreground chip-pad">
+          <div className="text-xs text-muted-foreground">
             {t("advancedHint")}
           </div>
         </div>
+      </div>
+      {/* A publishing choice, so it sits with pay and visibility at the end
+          of the form, as it does on the AI creator's last screen. */}
+      <div className="flex items-center gap-3 border-t border-border/70 pt-5">
+        <Building2 className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <Label htmlFor="disclose-company" className="text-sm font-medium">
+            {t("discloseCompany")}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {discloseCompany ? t("discloseCompanyOn") : t("discloseCompanyOff")}
+          </p>
+        </div>
+        <Switch
+          id="disclose-company"
+          checked={discloseCompany}
+          onCheckedChange={(value) => setValue("discloseCompany", value, { shouldValidate: false })}
+        />
       </div>
     </motion.div>
   );

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { InlineFilterBar, INLINE_FILTER_CONTROL, INLINE_FILTER_FIELD } from "@/components/shared/InlineFilterBar";
 import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
@@ -26,6 +26,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import type { Offer, OfferStatus } from "@/hooks/useOffers";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
+import { StackedLabelled } from "@/components/shared/LabelledControl";
 
 interface OffersWorkspaceProps {
   jobId?: string;
@@ -275,22 +276,32 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
             onExportPdf={offers.length > 0 ? handleExportPdf : undefined}
             onClear={statusFilter !== "all" || jobFilter !== "all" ? () => { setStatusFilter("all"); setUrlJobFilter("all"); } : undefined}
           >
-            <SearchableSelect
-              className={INLINE_FILTER_CONTROL}
-              options={jobOptions}
-              value={jobFilter}
-              onValueChange={setUrlJobFilter}
-              placeholder={t("allJobs")}
-              ariaLabel={t("jobFilterLabel")}
-            />
-            <SearchableSelect
-              className={INLINE_FILTER_CONTROL}
-              options={STATUS_OPTIONS}
-              value={statusFilter}
-              onValueChange={setStatusFilter}
-              placeholder={t("allStatuses")}
-              ariaLabel={t("status")}
-            />
+            <StackedLabelled label={t("jobFilterLabel")} className={INLINE_FILTER_FIELD}>
+              {(id) => (
+                <SearchableSelect
+                  id={id}
+                  className={`${INLINE_FILTER_CONTROL} w-full max-w-none`}
+                  options={jobOptions}
+                  value={jobFilter}
+                  onValueChange={setUrlJobFilter}
+                  placeholder={t("allJobs")}
+                  ariaLabel={t("jobFilterLabel")}
+                />
+              )}
+            </StackedLabelled>
+            <StackedLabelled label={t("status")} className={INLINE_FILTER_FIELD}>
+              {(id) => (
+                <SearchableSelect
+                  id={id}
+                  className={`${INLINE_FILTER_CONTROL} w-full max-w-none`}
+                  options={STATUS_OPTIONS}
+                  value={statusFilter}
+                  onValueChange={setStatusFilter}
+                  placeholder={t("allStatuses")}
+                  ariaLabel={t("status")}
+                />
+              )}
+            </StackedLabelled>
           </InlineFilterBar>
       )}
 

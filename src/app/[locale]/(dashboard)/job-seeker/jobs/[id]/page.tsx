@@ -1,5 +1,6 @@
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
+import { maskJobEmployer } from "@/lib/jobs/companyDisclosure";
 import { Employer } from "@/models/Employer";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -28,6 +29,8 @@ interface PageProps {
 interface PopulatedEmployer {
   _id?: string;
   companyName?: string;
+  /** Only set on a hidden company: the Mployedin mark (maskJobEmployer). */
+  logo?: string;
   country?: string;
   industry?: string;
   city?: string;
@@ -52,7 +55,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // and OpenGraph tags.
   if (job.status !== "active") return { title: "Job Not Found" };
 
-  const employer = job.employerId as PopulatedEmployer | null;
+  const employer = maskJobEmployer(job as Record<string, unknown>).employerId as PopulatedEmployer | null;
   const title = `${job.title} at ${employer?.companyName ?? "Company"}`;
 
   return {
@@ -151,7 +154,8 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
     );
   }
 
-  const employer = job.employerId as PopulatedEmployer | null;
+  // A hidden company shows as "Mployedin": no id (profile link), website or location.
+  const employer = maskJobEmployer(job as Record<string, unknown>).employerId as PopulatedEmployer | null;
 
   let responseTimeDays: number | null = null;
   if (employer?._id) {
@@ -167,6 +171,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
     ? t("remote")
     : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || "Location flexible";
   const employerLocation = [employer?.city, employer?.country].filter(Boolean).join(", ");
+  const verifiedEmployer = Boolean(employer?.domainVerified || employer?.isAgentVerified);
 
   // Phone header and "Job overview": only facts the job already carries.
   const employmentLabel = job.employmentType ? tCard(`employment.${job.employmentType}` as "employment.full_time") : null;
@@ -252,9 +257,15 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 </div>
                 <div className="mt-4 flex flex-col gap-3 max-sm:mt-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div className="flex min-w-0 items-start gap-3">
-                    <div aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary sm:hidden">
-                      {companyInitials}
-                    </div>
+                    {employer?.logo ? (
+                      <div aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card sm:hidden">
+                        <img src={employer.logo} alt="" width={40} height={40} className="size-10 object-contain" />
+                      </div>
+                    ) : (
+                      <div aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-semibold text-primary sm:hidden">
+                        {companyInitials}
+                      </div>
+                    )}
                   <div className="min-w-0">
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground max-sm:text-xl max-sm:leading-7 sm:text-3xl lg:text-[2.25rem]">
                       {job.title}
@@ -277,19 +288,23 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                     </p>
                   </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {(employer?.domainVerified || employer?.isAgentVerified) && (
+                  {/* Phones: save and share sit beside Apply below, so this row only
+                      shows there for the verified badge. */}
+                  <div className={`flex items-center gap-2 shrink-0 ${verifiedEmployer ? "" : "max-sm:hidden"}`}>
+                    {verifiedEmployer && (
                       <span className="shrink-0 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600">
                         {t("verifiedEmployer")}
                       </span>
                     )}
                     <SaveJobButton jobId={String(job._id)} className="max-sm:hidden" />
-                    <ShareJob
-                      jobId={String(job._id)}
-                      jobTitle={job.title}
-                      companyName={employer?.companyName ?? "Company"}
-                      locale={locale}
-                    />
+                    <div className="max-sm:hidden">
+                      <ShareJob
+                        jobId={String(job._id)}
+                        jobTitle={job.title}
+                        companyName={employer?.companyName ?? "Company"}
+                        locale={locale}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -343,6 +358,14 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 >
                   {tEasyApply("applyNow")}
                 </a>
+                <ShareJob
+                  variant="icon"
+                  jobId={String(job._id)}
+                  jobTitle={job.title}
+                  companyName={employer?.companyName ?? "Company"}
+                  locale={locale}
+                  className="min-h-11 w-11 shrink-0 p-0 [&>svg]:size-4"
+                />
                 <SaveJobButton jobId={String(job._id)} className="w-11 shrink-0 px-0" />
               </div>
             </div>

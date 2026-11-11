@@ -751,13 +751,16 @@ export default function AgentExhibitionsPage() {
             actions: <RowActions name={item.eventName} quick={quick} menu={menu} />,
             meta: (
               <>
-                <p className="flex min-w-0 items-center gap-1">
-                  <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate">
-                    {formatListDate(item.eventStartDate, locale)}{item.eventEndDate ? ` – ${formatListDate(item.eventEndDate, locale)}` : ""}
-                    {item.eventEndDate ? ` · ${t("dayCount", { count: dayCount(item.eventStartDate, item.eventEndDate) })}` : ""}
-                  </span>
-                </p>
+                {/* No dates yet: skip the line rather than an icon beside a dash. */}
+                {item.eventStartDate ? (
+                  <p className="flex min-w-0 items-center gap-1">
+                    <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">
+                      {formatListDate(item.eventStartDate, locale)}{item.eventEndDate ? ` – ${formatListDate(item.eventEndDate, locale)}` : ""}
+                      {item.eventEndDate ? ` · ${t("dayCount", { count: dayCount(item.eventStartDate, item.eventEndDate) })}` : ""}
+                    </span>
+                  </p>
+                ) : null}
                 <p className="flex min-w-0 items-center gap-1">
                   <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
                   <span className="truncate">{placeText(item) || t("notSpecified")}</span>

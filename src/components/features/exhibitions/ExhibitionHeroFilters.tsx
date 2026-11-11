@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { ChevronDown, ChevronUp, SlidersHorizontal, RotateCcw, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, SlidersHorizontal, RotateCcw } from "lucide-react";
+import { SearchField } from "@/components/shared/SearchField";
 
 export interface ExhibitionFilterOption {
   value: string;
@@ -134,15 +135,12 @@ export function ExhibitionFilterPanel({
 
   return (
     <div className="mt-3 space-y-2.5 rounded-3xl border border-border/30 bg-background/40 backdrop-blur-sm card-pad">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder={searchPlaceholder}
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          className="h-10 rounded-xl border-border bg-card pl-9 text-sm shadow-none sm:h-11"
-        />
-      </div>
+      <SearchField
+        placeholder={searchPlaceholder}
+        value={search}
+        onValueChange={onSearchChange}
+        inputClassName="h-10 rounded-xl border-border bg-card text-sm shadow-none sm:h-11"
+      />
 
       <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
         <div className="space-y-1.5">

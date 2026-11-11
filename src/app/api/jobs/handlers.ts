@@ -26,6 +26,7 @@ import { checkRateLimitDual, RATE_LIMIT_CONFIGS } from "@/lib/security/rateLimit
 import { validateBody } from "@/lib/validators";
 import { jobCreateSchema } from "@/lib/validators/jobs";
 import { stripPrivateJobFields } from "@/lib/jobs/visibility";
+import { maskJobEmployer } from "@/lib/jobs/companyDisclosure";
 
 /** Live, public, unexpired jobs: what an agent may browse and share portal-wide. */
 const PORTAL_JOB_FILTER = () => ({
@@ -432,7 +433,10 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // The feed goes to any signed-in user, so anything employer-only — the other
   // applicants' ids above all — is stripped unless the caller manages the job.
   if (!canFilterManagedJobs) {
-    for (const job of jobs) stripPrivateJobFields(job as Record<string, unknown>);
+    for (const job of jobs) {
+      stripPrivateJobFields(job as Record<string, unknown>);
+      maskJobEmployer(job as Record<string, unknown>);
+    }
   }
 
   // The portal tab's filter choices: only values live jobs actually have.
@@ -618,6 +622,8 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     showSalary,
     tags: tags ?? [],
     visibility: visibility ?? "public",
+    // Off unless the poster turns it on: seekers see "Mployedin", not the company.
+    discloseCompany: body.discloseCompany ?? false,
     // The qualifying answers of deal-breaker questions are the employer's
     // private rule; they live apart from the questions seekers are served.
     ...(() => {

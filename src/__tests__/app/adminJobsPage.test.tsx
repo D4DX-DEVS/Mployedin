@@ -107,7 +107,7 @@ describe("AdminJobsPage", () => {
     expect(screen.getByRole("heading", { name: /job listings/i })).toBeInTheDocument();
     // Filters sit inline; no Show filters toggle hides them.
     expect(screen.queryByRole("button", { name: /show filters/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /search/i })).toBeInTheDocument();
+    expect(screen.getByRole("searchbox", { name: /search/i })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText("Senior Recruiter")).toBeInTheDocument();

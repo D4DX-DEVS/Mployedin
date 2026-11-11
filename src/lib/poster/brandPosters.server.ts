@@ -19,6 +19,8 @@ export interface CreateBrandPosterInput {
   look: PosterLook;
   headline?: string;
   locale?: string;
+  /** Employer logo and name on the poster; defaults to off (Mployedin's instead). */
+  showEmployer?: boolean;
   actorUserId?: string;
 }
 
@@ -64,6 +66,7 @@ export async function createBrandPoster(input: CreateBrandPosterInput) {
     look: input.look,
     headline,
     locale,
+    showEmployer: input.showEmployer === true,
     kit: { ...kit },
   };
 

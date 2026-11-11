@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { InlineLabelled } from "@/components/shared/LabelledControl";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -82,6 +83,7 @@ function fmt(value: number, currency = "AED"): string {
 
 export default function AgentCommissionsReportPage() {
   const t = useTranslations("agentCommissionsReport");
+  const tc = useTranslations("common");
   const currentYear = new Date().getFullYear();
   const [yearFilter, setYearFilter] = useState(currentYear);
   const [loading, setLoading] = useState(true);
@@ -132,18 +134,22 @@ export default function AgentCommissionsReportPage() {
         context={t("pageSubtitle", { year: yearFilter })}
         actions={
           <>
-            <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
-              <SelectTrigger className="h-11 w-28 rounded-xl">
-                <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {yearOptions.map((y) => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} aria-label={t("pageTitle")} className="h-11 w-11 rounded-xl">
+            <InlineLabelled label={tc("year")}>
+              {(id) => (
+                <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
+                  <SelectTrigger id={id} className="h-11 w-28 rounded-xl">
+                    <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((y) => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </InlineLabelled>
+            <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} aria-label={tc("refresh")} className="h-11 w-11 rounded-xl">
               <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
           </>

@@ -42,6 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
+import { InlineLabelled } from "@/components/shared/LabelledControl";
 
 interface KPIs {
   totalRequests: number;
@@ -272,14 +273,20 @@ export default function SuperAgentExhibitionAnalyticsPage() {
         description={t("heroDescription")}
         summary={{ label: t("approvedBudgetLabel"), value: formatCurrency(kpis.totalApprovedBudget, currencyCode), note: `${t("actualSpendLabel")} ${formatCurrency(kpis.totalActualSpend, currencyCode)}` }}
         actions={
-              <div className="min-w-[10rem]">
-                <SearchableSelect
-                  options={YEAR_OPTIONS}
-                  value={year}
-                  onValueChange={setYear}
-                  placeholder={t("selectYearPlaceholder")}
-                />
-              </div>
+              <InlineLabelled label={tc("year")}>
+                {(id) => (
+                  <div className="min-w-[8rem]">
+                    <SearchableSelect
+                      id={id}
+                      ariaLabel={tc("year")}
+                      options={YEAR_OPTIONS}
+                      value={year}
+                      onValueChange={setYear}
+                      placeholder={t("selectYearPlaceholder")}
+                    />
+                  </div>
+                )}
+              </InlineLabelled>
         }
         /* One home per metric. These used to be repeated immediately below in a
            second row of cards — "Requests" and "Total Requests" were the same

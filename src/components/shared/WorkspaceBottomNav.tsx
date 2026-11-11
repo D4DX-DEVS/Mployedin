@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, type LucideProps } from "lucide-react";
 import type { FC } from "react";
 import { cn } from "@/lib/utils";
+import { BottomNavItem, BOTTOM_BAR_CLASS } from "@/components/shared/BottomNavItem";
 
 export interface BottomNavTab {
   key: string;
@@ -62,87 +62,43 @@ export function WorkspaceBottomNav({ locale, tabs, onOpenMenu, menuLabel, ariaLa
     return pathname === full || pathname.startsWith(`${full}/`);
   }
 
+  function renderTab(tab: BottomNavTab) {
+    return (
+      <BottomNavItem
+        key={tab.href}
+        href={`/${locale}${tab.href}`}
+        label={tab.label}
+        icon={tab.icon}
+        active={isActive(tab)}
+        indicatorId="workspace-bottom-nav-indicator"
+        badgeCount={tab.badgeCount}
+      />
+    );
+  }
+
   return (
     <nav
       // CookieConsent measures this bar and sits on top of it.
       data-bottom-nav=""
-      className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/40 bg-background/95 backdrop-blur-md"
+      className={cn(BOTTOM_BAR_CLASS, "z-40")}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label={ariaLabel}
     >
-      <div className="relative flex items-stretch justify-around">
-        {orderedTabs[0].map((tab) => {
-          const active = isActive(tab);
-          const Icon = tab.icon;
-          return (
-            <Link
-              key={tab.href}
-              href={`/${locale}${tab.href}`}
-              prefetch={false}
-              className={cn(
-                "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 min-w-0 transition-colors duration-150",
-                active ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              {active && <span className="absolute top-0 inset-x-[20%] h-0.5 rounded-b-full bg-primary" aria-hidden />}
-              <span className="relative">
-                <Icon className={cn("h-5 w-5 shrink-0 transition-transform duration-150", active && "scale-110")} />
-                {(tab.badgeCount ?? 0) > 0 && (
-                  <span className="absolute -end-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-background">
-                    {(tab.badgeCount ?? 0) > 9 ? "9+" : tab.badgeCount}
-                  </span>
-                )}
-              </span>
-              <span className="text-[11px] font-medium leading-none truncate">{tab.label}</span>
-            </Link>
-          );
-        })}
+      <div className="relative flex items-stretch justify-around px-1">
+        {orderedTabs[0].map(renderTab)}
         {createSlot && (
-          <div className="flex w-14 shrink-0 items-center justify-center" aria-hidden={false}>
-            <div className="-translate-y-3">{createSlot}</div>
+          <div className="flex w-16 shrink-0 items-start justify-center">
+            <div className="-translate-y-4">{createSlot}</div>
           </div>
         )}
-        {orderedTabs[1].map((tab) => {
-          const active = isActive(tab);
-          const Icon = tab.icon;
-          return (
-            <Link
-              key={tab.href}
-              href={`/${locale}${tab.href}`}
-              prefetch={false}
-              className={cn(
-                "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 min-w-0 transition-colors duration-150",
-                active ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              {active && <span className="absolute top-0 inset-x-[20%] h-0.5 rounded-b-full bg-primary" aria-hidden />}
-              <span className="relative">
-                <Icon className={cn("h-5 w-5 shrink-0 transition-transform duration-150", active && "scale-110")} />
-                {(tab.badgeCount ?? 0) > 0 && (
-                  <span className="absolute -end-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-background">
-                    {(tab.badgeCount ?? 0) > 9 ? "9+" : tab.badgeCount}
-                  </span>
-                )}
-              </span>
-              <span className="text-[11px] font-medium leading-none truncate">{tab.label}</span>
-            </Link>
-          );
-        })}
-        <button
-          type="button"
+        {orderedTabs[1].map(renderTab)}
+        <BottomNavItem
           onClick={onOpenMenu}
-          className="relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 min-w-0 text-muted-foreground transition-colors duration-150"
-        >
-          <span className="relative">
-            <Menu className="h-5 w-5 shrink-0" />
-            {menuBadgeCount > 0 && (
-              <span className="absolute -end-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-background">
-                {menuBadgeCount > 9 ? "9+" : menuBadgeCount}
-              </span>
-            )}
-          </span>
-          <span className="text-[11px] font-medium leading-none truncate">{menuLabel}</span>
-        </button>
+          label={menuLabel}
+          icon={Menu}
+          indicatorId="workspace-bottom-nav-indicator"
+          badgeCount={menuBadgeCount}
+        />
       </div>
     </nav>
   );

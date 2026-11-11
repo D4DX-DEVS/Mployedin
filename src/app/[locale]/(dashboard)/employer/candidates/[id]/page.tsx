@@ -38,6 +38,8 @@ interface UnifiedApplication {
   rejectionReason?: string;
   source?: string;
   portfolioLinks?: { name: string; url: string; type: string }[];
+  /** A CV was sent with this application. */
+  hasCv?: boolean;
 }
 
 interface UnifiedInterview {
@@ -66,43 +68,6 @@ interface NoteEntry {
   content: string;
   createdAt: string;
   jobTitle: string;
-}
-
-interface CandidateProfile {
-  candidate: {
-    _id: string;
-    userId?: { name: string; email: string };
-    currentLocation?: string;
-    skills?: string[];
-    experience?: { jobTitle: string; company: string; isCurrent: boolean; startDate?: string; endDate?: string; description?: string; country?: string }[];
-    education?: { degree?: string; institution?: string; field?: string; graduationDate?: string; grade?: string }[];
-    languages?: { language: string; proficiency: string }[];
-    certifications?: string[];
-    availabilityStatus?: string;
-    profileCompleteness?: number;
-    badges?: string[];
-    isAgentReferred?: boolean;
-    cv?: { originalUrl?: string };
-    headline?: string;
-    totalExperienceYears?: number;
-    preferredSalary?: { min: number; max: number; currency: string };
-    preferredJobType?: string;
-    preferredLocations?: string[];
-    preferredRoles?: string[];
-    noticePeriod?: number;
-    workStatus?: string;
-  };
-  company: string;
-  applications: UnifiedApplication[];
-  interviews: UnifiedInterview[];
-  notes: NoteEntry[];
-  timeline: TimelineEntry[];
-  summary: {
-    totalApplications: number;
-    activeApplications: number;
-    totalInterviews: number;
-    hired: boolean;
-  };
 }
 
 /* ── Helpers ── */
@@ -174,13 +139,18 @@ export default function UnifiedCandidatePage() {
   // Pointing an <iframe> straight at the application download route instead
   // 302-redirects to the cross-origin Spaces URL, which Chrome refuses to frame
   // ("This page has been blocked by Chrome"). withAuth enforces tiered access.
-  const cvViewHref = candidate.cv?.originalUrl
-    ? `/api/employers/candidates/${id}/cv#cv.pdf`
+  // The CV is the one sent with that application; the Profile CV only when it
+  // was sent with none. Keyed on the Profile CV alone, this showed a different
+  // file from the one the seeker chose, and no CV at all for an applicant whose
+  // CV was an uploaded resume or the one built on Mployedin.
+  const hasCv = Boolean(applications[0]?.hasCv || candidate.cv?.originalUrl);
+  const cvViewHref = hasCv
+    ? `/api/employers/candidates/${id}/cv${cvAppId ? `?applicationId=${cvAppId}` : ""}#cv.pdf`
     : undefined;
   // Download keeps the application route (forces a save with the real filename);
   // falls back to the inline stream for pool candidates with no application.
   const cvDownloadHref =
-    candidate.cv?.originalUrl && cvAppId
+    hasCv && cvAppId
       ? `/api/applications/${cvAppId}/documents/download?cv=1#cv.pdf`
       : cvViewHref;
 

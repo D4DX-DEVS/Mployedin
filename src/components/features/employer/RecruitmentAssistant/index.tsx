@@ -1,5 +1,6 @@
 "use client";
 
+import { splitAssistantReply } from "@/lib/ai/draftDisplay";
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -931,10 +932,8 @@ function MessageBubble({
   isLastAssistant: boolean;
 }) {
   // Strip <JOB_DATA>...</JOB_DATA> and <BULK_JOB_DATA>...</BULK_JOB_DATA> from display
-  const displayContent = msg.content
-    .replace(/<JOB_DATA>[\s\S]*?<\/JOB_DATA>/g, "")
-    .replace(/<BULK_JOB_DATA>[\s\S]*?<\/BULK_JOB_DATA>/g, "")
-    .trim();
+  // …including one that is still streaming (its closing tag has not arrived).
+  const displayContent = splitAssistantReply(msg.content).text;
 
   return (
     <div

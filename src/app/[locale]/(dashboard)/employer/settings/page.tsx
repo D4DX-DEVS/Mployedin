@@ -693,8 +693,9 @@ function CompanySettingsPage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                       <div>
-                        <FieldLabel>{t("companySize")}</FieldLabel>
+                        <FieldLabel htmlFor="company-size">{t("companySize")}</FieldLabel>
                         <SearchableSelect
+                          id="company-size"
                           options={COMPANY_SIZES.map((s) => ({ value: s, label: `${s} employees` }))}
                           value={form.companySize}
                           onValueChange={(v) => setField("companySize", v)}
@@ -738,8 +739,9 @@ function CompanySettingsPage() {
                         />
                       </div>
                       <div data-field="country" className="transition-all duration-300">
-                        <FieldLabel>{t("country")}</FieldLabel>
+                        <FieldLabel htmlFor="company-country">{t("country")}</FieldLabel>
                         <SearchableSelect
+                          id="company-country"
                           options={countries.map((c) => ({ value: c.code, label: `${c.name} (${c.currencyCode})` }))}
                           value={form.country}
                           onValueChange={(v) => setField("country", v)}

@@ -13,7 +13,7 @@ import Application from "@/models/Application";
 import { inngest } from "@/lib/inngest/client";
 import { deleteFile } from "@/lib/storage/spaces";
 import logger from "@/lib/logger";
-import { applicantCvOf, CV_PARSER_VERSION, resumeUrlOf, type ApplicantCv, type ParsedCv } from "@/lib/cv/parsedCv";
+import { applicantCvOf, applicationCvUrlOf, CV_PARSER_VERSION, resumeUrlOf, type ApplicantCv, type ParsedCv } from "@/lib/cv/parsedCv";
 
 export const CV_PROCESS_EVENT = "cv/process.requested";
 
@@ -180,7 +180,7 @@ type CvRecordView = { status: CvStatus; fileName?: string; text?: string; parsed
 
 function cvUrlOf(input: ApplicantCvInput): { attached: string | null; url: string | null } {
   const attached = resumeUrlOf(input.documents);
-  return { attached, url: attached ?? input.profileCvUrl ?? null };
+  return { attached, url: applicationCvUrlOf(input.documents, input.profileCvUrl) };
 }
 
 /**

@@ -6,7 +6,7 @@ import { PageHero } from "@/components/shared/PageHero";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { toast } from "sonner";
-import { Search, Clock, CornerDownRight, Target, Globe } from "lucide-react";
+import { Clock, CornerDownRight, Target, Globe } from "lucide-react";
 import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { cn } from "@/lib/utils";
 import { formatActionCode } from "@/lib/admin/actionLabels";
@@ -28,6 +28,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { TableBodySkeleton } from "@/components/ui/loading";
+import { SearchField } from "@/components/shared/SearchField";
 
 interface AuditLogEntry {
   _id: string;
@@ -298,27 +299,22 @@ export default function AuditLogsPage() {
         }
         more={(
           <>
-            <div className="relative">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                aria-label={t("filterByAction")}
-                placeholder={t("filterByAction")}
-                value={action}
-                onChange={(e) => { setAction(e.target.value); resetPage(); }}
-                className={INLINE_FILTER_CONTROL + " ps-10"}
-              />
-            </div>
-            <div className="relative">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                aria-label={t("country")}
-                placeholder={t("countryCodeExample")}
-                value={country}
-                onChange={(e) => { setCountry(e.target.value.toUpperCase()); resetPage(); }}
-                className={INLINE_FILTER_CONTROL + " ps-10 uppercase"}
-                maxLength={2}
-              />
-            </div>
+            <SearchField
+              className="min-w-0 max-w-56 flex-[1_1_8rem]"
+              label={t("filterByAction").replace(/[.…]+$/, "")}
+              value={action}
+              onValueChange={(value) => { setAction(value); resetPage(); }}
+              inputClassName="h-11 rounded-lg border-border bg-card sm:h-9 sm:text-sm"
+            />
+            <SearchField
+              className="min-w-0 max-w-56 flex-[1_1_8rem]"
+              label={t("country")}
+              placeholder={t("countryCodeExample")}
+              value={country}
+              onValueChange={(value) => { setCountry(value.toUpperCase()); resetPage(); }}
+              inputClassName="h-11 rounded-lg border-border bg-card uppercase sm:h-9 sm:text-sm"
+              maxLength={2}
+            />
             <DateTimePicker
               mode="date"
               value={fromDate}

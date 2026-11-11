@@ -16,6 +16,7 @@ import { PayingCustomers } from "./_components/paying-customers";
 import { PlanMix } from "./_components/plan-mix";
 import { RenewalsDue } from "./_components/renewals-due";
 import { StartedLostChart } from "./_components/started-lost-chart";
+import { InlineLabelled } from "@/components/shared/LabelledControl";
 
 /*
  * Subscriptions report, on the Platform tab's layout: four totals, then
@@ -121,16 +122,20 @@ export default function AdminSubscriptionDashboardPage() {
         actions={(
           // One control, as on the other tabs: two squeezed the title to a
           // letter per line on phones. "Manage plans" sits under the plan mix.
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger aria-label={tDashboard("toolbar.period")} className="h-10 w-[10.5rem] rounded-xl border-border/70 bg-background/90 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DASHBOARD_PERIODS.map((key) => (
-                <SelectItem key={key} value={key}>{tDashboard(`toolbar.periods.${key}`)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <InlineLabelled label={tDashboard("toolbar.period")}>
+            {(id) => (
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger id={id} className="h-10 w-[10.5rem] rounded-xl border-border/70 bg-background/90 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DASHBOARD_PERIODS.map((key) => (
+                    <SelectItem key={key} value={key}>{tDashboard(`toolbar.periods.${key}`)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </InlineLabelled>
         )}
       />
 

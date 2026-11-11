@@ -55,6 +55,7 @@ export async function renderBrandPosterImage(slug: string, size: PosterSize): Pr
         height={height}
         logoUrl={logoUrl}
         platformLogoUrl={platformLogoUrl}
+        showEmployer={loaded.spec.showEmployer !== false}
         fontFamily={family}
       />
     ),

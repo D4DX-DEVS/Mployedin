@@ -128,13 +128,17 @@ export function LeadWorkspace({
                     {style.icon}{style.label}
                   </span>
                 </div>
-                <DialogDescription className="mt-0.5 flex min-w-0 items-center gap-1 truncate text-sm">
-                  <span className="truncate">{lead.contactPerson}</span>
+                {/* Phone: contact and place on two lines; on one they cut the
+                    contact's name to "fa…". */}
+                <DialogDescription className="mt-0.5 flex min-w-0 items-center gap-1 truncate text-sm max-sm:flex-wrap">
+                  <span className="truncate max-sm:max-w-full">{lead.contactPerson}</span>
                   {(lead.country || lead.industry) && (
                     <>
-                      <span aria-hidden="true">·</span>
-                      <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                      <span className="truncate">{[lead.country, lead.industry].filter(Boolean).join(" · ")}</span>
+                      <span aria-hidden="true" className="max-sm:hidden">·</span>
+                      <span className="flex min-w-0 items-center gap-1 max-sm:basis-full">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{[lead.country, lead.industry].filter(Boolean).join(" · ")}</span>
+                      </span>
                     </>
                   )}
                 </DialogDescription>

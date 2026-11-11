@@ -68,6 +68,11 @@ export interface BrandPosterProps {
   logoUrl?: string | null;
   /** The small Mployedin mark every poster carries. */
   platformLogoUrl?: string | null;
+  /**
+   * true (default, so older saved posters look unchanged): the employer's logo and
+   * name. false: Mployedin's logo and name take their place and the corner mark goes.
+   */
+  showEmployer?: boolean;
   /** Server rendering names a loaded font; the browser uses the kit's CSS stack. */
   fontFamily?: string;
 }
@@ -186,7 +191,19 @@ export function BrandPoster(props: BrandPosterProps) {
     </div>
   ) : null;
 
-  const company = (
+  const showEmployer = props.showEmployer !== false;
+  const company = !showEmployer ? (
+    <div style={{ display: "flex", alignItems: "center", gap: 1.6 * u, justifyContent: palette.align === "center" ? "center" : "flex-start" }}>
+      {props.platformLogoUrl ? (
+        <div style={{ display: "flex", padding: `${1 * u}px ${2 * u}px`, borderRadius: 1.8 * u, background: "#ffffff", alignItems: "center", justifyContent: "center" }}>
+          { }
+          <img src={props.platformLogoUrl} alt="Mployedin" width={24 * u} height={6.2 * u} style={{ objectFit: "contain" }} />
+        </div>
+      ) : (
+        <div style={{ display: "flex", fontSize: 3.4 * u, fontWeight: 800, color: palette.bodyFg }}>Mployedin</div>
+      )}
+    </div>
+  ) : (
     <div style={{ display: "flex", alignItems: "center", gap: 1.6 * u, justifyContent: palette.align === "center" ? "center" : "flex-start" }}>
       {props.logoUrl ? (
         <div
@@ -221,7 +238,7 @@ export function BrandPoster(props: BrandPosterProps) {
         <div style={{ display: "flex", fontSize: 2.3 * u, fontWeight: 800, color: palette.ctaFg }}>{data.cta}</div>
       ) : null}
       {/* The small Mployedin mark sits under the QR: stacked, so they never overlap at any size. */}
-      {props.platformLogoUrl ? (
+      {showEmployer && props.platformLogoUrl ? (
         <div style={{ display: "flex", padding: `${0.5 * u}px ${1.2 * u}px`, borderRadius: 99 * u, background: "rgba(255,255,255,0.92)" }}>
           <img src={props.platformLogoUrl} alt="" width={10 * u} height={2.6 * u} style={{ objectFit: "contain" }} />
         </div>

@@ -106,6 +106,30 @@ describe("POST /api/applications (Easy Apply dialogs)", () => {
   });
 });
 
+/**
+ * The seeker picks the CV to send. A picked file that is no longer among their
+ * documents (deleted or replaced in another tab) used to be skipped silently,
+ * and the "nothing selected" fallback then attached every other resume — the
+ * employer received a CV the seeker did not choose.
+ */
+describe("POST /api/applications — a picked CV that is gone", () => {
+  it("refuses instead of sending a different CV", async () => {
+    job = { ...job, expiresAt: new Date(Date.now() + DAY) };
+    const { postHandler } = await import("@/app/api/applications/handlers");
+    const res = await postHandler(
+      new NextRequest("http://localhost/api/applications", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jobId: JOB, easyApply: true, documentIds: ["deleted-in-another-tab"] }),
+      }),
+      { userId: SEEKER_USER, role: "job_seeker", locale: "en" } as never,
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "DOCUMENT_NOT_FOUND" });
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
 describe("POST /api/jobs/[id]/apply", () => {
   const apply = async () => {
     const { POST } = await import("@/app/api/jobs/[id]/apply/route");

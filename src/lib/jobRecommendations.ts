@@ -48,7 +48,7 @@ export const HOME_RECOMMENDED_JOB_COUNT = 4;
 /** Fields every scoring path needs. A missing one silently drops a signal. */
 export const RECOMMENDED_JOB_SELECT =
   "title description requirements salary location workMode employmentType " +
-  "employerId tags createdAt expiresAt views uniqueViews";
+  "employerId discloseCompany tags createdAt expiresAt views uniqueViews";
 
 /**
  * Every spelling in COUNTRY_REGION_CODES that shares a region code, keyed by

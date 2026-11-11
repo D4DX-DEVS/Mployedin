@@ -7,8 +7,9 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   ArrowLeft, Edit2, MoreHorizontal, Send, PauseCircle, PlayCircle, Copy,
-  Settings2, XCircle, Trash2, MapPin, Briefcase,
+  Settings2, XCircle, Trash2, MapPin, Briefcase, ImagePlus,
 } from "lucide-react";
+import { POSTERS_ENABLED } from "@/lib/features/posterFeature";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -230,6 +231,16 @@ export default function JobWorkspaceLayout({ children }: { children: ReactNode }
           <Link href={`${jobHref}/edit`} aria-label={t("edit")}>
             <Edit2 className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">{t("edit")}</span>
+          </Link>
+        </Button>
+      )}
+      {/* Phones only: Posting is the ninth tab, a long sideways scroll away, and
+          posters are what this page is opened for most. From sm every tab is
+          on screen, so the header does not repeat it there. */}
+      {POSTERS_ENABLED && canCreate && (
+        <Button asChild variant="outline" className="h-11 w-11 rounded-xl p-0 sm:hidden">
+          <Link href={`${jobHref}/poster`} aria-label={t("postingCreatePoster")}>
+            <ImagePlus className="h-4 w-4" aria-hidden />
           </Link>
         </Button>
       )}

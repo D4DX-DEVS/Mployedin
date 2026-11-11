@@ -18,7 +18,6 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  ArrowLeft,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -326,20 +325,12 @@ export default function PersonalDetailsPage() {
 
   return (
     <div className="page-container">
+      {/* Back sits above the title (PageBackButton), not in the actions slot
+          where it wrapped onto its own row under the description on phones. */}
       <PageHeader
         title={t("title")}
         description={t("description")}
-        actions={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("../profile")}
-            className="gap-1.5"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {t("back")}
-          </Button>
-        }
+        backHref="/job-seeker/profile"
       />
 
       <div className="max-w-2xl mx-auto w-full space-y-5">
@@ -452,12 +443,14 @@ export default function PersonalDetailsPage() {
             )}
 
             {form.languages.map((entry, idx) => (
-              <div key={idx} className="flex flex-wrap items-end gap-x-3 gap-y-2 sm:flex-nowrap">
+              // Phones stack each row, so every row carries its labels; from sm
+              // the rows line up under the first row's labels (column headers)
+              // and later rows keep theirs for screen readers only.
+              <div key={idx} className={`flex flex-wrap items-end gap-x-3 gap-y-2 sm:flex-nowrap${idx > 0 ? " sm:[&_label]:sr-only" : ""}`}>
                 {/* Phones: the language takes its own line; proficiency + remove share the next. */}
                 <div className="flex-1 max-sm:basis-full">
                   <FormInput
-                    label={idx === 0 ? t("language") : undefined}
-                    aria-label={idx === 0 ? undefined : t("language")}
+                    label={t("language")}
                     placeholder={t("languagePlaceholder")}
                     value={entry.language}
                     onChange={(e) => updateLanguage(idx, { language: e.target.value })}
@@ -466,7 +459,7 @@ export default function PersonalDetailsPage() {
                 </div>
                 <div className="w-44 shrink-0 max-sm:w-auto max-sm:min-w-0 max-sm:flex-1">
                   <FormSelect
-                    label={idx === 0 ? t("proficiency") : undefined}
+                    label={t("proficiency")}
                     options={proficiencyOptions}
                     value={entry.proficiency}
                     onChange={(v) =>
@@ -500,7 +493,10 @@ export default function PersonalDetailsPage() {
         </Section>
 
         {/* ── Save Bar ─────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card shadow-sm panel-body">
+        {/* Pinned above the bottom tab bar so Save is reachable without
+            scrolling to the end of a long form (same offset as the seeker
+            notification settings bar). */}
+        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 flex items-center justify-between gap-4 rounded-xl border border-border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/85 panel-body lg:bottom-4">
           <div className="flex items-center gap-2 text-sm">
             {saveState === "saved" && (
               <>

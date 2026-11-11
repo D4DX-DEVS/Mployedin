@@ -1,5 +1,6 @@
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
+import { HIDDEN_COMPANY_LOGO, isCompanyHidden, maskJobEmployer } from "@/lib/jobs/companyDisclosure";
 import { Employer } from "@/models/Employer";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -64,7 +65,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!job) return { title: "Job Not Found" };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const employer = job.employerId as any;
+  const employer = maskJobEmployer(job as Record<string, unknown>).employerId as any;
   // Site name is appended by the root layout's title template ("%s | MPLOYEDIN").
   const title = `${job.title} at ${employer?.companyName ?? "Company"}`;
   const description = job.description?.slice(0, 160);
@@ -134,12 +135,14 @@ export default async function JobDetailPage({ params }: PageProps) {
   // Past its closing date is closed even before the expiry cron flips the status.
   if (!job || job.status !== "active" || isPastClosingDate(job.expiresAt as Date | null)) notFound();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const employer = job.employerId as any;
+   
+  const companyHidden = isCompanyHidden(job as { discloseCompany?: boolean });
+  // A hidden company shows as "Mployedin" with no website, location, industry or badges.
+  const employer = maskJobEmployer(job as Record<string, unknown>).employerId as any;
 
   // Fetch employer response-time commitment for display
   let responseTimeDays: number | null = null;
-  if (employer?._id) {
+  if (employer?._id && !companyHidden) {
     const emp = await Employer.findById(employer._id)
       .select("responseTimeCommitment")
       .lean();
@@ -238,9 +241,15 @@ export default async function JobDetailPage({ params }: PageProps) {
               <div className="bg-card border border-border rounded-xl panel-body">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-3">
                   <div className="flex min-w-0 items-start gap-3">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary" aria-hidden="true">
-                      <Building2 className="h-6 w-6" />
-                    </span>
+                    {companyHidden ? (
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card" aria-hidden="true">
+                        <img src={HIDDEN_COMPANY_LOGO} alt="" width={40} height={40} className="size-10 object-contain" />
+                      </span>
+                    ) : (
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary" aria-hidden="true">
+                        <Building2 className="h-6 w-6" />
+                      </span>
+                    )}
                     <div className="min-w-0">
                       <h1 className="text-xl sm:text-2xl font-semibold text-foreground">{job.title}</h1>
                       <p className="mt-0.5 text-base text-muted-foreground font-medium">{employer?.companyName}</p>

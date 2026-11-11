@@ -1,7 +1,10 @@
 "use client";
 
+import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Briefcase, Check, CircleAlert, Eye, MapPin, Send } from "lucide-react";
+import { Briefcase, Check, ChevronDown, CircleAlert, Eye, MapPin, Send } from "lucide-react";
+import { QualificationLineList } from "./QualificationLineList";
+import { RequirementsChecklist } from "@/components/features/employer/applications/RequirementsChecklist";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { cn } from "@/lib/utils";
@@ -31,6 +34,10 @@ function scoreTone(score: number): string {
 export function MatchCandidateCard({ candidate, rank, canInvite, onInvite, onViewProfile }: MatchCandidateCardProps) {
   const t = useTranslations("agentJobMatches");
   const { breakdown } = candidate;
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = useId();
+  const hasDetails =
+    (candidate.qualifications?.length ?? 0) > 0 || (candidate.lineChecks?.length ?? 0) > 0 || candidate.matchedSkills.length > 0 || candidate.missingSkills.length > 0;
 
   // Literal keys only — a template-literal key escapes the missing-key checks.
   const parts: Array<{ label: string; value: number }> = [
@@ -109,7 +116,7 @@ export function MatchCandidateCard({ candidate, rank, canInvite, onInvite, onVie
         ))}
       </dl>
 
-      {(candidate.matchedSkills.length > 0 || candidate.missingSkills.length > 0) && (
+      {!expanded && (candidate.matchedSkills.length > 0 || candidate.missingSkills.length > 0) && (
         <div className="space-y-2 text-xs">
           {candidate.matchedSkills.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
@@ -132,6 +139,35 @@ export function MatchCandidateCard({ candidate, rank, canInvite, onInvite, onVie
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {hasDetails && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setExpanded((open) => !open)}
+            aria-expanded={expanded}
+            aria-controls={detailsId}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
+          >
+            <ChevronDown className={cn("size-4 transition-transform", expanded && "rotate-180")} aria-hidden />
+            {expanded ? t("hideDetails") : t("showDetails")}
+          </button>
+          <div id={detailsId}>
+            {expanded && (
+              <RequirementsChecklist
+                className="mt-2"
+                checks={candidate.qualifications}
+                status={candidate.requirementsStatus}
+                matchedSkills={candidate.matchedSkills}
+                missingSkills={candidate.missingSkills}
+              />
+            )}
+            {expanded && candidate.lineChecks && candidate.lineChecks.length > 0 && (
+              <QualificationLineList className="mt-2" checks={candidate.lineChecks} />
+            )}
+          </div>
         </div>
       )}
 

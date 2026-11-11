@@ -42,6 +42,14 @@ describe("useJobAssistant request", () => {
     expect(sentBody()).not.toHaveProperty("source");
   });
 
+  it("shows a one-tap starter by its label while the model gets the full instruction", async () => {
+    // The chat used to print the long instruction behind the chip, which the user never typed.
+    const { result } = setup();
+    await act(async () => { await result.current.ask("Write a clear job description for this role from the details so far.", "Write the description"); });
+    expect(sentBody().instruction).toBe("Write a clear job description for this role from the details so far.");
+    expect(result.current.messages[0]).toMatchObject({ role: "user", shown: "Write the description" });
+  });
+
   it("keeps a pasted section of up to 3000 characters", async () => {
     const { result } = setup();
     await act(async () => { await result.current.ask("a".repeat(3500)); });

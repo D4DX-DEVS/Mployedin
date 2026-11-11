@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { hiringStatusLabelKeyMap, hiringStatusClassMap } from "@/lib/jobseekers/hiringStatus";
 import type { ReferralSummary } from "@/lib/referrals/summary";
 import { totalExperience } from "@/lib/jobseekers/experience";
+import { cleanRoleTitle } from "@/lib/jobseekers/roleTitle";
 import type { SeekerListStats } from "@/lib/jobseekers/listStats";
 
 interface JobSeeker {
@@ -64,14 +66,41 @@ interface JobSeeker {
   staffAccess?: "own" | "area";
   /** Hiring status derived from applications: placed|offer|interviewing|shortlisted|applied|notProgressed|waiting */
   hiringStatus?: string;
+  /** The job the hiring status comes from (the newest application at that stage). */
+  hiringJob?: { title: string; company?: string };
+  applicationCount?: number;
+  preferredRoles?: string[];
+  /** A guess from their skills, present only when they stated no role. */
+  suggestedRole?: string;
   createdAt: string;
 }
 
 /** Which job seekers the list shows (`?view=`). */
 const VIEWS = ["all", "area", "referred"] as const;
 
+/**
+ * The role to show for a seeker: the current job, else the latest one listed,
+ * else what they say they want. Many profiles have no work history yet but do
+ * name the roles they are after; `preferred` marks that case so it is not
+ * mistaken for a job they hold.
+ */
 function getCurrentTitle(s: JobSeeker): string | undefined {
-  return s.experience?.find((e) => e.isCurrent)?.jobTitle;
+  return getRole(s)?.title;
+}
+
+/**
+ * Where the title came from: "held" (a job on their profile), "preferred" (what
+ * they say they want) or "suggested" (our guess from their skills — shown as a
+ * guess, never as fact).
+ */
+function getRole(s: JobSeeker): { title: string; kind: "held" | "preferred" | "suggested" } | undefined {
+  // Imported CVs put the employer and dates in the title; show only the role.
+  const held = cleanRoleTitle((s.experience?.find((e) => e.isCurrent) ?? s.experience?.[0])?.jobTitle);
+  if (held) return { title: held, kind: "held" };
+  const wanted = s.preferredRoles?.map((r) => cleanRoleTitle(r)).filter(Boolean);
+  if (wanted?.length) return { title: wanted.slice(0, 2).join(" / "), kind: "preferred" };
+  if (s.suggestedRole) return { title: s.suggestedRole, kind: "suggested" };
+  return undefined;
 }
 
 // These will be built inside the component to use translations
@@ -99,6 +128,9 @@ export default function AgentJobSeekersPage() {
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  // The box updates on every key; the list waits for a pause in typing, so a
+  // word is one request, not one per letter.
+  const query = useDebounce(search, 350);
   const [modalOpen, setModalOpen] = useState(false);
   // Client point #5: share a job-seeker referral link from here.
   const [referOpen, setReferOpen] = useState(false);
@@ -219,11 +251,15 @@ export default function AgentJobSeekersPage() {
     setSortBy("newest");
   };
 
+  // Only the newest request may update the list: a slow answer for "dri" must
+  // not overwrite the answer for "driver".
+  const latestRequest = useRef(0);
   const fetchSeekers = useCallback(async () => {
+    const requestId = ++latestRequest.current;
     setLoading(true);
     const params = pagination.paginationParams();
     params.set("stats", "1");
-    if (search.trim()) params.set("search", search.trim());
+    if (query.trim()) params.set("search", query.trim());
     if (availability) params.set("availability", availability);
     if (minProfile > 0) params.set("minProfile", String(minProfile));
     if (maxProfile < 100) params.set("maxProfile", String(maxProfile));
@@ -238,8 +274,10 @@ export default function AgentJobSeekersPage() {
     if (jobType) params.set("jobType", jobType);
     if (sortBy !== "newest") params.set("sort", sortBy);
     const res = await fetch(`/api/job-seekers?${params}`);
+    if (requestId !== latestRequest.current) return;
     if (res.ok) {
       const data = await res.json();
+      if (requestId !== latestRequest.current) return;
       setSeekers(data.items ?? []);
       setStats(data.stats ?? null);
       setAreaAssigned(data.areaAssigned !== false);
@@ -247,11 +285,11 @@ export default function AgentJobSeekersPage() {
     }
     setLoading(false);
 
-  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy, pagination.page, pagination.limit]);
+  }, [query, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy, pagination.page, pagination.limit]);
 
   useEffect(() => { fetchSeekers(); }, [fetchSeekers]);
 
-  useEffect(() => { pagination.resetPage(); }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy]);
+  useEffect(() => { pagination.resetPage(); }, [query, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy]);
 
   // Premium is the `premium` entry in badges[] — what the dashboard's
   // Premium card and ?premium=1 count. Only seekers the agent manages.
@@ -311,7 +349,7 @@ export default function AgentJobSeekersPage() {
   // BUG-06: export the full filtered result set, not just the visible page.
   const fetchAllSeekers = useCallback(async () => {
     const base = new URLSearchParams();
-    if (search.trim()) base.set("search", search.trim());
+    if (query.trim()) base.set("search", query.trim());
     if (availability) base.set("availability", availability);
     if (minProfile > 0) base.set("minProfile", String(minProfile));
     if (maxProfile < 100) base.set("maxProfile", String(maxProfile));
@@ -332,7 +370,7 @@ export default function AgentJobSeekersPage() {
         total: Number(json.total ?? 0),
       }),
     );
-  }, [search, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy]);
+  }, [query, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy]);
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: seekers as unknown as Record<string, unknown>[],
@@ -613,11 +651,16 @@ export default function AgentJobSeekersPage() {
       <PhoneRecordList
         className="sm:hidden"
         label={t("heroTitle")}
-        loading={loading}
+        loading={loading && seekers.length === 0}
         empty={emptyState}
         items={seekers.map((s) => {
           const isPremium = (s.badges ?? []).includes("premium");
-          const line = [getCurrentTitle(s), experienceLabel(s)].filter(Boolean).join(" · ");
+          const role = getRole(s);
+          const roleText = !role ? undefined
+            : role.kind === "preferred" ? `${t("preferredRole")}: ${role.title}`
+            : role.kind === "suggested" ? `${t("suggestedRole")}: ${role.title}`
+            : role.title;
+          const line = [roleText, experienceLabel(s)].filter(Boolean).join(" · ");
           return {
             key: s._id,
             leading: <UserAvatar name={s.userId?.name} email={s.userId?.email} className="h-10 w-10" colorful />,
@@ -651,6 +694,13 @@ export default function AgentJobSeekersPage() {
                   <p className="flex min-w-0 items-center gap-1">
                     <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
                     <span dir="auto" className="truncate">{s.currentLocation}</span>
+                  </p>
+                )}
+                {/* Which job the status badge is for. */}
+                {s.hiringJob && (
+                  <p dir="auto" className="truncate font-medium text-foreground/80">
+                    {[s.hiringJob.title, s.hiringJob.company].filter(Boolean).join(" · ")}
+                    {(s.applicationCount ?? 0) > 1 ? ` · ${t("moreApplications", { count: (s.applicationCount ?? 1) - 1 })}` : ""}
                   </p>
                 )}
                 {(s.skills ?? []).length > 0 && (
@@ -695,7 +745,7 @@ export default function AgentJobSeekersPage() {
         })}
       />
 
-      <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
+      <section aria-busy={loading} className={`workspace-panel-surface overflow-hidden rounded-2xl transition-opacity max-sm:hidden ${loading && seekers.length > 0 ? "opacity-70" : ""}`}>
         <Table className="compact-phone-cards" data-mobile-table="scroll">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -709,7 +759,7 @@ export default function AgentJobSeekersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {loading && seekers.length === 0 ? (
               <TableBodySkeleton rows={5} cols={6} />
             ) : seekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
@@ -782,7 +832,17 @@ export default function AgentJobSeekersPage() {
                   </TableCell>
                   <TableCell data-mobile-hidden className="text-muted-foreground">
                     <div className="grid w-full min-w-0 gap-1 text-start">
-                      <span className="font-medium text-foreground/80">{getCurrentTitle(s) ?? "\u2014"}</span>
+                      {getRole(s) ? (
+                        <span className={getRole(s)!.kind === "suggested" ? "font-medium italic text-foreground/70" : "font-medium text-foreground/80"}>
+                          {getRole(s)!.kind === "preferred" && <span className="block text-[11px] font-normal uppercase tracking-wide text-muted-foreground">{t("preferredRole")}</span>}
+                          {getRole(s)!.kind === "suggested" && (
+                            <span className="block text-[11px] font-normal not-italic uppercase tracking-wide text-muted-foreground" title={t("suggestedRoleHint")}>{t("suggestedRole")}</span>
+                          )}
+                          {getRole(s)!.title}
+                        </span>
+                      ) : (
+                        <span className="font-medium text-foreground/80">{"\u2014"}</span>
+                      )}
                       {experienceLabel(s) && (
                         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
                           <BriefcaseBusiness className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
@@ -809,11 +869,21 @@ export default function AgentJobSeekersPage() {
                   {/* On phones the badge is on the card face (name cell). */}
                   <TableCell data-mobile-hidden>
                     {s.hiringStatus ? (
-                      <StatusBadge
-                        status={s.hiringStatus}
-                        label={t(hiringStatusLabelKeyMap[s.hiringStatus as keyof typeof hiringStatusLabelKeyMap] || "hiringStatus.waiting")}
-                        className={`whitespace-nowrap ${hiringStatusClassMap[s.hiringStatus as keyof typeof hiringStatusClassMap] || "status-pending"}`}
-                      />
+                      <div className="grid min-w-0 justify-items-start gap-1">
+                        <StatusBadge
+                          status={s.hiringStatus}
+                          label={t(hiringStatusLabelKeyMap[s.hiringStatus as keyof typeof hiringStatusLabelKeyMap] || "hiringStatus.waiting")}
+                          className={`whitespace-nowrap ${hiringStatusClassMap[s.hiringStatus as keyof typeof hiringStatusClassMap] || "status-pending"}`}
+                        />
+                        {/* Which job the status is for, so "Shortlisted" is never anonymous. */}
+                        {s.hiringJob && (
+                          <span dir="auto" className="block max-w-[11rem] text-xs text-muted-foreground" title={[s.hiringJob.title, s.hiringJob.company].filter(Boolean).join(" · ")}>
+                            <span className="line-clamp-2 font-medium text-foreground/80">{s.hiringJob.title}</span>
+                            {s.hiringJob.company && <span className="block truncate">{s.hiringJob.company}</span>}
+                            {(s.applicationCount ?? 0) > 1 && <span className="block">{t("moreApplications", { count: (s.applicationCount ?? 1) - 1 })}</span>}
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}

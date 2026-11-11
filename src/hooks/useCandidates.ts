@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fileExtensionOf } from "@/lib/applications/candidateCv";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -27,6 +28,12 @@ export interface Candidate {
   strengths?: string[];
   gaps?: string[];
   cv?: { originalUrl?: string; atsScore?: number };
+  /**
+   * Set on a row that comes from an application (a job is selected) when a CV
+   * was sent with it: "View CV" opens that file, not the Profile CV
+   * (lib/applications/candidateCv.ts).
+   */
+  applicationCv?: { applicationId: string; extension: string };
   shortlisted?: boolean;
 }
 
@@ -87,6 +94,8 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
     if (!res.ok) throw new Error("Failed to fetch candidates for job");
     const data = await res.json() as {
       applications?: Array<{
+        _id?: unknown;
+        documents?: { url?: string; type?: string }[];
         jobSeekerId?: {
           _id?: unknown;
           fullName?: string;
@@ -111,7 +120,9 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
 
     const candidates: Candidate[] = (data.applications ?? [])
       .filter((app) => app.jobSeekerId?._id)
-      .map((app) => ({
+      .map((app) => {
+        const sentCv = app.documents?.find((doc) => doc.type === "resume" && doc.url);
+        return {
         _id: String(app.jobSeekerId?._id ?? ""),
         fullName: app.jobSeekerId?.fullName,
         userId: app.jobSeekerId?.userId,
@@ -124,11 +135,15 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
         isAgentReferred: app.isAgentReferred,
         isPriority: app.isPriority,
         cv: app.jobSeekerId?.cv,
+        ...(sentCv && app._id
+          ? { applicationCv: { applicationId: String(app._id), extension: fileExtensionOf(sentCv.url) } }
+          : {}),
         matchScore: app.aiMatchScore,
         matchBreakdown: app.matchBreakdown,
         strengths: app.strengths,
         gaps: app.gaps,
-      }));
+        };
+      });
 
     return { candidates, total: data.pagination?.total ?? candidates.length };
   }

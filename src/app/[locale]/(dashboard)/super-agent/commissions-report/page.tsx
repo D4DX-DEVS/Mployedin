@@ -30,6 +30,7 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { SuperAgentReportTabs } from "@/components/features/super-agent/SuperAgentReportTabs";
+import { InlineLabelled } from "@/components/shared/LabelledControl";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -239,17 +240,21 @@ export default function SuperAgentCommissionsReportPage() {
         compact
       >
         <div className="flex items-center gap-2">
-          <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
-            <SelectTrigger className="h-10 w-28 rounded-xl border-border/70 bg-background/90" aria-label={t("yearFilterLabel")}>
-              <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {yearOptions.map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <InlineLabelled label={tc("year")}>
+            {(id) => (
+              <Select value={String(yearFilter)} onValueChange={(v) => setYearFilter(Number(v))}>
+                <SelectTrigger id={id} className="h-10 w-28 rounded-xl border-border/70 bg-background/90">
+                  <CalendarDays className="mr-1.5 h-4 w-4 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </InlineLabelled>
           <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} className="rounded-xl border-border/70 bg-background/90" aria-label={t("refreshReport")}>
             <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>

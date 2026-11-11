@@ -136,7 +136,8 @@ test.describe("Deep flow: hire pipeline", () => {
           jobId,
           easyApply: true,
           coverLetter: "Automated E2E application for the hiring-pipeline test.",
-          includeProfileCv: true,
+          // No CV is named: the server attaches the seeker's default one. Asking
+          // for the Profile CV of a seeker who has none is refused, not swapped.
         });
         expect(res.status(), await res.text()).toBe(201);
         const { application } = await res.json();

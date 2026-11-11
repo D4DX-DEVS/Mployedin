@@ -22,6 +22,9 @@ jest.mock("next/navigation", () => ({
 }));
 jest.mock("@/lib/features/posterFeature", () => ({ POSTERS_ENABLED: false }));
 jest.mock("@/hooks/useJobs", () => ({ useJobDetail: () => ({ data: mockJob }) }));
+jest.mock("@/components/features/employer/screening/ScreeningSummary", () => ({
+  ScreeningSummary: ({ jobId }: { jobId: string }) => <div data-testid="screening-summary">{jobId}</div>,
+}));
 let mockSummary: Record<string, unknown> | undefined;
 jest.mock("@/hooks/useJobHiringSummary", () => ({ useJobHiringSummary: () => ({ data: mockSummary }) }));
 
@@ -48,6 +51,21 @@ describe("employer job Overview", () => {
     mockQuery = "poster=1";
     render(<JobOverviewPage />);
     expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it("shows how applicants answered the screening questions on the job itself", () => {
+    mockJob = { ...baseJob, screeningQuestions: [{ id: "q1", label: "Do you have a teaching licence?" }] };
+    render(<JobOverviewPage />);
+
+    expect(screen.getByRole("heading", { name: "Screening questions" })).toBeInTheDocument();
+    expect(screen.getByTestId("screening-summary")).toHaveTextContent("job1");
+  });
+
+  it("leaves the screening section out of a job that asks no questions", () => {
+    render(<JobOverviewPage />);
+
+    expect(screen.queryByRole("heading", { name: "Screening questions" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("screening-summary")).not.toBeInTheDocument();
   });
 
   it("hides the optional sections and facts the employer never filled in", () => {

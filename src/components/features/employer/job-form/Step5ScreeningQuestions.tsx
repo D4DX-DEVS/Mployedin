@@ -131,7 +131,7 @@ export function Step5ScreeningQuestions() {
       className="space-y-3 sm:space-y-5"
     >
       {/* Header */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 lg:flex-row lg:items-center lg:justify-between card-pad">
+      <div className="flex flex-col gap-2 border-b border-border/70 pb-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1">
           <h2 className="heading-section font-semibold text-foreground">
             {t("title")}
@@ -173,7 +173,7 @@ export function Step5ScreeningQuestions() {
             <div
               key={field.id}
               className={cn(
-                "rounded-2xl border bg-background p-4 shadow-sm transition-colors",
+                "rounded-xl border bg-muted/20 p-4 transition-colors",
                 fieldError?.label
                   ? "border-destructive/40"
                   : "border-border/70"
@@ -423,7 +423,7 @@ export function Step5ScreeningQuestions() {
       )}
 
       {questions.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border bg-muted/10 px-4 py-8 text-center">
+        <div className="rounded-xl bg-muted/30 px-4 py-8 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <ClipboardList className="h-5 w-5" />
           </div>

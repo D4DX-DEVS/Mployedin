@@ -68,7 +68,7 @@ function ListField({
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-dashed border-border/70 bg-background/60 card-pad">
+    <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-foreground">
@@ -171,7 +171,7 @@ export function Step2JobDetails() {
       transition={{ duration: 0.25 }}
       className="space-y-3 sm:space-y-5"
     >
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-muted/20 lg:flex-row lg:items-center lg:justify-between card-pad">
+      <div className="flex flex-col gap-2 border-b border-border/70 pb-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1">
           <h2 className="heading-section font-semibold text-foreground">{t("title")}</h2>
           <p className="text-sm text-muted-foreground">
@@ -179,20 +179,17 @@ export function Step2JobDetails() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {/* One status. The character count is under the box, where it is typed. */}
           <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
             {descriptionStrength}
-          </Badge>
-          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            {t("characters", { count: charCount.toLocaleString(numberLocale) })}
-          </Badge>
-          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            {t("aiReady")}
           </Badge>
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(17rem,0.95fr)]">
-        <div className="space-y-3 rounded-2xl border border-border bg-background shadow-sm card-pad">
+      {/* The description takes the full width; the writing tips sit under it
+          as one compact row instead of a third column of advice. */}
+      <div className="space-y-3">
+        <div className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <Label htmlFor="description" className="text-sm font-medium">
@@ -257,25 +254,20 @@ export function Step2JobDetails() {
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div className="rounded-2xl border border-border bg-background shadow-sm card-pad">
-            <p className="text-sm font-semibold text-foreground">{t("strongListingsTitle")}</p>
-            <div className="mt-3 space-y-3 text-xs text-muted-foreground">
-              <div className="rounded-xl border border-border/70 bg-muted/30 chip-pad">
-                {t("strongListings.summary")}
-              </div>
-              <div className="rounded-xl border border-border/70 bg-muted/30 chip-pad">
-                {t("strongListings.bullets")}
-              </div>
-              <div className="rounded-xl border border-border/70 bg-muted/30 chip-pad">
-                {t("strongListings.impact")}
-              </div>
+        <div>
+          <div className="rounded-xl bg-muted/40 chip-pad">
+            <p className="text-xs font-semibold text-foreground">{t("strongListingsTitle")}</p>
+            <div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+              <p>{t("strongListings.summary")}</p>
+              <p>{t("strongListings.bullets")}</p>
+              <p>{t("strongListings.impact")}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Structured optional fields */}
+      {/* Structured optional fields: two per row, so four lists are two rows. */}
+      <div className="grid items-start gap-x-8 gap-y-6 border-t border-border/70 pt-5 md:grid-cols-2">
       <ListField
         label={t("listFields.responsibilities.label")}
         hint={t("listFields.responsibilities.hint")}
@@ -308,6 +300,7 @@ export function Step2JobDetails() {
         maxItems={20}
         optionalLabel={t("listFields.optional")}
       />
+      </div>
     </motion.div>
   );
 }

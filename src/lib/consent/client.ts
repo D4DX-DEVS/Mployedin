@@ -1,7 +1,8 @@
 "use client";
-import { CONSENT_COOKIE, CONSENT_MAX_AGE_S, CONSENT_VERSION, parseConsent, serializeConsent, type ConsentState } from "./state";
+import { CONSENT_COOKIE, CONSENT_MAX_AGE_S, CONSENT_VERSION, parseConsent, type ConsentState } from "./state";
 import { REGISTRY } from "./registry";
 import { sweepLegacyPreferenceKeys } from "./legacyKeys";
+import { consentCookieString, remainingConsentSeconds } from "./reissue";
 
 export const CONSENT_EVENT = "mpl:consent-change";
 export const OPEN_SETTINGS_EVENT = "mpl:open-cookie-settings";
@@ -31,12 +32,43 @@ export function readConsent(): ConsentState | null {
   return parseConsent(cookieValue(CONSENT_COOKIE));
 }
 
+/** The last choice this page stored, so a late answer to an older receipt cannot replace it (restoreNewerChoice). */
+let latestChoice: ConsentState | null = null;
+
 export function writeConsent(p: { preferences: boolean; media: boolean }): ConsentState {
   const s: ConsentState = { v: CONSENT_VERSION, id: newId(), preferences: p.preferences, media: p.media, at: new Date().toISOString() };
-  document.cookie = `${CONSENT_COOKIE}=${serializeConsent(s)}; Max-Age=${CONSENT_MAX_AGE_S}; Path=/; SameSite=Lax${secureSuffix()}`;
+  // Written here so the choice applies at once. Safari keeps a script-written cookie 7 days only; the
+  // receipt route sends the same cookie back in a response header, which gives it its full six months.
+  document.cookie = consentCookieString(s, CONSENT_MAX_AGE_S, location.protocol === "https:");
+  latestChoice = s;
   try { localStorage.removeItem("cookie-consent"); } catch {} // legacy key; the old choice was given against untrue copy
   window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: s }));
   return s;
+}
+
+/**
+ * Called when the receipt route has answered for choice `answeredId`. Its answer sets the cookie back
+ * to that choice; if the visitor chose again on this page while the request was on its way, that would
+ * undo the newer choice. Put the newer one back. Only when the cookie holds exactly the answered
+ * choice: anything else (a choice made in another tab, a cleared cookie) is not this page's to change.
+ * No event: the choice in force for this page never changed.
+ *
+ * Returns the choice it put back, or null when there was nothing to do. The caller sends that
+ * choice's receipt once more, so the server sets the cookie again: written from here it is a
+ * script-written cookie, which Safari would keep for 7 days only.
+ */
+export function restoreNewerChoice(answeredId: string): ConsentState | null {
+  try {
+    if (!latestChoice || latestChoice.id === answeredId) return null;
+    if (readConsent()?.id !== answeredId) return null;
+    const maxAge = remainingConsentSeconds(latestChoice, Date.now());
+    if (maxAge <= 0) return null;
+    document.cookie = consentCookieString(latestChoice, maxAge, location.protocol === "https:");
+    return readConsent()?.id === latestChoice.id ? latestChoice : null;
+  } catch {
+    // Cookies blocked: there is nothing to restore.
+    return null;
+  }
 }
 
 function matches(name: string, key: string): boolean {

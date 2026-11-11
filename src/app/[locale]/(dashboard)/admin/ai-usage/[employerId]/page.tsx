@@ -21,6 +21,7 @@ import { AI_FEATURES } from "@/lib/ai/aiFeatures";
 import { MONTH_RE } from "@/lib/admin/aiUsageConstants";
 import { recentMonths, useCallLog, useEmployerUsage } from "@/components/features/admin/ai-usage/useAiUsage";
 import { changePct, compact, featureColour, usd } from "@/components/features/admin/ai-usage/format";
+import { InlineLabelled } from "@/components/shared/LabelledControl";
 
 const MONTHS = recentMonths();
 
@@ -77,16 +78,20 @@ function EmployerContent() {
             title={usage.data.employer.name}
             description={usage.data.employer.city || t("description")}
             actions={
-              <Select value={safeMonth} onValueChange={(v) => { setMonth(v); setPage(1); }}>
-                <SelectTrigger aria-label={t("month")} className="h-10 w-[11rem] rounded-xl border-border/70 bg-background/90 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTHS.map((m) => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <InlineLabelled label={t("month")}>
+                {(id) => (
+                  <Select value={safeMonth} onValueChange={(v) => { setMonth(v); setPage(1); }}>
+                    <SelectTrigger id={id} className="h-10 w-[11rem] rounded-xl border-border/70 bg-background/90 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((m) => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </InlineLabelled>
             }
           />
           <ReportKpiGrid kpis={kpis} ariaLabel={t("a11yTotals")} />
@@ -131,9 +136,10 @@ function EmployerContent() {
 
           <section className={reportCardClassName} aria-labelledby="ai-log">
             <ReportCardHeader title={te("logTitle")} description={te("logHint")} icon={ScrollText} tone="workspace-tone-sky" />
-            <div className="mt-4 flex flex-wrap gap-3">
+            {/* Phone: the two filters share one row evenly. */}
+            <div className="mt-4 flex flex-wrap gap-3 max-sm:grid max-sm:grid-cols-2 max-sm:gap-2">
               <Select value={feature} onValueChange={(v) => { setFeature(v); setPage(1); }}>
-                <SelectTrigger aria-label={t("colFeature")} className="h-10 w-48 text-sm"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label={t("colFeature")} className="h-10 w-48 text-sm max-sm:h-11 max-sm:w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{te("allFeatures")}</SelectItem>
                   {AI_FEATURES.map((f) => (
@@ -142,7 +148,7 @@ function EmployerContent() {
                 </SelectContent>
               </Select>
               <Select value={result} onValueChange={(v) => { setResult(v); setPage(1); }}>
-                <SelectTrigger aria-label={te("colResult")} className="h-10 w-44 text-sm"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label={te("colResult")} className="h-10 w-44 text-sm max-sm:h-11 max-sm:w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{te("allResults")}</SelectItem>
                   <SelectItem value="ok">{te("resultOk")}</SelectItem>

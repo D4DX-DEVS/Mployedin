@@ -39,7 +39,7 @@ export function AgentSectionTabs({ tabs, ariaLabelKey }: AgentSectionTabsProps) 
       aria-label={t(ariaLabelKey)}
       // Scrolls rather than wraps: five tabs at phone width would otherwise
       // stack into a block taller than the panel they introduce.
-      className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="scroll-hint-x -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {tabs.map((tab) => {
         const href = `/${locale}${tab.href}`;

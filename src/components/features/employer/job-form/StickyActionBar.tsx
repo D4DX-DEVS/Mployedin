@@ -40,10 +40,16 @@ export function StickyActionBar({
 
   return (
     <div className="z-40 shrink-0 border-t border-border/80 bg-background/95 backdrop-blur-md" role="toolbar" aria-label={t("toolbarLabel")}>
-      {/* pe-* keeps Next/Post Job clear of the floating Copilot FAB (fixed
-          right-4, 48px wide, lg:bottom-4). Without it the FAB sat on top of
-          this bar's primary action and swallowed the click entirely. */}
-      <div className="mx-auto max-w-5xl px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-3.5 lg:pe-20">
+      {/* pe-20 keeps Next/Post Job clear of the floating Copilot FAB (fixed
+          right-4, 48px wide). Without it the FAB sat on top of this bar's
+          primary action and swallowed the click entirely. Phones and tablets
+          reserve it too (2026-11-11): the bar now sits directly on the tab
+          bar, level with the FAB, instead of 72px above it. */}
+      {/* Same width and gutters as the page above it, and from `xl` the
+          buttons end where the form column ends (21rem = side panel 18.5rem +
+          1rem gap + 1.5rem gutter). It used to be a narrower centred strip,
+          so Next floated under the gap between the form and the side panel. */}
+      <div className="mx-auto w-full max-w-[1400px] px-3 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-3.5 pe-20 sm:pe-20 xl:pe-[21rem]">
         <div className="mb-2.5 flex items-center justify-between gap-3 sm:hidden">
           <div className="inline-flex items-center rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
             {t("stepOf", { current: currentStep, total: totalSteps })}

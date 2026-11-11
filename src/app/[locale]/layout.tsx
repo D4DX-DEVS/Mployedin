@@ -5,6 +5,7 @@ import { pickMessages } from "@/lib/i18n/clientMessages";
 import { notFound } from "next/navigation";
 import { PWAInstallPrompt } from "@/components/shared/PWAInstallPrompt";
 import { SkipToContent } from "@/components/shared/SkipToContent";
+import HtmlLocaleSync from "@/components/shared/HtmlLocaleSync";
 
 const locales = ["en", "ar"];
 
@@ -77,6 +78,8 @@ export default async function LocaleLayout({
     <div lang={locale} dir={dir} className={locale === "ar" ? "font-arabic" : ""}>
       {/* First in tab order on every page; each group's <main> is the target. */}
       <SkipToContent label={tA11y("skipToContent")} />
+      {/* <html lang dir> comes from the root layout, which is not rendered again when the language is switched by a link. */}
+      <HtmlLocaleSync locale={locale} />
       {/* Groups bring their own provider and subset; see clientMessages.ts. */}
       <NextIntlClientProvider locale={locale} messages={pickMessages(messages, "root")}>
         {children}

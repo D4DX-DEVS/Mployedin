@@ -16,6 +16,8 @@ interface CurrencySelectProps {
   ariaLabel?: string;
   /** Accessible name for the in-popover search box. */
   searchLabel?: string;
+  /** Lets an outside <label htmlFor> name the trigger. */
+  id?: string;
 }
 
 export function CurrencySelect({
@@ -26,6 +28,7 @@ export function CurrencySelect({
   className,
   ariaLabel,
   searchLabel,
+  id,
 }: CurrencySelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -55,6 +58,7 @@ export function CurrencySelect({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
+          id={id}
           type="button"
           role="combobox"
           aria-label={ariaLabel}

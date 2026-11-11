@@ -51,7 +51,7 @@ export function TaskLinkChips({ locale, links }: TaskLinkChipsProps) {
   return (
     // w-full: the chips start their own row under the priority and
     // assigned-by badges; mixed into that row they wrapped one per line.
-    <ul className="mt-1.5 flex w-full flex-wrap items-center gap-1.5 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:[scrollbar-width:none]" aria-label={t("linkedRecords")}>
+    <ul className="mt-1.5 flex w-full flex-wrap items-center gap-1.5" aria-label={t("linkedRecords")}>
       {chips.map(({ key, icon: Icon, text, href, aria }) => (
         <li key={key} className="min-w-0 max-w-full">
           {key === "employer" && href && links.employer ? (
