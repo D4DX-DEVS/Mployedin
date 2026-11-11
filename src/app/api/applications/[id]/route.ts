@@ -19,7 +19,7 @@ import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWor
 import { stageForApplication, type WorkflowStageDef } from "@/lib/hiring/workflowStages";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
-import { SEEKER_HIDDEN_APPLICATION_FIELDS } from "@/lib/applications/seekerView";
+import { SEEKER_HIDDEN_APPLICATION_FIELDS, maskSeekerApplicationJob } from "@/lib/applications/seekerView";
 import { stampHumanReview } from "@/lib/hiring/automatedDecision";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
@@ -291,7 +291,8 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
       path: "jobId",
       // employmentType/workMode/status: the seeker's application page shows
       // the job beside the application, and whether it is still open.
-      select: "title location salary employerId agentId employmentType workMode status",
+      // discloseCompany: the seeker sees "Mployedin" for a hidden company.
+      select: "title location salary employerId agentId employmentType workMode status discloseCompany",
       populate: { path: "employerId", select: "companyName logo" },
     })
     // JobSeeker holds no `name`/`email` of its own — those live on the linked
@@ -355,6 +356,8 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (ctx.role === "job_seeker") {
     if (typeof result.seekerMatchScore === "number") result.aiMatchScore = result.seekerMatchScore;
     for (const key of SEEKER_HIDDEN_APPLICATION_FIELDS) delete result[key];
+    // Masked after the ownership checks above, which read the real employer id.
+    result.jobId = maskSeekerApplicationJob(result).jobId;
     // Which staff member reviewed it is the employer's business; that a person did is the candidate's.
     if (result.automatedDecision) {
       const { reviewedBy: _reviewer, ...decision } = result.automatedDecision;

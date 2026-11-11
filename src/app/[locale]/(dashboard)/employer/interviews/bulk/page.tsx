@@ -33,6 +33,7 @@ interface InterviewSlot {
 
 export default function EmployerBulkInterviewPage() {
   const t = useTranslations("employerInterviewsBulk");
+  const tCommon = useTranslations("common");
   const [search, setSearch] = useState("");
   const [slot, setSlot] = useState<InterviewSlot>({
     date: "", time: "10:00", duration: 45, type: "video", meetLink: "", location: "",
@@ -125,13 +126,16 @@ export default function EmployerBulkInterviewPage() {
             <CandidateDataNotice variant="candidateList" compact />
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 flex-1">
-              <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-              <input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder={t("searchCandidates")} aria-label={t("searchCandidates")} className="input-field flex-1" />
+          <div className="flex items-end gap-3">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="bulk-candidate-search" className="mb-1 block text-xs text-muted-foreground">{tCommon("search")}</label>
+              <div className="flex items-center gap-2">
+                <Search className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                <input id="bulk-candidate-search" type="search" value={search} onChange={e => setSearch(e.target.value)}
+                  placeholder={t("searchCandidates")} className="input-field flex-1" />
+              </div>
             </div>
-            <span className="text-sm text-muted-foreground whitespace-nowrap">
+            <span className="flex h-10 items-center text-sm text-muted-foreground whitespace-nowrap">
               {t("selected", { count: selectedCount })}
             </span>
           </div>
@@ -207,9 +211,9 @@ export default function EmployerBulkInterviewPage() {
                 placeholder={t("pickTime")}
               />
               <div>
-                <label className="text-xs text-muted-foreground">{t("duration")}</label>
+                <label htmlFor="bulk-duration" className="text-xs text-muted-foreground">{t("duration")}</label>
                 <Select value={String(slot.duration)} onValueChange={v => setSlot(s => ({ ...s, duration: parseInt(v) }))}>
-                  <SelectTrigger className="mt-1 w-full" aria-label={t("duration")}>
+                  <SelectTrigger id="bulk-duration" className="mt-1 w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -222,9 +226,9 @@ export default function EmployerBulkInterviewPage() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">{t("type")}</label>
+              <label htmlFor="bulk-type" className="text-xs text-muted-foreground">{t("type")}</label>
               <Select value={slot.type} onValueChange={v => setSlot(s => ({ ...s, type: v as InterviewSlot["type"] }))}>
-                <SelectTrigger className="mt-1 w-full" aria-label={t("type")}>
+                <SelectTrigger id="bulk-type" className="mt-1 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -236,9 +240,9 @@ export default function EmployerBulkInterviewPage() {
             </div>
             {slot.type !== "offline" && (
               <div>
-                <label className="text-xs text-muted-foreground">{t("meetingLink")}</label>
-                <input value={slot.meetLink} onChange={e => setSlot(s => ({ ...s, meetLink: e.target.value }))}
-                  placeholder={t("meetingPlaceholder")} aria-label={t("meetingPlaceholder")} className="input-field w-full mt-1"
+                <label htmlFor="bulk-meet-link" className="text-xs text-muted-foreground">{t("meetingLink")}</label>
+                <input id="bulk-meet-link" value={slot.meetLink} onChange={e => setSlot(s => ({ ...s, meetLink: e.target.value }))}
+                  placeholder={t("meetingPlaceholder")} className="input-field w-full mt-1"
                   aria-invalid={meetLinkInvalid || undefined}
                   aria-describedby={meetLinkInvalid ? "bulk-meet-link-error" : undefined} />
                 {meetLinkInvalid && (
@@ -248,8 +252,8 @@ export default function EmployerBulkInterviewPage() {
             )}
             {slot.type !== "video" && (
               <div>
-                <label className="text-xs text-muted-foreground">{t("location")}</label>
-                <input value={slot.location} onChange={e => setSlot(s => ({ ...s, location: e.target.value }))}
+                <label htmlFor="bulk-location" className="text-xs text-muted-foreground">{t("location")}</label>
+                <input id="bulk-location" value={slot.location} onChange={e => setSlot(s => ({ ...s, location: e.target.value }))}
                   placeholder={t("locationPlaceholder")} className="input-field w-full mt-1" />
               </div>
             )}

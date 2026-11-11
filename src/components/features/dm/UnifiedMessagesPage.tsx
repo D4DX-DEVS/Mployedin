@@ -24,6 +24,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Conversation } from "@/hooks/useConversations";
 import { toSafeImageSrc } from "@/lib/images/externalAvatar";
+import { formatListDate } from "@/lib/ui/intlFormat";
 
 const ROLE_ICONS: Record<string, React.ReactNode> = {
   admin: <Shield className="h-3 w-3" />,
@@ -70,6 +71,9 @@ interface UnifiedMessagesPageProps {
    *  Pattern A header (24px title) used across the employer workspace;
    *  "page" keeps the 30px PageHeader the other roles still use. */
   headerVariant?: "page" | "workspace";
+  /** Row of sibling destinations (e.g. Direct / Team channels) shown under
+   *  the title, so the page title is the first thing on the screen. */
+  subNav?: ReactNode;
 }
 
 /** Messages is the one page shared verbatim by all five roles, so the header
@@ -79,16 +83,27 @@ function MessagesHeader({
   title,
   description,
   actions,
+  singleAction,
 }: {
   variant: "page" | "workspace";
   title: string;
   description: string;
   actions?: ReactNode;
+  /** One header button: on phones it stays beside the title instead of
+   *  taking a row of its own above the conversation list. */
+  singleAction?: boolean;
 }) {
   if (variant === "workspace") {
     return <WorkspaceHeader title={title} context={description} actions={actions} />;
   }
-  return <PageHeader title={title} description={description} actions={actions} />;
+  return (
+    <PageHeader
+      title={title}
+      description={description}
+      actions={actions}
+      className={singleAction ? "max-sm:flex-row max-sm:items-start max-sm:[&>.page-header-actions]:w-auto max-sm:[&>.page-header-actions]:shrink-0" : undefined}
+    />
+  );
 }
 
 export function UnifiedMessagesPage({
@@ -105,6 +120,7 @@ export function UnifiedMessagesPage({
   selectConversationTitle,
   selectConversationHint,
   headerVariant = "page",
+  subNav,
 }: UnifiedMessagesPageProps) {
   const t = useTranslations("messagesPage");
   const { data: session } = useSession();
@@ -375,6 +391,7 @@ export function UnifiedMessagesPage({
         variant={headerVariant}
         title={title ?? t("defaultTitle")}
         description={description ?? t("defaultDescription")}
+        singleAction={!dmActions}
         actions={
           (activeTab === "support" || supportOnly) ? (
             <Dialog open={ticketDialogOpen} onOpenChange={setTicketDialogOpen}>
@@ -432,9 +449,18 @@ export function UnifiedMessagesPage({
         }
       />
 
+      {subNav}
+
       {/* Fixed height from md up so the list and the chat each scroll inside
-          the panel; on a phone one pane shows at a time and the page scrolls. */}
-      <div className="flex gap-0 rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm max-sm:min-h-[50vh] md:h-[calc(100dvh-15rem)] md:min-h-[480px]">
+          the panel; on a phone one pane shows at a time and the page scrolls.
+          The phone minimum height is for an open chat only: the list ends
+          after its last row instead of leaving an empty box under it. */}
+      <div
+        className={cn(
+          "flex gap-0 rounded-xl border border-border/50 overflow-hidden bg-card shadow-sm md:h-[calc(100dvh-15rem)] md:min-h-[480px]",
+          (activeConvId || pendingRecipientId) && "max-sm:min-h-[50vh]"
+        )}
+      >
         {/* Conversation list — responsive sidebar */}
         <div
           className={cn(
@@ -483,15 +509,21 @@ export function UnifiedMessagesPage({
             </div>
           )}
 
+          {/* Visible label (WCAG 3.3.2): the placeholder alone vanished once
+              the seeker started typing. */}
           <div className="p-3 border-b">
+            <label htmlFor="dm-conversation-search" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+              {t("searchLabel")}
+            </label>
             <div className="relative">
-              <Search className="absolute start-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Search aria-hidden="true" className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
+                id="dm-conversation-search"
+                type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                aria-label={searchPlaceholder ?? t("searchPlaceholder")}
-                placeholder={searchPlaceholder ?? t("searchPlaceholder")}
-                className="ps-8 h-8 text-xs"
+                placeholder={searchPlaceholder ?? t("searchHint")}
+                className="ps-8 h-9 text-xs max-sm:h-11 max-sm:text-sm"
               />
             </div>
           </div>
@@ -621,7 +653,9 @@ export function UnifiedMessagesPage({
                       </p>
                       {conv.lastMessageAt && (
                         <p className="text-[11px] text-muted-foreground/50 mt-0.5">
-                          {new Date(conv.lastMessageAt).toLocaleDateString(locale)}
+                          {/* Month in words: "9/8/2026" read as 9 Aug or 8 Sep
+                              depending on where the reader is from. */}
+                          {formatListDate(conv.lastMessageAt, locale)}
                         </p>
                       )}
                     </div>

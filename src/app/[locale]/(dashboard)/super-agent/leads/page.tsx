@@ -632,17 +632,20 @@ export default function SuperAgentLeadsPage() {
           <div className="contents max-sm:hidden">
           {/* AI search shares the bar instead of a boxed sub-container that
               forced it onto stacked lines. */}
-          <div className="relative min-w-0 flex-[2_1_14rem]">
-            <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-500/70" />
-            <Input
-              ref={aiInputRef}
-              aria-label={t("aiSearchLabel")}
-              placeholder={t("aiSearchPlaceholder")}
-              value={aiQuery}
-              onChange={(e) => setAiQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
-              className="h-11 w-full rounded-lg border-amber-500/20 bg-amber-50/50 pl-9 pr-3 text-sm shadow-none focus:border-amber-500/40 focus:ring-amber-500/20 sm:h-9"
-            />
+          <div className="min-w-0 flex-[2_1_14rem]">
+            <label htmlFor="sa-leads-ai-search" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{t("aiSearchLabel")}</label>
+            <div className="relative">
+              <Sparkles className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-500/70" />
+              <Input
+                id="sa-leads-ai-search"
+                ref={aiInputRef}
+                placeholder={t("aiSearchPlaceholder")}
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAiSearch(); }}
+                className="h-11 w-full rounded-lg border-amber-500/20 bg-amber-50/50 ps-9 pe-3 text-sm shadow-none focus:border-amber-500/40 focus:ring-amber-500/20 sm:h-9"
+              />
+            </div>
           </div>
           <button
             type="button"

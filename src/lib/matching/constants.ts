@@ -89,4 +89,4 @@ export const RECOMMENDATION_COOLDOWN_DAYS = 30;
  * this list is shared and pinned by a test rather than repeated per caller.
  */
 export const JOB_MATCH_FIELDS =
-  "title requirements salary location workMode employerId createdAt expiresAt status";
+  "title requirements salary location workMode employerId discloseCompany createdAt expiresAt status";

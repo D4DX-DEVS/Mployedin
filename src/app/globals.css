@@ -4041,10 +4041,12 @@ table.workspace-list-table tbody tr:focus-visible {
 
   /* List toolbar: search grows, job select shares the second row on phones,
      Filters and Export are icon buttons on phones and labelled from sm. */
+  /* flex-end: search boxes carry a visible label above them (WCAG 3.3.2), so
+     the controls beside them line up on the box's bottom edge, not the label. */
   .workspace-toolbar {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-end;
     gap: 0.5rem;
   }
   .workspace-toolbar-search {
@@ -4338,6 +4340,18 @@ table.workspace-list-table tbody tr:focus-visible {
 /* ── WorkspaceTabs (job workspace) — mobile-first, scroll-snap, logical props ── */
 .workspace-tabs { display: flex; gap: 0.25rem; max-width: 100%; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; border-bottom: 1px solid hsl(var(--border) / 0.7); margin: 0; padding: 0; list-style: none; }
 .workspace-tabs::-webkit-scrollbar { display: none; }
+/* Phones: a soft shadow on whichever edge still has tabs past it, so a strip cut at the
+   screen edge reads as scrollable. "local" covers the shadow once you reach that end. */
+@media (max-width: 639px) {
+  .workspace-tabs,
+  .scroll-hint-x {
+    background:
+      linear-gradient(to right, hsl(var(--background)) 30%, transparent) left center / 1.5rem 100% no-repeat local,
+      linear-gradient(to left, hsl(var(--background)) 30%, transparent) right center / 1.5rem 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, hsl(var(--foreground) / 0.16), transparent) left center / 0.5rem 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, hsl(var(--foreground) / 0.16), transparent) right center / 0.5rem 100% no-repeat scroll;
+  }
+}
 .workspace-tabs > li { flex-shrink: 0; scroll-snap-align: start; }
 .workspace-tab { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2.75rem; padding-inline: 0.75rem; margin-bottom: -1px; border-bottom: 2px solid transparent; font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; color: hsl(var(--muted-foreground)); white-space: nowrap; text-decoration: none; }
 .workspace-tab:hover { color: hsl(var(--foreground)); }
@@ -4368,13 +4382,13 @@ table.workspace-list-table tbody tr:focus-visible {
 
 /* Role dashboards on phones (admin / agent / super-agent). They end on a card
    grid, not a pagination row, so the 6rem floating-widget clearance above left
-   a ~62px empty band between the last card and the 50px tab bar (owner,
-   2026-09-24). Reserve only the tab bar; the page's own bottom gutter then
+   a ~62px empty band between the last card and the 56px tab bar (owner,
+   2026-09-24; bar 50px→56px with the pill tabs, 2026-11-11). Reserve only the tab bar; the page's own bottom gutter then
    sets the last gap, the same size as the gaps between cards. Employer runs a
    different shell and is not matched. */
 @media (max-width: 1023px) {
   .dashboard-shell-admin .dashboard-main:has(.page-container.dashboard-overview-page) {
-    padding-bottom: calc(3.125rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -4726,13 +4740,21 @@ table.workspace-list-table tbody tr:focus-visible {
    has no tab bar, so 1rem. Pages that do not end in pagination keep the
    full Copilot reserve (QA EMP-018). */
 @media (max-width: 1023px) {
-  .dashboard-shell-workspace .dashboard-main-workspace:has(.page-container > [data-pagination-footer]:last-child) {
+  .dashboard-shell-workspace .dashboard-main-workspace:has(
+    .page-container > [data-pagination-footer]:last-child,
+    .page-container > :last-child > [data-pagination-footer]:last-child,
+    .page-container > :last-child > :last-child > [data-pagination-footer]:last-child
+  ) {
     padding-bottom: calc(var(--workspace-mobile-nav-height) + env(safe-area-inset-bottom));
     scroll-padding-bottom: calc(var(--workspace-mobile-nav-height) + env(safe-area-inset-bottom));
   }
 }
 @media (min-width: 1024px) {
-  .dashboard-shell-workspace .dashboard-main-workspace:has(.page-container > [data-pagination-footer]:last-child) {
+  .dashboard-shell-workspace .dashboard-main-workspace:has(
+    .page-container > [data-pagination-footer]:last-child,
+    .page-container > :last-child > [data-pagination-footer]:last-child,
+    .page-container > :last-child > :last-child > [data-pagination-footer]:last-child
+  ) {
     padding-bottom: 1rem;
     scroll-padding-bottom: 1rem;
   }
@@ -4899,11 +4921,11 @@ table.workspace-list-table tbody tr:focus-visible {
    enough to centre without the Copilot button (inline-end, above the tab bar)
    covering "next" at 390px and up. Employer keeps its own footer. */
 @media (max-width: 639px) {
-  .dashboard-shell-admin [data-pagination-footer] {
+  .dashboard-shell-workspace [data-pagination-footer] {
     justify-content: center;
     padding-inline-end: 0.25rem;
   }
-  .dashboard-shell-admin [data-pagination-footer] [data-page-indicator] {
+  .dashboard-shell-workspace [data-pagination-footer] [data-page-indicator] {
     display: none;
   }
 }
@@ -4935,5 +4957,27 @@ table.workspace-list-table tbody tr:focus-visible {
   }
   .phone-record-actions :is([data-icon-only], [aria-haspopup="menu"], .h-10.w-10, .h-9.w-9, .h-8.w-8, .size-9, .size-10, .size-11) {
     flex: 0 0 auto !important;
+  }
+}
+
+/* Pagination nested one or two wrappers deep (a workspace component, a card)
+   is still the last thing on the page: the selectors above now match it, so
+   those lists lose the 76px Copilot band under the row too (owner 2026-11-11).
+   Employer phones centre the row like staff (same date): the selector above
+   moved from the staff shell to every workspace shell.
+
+   A page that fills the workspace and pins its own action bar (the job form)
+   reserves the Copilot button's width inside that bar, so the scroller needs
+   no Copilot reserve; it only showed as a blank strip under the bar. */
+/* .dashboard-main as well: has to outrank the Copilot clearance rule (0,4,0).
+   Below desktop the tab bar still needs its own height. */
+.dashboard-shell-workspace .dashboard-main.dashboard-main-workspace:has(> [data-fills-workspace]) {
+  padding-bottom: calc(var(--workspace-mobile-nav-height) + env(safe-area-inset-bottom));
+  scroll-padding-bottom: calc(var(--workspace-mobile-nav-height) + env(safe-area-inset-bottom));
+}
+@media (min-width: 1024px) {
+  .dashboard-shell-workspace .dashboard-main.dashboard-main-workspace:has(> [data-fills-workspace]) {
+    padding-bottom: 0;
+    scroll-padding-bottom: 0;
   }
 }

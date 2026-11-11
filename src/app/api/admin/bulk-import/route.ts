@@ -99,6 +99,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
             ...draft,
             description: sanitizeHtml(draft.description),
             employerId: matches[0]._id,
+            discloseCompany: false,
             status: "draft",
           });
           await job.save();

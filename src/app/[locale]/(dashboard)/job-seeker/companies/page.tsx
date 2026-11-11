@@ -114,10 +114,10 @@ export default function CompaniesListPage() {
       <PageHeader title={t("title")} description={t("description")} />
 
       <section className="workspace-panel-surface rounded-3xl panel-body max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="flex-1 max-sm:space-y-1.5">
-            {/* Phones: a visible label (a placeholder is not a label). */}
-            <label htmlFor="seeker-company-search" className="text-sm font-medium text-foreground sm:hidden">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+          <div className="flex-1 space-y-1.5">
+            {/* A visible label at every width (a placeholder is not a label). */}
+            <label htmlFor="seeker-company-search" className="block text-sm font-medium text-foreground">
               {t.has("searchLabel") ? t("searchLabel") : tCommon("search")}
             </label>
             <div className="relative">
@@ -128,16 +128,17 @@ export default function CompaniesListPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="ps-9"
-              aria-label={t("searchPlaceholder")}
             />
             </div>
           </div>
           {/* Select and Reset share a row on phones so the filter bar stays two
               lines instead of three. */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-end gap-2">
             {industries.length > 0 && (
+              <div className="min-w-0 flex-1 space-y-1.5 lg:w-56 lg:flex-none">
+              <label htmlFor="seeker-company-industry" className="block text-sm font-medium text-foreground">{tCommon("industry")}</label>
               <Select value={industryFilter} onValueChange={(val) => { setIndustryFilter(val); resetPage(); }}>
-                <SelectTrigger className="flex-1 lg:w-56 lg:flex-none" aria-label={t("filterByIndustry")}>
+                <SelectTrigger id="seeker-company-industry" className="w-full">
                   <SelectValue placeholder={t("allIndustries")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -147,6 +148,7 @@ export default function CompaniesListPage() {
                   ))}
                 </SelectContent>
               </Select>
+              </div>
             )}
             <Button variant="ghost" size="sm" onClick={clearFilters} disabled={!filtersActive} className="flex-shrink-0">
               <RotateCcw className="me-1 h-4 w-4" /> {t("reset")}

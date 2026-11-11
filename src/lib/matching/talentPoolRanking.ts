@@ -67,3 +67,8 @@ export interface UnmetRequirement {
   actual?: string;
   label?: string;
 }
+
+export interface PoolQualification extends UnmetRequirement {
+  status: "met" | "partial" | "not_met" | "unknown";
+  hard: boolean;
+}

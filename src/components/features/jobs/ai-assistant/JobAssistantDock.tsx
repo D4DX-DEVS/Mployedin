@@ -8,6 +8,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { JobAssistantPanel, type JobAssistantQuickAction } from "./JobAssistantPanel";
 import type { JobAssistantState } from "./useJobAssistant";
+import type { JobAssistChangeField } from "@/lib/ai/jobAssist";
 
 /** Tailwind's `xl` — at and above it the panel sits inline beside the form. */
 const INLINE_QUERY = "(min-width: 1280px)";
@@ -18,8 +19,10 @@ interface JobAssistantContextValue {
   /** The poster's own text, when the job was read from an uploaded poster. */
   posterText: string | null;
   /** Sends an instruction from a step's shortcut, opening the dialog on small screens. */
-  askFromField: (instruction: string) => void;
+  askFromField: (instruction: string, label?: string) => void;
   openDialog: () => void;
+  /** Takes the user to what an answer changed (a page with steps passes this). */
+  viewChanges?: (fields: JobAssistChangeField[]) => void;
 }
 
 const JobAssistantContext = createContext<JobAssistantContextValue | null>(null);
@@ -32,6 +35,12 @@ interface JobAssistantProviderProps {
   assistant: JobAssistantState;
   quickActions: JobAssistantQuickAction[];
   posterText?: string | null;
+  /**
+   * Shows the fields an answer changed. The wizard passes it: the assistant
+   * writes into steps that are not on screen, and "Updated: Description" with
+   * nothing visibly different read as "nothing happened" (owner, 2026-11-11).
+   */
+  onViewChanges?: (fields: JobAssistChangeField[]) => void;
   children: ReactNode;
 }
 
@@ -39,18 +48,29 @@ interface JobAssistantProviderProps {
  * Holds the job's one assistant for the page: the inline panel (wide screens),
  * the dialog (small screens) and the steps' shortcuts all talk to it.
  */
-export function JobAssistantProvider({ assistant, quickActions, posterText = null, children }: JobAssistantProviderProps) {
+export function JobAssistantProvider({ assistant, quickActions, posterText = null, onViewChanges, children }: JobAssistantProviderProps) {
   const [open, setOpen] = useState(false);
 
   const openDialog = useCallback(() => setOpen(true), []);
-  const askFromField = useCallback((instruction: string) => {
+  const askFromField = useCallback((instruction: string, label?: string) => {
     if (typeof window !== "undefined" && !window.matchMedia(INLINE_QUERY).matches) setOpen(true);
-    void assistant.ask(instruction);
+    void assistant.ask(instruction, label);
   }, [assistant]);
+  // The dialog covers the form on small screens: close it, then show the change.
+  const viewChanges = useMemo(
+    () =>
+      onViewChanges
+        ? (fields: JobAssistChangeField[]) => {
+            setOpen(false);
+            onViewChanges(fields);
+          }
+        : undefined,
+    [onViewChanges],
+  );
 
   const value = useMemo(
-    () => ({ assistant, quickActions, posterText, askFromField, openDialog }),
-    [assistant, quickActions, posterText, askFromField, openDialog],
+    () => ({ assistant, quickActions, posterText, askFromField, openDialog, viewChanges }),
+    [assistant, quickActions, posterText, askFromField, openDialog, viewChanges],
   );
 
   return (
@@ -58,7 +78,7 @@ export function JobAssistantProvider({ assistant, quickActions, posterText = nul
       {children}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="w-[calc(100vw-2rem)] max-w-lg gap-0 overflow-hidden rounded-2xl p-0">
-          <JobAssistantPanel assistant={assistant} quickActions={quickActions} posterText={posterText} inDialog className="rounded-none border-0 shadow-none" />
+          <JobAssistantPanel assistant={assistant} quickActions={quickActions} posterText={posterText} onViewChanges={viewChanges} inDialog className="rounded-none border-0 shadow-none" />
         </DialogContent>
       </Dialog>
     </JobAssistantContext.Provider>
@@ -74,6 +94,7 @@ export function JobAssistantInline({ className }: { className?: string }) {
       assistant={ctx.assistant}
       quickActions={ctx.quickActions}
       posterText={ctx.posterText}
+      onViewChanges={ctx.viewChanges}
       className={cn("hidden xl:flex", className)}
     />
   );
@@ -105,7 +126,7 @@ export function JobAssistantAskButton({ label, instruction, className }: { label
       variant="outline"
       size="dense"
       disabled={ctx.assistant.busy}
-      onClick={() => ctx.askFromField(instruction)}
+      onClick={() => ctx.askFromField(instruction, label)}
       className={cn("gap-1.5 text-xs", className)}
     >
       <Sparkles className="size-3.5 text-primary" aria-hidden="true" />

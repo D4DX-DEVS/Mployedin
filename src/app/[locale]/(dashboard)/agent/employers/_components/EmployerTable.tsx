@@ -120,7 +120,9 @@ export function EmployerTable({
           leading: <UserAvatar name={em.companyName ?? em.name} email={em.email} className="h-10 w-10" colorful />,
           title: em.companyName ?? em.name,
           subtitle: em.email,
-          actions: <RowActions name={em.companyName ?? em.name} quick={quick} menu={menu} />,
+          // Phone buttons get a 40px touch height; the "view jobs" arrow is a
+          // link and stayed 36px, so the footer's icons were mismatched.
+          actions: <RowActions name={em.companyName ?? em.name} quick={quick} menu={menu} className="[&>a]:!h-10 [&>a[data-icon-only]]:!w-10" />,
           meta: (
             <>
               {(em.industry || em.location) && (

@@ -74,6 +74,41 @@ describe("postReceipt", () => {
   });
 });
 
+describe("postReceipt: an answer for an older choice must not undo a newer one", () => {
+  // The route answers with Set-Cookie for the choice it was sent. Simulated here by the mocked
+  // request writing that cookie, as the browser does when the response arrives.
+  const serverSetsCookieFor = (state: object) => {
+    document.cookie = `${CONSENT_COOKIE}=${encodeURIComponent(JSON.stringify(state))}; Path=/`;
+  };
+
+  it("puts the newer choice back and sends its receipt once more, so the server sets that cookie again", async () => {
+    const older = writeConsent({ preferences: false, media: false });
+    const newer = writeConsent({ preferences: true, media: true });
+    csrfFetchMock.mockImplementationOnce(async () => {
+      serverSetsCookieFor(older);
+      return { ok: true, status: 204 };
+    });
+    csrfFetchMock.mockResolvedValue({ ok: true, status: 204 });
+
+    await expect(postReceipt(receiptBody(older, "ar", "banner"))).resolves.toBe("sent");
+    await Promise.resolve();
+
+    expect(readConsent()).toEqual(newer);
+    expect(csrfFetchMock).toHaveBeenCalledTimes(2);
+    const [, init] = csrfFetchMock.mock.calls[1] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({ receiptId: newer.id, preferences: true, media: true, version: 1, locale: "ar", source: "banner" });
+  });
+
+  it("sends nothing extra when the answered choice is the one in force", async () => {
+    const only = writeConsent({ preferences: false, media: true });
+    csrfFetchMock.mockResolvedValue({ ok: true, status: 204 });
+    await postReceipt(receiptBody(only, "en", "settings"));
+    await Promise.resolve();
+    expect(csrfFetchMock).toHaveBeenCalledTimes(1);
+    expect(readConsent()).toEqual(only);
+  });
+});
+
 describe("receiptBody", () => {
   it("is built from the stored choice, with the locale and source given", () => {
     const state = writeConsent({ preferences: false, media: true });

@@ -6,13 +6,18 @@ import type { JobAssistantQuickAction } from "./JobAssistantPanel";
 import type { JobAssistantError } from "./useJobAssistant";
 
 const QUICK_KEYS = ["fillMissing", "description", "questions", "wording"] as const;
+export type JobAssistantQuickKey = (typeof QUICK_KEYS)[number];
 
-/** The starter prompts every job form offers, in the reader's language. */
-export function useJobAssistantQuickActions(): JobAssistantQuickAction[] {
+/**
+ * The starter prompts a job form offers, in the reader's language.
+ * `keys` narrows them to the ones worth offering right now; pass a stable
+ * array (a module constant), not a fresh literal each render.
+ */
+export function useJobAssistantQuickActions(keys: readonly JobAssistantQuickKey[] = QUICK_KEYS): JobAssistantQuickAction[] {
   const t = useTranslations("jobAssistant.quick");
   return useMemo(
-    () => QUICK_KEYS.map((key) => ({ label: t(`${key}.label`), instruction: t(`${key}.instruction`) })),
-    [t],
+    () => keys.map((key) => ({ label: t(`${key}.label`), instruction: t(`${key}.instruction`) })),
+    [t, keys],
   );
 }
 

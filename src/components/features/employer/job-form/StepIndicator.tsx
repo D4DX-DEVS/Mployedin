@@ -28,14 +28,16 @@ export function StepIndicator({
   const t = useTranslations("common");
   return (
     <nav aria-label={t("a11yFormProgress")}>
-      <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Phones: one row. The current step shows its name; the others shrink
+          to their number, so three steps never stack into three rows. */}
+      <ol className="flex gap-2 sm:grid sm:grid-cols-3">
         {steps.map((step, index) => {
           const isCompleted = completedSteps.has(step.id);
           const isCurrent = step.id === currentStep;
           const isClickable = isCompleted || step.id < currentStep;
 
           return (
-            <li key={step.id} className="min-w-0">
+            <li key={step.id} className={cn("min-w-0", isCurrent ? "flex-1" : "shrink-0 sm:shrink")}>
               <button
                 type="button"
                 onClick={() => isClickable && onStepClick?.(step.id)}
@@ -66,7 +68,7 @@ export function StepIndicator({
                     )}
                   </motion.div>
 
-                  <div className="min-w-0">
+                  <div className={cn("min-w-0", !isCurrent && "max-sm:sr-only")}>
                     <motion.p
                       className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
                       animate={{ opacity: 1 }}

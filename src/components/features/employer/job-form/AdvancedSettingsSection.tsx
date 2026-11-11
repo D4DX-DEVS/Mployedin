@@ -138,7 +138,7 @@ export function AdvancedSettingsSection() {
           >
             <div className="space-y-3 sm:space-y-5 border-t border-border px-5 pb-5 pt-4">
 
-              <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
+              <div className="space-y-1.5 rounded-xl bg-muted/40 card-pad">
                 <Label className="text-sm font-medium">{t("visibility")}</Label>
                 <SearchableSelect
                   options={[
@@ -159,7 +159,7 @@ export function AdvancedSettingsSection() {
               {/* Auto-reject lives in one place — Hiring rules — and every job
                   follows it unless the job's Setup overrides it. The switch
                   and slider that sat here were never sent to the server. */}
-              <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-muted/20 card-pad sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 rounded-xl bg-muted/40 card-pad sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-muted-foreground">{tAts("screeningRulesNote")}</p>
                 <Link
                   href={`/${locale}/employer/workflow`}
@@ -171,7 +171,7 @@ export function AdvancedSettingsSection() {
               </div>
 
               <div className="grid gap-4 xl:grid-cols-2">
-                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
+                <div className="space-y-1.5 rounded-xl bg-muted/40 card-pad">
                   <Label htmlFor="expires-at" className="text-sm font-medium">
                     {t("expiryDate")}
                   </Label>
@@ -186,7 +186,7 @@ export function AdvancedSettingsSection() {
                   </p>
                 </div>
 
-                <div className="field rounded-xl border border-border/70 bg-muted/20 card-pad">
+                <div className="field rounded-xl bg-muted/40 card-pad">
                   <Label htmlFor="max-applicants" className="text-sm font-medium">
                     {t("maxApplicants")}
                   </Label>
@@ -206,7 +206,7 @@ export function AdvancedSettingsSection() {
               </div>
 
               {agents.length > 0 && (
-                <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
+                <div className="space-y-1.5 rounded-xl bg-muted/40 card-pad">
                   <Label className="text-sm font-medium">{t("assignAgent")}</Label>
                   <SearchableSelect
                     options={[
@@ -243,7 +243,7 @@ export function AdvancedSettingsSection() {
                 </div>
               </div>
 
-              <div className="field rounded-xl border border-border/70 bg-background card-pad">
+              <div className="field rounded-xl bg-muted/40 card-pad">
                 <Label className="text-sm font-medium">{t("tags")}</Label>
                 <div className="flex gap-2">
                   <Input

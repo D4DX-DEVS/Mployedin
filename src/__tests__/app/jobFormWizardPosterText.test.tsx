@@ -54,7 +54,7 @@ beforeEach(() => {
 });
 
 async function askAssistant(text: string) {
-  const [box] = await screen.findAllByPlaceholderText("For example: add the benefits, health cover and an annual flight");
+  const [box] = await screen.findAllByPlaceholderText("e.g. add health cover to the benefits");
   fireEvent.change(box, { target: { value: text } });
   await act(async () => {
     fireEvent.keyDown(box, { key: "Enter" });
@@ -107,7 +107,7 @@ it("shows that the assistant uses the poster, lets the employer read it, and off
 
 it("shows no poster line for a job typed by hand", async () => {
   render(<JobFormWizard locale="en" />);
-  await screen.findAllByPlaceholderText("For example: add the benefits, health cover and an annual flight");
+  await screen.findAllByPlaceholderText("e.g. add health cover to the benefits");
   expect(screen.queryByText("Using your poster")).toBeNull();
   expect(screen.queryByRole("button", { name: "Check against the poster" })).toBeNull();
 });

@@ -40,7 +40,17 @@ import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { openAccessibilityPanel } from "@/lib/a11y/usePreferences";
 import { logoutCleanup } from "@/lib/consent/logoutCleanup";
+import { resetSignOutInProgress } from "@/lib/consent/deviceStorage";
+import { sessionEnded } from "@/lib/auth/sessionEnded";
 import { openCookieSettings } from "@/components/shared/ConsentManager/CookieSettingsLink";
+
+/**
+ * How long "Logging out..." waits for the server before it stops and checks
+ * whether the session is still open. Generous on purpose: the old 4 seconds
+ * was shorter than a sign-out on a slow connection, and leaving early is what
+ * left people signed in.
+ */
+const SIGN_OUT_WAIT_MS = 30_000;
 
 const ROLE_KEYS: Record<string, string> = {
   admin: "admin",
@@ -72,6 +82,8 @@ export function UserProfileDropdown({
   const [resetStatus, setResetStatus] = useState<"idle" | "success" | "error">("idle");
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  // The last try left the session open; shown in the dialog until the next try.
+  const [logoutFailed, setLogoutFailed] = useState(false);
 
   const { data: session, update: updateSession } = useSession();
   const [profileImage, setProfileImage] = useState<string | null>(companyLogo ?? session?.user?.image ?? null);
@@ -163,21 +175,38 @@ export function UserProfileDropdown({
 
   const handleLogout = async () => {
     setLoggingOut(true);
+    setLogoutFailed(false);
+    let ended = false;
+    let giveUp: ReturnType<typeof setTimeout> | undefined;
     try {
       // Clear what this device keeps for the next person (idle tracker, drafts,
       // chats, Firebase user, push subscription). First: removing the push
       // subscription needs the session that signOut ends. Never rejects, and
       // gives up on its slow steps after a couple of seconds.
       await logoutCleanup();
+      // Wait for the server. Leaving for the login page any earlier cuts the
+      // request off, and the person lands back in their dashboard still signed in.
       await Promise.race([
         signOut({ redirect: false }).catch(() => {}),
-        new Promise((resolve) => setTimeout(resolve, 4000)),
+        new Promise((resolve) => {
+          giveUp = setTimeout(resolve, SIGN_OUT_WAIT_MS);
+        }),
       ]);
+      // The session cookie can't be read from here, so ask: only a confirmed end counts.
+      ended = await sessionEnded();
     } catch {
-      // Even if signOut fails, navigate to login
+      // Treated as not signed out, below.
     } finally {
-      window.location.href = `/${locale}/login`;
+      clearTimeout(giveUp);
     }
+    if (ended) {
+      window.location.href = `/${locale}/login`;
+      return;
+    }
+    // Still signed in (offline, or the server did not answer in time): say so and let them try again.
+    resetSignOutInProgress();
+    setLoggingOut(false);
+    setLogoutFailed(true);
   };
 
   return (
@@ -367,7 +396,7 @@ export function UserProfileDropdown({
 
           <DropdownMenuItem
             className="cursor-pointer gap-2 text-destructive focus:text-destructive focus:bg-destructive/10 rounded-md transition-colors"
-            onSelect={() => setLogoutOpen(true)}
+            onSelect={() => { setLogoutFailed(false); setLogoutOpen(true); }}
           >
             <LogOut className="h-4 w-4" />
             <span className="font-medium text-sm">{t("logout")}</span>
@@ -376,7 +405,7 @@ export function UserProfileDropdown({
       </DropdownMenu>
 
       {/* Logout Confirmation Dialog */}
-      <Dialog open={logoutOpen} onOpenChange={(open) => { if (!loggingOut) setLogoutOpen(open); }}>
+      <Dialog open={logoutOpen} onOpenChange={(open) => { if (loggingOut) return; setLogoutOpen(open); if (!open) setLogoutFailed(false); }}>
         <DialogContent className="max-w-sm" onInteractOutside={(e) => { if (loggingOut) e.preventDefault(); }}>
           <DialogHeader>
             <div className="flex items-start gap-3">
@@ -391,6 +420,11 @@ export function UserProfileDropdown({
               </div>
             </div>
           </DialogHeader>
+          {logoutFailed && (
+            <p role="alert" className="text-sm text-destructive">
+              {t("logoutFailed")}
+            </p>
+          )}
           <DialogFooter className="gap-2 sm:gap-2">
             <Button
               variant="outline"

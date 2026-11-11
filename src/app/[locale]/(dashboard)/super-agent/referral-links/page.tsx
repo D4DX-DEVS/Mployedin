@@ -487,25 +487,28 @@ export default function SuperAgentReferralLinksPage() {
             <div className="contents max-sm:hidden">
             {/* Natural-language box beside the plain search (was a second card
                 stacked above the toolbar with the right half of the row empty). */}
-            <div className="relative min-w-0 flex-[2_1_14rem]">
-              <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-500" />
-              <Input
-                aria-label={t("aiSearchPlaceholder")}
-                value={aiQuery}
-                onChange={(e) => setAiQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
-                placeholder={t("aiSearchPlaceholder")}
-                className="h-11 w-full rounded-lg border-border bg-secondary/65 pl-9 pr-14 text-sm shadow-none sm:h-9 sm:pr-28"
-              />
-              <button
-                onClick={handleAiSearch}
-                disabled={aiLoading || !aiQuery.trim()}
-                aria-label={t("aiSearchButton")}
-                className="absolute end-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-purple-600 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50 sm:h-7 sm:w-auto sm:px-3"
-              >
-                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-3 sm:w-3" /> : <Sparkles className="h-3.5 w-3.5 sm:h-3 sm:w-3" />}
-                <span className="hidden sm:inline">{t("aiSearchButton")}</span>
-              </button>
+            <div className="min-w-0 flex-[2_1_14rem]">
+              <label htmlFor={aiSearchId} className="mb-1 block truncate text-xs font-medium text-muted-foreground">{t("aiSearchButton")}</label>
+              <div className="relative">
+                <Sparkles className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-500" />
+                <Input
+                  id={aiSearchId}
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAiSearch()}
+                  placeholder={t("aiSearchPlaceholder")}
+                  className="h-11 w-full rounded-lg border-border bg-secondary/65 ps-9 pe-14 text-sm shadow-none sm:h-9 sm:pe-28"
+                />
+                <button
+                  onClick={handleAiSearch}
+                  disabled={aiLoading || !aiQuery.trim()}
+                  aria-label={t("aiSearchButton")}
+                  className="absolute end-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-purple-600 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50 sm:h-7 sm:w-auto sm:px-3"
+                >
+                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-3 sm:w-3" /> : <Sparkles className="h-3.5 w-3.5 sm:h-3 sm:w-3" />}
+                  <span className="hidden sm:inline">{t("aiSearchButton")}</span>
+                </button>
+              </div>
             </div>
             </div>
           </InlineFilterBar>

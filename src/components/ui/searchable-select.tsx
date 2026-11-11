@@ -35,6 +35,8 @@ interface SearchableSelectProps {
   placeholder?: string;
   /** Accessible name for the combobox trigger. Falls back to placeholder. */
   ariaLabel?: string;
+  /** Ids of visible text that names the trigger (a column header plus a row label). Wins over ariaLabel. */
+  ariaLabelledBy?: string;
   /** Set on the combobox itself; a wrapping role="group" may not carry aria-required. */
   ariaRequired?: boolean;
   ariaInvalid?: boolean;
@@ -85,6 +87,7 @@ export function SearchableSelect({
   onSearchValueChange,
   placeholder: placeholderProp,
   ariaLabel,
+  ariaLabelledBy,
   ariaRequired,
   ariaInvalid,
   ariaDescribedBy,
@@ -148,7 +151,8 @@ export function SearchableSelect({
           type="button"
           role="combobox"
           aria-expanded={open}
-          aria-label={ariaLabel ?? placeholder}
+          aria-label={ariaLabelledBy ? undefined : ariaLabel ?? placeholder}
+          aria-labelledby={ariaLabelledBy}
           aria-required={ariaRequired || undefined}
           aria-invalid={ariaInvalid || undefined}
           aria-describedby={ariaDescribedBy}

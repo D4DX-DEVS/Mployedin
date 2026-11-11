@@ -15,7 +15,7 @@ import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
-import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL, INLINE_FILTER_FIELD } from "@/components/shared/InlineFilterBar";
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
 import { RowActions } from "@/components/shared/RowActions";
 import { UserAvatar } from "@/components/shared/UserAvatar";
@@ -26,6 +26,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { usePlacements, type Placement } from "@/hooks/usePlacements";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
+import { StackedLabelled } from "@/components/shared/LabelledControl";
 
 const PLACEMENT_STATUSES = ["active", "completed", "terminated"] as const;
 const VISA_STATUSES = ["not_required", "pending", "approved", "rejected", "stamped"] as const;
@@ -149,22 +150,32 @@ export default function EmployerPlacementsPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          options={STATUS_OPTIONS}
-          value={filter}
-          onValueChange={setFilter}
-          placeholder={t("filterAll")}
-          ariaLabel={t("status")}
-        />
-        <SearchableSelect
-          className={INLINE_FILTER_CONTROL}
-          options={VISA_OPTIONS}
-          value={visaFilter}
-          onValueChange={setVisaFilter}
-          placeholder={t("visaAll")}
-          ariaLabel={t("visaStatusLabel")}
-        />
+        <StackedLabelled label={t("status")} className={INLINE_FILTER_FIELD}>
+          {(id) => (
+            <SearchableSelect
+              id={id}
+              className={`${INLINE_FILTER_CONTROL} w-full max-w-none`}
+              options={STATUS_OPTIONS}
+              value={filter}
+              onValueChange={setFilter}
+              placeholder={t("filterAll")}
+              ariaLabel={t("status")}
+            />
+          )}
+        </StackedLabelled>
+        <StackedLabelled label={t("visaStatusLabel")} className={INLINE_FILTER_FIELD}>
+          {(id) => (
+            <SearchableSelect
+              id={id}
+              className={`${INLINE_FILTER_CONTROL} w-full max-w-none`}
+              options={VISA_OPTIONS}
+              value={visaFilter}
+              onValueChange={setVisaFilter}
+              placeholder={t("visaAll")}
+              ariaLabel={t("visaStatusLabel")}
+            />
+          )}
+        </StackedLabelled>
       </InlineFilterBar>
 
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">

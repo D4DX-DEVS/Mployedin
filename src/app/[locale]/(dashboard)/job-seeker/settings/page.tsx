@@ -141,17 +141,24 @@ function SettingRow({
   description,
   tooltip,
   children,
+  htmlFor,
 }: {
   label: string;
   description?: string;
   tooltip?: string;
   children: React.ReactNode;
+  /** Id of the row's control: the row title becomes its visible label. */
+  htmlFor?: string;
 }) {
   return (
     <div className="flex items-center justify-between gap-6 py-3">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm font-medium text-foreground">{label}</span>
+          {htmlFor ? (
+            <label htmlFor={htmlFor} className="text-sm font-medium text-foreground">{label}</label>
+          ) : (
+            <span className="text-sm font-medium text-foreground">{label}</span>
+          )}
           {tooltip && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -700,6 +707,7 @@ export default function JobSeekerSettingsPage() {
 
                 {/* Buffer */}
                 <SettingRow
+                  htmlFor="interview-buffer"
                   label={t("interviews.buffer")}
                   description={t("interviews.bufferDescription")}
                   tooltip={t("interviews.bufferTooltip")}
@@ -709,6 +717,7 @@ export default function JobSeekerSettingsPage() {
                     name="timeBuffer"
                     render={({ field }) => (
                       <SearchableSelect
+                        id="interview-buffer"
                         className="h-8 w-32 text-sm rounded-lg"
                         ariaLabel={t("interviews.buffer")}
                         options={[0, 15, 30, 60].map((m) => ({ value: String(m), label: m === 0 ? t("interviews.noBuffer") : t("interviews.minutes", { count: m }) }))}

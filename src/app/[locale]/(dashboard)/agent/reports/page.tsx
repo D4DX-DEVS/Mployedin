@@ -352,14 +352,14 @@ export default function AgentReportsPage() {
 
       <section className="workspace-panel-surface space-y-4 rounded-3xl panel-body">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <p className="text-sm font-semibold text-foreground">{t("customReport")}</p>
+          <Sparkles className="h-4 w-4 text-primary" aria-hidden="true" />
+          <label htmlFor="agent-custom-report" className="text-sm font-semibold text-foreground">{t("customReport")}</label>
         </div>
         <textarea
+          id="agent-custom-report"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           rows={3}
-          aria-label={t("customReport")}
           placeholder={t("customReportPlaceholder")}
           className="w-full rounded-2xl border border-border bg-secondary/65 px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary/30 focus:ring-2 focus:ring-primary/10"
         />

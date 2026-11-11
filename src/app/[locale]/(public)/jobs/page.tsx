@@ -2,6 +2,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import Employer from "@/models/Employer";
 import { buildJobLocationClauses, clampSearchText, companyNameRegex } from "@/lib/jobs/publicSearch";
+import { maskJobEmployer } from "@/lib/jobs/companyDisclosure";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
@@ -125,7 +126,11 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
       .lean();
     const textMatch = { $text: { $search: search } };
     if (employers.length > 0) {
-      query.$or = [textMatch, { employerId: { $in: employers.map((e) => e._id) } }];
+      // A job that hides its company must not be findable by that company's name.
+      query.$or = [
+        textMatch,
+        { employerId: { $in: employers.map((e) => e._id) }, discloseCompany: { $ne: false } },
+      ];
     } else {
       Object.assign(query, textMatch);
     }
@@ -232,7 +237,7 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
           <div className="space-y-3">
             {jobs.map((job) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const employer = job.employerId as any;
+              const employer = maskJobEmployer(job as Record<string, unknown>).employerId as any;
               const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0], locale, t) : null;
               const daysLeft = closesInDays(job.expiresAt as Date | null);
 

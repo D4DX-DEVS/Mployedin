@@ -69,7 +69,7 @@ export function JobSeekerSectionNav({ locale, paths, counts, label, className }:
 
   return (
     <nav
-      className={cn("scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1", className)}
+      className={cn("scroll-hint-x scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1", className)}
       aria-label={label ?? entries[0]?.title}
     >
       {entries.map((entry) => {

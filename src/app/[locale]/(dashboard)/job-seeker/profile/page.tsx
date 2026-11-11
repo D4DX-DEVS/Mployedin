@@ -29,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { JobSeekerSectionNav, PROFILE_SECTION_PATHS } from "@/components/features/job-seeker/JobSeekerSectionNav";
 import { SeekerAreaCard } from "@/components/features/job-seeker/SeekerAreaCard";
+import { PhoneClampText, PhonePreviewList } from "./_components/PhonePreview";
 import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { getCsrfToken } from "@/lib/security/csrf-client";
@@ -472,13 +473,16 @@ export default function JobSeekerProfilePage() {
       {ConfirmDialogNode}
 
       {/* ── Page Header ────────────────────────────────────────────────── */}
+      {/* Phones: Settings stays beside the title as an icon button instead of
+          taking a row of its own above the section pills. */}
       <PageHeader
         title={t("title")}
         description={t("description")}
+        className="max-sm:flex-row max-sm:items-start max-sm:[&>.page-header-actions]:w-auto max-sm:[&>.page-header-actions]:shrink-0"
         actions={
-          <Button variant="outline" size="sm" onClick={() => router.push("./settings")} aria-label={t("settings")}>
-            <Settings className="w-4 h-4 me-1.5" />
-            {t("settings")}
+          <Button variant="outline" size="sm" onClick={() => router.push("./settings")} aria-label={t("settings")} className="max-sm:size-11 max-sm:p-0">
+            <Settings className="w-4 h-4 sm:me-1.5" aria-hidden="true" />
+            <span className="max-sm:sr-only">{t("settings")}</span>
           </Button>
         }
       />
@@ -1048,7 +1052,7 @@ export default function JobSeekerProfilePage() {
           {/* ── About ─────────────────────────────────────────────────── */}
           <div id="about" className="scroll-mt-24">
             <SectionCard icon={User} title={t("sectionAbout")} onEdit={() => { setEditSummary(profile?.summary ?? ""); setShowSummaryModal(true); }} onAdd={() => router.push("./settings")} isEmpty={!profile?.summary} emptyLabel={t("emptyAddSummary")}>
-              {profile?.summary && <p className="text-sm text-muted-foreground leading-relaxed">{profile.summary}</p>}
+              {profile?.summary && <PhoneClampText text={profile.summary} className="text-sm text-muted-foreground leading-relaxed" />}
             </SectionCard>
           </div>
 
@@ -1056,7 +1060,7 @@ export default function JobSeekerProfilePage() {
           <div id="experience" className="scroll-mt-24">
             <SectionCard icon={Briefcase} title={t("sectionExperience")} onAdd={() => router.push("./experience")} isEmpty={(profile?.experience?.length ?? 0) === 0} emptyLabel={t("emptyAddWorkExperience")} visible={profile?.sectionVisibility?.experience !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("experience", v)}>
               {(profile?.experience?.length ?? 0) > 0 && (
-                <div className="space-y-4">
+                <PhonePreviewList limit={2} className="space-y-4">
                   {profile!.experience.map((exp, i) => (
                     <div key={i} className={cn("", i < profile!.experience.length - 1 && "pb-4 border-b border-border/40")}>
                       <div className="flex items-start justify-between gap-2">
@@ -1070,7 +1074,7 @@ export default function JobSeekerProfilePage() {
                       {exp.description && <p className="text-xs text-muted-foreground mt-2 leading-relaxed line-clamp-3">{exp.description}</p>}
                     </div>
                   ))}
-                </div>
+                </PhonePreviewList>
               )}
             </SectionCard>
           </div>
@@ -1079,7 +1083,7 @@ export default function JobSeekerProfilePage() {
           <div id="skills" className="scroll-mt-24">
             <SectionCard icon={Award} title={t("sectionSkills")} onAdd={() => router.push("./skills")} isEmpty={(profile?.skills?.length ?? 0) === 0} emptyLabel={t("emptyAddSkills")} visible={profile?.sectionVisibility?.skills !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("skills", v)}>
               {(profile?.skills?.length ?? 0) > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <PhonePreviewList limit={12} className="flex flex-wrap gap-2">
                   {profile!.skills.map((s, i) => {
                     const skillName = typeof s === "string" ? s : s.name;
                     const years = typeof s === "string" ? 0 : s.yearsOfExperience;
@@ -1090,7 +1094,7 @@ export default function JobSeekerProfilePage() {
                       </Badge>
                     );
                   })}
-                </div>
+                </PhonePreviewList>
               )}
             </SectionCard>
           </div>
@@ -1099,7 +1103,7 @@ export default function JobSeekerProfilePage() {
           <div id="education" className="scroll-mt-24">
             <SectionCard icon={GraduationCap} title={t("sectionEducation")} onAdd={() => router.push("./cv")} isEmpty={(profile?.education?.length ?? 0) === 0} emptyLabel={t("emptyAddEducation")} visible={profile?.sectionVisibility?.education !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("education", v)}>
               {(profile?.education?.length ?? 0) > 0 && (
-                <div className="space-y-3">
+                <PhonePreviewList limit={2} className="space-y-3">
                   {profile!.education.map((edu, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 mt-0.5">
@@ -1112,7 +1116,7 @@ export default function JobSeekerProfilePage() {
                       </div>
                     </div>
                   ))}
-                </div>
+                </PhonePreviewList>
               )}
             </SectionCard>
           </div>
@@ -1121,7 +1125,7 @@ export default function JobSeekerProfilePage() {
           <div id="projects" className="scroll-mt-24">
             <SectionCard icon={FolderKanban} title={t("sectionProjects")} onAdd={() => router.push("./cv")} isEmpty={(profile?.projects?.length ?? 0) === 0} emptyLabel={t("emptyAddProjects")} visible={profile?.sectionVisibility?.projects !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("projects", v)}>
               {(profile?.projects?.length ?? 0) > 0 && (
-                <div className="space-y-4">
+                <PhonePreviewList limit={2} className="space-y-4">
                   {profile!.projects!.map((proj, i) => (
                     <div key={i} className={cn("", i < profile!.projects!.length - 1 && "pb-4 border-b border-border/40")}>
                       <div className="flex items-start justify-between gap-2">
@@ -1154,7 +1158,7 @@ export default function JobSeekerProfilePage() {
                       </div>
                     </div>
                   ))}
-                </div>
+                </PhonePreviewList>
               )}
             </SectionCard>
           </div>
@@ -1277,8 +1281,18 @@ export default function JobSeekerProfilePage() {
                 {(profile?.languages?.length ?? 0) > 0 && (
                   <div>
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("languagesSection.languages")}</p>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
+                    {/* Phones: one line per language. The five-column table
+                        turned into three tall label/value cards there. */}
+                    <ul className="divide-y divide-border/40 sm:hidden">
+                      {profile!.languages.map((l, i) => (
+                        <li key={i} className="flex items-center justify-between gap-3 py-2 text-sm">
+                          <span className="font-medium capitalize">{l.language}</span>
+                          <span className="capitalize text-muted-foreground">{l.proficiency || l.level || "—"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="overflow-x-auto max-sm:hidden">
+                      <table className="w-full text-xs" data-mobile-table="scroll">
                         <thead>
                           <tr className="text-muted-foreground border-b border-border/40">
                             <th className="text-start py-1.5 font-medium">{t("languagesSection.language")}</th>
@@ -1336,7 +1350,9 @@ export default function JobSeekerProfilePage() {
       </div>
 
       {/* ── Quick Actions ──────────────────────────────────────────────── */}
-      <div className="card-base panel-body">
+      {/* Hidden on phones: the setup rows under the profile card already link
+          to the CV extractor, skills and preferences. */}
+      <div className="card-base panel-body max-sm:hidden">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-amber-500" />
           <span className="text-sm font-semibold">{t("quickActions.title")}</span>
@@ -1582,7 +1598,7 @@ function SectionCard({
   return (
     <div className="card-base panel-body">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 max-sm:mb-2">
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4 text-primary" />
           <span className="text-sm font-semibold">{title}</span>
@@ -1592,7 +1608,7 @@ function SectionCard({
             <button
               onClick={() => onToggleVisibility(!visible)}
               className={cn(
-                "flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors",
+                "flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors max-sm:min-h-11",
                 visible !== false
                   ? "text-emerald-600 hover:bg-emerald-50"
                   : "text-amber-600 hover:bg-amber-50"
@@ -1606,7 +1622,7 @@ function SectionCard({
           {onEdit && !isEmpty && (
             <button
               onClick={onEdit}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-muted"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-muted max-sm:min-h-11"
             >
               <Pencil className="w-3 h-3" />
               {t("sectionActions.edit")}
@@ -1615,7 +1631,7 @@ function SectionCard({
           {onAdd && (
             <button
               onClick={onAdd}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-muted"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-muted max-sm:min-h-11"
             >
               <Plus className="w-3.5 h-3.5" />
               {isEmpty ? t("sectionActions.add") : t("sectionActions.update")}

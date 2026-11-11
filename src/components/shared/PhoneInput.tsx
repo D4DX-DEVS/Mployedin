@@ -132,10 +132,14 @@ export function PhoneInput({
 
   return (
     <div className="space-y-1.5">
-      {label && <label htmlFor={inputId} className="block text-sm font-medium">{label}{required && <span aria-hidden="true" className="ms-1 text-destructive">*</span>}</label>}
+      {label && <label id={`${inputId}-label`} htmlFor={inputId} className="block text-sm font-medium">{label}{required && <span aria-hidden="true" className="ms-1 text-destructive">*</span>}</label>}
+      {/* The code picker is named by the field's visible label plus "Country"
+          ("Phone Country"), so it is not a second, unlabelled control. */}
+      {label && <span id={`${inputId}-country-name`} className="sr-only">{translate("country", "Country")}</span>}
       <div className="flex gap-2" dir="ltr">
         <SearchableSelect
           id={`${inputId}-country`}
+          ariaLabelledBy={label ? `${inputId}-label ${inputId}-country-name` : undefined}
           options={countryOptions}
           value={selected.code}
           onValueChange={(code) => {

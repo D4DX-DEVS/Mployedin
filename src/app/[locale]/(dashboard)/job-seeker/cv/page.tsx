@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useId, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateSeekerProfile, readSeekerProfile } from "@/hooks/useSeekerCache";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import {
@@ -32,7 +31,8 @@ import type {
   CVForm, WorkExperience, Education, LanguageSkill,
   Project, SocialLink, FormattingOptions,
 } from "./types";
-import type { CVPDFLabels } from "./cv-pdf-document";
+import { cvFormFromProfile, EMPTY_CV_FORM, splitProfileLinks } from "./built-cv";
+import { useCvPdfLabels } from "./use-cv-pdf-labels";
 import {
   PROFICIENCY_OPTIONS, EMPTY_EXPERIENCE, EMPTY_EDUCATION,
   EMPTY_LANGUAGE, EMPTY_PROJECT, EMPTY_LINK,
@@ -50,7 +50,6 @@ import { PhoneInput } from "@/components/shared/PhoneInput";
 import {
   cleanSocialLinks, toProfileLinkUrl, type ProfileLink,
 } from "@/lib/jobSeeker/socialLinks";
-import { cleanSkills } from "@/lib/jobSeeker/tagList";
 import { prefStorage } from "@/lib/consent/prefStorage";
 import { LEGACY_CV_PREVIEW_HIDDEN_KEY } from "@/lib/consent/legacyKeys";
 import { toSafeImageSrc } from "@/lib/images/externalAvatar";
@@ -58,16 +57,6 @@ import { toSafeImageSrc } from "@/lib/images/externalAvatar";
 /* Reorder an array to match a new ordering of index-string ids. */
 function reorderByIds<T>(arr: T[], ids: string[]): T[] {
   return ids.map((id) => arr[Number(id)]).filter((v): v is T => v !== undefined);
-}
-
-/* ── Sort profile links into the builder's LinkedIn / Portfolio / other fields ── */
-function splitProfileLinks(links: ProfileLink[]) {
-  const labelled = (l: ProfileLink, names: string[]) => names.includes(l.label.toLowerCase());
-  return {
-    linkedin: links.find((l) => labelled(l, ["linkedin"]))?.url,
-    portfolio: links.find((l) => labelled(l, ["portfolio", "website"]))?.url,
-    additional: links.filter((l) => !labelled(l, ["linkedin", "portfolio", "website"])),
-  };
 }
 
 // A UI preference (ui:*); older builds stored it under the unprefixed name (lib/consent/legacyKeys).
@@ -79,7 +68,8 @@ const PREVIEW_HIDDEN_KEY = "ui:cvBuilder.previewHidden";
 
 export default function CVBuilderPage() {
   const t = useTranslations("cvBuilderPage");
-  const router = useRouter();
+  // Shared with the apply dialog, which sends this same CV with an application.
+  const cvPdfLabels = useCvPdfLabels();
   const { data: session } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -128,11 +118,7 @@ export default function CVBuilderPage() {
   const [selectedTemplate, setSelectedTemplate] = useState("classic");
   const [formatting, setFormatting] = useState<FormattingOptions>(DEFAULT_FORMATTING);
 
-  const [form, setForm] = useState<CVForm>({
-    fullName: "", email: "", phone: "", nationality: "", currentLocation: "",
-    headline: "", photo: "", linkedin: "", portfolio: "", additionalLinks: [],
-    skills: [], experience: [], education: [], languages: [], certifications: [], projects: [],
-  });
+  const [form, setForm] = useState<CVForm>(EMPTY_CV_FORM);
   // One object per edit, shared by the live preview and the template gallery.
   const previewForm = useMemo(() => getVisibleForm(form, hiddenSections), [form, hiddenSections]);
 
@@ -159,58 +145,8 @@ export default function CVBuilderPage() {
       // From the shared cache when fresh, so Back from Profile/Skills is instant.
       const profile = await readSeekerProfile(queryClient);
       if (profile) {
-        // Older CV imports stored a link's text as its address ("LinkedIn");
-        // sent back on save, one of those failed the whole save.
-        const links = splitProfileLinks(cleanSocialLinks(profile.socialLinks));
-        setForm((prev) => ({
-          ...prev,
-          phone: profile.phone ?? prev.phone,
-          nationality: profile.nationality ?? prev.nationality,
-          currentLocation: profile.currentLocation ?? prev.currentLocation,
-          headline: profile.summary ?? prev.headline,
-          photo: profile.avatar ?? prev.photo,
-          linkedin: links.linkedin ?? prev.linkedin,
-          portfolio: links.portfolio ?? prev.portfolio,
-          additionalLinks: links.additional.length ? links.additional : prev.additionalLinks,
-          // Imported profiles joined whole skill lists into one over-long entry.
-          skills: profile.skills?.length ? cleanSkills(profile.skills) : prev.skills,
-          experience: profile.experience?.length
-            ? profile.experience.map((e: Record<string, unknown>) => ({
-                jobTitle: (e.jobTitle as string) ?? "",
-                company: (e.company as string) ?? "",
-                country: (e.country as string) ?? "",
-                startDate: e.startDate ? new Date(e.startDate as string).toISOString().slice(0, 7) : "",
-                endDate: e.endDate ? new Date(e.endDate as string).toISOString().slice(0, 7) : "",
-                isCurrent: (e.isCurrent as boolean) ?? false,
-                description: plainTextToHtml((e.description as string) ?? ""),
-              }))
-            : prev.experience,
-          education: profile.education?.length
-            ? profile.education.map((e: Record<string, unknown>) => ({
-                degree: (e.degree as string) ?? "",
-                institution: (e.institution as string) ?? "",
-                field: (e.field as string) ?? "",
-                graduationDate: e.graduationDate ? new Date(e.graduationDate as string).toISOString().slice(0, 7) : "",
-                grade: (e.grade as string) ?? "",
-              }))
-            : prev.education,
-          languages: profile.languages?.length
-            ? profile.languages.map((l: Record<string, unknown>) => ({
-                language: (l.language as string) ?? "",
-                proficiency: (l.proficiency as LanguageSkill["proficiency"]) ?? "conversational",
-              }))
-            : prev.languages,
-          certifications: profile.certifications?.length ? profile.certifications : prev.certifications,
-          projects: profile.projects?.length
-            ? profile.projects.map((p: Record<string, unknown>) => ({
-                title: (p.title as string) ?? "",
-                description: plainTextToHtml((p.description as string) ?? ""),
-                techStack: Array.isArray(p.techStack) ? p.techStack as string[] : [],
-                projectUrl: (p.projectUrl as string) ?? "",
-                repoUrl: (p.repoUrl as string) ?? "",
-              }))
-            : prev.projects,
-        }));
+        // The same filling the apply dialog uses to send this CV (built-cv.ts).
+        setForm((prev) => cvFormFromProfile(profile, prev));
 
         const design = restoreCvDesign(profile.cvDesign);
         setSelectedTemplate(design.templateId);
@@ -325,7 +261,7 @@ export default function CVBuilderPage() {
           : prev.projects,
       }));
       setImportPending(true);
-    } catch (e) {
+    } catch {
       clearInterval(tick);
       setError(t("errors.readFailed"));
       toast.error(t("errors.readFailed"));
@@ -395,7 +331,7 @@ export default function CVBuilderPage() {
       const data = await res.json();
       setForm((f) => ({ ...f, photo: data.url }));
       void invalidateSeekerProfile(queryClient);
-    } catch (e) {
+    } catch {
       toast.error(t("errors.saveFailed"));
     } finally {
       setPhotoUploading(false);
@@ -465,7 +401,7 @@ export default function CVBuilderPage() {
       void invalidateSeekerProfile(queryClient);
       setImportPending(false);
       preImportForm.current = null;
-    } catch (e) {
+    } catch {
       toast.error(t("errors.saveFailed"));
     } finally {
       setSaving(false);
@@ -541,32 +477,6 @@ export default function CVBuilderPage() {
     ...option,
     label: t(`proficiency.${option.value}`),
   }));
-  const cvPdfLabels: CVPDFLabels = {
-    yourName: t("previewSections.yourName"),
-    present: t("previewSections.present"),
-    experience: t("previewSections.experience"),
-    education: t("previewSections.education"),
-    grade: t("previewSections.grade"),
-    skills: t("previewSections.skills"),
-    projects: t("previewSections.projects"),
-    languages: t("previewSections.languages"),
-    certifications: t("previewSections.certifications"),
-    professionalExperience: t("previewSections.professionalExperience"),
-    keyProjects: t("previewSections.keyProjects"),
-    coreCompetencies: t("previewSections.coreCompetencies"),
-    decoratedExperience: t("previewSections.decoratedExperience"),
-    decoratedEducation: t("previewSections.decoratedEducation"),
-    decoratedSkills: t("previewSections.decoratedSkills"),
-    decoratedProjects: t("previewSections.decoratedProjects"),
-    atCompany: t("previewSections.atCompany", { company: "{company}" }),
-    proficiency: {
-      basic: t("proficiency.basic"),
-      conversational: t("proficiency.conversational"),
-      professional: t("proficiency.professional"),
-      native: t("proficiency.native"),
-    },
-  };
-
   /* ══════════════════════════════════════════════════════════
      RENDER
      ══════════════════════════════════════════════════════════ */
@@ -742,9 +652,9 @@ export default function CVBuilderPage() {
                         onChange={(v) => setForm((f) => ({ ...f, currentLocation: v }))} placeholder={t("placeholders.location")} />
                     </div>
                     <div className="md:col-span-2 field">
-                      <Label className="text-xs text-muted-foreground">{t("fields.profileSummary")}</Label>
+                      <Label htmlFor="cv-summary" className="text-xs text-muted-foreground">{t("fields.profileSummary")}</Label>
                       <Textarea
-                        aria-label={t("fields.profileSummary")}
+                        id="cv-summary"
                         value={form.headline}
                         onChange={(e) => setForm((f) => ({ ...f, headline: e.target.value }))}
                         placeholder={t("placeholders.summary")}
@@ -878,7 +788,10 @@ export default function CVBuilderPage() {
                 <SectionCard title={t("sections.skills", { count: form.skills.length })} icon={<Award className="w-4 h-4" />}
                   sectionKey="skills" hidden={hiddenSections.has("skills")} onToggle={() => toggleSection("skills")}
                 >
+                  {/* Visible label: once skills exist the box only says "Add more…". */}
+                  <Label htmlFor="cv-skills" className="mb-1.5 block text-xs text-muted-foreground">{t("fields.skills")}</Label>
                   <TagAutocomplete
+                    id="cv-skills"
                     type="skills"
                     value={form.skills}
                     onChange={(next) => setForm((f) => ({ ...f, skills: next }))}
@@ -922,8 +835,8 @@ export default function CVBuilderPage() {
                             />
                           </div>
                           <div className="md:col-span-2 field">
-                            <Label className="text-xs text-muted-foreground">{t("fields.techStack")}</Label>
-                            <Input aria-label={t("fields.techStack")} value={proj.techStack.join(", ")}
+                            <Label htmlFor={`cv-tech-${i}`} className="text-xs text-muted-foreground">{t("fields.techStack")}</Label>
+                            <Input id={`cv-tech-${i}`} value={proj.techStack.join(", ")}
                               onChange={(e) => updateProject(i, "techStack", e.target.value.split(",").map((t) => t.trim()).filter(Boolean))}
                               placeholder={t("placeholders.techStack")} className="text-sm" />
                           </div>
@@ -955,8 +868,8 @@ export default function CVBuilderPage() {
                         <FormField label={t("fields.language")} value={lang.language}
                           onChange={(v) => updateLanguage(i, "language", v)} placeholder={t("placeholders.language")} />
                         <div className="space-y-1.5">
-                          <Label className="text-xs text-muted-foreground">{t("fields.proficiency")}</Label>
-                          <SearchableSelect ariaLabel={t("fields.proficiency")} options={proficiencyOptions} value={lang.proficiency}
+                          <Label htmlFor={`cv-lang-level-${i}`} className="text-xs text-muted-foreground">{t("fields.proficiency")}</Label>
+                          <SearchableSelect id={`cv-lang-level-${i}`} ariaLabel={t("fields.proficiency")} options={proficiencyOptions} value={lang.proficiency}
                             onValueChange={(v) => updateLanguage(i, "proficiency", v)} />
                         </div>
                         <button type="button" onClick={() => removeLanguage(i)} aria-label={t("actions.removeLanguage")} className="mb-[5px] opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
@@ -982,8 +895,9 @@ export default function CVBuilderPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="flex gap-2 mt-2">
-                    <Input aria-label={t("fields.newCertification")} value={certInput} onChange={(e) => setCertInput(e.target.value)}
+                  <Label htmlFor="cv-new-cert" className="mt-2 block text-xs text-muted-foreground">{t("fields.newCertification")}</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input id="cv-new-cert" value={certInput} onChange={(e) => setCertInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCert(); } }}
                       placeholder={t("placeholders.certification")} className="h-8 text-sm" />
                     <Button size="dense" variant="outline" onClick={addCert} className="gap-1 shrink-0">

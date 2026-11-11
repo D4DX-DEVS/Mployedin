@@ -58,6 +58,7 @@ export function NewChatSearch({ dashboardPrefix, trigger, newChatLabel }: NewCha
   const { locale } = useParams<{ locale: string }>();
   const { data: session } = useSession();
   const tRoles = useTranslations("messagesPage.roles");
+  const tPage = useTranslations("messagesPage");
 
   const { data: users = [], isLoading, isFetching } = useUserSearch(query);
 
@@ -117,7 +118,7 @@ export function NewChatSearch({ dashboardPrefix, trigger, newChatLabel }: NewCha
         {trigger ?? (
           <button className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors min-h-11">
             <MessageSquare className="h-3.5 w-3.5" />
-            {newChatLabel ?? "New Chat"}
+            {newChatLabel ?? tPage("newChat")}
           </button>
         )}
       </DialogTrigger>

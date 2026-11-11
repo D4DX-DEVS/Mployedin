@@ -201,12 +201,16 @@ export default function AgentTasksPage() {
   ];
   const phoneFilterCount = (statusSelectValue !== "all" ? 1 : 0) +(kindFilter !== "all" ? 1 : 0);
 
-  const taskActions = (task: Task) => {
+  const taskActions = (task: Task, phone = false) => {
     const assigned = Boolean(task.assignedBy);
     return (
       <RowActions
         name={task.title}
         labelsFrom="wide"
+        // Phone footer: the status picker leads the row (beside the title it
+        // crushed long names), View details fills it, Delete is an icon.
+        // The header badge already shows the status, so the picker names the action.
+        picker={phone ? { ...statusPickerFor(task), display: <span className="ps-1.5">{t("changeStatus")}</span> } : undefined}
         quick={[{ key: "details", label: t("detailsAction"), icon: Eye, onSelect: () => setDetailsTask(task) }]}
         menu={[
           // An assigned task belongs to whoever gave it: no delete.
@@ -214,6 +218,7 @@ export default function AgentTasksPage() {
             key: "delete",
             label: tc("delete"),
             icon: Trash2,
+            iconOnly: phone,
             destructive: true,
             onSelect: () => { void deleteTask(task._id); },
           }]),
@@ -341,15 +346,14 @@ export default function AgentTasksPage() {
               <button
                 type="button"
                 onClick={() => setDetailsTask(task)}
-                className={`block max-w-full truncate rounded text-start hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${closed && task.reviewStatus !== "awaiting_review" ? "line-through text-muted-foreground" : "text-foreground"}`}
+                className={`block max-w-full break-words rounded text-start hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${closed && task.reviewStatus !== "awaiting_review" ? "line-through text-muted-foreground" : "text-foreground"}`}
               >
                 {task.title}
               </button>
             ),
             subtitle: task.description || undefined,
-            trailing: <RowActions name={task.title} picker={statusPickerFor(task)} />,
-            // The title already opens details; only own tasks need the footer (for Delete).
-            actions: assigned ? undefined : taskActions(task),
+            trailing: <TaskStatusBadge status={task.status} reviewStatus={task.reviewStatus} />,
+            actions: taskActions(task, true),
             meta: (
               <>
                 {task.reviewStatus === "returned" && task.reviewComment && (

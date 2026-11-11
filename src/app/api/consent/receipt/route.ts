@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/security/rateLimit";
 import { getClientIp, FALLBACK_CLIENT } from "@/lib/security/clientIp";
 import { bannerTextHash } from "@/lib/consent/bannerTextHash";
 import { RECEIPT_ID_PATTERN } from "@/lib/consent/receiptId";
+import { consentSetCookie } from "@/lib/consent/reissue";
 import { getConsent } from "@/lib/consent/server";
 import { CONSENT_VERSION } from "@/lib/consent/state";
 import { recordCookieConsent } from "@/lib/gdpr/consent";
@@ -60,6 +61,12 @@ const receiptSchema = z.object({
  * client resends one that failed to deliver) answers 204 again and neither the
  * receipt nor the account rows are written twice. Fire-and-forget on the
  * client: 204, no body; the client retries only a 429 or 5xx, never a 409.
+ *
+ * Once the cookie has been checked, every answer (204, and a 500 too: the
+ * choice must not depend on the database) sends that same cookie back in a
+ * Set-Cookie header, with the end date it already had. Safari keeps a cookie
+ * written by page script for 7 days only; set by the server it lasts its six
+ * months (lib/consent/reissue). Nothing is set on a refusal (400, 409, 429).
  */
 export async function POST(req: NextRequest) {
   const client = getClientIp(req.headers);
@@ -85,6 +92,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This cookie choice doesn't match the one stored in this browser." }, { status: 409 });
   }
 
+  const choiceCookie = consentSetCookie(stored, { secure: isHttps(req), nowMs: Date.now() });
+  const withChoiceCookie = <R extends NextResponse>(res: R): R => {
+    if (choiceCookie) res.headers.append("Set-Cookie", choiceCookie);
+    return res;
+  };
+
   // One receipt per choice reference. The client sends a receipt again when an earlier delivery failed
   // (a retry, or the next page load), so storing must be idempotent: an upsert that writes only when the
   // reference is new, and a duplicate-key error (two requests racing to insert it) counts as stored.
@@ -108,7 +121,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     if ((err as { code?: number } | null)?.code !== 11000) {
       logger.error({ err }, "[consent] couldn't store a consent receipt");
-      return NextResponse.json({ error: "We couldn't save your cookie choice." }, { status: 500 });
+      return withChoiceCookie(NextResponse.json({ error: "We couldn't save your cookie choice." }, { status: 500 }));
     }
   }
 
@@ -119,5 +132,11 @@ export async function POST(req: NextRequest) {
     await recordCookieConsent({ userId, receiptId, preferences, media, source: source ?? "banner" });
   }
 
-  return new NextResponse(null, { status: 204 });
+  return withChoiceCookie(new NextResponse(null, { status: 204 }));
+}
+
+/** https as the visitor sees it: the proxy's forwarded protocol when there is one, else the request's own. */
+function isHttps(req: NextRequest): boolean {
+  const forwarded = (req.headers.get("x-forwarded-proto") ?? "").split(",")[0].trim().toLowerCase();
+  return forwarded ? forwarded === "https" : req.nextUrl.protocol === "https:";
 }

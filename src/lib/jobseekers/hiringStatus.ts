@@ -57,6 +57,42 @@ export function computeHiringStatus(applicationStatuses: readonly string[]): Hir
   return "waiting";
 }
 
+/** One application of a seeker, as the staff lists and the profile panel show it. */
+export interface SeekerApplicationRow {
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  company?: string;
+  status: string;
+  /** When the application last changed (ISO). */
+  updatedAt: string;
+}
+
+/** The application statuses that put a seeker at each hiring status. */
+const STATUSES_OF: Record<HiringStatusType, readonly string[]> = {
+  placed: ["hired"],
+  offer: ["offer"],
+  interviewing: ["interview_scheduled", "selected"],
+  shortlisted: ["shortlisted"],
+  applied: ["applied"],
+  notProgressed: ["rejected", "withdrawn"],
+  waiting: [],
+};
+
+/**
+ * The job a seeker's hiring status comes from: the most recently changed
+ * application at that stage. Undefined for "waiting" (no applications).
+ */
+export function pickHiringApplication(
+  applications: readonly SeekerApplicationRow[],
+  hiringStatus: HiringStatusType,
+): SeekerApplicationRow | undefined {
+  const stages = STATUSES_OF[hiringStatus];
+  return applications
+    .filter((a) => stages.includes(a.status))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+}
+
 /**
  * Maps hiring status to StatusBadge class name.
  */

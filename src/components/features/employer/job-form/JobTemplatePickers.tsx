@@ -32,7 +32,7 @@ export function JobTemplatePickers({
       <JobWorkflowPicker />
 
       {/* Matching Weight Template Picker */}
-      <div className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 card-pad">
+      <div className="space-y-1.5 rounded-xl bg-muted/40 card-pad">
         <label className="flex items-center gap-2 text-sm font-medium">
           <Scale className="h-4 w-4 text-sky-600" />
           {t("matchingWeightTemplate")}

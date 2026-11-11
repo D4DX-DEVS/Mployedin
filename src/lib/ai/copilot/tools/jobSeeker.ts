@@ -15,6 +15,12 @@ import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
 import { buildRecommendedJobQuery, poolCountries, RECOMMENDATION_POOL_SIZE, RECOMMENDED_JOB_SELECT } from "@/lib/jobRecommendations";
 import { scoreSeekerPool } from "@/lib/matching/seekerMatches";
 import { routing } from "@/i18n/routing";
+import { displayCompanyName } from "@/lib/jobs/companyDisclosure";
+import { defaultApplicationCv } from "@/lib/applications/cvChoice";
+import { claimSeekerFiles } from "@/lib/cv/fileClaims";
+import { applicationSnapshotFlags } from "@/lib/applications/referralSnapshot";
+import { inngest } from "@/lib/inngest/client";
+import logger from "@/lib/logger";
 
 const CV_TEXT_LIMIT = 2500;
 
@@ -195,7 +201,7 @@ export const recommendedJobsTool: CopilotTool<{ limit?: number }> = {
       .map((j) => ({
         jobId: String(j._id),
         title: j.title,
-        company: (j.employerId as { companyName?: string } | null)?.companyName,
+        company: displayCompanyName(j as { discloseCompany?: boolean }, (j.employerId as { companyName?: string } | null)?.companyName),
         location: jobLocation(j),
         salary: jobSalary(j),
         matchScore: j.matchScore,
@@ -277,11 +283,25 @@ export const applyToJobTool: CopilotTool<{ jobId: string; coverLetter?: string }
   execute: async (args, ctx) => {
     await connectDB();
     if (!isValidObjectId(args.jobId)) return { ok: false, message: "That doesn't look like a valid job ID." };
-    const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();
+    const seeker = await JobSeeker.findOne({ userId: ctx.userId })
+      .select("_id documents cv.originalUrl isAgentReferred badges")
+      .lean();
     if (!seeker) return { ok: false, message: "No job seeker profile found for this account." };
 
-    const job = await Job.findById(args.jobId).select("_id title status expiresAt employerId agentId").lean();
+    const job = await Job.findById(args.jobId)
+      .select("_id title status expiresAt employerId discloseCompany agentId screeningQuestions maxApplicants applicantIds")
+      .lean();
     if (!job || job.status !== "active" || isPastClosingDate(job.expiresAt)) return { ok: false, message: "That job is not currently accepting applications." };
+    // The same refusals as the apply buttons: the assistant has no answers to
+    // give, so a job with required questions goes through the form, and a
+    // full job takes no more applicants.
+    const gate = job as { screeningQuestions?: { required?: boolean }[]; maxApplicants?: number; applicantIds?: unknown[] };
+    if (gate.screeningQuestions?.some((q) => q.required)) {
+      return { ok: false, message: `"${job.title}" asks applicants to answer questions. Please apply from the job page so you can answer them.` };
+    }
+    if (gate.maxApplicants && (gate.applicantIds?.length ?? 0) >= gate.maxApplicants) {
+      return { ok: false, message: "That job has reached its maximum number of applicants." };
+    }
     const { Employer } = await import("@/models/Employer");
     const empRecord = await Employer.findById(job.employerId).select("companyName").lean();
 
@@ -300,6 +320,12 @@ export const applyToJobTool: CopilotTool<{ jobId: string; coverLetter?: string }
       });
     }
 
+    // The seeker's CV, held while the application is saved (lib/cv/fileClaims.ts).
+    const applicationCv = defaultApplicationCv(seeker as { documents?: { name: string; url: string; category?: string; type?: string; builtHash?: string }[]; cv?: { originalUrl?: string } });
+    if ((await claimSeekerFiles(seeker._id, applicationCv.map((d) => d.url))).length > 0) {
+      return { ok: false, message: "Your CV changed while I was applying. Please ask me again." };
+    }
+
     const application = await Application.create({
       jobSeekerId: seeker._id,
       jobId: job._id,
@@ -308,16 +334,27 @@ export const applyToJobTool: CopilotTool<{ jobId: string; coverLetter?: string }
       status: "applied",
       appliedAt: new Date(),
       source: "direct",
+      // The seeker's CV, stored on the application like any other: the employer
+      // is shown the file that was sent, and scoring reads that file.
+      documents: applicationCv,
+      ...applicationSnapshotFlags(seeker as { isAgentReferred?: boolean; badges?: string[] }),
       notes,
       statusHistory: [{ status: "applied", changedAt: new Date() }],
     });
 
-    await Job.updateOne({ _id: job._id }, { $addToSet: { applicantIds: application._id } }).catch(() => {});
+    // applicantIds holds job seekers (the applicant count and the "full" check
+    // read it); this used to add the application's own id.
+    await Job.updateOne({ _id: job._id }, { $addToSet: { applicantIds: seeker._id } }).catch(() => {});
+    // Scored like every other application, so it does not sit "AI pending"
+    // until a recruiter scores it by hand.
+    await inngest
+      .send({ name: "application/ai-screen", data: { applicationId: String(application._id) } })
+      .catch((err: unknown) => { logger.error({ err, applicationId: String(application._id) }, "failed to dispatch ai-screen event for assistant apply"); });
     await notifyApplicationReceived(
       ctx.userId,
       "",
       String(job.title ?? "the position"),
-      empRecord?.companyName ?? "the employer",
+      displayCompanyName(job, empRecord?.companyName, "the employer"),
       String(application._id)
     ).catch(() => {});
 

@@ -21,7 +21,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { TableSortControl } from "@/components/shared/TableSortControl";
-import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL, INLINE_FILTER_FIELD } from "@/components/shared/InlineFilterBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { ListSkeleton } from "@/components/shared/ListSkeleton";
@@ -470,38 +470,49 @@ export default function AdminJobsPage() {
         className="workspace-panel-surface rounded-2xl border-b-0"
         more={(
           <>
-            <SearchableSelect
-              id="admin-jobs-type-filter"
-              className={INLINE_FILTER_CONTROL}
-              options={getEmploymentTypeOptions(t)}
-              value={employmentType}
-              onValueChange={(value) => { setEmploymentType(value); resetPage(); }}
-              placeholder={t("allTypes")}
-            />
+            <div className={INLINE_FILTER_FIELD}>
+              <label htmlFor="admin-jobs-type-filter" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{t("filterTypeLabel")}</label>
+              <SearchableSelect
+                id="admin-jobs-type-filter"
+                className={`${INLINE_FILTER_CONTROL} w-full max-w-none`}
+                options={getEmploymentTypeOptions(t)}
+                value={employmentType}
+                onValueChange={(value) => { setEmploymentType(value); resetPage(); }}
+                placeholder={t("allTypes")}
+                ariaLabel={t("filterTypeLabel")}
+              />
+            </div>
             <InlineFilterSearch
               value={locationFilter}
               onChange={(value) => { setLocationFilter(value); resetPage(); }}
               placeholder={t("locationFilterPlaceholder")}
+              label={t("filterLocationLabel")}
               icon={<MapPin className="h-3.5 w-3.5" />}
               className="flex-[1_1_11rem]"
             />
-            <Input
-              aria-label={t("skillsFilterPlaceholder")}
-              placeholder={t("skillsFilterPlaceholder")}
-              value={skillsFilter}
-              onChange={(e) => { setSkillsFilter(e.target.value); resetPage(); }}
-              className={`${INLINE_FILTER_CONTROL} shadow-none`}
-            />
-            <div className="relative min-w-0 flex-[2_1_16rem]">
-              <Sparkles className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sky-500" />
+            <div className={INLINE_FILTER_FIELD}>
+              <label htmlFor="admin-jobs-skills-filter" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{t("filterSkillsLabel")}</label>
               <Input
-                aria-label={t("aiSearchPlaceholder")}
-                placeholder={t("aiSearchPlaceholder")}
-                value={aiQuery}
-                onChange={(e) => setAiQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyAiSearch(); } }}
-                className="h-11 w-full rounded-lg border-border bg-card ps-8 text-sm shadow-none sm:h-9"
+                id="admin-jobs-skills-filter"
+                placeholder={t("skillsFilterPlaceholder")}
+                value={skillsFilter}
+                onChange={(e) => { setSkillsFilter(e.target.value); resetPage(); }}
+                className={`${INLINE_FILTER_CONTROL} w-full max-w-none shadow-none`}
               />
+            </div>
+            <div className="min-w-0 flex-[2_1_16rem]">
+              <label htmlFor="admin-jobs-ai-search" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{t("aiSearch")}</label>
+              <div className="relative">
+                <Sparkles className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sky-500" />
+                <Input
+                  id="admin-jobs-ai-search"
+                  placeholder={t("aiSearchPlaceholder")}
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyAiSearch(); } }}
+                  className="h-11 w-full rounded-lg border-border bg-card ps-8 text-sm shadow-none sm:h-9"
+                />
+              </div>
             </div>
             <Button
               type="button"

@@ -171,6 +171,8 @@ export interface IJobSeeker extends Document {
     atsAnalyzedAt?: Date;
     /** Times an employer/agent/admin downloaded this candidate's resume. */
     downloadCount?: number;
+    /** Last time an application was being saved with this file (lib/cv/fileClaims.ts). */
+    attachedAt?: Date;
   };
   /**
    * Set by /api/ai/cv-extract when the profile was filled from a parsed CV.
@@ -211,6 +213,10 @@ export interface IJobSeeker extends Document {
     url: string;
     size: number;
     uploadedAt: Date;
+    /** Only on the stored copy of the CV built on Mployedin: which version it holds. */
+    builtHash?: string;
+    /** Last time an application was being saved with this file (lib/cv/fileClaims.ts). */
+    attachedAt?: Date;
   }[];
   // Onboarding
   summary?: string;
@@ -496,6 +502,8 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       atsReport: { type: Schema.Types.Mixed },
       atsAnalyzedAt: Date,
       downloadCount: { type: Number, default: 0 },
+      // Keeps the file while an application is being saved with it (lib/cv/fileClaims.ts).
+      attachedAt: Date,
     },
     cvExtractedByAI: { type: Boolean, default: false },
     cvExtractedAt: Date,
@@ -542,6 +550,11 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       url: { type: String, required: true },
       size: { type: Number, default: 0 },
       uploadedAt: { type: Date, default: Date.now },
+      // Without this path strict mode drops the marker, and every application
+      // sent with the built CV would store another copy of it.
+      builtHash: { type: String },
+      // Keeps the file while an application is being saved with it (lib/cv/fileClaims.ts).
+      attachedAt: { type: Date },
       _id: false,
     }],
     summary: String,

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarRange, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { InlineLabelled } from "@/components/shared/LabelledControl";
 import { DASHBOARD_PERIODS, DEFAULT_DASHBOARD_PERIOD, isDashboardPeriod } from "@/lib/admin/dashboard/period";
 import { readQuery, writeQuery } from "@/lib/ui/urlQuery";
 import { invalidateAdminDashboardCache } from "./dashboard-actions";
@@ -60,19 +61,23 @@ export function DashboardToolbar({ updatedLabel, updatedAt, labels }: DashboardT
       >
         {pending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
       </Button>
-      <Select value={period} onValueChange={changePeriod} disabled={pending}>
-        <SelectTrigger className="h-11 w-auto shrink-0 gap-1.5 text-sm sm:h-9 sm:w-[10.5rem]" aria-label={labels.period}>
-          <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent align="end">
-          {DASHBOARD_PERIODS.map((value) => (
-            <SelectItem key={value} value={value}>
-              {labels.periods[value]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <InlineLabelled label={labels.period} className="shrink-0">
+        {(id) => (
+          <Select value={period} onValueChange={changePeriod} disabled={pending}>
+            <SelectTrigger id={id} className="h-11 w-auto shrink-0 gap-1.5 text-sm sm:h-9 sm:w-[10.5rem]">
+              <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end">
+              {DASHBOARD_PERIODS.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {labels.periods[value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </InlineLabelled>
     </div>
   );
 }

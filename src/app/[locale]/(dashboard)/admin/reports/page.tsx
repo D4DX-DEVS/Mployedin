@@ -18,6 +18,7 @@ import {
 import { ReportKpiGrid, type ReportKpi } from "@/components/features/admin/reports/ReportKpiGrid";
 import { TrendLineChart } from "@/components/features/admin/reports/TrendLineChart";
 import { AttentionList, type AlertItem } from "./_components/attention-list";
+import { InlineLabelled } from "@/components/shared/LabelledControl";
 
 /*
  * Platform report: four totals, then two rows of two cards —
@@ -229,16 +230,20 @@ export default function AdminReportsPage() {
         title={t("reportsAndAnalytics")}
         description={t("platformDemandDescription")}
         actions={(
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger aria-label={tDashboard("toolbar.period")} className="h-10 w-[10.5rem] rounded-xl border-border/70 bg-background/90 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DASHBOARD_PERIODS.map((key) => (
-                <SelectItem key={key} value={key}>{tDashboard(`toolbar.periods.${key}`)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <InlineLabelled label={tDashboard("toolbar.period")}>
+            {(id) => (
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger id={id} className="h-10 w-[10.5rem] rounded-xl border-border/70 bg-background/90 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DASHBOARD_PERIODS.map((key) => (
+                    <SelectItem key={key} value={key}>{tDashboard(`toolbar.periods.${key}`)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </InlineLabelled>
         )}
       />
 

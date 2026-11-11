@@ -12,6 +12,7 @@ import type { UserRole } from "@/models/User";
 import { validateBody } from "@/lib/validators";
 import { jobSeekerAdminUpdateSchema } from "@/lib/validators/job-seekers";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { applicationsBySeeker } from "@/lib/jobseekers/hiringStatus.server";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -86,7 +87,10 @@ async function getHandler(_req: NextRequest, _ctx: AuthCtx, params?: Record<stri
     }
   }
 
-  return NextResponse.json({ jobSeeker: seeker });
+  // Where this person stands on each job they applied to.
+  const applications = (await applicationsBySeeker([seeker._id])).get(String(seeker._id)) ?? [];
+
+  return NextResponse.json({ jobSeeker: seeker, applications });
 }
 
 async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<string, string>) {

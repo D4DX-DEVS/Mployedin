@@ -15,6 +15,7 @@ import { recentMonths, useAiUsage } from "@/components/features/admin/ai-usage/u
 import { changePct, compact, usd } from "@/components/features/admin/ai-usage/format";
 import { SpendCharts } from "./_components/spend-charts";
 import { UsageTable } from "./_components/usage-table";
+import { InlineLabelled } from "@/components/shared/LabelledControl";
 
 const MONTHS = recentMonths();
 
@@ -99,16 +100,20 @@ function AiUsageContent() {
         title={t("title")}
         description={t("description")}
         actions={
-          <Select value={safeMonth} onValueChange={(v) => { setMonth(v); setPage(1); }}>
-            <SelectTrigger aria-label={t("month")} className="h-10 w-[11rem] rounded-xl border-border/70 bg-background/90 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {MONTHS.map((m) => (
-                <SelectItem key={m} value={m}>{monthLabel(m, locale)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <InlineLabelled label={t("month")}>
+            {(id) => (
+              <Select value={safeMonth} onValueChange={(v) => { setMonth(v); setPage(1); }}>
+                <SelectTrigger id={id} className="h-10 w-[11rem] rounded-xl border-border/70 bg-background/90 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((m) => (
+                    <SelectItem key={m} value={m}>{monthLabel(m, locale)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </InlineLabelled>
         }
       />
 

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Search, Users } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Users } from "lucide-react";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -14,6 +14,7 @@ import { AI_USAGE_GROUPS, type AiUsageGroup } from "@/lib/admin/aiUsageConstants
 import type { UsageRow, UsageSummary } from "@/components/features/admin/ai-usage/useAiUsage";
 import { changePct, compact, featureColour, usd } from "@/components/features/admin/ai-usage/format";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { SearchField } from "@/components/shared/SearchField";
 
 interface Props {
   data: UsageSummary;
@@ -109,10 +110,7 @@ export function UsageTable(p: Props) {
           ))}
         </div>
         {p.group !== "jobseeker" ? (
-          <div className="relative w-full sm:w-64">
-            <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("search")} aria-label={t("search")} className="h-10 ps-9" />
-          </div>
+          <SearchField className="w-full sm:w-64" value={draft} onValueChange={setDraft} placeholder={t("search")} inputClassName="h-10" />
         ) : null}
       </div>
 

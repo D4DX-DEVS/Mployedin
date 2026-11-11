@@ -25,6 +25,7 @@
  */
 
 import logger from "@/lib/logger";
+import { displayCompanyName } from "@/lib/jobs/companyDisclosure";
 import { seekerProfileFromDoc, jobProfileFromDoc, type SeekerProfile, type JobProfile } from "@/lib/matchScore";
 import { checkEligibility, type IneligibleReason } from "@/lib/matching/eligibility";
 import { calculateRelevance, type RelevanceBreakdown } from "@/lib/matching/relevance";
@@ -194,7 +195,8 @@ export function toCandidateJob(job: Record<string, unknown>): CandidateJob {
   return {
     id: String((job._id as { toString(): string })?.toString?.() ?? job._id),
     title: (job.title as string) ?? "",
-    company: employer?.companyName ?? "Company",
+    // Emails and digests go to seekers, so a hidden company shows as the platform.
+    company: displayCompanyName(job as { discloseCompany?: boolean }, employer?.companyName, "Company"),
     location: loc.isRemote ? "Remote" : [loc.city, loc.country].filter(Boolean).join(", ") || (loc.country ?? ""),
     isRemote: Boolean(loc.isRemote),
     salary: job.salary as CandidateJob["salary"],

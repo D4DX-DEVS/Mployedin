@@ -292,7 +292,8 @@ export default function AgentInvoicesPage() {
             <ErrorState onRetry={fetchInvoices} />
           ) : (
             <>
-              <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
+              {/* Phone: the invoice cards sit on the page, not inside a panel (a box of boxes). */}
+              <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl max-sm:!overflow-visible max-sm:!rounded-none max-sm:!border-0 max-sm:!bg-transparent max-sm:!shadow-none max-sm:[&>ul]:!p-0">
                 <InvoiceTable
                   invoices={invoices}
                   loading={loading}

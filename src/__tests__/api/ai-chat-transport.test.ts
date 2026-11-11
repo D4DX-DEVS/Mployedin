@@ -75,6 +75,34 @@ describe("/api/ai/chat transport", () => {
     expect(url).toContain("generativelanguage.googleapis.com");
   });
 
+  it("asks again once when the provider is briefly busy, so the user never sees the error", async () => {
+    // Owner saw "something went wrong" two or three times in a row; pressing
+    // Retry by hand always worked (2026-11-11).
+    providerFetch.mockImplementationOnce(() => Promise.resolve(new Response("busy", { status: 503 })));
+    const res = await POST(ask());
+
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("Hello");
+    expect(providerFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up with 502 after the second failure", async () => {
+    providerFetch.mockImplementation(() => Promise.resolve(new Response("rate limited", { status: 429 })));
+    const res = await POST(ask());
+
+    expect(res.status).toBe(502);
+    expect(providerFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not repeat a request the provider refused outright", async () => {
+    // 402 = no credits: asking again cannot help.
+    providerFetch.mockImplementation(() => Promise.resolve(new Response("no credits", { status: 402 })));
+    const res = await POST(ask());
+
+    expect(res.status).toBe(502);
+    expect(providerFetch).toHaveBeenCalledTimes(1);
+  });
+
   it("answers 503 without calling anyone when the serving provider has no key", async () => {
     delete process.env.OPENROUTER_API_KEY;
     delete process.env.GEMINI_API_KEY;

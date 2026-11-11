@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronDown, MoreHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BottomNavItem, BOTTOM_BAR_CLASS } from "@/components/shared/BottomNavItem";
 import { getIcon } from "@/lib/nav/iconRegistry";
 import type { NavBadgeKey, NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import {
@@ -348,7 +349,7 @@ export function JobSeekerBottomNav({ locale, navGroups, counts }: JobSeekerNavPr
             role="dialog"
             aria-modal="true"
             aria-labelledby="job-seeker-more-title"
-            className="absolute inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto rounded-t-3xl border-t border-border bg-background p-4 shadow-2xl"
+            className="absolute inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] max-h-[70vh] overflow-y-auto rounded-t-3xl border-t border-border bg-background p-4 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -403,55 +404,31 @@ export function JobSeekerBottomNav({ locale, navGroups, counts }: JobSeekerNavPr
         aria-label={t("jobSeekerMobileNavigation")}
         // CookieConsent measures this bar and sits on top of it.
         data-bottom-nav=""
-        className="fixed inset-x-0 bottom-0 z-[90] border-t border-border/40 bg-background/95 backdrop-blur-md lg:hidden"
+        className={cn(BOTTOM_BAR_CLASS, "z-[90]")}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="flex min-h-16 items-stretch justify-around">
-          {primary.map((item) => {
-            const active = isActive(item.href);
-            const Icon = getIcon(item.icon);
-            const count = countFor(item, counts);
-            return (
-              <Link
-                key={`bn-${item.href}`}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                prefetch={false}
-                className={cn(
-                  "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 transition-colors duration-150",
-                  active ? "text-primary" : "text-muted-foreground"
-                )}
-              >
-                {active && (
-                  <motion.span
-                    layoutId="job-seeker-bottom-nav-indicator"
-                    className="absolute inset-x-[20%] top-0 h-0.5 rounded-b-full bg-primary"
-                    initial={false}
-                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                  />
-                )}
-                <span className="relative">
-                  <Icon className={cn("h-5 w-5 shrink-0 transition-transform duration-150", active && "scale-110")} />
-                  <CountBadge count={count} className="absolute -right-2.5 -top-1.5" />
-                </span>
-                <span className="max-w-full truncate text-[11px] font-medium leading-none">{labelFor(item, locale)}</span>
-              </Link>
-            );
-          })}
-          <button
-            type="button"
+        <div className="flex items-stretch justify-around px-1">
+          {primary.map((item) => (
+            <BottomNavItem
+              key={`bn-${item.href}`}
+              href={item.href}
+              label={labelFor(item, locale) ?? ""}
+              icon={getIcon(item.icon)}
+              // While the sheet is open "More" is the one current tab.
+              active={!moreOpen && isActive(item.href)}
+              badgeCount={countFor(item, counts)}
+              indicatorId="job-seeker-bottom-nav-indicator"
+            />
+          ))}
+          <BottomNavItem
             onClick={() => setMoreOpen(true)}
-            aria-expanded={moreOpen}
-            aria-controls="job-seeker-more-menu"
-            className={cn(
-              "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium",
-              moreActive || moreOpen ? "text-primary" : "text-muted-foreground"
-            )}
-          >
-            {(moreActive || moreOpen) && <span aria-hidden className="absolute inset-x-[20%] top-0 h-0.5 rounded-b-full bg-primary" />}
-            <MoreHorizontal className="h-5 w-5" />
-            <span>{t("more")}</span>
-          </button>
+            expanded={moreOpen}
+            controls="job-seeker-more-menu"
+            label={t("more")}
+            icon={MoreHorizontal}
+            active={moreActive || moreOpen}
+            indicatorId="job-seeker-bottom-nav-indicator"
+          />
         </div>
       </nav>
     </>

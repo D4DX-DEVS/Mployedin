@@ -21,10 +21,13 @@ import userEvent from "@testing-library/user-event";
 
 import AdminGdprPage from "@/app/[locale]/(dashboard)/admin/gdpr/page";
 import { toast } from "sonner";
+import { readQuery } from "@/lib/ui/urlQuery";
 
 let mockSearchParams = new URLSearchParams();
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: jest.fn(), push: jest.fn() }),
+  // replace() really changes the address, as the router does: the tab and the filters live in the
+  // query string, and a write that never landed would stay "pending" (lib/ui/urlQuery) into the next test.
+  useRouter: () => ({ replace: (href: string) => window.history.replaceState(null, "", href), push: jest.fn() }),
   useSearchParams: () => mockSearchParams,
   usePathname: () => "/en/admin/gdpr",
 }));
@@ -102,6 +105,8 @@ beforeEach(() => {
   mockSearchParams = new URLSearchParams();
   avgResponseMs = 30 * 60 * 60 * 1000;
   window.history.replaceState(null, "", "/en/admin/gdpr");
+  // Forget a query write the previous test left "pending" (lib/ui/urlQuery keeps it in module state until the next read).
+  readQuery();
   fetchMock.mockImplementation((url: string, init?: RequestInit) => {
     if (init?.method === "PATCH") return Promise.resolve({ ok: true, json: async () => ({}) });
     if (String(url).startsWith("/api/admin/gdpr?")) {
@@ -482,6 +487,36 @@ describe("admin GDPR page: the Consent Logs tab", () => {
     await waitFor(() => expect(within(cards).getByText("Total choices").closest("li")).toHaveTextContent("9"));
     expect(screen.queryByText("Total Requests")).not.toBeInTheDocument();
     expect(screen.queryByText("Avg admin response")).not.toBeInTheDocument();
+  });
+
+  it("keeps the open tab in the address, so a reload or a shared link opens Consent Logs again", async () => {
+    render(<AdminGdprPage />);
+    await screen.findAllByText("Sara Ahmed");
+    expect(screen.getByRole("button", { name: /Data Requests/ })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(screen.getByRole("button", { name: /Consent Logs/ }));
+    await screen.findByText("Lina Haddad");
+    expect(new URLSearchParams(window.location.search).get("tab")).toBe("consent");
+    expect(screen.getByRole("button", { name: /Consent Logs/ })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(screen.getByRole("button", { name: /Data Requests/ }));
+    await screen.findAllByText("Sara Ahmed");
+    expect(new URLSearchParams(window.location.search).get("tab")).toBeNull();
+  });
+
+  it("opens on Consent Logs when the address says so (?tab=consent), and on Data Requests for anything else", async () => {
+    window.history.replaceState(null, "", "/en/admin/gdpr?tab=consent");
+    mockSearchParams = new URLSearchParams("tab=consent");
+    const { unmount } = render(<AdminGdprPage />);
+    await screen.findByText("Lina Haddad");
+    expect(screen.queryByText("Total Requests")).not.toBeInTheDocument();
+    unmount();
+
+    window.history.replaceState(null, "", "/en/admin/gdpr?tab=nonsense");
+    mockSearchParams = new URLSearchParams("tab=nonsense");
+    render(<AdminGdprPage />);
+    await screen.findAllByText("Sara Ahmed");
+    expect(screen.getByText("Total Requests")).toBeInTheDocument();
   });
 
   it("lists cookie choices, one row per choice, by default", async () => {

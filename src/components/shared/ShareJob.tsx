@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Share2, Link2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ShareJobProps {
   jobId: string;
@@ -12,6 +13,8 @@ interface ShareJobProps {
   locale: string;
   /** Render as icon-only button (for cards) vs full button */
   variant?: "icon" | "full";
+  /** Extra classes for the icon-only button, e.g. to match a 44px phone row. */
+  className?: string;
 }
 
 /**
@@ -47,7 +50,7 @@ const X_ICON = (
   </svg>
 );
 
-export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full" }: ShareJobProps) {
+export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full", className }: ShareJobProps) {
   const t = useTranslations("shareJob");
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -115,11 +118,16 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
     return (
       <div className="relative">
         <button
+          type="button"
           onClick={handleNativeShare}
-          className="inline-flex items-center justify-center rounded-xl border border-border bg-secondary/80 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground chip-pad"
+          className={cn(
+            "inline-flex items-center justify-center rounded-xl border border-border bg-secondary/80 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground chip-pad",
+            className,
+          )}
           aria-label={t("share")}
+          title={t("share")}
         >
-          <Share2 className="h-3.5 w-3.5" />
+          <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
 
         {open && (

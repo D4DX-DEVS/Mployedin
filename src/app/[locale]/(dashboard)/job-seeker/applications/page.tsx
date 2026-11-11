@@ -490,7 +490,12 @@ function ApplicationCard({
         </div>
 
         {(isActive || TERMINAL_STATUSES.includes(app.status)) && (
-          <div className="mt-0.5 flex items-center justify-end gap-3 sm:mt-1.5">
+          // Phone: a footer row under a divider, buttons filling it evenly
+          // (PhoneRecordList shape). Desktop keeps the small end-aligned links.
+          <div
+            data-card-footer
+            className="mt-0.5 flex items-center justify-end gap-3 max-sm:mt-2.5 max-sm:gap-2 max-sm:border-t max-sm:border-border/70 max-sm:pt-2.5 max-sm:[&>*]:min-h-11 max-sm:[&>*]:flex-1 max-sm:[&>*]:rounded-xl max-sm:[&>*]:border max-sm:[&>*]:border-border/80 sm:mt-1.5"
+          >
             {TERMINAL_STATUSES.includes(app.status) && (
               <Button variant="ghost" size="sm" className="h-6 gap-1 px-0 text-[12px] text-amber-600 hover:text-amber-700" asChild>
                 <Link href={`/${locale}/job-seeker/applications/${app._id}/feedback`}>

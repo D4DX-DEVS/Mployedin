@@ -47,10 +47,17 @@ let seekerDoc: Record<string, unknown>;
 let jobs: Array<Record<string, unknown>>;
 const mockJobFind = jest.fn();
 const mockCreate = jest.fn();
+// The claim on the CV (lib/cv/fileClaims.ts) and the autoApplyCount bump.
+const mockSeekerUpdate = jest.fn(() => ({ matchedCount: 1 }));
 
 jest.mock("@/models/JobSeeker", () => ({
   __esModule: true,
-  default: { findOne: jest.fn(() => chain(seekerDoc)), updateOne: jest.fn(async () => ({})) },
+  default: {
+    findOne: jest.fn(() => chain(seekerDoc)),
+    // The CV is read again when each application is saved.
+    findById: jest.fn(() => chain(seekerDoc)),
+    updateOne: jest.fn(async () => mockSeekerUpdate()),
+  },
 }));
 jest.mock("@/models/Job", () => ({
   __esModule: true,
@@ -98,6 +105,8 @@ async function run() {
 beforeEach(() => {
   clearEngineOptionsCache();
   mockCreate.mockReset();
+  mockSeekerUpdate.mockReset();
+  mockSeekerUpdate.mockImplementation(() => ({ matchedCount: 1 }));
   mockCreate.mockImplementation(async (doc: Record<string, unknown>) => ({ _id: `app-${String(doc.jobId)}` }));
   seekerDoc = {
     _id: "s1",
@@ -161,5 +170,62 @@ describe("autoApply", () => {
     seekerDoc.applicationMode = "manual";
     expect(await run()).toEqual({ skipped: "auto-apply disabled" });
     expect(mockJobFind).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Auto-applied applications carried no CV: the employer was shown whatever the
+ * profile held on the day they looked, or nothing for a seeker whose CV was an
+ * uploaded resume. Each one now stores the CV it was sent with.
+ */
+describe("autoApply — the CV sent", () => {
+  const created = () => mockCreate.mock.calls[0][0] as { documents?: unknown[] };
+
+  it("stores the Profile CV on the application", async () => {
+    seekerDoc.cv = { originalUrl: "https://cdn/cvs/profile.pdf" };
+    seekerDoc.documents = [{ id: "d1", name: "Other.pdf", category: "resume", url: "https://cdn/documents/other.pdf" }];
+    await run();
+    expect(created().documents).toEqual([{ name: "CV", url: "https://cdn/cvs/profile.pdf", type: "resume" }]);
+  });
+
+  it("stores the newest uploaded resume when there is no Profile CV", async () => {
+    seekerDoc.documents = [
+      { id: "d1", name: "Old.pdf", category: "resume", url: "https://cdn/documents/old.pdf" },
+      { id: "d2", name: "New.pdf", category: "resume", url: "https://cdn/documents/new.pdf" },
+      { id: "c1", name: "Degree.pdf", category: "college_certificate", url: "https://cdn/documents/degree.pdf" },
+    ];
+    await run();
+    expect(created().documents).toEqual([{ name: "New.pdf", url: "https://cdn/documents/new.pdf", type: "resume" }]);
+  });
+
+  it("still applies, with no attachment, for a seeker who has no CV file", async () => {
+    expect(await run()).toEqual({ applied: 1 });
+    expect(created().documents).toEqual([]);
+  });
+
+  it("reads the seeker's documents and Profile CV as they are when the application is saved", async () => {
+    await run();
+    const JobSeeker = (await import("@/models/JobSeeker")).default as unknown as { findById: jest.Mock };
+    expect(JobSeeker.findById).toHaveBeenCalledWith("s1");
+    const select = JobSeeker.findById.mock.results[0].value.select as jest.Mock;
+    expect(select.mock.calls[0][0]).toMatch(/\bdocuments\b/);
+    expect(select.mock.calls[0][0]).toMatch(/cv\.originalUrl/);
+  });
+
+  it("holds the CV file while the application is saved", async () => {
+    seekerDoc.cv = { originalUrl: "https://cdn/cvs/profile.pdf" };
+    await run();
+    const JobSeeker = (await import("@/models/JobSeeker")).default as unknown as { updateOne: jest.Mock };
+    const claim = JobSeeker.updateOne.mock.calls.find(([, u]) => u.$set);
+    expect(claim).toBeDefined();
+    expect(JSON.stringify(claim)).toContain("https://cdn/cvs/profile.pdf");
+  });
+
+  it("skips the job, rather than send a CV being deleted, when the CV goes in that instant", async () => {
+    seekerDoc.cv = { originalUrl: "https://cdn/cvs/profile.pdf" };
+    // Neither as a document nor as the Profile CV: removed between read and claim.
+    mockSeekerUpdate.mockImplementation(() => ({ matchedCount: 0 }));
+    expect(await run()).toEqual({ applied: 0 });
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 });

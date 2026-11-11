@@ -34,3 +34,24 @@ describe("JobSeeker schema — CV extraction flags", () => {
     expect(doc.get("cvExtractedAt")).toEqual(new Date("2026-09-11T00:00:00Z"));
   });
 });
+
+/**
+ * The stored copy of the CV built on Mployedin is told apart from the seeker's
+ * own uploads by `builtHash` (cv/built-cv.ts). Undeclared, strict mode drops
+ * it: the copy is then never reused or replaced, so every application sent
+ * with the built CV stores — and pays to read — another file.
+ */
+describe("JobSeeker schema — built CV marker", () => {
+  it("keeps builtHash on a document, and leaves an ordinary upload without one", () => {
+    const doc = new JobSeeker({
+      userId: "000000000000000000000001",
+      documents: [
+        { id: "b1", name: "Antony - Mployedin CV.pdf", category: "resume", url: "https://cdn/documents/built.pdf", builtHash: "1193b985483aa0" },
+        { id: "d1", name: "Resume.pdf", category: "resume", url: "https://cdn/documents/resume.pdf" },
+      ],
+    });
+    const [built, uploaded] = doc.toObject().documents;
+    expect(built.builtHash).toBe("1193b985483aa0");
+    expect(uploaded.builtHash).toBeUndefined();
+  });
+});

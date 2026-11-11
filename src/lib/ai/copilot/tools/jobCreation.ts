@@ -131,6 +131,8 @@ export const createJobTool: CopilotTool<{
       vacancies: args.vacancies ?? 1,
       tags: [],
       visibility: "public",
+      // Company stays hidden from seekers unless the poster turns it on in the job form.
+      discloseCompany: false,
     });
 
     // POST /api/jobs consumes a job slot through withSubscription(); this path

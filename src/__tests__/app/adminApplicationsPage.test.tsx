@@ -101,12 +101,12 @@ describe("AdminApplicationsPage", () => {
     render(<AdminApplicationsPage />);
 
     // Filters are always visible now — no Show filters toggle to open first.
-    await screen.findByRole("textbox", { name: /search/i });
+    await screen.findByRole("searchbox", { name: /search/i });
     // One box only: the separate AI search row is gone.
     expect(screen.queryByPlaceholderText(/AI search: e\.g\./i)).not.toBeInTheDocument();
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
 
-    await user.type(screen.getByRole("textbox", { name: /search/i }), "rejected react people at d4dx");
+    await user.type(screen.getByRole("searchbox", { name: /search/i }), "rejected react people at d4dx");
     await user.click(screen.getByRole("button", { name: /ask ai/i }));
 
     await waitFor(() => {

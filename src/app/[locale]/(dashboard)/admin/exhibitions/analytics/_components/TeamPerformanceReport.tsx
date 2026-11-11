@@ -2,13 +2,14 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronDown, ChevronsDownUp, ChevronsUpDown, Network, Search } from "lucide-react";
+import { ChevronDown, ChevronsDownUp, ChevronsUpDown, Network } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TeamDetailPanel, type TeamPanelSubject } from "./TeamDetailPanel";
 import { formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import { SearchField } from "@/components/shared/SearchField";
 
 type MoneyByCurrency = Record<string, number>;
 
@@ -162,18 +163,14 @@ export function TeamPerformanceReport({ teams }: { teams: TeamRow[] }) {
           {teams.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{t("summary", { active: activeTeams, total: teams.length })}</p>}
         </div>
         {teams.length > 1 && (
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <div className="relative sm:w-72">
-              <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input
-                type="search"
-                value={query}
-                onChange={(event) => { setQuery(event.target.value); setLimit(PAGE); }}
-                placeholder={t("searchPlaceholder")}
-                aria-label={t("searchPlaceholder")}
-                className="min-h-11 ps-9 sm:min-h-9"
-              />
-            </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-end">
+            <SearchField
+              className="sm:w-72"
+              value={query}
+              onValueChange={(value) => { setQuery(value); setLimit(PAGE); }}
+              placeholder={t("searchPlaceholder")}
+              inputClassName="min-h-11 sm:min-h-9"
+            />
             <Button
               variant="outline"
               size="sm"
@@ -196,7 +193,110 @@ export function TeamPerformanceReport({ teams }: { teams: TeamRow[] }) {
           <Button variant="link" size="sm" onClick={() => setQuery("")}>{t("clearSearch")}</Button>
         </div>
       ) : (
-        <div className="scrollbar-none max-h-[36rem] overflow-auto overscroll-contain rounded-xl border border-border/60 max-sm:max-h-none max-sm:rounded-none max-sm:border-0">
+        <>
+        {/* Phone: one card per team (figures in a strip, agents as plain lines
+            under a divider), as divided rows inside the panel. The grouped table re-flowed by the generic
+            table-to-card fallback nested three boxes deep. */}
+        <ul className="divide-y divide-border/60 border-t border-border/60 sm:hidden" aria-label={t("title")}>
+          {rows.map(({ team, agents }) => {
+            const id = key(team);
+            const expanded = isOpen(team);
+            const name = team.superAgentId ? team.name || t("unnamed") : t("noSuperAgent");
+            const working = q ? agents : agents.filter((agent) => agent.requests > 0);
+            const idleAgents = q ? [] : agents.filter((agent) => agent.requests === 0);
+            const idleOpen = idleAgentsOpen.has(id);
+            const figures = [
+              { label: t("colRequests"), value: team.requests },
+              { label: t("colApproved"), value: team.approved },
+              { label: t("colApprovalRate"), value: rate(team) },
+              { label: t("colLeads"), value: leads(team) },
+            ];
+            return (
+              <li key={id} className="py-3">
+                <button
+                  type="button"
+                  onClick={() => openTeam(team, name)}
+                  aria-label={t("openDetails", { name })}
+                  className="flex w-full min-w-0 items-center gap-3 text-start"
+                >
+                  <span className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-full font-semibold",
+                    team.superAgentId ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
+                  )}>
+                    {team.superAgentId ? initial(team.name) : "–"}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-foreground">{name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {t("agentsCount", { count: team.agentCount, active: team.activeAgents })}
+                    </span>
+                  </span>
+                </button>
+                <dl className="mt-2.5 grid grid-cols-4 divide-x divide-border/60 rounded-lg bg-muted/40 py-1.5 text-center rtl:divide-x-reverse">
+                  {figures.map((figure) => (
+                    <div key={figure.label} className="flex min-w-0 flex-col-reverse px-1">
+                      <dt className="truncate text-[11px] text-muted-foreground">{figure.label}</dt>
+                      <dd className="truncate text-sm font-semibold tabular-nums text-foreground">{figure.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="mt-2 flex justify-between gap-2 text-xs text-muted-foreground">
+                  <span>{t("colApprovedBudget")}</span>
+                  <span className="font-medium tabular-nums text-foreground">{formatMoneyByCurrency(team.approvedBudget)}</span>
+                </p>
+                {expanded && (
+                  <ul className="mt-2 divide-y divide-border/60 border-t border-border/60">
+                    {agents.length === 0 && <li className="py-2 text-xs text-muted-foreground">{t("noAgents")}</li>}
+                    {[...working, ...(idleOpen ? idleAgents : [])].map((agent) => (
+                      <li key={agent.agentId}>
+                        <button
+                          type="button"
+                          onClick={() => openAgent(agent, name)}
+                          aria-label={t("openDetails", { name: agent.name || t("unnamed") })}
+                          className="flex min-h-11 w-full min-w-0 items-center justify-between gap-3 py-1.5 text-start"
+                        >
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium text-foreground">{agent.name || t("unnamed")}</span>
+                            {agent.email && <span className="block truncate text-xs text-muted-foreground">{agent.email}</span>}
+                          </span>
+                          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                            {agent.requests} · {rate(agent)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                    {idleAgents.length > 0 && (
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => toggleIdleAgents(id)}
+                          aria-expanded={idleOpen}
+                          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary"
+                        >
+                          <ChevronDown className={cn("size-4 transition-transform", idleOpen && "rotate-180")} aria-hidden="true" />
+                          {t(idleOpen ? "hideIdleAgents" : "showIdleAgents", { count: idleAgents.length })}
+                        </button>
+                      </li>
+                    )}
+                  </ul>
+                )}
+                <div className="mt-2.5 border-t border-border/60 pt-2.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => toggle(id)}
+                    aria-expanded={expanded}
+                    className="min-h-11 w-full gap-1.5"
+                  >
+                    <ChevronDown className={cn("size-4 transition-transform", expanded && "rotate-180")} aria-hidden="true" />
+                    {t(expanded ? "hideAgents" : "showAgents", { name })}
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="scrollbar-none max-h-[36rem] overflow-auto overscroll-contain rounded-xl border border-border/60 max-sm:hidden" data-mobile-table="scroll">
           <table className="w-full caption-bottom border-collapse text-sm">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -300,6 +400,7 @@ export function TeamPerformanceReport({ teams }: { teams: TeamRow[] }) {
             </TableBody>
           </table>
         </div>
+        </>
       )}
       {(hiddenActive > 0 || idle.length > 0) && (
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">

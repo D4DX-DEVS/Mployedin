@@ -67,7 +67,8 @@ export function PhoneRecordList({ items, loading, empty, className, label, compa
 
   if (items.length === 0) {
     return empty ? (
-      <div className={cn("rounded-xl border border-border/70 bg-card px-4 py-10", className)}>{empty}</div>
+      // EmptyState brings its own dashed box; inside this card that made a box in a box.
+      <div className={cn("rounded-xl border border-border/70 bg-card px-4 py-10 [&_[data-empty-state]]:border-0 [&_[data-empty-state]]:bg-transparent [&_[data-empty-state]]:p-0", className)}>{empty}</div>
     ) : null;
   }
 

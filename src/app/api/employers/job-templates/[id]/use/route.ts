@@ -71,6 +71,7 @@ async function useHandler(
     tags: template.tags ?? [],
     vacancies: template.vacancies ?? 1,
     workflowMode: template.applicationMode === "auto" ? "auto" : "manual",
+    discloseCompany: false,
     status: "draft",
   });
   await job.save({ validateBeforeSave: false });

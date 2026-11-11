@@ -8,6 +8,7 @@ import JobSeeker from "@/models/JobSeeker";
 import TalentPool from "@/models/TalentPool";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { withoutHiddenSections } from "@/lib/jobSeeker/sectionVisibility";
+import { hasSentCvFile } from "@/lib/applications/sentCv";
 
 /**
  * GET /api/employers/candidates/[id]
@@ -110,6 +111,9 @@ async function handler(req: NextRequest, ctx: { userId: string }, params?: Recor
       appliedAt: app.appliedAt,
       rejectionReason: app.rejectionReason,
       source: app.source,
+      // Whether a CV was sent with this application. The file itself goes
+      // through the CV routes (?applicationId), never as a stored URL.
+      hasCv: hasSentCvFile(app.documents),
       // The portfolio link typed on the apply form. Only this type: other
       // documents are stored files and go through the download route.
       portfolioLinks: (app.documents ?? [])

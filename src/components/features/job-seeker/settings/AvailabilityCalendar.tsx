@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useId } from "react";
 import { useTranslations } from "next-intl";
 import { Clock, Globe, CheckCircle2 } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -53,7 +53,14 @@ export function AvailabilityCalendar({
   onTimezoneChange,
 }: AvailabilityCalendarProps) {
   const t = useTranslations("availabilityCalendar");
+  const tCommon = useTranslations("common");
   const days = useWeekdayLabels();
+  // Visible names for the pickers: the timezone label, and Start / End column
+  // headers over the time pickers. Each picker keeps its full spoken name
+  // ("Monday start time"); the headers are for sighted users, so they are
+  // hidden from screen readers rather than read twice.
+  const uid = useId();
+  const zoneId = `${uid}-zone`;
   const hoursMap = new Map(availableHours.map((h) => [h.day, h]));
   const { options: timezoneOptions, value: selectedZone } = useTimezoneOptions(TIMEZONES, timezone);
 
@@ -89,9 +96,10 @@ export function AvailabilityCalendar({
       <div>
         <div className="flex items-center gap-1.5 mb-2">
           <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">{t("yourTimezone")}</p>
+          <label htmlFor={zoneId} className="text-sm font-medium text-foreground">{t("yourTimezone")}</label>
         </div>
         <SearchableSelect
+          id={zoneId}
           className="h-9 w-64 text-sm rounded-lg"
           ariaLabel={t("yourTimezone")}
           options={timezoneOptions}
@@ -137,6 +145,12 @@ export function AvailabilityCalendar({
             <p className="text-sm font-medium text-foreground">{t("workingHours")}</p>
           </div>
           <div className="space-y-2">
+            <div className="flex items-center gap-3" aria-hidden="true">
+              <span className="w-10 shrink-0 rtl:w-16" />
+              <span className="w-24 text-xs font-medium text-muted-foreground">{tCommon("start")}</span>
+              <span className="invisible text-xs">{t("to")}</span>
+              <span className="w-24 text-xs font-medium text-muted-foreground">{tCommon("end")}</span>
+            </div>
             {DAYS.filter((d) => selectedDays.includes(d)).map((day) => {
               const hours = hoursMap.get(day);
               const dayName = days[day].full;

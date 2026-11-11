@@ -62,7 +62,16 @@ export function StaffCheckTiles({ overview, values, onPick }: StaffCheckTilesPro
   // "My open checks" only means something to someone who runs checks.
   const tiles = TILES.filter((tile) => tile.key !== "mine" || overview?.canRun);
   return (
-    <section aria-label={t("tilesLabel")} className={cn("grid grid-cols-2 gap-3 sm:gap-4", tiles.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
+    // Phones: one scrollable row of status pills. Five 2x2 tiles filled most
+    // of the first screen before a single check showed.
+    <section
+      aria-label={t("tilesLabel")}
+      className={cn(
+        "grid grid-cols-2 gap-3 sm:gap-4",
+        "scroll-hint-x max-sm:-mx-1 max-sm:flex max-sm:gap-2 max-sm:overflow-x-auto max-sm:px-1 max-sm:pb-1 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden",
+        tiles.length === 5 ? "lg:grid-cols-5" : "lg:grid-cols-4",
+      )}
+    >
       {tiles.map(({ key, icon: Icon, tone, filter }) => {
         const active = values.status === filter.status && values.holder === filter.holder;
         return (
@@ -73,17 +82,18 @@ export function StaffCheckTiles({ overview, values, onPick }: StaffCheckTilesPro
             onClick={() => onPick(active ? { status: "all", holder: "all" } : filter)}
             className={cn(
               "workspace-panel-surface flex min-h-11 flex-col items-start gap-1 rounded-2xl border p-3 text-start transition-colors sm:p-4",
+              "max-sm:shrink-0 max-sm:flex-row max-sm:items-center max-sm:gap-2 max-sm:rounded-full max-sm:px-3 max-sm:py-0",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               active ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/40",
               // Odd count on the two-column phone grid: the last tile takes the full row.
               tiles.length % 2 === 1 && key === "completed" && "col-span-2 lg:col-span-1",
             )}
           >
-            <span className="flex w-full items-center gap-2 text-xs font-medium text-muted-foreground sm:text-sm">
+            <span className="flex w-full items-center gap-2 text-xs font-medium text-muted-foreground max-sm:w-auto max-sm:whitespace-nowrap sm:text-sm">
               <Icon className={cn("size-4 shrink-0", tone)} aria-hidden="true" />
               <span className="truncate">{t(`tiles.${key}`)}</span>
             </span>
-            <span className="text-lg font-semibold tabular-nums text-foreground sm:text-2xl">
+            <span className="text-lg font-semibold tabular-nums text-foreground max-sm:text-sm sm:text-2xl">
               {overview ? overview.counts[key] : <span className="inline-block h-6 w-8 animate-pulse rounded bg-muted/60 align-middle" />}
             </span>
             <span className="truncate text-xs text-muted-foreground max-sm:hidden">{t(`tileHint.${key}`)}</span>

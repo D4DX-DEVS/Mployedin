@@ -122,6 +122,33 @@ describe("EmployerAIJobCreatePage streaming reply", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Thinking…");
   });
 
+  it("never shows the draft's raw fields while they are still streaming", async () => {
+    // The closing </JOB_DATA> has not arrived: the block used to print as text.
+    let finish: (chunk: { done: boolean; value: Uint8Array | undefined }) => void = () => {};
+    const chunks = ['Here is the draft.<JOB_DATA>{"title": "Science Teacher", "category": "Educ'];
+    let i = 0;
+    chatResponses.push(Promise.resolve({
+      ok: true,
+      body: {
+        getReader: () => ({
+          read: () =>
+            i < chunks.length
+              ? Promise.resolve({ done: false, value: encode(chunks[i++]) })
+              : new Promise((resolve) => { finish = resolve; }),
+        }),
+      },
+    }));
+    render(<EmployerAIJobCreatePage />);
+    await ask("science teacher in Kuwait");
+
+    expect(await screen.findByText("Here is the draft.")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Filling in the job details…");
+    expect(screen.queryByText(/Science Teacher/)).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('"title"');
+
+    await act(async () => { finish({ done: true, value: undefined }); });
+  });
+
   it("turns an empty reply into an error with a Retry that re-asks the same question", async () => {
     chatResponses.push(Promise.resolve(streamedResponse([])));
     chatResponses.push(Promise.resolve(streamedResponse(["Got it — ", "which country?"])));

@@ -4,6 +4,7 @@ import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import { Employer } from "@/models/Employer";
 import { seekerProfileFromDoc } from "@/lib/matchScore";
+import { checkQualificationLines, evidenceFromSeeker, type EvidenceDoc, type QualificationLineCheck } from "@/lib/matching/qualificationLines";
 import { loadConfirmedSkills, withConfirmedSkills } from "@/lib/effectiveSeekerProfile";
 import { scorePair, toCandidateJob } from "@/lib/matching/recommend";
 import { collectSkillVocabulary, loadSkillVectors } from "@/lib/matching/skillVectors";
@@ -19,6 +20,7 @@ import {
   preferenceMismatchOf,
   rankPoolCandidates,
   shortlistByPairScore,
+  type PoolQualification,
   type UnmetRequirement,
 } from "@/lib/matching/talentPoolRanking";
 
@@ -36,6 +38,9 @@ const SCORE_CONCURRENCY = 5;
 /** A ranking is reused while paging through it, until the job changes. */
 const CACHE_TTL_MS = 2 * 60 * 1000;
 
+/** Checks a non-applicant's card may show (see PoolCandidate.qualifications). */
+const HIDDEN_CHECKS: readonly string[] = ["salary", "cv"];
+
 export interface PoolCandidate {
   jobSeekerId: string;
   name: string;
@@ -51,6 +56,17 @@ export interface PoolCandidate {
   missingSkills: string[];
   requirementsStatus: RequirementsStatus;
   unmetRequirements: UnmetRequirement[];
+  /**
+   * Every requirement the job sets, checked against the profile — met or not —
+   * for the expanded card. Salary and CV checks are left out: a person who has
+   * not applied has not shared those with the hirer.
+   */
+  qualifications: PoolQualification[];
+  /**
+   * The job's free-text qualification lines, each checked against this profile
+   * (has / partly / doesn't have / can't tell). Empty when the job lists none.
+   */
+  lineChecks: QualificationLineCheck[];
   /** The candidate's own preference that rules this job out, if any. */
   preferenceMismatch: IneligibleReason | null;
   /** Most recent role, for the card. */
@@ -102,7 +118,7 @@ function latestRoleOf(seeker: Lean): PoolCandidate["latestRole"] {
  * Returns null when the job does not exist.
  */
 export async function matchTalentPoolForJob(jobId: string): Promise<TalentPoolMatchResult | null> {
-  const job = (await Job.findById(jobId).select(`${APPLICANT_JOB_FIELDS} employerId updatedAt`).lean()) as Lean | null;
+  const job = (await Job.findById(jobId).select(`${APPLICANT_JOB_FIELDS} qualifications employerId updatedAt`).lean()) as Lean | null;
   if (!job) return null;
 
   const cacheKey = `${jobId}:${new Date((job.updatedAt as Date | string | undefined) ?? 0).getTime()}`;
@@ -142,7 +158,7 @@ async function rankPoolForJob(jobId: string, job: Lean): Promise<TalentPoolMatch
     ...TALENT_POOL_FILTER,
     _id: { $nin: appliedIds, ...(vectorIds ? { $in: vectorIds } : {}) },
   })
-    .select(`${APPLICANT_SEEKER_FIELDS} fullName headline availabilityStatus`)
+    .select(`${APPLICANT_SEEKER_FIELDS} fullName headline availabilityStatus summary certifications projects`)
     .populate({ path: "userId", select: "name avatar isActive" })
     // Most recently active first, so a cap (never reached today) drops the stalest.
     .sort({ updatedAt: -1 })
@@ -198,6 +214,10 @@ async function rankPoolForJob(jobId: string, job: Lean): Promise<TalentPoolMatch
       unmetRequirements: match.qualifications
         .filter((check) => check.hard && check.status === "not_met")
         .map(({ key, required, actual, label }) => ({ key, required, actual, label })),
+      qualifications: match.qualifications
+        .filter((check) => !HIDDEN_CHECKS.includes(check.key))
+        .map(({ key, status, hard, required, actual, label }) => ({ key, status, hard, required, actual, label })),
+      lineChecks: checkQualificationLines(job.qualifications as string[] | undefined, evidenceFromSeeker(seeker as EvidenceDoc)),
       preferenceMismatch: preferenceMismatchOf(eligible, reason),
       latestRole: latestRoleOf(seeker),
     };

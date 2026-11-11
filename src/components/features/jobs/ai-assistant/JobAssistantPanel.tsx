@@ -2,12 +2,12 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { FileText, Loader2, SendHorizontal, Sparkles, Undo2 } from "lucide-react";
+import { Eye, FileText, Loader2, SendHorizontal, Sparkles, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { JOB_ASSIST_INSTRUCTION_MAX } from "@/lib/ai/jobAssist";
+import { JOB_ASSIST_INSTRUCTION_MAX, type JobAssistChangeField } from "@/lib/ai/jobAssist";
 import type { JobAssistantState } from "./useJobAssistant";
 import { PosterTextDialog } from "./PosterTextDialog";
 
@@ -24,6 +24,8 @@ interface JobAssistantPanelProps {
   inDialog?: boolean;
   /** The poster's own text, when this job was read from an uploaded poster: the assistant checks against it. */
   posterText?: string | null;
+  /** Takes the user to the fields an answer changed; the button shows only when this is passed. */
+  onViewChanges?: (fields: JobAssistChangeField[]) => void;
 }
 
 /**
@@ -31,7 +33,7 @@ interface JobAssistantPanelProps {
  * straight into the form, each with an Undo. Shared by the create wizard,
  * the edit page and the bulk-upload review.
  */
-export function JobAssistantPanel({ assistant, quickActions, className, inDialog, posterText }: JobAssistantPanelProps) {
+export function JobAssistantPanel({ assistant, quickActions, className, inDialog, posterText, onViewChanges }: JobAssistantPanelProps) {
   const t = useTranslations("jobAssistant");
   const [input, setInput] = useState("");
   const [posterOpen, setPosterOpen] = useState(false);
@@ -49,10 +51,11 @@ export function JobAssistantPanel({ assistant, quickActions, className, inDialog
     if (list) list.scrollTop = list.scrollHeight;
   }, [messages.length, busy]);
 
-  const send = (text: string) => {
+  /** `shown`: a starter's own label, so the chat shows what was tapped and not the long instruction behind it. */
+  const send = (text: string, shown?: string) => {
     if (!text.trim() || busy) return;
     setInput("");
-    void ask(text);
+    void ask(text, shown);
   };
 
   return (
@@ -110,7 +113,7 @@ export function JobAssistantPanel({ assistant, quickActions, className, inDialog
                   key={action.label}
                   type="button"
                   disabled={busy}
-                  onClick={() => send(action.instruction)}
+                  onClick={() => send(action.instruction, action.label)}
                   className="min-h-9 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/[0.04] disabled:opacity-50"
                 >
                   {action.label}
@@ -130,10 +133,20 @@ export function JobAssistantPanel({ assistant, quickActions, className, inDialog
                 m.failed && "border border-destructive/20 bg-destructive/5 text-destructive",
               )}
             >
-              {m.content || (m.changed?.length ? t("doneNoReply") : t("noChange"))}
+              {m.shown || m.content || (m.changed?.length ? t("doneNoReply") : t("noChange"))}
               {m.changed && m.changed.length > 0 && (
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border/60 pt-1.5 text-[11px] text-muted-foreground">
                   <span>{t("updated", { fields: m.changed.map((f) => t(`fields.${f}`)).join(", ") })}</span>
+                  {onViewChanges && (
+                    <button
+                      type="button"
+                      onClick={() => onViewChanges(m.changed ?? [])}
+                      className="inline-flex min-h-6 items-center gap-1 rounded font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <Eye className="size-3" aria-hidden="true" />
+                      {t("viewChanges")}
+                    </button>
+                  )}
                   {m.undo && (
                     <button
                       type="button"
@@ -150,10 +163,13 @@ export function JobAssistantPanel({ assistant, quickActions, className, inDialog
           </div>
         ))}
 
+        {/* The one "working" sign: it sits where the answer will appear. */}
         {busy && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-            {t("thinking")}
+          <div className="flex justify-start">
+            <div className="inline-flex items-center gap-2 rounded-2xl bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              {t("thinking")}
+            </div>
           </div>
         )}
       </div>
@@ -176,8 +192,17 @@ export function JobAssistantPanel({ assistant, quickActions, className, inDialog
           rows={2}
           className="min-h-11 flex-1 resize-none text-sm"
         />
-        <Button type="button" size="icon" onClick={() => send(input)} disabled={busy || !input.trim()} aria-label={t("send")} className="size-11 shrink-0">
-          {busy ? <Loader2 className="size-4 animate-spin" /> : <SendHorizontal className="size-4 rtl:rotate-180" />}
+        {/* Nothing typed yet reads as grey "not yet", not a washed-out blue that looks broken. */}
+        <Button
+          type="button"
+          size="icon"
+          onClick={() => send(input)}
+          disabled={busy || !input.trim()}
+          aria-label={t("send")}
+          className="size-11 shrink-0 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
+        >
+          {/* No second spinner here while it works: the thread already shows one. */}
+          <SendHorizontal className="size-4 rtl:rotate-180" />
         </Button>
       </div>
     </section>

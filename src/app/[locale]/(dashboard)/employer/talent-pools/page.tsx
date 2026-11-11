@@ -60,6 +60,7 @@ import {
 import { useCandidates } from "@/hooks/useCandidates";
 import { isValidPoolName, normalizePoolTags, POOL_NAME_MAX, POOL_NAME_MIN } from "@/lib/talentPools/fields";
 import { toSafeImageSrc } from "@/lib/images/externalAvatar";
+import { SearchField } from "@/components/shared/SearchField";
 
 /** "qa, auto, qa" → ["qa", "auto"]: the server's rules, applied before sending. */
 function parseTags(raw: string): string[] {
@@ -199,10 +200,13 @@ export default function EmployerTalentPoolsPage() {
       {pools.length > 0 && (
         <div className="workspace-toolbar">
           {/* Search + sort share one row on phones too. */}
-          <div className="workspace-toolbar-search basis-0 sm:basis-64">
-            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input placeholder={t("searchPools")} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={t("searchPools")} className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none sm:h-10" />
-          </div>
+          <SearchField
+            className="workspace-toolbar-search basis-0 sm:basis-64"
+            placeholder={t("searchPools")}
+            value={search}
+            onValueChange={setSearch}
+            inputClassName="h-11 rounded-xl border-border bg-background text-sm shadow-none sm:h-10"
+          />
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
             <SelectTrigger className="h-11 w-[10.5rem] shrink-0 rounded-xl sm:h-10 sm:w-[200px]" aria-label={t("sortBy")}>
               <SelectValue />
@@ -777,16 +781,12 @@ function PoolDetailDialog({
                     </div>
 
                     {pool.candidates?.length ? (
-                      <div className="relative mb-3">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          value={candidateSearch}
-                          onChange={(e) => setCandidateSearch(e.target.value)}
-                          placeholder={t("searchInPoolPlaceholder")}
-                          aria-label={t("searchInPoolPlaceholder")}
-                          className="pl-9"
-                        />
-                      </div>
+                      <SearchField
+                        className="mb-3"
+                        value={candidateSearch}
+                        onValueChange={setCandidateSearch}
+                        placeholder={t("searchInPoolPlaceholder")}
+                      />
                     ) : null}
 
                     {pool.candidates?.length ? (

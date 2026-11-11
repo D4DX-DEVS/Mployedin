@@ -270,7 +270,7 @@ describe("EmployerApplicationsPage", () => {
     const user = userEvent.setup();
     render(<ApplicationsWorkspace />);
 
-    const box = screen.getByRole("textbox", { name: /search/i });
+    const box = screen.getByRole("searchbox", { name: /search/i });
     await user.type(box, "shortlisted react frontend people scoring high");
     await user.click(screen.getByRole("button", { name: /ask ai/i }));
 
@@ -306,7 +306,7 @@ describe("EmployerApplicationsPage", () => {
     const user = userEvent.setup();
     render(<ApplicationsWorkspace />);
 
-    const box = screen.getByRole("textbox", { name: /search/i });
+    const box = screen.getByRole("searchbox", { name: /search/i });
     await user.type(box, "candidates who meet the must-haves and know AWS");
     await user.click(screen.getByRole("button", { name: /ask ai/i }));
 

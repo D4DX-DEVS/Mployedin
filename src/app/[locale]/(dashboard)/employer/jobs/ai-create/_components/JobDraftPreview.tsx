@@ -107,7 +107,10 @@ export function JobDraftPreview({ job, fromPoster }: JobDraftPreviewProps) {
         {salary ? (
           job.showSalary === false
             ? t("jobCreator.notDisclosed")
-            : `${salary.currency ?? "USD"} ${formatCount(salary.min) ?? 0} – ${formatCount(salary.max) ?? 0}`
+            // One figure when the brief gave one ("800 a month"), not "800 – 800".
+            : salary.min && salary.max && salary.min !== salary.max
+              ? `${salary.currency ?? "USD"} ${formatCount(salary.min)} – ${formatCount(salary.max)}`
+              : `${salary.currency ?? "USD"} ${formatCount(salary.max || salary.min)}`
         ) : (
           <span className="italic text-muted-foreground">{t("jobCreator.notSpecified")}</span>
         )}

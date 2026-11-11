@@ -160,6 +160,7 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
   const t = useTranslations("invoiceBuilder");
   const locale = useLocale();
   const ta = useTranslations("a11y");
+  const tCommon = useTranslations("common");
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const dialogContentRef = useRef<HTMLDivElement>(null);
@@ -1150,9 +1151,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                         {showAdvancedFilters && (
                           <div className="mt-2 flex items-end gap-2">
                             <div className="flex-1">
-                              <Label className="text-[11px] text-muted-foreground">{t("regionState")}</Label>
+                              <Label htmlFor="inv-region-filter" className="text-[11px] text-muted-foreground">{t("regionState")}</Label>
                               <SearchableSelect
                                 id="inv-region-filter"
+                                ariaLabel={t("regionState")}
                                 className="mt-1 h-8 w-full rounded-lg border-border bg-card text-xs"
                                 options={[
                                   { value: "", label: t("allRegions") },
@@ -1193,9 +1195,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                       {role === "admin" && (
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div>
-                            <Label className="text-xs text-muted-foreground">{t("superAgent")}</Label>
+                            <Label htmlFor="inv-sa-filter" className="text-xs text-muted-foreground">{t("superAgent")}</Label>
                             <SearchableSelect
                               id="inv-sa-filter"
+                              ariaLabel={t("superAgent")}
                               className="mt-1 h-9 w-full rounded-lg border-border bg-card"
                               options={superAgentOptions}
                               value={selectedSuperAgentFilter}
@@ -1207,9 +1210,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                             />
                           </div>
                           <div>
-                            <Label className="text-xs text-muted-foreground">{t("agent")}</Label>
+                            <Label htmlFor="inv-ag-filter" className="text-xs text-muted-foreground">{t("agent")}</Label>
                             <SearchableSelect
                               id="inv-ag-filter"
+                              ariaLabel={t("agent")}
                               className="mt-1 h-9 w-full rounded-lg border-border bg-card"
                               options={agentOptions}
                               value={selectedAgentFilter}
@@ -1224,9 +1228,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                       )}
                       {role === "super_agent" && (
                         <div>
-                          <Label className="text-xs text-muted-foreground">{t("agent")}</Label>
+                          <Label htmlFor="inv-ag-filter" className="text-xs text-muted-foreground">{t("agent")}</Label>
                           <SearchableSelect
                             id="inv-ag-filter"
+                            ariaLabel={t("agent")}
                             className="mt-1 h-9 w-full rounded-lg border-border bg-card"
                             options={agentOptions}
                             value={selectedAgentFilter}
@@ -1241,11 +1246,12 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                       {/* Employer filter — shown when agent selected (cascade) or jobs loaded with employer data */}
                       {(employerFilterOptions.length > 1 || loadingCascadeEmployers) && (
                         <div>
-                          <Label className="text-xs text-muted-foreground">
-                            <Building2 className="mr-1 inline-block h-3 w-3" />{t("employer")}
+                          <Label htmlFor="inv-emp-filter" className="text-xs text-muted-foreground">
+                            <Building2 className="me-1 inline-block h-3 w-3" aria-hidden="true" />{t("employer")}
                           </Label>
                           <SearchableSelect
                             id="inv-emp-filter"
+                            ariaLabel={t("employer")}
                             className="mt-1 h-9 w-full rounded-lg border-border bg-card"
                             options={employerFilterOptions}
                             value={selectedEmployerFilter}
@@ -1350,9 +1356,13 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                   {/* Search input — always visible */}
                   {!selectedJobId && (
                     <>
+                      {/* Visible label (WCAG 3.3.2); the placeholder was the only one. */}
+                      <label htmlFor="inv-job-search" className="mb-1 block text-xs font-medium text-muted-foreground">
+                        {tCommon("search")}
+                      </label>
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input aria-label={t("searchJobsPlaceholder")}
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                        <Input
                           id="inv-job-search"
                           className="h-10 rounded-lg pl-9 pr-3 text-sm"
                           placeholder={t("searchJobsPlaceholder")}
@@ -1497,9 +1507,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                       </summary>
                       <div className="grid gap-3 border-t border-emerald-200/50 px-3 py-3 sm:grid-cols-3">
                         <div>
-                          <Label className="text-[11px] text-muted-foreground">{t("currency")}</Label>
+                          <Label htmlFor="inv-currency-override" className="text-[11px] text-muted-foreground">{t("currency")}</Label>
                           <SearchableSelect
                             id="inv-currency-override"
+                            ariaLabel={t("currency")}
                             className="mt-1 h-8 w-full rounded-lg border-border bg-card text-xs"
                             options={CURRENCY_OPTIONS}
                             value={currency}
@@ -1510,9 +1521,10 @@ export function InvoiceBuilder({ open, onClose, onSuccess, defaultCurrency = "AE
                           />
                         </div>
                         <div>
-                          <Label className="text-[11px] text-muted-foreground">{t("taxType")}</Label>
+                          <Label htmlFor="inv-tax-override" className="text-[11px] text-muted-foreground">{t("taxType")}</Label>
                           <SearchableSelect
                             id="inv-tax-override"
+                            ariaLabel={t("taxType")}
                             className="mt-1 h-8 w-full rounded-lg border-border bg-card text-xs"
                             options={allTaxTypes}
                             value={taxType}

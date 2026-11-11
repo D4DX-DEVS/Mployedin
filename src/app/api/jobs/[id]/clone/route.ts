@@ -83,6 +83,8 @@ async function cloneHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     category: source.category,
     tags: source.tags,
     visibility: source.visibility,
+    // The copy shows the company the same way the original does.
+    discloseCompany: source.discloseCompany,
     vacancies: source.vacancies,
     maxApplicants: source.maxApplicants,
     workflowMode: source.workflowMode,

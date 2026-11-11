@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/formatNumber";
 import { useParams } from "next/navigation";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -66,6 +66,7 @@ export function PaginationControls({
   summary,
 }: PaginationControlsProps) {
   const t = useTranslations("employerCommon");
+  const sizeLabelId = useId();
   const { locale } = useParams<{ locale: string }>();
   const from = total === 0 || shown === 0 ? 0 : (page - 1) * limit + 1;
   const to =
@@ -96,12 +97,15 @@ export function PaginationControls({
     >
       {/* Left: rows per page — label is desktop-only so phones keep one row */}
       <div className="flex items-center gap-2 text-muted-foreground leading-none">
-        <span className="hidden h-11 whitespace-nowrap sm:flex sm:items-center">{sizeLabel ?? t("rowsPerPage")}</span>
+        {/* The visible text names the select (aria-labelledby) from sm up.
+            Phones hide it to keep one row; the same element still gives the
+            select its spoken name there. */}
+        <span id={sizeLabelId} className="hidden h-11 whitespace-nowrap sm:flex sm:items-center">{sizeLabel ?? t("rowsPerPage")}</span>
         <Select
           value={String(limit)}
           onValueChange={(v) => onLimitChange(Number(v))}
         >
-          <SelectTrigger className="h-11 w-[66px] sm:w-[74px]" aria-label={sizeLabel ?? t("rowsPerPage")}>
+          <SelectTrigger className="h-11 w-[66px] sm:w-[74px]" aria-labelledby={sizeLabelId}>
             {/* The number as children: Radix fills the trigger from its closed list, which only exists in the browser, so the box was empty until hydration. */}
             <SelectValue>{formatNumber(limit, locale)}</SelectValue>
           </SelectTrigger>

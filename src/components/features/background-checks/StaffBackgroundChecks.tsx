@@ -18,6 +18,7 @@ import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePagination } from "@/hooks/usePagination";
@@ -265,31 +266,32 @@ export function StaffBackgroundChecks() {
           />
         ) : (
           <>
-            {/* Phones: one card per check — five columns don't fit 375px. */}
-            <ul className="mt-4 space-y-3 sm:hidden" aria-busy={loading}>
-              {loading
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <li key={i} className="h-24 animate-pulse rounded-2xl bg-muted/50" />
-                  ))
-                : items.map((check) => (
-                    <li key={check._id} className="rounded-2xl border border-border bg-background/70 p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="min-w-0 truncate font-medium text-foreground">{check.candidateName || t("unknownCandidate")}</p>
-                        {statusBadge(check)}
-                      </div>
-                      <p className="mt-1 truncate text-sm font-medium text-foreground/90">{check.companyName || "—"}</p>
-                      <p className="truncate text-xs text-muted-foreground">{check.jobTitle || "—"}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span>{label.type(check.checkType)}</span>
-                        {outcomeText(check)}
-                        {referencesLine(check) ? <span>{referencesLine(check)}</span> : null}
-                        <span>{date(check.requestedAt)}</span>
-                      </div>
-                      {handledBy(check)}
-                      {actionButton(check, "mt-3 w-full")}
-                    </li>
-                  ))}
-            </ul>
+            {/* Phones: the shared record card (name + status, employer · job,
+                one meta line, the action in the footer row) — five columns
+                don't fit 375px. */}
+            <PhoneRecordList
+              className="mt-4 sm:hidden"
+              loading={loading}
+              label={t("pageTitle")}
+              items={items.map((check) => ({
+                key: check._id,
+                title: check.candidateName || t("unknownCandidate"),
+                trailing: statusBadge(check),
+                subtitle: [check.companyName || "—", check.jobTitle].filter(Boolean).join(" · "),
+                meta: (
+                  <>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                      <span>{label.type(check.checkType)}</span>
+                      {outcomeText(check)}
+                      {referencesLine(check) ? <span>{referencesLine(check)}</span> : null}
+                      <span>{date(check.requestedAt)}</span>
+                    </div>
+                    {handledBy(check)}
+                  </>
+                ),
+                actions: actionButton(check, "min-h-11 flex-1"),
+              }))}
+            />
 
             <div className="workspace-subtle-surface mt-4 hidden overflow-x-auto rounded-3xl sm:block">
               <Table data-mobile-table="scroll">

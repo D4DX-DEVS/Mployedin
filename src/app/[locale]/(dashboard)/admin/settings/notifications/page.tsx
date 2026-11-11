@@ -218,7 +218,8 @@ function OverviewTab({ stats, loading }: { stats: NotifStats | null; loading: bo
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Phone: one figure strip with straight dividers, not four boxed cards. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-sm:grid-cols-4 max-sm:gap-0 max-sm:divide-x max-sm:divide-border max-sm:border-y max-sm:border-border rtl:max-sm:divide-x-reverse">
         <StatCard icon={Users} label={t("totalUsersLabel")} value={stats?.totalUsers ?? "—"} loading={loading} />
         <StatCard icon={Mail} label={t("emailEnabledLabel")} value={stats?.emailEnabled ?? "—"} loading={loading} color="text-green-600" />
         <StatCard icon={Send} label={t("sent24hLabel")} value={totalSent} loading={loading} color="text-blue-600" />
@@ -226,7 +227,7 @@ function OverviewTab({ stats, loading }: { stats: NotifStats | null; loading: bo
       </div>
 
       <SectionCard title={t("frequencyDistributionTitle")} icon={TrendingUp}>
-        <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-3 max-sm:gap-2 max-sm:p-3">
           <MiniStat label={t("instantFrequencyLabel")} value={stats?.instantFrequency ?? 0} color="bg-blue-100 text-blue-700" />
           <MiniStat label={t("dailyFrequencyLabel")} value={stats?.dailyFrequency ?? 0} color="bg-green-100 text-green-700" />
           <MiniStat label={t("weeklyFrequencyLabel")} value={stats?.weeklyFrequency ?? 0} color="bg-purple-100 text-purple-700" />
@@ -682,18 +683,18 @@ function SectionCard({ title, icon: Icon, children }: { title: string; icon: typ
 
 function StatCard({ icon: Icon, label, value, loading, color = "text-foreground" }: { icon: typeof Users; label: string; value: string | number; loading: boolean; color?: string }) {
   return (
-    <div className="rounded-xl border border-border/50 bg-card shadow-sm card-pad">
-      <div className="flex items-center gap-2 text-muted-foreground mb-2"><Icon className="w-4 h-4" /><span className="text-xs font-medium">{label}</span></div>
-      {loading ? <div className="h-7 w-16 bg-muted animate-pulse rounded" /> : <p className={`text-2xl font-bold ${color}`}>{value}</p>}
+    <div className="flex flex-col rounded-xl border border-border/50 bg-card shadow-sm card-pad max-sm:flex-col-reverse max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:px-1 max-sm:py-2 max-sm:text-center max-sm:shadow-none">
+      <div className="flex items-center gap-2 text-muted-foreground mb-2 max-sm:mb-0 max-sm:justify-center"><Icon className="w-4 h-4 max-sm:hidden" /><span className="text-xs font-medium max-sm:text-[11px] max-sm:leading-tight">{label}</span></div>
+      {loading ? <div className="h-7 w-16 bg-muted animate-pulse rounded max-sm:mx-auto max-sm:h-6 max-sm:w-10" /> : <p className={`text-2xl font-bold max-sm:text-lg ${color}`}>{value}</p>}
     </div>
   );
 }
 
 function MiniStat({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className={`rounded-lg px-4 py-3 text-center ${color}`}>
-      <div className="text-xl font-bold">{value}</div>
-      <div className="text-[11px] font-medium mt-0.5">{label}</div>
+    <div className={`rounded-lg px-4 py-3 text-center max-sm:px-1 max-sm:py-2 ${color}`}>
+      <div className="text-xl font-bold max-sm:text-lg">{value}</div>
+      <div className="truncate text-[11px] font-medium mt-0.5">{label}</div>
     </div>
   );
 }

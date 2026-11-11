@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Download, FileDown, FileSpreadsheet, FileText, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
 
@@ -26,28 +26,49 @@ import { cn } from "@/lib/utils";
  */
 export const INLINE_FILTER_CONTROL = "h-11 min-w-0 max-w-56 flex-[1_1_6rem] rounded-lg border-border bg-card sm:h-9 sm:flex-[1_1_8rem] sm:text-sm";
 
+/**
+ * The same sizing for a wrapper that holds a label above the control: put this
+ * on the wrapper and `${INLINE_FILTER_CONTROL} w-full max-w-none` on the box.
+ */
+export const INLINE_FILTER_FIELD = "min-w-0 max-w-56 flex-[1_1_6rem] sm:flex-[1_1_8rem]";
+
 interface InlineFilterSearchProps {
   value: string;
   onChange: (value: string) => void;
+  /** Hint inside the box ("Name, email or phone"). Not a label: it vanishes once typing starts. */
   placeholder: string;
+  /** Visible label above the box. Defaults to "Search". */
+  label?: string;
   icon?: ReactNode;
   className?: string;
 }
 
 /** Search box sized for the bar: twice a select's share of the row. */
-export function InlineFilterSearch({ value, onChange, placeholder, icon, className }: InlineFilterSearchProps) {
+export function InlineFilterSearch({ value, onChange, placeholder, label, icon, className }: InlineFilterSearchProps) {
+  const t = useTranslations("common");
+  const id = useId();
+  // Visible label (WCAG 3.3.2 / 1.3.1): the placeholder alone disappeared as
+  // soon as someone typed, and on phones it was cut mid-word. The bar aligns
+  // its controls to their bottom edge, so the selects beside it still line up
+  // with the box, not the label.
   return (
-    <div className={cn("relative min-w-0 flex-[2_1_14rem]", className)}>
-      <span className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-        {icon ?? <Search className="h-3.5 w-3.5" />}
-      </span>
-      <Input
-        aria-label={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="h-11 w-full rounded-lg border-border bg-card ps-8 text-sm shadow-none sm:h-9"
-      />
+    <div className={cn("min-w-0 flex-[2_1_14rem]", className)}>
+      <label htmlFor={id} className="mb-1 block truncate text-xs font-medium text-muted-foreground">
+        {label ?? t("search")}
+      </label>
+      <div className="relative">
+        <span className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true">
+          {icon ?? <Search className="h-3.5 w-3.5" />}
+        </span>
+        <Input
+          id={id}
+          type="search"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="h-11 w-full rounded-lg border-border bg-card ps-8 text-sm shadow-none sm:h-9"
+        />
+      </div>
     </div>
   );
 }
@@ -124,8 +145,10 @@ export function InlineFilterBar({
     // `.panel-head` is a centred flex *row*; without flex-col the More line
     // and the footer became extra columns beside the filters.
     <div className={cn("panel-head flex-col items-stretch gap-2", className)}>
-      <div className="flex items-start gap-2">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+      {/* items-end: the search box carries a label above it, so controls align
+          on their bottom edge to sit level with the box. */}
+      <div className="flex items-end gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-end gap-2">
           {children}
           {more && (
             <Button
@@ -213,7 +236,7 @@ export function InlineFilterBar({
       {phoneRow && <div className="sm:hidden">{phoneRow}</div>}
 
       {more && moreOpen && (
-        <div className={cn("flex flex-wrap items-center gap-2 border-t border-border/60 pt-2", moreClassName)}>
+        <div className={cn("flex flex-wrap items-end gap-2 border-t border-border/60 pt-2", moreClassName)}>
           {more}
         </div>
       )}

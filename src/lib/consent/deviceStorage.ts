@@ -21,11 +21,14 @@ export const tempPasswordNoticeKey = (userId: string): string => `${TEMP_PASSWOR
 
 /**
  * How long after a sign-out's cleanup starts that autosavers stay quiet. Long
- * enough to cover the cleanup (at most about 2.5 s) and the sign-out request
- * that follows; short enough that a sign-out which never navigates cannot leave
- * a person who is still signed in without autosave.
+ * enough to cover the cleanup (at most about 2.5 s), the sign-out request that
+ * follows (the account menu waits up to 30 s for it) and the check that the
+ * session really ended; short enough that a sign-out which never navigates
+ * cannot leave a person who is still signed in without autosave. A sign-out
+ * that is known to have failed does not wait this out: it calls
+ * `resetSignOutInProgress()`.
  */
-const SIGN_OUT_WINDOW_MS = 15_000;
+const SIGN_OUT_WINDOW_MS = 45_000;
 
 let signOutStartedAt: number | null = null;
 

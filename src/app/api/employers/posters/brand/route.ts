@@ -20,6 +20,7 @@ const bodySchema = z
     look: z.enum(POSTER_LOOKS),
     headline: z.string().trim().max(80).optional(),
     locale: z.enum(["en", "ar"]).optional(),
+    showEmployer: z.boolean().optional(),
   })
   .strict();
 

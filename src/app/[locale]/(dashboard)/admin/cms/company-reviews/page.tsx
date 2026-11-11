@@ -4,19 +4,20 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Check, Inbox, Loader2, Search, Star, X } from "lucide-react";
+import { Check, Inbox, Loader2, Star, X } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { PageHero } from "@/components/shared/PageHero";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirm } from "@/hooks/useConfirm";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { SearchField } from "@/components/shared/SearchField";
 
 type ReviewStatus = "pending" | "approved" | "rejected";
 
@@ -131,7 +132,7 @@ export default function AdminCompanyReviewsPage() {
         <h2 id="company-reviews-list" className="sr-only">
           {t("listLabel")}
         </h2>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="-mx-1 overflow-x-auto px-1" role="group" aria-label={t("statusFilterLabel")}>
             <div className="flex w-max gap-1.5">
               {STATUS_FILTERS.map((value) => (
@@ -149,22 +150,19 @@ export default function AdminCompanyReviewsPage() {
               ))}
             </div>
           </div>
-          <div className="relative w-full sm:max-w-xs">
-            <Label htmlFor="company-reviews-search" className="sr-only">
-              {t("searchLabel")}
-            </Label>
-            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="company-reviews-search"
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                resetPage();
-              }}
-              placeholder={t("searchPlaceholder")}
-              className="h-10 ps-9"
-            />
-          </div>
+          {/* The label was screen-reader only; a placeholder is not a label. */}
+          <SearchField
+            id="company-reviews-search"
+            className="w-full sm:max-w-xs"
+            label={t("searchLabel")}
+            value={search}
+            onValueChange={(value) => {
+              setSearch(value);
+              resetPage();
+            }}
+            placeholder={t("searchPlaceholder")}
+            inputClassName="h-10"
+          />
         </div>
 
         <div className="mt-4">

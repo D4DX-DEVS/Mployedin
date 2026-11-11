@@ -30,6 +30,8 @@ const DYNAMIC_NS_RE = /useTranslations\(\s*[A-Za-z_$][\w$.]*\s*\)/g;
 
 export interface NamespaceScan {
   namespaces: Set<string>;
+  /** The same, as written: "cvBuilderPage.previewSections", not just "cvBuilderPage". */
+  paths: Set<string>;
   /** Files that call useTranslations() with no namespace or a variable one — a subset cannot cover them. */
   unscannable: string[];
   files: number;
@@ -38,6 +40,7 @@ export interface NamespaceScan {
 export function scanNamespaces(entries: string[]): NamespaceScan {
   const seen = new Set<string>();
   const namespaces = new Set<string>();
+  const paths = new Set<string>();
   const unscannable: string[] = [];
   const stack = entries.map((e) => path.resolve(e));
   while (stack.length) {
@@ -46,7 +49,10 @@ export function scanNamespaces(entries: string[]): NamespaceScan {
     seen.add(file);
     const src = fs.readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/.*$/gm, "$1");
     for (const m of src.matchAll(NS_RE)) {
-      if (m[1]) namespaces.add(m[1].split(".")[0]);
+      if (m[1]) {
+        namespaces.add(m[1].split(".")[0]);
+        paths.add(m[1]);
+      }
       else unscannable.push(path.relative(process.cwd(), file));
     }
     if (DYNAMIC_NS_RE.test(src)) unscannable.push(path.relative(process.cwd(), file));
@@ -57,7 +63,7 @@ export function scanNamespaces(entries: string[]): NamespaceScan {
       if (resolved && /\.(tsx?|jsx?)$/.test(resolved) && !seen.has(resolved)) stack.push(resolved);
     }
   }
-  return { namespaces, unscannable: [...new Set(unscannable)], files: seen.size };
+  return { namespaces, paths, unscannable: [...new Set(unscannable)], files: seen.size };
 }
 
 /** Every route file (page/layout/template/error/loading/not-found) under a directory. */

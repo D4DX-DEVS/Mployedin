@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useLocale } from "next-intl";
+import { useSession } from "next-auth/react";
 import {
   Check,
   CheckCircle2,
@@ -22,6 +23,16 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { applyErrorKey } from "@/lib/applications/applyErrors";
 import {
+  BUILT_CV_KEY,
+  CV_UPLOAD_ACCEPT,
+  PROFILE_CV_KEY,
+  defaultCvKey,
+  isAcceptedCvFile,
+  uploadedResumes,
+} from "@/lib/applications/cvChoice";
+import { BuiltCvError, ensureBuiltCvDocument } from "@/app/[locale]/(dashboard)/job-seeker/cv/built-cv";
+import { useCvPdfLabels } from "@/app/[locale]/(dashboard)/job-seeker/cv/use-cv-pdf-labels";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -36,6 +47,8 @@ interface ProfileDocument {
   name: string;
   category: string;
   url: string;
+  /** Set on the stored copy of the CV built on Mployedin. */
+  builtHash?: string;
 }
 
 interface ScreeningQuestion {
@@ -63,8 +76,6 @@ interface EasyApplyFlowDialogProps {
   onApplied: (jobId: string) => void;
 }
 
-const PROFILE_CV_KEY = "__profile_cv__";
-
 export function EasyApplyFlowDialog({
   jobId,
   jobTitle,
@@ -76,6 +87,8 @@ export function EasyApplyFlowDialog({
 }: EasyApplyFlowDialogProps) {
   const t = useTranslations("jobFeed.applyFlow");
   const company = companyName?.trim() || t("theEmployer");
+  const { data: session } = useSession();
+  const cvPdfLabels = useCvPdfLabels();
 
   // ── Loading / global ────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(false);
@@ -87,6 +100,9 @@ export function EasyApplyFlowDialog({
   // ── CV step ──────────────────────────────────────────────────────────────────
   const [resumeDocs, setResumeDocs] = useState<ProfileDocument[]>([]);
   const [hasProfileCv, setHasProfileCv] = useState(false);
+  // The CV built on Mployedin: offered as one choice, made into a file on submit.
+  const [hasBuiltCv, setHasBuiltCv] = useState(false);
+  const [profileDocs, setProfileDocs] = useState<ProfileDocument[]>([]);
   const [selectedCvKey, setSelectedCvKey] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -99,6 +115,20 @@ export function EasyApplyFlowDialog({
   // ── Questions step ──────────────────────────────────────────────────────────
   const [questions, setQuestions] = useState<ScreeningQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+
+  /** Fill the CV step from the seeker's documents as the server has them. */
+  const showCvChoices = useCallback((js: { documents?: ProfileDocument[]; cvUrl?: string | null; hasBuiltCv?: boolean } | null | undefined) => {
+    const docs: ProfileDocument[] = Array.isArray(js?.documents) ? js.documents : [];
+    const built = js?.hasBuiltCv === true;
+    setProfileDocs(docs);
+    // The stored copy of the built CV is not listed as a file of its own:
+    // "CV built on Mployedin" stands for it, and always sends the current one.
+    setResumeDocs(uploadedResumes(docs));
+    setHasProfileCv(!!js?.cvUrl);
+    setHasBuiltCv(built);
+    // The same CV is preselected on every apply screen (cvChoice.ts).
+    setSelectedCvKey(defaultCvKey({ documents: docs, hasProfileCv: !!js?.cvUrl, hasBuiltCv: built }));
+  }, []);
 
   // ── Load everything when the dialog opens ─────────────────────────────────────
   useEffect(() => {
@@ -131,14 +161,7 @@ export function EasyApplyFlowDialog({
         if (cancelled) return;
 
         // CVs
-        const js = meData?.jobSeeker;
-        const docs: ProfileDocument[] = Array.isArray(js?.documents) ? js.documents : [];
-        const resumes = docs.filter((d) => d.category === "resume");
-        setResumeDocs(resumes);
-        setHasProfileCv(!!js?.cvUrl);
-        if (resumes.length > 0) setSelectedCvKey(resumes[resumes.length - 1].id);
-        else if (js?.cvUrl) setSelectedCvKey(PROFILE_CV_KEY);
-        else setSelectedCvKey("");
+        showCvChoices(meData?.jobSeeker);
 
         // Skills
         setMatchedSkills(Array.isArray(gapData?.matchedSkills) ? gapData.matchedSkills : []);
@@ -162,7 +185,7 @@ export function EasyApplyFlowDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, jobId, t]);
+  }, [open, jobId, t, showCvChoices]);
 
   // ── Derived step list ─────────────────────────────────────────────────────────
   const steps = useMemo<StepId[]>(() => {
@@ -185,6 +208,12 @@ export function EasyApplyFlowDialog({
     e.target.value = "";
     if (!file) return;
     setError("");
+    // The formats the server takes — said here, in the seeker's language,
+    // instead of after an upload that was always going to be refused.
+    if (!isAcceptedCvFile(file)) {
+      setError(t("errors.unsupportedFile"));
+      return;
+    }
     setUploading(true);
     try {
       const fd = new FormData();
@@ -290,6 +319,27 @@ export function EasyApplyFlowDialog({
     setSubmitting(true);
     try {
       const includeProfileCv = selectedCvKey === PROFILE_CV_KEY;
+      let cvDocumentId = includeProfileCv ? "" : selectedCvKey;
+      if (selectedCvKey === BUILT_CV_KEY) {
+        // Made from the profile as it is now; the stored copy is reused while
+        // nothing changed. No CV, no application: the seeker chose to send one.
+        try {
+          const built = await ensureBuiltCvDocument({
+            identity: {
+              fullName: session?.user?.name ?? "",
+              email: session?.user?.email ?? "",
+              photo: session?.user?.image ?? "",
+            },
+            labels: cvPdfLabels,
+            documents: profileDocs,
+          });
+          setProfileDocs((prev) => [...prev.filter((d) => !d.builtHash), built]);
+          cvDocumentId = built.id;
+        } catch (err) {
+          setError((err instanceof BuiltCvError && err.message) || t("errors.builtCvFailed"));
+          return;
+        }
+      }
       const screeningAnswers =
         questions.length > 0
           ? questions.map((q) => ({
@@ -305,7 +355,7 @@ export function EasyApplyFlowDialog({
         body: JSON.stringify({
           jobId,
           easyApply: true,
-          documentIds: includeProfileCv || !selectedCvKey ? undefined : [selectedCvKey],
+          documentIds: cvDocumentId ? [cvDocumentId] : undefined,
           includeProfileCv: includeProfileCv || undefined,
           screeningAnswers,
         }),
@@ -323,8 +373,17 @@ export function EasyApplyFlowDialog({
         setError(
           known === "planLimitReached" ? t("errors.planLimitReached")
             : known === "jobClosed" ? t("errors.jobClosed")
-              : data?.error ?? t("errors.applyFailed"),
+              : known === "documentNotFound" ? t("errors.documentNotFound")
+                : data?.error ?? t("errors.applyFailed"),
         );
+        // The chosen CV was deleted or replaced since the dialog opened: its
+        // list is out of date, and submitting again would be refused again.
+        // Show the CVs as they are now and go back to choose one.
+        if (known === "documentNotFound") {
+          const fresh = await fetch("/api/job-seeker/me").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+          if (fresh?.jobSeeker) showCvChoices(fresh.jobSeeker);
+          setStepIndex(0);
+        }
         return;
       }
       onApplied(jobId);
@@ -339,7 +398,9 @@ export function EasyApplyFlowDialog({
   const selectedCvName =
     selectedCvKey === PROFILE_CV_KEY
       ? t("profileCv")
-      : resumeDocs.find((d) => d.id === selectedCvKey)?.name;
+      : selectedCvKey === BUILT_CV_KEY
+        ? t("builtCv")
+        : resumeDocs.find((d) => d.id === selectedCvKey)?.name;
 
   const busy = submitting || uploading;
 
@@ -415,6 +476,7 @@ export function EasyApplyFlowDialog({
                     <CvStep
                       resumeDocs={resumeDocs}
                       hasProfileCv={hasProfileCv}
+                      hasBuiltCv={hasBuiltCv}
                       selectedCvKey={selectedCvKey}
                       onSelect={setSelectedCvKey}
                       uploading={uploading}
@@ -519,6 +581,7 @@ type Tx = ReturnType<typeof useTranslations>;
 function CvStep({
   resumeDocs,
   hasProfileCv,
+  hasBuiltCv,
   selectedCvKey,
   onSelect,
   uploading,
@@ -530,6 +593,7 @@ function CvStep({
 }: {
   resumeDocs: ProfileDocument[];
   hasProfileCv: boolean;
+  hasBuiltCv: boolean;
   selectedCvKey: string;
   onSelect: (key: string) => void;
   uploading: boolean;
@@ -539,7 +603,7 @@ function CvStep({
   locale: string;
   t: Tx;
 }) {
-  const noCv = !hasProfileCv && resumeDocs.length === 0;
+  const noCv = !hasProfileCv && !hasBuiltCv && resumeDocs.length === 0;
   return (
     <div className="space-y-3">
       <div>
@@ -553,6 +617,14 @@ function CvStep({
             label={t("profileCv")}
             selected={selectedCvKey === PROFILE_CV_KEY}
             onSelect={() => onSelect(PROFILE_CV_KEY)}
+          />
+        )}
+        {hasBuiltCv && (
+          <CvOption
+            label={t("builtCv")}
+            hint={t("cv.builtCvHint")}
+            selected={selectedCvKey === BUILT_CV_KEY}
+            onSelect={() => onSelect(BUILT_CV_KEY)}
           />
         )}
         {resumeDocs.map((d) => (
@@ -589,7 +661,7 @@ function CvStep({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.doc,.docx"
+        accept={CV_UPLOAD_ACCEPT}
         className="hidden"
         onChange={onUpload}
       />
@@ -614,16 +686,19 @@ function CvStep({
 
 function CvOption({
   label,
+  hint,
   selected,
   onSelect,
 }: {
   label: string;
+  hint?: string;
   selected: boolean;
   onSelect: () => void;
 }) {
   return (
     <button
       type="button"
+      aria-pressed={selected}
       onClick={onSelect}
       className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors ${
         selected
@@ -638,8 +713,10 @@ function CvOption({
       >
         <FileText className="h-4 w-4" />
       </span>
-      <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-        {label}
+      <span className="min-w-0 flex-1">
+        {/* <bdi>: a Latin file name keeps its own order inside Arabic text. */}
+        <span className="block truncate text-sm font-medium text-foreground"><bdi>{label}</bdi></span>
+        {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
       </span>
       <span
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
@@ -923,7 +1000,7 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-start justify-between gap-3">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="min-w-0 flex-1 truncate text-right text-sm font-medium text-foreground">
-        {value}
+        <bdi>{value}</bdi>
       </span>
     </div>
   );

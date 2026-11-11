@@ -15,7 +15,7 @@ import {
   Pencil,
   Plus,
   Radio,
-  Search,
+  
   Send,
   Trash2,
 } from "lucide-react";
@@ -26,6 +26,8 @@ import { toast } from "sonner";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useConfirm } from "@/hooks/useConfirm";
 import { formatDateTime, formatListDate } from "@/lib/ui/intlFormat";
+import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
+import { SearchField } from "@/components/shared/SearchField";
 
 const USER_ROLES = ["all", "job_seeker", "employer", "agent", "super_agent", "admin"];
 const TEMPLATE_TYPES_ARRAY = ["onboarding", "transactional", "marketing", "system"] as const;
@@ -406,6 +408,11 @@ export default function AdminCommunicationsPage() {
     return typeMap[type] || type.charAt(0).toUpperCase() + type.slice(1);
   };
 
+  const historyQuery = historySearch.toLowerCase();
+  const filteredHistory = history.filter(
+    (r) => r.title.toLowerCase().includes(historyQuery) || r.body?.toLowerCase().includes(historyQuery),
+  );
+
   return (
     <div className="page-container">
       {ConfirmDialogNode}
@@ -457,7 +464,7 @@ export default function AdminCommunicationsPage() {
                 <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tr("sendMessageTitle")}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{tr("sendMessageDesc")}</p>
               </div>
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:px-0 max-sm:py-0">
                 <p className="font-semibold">{tr("channelsSelected", { count: form.channels.length })}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{waSelected ? tr("channelDeliveryNoteWhatsApp") : tr("channelDeliveryNote")}</p>
               </div>
@@ -465,10 +472,10 @@ export default function AdminCommunicationsPage() {
 
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="space-y-2 lg:col-span-2">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {tr("titleLabel")} <span className="text-rose-500">*</span>
+                <label htmlFor="comm-title" className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {tr("titleLabel")} <span className="text-rose-500" aria-hidden="true">*</span>
                 </label>
-                <input aria-label={tr("titleLabel")}
+                <input id="comm-title"
                   value={form.title}
                   onChange={(e) => setForm((current) => ({ ...current, title: e.target.value }))}
                   required
@@ -478,10 +485,10 @@ export default function AdminCommunicationsPage() {
               </div>
 
               <div className="space-y-2 lg:col-span-2">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {tr("messageLabel")} <span className="text-rose-500">*</span>
+                <label htmlFor="comm-message" className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {tr("messageLabel")} <span className="text-rose-500" aria-hidden="true">*</span>
                 </label>
-                <textarea aria-label={tr("messageLabel")}
+                <textarea id="comm-message"
                   value={form.message}
                   onChange={(e) => setForm((current) => ({ ...current, message: e.target.value }))}
                   required
@@ -667,13 +674,13 @@ export default function AdminCommunicationsPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("deliveryNotes")}</p>
               <h3 className="heading-subsection mt-2 font-semibold tracking-tight text-foreground">{tr("keepMessageClear")}</h3>
               <div className="mt-4 space-y-3 text-sm text-muted-foreground">
-                <div className="rounded-2xl border border-border bg-muted/70 px-4 py-3">
+                <div className="rounded-2xl border border-border bg-muted/70 px-4 py-3 max-sm:rounded-none max-sm:border-0 max-sm:border-b max-sm:bg-transparent max-sm:px-0 max-sm:pt-0 max-sm:last:border-b-0 max-sm:last:pb-0">
                   {tr("deliveryNote1")}
                 </div>
-                <div className="rounded-2xl border border-border bg-muted/70 px-4 py-3">
+                <div className="rounded-2xl border border-border bg-muted/70 px-4 py-3 max-sm:rounded-none max-sm:border-0 max-sm:border-b max-sm:bg-transparent max-sm:px-0 max-sm:pt-0 max-sm:last:border-b-0 max-sm:last:pb-0">
                   {tr("deliveryNote2")}
                 </div>
-                <div className="rounded-2xl border border-border bg-muted/70 px-4 py-3">
+                <div className="rounded-2xl border border-border bg-muted/70 px-4 py-3 max-sm:rounded-none max-sm:border-0 max-sm:border-b max-sm:bg-transparent max-sm:px-0 max-sm:pt-0 max-sm:last:border-b-0 max-sm:last:pb-0">
                   {tr("deliveryNote3")}
                 </div>
               </div>
@@ -706,22 +713,22 @@ export default function AdminCommunicationsPage() {
                   </div>
                 ) : (
                   quickTemplates.map((template) => (
-                    <div key={template._id} className="rounded-2xl border border-border bg-muted/60 card-pad">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{template.name}</p>
-                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{formatTemplateType(template.type)}</p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => handleUseTemplate(template)}
-                          className="h-9 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
-                        >
-                          {tr("useTemplateButton")}
-                        </Button>
+                    // Phone: the Use button moves to a full-width footer under the subject
+                    // (never beside the name); sm+ keeps it top-end via the grid.
+                    <div key={template._id} className="grid gap-x-3 rounded-2xl border border-border bg-muted/60 card-pad sm:grid-cols-[minmax(0,1fr)_auto]">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground">{template.name}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">{formatTemplateType(template.type)}</p>
                       </div>
-                      <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{template.subject}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleUseTemplate(template)}
+                        className="order-last mt-3 h-10 w-full rounded-xl border-border bg-card text-foreground hover:bg-secondary sm:order-none sm:mt-0 sm:h-9 sm:w-auto"
+                      >
+                        {tr("useTemplateButton")}
+                      </Button>
+                      <p className="mt-3 line-clamp-2 text-sm text-muted-foreground sm:col-span-2">{template.subject}</p>
                     </div>
                   ))
                 )}
@@ -832,7 +839,7 @@ export default function AdminCommunicationsPage() {
             </form>
           ) : null}
 
-          <div className={`${panelClassName} space-y-4`}>
+          <div className={`${panelClassName} space-y-4 max-sm:space-y-3 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none max-sm:backdrop-blur-none`}>
             {templatesLoading ? (
               Array.from({ length: 4 }).map((_, index) => (
                 <div key={index} className="h-28 animate-pulse rounded-2xl bg-secondary" />
@@ -844,8 +851,8 @@ export default function AdminCommunicationsPage() {
               />
             ) : (
               templates.map((template) => (
-                <div key={template._id} className="rounded-3xl border border-border bg-muted/50 panel-body">
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div key={template._id} className="rounded-3xl border border-border bg-muted/50 panel-body max-sm:rounded-xl max-sm:bg-card max-sm:p-3 max-sm:shadow-sm">
+                  <div className="flex flex-col gap-4 max-sm:gap-3 xl:flex-row xl:items-start xl:justify-between">
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="heading-subsection font-semibold tracking-tight text-foreground">{template.name}</h3>
@@ -858,7 +865,8 @@ export default function AdminCommunicationsPage() {
                       <p className="text-xs text-muted-foreground">{tr("createdOn", { date: formatListDate(new Date(template.createdAt), locale) })}</p>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    {/* Phone: footer row, three equal buttons under a divider. */}
+                    <div className="flex flex-wrap gap-2 max-sm:grid max-sm:grid-cols-3 max-sm:border-t max-sm:border-border/60 max-sm:pt-2.5 max-sm:[&>button]:w-full max-sm:[&>button]:px-2">
                       <Button
                         type="button"
                         variant="outline"
@@ -962,29 +970,49 @@ export default function AdminCommunicationsPage() {
       ) : null}
 
       {tab === "history" ? (
-        <section className={`${panelClassName} space-y-4`}>
+        // Phone: the panel chrome drops so the record cards are the only box.
+        <section className={`${panelClassName} space-y-4 max-sm:rounded-none max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none max-sm:backdrop-blur-none`}>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{tr("broadcastHistoryHead")}</p>
             <h2 className="heading-section mt-2 font-semibold tracking-tight text-foreground">{tr("recentActivityHeading")}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{tr("recentActivityDesc")}</p>
           </div>
 
-          <div className="relative">
-            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input aria-label={tr("searchPlaceholder")} placeholder={tr("searchPlaceholder")} value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} className="ps-9 h-11 sm:h-9 text-sm border-border bg-card" />
-          </div>
+          <SearchField placeholder={tr("searchPlaceholder")} value={historySearch} onValueChange={setHistorySearch} inputClassName="h-11 sm:h-9 text-sm border-border bg-card" />
 
           {historyLoading ? (
             Array.from({ length: 4 }).map((_, index) => (
               <div key={index} className="h-24 animate-pulse rounded-2xl bg-secondary" />
             ))
-          ) : history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).length === 0 ? (
+          ) : filteredHistory.length === 0 ? (
             <EmptyState
               icon={History}
               title={history.length === 0 ? tr("noBroadcastsSent") : tr("noSearchResults")}
             />
           ) : (
-            history.filter((r) => r.title.toLowerCase().includes(historySearch.toLowerCase()) || r.body?.toLowerCase().includes(historySearch.toLowerCase())).map((record) => (
+            <>
+            <PhoneRecordList
+              className="sm:hidden"
+              label={tr("recentActivityHeading")}
+              items={filteredHistory.map((record) => ({
+                key: record._id,
+                title: record.title,
+                subtitle: formatDateTime(new Date(record.createdAt)),
+                meta: (
+                  <>
+                    {record.body ? <p className="line-clamp-3 whitespace-pre-wrap leading-5">{record.body}</p> : null}
+                    {record.recipientCount !== null ? <p className="font-medium text-foreground">{tr("recipientsCount", { count: record.recipientCount })}</p> : null}
+                  </>
+                ),
+                badges: (record.channels?.length ? record.channels : ["in_app"]).map((channel) => (
+                  <span key={channel} className="rounded-full border border-border bg-muted/60 px-2 py-0.5 font-semibold text-muted-foreground">
+                    {formatChannelLabel(channel)}
+                  </span>
+                )),
+              }))}
+            />
+            <div className="space-y-4 max-sm:hidden">
+            {filteredHistory.map((record) => (
               <article key={record._id} className="rounded-3xl border border-border bg-muted/50 panel-body">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
@@ -1009,7 +1037,9 @@ export default function AdminCommunicationsPage() {
                   </div>
                 </div>
               </article>
-            ))
+            ))}
+            </div>
+            </>
           )}
         </section>
       ) : null}

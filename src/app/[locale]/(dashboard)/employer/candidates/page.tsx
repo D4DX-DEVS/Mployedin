@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useCandidates, usePublishedJobs, useStartConversation, useAiMatch, useScreenCandidates, useInviteToApply } from "@/hooks/useCandidates";
+import { candidateHasCv, candidateCvHref } from "@/lib/applications/candidateCv";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { Candidate, CandidateJob, ScreenedCandidate } from "@/hooks/useCandidates";
@@ -49,7 +50,6 @@ import {
   MapPin,
   MessageSquare,
   MoreHorizontal,
-  Search,
   Send,
   ShieldCheck,
   SlidersHorizontal,
@@ -69,6 +69,8 @@ import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { cn } from "@/lib/utils";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { useContainerWide } from "@/hooks/useContainerWide";
+import { SearchField } from "@/components/shared/SearchField";
+import { StackedLabelled } from "@/components/shared/LabelledControl";
 
 const MATCH_SESSION_STORAGE_KEY = "employer-candidate-matching-session-v1";
 const MAX_AI_MATCH_BATCH_SIZE = 20;
@@ -273,7 +275,7 @@ function CandidateMatchCard({
   const topSkills = (candidate.skills ?? []).slice(0, 3);
   const extraSkillCount = Math.max(0, (candidate.skills?.length ?? 0) - topSkills.length);
   const messageRecipientId = candidate.userId?._id;
-  const hasSecondaryActions = Boolean(candidate.cv?.originalUrl || candidate.userId?._id || candidate._id);
+  const hasSecondaryActions = Boolean(candidateHasCv(candidate) || candidate.userId?._id || candidate._id);
   const availabilityLabel = candidate.availabilityStatus === "immediately"
     ? t("availableNow")
     : candidate.availabilityStatus === "within_month"
@@ -480,7 +482,7 @@ function CandidateMatchCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52 rounded-2xl border-border bg-popover p-1.5">
-                {candidate.cv?.originalUrl ? (
+                {candidateHasCv(candidate) ? (
                   <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenCv(candidate)}>
                     <FileText className="mr-2 h-4 w-4" />
                     {t("viewCv")}
@@ -588,7 +590,7 @@ function CandidateInsightsDialog({
                   </DialogDescription>
                 </div>
                 <div className="flex flex-wrap gap-2 lg:justify-end lg:pe-10">
-                  {candidate.cv?.originalUrl ? (
+                  {candidateHasCv(candidate) ? (
                     <Button size="sm" variant="outline" className="h-10 rounded-xl border-border bg-background/80 px-4 text-sm" onClick={() => onOpenCv(candidate)}>
                       <FileText className="mr-2 h-3.5 w-3.5" />
                       {t("viewCv")}
@@ -1094,7 +1096,9 @@ export default function EmployerCandidatesPage() {
   const filtersExpanded = showFilters || Boolean(matchProgress) || Boolean(matchFeedback);
 
   function openCandidateCv(candidate: Candidate) {
-    if (!candidate.cv?.originalUrl) {
+    // The CV sent with the application in view, else the Profile CV.
+    const cvHref = candidateCvHref(candidate);
+    if (!cvHref) {
       toast.error(t("cvNotAvailable"));
       return;
     }
@@ -1105,13 +1109,11 @@ export default function EmployerCandidatesPage() {
       setDetailCandidateId(null);
     }
 
-    const ext = candidate.cv.originalUrl.split("?")[0].split(".").pop()?.toLowerCase() || "pdf";
-
     setViewingCv({
       // Stream the CV through our own origin so the browser renders it inline
       // instead of downloading the cross-origin CDN object. The hash keeps the
       // viewer's PDF/image detection working without affecting the request.
-      url: `/api/employers/candidates/${candidate._id}/cv#cv.${ext}`,
+      url: cvHref,
       name: getCandidateDisplayName(candidate),
       jobSeekerId: candidate._id,
       atsScore: candidate.cv?.atsScore,
@@ -1284,7 +1286,7 @@ export default function EmployerCandidatesPage() {
       const data = await screenMutation.mutateAsync({ jobId: selectedJob, maxCandidates: 20 });
       setScreeningResults(data);
       toast.success(t("aiScreenedToast", { total: data.totalReviewed, jobTitle: data.jobTitle }));
-    } catch (err) {
+    } catch {
       const message = t("screeningFailed");
       setMatchFeedback({ type: "error", message });
     }
@@ -1342,7 +1344,7 @@ export default function EmployerCandidatesPage() {
     try {
       await inviteMutation.mutateAsync({ jobSeekerId: candidateId, jobId: selectedJob });
       toast.success(t("inviteSent"));
-    } catch (e) {
+    } catch {
       toast.error(t("inviteFailed"));
     }
   };
@@ -1597,27 +1599,29 @@ export default function EmployerCandidatesPage() {
       {/* List toolbar — search, benchmark job, Filters and Export sit with the
           list they act on. Filters expands the panel directly beneath. */}
       <div className="workspace-toolbar">
-        <div className="workspace-toolbar-search">
-          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t("searchPlaceholder")}
-            aria-label={t("searchPlaceholder")}
-            className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none sm:h-10"
-          />
-        </div>
-        <SearchableSelect
-          className="workspace-toolbar-select h-11 rounded-xl border-border bg-background sm:h-10"
-          ariaLabel={t("benchmarkJob")}
-          options={[
-            { value: "none", label: t("noJobSelected") },
-            ...jobs.map((job) => ({ value: job._id, label: job.title })),
-          ]}
-          value={selectedJob || "none"}
-          onValueChange={(value) => applySelectedJob(value === "none" ? "" : value)}
-          placeholder={t("noJobSelected")}
+        <SearchField
+          className="workspace-toolbar-search"
+          value={search}
+          onValueChange={setSearch}
+          placeholder={t("searchPlaceholder")}
+          inputClassName="h-11 rounded-xl border-border bg-background text-sm shadow-none sm:h-10"
         />
+        <StackedLabelled label={t("benchmarkJob")} className="workspace-toolbar-select">
+          {(id) => (
+            <SearchableSelect
+              id={id}
+              className="w-full h-11 rounded-xl border-border bg-background sm:h-10"
+              ariaLabel={t("benchmarkJob")}
+              options={[
+                { value: "none", label: t("noJobSelected") },
+                ...jobs.map((job) => ({ value: job._id, label: job.title })),
+              ]}
+              value={selectedJob || "none"}
+              onValueChange={(value) => applySelectedJob(value === "none" ? "" : value)}
+              placeholder={t("noJobSelected")}
+            />
+          )}
+        </StackedLabelled>
         <Button
           type="button"
           variant="outline"
@@ -1657,24 +1661,28 @@ export default function EmployerCandidatesPage() {
           {/* Location + availability + the Advanced toggle share one row; the
               AI search row follows. No panel heading — the toolbar's Filters
               button is the label. */}
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:gap-3">
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end sm:gap-3">
             <div>
+              <label htmlFor="employer-candidates-location" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{t("locationAxis")}</label>
               <Input
+                id="employer-candidates-location"
                 value={locationFilter}
                 onChange={(event) => setLocationFilter(event.target.value)}
                 placeholder={t("filterByLocation")}
-                aria-label={t("filterByLocation")}
                 className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none"
               />
             </div>
 
             <div>
+              <label htmlFor="employer-candidates-availability" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{t("availability")}</label>
               <SearchableSelect
+                id="employer-candidates-availability"
                 className="h-10 w-full rounded-xl border-border bg-background/70"
                 options={AVAILABILITY_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
                 value={availabilityFilter}
                 onValueChange={setAvailabilityFilter}
                 placeholder={t("availability")}
+                ariaLabel={t("availability")}
               />
             </div>
             <Button
@@ -1694,21 +1702,24 @@ export default function EmployerCandidatesPage() {
           </div>
 
           <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <div className="relative">
-              <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={aiQuery}
-                onChange={(event) => setAiQuery(event.target.value)}
-                placeholder={t("aiSearchPlaceholder")}
-                aria-label={t("aiSearchLabel")}
-                className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void handleApplyAiSearch();
-                  }
-                }}
-              />
+            <div className="min-w-0">
+              <label htmlFor="employer-candidates-ai-search" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{t("aiSearchLabel")}</label>
+              <div className="relative">
+                <Sparkles className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="employer-candidates-ai-search"
+                  value={aiQuery}
+                  onChange={(event) => setAiQuery(event.target.value)}
+                  placeholder={t("aiSearchPlaceholder")}
+                  className="h-10 rounded-xl border-border bg-background/70 ps-9 text-sm shadow-none"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleApplyAiSearch();
+                    }
+                  }}
+                />
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2 xl:justify-end">

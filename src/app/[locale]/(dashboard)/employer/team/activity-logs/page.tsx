@@ -310,8 +310,9 @@ export default function TeamActivityLogsPage() {
           then dates + Export. Desktop keeps the single flex-wrap row. */}
       <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3 sm:flex-wrap sm:items-end">
         <div className="min-w-0 space-y-1">
-          <label className="hidden text-xs font-medium text-muted-foreground sm:block">{t("teamMember")}</label>
+          <label htmlFor="activity-member" className="block text-xs font-medium text-muted-foreground">{t("teamMember")}</label>
           <SearchableSelect
+            id="activity-member"
             className="w-full sm:w-52"
             options={memberOptions}
             value={selectedMember}
@@ -325,8 +326,9 @@ export default function TeamActivityLogsPage() {
         </div>
 
         <div className="min-w-0 space-y-1">
-          <label className="hidden text-xs font-medium text-muted-foreground sm:block">{t("resource")}</label>
+          <label htmlFor="activity-resource" className="block text-xs font-medium text-muted-foreground">{t("resource")}</label>
           <SearchableSelect
+            id="activity-resource"
             className="w-full sm:w-44"
             options={resourceOptions}
             value={resource}
@@ -340,7 +342,8 @@ export default function TeamActivityLogsPage() {
         </div>
 
         <div className="col-span-2 space-y-1 sm:col-auto">
-          <label htmlFor="action-search" className="hidden text-xs font-medium text-muted-foreground sm:block">{t("action")}</label>
+          {/* Visible on phones too: the placeholder was the only label there. */}
+          <label htmlFor="action-search" className="block text-xs font-medium text-muted-foreground">{t("action")}</label>
           <div className="relative">
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -362,8 +365,9 @@ export default function TeamActivityLogsPage() {
             the single flex-wrap row with Export pushed right. */}
         <div className="col-span-2 flex w-full items-end gap-2 sm:contents">
         <div className="space-y-1">
-          <label className="hidden text-xs font-medium text-muted-foreground sm:block">{t("from")}</label>
+          <label htmlFor="activity-from" className="block text-xs font-medium text-muted-foreground">{t("from")}</label>
           <DateTimePicker
+            id="activity-from"
             mode="date"
             value={fromDate}
             onChange={(v) => {
@@ -375,8 +379,9 @@ export default function TeamActivityLogsPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="hidden text-xs font-medium text-muted-foreground sm:block">{t("to")}</label>
+          <label htmlFor="activity-to" className="block text-xs font-medium text-muted-foreground">{t("to")}</label>
           <DateTimePicker
+            id="activity-to"
             mode="date"
             value={toDate}
             onChange={(v) => {

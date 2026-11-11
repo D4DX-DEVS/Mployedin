@@ -209,7 +209,7 @@ describe("cookie choices table: one row per saved choice", () => {
     await userEvent.click(await screen.findByRole("option", { name: "Cookie settings" }));
     await waitFor(() => expect(lastChoices().searchParams.get("source")).toBe("settings"));
 
-    await userEvent.type(screen.getByRole("textbox", { name: "Search by name, e-mail or choice reference" }), "sara");
+    await userEvent.type(screen.getByPlaceholderText("Search by name, e-mail or choice reference"), "sara");
     await waitFor(() => expect(lastChoices().searchParams.get("search")).toBe("sara"));
 
     await userEvent.click(screen.getByRole("button", { name: "Sort descending" }));
@@ -262,7 +262,7 @@ describe("cookie choices table: one row per saved choice", () => {
     render(<ConsentLogsTab />);
     await choicesTable();
 
-    await userEvent.type(screen.getByRole("textbox", { name: "Search by name, e-mail or choice reference" }), "sara");
+    await userEvent.type(screen.getByPlaceholderText("Search by name, e-mail or choice reference"), "sara");
     await userEvent.click(screen.getByRole("button", { name: "Reset" }));
 
     await waitFor(() => expect(Object.fromEntries(lastChoices().searchParams)).toEqual({ page: "1", pageSize: "10", days: "30", order: "desc" }));

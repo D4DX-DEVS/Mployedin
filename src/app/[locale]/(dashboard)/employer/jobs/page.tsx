@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Plus, Edit2, Eye, FileText, Trash2, Copy, Users, BriefcaseBusiness, Search, Sparkles, ArrowRight, SlidersHorizontal, PauseCircle, PlayCircle, Send, MapPin, CalendarDays, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Edit2, Eye, FileText, Trash2, Copy, Users, BriefcaseBusiness, Sparkles, ArrowRight, SlidersHorizontal, PauseCircle, PlayCircle, Send, MapPin, CalendarDays, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import type { ExportColumn } from "@/lib/export";
 import { toUserFacingError } from "@/lib/errors/user-facing";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { SearchField } from "@/components/shared/SearchField";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-status-selected-bg text-emerald-700 border-status-selected/20",
@@ -413,17 +414,13 @@ export default function EmployerJobsPage() {
       {/* ── List toolbar — search, Filters and Export sit with the list ──
           No select here, so the search shares the phone row with the buttons. */}
       <div className="workspace-toolbar">
-        <div className="workspace-toolbar-search basis-0 sm:basis-64">
-          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input
-            type="search"
-            aria-label={t("searchJobsPlaceholder")}
-            placeholder={t("searchJobsPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-11 rounded-xl border-border bg-background ps-9 text-sm shadow-none sm:h-10"
-          />
-        </div>
+        <SearchField
+          className="workspace-toolbar-search basis-0 sm:basis-64"
+          placeholder={t("searchJobsPlaceholder")}
+          value={search}
+          onValueChange={setSearch}
+          inputClassName="h-11 rounded-xl border-border bg-background text-sm shadow-none sm:h-10"
+        />
         <Button
           type="button"
           variant="outline"
@@ -487,7 +484,7 @@ export default function EmployerJobsPage() {
                 />
               </div>
 
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-3 sm:gap-3 xl:grid-cols-[220px_220px_220px_minmax(0,1fr)_minmax(0,1fr)_150px]">
+              <div className="mt-2 grid grid-cols-2 items-end gap-2 sm:mt-3 sm:gap-3 xl:grid-cols-3">
                 <SearchableSelect
                   className="h-10 w-full rounded-xl border-border bg-background/70 sm:h-11"
                   options={[
@@ -513,39 +510,48 @@ export default function EmployerJobsPage() {
                   placeholder={t("allSalaryVisibility")}
                   ariaLabel={t("salaryVisibilityFilterLabel")}
                 />
-                <div className="relative min-w-0">
-                  <Input
-                    placeholder={t("filterByLocationPlaceholder")}
-                    aria-label={t("filterByLocationPlaceholder")}
-                    value={locationFilter}
-                    onChange={(e) => setLocationFilter(e.target.value)}
-                    className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none sm:h-11"
-                  />
+                <div className="min-w-0">
+                  <label htmlFor="employer-jobs-location-filter" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{tCommon("location")}</label>
+                  <div className="relative">
+                    <Input
+                      id="employer-jobs-location-filter"
+                      placeholder={t("filterByLocationPlaceholder")}
+                      value={locationFilter}
+                      onChange={(e) => setLocationFilter(e.target.value)}
+                      className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none sm:h-11"
+                    />
+                  </div>
                 </div>
-                <div className="relative min-w-0">
-                  <Input
-                    placeholder={t("skillsPlaceholder")}
-                    aria-label={t("skillsPlaceholder")}
-                    value={skillsFilter}
-                    onChange={(e) => setSkillsFilter(e.target.value)}
-                    className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none sm:h-11"
-                  />
+                <div className="min-w-0">
+                  <label htmlFor="employer-jobs-skills-filter" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{tJobEdit("requiredSkills")}</label>
+                  <div className="relative">
+                    <Input
+                      id="employer-jobs-skills-filter"
+                      placeholder={t("skillsPlaceholder")}
+                      value={skillsFilter}
+                      onChange={(e) => setSkillsFilter(e.target.value)}
+                      className="h-10 rounded-xl border-border bg-background/70 text-sm shadow-none sm:h-11"
+                    />
+                  </div>
                 </div>
-                <div className="relative min-w-0 xl:col-span-2">
-                  <Sparkles className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
-                  <Input
-                    placeholder={t("aiSearchPlaceholder")}
-                    aria-label={t("aiSearchLabel")}
-                    value={aiQuery}
-                    onChange={(e) => setAiQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        void handleApplyAiSearch();
-                      }
-                    }}
-                    className="h-10 rounded-xl border-border bg-background/70 pl-9 text-sm shadow-none sm:h-11"
-                  />
+                <div className="col-span-2 min-w-0">
+                  <label htmlFor="employer-jobs-ai-search" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{t("aiSearchLabel")}</label>
+                  <div className="relative">
+                    <Sparkles className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sky-500" />
+                    <Input
+                      id="employer-jobs-ai-search"
+                      placeholder={t("aiSearchPlaceholder")}
+                      value={aiQuery}
+                      onChange={(e) => setAiQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void handleApplyAiSearch();
+                        }
+                      }}
+                      className="h-10 rounded-xl border-border bg-background/70 ps-9 text-sm shadow-none sm:h-11"
+                    />
+                  </div>
                 </div>
               </div>
 

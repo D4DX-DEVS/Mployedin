@@ -1,10 +1,31 @@
+import fs from "fs";
+import path from "path";
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import Job from "@/models/Job";
 import Employer from "@/models/Employer";
+import { HIDDEN_COMPANY_LOGO, HIDDEN_COMPANY_NAME, isCompanyHidden } from "@/lib/jobs/companyDisclosure";
 
 export const runtime = "nodejs";
+
+let cachedHiddenLogo: string | null | undefined;
+
+/**
+ * The Mployedin mark as a data URI. The image renderer refuses to fetch our own
+ * address (localhost and private hosts are blocked as SSRF), so the file is
+ * embedded instead. Read once per process; null renders the initial instead.
+ */
+function hiddenCompanyLogoDataUri(): string | null {
+  if (cachedHiddenLogo !== undefined) return cachedHiddenLogo;
+  try {
+    const file = fs.readFileSync(path.join(process.cwd(), "public", HIDDEN_COMPANY_LOGO.replace(/^\//, "")));
+    cachedHiddenLogo = `data:image/png;base64,${file.toString("base64")}`;
+  } catch {
+    cachedHiddenLogo = null;
+  }
+  return cachedHiddenLogo;
+}
 
 /**
  * GET /api/og/job?id={jobId}
@@ -24,12 +45,13 @@ export async function GET(req: NextRequest) {
       return new Response("Job not found", { status: 404 });
     }
 
-    const employer = job.employerId
+    const hidden = isCompanyHidden(job);
+    const employer = job.employerId && !hidden
       ? await Employer.findOne({ userId: job.employerId }).lean()
       : null;
 
-    const companyName = employer?.companyName ?? "Company";
-    const logoUrl = employer?.logo;
+    const companyName = hidden ? HIDDEN_COMPANY_NAME : (employer?.companyName ?? "Company");
+    const logoUrl = hidden ? (hiddenCompanyLogoDataUri() ?? undefined) : employer?.logo;
 
     const locationStr =
       typeof job.location === "string"

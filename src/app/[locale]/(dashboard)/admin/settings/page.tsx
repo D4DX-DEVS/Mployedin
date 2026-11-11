@@ -409,10 +409,11 @@ export default function AdminSettingsPage() {
                     />
                   </div>
                   <div className="space-y-1 sm:col-span-2">
-                    <label className="text-sm text-muted-foreground flex items-center gap-1.5">
-                      <Globe className="h-3.5 w-3.5" /> {t("defaultCurrencyLabel")}
+                    <label htmlFor="admin-default-currency" className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <Globe className="h-3.5 w-3.5" aria-hidden="true" /> {t("defaultCurrencyLabel")}
                     </label>
                     <CurrencySelect
+                      id="admin-default-currency"
                       ariaLabel={t("defaultCurrencyLabel")}
                       value={settings.defaultCurrency}
                       onValueChange={(v) => setSettings((s) => ({ ...s, defaultCurrency: v }))}

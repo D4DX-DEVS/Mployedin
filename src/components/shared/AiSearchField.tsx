@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { Loader2, Search, Sparkles, Undo2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -10,8 +11,8 @@ interface AiSearchFieldProps {
   value: string;
   onValueChange: (value: string) => void;
   placeholder: string;
-  /** Accessible name for the box; defaults to the placeholder. */
-  ariaLabel?: string;
+  /** Visible label above the box; defaults to "Search or ask AI". */
+  label?: string;
   onAskAi: (query: string) => void;
   pending: boolean;
   /** Classes for the wrapper, which is the positioning box. */
@@ -28,7 +29,7 @@ export function AiSearchField({
   value,
   onValueChange,
   placeholder,
-  ariaLabel,
+  label,
   onAskAi,
   pending,
   className,
@@ -36,34 +37,44 @@ export function AiSearchField({
 }: AiSearchFieldProps) {
   const t = useTranslations("aiFilterSearch");
   const canAsk = value.trim().length > 0 && !pending;
+  const id = useId();
 
+  // Visible label (WCAG 3.3.2): the placeholder was the only label and went
+  // away on the first keystroke. The inner box is the positioning context for
+  // the Ask AI button, so the label sits outside it.
   return (
-    <div className={cn("relative min-w-0", className)}>
-      <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-      <Input
-        value={value}
-        onChange={(event) => onValueChange(event.target.value)}
-        placeholder={placeholder}
-        aria-label={ariaLabel ?? placeholder}
-        className={cn("h-11 rounded-xl border-border bg-background ps-9 pe-12 text-sm shadow-none lg:pe-32", inputClassName)}
-      />
-      {/* Full height of the box so it keeps the 44px touch target on phones.
-          Icon-only below lg: tablet toolbars leave the box ~250px wide.
-          The input's lg:pe-32 must cover the wider "Asking AI…" label. */}
-      <button
-        type="button"
-        onClick={() => onAskAi(value)}
-        disabled={!canAsk}
-        aria-label={t("askAi")}
-        aria-busy={pending}
-        title={t("askAiHint")}
-        className="absolute inset-y-0 end-0 inline-flex min-w-11 items-center justify-center gap-1.5 rounded-e-xl border-s border-border/70 px-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:text-muted-foreground disabled:hover:bg-transparent"
-      >
-        {pending
-          ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          : <Sparkles className="h-4 w-4" aria-hidden="true" />}
-        <span className="hidden lg:inline">{pending ? t("askingAi") : t("askAi")}</span>
-      </button>
+    <div className={cn("min-w-0", className)}>
+      <label htmlFor={id} className="mb-1 block truncate text-xs font-medium text-muted-foreground">
+        {label ?? t("fieldLabel")}
+      </label>
+      <div className="relative">
+        <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <Input
+          id={id}
+          type="search"
+          value={value}
+          onChange={(event) => onValueChange(event.target.value)}
+          placeholder={placeholder}
+          className={cn("h-11 rounded-xl border-border bg-background ps-9 pe-12 text-sm shadow-none lg:pe-32", inputClassName)}
+        />
+        {/* Full height of the box so it keeps the 44px touch target on phones.
+            Icon-only below lg: tablet toolbars leave the box ~250px wide.
+            The input's lg:pe-32 must cover the wider "Asking AI…" label. */}
+        <button
+          type="button"
+          onClick={() => onAskAi(value)}
+          disabled={!canAsk}
+          aria-label={t("askAi")}
+          aria-busy={pending}
+          title={t("askAiHint")}
+          className="absolute inset-y-0 end-0 inline-flex min-w-11 items-center justify-center gap-1.5 rounded-e-xl border-s border-border/70 px-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:text-muted-foreground disabled:hover:bg-transparent"
+        >
+          {pending
+            ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            : <Sparkles className="h-4 w-4" aria-hidden="true" />}
+          <span className="hidden lg:inline">{pending ? t("askingAi") : t("askAi")}</span>
+        </button>
+      </div>
     </div>
   );
 }

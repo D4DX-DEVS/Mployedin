@@ -23,7 +23,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import path from "path";
-import { validateUploadedFile, ALLOWED_FILE_TYPES, validateMagicBytes, MAX_FILE_SIZES } from "@/lib/security/file-validation";
+import { validateUploadedFile, ALLOWED_FILE_TYPES, validateMagicBytes } from "@/lib/security/file-validation";
 import { scanForMalware, MalwareDetectedError } from "@/lib/security/malware-scan";
 import { FileValidationError } from "@/lib/storage/uploadErrors";
 import {
@@ -452,6 +452,11 @@ function contentDisposition(type: "inline" | "attachment", fileName: string): st
 export function urlToKey(url: string): string {
   const base = urlBases().find((b) => url.startsWith(b));
   return base ? url.slice(base.length) : url;
+}
+
+/** Whether a URL is the address of an object in our own storage, not a link to another site. */
+export function isStoredFileUrl(url: string): boolean {
+  return urlBases().some((b) => url.startsWith(b));
 }
 
 /** Build the stored URL for a known key */

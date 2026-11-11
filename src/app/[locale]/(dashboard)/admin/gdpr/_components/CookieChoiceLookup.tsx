@@ -25,6 +25,8 @@ import { useGdprLabels } from "./useGdprLabels";
 
 /** A choice reference is 36 characters: 32 hex digits and 4 dashes. */
 const REFERENCE_LENGTH = 36;
+/** Written like the list's dates (day, month name, year), plus the second: a visitor quoting a reference may also quote the time. */
+const RECEIPT_WHEN: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit" };
 
 type LookupState =
   | { status: "idle" }
@@ -92,7 +94,7 @@ function ReceiptRow({ receipt, fallbackSource }: { receipt: CookieChoiceReceipt;
           <OutcomeIcon className="size-4 shrink-0" aria-hidden="true" />
           {outcomeLabel(outcome)}
         </p>
-        <p className="text-xs text-muted-foreground">{formatDateTime(receipt.createdAt, undefined, locale)}</p>
+        <p className="text-xs text-muted-foreground">{formatDateTime(receipt.createdAt, RECEIPT_WHEN, locale)}</p>
       </div>
       <dl className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
         <Fact label={t("cookieChoiceDisplaySettings")}>

@@ -1,3 +1,5 @@
+import { isCompanyHidden, maskJobEmployer } from "@/lib/jobs/companyDisclosure";
+
 /**
  * The candidate's view of their own application.
  *
@@ -35,9 +37,20 @@ export const SEEKER_APPLICATION_PROJECTION = [...SEEKER_HIDDEN_APPLICATION_FIELD
   .map((f) => `-${f}`)
   .join(" ");
 
+/**
+ * A job posted with the company hidden stays hidden after the candidate
+ * applies: the populated job shows "Mployedin" and its mark. The job must be
+ * populated with `discloseCompany` for this to apply.
+ */
+export function maskSeekerApplicationJob<T extends object>(app: T): T {
+  const job = (app as Record<string, unknown>).jobId;
+  if (!job || typeof job !== "object" || !isCompanyHidden(job as { discloseCompany?: boolean })) return app;
+  return { ...app, jobId: maskJobEmployer({ ...(job as Record<string, unknown>) }) } as T;
+}
+
 /** Returns a copy of a lean application without the recruiter-only keys. */
 export function stripSeekerHiddenFields<T extends object>(app: T): T {
-  const copy = { ...app } as Record<string, unknown>;
+  const copy = { ...maskSeekerApplicationJob(app) } as Record<string, unknown>;
   for (const key of SEEKER_HIDDEN_APPLICATION_FIELDS) delete copy[key];
   if (copy.automatedDecision && typeof copy.automatedDecision === "object") {
     const { reviewedBy: _reviewer, ...decision } = copy.automatedDecision as Record<string, unknown>;

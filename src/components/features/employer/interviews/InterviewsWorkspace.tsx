@@ -671,13 +671,15 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
           two buttons instead of leaving them stranded on a row of their own. */}
       <div className="workspace-toolbar">
         <div className="workspace-toolbar-search basis-0 sm:basis-64">
+          {/* Visible label (WCAG 3.3.2); the placeholder was the only one. */}
+          <label htmlFor="interviews-search" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{tc("search")}</label>
+          <div className="relative">
           <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <input
+            id="interviews-search"
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder={tc("search")}
-            aria-label={tc("search")}
             className="h-11 w-full min-w-0 rounded-xl border border-border bg-background ps-9 pe-9 text-sm shadow-none focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:h-10"
           />
           {search && (
@@ -690,6 +692,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
               <X className="h-3.5 w-3.5" />
             </button>
           )}
+          </div>
         </div>
         {activeFilterCount > 0 && (
           <Button variant="ghost" size="sm" className="h-11 px-2 text-xs text-muted-foreground hover:text-destructive sm:h-10"

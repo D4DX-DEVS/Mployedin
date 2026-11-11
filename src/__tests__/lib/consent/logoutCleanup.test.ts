@@ -342,7 +342,8 @@ describe("logoutCleanup", () => {
       jest.useFakeTimers();
       markSignOutStarted();
 
-      jest.advanceTimersByTime(14_000);
+      // 45 s: longer than the account menu waits for the server (30 s) plus its check that the session ended.
+      jest.advanceTimersByTime(44_000);
       expect(isSignOutInProgress()).toBe(true);
 
       jest.advanceTimersByTime(2_000);

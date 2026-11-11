@@ -4,7 +4,8 @@ import { Fragment, useState, useRef, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import Link from "next/link";
-import { Bot, FileText, Globe, Loader2, Mic, Rocket, RotateCcw, Save, Send, Sparkles, Upload, WandSparkles, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Banknote, Bot, Briefcase, Building2, FileText, Globe, ListChecks, Loader2, MapPin, Mic, Rocket, RotateCcw, Save, Send, Sparkles, Upload, WandSparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
@@ -15,6 +16,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useJobPostingTarget } from "@/components/features/jobs/jobPostingTarget";
 import { BulkJobReview, isReadyToSave, type BulkJobStatus } from "@/components/features/jobs/bulk-review/BulkJobReview";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { splitAssistantReply } from "@/lib/ai/draftDisplay";
 import {
   applyDraftUpdate,
   DEFAULT_EXPERIENCE_MAX,
@@ -231,6 +233,9 @@ const VOICE_LANGUAGES = [
   { code: "te", labelKey: "langTelugu", flag: "🇮🇳" },
 ];
 
+/** One-tap starters on the empty chat: they fill the box so the brief can be edited before it is sent. */
+const EXAMPLE_BRIEFS = ["teacher", "sales", "developer"] as const;
+
 // ─── Markdown renderer ─────────────────────────────────────────
 function renderInline(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
@@ -300,6 +305,8 @@ export default function EmployerAIJobCreatePage() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [extractedJob, setExtractedJob] = useState<ExtractedJob | null>(null);
+  // Off by default: seekers see "Mployedin" instead of the company.
+  const [discloseCompany, setDiscloseCompany] = useState(false);
   /** The uploaded poster's own text: sent with each chat message and carried into the job form. */
   const [posterText, setPosterText] = useState<string | null>(null);
   const [extractedBulkJobs, setExtractedBulkJobsRaw] = useState<ExtractedJob[]>([]);
@@ -332,6 +339,7 @@ export default function EmployerAIJobCreatePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
@@ -583,6 +591,9 @@ export default function EmployerAIJobCreatePage() {
     }
   };
 
+  /** The reply in flight has reached its draft block: the preview shows it is being filled. */
+  const writingDraft = isStreaming && splitAssistantReply(messages[messages.length - 1]?.content ?? "").isWritingDraft;
+
   // Only the latest upload's message keeps its one-tap requests.
   const lastPosterSummaryIndex = messages.reduce((last, m, idx) => (m.kind === "posterSummary" ? idx : last), -1);
 
@@ -615,7 +626,7 @@ export default function EmployerAIJobCreatePage() {
     try {
       sessionStorage.setItem(
         AI_PREFILL_STORAGE_KEY,
-        JSON.stringify({ ...buildPrefill(extractedJob), ...forEmployer, ...(posterText ? { posterText } : {}) }),
+        JSON.stringify({ ...buildPrefill(extractedJob), discloseCompany, ...forEmployer, ...(posterText ? { posterText } : {}) }),
       );
       sessionStorage.removeItem(AI_CHAT_STORAGE_KEY);
       // Mark the server-side thread as inactive so the dashboard card stops
@@ -638,7 +649,7 @@ export default function EmployerAIJobCreatePage() {
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...buildPrefill(extractedJob), ...forEmployer, status }),
+        body: JSON.stringify({ ...buildPrefill(extractedJob), discloseCompany, ...forEmployer, status }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         job?: { _id: string };
@@ -833,7 +844,13 @@ export default function EmployerAIJobCreatePage() {
   };
 
   return (
-    <div className="page-container">
+    // Desktop: the page fills the workspace and the chat takes what is left
+    // under the header. It was a fixed 500px, which left a blank band below
+    // it on any tall screen (owner, 2026-11-11). Both panes scroll inside
+    // themselves, so a long chat or a long review list never pushes the
+    // message box off screen. A fixed height (not min-height) is what lets the
+    // 1fr row below resolve; 41rem keeps the chat at 500px on short screens.
+    <div className="page-container lg:h-full lg:min-h-[41rem]">
       <WorkspaceHeader
         title={t("jobCreator.title")}
         context={t("jobCreator.description")}
@@ -849,9 +866,9 @@ export default function EmployerAIJobCreatePage() {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(500px,1fr)]">
         {/* Chat panel */}
-        <div className="md:col-span-2 flex flex-col card-base h-[500px]">
+        <div className="md:col-span-2 flex flex-col card-base h-[500px] lg:h-auto lg:min-h-0">
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.map((msg, i) => (
               <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -868,8 +885,8 @@ export default function EmployerAIJobCreatePage() {
                   hasMalayalam(msg.content) && "font-malayalam"
                 )}>
                   {(() => {
-                    const hasJobData = /<JOB_DATA>[\s\S]*?<\/JOB_DATA>/.test(msg.content) || /<BULK_JOB_DATA>[\s\S]*?<\/BULK_JOB_DATA>/.test(msg.content);
-                    const displayText = msg.content.replace(/<JOB_DATA>[\s\S]*?<\/JOB_DATA>/, "").replace(/<BULK_JOB_DATA>[\s\S]*?<\/BULK_JOB_DATA>/, "").trim();
+                    // The draft block never shows in the bubble, finished or still arriving.
+                    const { text: displayText, hasDraft: hasJobData, isWritingDraft } = splitAssistantReply(msg.content);
                     if (msg.role === "assistant") {
                       const isLast = i === messages.length - 1;
                       // Muse reasons for 5–20 s before the first character; an
@@ -903,13 +920,25 @@ export default function EmployerAIJobCreatePage() {
                               {t("jobCreator.retry")}
                             </button>
                           )}
+                          {/* A button, not a note: on a phone the preview is below the chat, not beside it. */}
                           {hasJobData && !isStreaming && (
-                            <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 text-green-800 text-xs chip-pad">
-                              <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
+                            <button
+                              type="button"
+                              onClick={() => previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                              className="mt-3 flex w-full items-center gap-2 rounded-lg border border-green-200 bg-green-50 text-start text-xs text-green-800 transition-colors hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring chip-pad"
+                            >
+                              <Sparkles className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
                               <span className="font-medium">{t("jobCreator.draftReadyPanel")}</span>
+                            </button>
+                          )}
+                          {/* The job's fields are arriving: say so instead of showing them raw. */}
+                          {isStreaming && isLast && isWritingDraft && (
+                            <div role="status" className={cn("flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 text-xs font-medium text-primary chip-pad", displayText && "mt-3")}>
+                              <Loader2 className="h-3.5 w-3.5 flex-shrink-0 animate-spin" aria-hidden="true" />
+                              <span>{t("jobCreator.writingDraft")}</span>
                             </div>
                           )}
-                          {isStreaming && isLast && !isPending && (
+                          {isStreaming && isLast && !isPending && !isWritingDraft && (
                             <span className="inline-block w-1 h-4 ml-0.5 bg-primary animate-pulse" />
                           )}
                         </div>
@@ -927,6 +956,26 @@ export default function EmployerAIJobCreatePage() {
                 </div>
               </div>
             ))}
+            {messages.length === 1 && !isStreaming && !extractedJob && extractedBulkJobs.length === 0 && (
+              <div className="ms-9 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">{t("jobCreator.examplesTitle")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {EXAMPLE_BRIEFS.map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        setInput(t(`jobCreator.examples.${key}`));
+                        textareaRef.current?.focus();
+                      }}
+                      className="min-h-11 rounded-xl border border-border bg-background px-3 py-2 text-start text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
+                    >
+                      {t(`jobCreator.examples.${key}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
           <div className="border-t bg-background/95 p-3 space-y-2">
@@ -1018,20 +1067,29 @@ export default function EmployerAIJobCreatePage() {
                   <span className="font-medium">{t("processingVoice")}</span>
                 </div>
               ) : (
-                <div className="flex items-center justify-end gap-2">
-                  {/* Voice language picker */}
+                <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                  {/* Ways to give the brief on the left, send on the right. One
+                      row at 375px: tighter gaps there, and the upload label
+                      truncates before anything wraps. */}
+                  <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+                  {/* Voice language picker: named, so "AUTO" is not a riddle. */}
                   <div className="relative">
                     <button
+                      type="button"
                       onClick={() => setShowLangPicker((v) => !v)}
                       disabled={isRecording || isVoiceProcessing}
-                      className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-1.5 py-1 rounded hover:bg-muted disabled:opacity-40"
+                      className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-border/60 px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
                       title={t("voiceLanguage")}
+                      aria-label={t("voiceLanguage")}
+                      aria-expanded={showLangPicker}
                     >
-                      <Globe className="h-3 w-3" />
-                      <span>{[(VOICE_LANGUAGES.find((l) => l.code === voiceLanguage) ?? VOICE_LANGUAGES[0]).flag, voiceLanguage.toUpperCase()].filter(Boolean).join(" ")}</span>
+                      <Globe className="h-4 w-4" aria-hidden="true" />
+                      <span className="hidden sm:inline">{t("jobCreator.voiceLanguageShort")}</span>
+                      {/* Phones show the globe alone so the four controls stay on one row. */}
+                      <span className="hidden sm:inline">{t(`jobCreator.${(VOICE_LANGUAGES.find((l) => l.code === voiceLanguage) ?? VOICE_LANGUAGES[0]).labelKey}`)}</span>
                     </button>
                     {showLangPicker && (
-                      <div className="absolute bottom-full right-0 mb-1 z-50 w-36 rounded-xl border border-border bg-popover shadow-lg overflow-hidden">
+                      <div className="absolute bottom-full start-0 mb-1 z-50 w-36 rounded-xl border border-border bg-popover shadow-lg overflow-hidden">
                         {VOICE_LANGUAGES.map((lang) => (
                           <button
                             key={lang.code}
@@ -1053,7 +1111,7 @@ export default function EmployerAIJobCreatePage() {
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isStreaming || isUploading}
-                    className="relative h-10 gap-1.5 rounded-xl border-border/60 px-3 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                    className="h-10 min-w-0 gap-1.5 rounded-xl border-border/60 px-2.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary sm:px-3"
                     title={t("jobCreator.uploadJobPosterHint")}
                     aria-label={t("jobCreator.uploadJobPosterHint")}
                   >
@@ -1061,9 +1119,9 @@ export default function EmployerAIJobCreatePage() {
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        <Upload className="h-4 w-4" />
-                        <Sparkles className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary p-0.5 text-white" />
-                        <span className="text-xs font-medium">{t("jobCreator.uploadJobPosterLabel")}</span>
+                        <Upload className="h-4 w-4" aria-hidden="true" />
+                        <span className="text-xs font-medium sm:hidden">{t("jobCreator.uploadJobPosterShort")}</span>
+                        <span className="hidden truncate text-xs font-medium sm:inline">{t("jobCreator.uploadJobPosterLabel")}</span>
                       </>
                     )}
                   </Button>
@@ -1077,6 +1135,8 @@ export default function EmployerAIJobCreatePage() {
                       if (file) void handleUploadPoster(file);
                     }}
                   />
+                  </div>
+                  <div className="ms-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
                   <Button
                     type="button"
                     variant="outline"
@@ -1088,14 +1148,18 @@ export default function EmployerAIJobCreatePage() {
                   >
                     <Mic className="h-4 w-4" />
                   </Button>
-                  <button
+                  {/* Nothing to send yet reads as grey "not yet", not as a washed-out blue that looks broken. */}
+                  <Button
+                    type="button"
+                    size="icon"
                     onClick={() => void sendMessage()}
                     disabled={!input.trim() || isStreaming}
                     aria-label={t("sendMessage")}
-                    className="btn-primary h-10 w-10 rounded-xl p-0 flex-shrink-0 flex items-center justify-center disabled:opacity-50"
+                    className="h-10 w-10 flex-shrink-0 rounded-xl disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
                   >
-                    <Send className="h-4 w-4" />
-                  </button>
+                    <Send className="h-4 w-4 rtl:-scale-x-100" aria-hidden="true" />
+                  </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1109,7 +1173,7 @@ export default function EmployerAIJobCreatePage() {
                   {t("jobCreator.detectedLanguage", { lang: detectedLanguageLabel })}
                 </p>
               ) : voiceState === "idle" ? (
-                <p className="text-[11px] text-muted-foreground/70 text-center sm:text-left">
+                <p className="hidden text-[11px] text-muted-foreground/70 sm:block">
                   {t("jobCreator.enterToSend")}
                 </p>
               ) : null}
@@ -1118,29 +1182,68 @@ export default function EmployerAIJobCreatePage() {
         </div>
 
         {/* Extracted job preview */}
-        <div className="space-y-3">
-          <div className={`card-base space-y-3 transition-all ${extractedJob ? "border-green-300 bg-green-50/30" : ""} panel-body`}>
+        {/* Desktop: the details scroll inside the card and the actions stay
+            in view under them; Post job used to sit a full scroll away. */}
+        <div ref={previewRef} className="scroll-mt-4 space-y-3 lg:flex lg:min-h-0 lg:flex-col">
+          <div className={`card-base space-y-3 transition-all lg:flex lg:max-h-full lg:min-h-0 lg:flex-col ${extractedJob ? "border-green-300 bg-green-50/30" : ""} panel-body`}>
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
               <h2 className="heading-label font-semibold">{t("jobCreator.jobPreview")}</h2>
+              {writingDraft && (
+                <span className="ms-auto inline-flex items-center gap-1.5 text-xs font-medium text-primary" aria-hidden="true">
+                  <Loader2 className="size-4 animate-spin" />
+                  {t("jobCreator.writingDraft")}
+                </span>
+              )}
             </div>
-            {!extractedJob && extractedBulkJobs.length === 0 && (
+            {/* The draft is on its way: show its shape, not the "what to tell me" list. */}
+            {writingDraft && !extractedJob && extractedBulkJobs.length === 0 && (
+              <div className="space-y-3" aria-hidden="true">
+                {["w-2/3", "w-1/2", "w-3/4", "w-2/5", "w-full", "w-5/6", "w-full", "w-3/5"].map((width, index) => (
+                  <div key={index} className={cn("h-3 animate-pulse rounded bg-muted", width)} />
+                ))}
+              </div>
+            )}
+            {!writingDraft && !extractedJob && extractedBulkJobs.length === 0 && (
               <div className="space-y-3 text-xs text-muted-foreground">
                 <p>{t("jobCreator.aiWillAsk")}</p>
-                <div className="grid gap-2">
-                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.roleAndTeam")}</div>
-                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.locationAndWork")}</div>
-                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.keySkills")}</div>
-                  <div className="rounded-xl border border-dashed border-border chip-pad">{t("jobCreator.optionalSalary")}</div>
-                </div>
+                <ul className="grid gap-2">
+                  {[
+                    { icon: Briefcase, label: t("jobCreator.roleAndTeam") },
+                    { icon: MapPin, label: t("jobCreator.locationAndWork") },
+                    { icon: ListChecks, label: t("jobCreator.keySkills") },
+                    { icon: Banknote, label: t("jobCreator.optionalSalary") },
+                  ].map(({ icon: Icon, label }) => (
+                    <li key={label} className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/20 text-sm text-foreground chip-pad">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Icon className="size-4" aria-hidden="true" />
+                      </span>
+                      {label}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
             {extractedJob && (
-              <div className="space-y-2 text-xs">
-                <JobDraftPreview job={extractedJob} fromPoster={Boolean(posterText)} />
+              <div className="space-y-2 text-xs lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+                <div className="relative lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pe-1">
+                  <JobDraftPreview job={extractedJob} fromPoster={Boolean(posterText)} />
+                </div>
                 <p className="rounded-lg bg-background/80 px-3 py-2 text-[11px] text-muted-foreground">
                   {t("jobCreator.chooseNextStep")}
                 </p>
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-background chip-pad">
+                  <Building2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <label htmlFor="ai-disclose-company" className="text-xs font-medium text-foreground">
+                      {t("jobCreator.discloseCompany")}
+                    </label>
+                    <p className="text-[11px] text-muted-foreground">
+                      {discloseCompany ? t("jobCreator.discloseCompanyOn") : t("jobCreator.discloseCompanyOff")}
+                    </p>
+                  </div>
+                  <Switch id="ai-disclose-company" checked={discloseCompany} onCheckedChange={setDiscloseCompany} />
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"
@@ -1166,7 +1269,7 @@ export default function EmployerAIJobCreatePage() {
               </div>
             )}
             {extractedBulkJobs.length > 0 && (
-              <div className="space-y-3 text-xs">
+              <div className="relative space-y-3 text-xs lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pe-1">
                 <p className="font-medium text-sm">{t("bulkPreview", { count: extractedBulkJobs.length })}</p>
                 <BulkJobReview
                   key={bulkBatch}

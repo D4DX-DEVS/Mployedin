@@ -9,7 +9,7 @@
  * under it. This walks each group's import graph and checks the lists.
  */
 import path from "node:path";
-import { CLIENT_NAMESPACES, type ClientMessageGroup } from "@/lib/i18n/clientMessages";
+import { CLIENT_NAMESPACES, pickMessages, type ClientMessageGroup } from "@/lib/i18n/clientMessages";
 import { routeEntries, scanNamespaces } from "@/__tests__/helpers/translationNamespaces";
 
 const L = path.join(process.cwd(), "src/app/[locale]");
@@ -26,8 +26,11 @@ describe.each(Object.keys(GROUP_ENTRIES) as ClientMessageGroup[])("%s group", (g
   const scan = scanNamespaces(GROUP_ENTRIES[group]);
 
   it("lists every namespace its components use", () => {
-    const listed = new Set<string>(CLIENT_NAMESPACES[group]);
-    expect([...scan.namespaces].filter((ns) => !listed.has(ns)).sort()).toEqual([]);
+    // Listed whole ("auth"), or as the sub-tree a component reads
+    // ("cvBuilderPage.previewSections") or one above it.
+    const listed = CLIENT_NAMESPACES[group] as readonly string[];
+    const covered = (used: string) => listed.some((entry) => used === entry || used.startsWith(`${entry}.`));
+    expect([...scan.paths].filter((used) => !covered(used)).sort()).toEqual([]);
   });
 
   it("uses no namespace a subset cannot cover (none, or a variable)", () => {
@@ -35,8 +38,17 @@ describe.each(Object.keys(GROUP_ENTRIES) as ClientMessageGroup[])("%s group", (g
   });
 
   it("lists only namespaces that exist", () => {
-    expect(CLIENT_NAMESPACES[group].filter((ns) => !(ns in en))).toEqual([]);
+    const exists = (entry: string) =>
+      entry.split(".").reduce<unknown>((node, key) => (node && typeof node === "object" ? (node as Record<string, unknown>)[key] : undefined), en) !== undefined;
+    expect((CLIENT_NAMESPACES[group] as readonly string[]).filter((entry) => !exists(entry))).toEqual([]);
   });
+});
+
+it("hands a group only the sub-tree it lists, not the namespace around it", () => {
+  const picked = pickMessages(en as never, "public") as Record<string, Record<string, unknown>>;
+  expect(Object.keys(picked.cvBuilderPage).sort()).toEqual(["previewSections", "proficiency"]);
+  expect(picked.cvBuilderPage.previewSections).toEqual((en.cvBuilderPage as Record<string, unknown>).previewSections);
+  expect(picked.easyApply).toBe(en.easyApply);
 });
 
 it("the maintenance page reads no client messages (it relies on the root subset)", () => {

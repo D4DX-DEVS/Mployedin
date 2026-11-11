@@ -696,9 +696,14 @@ export function SharedJobEditPage({
           <h1 className="text-xl font-bold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{pageNote}</p>
         </div>
-        <div className="flex flex-wrap gap-2 flex-shrink-0">
+        {/* Phones: a two-column grid of 44px buttons. With three (a draft),
+            AI assistant takes the first row and Save / Publish share the
+            second; side by side the label overflowed its box. `min-h-11` on
+            each button also opts it out of the admin phone rule that shrinks
+            wrapped buttons to 11px text, which made these three mixed sizes. */}
+        <div className="flex flex-wrap gap-2 flex-shrink-0 max-sm:grid max-sm:w-full max-sm:grid-cols-2 max-sm:[&>*]:min-w-0 max-sm:[&>*:first-child:nth-last-child(3)]:col-span-2 max-sm:[&>*:only-child]:col-span-2">
           <JobAssistantOpenButton />
-          <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[110px]">
+          <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[110px] max-sm:min-h-11">
             {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("saving")}</>
               : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />{t("saved")}</>
               : submitState === "error" ? <><AlertCircle className="w-3.5 h-3.5 me-1.5 text-destructive" />{t("error")}</>
@@ -706,7 +711,7 @@ export function SharedJobEditPage({
           </Button>
           {!isLive && (
             <Button type="button" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(true)}
-              className="min-w-[130px] bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-sm">
+              className="min-w-[130px] max-sm:min-h-11 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-sm">
               {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("publishing")}</>
                 : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
             </Button>
@@ -1383,21 +1388,22 @@ export function SharedJobEditPage({
             </div>
           )}
 
-          {/* Bottom CTAs */}
-          <div className="flex gap-3 pb-8">
-            <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[120px]">
+          {/* Bottom CTAs. Wraps on phones: Save draft + Publish + Cancel are
+              wider than 343px, and without wrap Publish ran off the edge. */}
+          <div className="flex flex-wrap gap-3 pb-8 max-sm:[&>*]:flex-1">
+            <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[120px] max-sm:min-h-11">
               {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("saving")}</>
                 : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />{t("saved")}</>
                 : saveLabel}
             </Button>
             {!isLive && (
               <Button type="button" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(true)}
-                className="min-w-[140px] bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white">
+                className="min-w-[140px] max-sm:min-h-11 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white">
                 {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("publishing")}</>
                   : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
               </Button>
             )}
-            <Button type="button" variant="ghost" onClick={() => router.push(backHref)}>
+            <Button type="button" variant="ghost" onClick={() => router.push(backHref)} className="max-sm:min-h-11">
               {t("cancel")}
             </Button>
           </div>

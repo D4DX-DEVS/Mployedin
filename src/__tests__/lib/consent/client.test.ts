@@ -1,4 +1,49 @@
-import { readConsent, writeConsent, withdrawCleanup, CONSENT_EVENT } from "@/lib/consent/client";
+import { readConsent, writeConsent, withdrawCleanup, restoreNewerChoice, CONSENT_EVENT } from "@/lib/consent/client";
+
+describe("restoreNewerChoice: a late receipt answer must not bring an older choice back", () => {
+  // The receipt route answers with Set-Cookie for the choice it was sent. If the visitor chose again
+  // while that request was in flight, the answer would overwrite the newer choice with the older one.
+  const serverSets = (raw: { id: string }) => {
+    document.cookie = `mpl_consent=${encodeURIComponent(JSON.stringify(raw))}; Path=/`;
+    expect(readConsent()?.id).toBe(raw.id);
+  };
+
+  it("puts the newer choice back when the cookie now holds the older one that was just answered", () => {
+    const older = writeConsent({ preferences: false, media: false });
+    const newer = writeConsent({ preferences: true, media: true });
+    serverSets(older);
+    const spy = jest.fn();
+    window.addEventListener(CONSENT_EVENT, spy);
+    restoreNewerChoice(older.id);
+    window.removeEventListener(CONSENT_EVENT, spy);
+    expect(readConsent()).toEqual(newer);
+    // Same choice as before, so nothing is announced and no new receipt is due.
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("leaves the cookie alone when the answered choice is the latest one", () => {
+    const only = writeConsent({ preferences: false, media: true });
+    restoreNewerChoice(only.id);
+    expect(readConsent()).toEqual(only);
+  });
+
+  it("leaves a choice made in another tab alone (the cookie is neither the answered one nor ours)", () => {
+    const older = writeConsent({ preferences: false, media: false });
+    writeConsent({ preferences: true, media: true });
+    const otherTab = { v: 1, id: "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed", preferences: false, media: true, at: new Date().toISOString() };
+    serverSets(otherTab);
+    restoreNewerChoice(older.id);
+    expect(readConsent()?.id).toBe(otherTab.id);
+  });
+
+  it("does nothing when the cookie is gone (cleared or blocked)", () => {
+    const older = writeConsent({ preferences: false, media: false });
+    writeConsent({ preferences: true, media: true });
+    document.cookie = "mpl_consent=; Max-Age=0; Path=/";
+    restoreNewerChoice(older.id);
+    expect(readConsent()).toBeNull();
+  });
+});
 
 beforeEach(() => {
   document.cookie.split(";").forEach((c) => (document.cookie = c.split("=")[0].trim() + "=; Max-Age=0; path=/"));

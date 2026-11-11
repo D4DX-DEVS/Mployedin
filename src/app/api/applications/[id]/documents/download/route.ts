@@ -5,6 +5,7 @@ import type { AuthContext } from "@/lib/auth/withAuth";
 import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { servedApplicationCvUrl } from "@/lib/applications/sentCv";
 import { getPresignedUrl, urlToKey } from "@/lib/storage/spaces";
 import {
   classifyDocumentTier,
@@ -14,6 +15,11 @@ import {
 /**
  * GET /api/applications/[id]/documents/download?i=<index>
  * GET /api/applications/[id]/documents/download?cv=1
+ *
+ * `cv=1` is the CV of THIS application: the resume sent with it, and the
+ * seeker's Profile CV only when it was sent with none. It used to be the
+ * Profile CV always, so an employer could be shown a different file from the
+ * one the seeker chose — or "not found" when the seeker had no Profile CV.
  *
  * Returns a short-lived presigned URL (302 redirect) for a document attached
  * to — or justified by — a specific application. Access is governed by the
@@ -54,7 +60,11 @@ async function getHandler(
   let typeOrCategory: string | undefined;
 
   if (wantCv) {
-    url = (seeker.cv as { originalUrl?: string } | undefined)?.originalUrl;
+    url =
+      servedApplicationCvUrl(
+        app.documents as { url?: string; type?: string }[] | undefined,
+        (seeker.cv as { originalUrl?: string } | undefined)?.originalUrl,
+      ) ?? undefined;
     typeOrCategory = "resume";
   } else {
     const idx = Number.parseInt(searchParams.get("i") ?? "", 10);
@@ -83,8 +93,15 @@ async function getHandler(
   }
 
   // Track recruiter-side resume downloads for the job seeker's activity stats.
+  // A statistic: it must never fail the download. A seeker with no Profile CV
+  // can have `cv` stored as null, which $inc cannot reach into — and since the
+  // CV served is now the application's, that seeker's CV is downloadable.
   if (wantCv && ctx.role !== "job_seeker") {
-    await JobSeeker.updateOne({ _id: seeker._id }, { $inc: { "cv.downloadCount": 1 } });
+    try {
+      await JobSeeker.updateOne({ _id: seeker._id }, { $inc: { "cv.downloadCount": 1 } });
+    } catch {
+      await JobSeeker.updateOne({ _id: seeker._id, cv: null }, { $set: { cv: { downloadCount: 1 } } }).catch(() => {});
+    }
   }
 
   let signed: string;

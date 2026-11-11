@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import type { QualificationLineCheck } from "@/lib/matching/qualificationLines";
+import type { QualificationItem } from "@/components/features/employer/applications/RequirementsChecklist";
 
 /** Mirrors PoolCandidate (lib/matching/talentPoolMatches.ts) plus the invite flag. */
 export interface MatchingCandidate {
@@ -23,6 +25,10 @@ export interface MatchingCandidate {
   missingSkills: string[];
   requirementsStatus: "met" | "not_met" | "unverified";
   unmetRequirements: Array<{ key: string; required?: string; actual?: string; label?: string }>;
+  /** The job's written qualification lines, each checked against this profile. */
+  lineChecks?: QualificationLineCheck[];
+  /** Every requirement checked (met or not), for the expanded card. */
+  qualifications?: QualificationItem[];
   preferenceMismatch: "country" | "work_mode" | "salary" | null;
   latestRole?: { title?: string; company?: string };
   invited: boolean;

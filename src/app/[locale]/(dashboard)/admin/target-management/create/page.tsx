@@ -279,8 +279,7 @@ export default function CreateTargetProfilePage() {
             </div>
             <PageHeader title={t("createTitle")} description={t("createDescription")} />
           </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs font-medium text-muted-foreground">{t("yearLabel")}</Label>
+          <div>
             <TargetYearSelect value={String(year)} onChange={(value) => setYear(Number.parseInt(value, 10) || currentYear + 1)} label={t("yearLabel")} />
           </div>
         </div>
@@ -318,11 +317,12 @@ export default function CreateTargetProfilePage() {
           <div className="px-4 py-3 bg-muted/20 border-b border-border/50">
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="field">
-                <Label className="text-[11px] font-medium text-muted-foreground">{t("nameEmailLabel")}</Label>
+                <Label htmlFor="target-filter-name" className="text-[11px] font-medium text-muted-foreground">{t("nameEmailLabel")}</Label>
                 <div className="relative">
-                  <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                   <Input
-                    aria-label={t("searchByNameEmail")}
+                    id="target-filter-name"
+                    type="search"
                     value={filterName}
                     onChange={(e) => setFilterName(e.target.value)}
                     placeholder={t("searchByNameEmail")}
@@ -332,8 +332,10 @@ export default function CreateTargetProfilePage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">{t("regionLabel")}</Label>
+                <Label htmlFor="target-filter-region" className="text-[11px] font-medium text-muted-foreground">{t("regionLabel")}</Label>
                 <SearchableSelect
+                  id="target-filter-region"
+                  ariaLabel={t("regionLabel")}
                   value={filterRegion}
                   onValueChange={(val) => setFilterRegion(val)}
                   options={[
@@ -348,8 +350,10 @@ export default function CreateTargetProfilePage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium text-muted-foreground">{t("teamSizeLabel")}</Label>
+                <Label htmlFor="target-filter-size" className="text-[11px] font-medium text-muted-foreground">{t("teamSizeLabel")}</Label>
                 <SearchableSelect
+                  id="target-filter-size"
+                  ariaLabel={t("teamSizeLabel")}
                   value={filterTeamSize}
                   onValueChange={(val) => setFilterTeamSize(val as "all" | "small" | "medium" | "large")}
                   options={[

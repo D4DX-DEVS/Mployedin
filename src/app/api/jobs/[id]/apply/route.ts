@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { defaultApplicationCv } from "@/lib/applications/cvChoice";
+import { claimSeekerFiles } from "@/lib/cv/fileClaims";
 import { withAuth } from "@/lib/auth/withAuth";
 import { withSubscription } from "@/lib/subscription/withSubscription";
 import { connectDB } from "@/lib/db/mongoose";
@@ -6,6 +8,7 @@ import Job from "@/models/Job";
 import Application from "@/models/Application";
 import JobSeeker from "@/models/JobSeeker";
 import { ActivityEvent, ACTIVITY_PRIORITY } from "@/models/ActivityEvent";
+import { displayCompanyName } from "@/lib/jobs/companyDisclosure";
 import Employer from "@/models/Employer";
 import User from "@/models/User";
 import { computeBehaviorSignals } from "@/lib/behaviorSignals";
@@ -54,7 +57,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   await connectDB();
 
   const [job, seeker, seekerUser] = await Promise.all([
-    Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId status expiresAt screeningQuestions maxApplicants applicantIds").lean(),
+    Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId discloseCompany status expiresAt screeningQuestions maxApplicants applicantIds").lean(),
     JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt documents cv.originalUrl isAgentReferred badges").lean(),
     User.findById(ctx.userId).select("name").lean(),
   ]);
@@ -104,18 +107,16 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // Attach the seeker's CV so the employer always receives one — parity with
   // POST /api/applications: resume-category profile documents first, then the
   // parsed profile CV as fallback.
-  const seekerDocs = (seeker as {
-    documents?: { name: string; category?: string; type?: string; url: string }[];
-    cv?: { originalUrl?: string };
-  });
-  const appDocuments: { name: string; url: string; type: string }[] = [];
-  for (const d of seekerDocs.documents ?? []) {
-    if ((d.category ?? d.type) === "resume") {
-      appDocuments.push({ name: d.name, url: d.url, type: "resume" });
-    }
-  }
-  if (appDocuments.length === 0 && seekerDocs.cv?.originalUrl) {
-    appDocuments.push({ name: "CV", url: seekerDocs.cv.originalUrl, type: "resume" });
+  // One CV, by the rule every apply path shares (lib/applications/cvChoice.ts);
+  // this used to attach every resume the seeker had ever uploaded.
+  const appDocuments = defaultApplicationCv(seeker as { documents?: { name: string; url: string; category?: string; type?: string; builtHash?: string }[]; cv?: { originalUrl?: string } });
+  // Held while the application is saved (lib/cv/fileClaims.ts); a CV replaced
+  // or deleted in another tab since it was read is not sent.
+  if ((await claimSeekerFiles(seeker._id, appDocuments.map((d) => d.url))).length > 0) {
+    return NextResponse.json(
+      { error: "Your CV changed while you were applying. Please try again.", code: "DOCUMENT_NOT_FOUND" },
+      { status: 400 },
+    );
   }
 
   const { signals, score: bScore } = computeBehaviorSignals({
@@ -259,7 +260,8 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
       userId: ctx.userId,
       jobId,
       jobTitle: job.title,
-      companyName: company,
+      // This goes to the seeker, so a hidden company stays hidden.
+      companyName: displayCompanyName(job, company, ""),
     },
   }).catch((err) => { logger.error({ err, userId: ctx.userId, jobId }, "failed to dispatch similar-jobs email event"); });
 
