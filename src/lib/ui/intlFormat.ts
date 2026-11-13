@@ -43,10 +43,19 @@ function toDate(value: DateInput): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Date only. Returns an em dash for missing or unparseable input. */
+/** The app's one date style: "Nov 11, 2026". */
+const STANDARD_DATE: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", year: "numeric" };
+
+/**
+ * Date only. Returns an em dash for missing or unparseable input.
+ *
+ * With no options it prints the standard style. It used to fall through to the
+ * browser default ("11/11/2026"), so any screen that forgot the options showed
+ * a different date format from the screens around it.
+ */
 export function formatDate(
   value: DateInput,
-  options?: Intl.DateTimeFormatOptions,
+  options: Intl.DateTimeFormatOptions = STANDARD_DATE,
   locale?: string
 ): string {
   const d = toDate(value);
@@ -56,7 +65,7 @@ export function formatDate(
 
 /** Standard list-table date (audit S6): 2-digit day, short month, numeric year. */
 export function formatListDate(value: DateInput, locale?: string): string {
-  return formatDate(value, { day: "2-digit", month: "short", year: "numeric" }, locale);
+  return formatDate(value, STANDARD_DATE, locale);
 }
 
 /** Date and time together. */

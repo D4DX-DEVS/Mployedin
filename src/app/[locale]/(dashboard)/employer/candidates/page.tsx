@@ -370,7 +370,9 @@ function CandidateMatchCard({
           {/* Availability rides the meta line instead of owning a row: same
               per-card height, and when the column is tight it is the location
               that gives way rather than the role. */}
-          <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+          {/* Phones: the facts wrap instead of squeezing the city down to one
+              letter ("M…"); the dot separators go, the icons already divide them. */}
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5 sm:flex-nowrap sm:gap-2">
             {candidate.totalExperienceYears != null ? (
               <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground/90">
                 <Clock3 className="h-3 w-3" aria-hidden="true" />
@@ -378,7 +380,7 @@ function CandidateMatchCard({
               </span>
             ) : null}
             {candidate.totalExperienceYears != null && candidate.currentLocation ? (
-              <span aria-hidden="true" className="shrink-0 text-xs text-muted-foreground/90">•</span>
+              <span aria-hidden="true" className="hidden shrink-0 text-xs text-muted-foreground/90 sm:inline">•</span>
             ) : null}
             {candidate.currentLocation ? (
               <span className="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground/90">
@@ -409,13 +411,14 @@ function CandidateMatchCard({
           </div>
           {/* Wraps below sm: nowrap left each chip 14-34px, so skills rendered
               as "T…", "G…" and carried no information. */}
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground sm:flex-nowrap">
-            <Tags className="h-3 w-3 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground @4xl/cands:flex-nowrap">
+            {/* From sm only: on phones the chips wrapped under it and left the icon alone on a line. */}
+            <Tags className="hidden h-3 w-3 shrink-0 text-muted-foreground/70 sm:block" aria-hidden="true" />
             {/* The trailing "+N more" / skill-gap chips keep shrink-0 individually.
                 A blanket [&>*]:shrink-0 here outranked the skills span's own
                 `shrink` (arbitrary-variant specificity), so long skill names
                 pushed the row past the card and were clipped on phones. */}
-            <span className="flex min-w-0 shrink flex-wrap items-center gap-1.5 sm:flex-nowrap sm:overflow-hidden">
+            <span className="flex min-w-0 shrink flex-wrap items-center gap-1.5 @4xl/cands:flex-nowrap @4xl/cands:overflow-hidden">
             {/* 3rd tag hides on phones and folds into the mobile "+more" count —
                 showing all 3 there wrapped the last tag onto its own orphan line. */}
             {visibleSkills.map((skill, skillIndex) => {
@@ -1639,8 +1642,8 @@ export default function EmployerCandidatesPage() {
             filtersExpanded && "border-primary/30 bg-primary/10 text-primary"
           )}
         >
-          <SlidersHorizontal className="h-4 w-4 sm:me-2" aria-hidden="true" />
-          <span className="hidden sm:inline">{t("filters")}</span>
+          <SlidersHorizontal className="h-4 w-4 me-2" aria-hidden="true" />
+          <span>{t("filters")}</span>
           {activeFilterChips.length > 0 ? (
             <span className="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
               {activeFilterChips.length}
@@ -1886,9 +1889,14 @@ export default function EmployerCandidatesPage() {
 
       {/* List + sticky detail */}
       <div ref={layoutRef} className="@container/cands">
-      <div className="grid gap-4 @4xl/cands:grid-cols-[minmax(360px,0.92fr)_minmax(0,1.08fr)]">
+      {/* The list gets the wider share: in the narrower column its skill
+          chips were cut ("Pyth…") beside a preview with room to spare. */}
+      <div className="grid gap-4 @4xl/cands:grid-cols-[minmax(420px,1.1fr)_minmax(0,0.9fr)]">
         {/* Center: candidate list */}
-        <section className="workspace-list-panel min-w-0 sticky top-4 h-[calc(100vh-1.5rem)]" aria-label={t("heroTitle")}>
+        {/* The fixed-height, self-scrolling list is for the desktop two-pane view.
+            Below lg the list is part of the page: a box scrolling inside the
+            page gave phones two scroll areas (and a second scroll bar). */}
+        <section className="workspace-list-panel min-w-0 lg:sticky lg:top-4 lg:h-[calc(100vh-1.5rem)]" aria-label={t("heroTitle")}>
       {/* Panel head — Select all + privacy notice (left), count or bulk actions (right). Export lives in the list toolbar above. */}
       <TableToolbar
         className="workspace-list-head"
@@ -1918,7 +1926,7 @@ export default function EmployerCandidatesPage() {
                   {reviewCount > 0 ? (
                     <span className="font-medium text-foreground">{tp("selectedCount", { count: reviewCount })}</span>
                   ) : (
-                    <span className="text-muted-foreground">{tp("selectAllOnPage")}</span>
+                    <span className="whitespace-nowrap text-muted-foreground">{tp("selectAllOnPage")}</span>
                   )}
                 </button>
               </div>
@@ -1927,7 +1935,9 @@ export default function EmployerCandidatesPage() {
         }
         right={
           reviewCount === 0 && !loading && total > 0 ? (
-            <span className="text-sm tabular-nums text-muted-foreground">
+            // From sm: on phones it squeezed "Select all on this page" onto three
+            // lines, and the same total is in the summary strip above.
+            <span className="text-sm tabular-nums text-muted-foreground max-sm:hidden">
               {selectedJobData ? t("listCountApplicants", { count: total }) : t("listCountTalent", { count: total })}
             </span>
           ) : reviewCount > 0 ? (
@@ -1969,7 +1979,9 @@ export default function EmployerCandidatesPage() {
           />
         </div>
       ) : (
-        <div>
+        // Tablets (one pane, but wide): two cards per row instead of one
+        // phone card stretched across the screen.
+        <div className="@2xl/cands:@max-4xl/cands:grid @2xl/cands:@max-4xl/cands:grid-cols-2">
           {filteredCandidates.map((candidate) => {
             const rank = matchRank(candidate);
             const isInReviewList = reviewListIds.has(candidate._id);

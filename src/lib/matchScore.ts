@@ -10,6 +10,10 @@
  */
 
 import { countryKey, countryKeyFromLocationText } from "@/lib/i18n/locations";
+import { educationLevel } from "@/lib/matching/educationLevel";
+import { monthlyExpectation } from "@/lib/matching/salary";
+import { readJobRequirements, type JobRequirements, type JobRequirementsDoc } from "@/lib/matching/jobRequirements";
+import { seekerEvidenceFromDoc, spannedYears, type SeekerEvidence, type SeekerEvidenceDoc } from "@/lib/matching/seekerEvidence";
 
 export interface SeekerProfile {
   skills: string[];
@@ -35,7 +39,7 @@ export interface SeekerProfile {
    * nothing, which scores neutral instead.
    */
   experienceKnown?: boolean;
-  salaryExpectation: number; // mid-point of preferred salary range, 0 disables salary component
+  salaryExpectation: number; // monthly mid-point of preferred salary range, 0 disables salary component
   /** ISO currency code of salaryExpectation (e.g. "USD", "INR"). "" if unknown. */
   salaryCurrency?: string;
   /** Preferred job type: "remote" | "hybrid" | "onsite" | "any" */
@@ -44,6 +48,12 @@ export interface SeekerProfile {
   preferredRoles?: string[];
   /** Highest attained education level (1-5, 0 = unknown). See educationRank(). */
   educationLevel?: number;
+  /**
+   * Education entries, languages, licences and dated roles, in the terms job
+   * requirements are read in (lib/matching/seekerEvidence.ts). Absent on a
+   * hand-built profile; requirementParts.ts then falls back to the fields above.
+   */
+  evidence?: SeekerEvidence;
   /** Primary preferred city (lower-cased). "" if unknown. */
   city?: string;
   /** All preferred cities (lower-cased). Falls back to [city] when omitted. */
@@ -98,34 +108,23 @@ export interface JobProfile {
   workMode?: "onsite" | "hybrid" | "remote" | "";
   /** Required education level (1-5, 0 = none/unspecified). See educationRank(). */
   requiredEducationLevel?: number;
+  /**
+   * Education, experience "in what", licences and languages, each must-have or
+   * nice-to-have (lib/matching/jobRequirements.ts). Absent on a hand-built profile.
+   */
+  requirements?: JobRequirements;
 }
 
 /**
- * Ordered education levels — higher keyword groups are checked first so that
- * e.g. "postgraduate" ranks above the generic "graduate".
- *   5 doctorate · 4 master/PG · 3 bachelor/UG · 2 diploma · 1 school
- */
-const EDUCATION_LEVELS: Array<{ level: number; keywords: string[] }> = [
-  { level: 5, keywords: ["phd", "ph.d", "doctorate", "doctoral", "dphil"] },
-  { level: 4, keywords: ["master", "m.tech", "mtech", "m.sc", "msc", "m.a", "mba", "mca", "m.com", "mcom", "postgraduate", "post graduate", "post-graduate"] },
-  { level: 3, keywords: ["bachelor", "b.tech", "btech", "b.e", "b.sc", "bsc", "b.a", "b.com", "bcom", "bca", "bba", "undergraduate", "graduate", "degree"] },
-  { level: 2, keywords: ["diploma", "associate", "certificate", "iti", "vocational", "polytechnic"] },
-  { level: 1, keywords: ["high school", "higher secondary", "secondary", "ssc", "hsc", "10th", "12th", "matriculation"] },
-];
-
-/**
  * Maps a free-text qualification ("B.Tech", "Master of Science", "Diploma") to a
- * numeric level 1-5. Returns 0 when the text is empty or unrecognised.
+ * numeric level 1-5 (5 doctorate · 4 master/PG · 3 bachelor/UG · 2 diploma ·
+ * 1 school). Returns 0 when the text is empty or unrecognised.
+ *
+ * Whole words since 2026-11-12 (lib/matching/educationLevel.ts): the old
+ * substring match read "iti" inside "utilities" and missed SSLC / Plus Two.
  */
 export function educationRank(text: string | undefined | null): number {
-  if (!text) return 0;
-  // Normalize separators so hyphenated/underscored abbreviations like "B-Tech"
-  // or "M_Tech" match the dotted keywords ("b.tech", "m.tech").
-  const lower = text.toLowerCase().replace(/[-_]/g, ".");
-  for (const { level, keywords } of EDUCATION_LEVELS) {
-    if (keywords.some((k) => lower.includes(k))) return level;
-  }
-  return 0;
+  return educationLevel(text);
 }
 
 /**
@@ -375,6 +374,28 @@ export function profileSignalCount(seeker: SeekerProfile): number {
     (seeker.cvText ?? "").trim().length > 0,
   ];
   return signals.filter(Boolean).length;
+}
+
+/**
+ * Whether the profile states any of the things the relevance score is made of:
+ * a skill, a CV to read skills from, a target role, or a career length.
+ *
+ * With none of them the engine still returns a number: skills at the
+ * no-evidence floor, role and experience at their neutral half — 29% against a
+ * job that lists no skills, 20% against one that does, the same for every job
+ * on the platform. A seeker who signed up by e-mail code and skipped the CV saw
+ * exactly that on every card. Country, pay and education are not asked here:
+ * the engine gates on them and does not score them.
+ *
+ * Decides what a page may show; it is not part of the score.
+ */
+export function hasScoringEvidence(seeker: SeekerProfile): boolean {
+  return (
+    (seeker.skills?.length ?? 0) > 0 ||
+    (seeker.cvText ?? "").trim().length > 0 ||
+    (seeker.preferredRoles?.length ?? 0) > 0 ||
+    hasExperienceSignal(seeker)
+  );
 }
 
 /**
@@ -642,7 +663,7 @@ export function blendBehaviorScore(
 export const SEEKER_MATCH_FIELDS =
   "skills preferredCountries preferredRoles preferredSalary preferredJobType " +
   "experience education preferredLocations currentLocation cv.rawText " +
-  "totalExperienceYears workStatus";
+  "totalExperienceYears workStatus languages certifications";
 
 /**
  * Build a SeekerProfile from a Mongoose JobSeeker lean document.
@@ -661,33 +682,38 @@ export function seekerProfileFromDoc(seeker: {
   cv?: { rawText?: string };
   experience?: Array<{
     jobTitle?: string;
+    company?: string;
+    description?: string;
     startDate?: Date | string;
     endDate?: Date | string;
     isCurrent?: boolean;
   }>;
-  education?: Array<{ degree?: string; field?: string }>;
+  education?: Array<{ degree?: string; field?: string; course?: string; graduationDate?: Date | string }>;
+  languages?: SeekerEvidenceDoc["languages"];
+  certifications?: string[];
 }): SeekerProfile {
   const now = Date.now();
 
-  // Per-role durations, reused for both the career total and relevance scoring.
-  const roleHistory = (seeker.experience ?? []).map((exp) => {
-    const start = exp.startDate ? new Date(exp.startDate).getTime() : now;
-    const end = exp.isCurrent || !exp.endDate ? now : new Date(exp.endDate).getTime();
-    return {
-      title: exp.jobTitle ?? "",
-      years: Math.max(0, (end - start) / (1000 * 60 * 60 * 24 * 365.25)),
-    };
-  });
+  // Education entries, languages, licences and dated roles, read once. The
+  // highest qualification held is theirs too: degrees still being studied, and
+  // a "Graduation/Diploma" with no course, do not count above what is held.
+  const evidence = seekerEvidenceFromDoc(seeker, now);
+  const educationLevel = evidence.level;
+
+  // Per-role durations, reused for relevance scoring. A role with no end date
+  // that is not current ended when the next one began (roleSpans).
+  const roleHistory = evidence.roles.map((role) => ({ title: role.title, years: role.years }));
 
   // Career length came only from dated `experience` entries, so a seeker who
   // filled in "8 years total" on the profile form but added no entries scored
   // as though they had none. Fall back to the stated total, then to the
-  // declared work status. A role with no dates adds nothing to the sum, so
-  // when one is undated the sum is known to be short — then the stated total
-  // ("6+ years" on a CV whose first job gives no dates) counts if it is larger.
-  const entryYears = roleHistory.reduce((total, role) => total + role.years, 0);
+  // declared work status. Overlapping roles count once (the union of their
+  // spans). A role that cannot be dated adds nothing, so when one is undated
+  // the total is known to be short — then the stated total ("6+ years" on a
+  // CV whose first job gives no dates) counts if it is larger.
+  const entryYears = spannedYears(evidence.roles);
   const statedTotal = seeker.totalExperienceYears ?? 0;
-  const someUndated = (seeker.experience ?? []).some((exp) => !exp.startDate);
+  const someUndated = evidence.roles.some((role) => !role.dated);
   const experienceYears =
     roleHistory.length === 0 ? statedTotal : someUndated ? Math.max(entryYears, statedTotal) : entryYears;
   // `totalExperienceYears` defaults to 0 on every document, so it cannot by
@@ -698,13 +724,10 @@ export function seekerProfileFromDoc(seeker: {
 
   const salMin = seeker.preferredSalary?.min ?? 0;
   const salMax = seeker.preferredSalary?.max ?? 0;
-  const salaryExpectation =
-    salMin > 0 && salMax > 0 ? (salMin + salMax) / 2 : salMin + salMax;
-
-  // Highest qualification the seeker holds across all education entries.
-  const educationLevel = (seeker.education ?? []).reduce(
-    (max, e) => Math.max(max, educationRank(e.degree), educationRank(e.field)),
-    0,
+  // Monthly, with yearly-looking figures divided by 12 (see matching/salary.ts).
+  const salaryExpectation = monthlyExpectation(
+    salMin > 0 && salMax > 0 ? (salMin + salMax) / 2 : salMin + salMax,
+    seeker.preferredSalary?.currency,
   );
 
   // Where the seeker wants to work: the countries they chose, or — when they
@@ -735,6 +758,7 @@ export function seekerProfileFromDoc(seeker: {
       .filter(Boolean),
     cvText: seeker.cv?.rawText ?? "",
     roleHistory: roleHistory.filter((r) => r.title),
+    evidence,
   };
 }
 
@@ -742,16 +766,15 @@ export function seekerProfileFromDoc(seeker: {
  * Build a JobProfile from a Mongoose Job lean document.
  */
 export function jobProfileFromDoc(job: {
-  requirements?: {
+  requirements?: NonNullable<JobRequirementsDoc["requirements"]> & {
     skills?: string[];
     preferredSkills?: string[];
     /** Extracted from the description when the employer typed none. See jobSkillExtraction.ts. */
     aiSkills?: string[];
     aiPreferredSkills?: string[];
-    experienceMin?: number;
-    experienceMax?: number;
-    education?: string;
   };
+  qualifications?: string[];
+  hireType?: string;
   salary?: { min?: number; max?: number; period?: "monthly" | "yearly" | "lpa"; currency?: string };
   location?: {
     country?: string;
@@ -776,6 +799,9 @@ export function jobProfileFromDoc(job: {
   // matched to anyone.
   const stated = job.requirements?.skills ?? [];
   const statedPreferred = job.requirements?.preferredSkills ?? [];
+  // Education, experience "in what", licences, languages: the form first, then
+  // the Education box and the Qualifications lines (lib/matching/jobRequirements.ts).
+  const requirements = readJobRequirements(job);
 
   return {
     skills: stated.length > 0 ? stated : (job.requirements?.aiSkills ?? []),
@@ -794,6 +820,7 @@ export function jobProfileFromDoc(job: {
     maxExp: job.requirements?.experienceMax ?? 30,
     title: job.title?.toLowerCase() ?? "",
     workMode,
-    requiredEducationLevel: educationRank(job.requirements?.education),
+    requiredEducationLevel: requirements.education.level,
+    requirements,
   };
 }

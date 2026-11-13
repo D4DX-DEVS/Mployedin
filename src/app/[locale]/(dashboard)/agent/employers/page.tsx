@@ -12,7 +12,7 @@ import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePermissions } from "@/hooks/usePermissions";
 import Link from "next/link";
-import { Building2, Check, Copy, ExternalLink, Link2, Loader2, Power, PowerOff, UserCheck, UserPlus } from "lucide-react";
+import { Building2, Check, Copy, ExternalLink, Link2, Loader2, MoreVertical, Power, PowerOff, UserCheck, UserPlus } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
@@ -22,6 +22,12 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { toast } from "sonner";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { WorkspaceTabs, type WorkspaceTab } from "@/components/shared/WorkspaceTabs";
 import { EmployerTable } from "./_components/EmployerTable";
 import { ClientPlanRequests } from "@/components/features/subscription/ClientPlans";
@@ -53,8 +59,6 @@ export default function AgentEmployersPage() {
   const t = useTranslations("agentEmployers");
   const tf = useTranslations("formErrors");
   const tc = useTranslations("common");
-  const tt = useTranslations("table");
-  const tconf = useTranslations("confirm");
   const employerFields = useMemo(() => getEmployerFields(t), [t]);
   const onboardFields = useMemo(() => getOnboardFields(t, tf), [t, tf]);
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
@@ -330,24 +334,33 @@ export default function AgentEmployersPage() {
         title={t("heroTitle")}
         context={`${totalEmployers} ${t("employerAccounts")}`}
         actions={
-          <>
-            <button
-              onClick={handleGetReferralLink}
-              disabled={referralLoading}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-3 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary disabled:opacity-50"
-            >
-              {referralLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-              <span className="hidden sm:inline">{referralLoading ? tc("loading") : t("getReferralLinkButton")}</span>
-            </button>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setOnboardOpen(true)}
               aria-label={t("onboardEmployerButton")}
               className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
             >
               <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("onboardEmployerButton")}</span>
+              <span>{t("onboardEmployerButton")}</span>
             </button>
-          </>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="inline-flex h-11 items-center gap-2 rounded-xl border border-border px-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/25 hover:text-primary"
+                  aria-label={tc("actions")}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleGetReferralLink} disabled={referralLoading}>
+                  {referralLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {!referralLoading && <Link2 className="mr-2 h-4 w-4" />}
+                  <span>{referralLoading ? tc("loading") : t("getReferralLinkButton")}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         }
       />
 
@@ -415,7 +428,7 @@ export default function AgentEmployersPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchEmployersPlaceholder")} className="max-sm:basis-0" />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchEmployersPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect

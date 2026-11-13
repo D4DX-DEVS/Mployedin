@@ -59,3 +59,19 @@ describe("CMS validators — blog tags accept the form's comma-separated text", 
     expect(blogCreateSchema.safeParse({ ...base, tags: "x".repeat(51) }).success).toBe(false);
   });
 });
+
+describe("bannerCreateSchema placements (rollout: in-app announcements)", () => {
+  it("accepts a text-only in-app announcement without an image", () => {
+    expect(bannerCreateSchema.safeParse({ title: "Maintenance tonight", placement: ["in-app-announcement"], audienceRoles: ["employer"] }).success).toBe(true);
+  });
+  it("still needs an image on the landing carousel", () => {
+    expect(bannerCreateSchema.safeParse({ title: "Hi", placement: ["landing-carousel"] }).success).toBe(false);
+    expect(bannerCreateSchema.safeParse({ title: "Hi", placement: ["landing-carousel", "in-app-announcement"] }).success).toBe(false);
+  });
+  it("needs some text for an announcement", () => {
+    expect(bannerCreateSchema.safeParse({ placement: ["in-app-announcement"] }).success).toBe(false);
+  });
+  it("rejects an end date before the start date", () => {
+    expect(bannerCreateSchema.safeParse({ title: "x", placement: ["in-app-announcement"], startDate: "2026-12-10", endDate: "2026-12-01" }).success).toBe(false);
+  });
+});

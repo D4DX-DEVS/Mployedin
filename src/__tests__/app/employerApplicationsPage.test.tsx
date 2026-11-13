@@ -81,6 +81,7 @@ jest.mock("@/hooks/useApplications", () => ({
   useApplications: (...args: unknown[]) => useApplicationsMock(...args),
   useUpdateApplicationStatus: () => ({ mutateAsync: updateStatusMutateAsyncMock }),
   useBulkAction: () => ({ mutateAsync: bulkActionMutateAsyncMock, isPending: false }),
+  useBulkScreening: () => ({ mutateAsync: jest.fn().mockResolvedValue({ sent: 0, skipped: 0, errors: [], total: 0 }), isPending: false }),
   useApplicationTimeline: () => ({ data: { timeline: [] }, isLoading: false }),
   useCreateScorecard: () => ({ mutateAsync: createScorecardMutateAsyncMock, isPending: false }),
   useCreateInterviewFromApp: () => ({ mutateAsync: createInterviewMutateAsyncMock, isPending: false }),
@@ -785,6 +786,26 @@ describe("EmployerApplicationsPage", () => {
       expect(screen.getByRole("combobox", { name: "Sort" })).toHaveValue("score_low");
       expect(within(screen.getByRole("combobox", { name: "Sort" })).getByRole("option", { name: "Lowest match" })).toBeInTheDocument();
     });
+  });
+
+  // Client report 2026-11-13: the row said Withdrawn while the panel's stepper
+  // said "Rejected" in red. Only a rejection is the employer's call.
+  it("labels a withdrawn application as withdrawn by the candidate, not rejected", async () => {
+    const base = useApplicationsMock.getMockImplementation?.()?.() ?? useApplicationsMock();
+    useApplicationsMock.mockReturnValue({
+      ...base,
+      data: {
+        ...base.data,
+        applications: base.data.applications.map((a: Record<string, unknown>) => ({ ...a, status: "withdrawn" })),
+      },
+    });
+    const user = userEvent.setup();
+    render(<ApplicationsWorkspace jobId="job-1" embedded />);
+    await user.click(screen.getByTestId("applicant-row-app-1"));
+    const panel = await screen.findByRole("dialog", { name: /candidate details for amina noor/i });
+
+    expect(within(panel).getByText("Withdrawn by candidate")).toBeInTheDocument();
+    expect(within(panel).queryByText(/^Rejected$/)).not.toBeInTheDocument();
   });
 
   describe("Move Stage menu", () => {

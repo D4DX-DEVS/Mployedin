@@ -1,28 +1,64 @@
 "use client";
 
-import { Share2, Link2, MessageCircle } from "lucide-react";
-import { useState } from "react";
+import { Share2, Link2, MessageCircle, PencilLine, Copy, RotateCcw } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { buildJobShareMessage } from "@/lib/jobs/shareMessage";
+
+/** What a job share says besides its title; every part optional. */
+export interface SocialShareDetails {
+  company?: string;
+  location?: string;
+  salary?: string;
+  type?: string;
+  skills?: string[];
+}
 
 interface SocialShareProps {
   url: string;
   title: string;
   description?: string;
+  /** When given, the share carries a full job message the sharer can edit first. */
+  details?: SocialShareDetails;
 }
 
-export default function SocialShare({ url, title, description }: SocialShareProps) {
+const MESSAGE_MAX = 1000;
+
+export default function SocialShare({ url, title, details }: SocialShareProps) {
   const t = useTranslations("socialShare");
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  const defaultMessage = useMemo(() => {
+    if (!details) return `${title}\n${url}`;
+    const skills = (details.skills ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 5);
+    return buildJobShareMessage({
+      headline: t("messageHeadline", { title }),
+      company: details.company,
+      location: details.location,
+      salary: details.salary,
+      type: details.type,
+      skills: skills.length > 0 ? t("messageSkills", { skills: skills.join(", ") }) : undefined,
+      apply: t("messageApply", { url }),
+    });
+  }, [details, t, title, url]);
+  const [draft, setDraft] = useState<string | null>(null);
+  const message = (draft ?? defaultMessage).slice(0, MESSAGE_MAX);
 
   const encodedUrl = encodeURIComponent(url);
-  const encodedTitle = encodeURIComponent(title);
-  const encodedDesc = encodeURIComponent(description ?? title);
+  const whatsappHref = `https://wa.me/?text=${encodeURIComponent(message)}`;
+  const xHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`;
 
   const shareLinks = [
     {
       label: "WhatsApp",
-      href: `https://wa.me/?text=${encodedTitle}%20${encodedUrl}`,
+      href: whatsappHref,
       color: "hover:bg-green-50 hover:text-green-600",
       icon: <MessageCircle className="w-4 h-4" />,
     },
@@ -34,7 +70,7 @@ export default function SocialShare({ url, title, description }: SocialShareProp
     },
     {
       label: "Twitter",
-      href: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
+      href: xHref,
       color: "hover:bg-sky-50 hover:text-sky-600",
       icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>,
     },
@@ -46,10 +82,10 @@ export default function SocialShare({ url, title, description }: SocialShareProp
     },
   ];
 
-  const copyLink = async () => {
+  const copy = async (text: string, done: string) => {
     try {
-      await navigator.clipboard.writeText(url);
-      toast.success(t("linkCopied"));
+      await navigator.clipboard.writeText(text);
+      toast.success(done);
       setOpen(false);
     } catch {
       toast.error(t("failedCopy"));
@@ -70,7 +106,7 @@ export default function SocialShare({ url, title, description }: SocialShareProp
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 z-50 bg-popover border border-border rounded-xl shadow-lg min-w-[180px] chip-pad">
+          <div className="absolute right-0 top-full mt-2 z-50 bg-popover border border-border rounded-xl shadow-lg min-w-[200px] chip-pad">
             {shareLinks.map((link) => (
               <a
                 key={link.label}
@@ -85,14 +121,68 @@ export default function SocialShare({ url, title, description }: SocialShareProp
               </a>
             ))}
             <button
-              onClick={copyLink}
+              onClick={() => void copy(url, t("linkCopied"))}
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-accent transition-colors w-full"
             >
               <Link2 className="w-4 h-4" />
               {t("copyLink")}
             </button>
+            {details && (
+              <>
+                <div className="my-1 border-t border-border" />
+                <button
+                  onClick={() => { setOpen(false); setEditing(true); }}
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-accent transition-colors w-full"
+                >
+                  <PencilLine className="w-4 h-4" />
+                  {t("editMessage")}
+                </button>
+              </>
+            )}
           </div>
         </>
+      )}
+
+      {details && (
+        <Dialog open={editing} onOpenChange={setEditing}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{t("editMessageTitle")}</DialogTitle>
+              <DialogDescription>{t("editMessageHint")}</DialogDescription>
+            </DialogHeader>
+            <label htmlFor="share-message" className="sr-only">{t("editMessageTitle")}</label>
+            <Textarea
+              id="share-message"
+              dir="auto"
+              rows={9}
+              maxLength={MESSAGE_MAX}
+              value={message}
+              onChange={(e) => setDraft(e.target.value)}
+            />
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{t("editMessageCount", { count: message.length, max: MESSAGE_MAX })}</span>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setDraft(null)} disabled={draft === null}>
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                {t("resetMessage")}
+              </Button>
+            </div>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button type="button" variant="outline" onClick={() => void copy(message, t("messageCopied"))}>
+                <Copy className="h-4 w-4" aria-hidden="true" />
+                {t("copyMessage")}
+              </Button>
+              <Button asChild variant="outline">
+                <a href={xHref} target="_blank" rel="noopener noreferrer" onClick={() => setEditing(false)}>X</a>
+              </Button>
+              <Button asChild>
+                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" onClick={() => setEditing(false)}>
+                  <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                  {t("sendOnWhatsApp")}
+                </a>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

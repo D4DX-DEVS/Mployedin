@@ -58,6 +58,7 @@ import {
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { OverflowTabs } from "@/components/shared/OverflowTabs";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
 import { SearchField } from "@/components/shared/SearchField";
@@ -78,6 +79,8 @@ const ANALYTICS_TABS = [
 ];
 
 const FUNNEL_STAGES = ["applied", "shortlisted", "interview", "offer", "hired"];
+/** Stage columns the per-job table keeps on a tablet; the rest join from lg. */
+const TABLET_STAGE_COUNT = 3;
 
 // UI stage keys → Application status values stored in the database
 const STATUS_BY_STAGE: Record<string, string> = {
@@ -142,6 +145,7 @@ export default function EmployerAnalyticsPage() {
   const [perJobSearch, setPerJobSearch] = useState("");
   const t = useTranslations("employerAnalytics");
   const tc = useTranslations("employerCommon");
+  const tg = useTranslations("common");
 
   // Debounce per-job search so we don't refetch on every keystroke
   useEffect(() => {
@@ -278,7 +282,7 @@ export default function EmployerAnalyticsPage() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <WorkspaceHeader title={t("title")} context={t("description")} />
+        <WorkspaceHeader title={t("titleShort")} context={t("description")} />
 
         <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
@@ -297,7 +301,7 @@ export default function EmployerAnalyticsPage() {
   if (error) {
     return (
       <div className="page-container">
-        <WorkspaceHeader title={t("title")} context={t("description")} />
+        <WorkspaceHeader title={t("titleShort")} context={t("description")} />
 
         <AnalyticsPanel className="border-red-500/20 bg-red-500/5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -328,12 +332,7 @@ export default function EmployerAnalyticsPage() {
           time as the header status, two icon actions, and the headline
           metrics as the strip (their long notes lived in the old cards). */}
       <WorkspaceHeader
-        title={
-          <>
-            <span className="sm:hidden">{t("titleShort")}</span>
-            <span className="hidden sm:inline">{t("title")}</span>
-          </>
-        }
+        title={t("titleShort")}
         context={<span className="hidden sm:inline">{t("description")}</span>}
         status={
           <span suppressHydrationWarning title={lastRefresh.toLocaleString()}>
@@ -346,22 +345,23 @@ export default function EmployerAnalyticsPage() {
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl sm:h-10 sm:w-10 border border-border bg-background/80 text-muted-foreground transition hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-background/80 px-3 text-sm font-medium text-foreground/85 transition max-sm:[&_svg]:hidden hover:border-sky-500/25 hover:text-status-applied disabled:cursor-not-allowed disabled:opacity-60 sm:h-10"
             title={t("refreshNow")}
-            aria-label={t("refreshNow")}
           >
             <RefreshCw
               className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+              aria-hidden="true"
             />
+            {tg("refresh")}
           </button>
           <button
             type="button"
             onClick={handleExportCSV}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl sm:h-10 sm:w-10 border border-border bg-background/80 text-muted-foreground transition hover:border-emerald-500/25 hover:text-status-selected"
+            className="inline-flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-background/80 px-3 text-sm font-medium text-foreground/85 transition max-sm:[&_svg]:hidden hover:border-emerald-500/25 hover:text-status-selected sm:h-10"
             title={t("exportCsv")}
-            aria-label={t("exportCsv")}
           >
-            <Download className="h-4 w-4" />
+            <Download className="h-4 w-4" aria-hidden="true" />
+            {tg("export")}
           </button>
           </>
         }
@@ -374,29 +374,19 @@ export default function EmployerAnalyticsPage() {
 
       <AnalyticsPanel className="p-2 sm:p-4">
         <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-          {/* Phones: one horizontally scrollable row — six tabs wrapped to two
-              rows and pushed the charts down. Wraps again from sm. */}
-          <div className="flex flex-nowrap gap-1.5 overflow-x-auto scrollbar-none sm:flex-wrap sm:gap-2 sm:overflow-visible">
-            {ANALYTICS_TABS.map((tab) => {
-              const Icon = tab.icon;
-
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 py-1 text-[11px] font-semibold transition sm:gap-2 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm",
-                    activeTab === tab.key
-                      ? "bg-slate-950 text-white shadow-[0_16px_36px_-28px_rgba(15,23,42,0.9)]"
-                      : "bg-secondary/75 text-muted-foreground hover:bg-slate-200 hover:text-foreground"
-                  )}
-                >
-                  <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
-                  {t(tab.key === "response" ? "responseTime" : tab.key)}
-                </button>
-              );
-            })}
-          </div>
+          {/* Views that do not fit sit under More: the scrolling row was cut at
+              "Response T…" on phones with no hint of the two views after it. */}
+          <OverflowTabs
+            className="min-w-0 flex-1"
+            ariaLabel={t("title")}
+            value={activeTab}
+            onChange={setActiveTab}
+            items={ANALYTICS_TABS.map((tab) => ({
+              key: tab.key,
+              label: t(tab.key === "response" ? "responseTime" : tab.key),
+              icon: tab.icon,
+            }))}
+          />
 
         </div>
       </AnalyticsPanel>
@@ -597,12 +587,26 @@ function PipelineTab({
       )}
 
       <section>
-        {/* 5-across only from lg. At 390px five columns were 64px wide, which
-            truncated every label and every conversion value on the page's
-            primary metric. Max two columns below 480px. */}
-        {/* Below 480px the fifth card (Hired) was an orphan next to an empty
-            cell — it spans the full row there instead. */}
-        <div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:gap-4 lg:grid-cols-5 max-[479px]:[&>*:nth-child(5)]:col-span-2">
+        {/* Phones: the five stages as one strip — count, stage, rate. As tiles
+            in a two-wide grid Hired was left alone on a row of its own. */}
+        <dl className="workspace-panel-surface grid grid-cols-5 divide-x divide-border/60 rounded-xl py-2.5 rtl:divide-x-reverse sm:hidden">
+          {([
+            { label: t("applied"), count: data.conversion.applied, rate: "100", color: "blue" },
+            { label: t("shortlisted"), count: data.conversion.shortlisted, rate: conversionRates.appliedToShortlisted, color: "indigo" },
+            { label: t("interview"), count: data.conversion.interview, rate: conversionRates.shortlistedToInterview, color: "purple" },
+            { label: t("selected"), count: data.conversion.selected, rate: conversionRates.interviewToSelected, color: "amber" },
+            { label: t("hired"), count: data.conversion.hired, rate: conversionRates.appliedToHired, color: "green" },
+          ] as const).map((stage) => (
+            <div key={stage.color} className="flex min-w-0 flex-col items-center px-0.5 text-center">
+              <dd className={cn("text-lg font-semibold leading-tight tabular-nums", (COLOR_MAP[stage.color] ?? COLOR_MAP.blue).text)}>{stage.count}</dd>
+              <dt className="mt-0.5 max-w-full text-[10px] font-medium leading-tight tracking-tight text-muted-foreground [overflow-wrap:anywhere]">{stage.label}</dt>
+              <dd className="mt-0.5 text-[10px] tabular-nums text-muted-foreground/80">{stage.rate}%</dd>
+            </div>
+          ))}
+        </dl>
+        {/* Tablets up: five tiles in one row (the icon joins from lg, where
+            there is room for it beside the label). */}
+        <div className="hidden gap-3 sm:grid sm:grid-cols-5 lg:gap-4">
           <ConversionCard label={t("applied")} count={data.conversion.applied} subtitle={`100% ${t("ofTotal")}`} color="blue" />
           <ConversionCard label={t("shortlisted")} count={data.conversion.shortlisted} subtitle={`${conversionRates.appliedToShortlisted}% ${t("fromApplied")}`} color="indigo" />
           <ConversionCard label={t("interview")} count={data.conversion.interview} subtitle={`${conversionRates.shortlistedToInterview}% ${t("fromShortlisted")}`} color="purple" />
@@ -690,15 +694,18 @@ function PipelineTab({
 
           {/* Desktop: full comparison table */}
           <div className="hidden overflow-x-auto sm:block" tabIndex={0}>
-            <table className="w-full min-w-[860px] text-sm">
+            {/* Tablets keep job, total and the first three stages so nothing is
+                cut off screen; Offer, Hired and Rejected join from lg. The job
+                title opens its applications for the rest. */}
+            <table data-mobile-table="scroll" className="w-full text-sm lg:min-w-[860px]">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/30 hover:bg-muted/30">
                   <th className="px-4 py-3 text-left font-semibold text-foreground/85">{t("jobTitle")}</th>
                   <th className="px-4 py-3 text-center font-semibold text-foreground/85">{t("total")}</th>
-                  {FUNNEL_STAGES.map((s) => (
-                    <th key={s} className="px-4 py-3 text-center font-semibold text-foreground/85">{t(s)}</th>
+                  {FUNNEL_STAGES.map((s, i) => (
+                    <th key={s} className={cn("px-4 py-3 text-center font-semibold text-foreground/85", i >= TABLET_STAGE_COUNT && "hidden lg:table-cell")}>{t(s)}</th>
                   ))}
-                  <th className="px-4 py-3 text-center font-semibold text-foreground/85">{t("rejected")}</th>
+                  <th className="hidden px-4 py-3 text-center font-semibold text-foreground/85 lg:table-cell">{t("rejected")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -711,7 +718,7 @@ function PipelineTab({
                 )}
                 {pipeline.perJob.map((job) => (
                   <tr key={job.jobId} className="border-b border-border/40 transition hover:bg-muted/30">
-                    <td className="max-w-[240px] truncate px-4 py-3 font-medium text-foreground">
+                    <td className="max-w-[240px] truncate px-4 py-3 text-start font-medium text-foreground">
                       <Link
                         href={`/${locale}/employer/applications?jobId=${job.jobId}`}
                         title={t("viewApplications", { title: job.title })}
@@ -721,10 +728,10 @@ function PipelineTab({
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-center text-base font-bold text-foreground">{job.total}</td>
-                    {FUNNEL_STAGES.map((stage) => {
+                    {FUNNEL_STAGES.map((stage, stageIndex) => {
                       const stageCount = job.stages.find((s) => s.status === (STATUS_BY_STAGE[stage] ?? stage))?.count ?? 0;
                       return (
-                        <td key={stage} className="px-4 py-3 text-center text-muted-foreground">
+                        <td key={stage} className={cn("px-4 py-3 text-center text-muted-foreground", stageIndex >= TABLET_STAGE_COUNT && "hidden lg:table-cell")}>
                           {stageCount > 0 ? (
                             <span className="inline-flex min-w-[30px] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold text-white" style={{ backgroundColor: STAGE_COLORS[stage] }}>
                               {stageCount}
@@ -735,7 +742,7 @@ function PipelineTab({
                         </td>
                       );
                     })}
-                    <td className="px-4 py-3 text-center text-muted-foreground">
+                    <td className="hidden px-4 py-3 text-center text-muted-foreground lg:table-cell">
                       {(() => {
                         const count = job.stages.find((s) => s.status === "rejected")?.count ?? 0;
                         return count > 0 ? (
@@ -1875,13 +1882,13 @@ function ConversionCard({
     // A KPI label or value must never be truncated, so these wrap instead of
     // clipping. `[overflow-wrap:normal]` opts out of the `anywhere` the page
     // container sets, which would otherwise break "Shortlisted" mid-word.
-    <div className={cn("workspace-panel-surface rounded-xl border p-3 transition-all hover:-translate-y-0.5 sm:rounded-3xl sm:p-4", colors.border)}>
+    <div className={cn("workspace-panel-surface rounded-xl border p-3 transition-all hover:-translate-y-0.5 sm:rounded-2xl lg:rounded-3xl lg:p-4", colors.border)}>
       <div className="flex items-start justify-between gap-1 sm:gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground [overflow-wrap:normal] sm:text-[11px] sm:tracking-[0.18em]">{label}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-tight text-muted-foreground [overflow-wrap:normal] xl:tracking-[0.18em]">{label}</p>
           <p className={`mt-1 text-lg font-semibold tracking-tight sm:mt-3 sm:text-3xl ${colors.text}`}>{count}</p>
         </div>
-        <div className={cn("hidden rounded-2xl p-2.5 sm:block", colors.surface, colors.icon)}>
+        <div className={cn("hidden rounded-2xl p-2.5 xl:block", colors.surface, colors.icon)}>
           <TrendingUp className="h-5 w-5" />
         </div>
       </div>

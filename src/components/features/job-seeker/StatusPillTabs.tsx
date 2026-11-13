@@ -107,6 +107,8 @@ export function StatusPillTabs<T extends string>({
         role="tablist"
         aria-label={label}
         onKeyDown={handleKeyDown}
+        // Four tabs or fewer fit a phone's width (globals.css), so no carousel.
+        data-fit={tabs.length <= 4 ? "" : undefined}
         className={cn("reference-tablist scrollbar-none snap-x snap-proximity sm:[mask-image:linear-gradient(to_right,black_92%,transparent)] sm:rtl:[mask-image:linear-gradient(to_left,black_92%,transparent)] lg:[mask-image:none] lg:rtl:[mask-image:none]", className)}
       >
         {tabs.map((tab) => {

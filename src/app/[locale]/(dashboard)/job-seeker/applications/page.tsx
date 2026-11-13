@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { FileText, MapPin, Calendar, Clock, ChevronRight, ChevronDown, Star, LogOut, X, SlidersHorizontal, Video, DollarSign, Briefcase, ExternalLink, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/shared/StatusBadge";
+import { SeekerStatusBadge } from "@/components/features/job-seeker/SeekerStatusBadge";
+import { SEEKER_STATUS_TABS, seekerStageHistory, type SeekerStatusTab } from "@/lib/jobSeeker/seekerStatus";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -80,21 +81,11 @@ interface Application {
   placement?: PlacementInfo;
 }
 
-const STATUS_TABS = [
-  "all",
-  "applied",
-  "shortlisted",
-  "interview_scheduled",
-  "selected",
-  "offer",
-  "hired",
-  "rejected",
-  // Counted under All, so without its own tab a withdrawn row left "All 1"
-  // beside a row of zeros.
-  "withdrawn",
-] as const;
+// All · Interview · Offer · Closed: the seeker's own grouping of the employer's
+// eight stages (lib/jobSeeker/seekerStatus). Each card still carries its step.
+const STATUS_TABS = SEEKER_STATUS_TABS;
 
-type StatusTab = (typeof STATUS_TABS)[number];
+type StatusTab = SeekerStatusTab;
 
 export default function ApplicationsPage() {
   const { locale } = useParams<{ locale: string }>();
@@ -263,8 +254,6 @@ export default function ApplicationsPage() {
           onChange={handleTabChange}
           label={t("statusFiltersLabel")}
           renderLabel={(tab) => t(`status.${tab}`)}
-          // An accepted offer moves its application to Hired, so Offer counts
-          // offers still awaiting a decision — not every offer ever sent.
           renderCount={(tab) => statusCounts?.[tab]}
           idPrefix="applications"
         />
@@ -360,7 +349,8 @@ function ApplicationCard({
   });
   const salaryLabel = formatApplicationSalary(job?.salary, locale);
   const latestStatusEntry = app.statusHistory?.[app.statusHistory.length - 1];
-  const recentStatuses = app.statusHistory?.slice(-3) ?? [];
+  // In the seeker's steps, so Shortlisted -> Selected doesn't read as a repeat.
+  const recentStatuses = seekerStageHistory(app.statusHistory ?? []).slice(-3);
   const hasExpandableDetails = recentStatuses.length > 0 || !!latestStatusEntry?.note || !!app.coverLetter || !!app.latestInterview || !!app.latestOffer || !!app.placement;
   const formatDetailDate = (value: string) => new Date(value).toLocaleDateString(numberLocale, {
     month: "short",
@@ -445,7 +435,7 @@ function ApplicationCard({
                   </span>
                 </>
 
-                <StatusBadge status={app.status} size="sm" className="shrink-0" />
+                <SeekerStatusBadge status={app.status} size="sm" className="shrink-0" />
                 {/* Phones: the match pill joins the status row so the title gets the full width. */}
                 {app.aiMatchScore != null && app.aiMatchScore > 0 && (
                   <span
@@ -525,9 +515,9 @@ function ApplicationCard({
             {recentStatuses.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
                 {recentStatuses.map((historyItem, index) => (
-                  <span key={`${historyItem.status}-${historyItem.changedAt}`} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {index > 0 && <ChevronRight className="h-3 w-3" />}
-                    <StatusBadge status={historyItem.status} size="sm" />
+                  <span key={`${historyItem.stage}-${historyItem.changedAt}`} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {index > 0 && <ChevronRight className="h-3 w-3 rtl:rotate-180" />}
+                    <SeekerStatusBadge status={historyItem.status} stage={historyItem.stage} size="sm" />
                   </span>
                 ))}
               </div>

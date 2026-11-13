@@ -40,6 +40,12 @@ export interface RowAction {
    * 2026-09-28: "the pen icon is understood").
    */
   iconOnly?: boolean;
+  /**
+   * Word shown beside an `iconOnly` icon on phones ("Review", "CV"). A phone
+   * card has the room, and a bare chart or page icon there told nobody what it
+   * opened. From 640px the button is the icon alone again.
+   */
+  phoneLabel?: string;
 }
 
 /**
@@ -162,12 +168,15 @@ function QuickButton({ action, labelClass }: { action: RowAction; labelClass: st
         pending={action.pending}
         className={action.destructive ? "text-destructive" : action.iconClassName}
       />
+      {action.iconOnly && action.phoneLabel
+        ? <span className="whitespace-nowrap sm:hidden" aria-hidden="true">{action.phoneLabel}</span>
+        : null}
       <span className={action.iconOnly ? "sr-only" : labelClass}><span className="whitespace-nowrap">{action.label}</span></span>
     </>
   );
   const className = cn(
     "h-9 rounded-xl",
-    action.iconOnly ? "w-9 p-0" : "px-2.5",
+    action.iconOnly ? (action.phoneLabel ? "px-2.5 sm:w-9 sm:p-0" : "w-9 p-0") : "px-2.5",
     action.destructive && "text-destructive hover:bg-destructive/5 hover:text-destructive",
   );
   return action.href ? (

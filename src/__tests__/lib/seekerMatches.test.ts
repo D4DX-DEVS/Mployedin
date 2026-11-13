@@ -45,6 +45,7 @@ import { recommendJobsFor, toCandidateJob } from "@/lib/matching/recommend";
 import { mongoJevVerdictStore } from "@/lib/matching/jevVerdictStore";
 import {
   clearEngineOptionsCache,
+  displayedJobs,
   resolveEngineOptions,
   scoreOnePair,
   scoreSeekerPool,
@@ -219,5 +220,31 @@ describe("storedBreakdown", () => {
     const stored = storedBreakdown(pair);
     expect(Object.keys(stored).sort()).toEqual(["experience", "overall", "role", "skills"]);
     expect(stored.overall).toBe(pair.score);
+  });
+});
+
+describe("a profile with nothing to score", () => {
+  const blank = () =>
+    seeker({ skills: [], preferredRoles: [], experienceYears: 0, experienceKnown: false, cvText: "" });
+
+  it("flags the pool, so a page never prints a percentage made of defaults", async () => {
+    const pool = await scoreSeekerPool(blank(), [strong(), weak()]);
+    expect(pool.scoresUnsupported).toBe(true);
+    // Still scored and ordered: only the display is withheld.
+    expect(pool.jobs).toHaveLength(2);
+  });
+
+  it("leaves a profile that states something unflagged", async () => {
+    const pool = await scoreSeekerPool(seeker(), [strong()]);
+    expect(pool.scoresUnsupported).toBeUndefined();
+  });
+
+  it("drops matchScore from the jobs a response carries", async () => {
+    const pool = await scoreSeekerPool(blank(), [strong()]);
+    const shown = displayedJobs(pool.jobs, pool);
+    expect(shown[0]).not.toHaveProperty("matchScore");
+    expect(shown[0]._id).toBe("strong");
+    const full = await scoreSeekerPool(seeker(), [strong()]);
+    expect(displayedJobs(full.jobs, full)[0].matchScore).toBe(full.jobs[0].matchScore);
   });
 });

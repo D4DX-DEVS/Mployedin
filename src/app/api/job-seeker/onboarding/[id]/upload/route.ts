@@ -9,6 +9,7 @@ import { uploadFile } from "@/lib/storage/spaces";
 import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
 import { notify } from "@/lib/notifications/trigger";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import { onboardingDocState } from "@/lib/onboarding/documentState";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -62,6 +63,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (!doc.requestedFromCandidate) {
     return NextResponse.json({ error: "This document is not awaiting your upload" }, { status: 400 });
   }
+  // An approved document is closed: a new file would quietly undo the approval.
+  if (doc.status === "approved") {
+    return NextResponse.json(
+      { error: "This document is already approved. Ask your employer if it needs to change." },
+      { status: 409 }
+    );
+  }
   if (file.size > MAX_DOC_SIZE) {
     return NextResponse.json({ error: "File too large. Maximum 10MB." }, { status: 400 });
   }
@@ -83,11 +91,19 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   doc.status = "submitted";
   doc.uploadedBy = "candidate";
   doc.uploadedAt = new Date();
+  // A signature was given for the file that was there; a new file needs a new
+  // one. The employer's "send again" reason has now been answered.
+  doc.signature = undefined;
+  doc.reviewNote = undefined;
   checklist.markModified("documents");
   await checklist.save();
 
-  // Notify the employer that the candidate uploaded the requested document.
-  const employer = await Employer.findById(checklist.employerId).select("userId").lean();
+  // Notify the employer once the candidate's part is finished. A file that
+  // still waits for its signature is not ready for them yet.
+  const readyForReview = onboardingDocState(doc).stage === "in_review";
+  const employer = readyForReview
+    ? await Employer.findById(checklist.employerId).select("userId").lean()
+    : null;
   if (employer) {
     const seekerName = (seeker as { fullName?: string }).fullName
       || (await User.findById(ctx.userId).select("name").lean() as { name?: string } | null)?.name
@@ -104,7 +120,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     }).catch(() => { /* non-blocking */ });
   }
 
-  return NextResponse.json({ onboarding: checklist });
+  // Only a confirmation: the checklist also holds the employer's own tasks and
+  // private notes, which are not the candidate's to read. The page refetches.
+  return NextResponse.json({ success: true });
 }
 
 export const POST = withAuth(postHandler, { resource: "onboarding", action: "update" });

@@ -350,7 +350,7 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
 
           {/* Phones get compact expandable rows. The shared <Table> stacks every
               cell into a labelled block, which turned one offer into a screenful. */}
-          <ul className="mt-3 space-y-1.5 sm:hidden">
+          <ul className="mt-3 space-y-2 px-3 pb-3 sm:hidden">
             {offers.map((offer) => {
               const isOpen = expandedOfferId === offer._id;
               return (
@@ -362,11 +362,11 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
                     type="button"
                     onClick={() => setExpandedOfferId(isOpen ? null : offer._id)}
                     aria-expanded={isOpen}
-                    className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-start"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold text-foreground">{candidateName(offer)}</p>
-                      <p className="truncate text-[11px] text-muted-foreground">{offer.jobId?.title || t("untitledRole")}</p>
+                      <p className="truncate text-sm font-semibold text-foreground">{candidateName(offer)}</p>
+                      <p className="truncate text-xs text-muted-foreground">{offer.jobId?.title || t("untitledRole")} · {formatSalary(offer)}</p>
                     </div>
                     <Badge variant="outline" className={`${getStatusColor(offer.status)} shrink-0 px-1.5 py-0 text-[11px]`}>
                       {isExpired(offer) ? t("expired") : t(offer.status)}
@@ -375,8 +375,8 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
                   </button>
 
                   {isOpen && (
-                    <div className="border-t border-border/60 px-2.5 py-2 text-[11px]">
-                      <dl className="grid grid-cols-2 gap-x-2 gap-y-1">
+                    <div className="border-t border-border/60 px-3 py-2.5 text-xs">
+                      <dl className="grid grid-cols-2 gap-x-2 gap-y-1.5">
                         <dt className="text-muted-foreground">{t("salary")}</dt>
                         <dd className="text-end font-medium text-foreground">
                           {formatSalary(offer)} <span className="font-normal text-muted-foreground">{offer.salary.period === "monthly" ? t("perMonth") : t("perYear")}</span>
@@ -392,7 +392,7 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
                         <RowActions
                           name={candidateName(offer)}
                           quick={[
-                            { key: "view", label: tc("view"), icon: Eye, iconOnly: true, onSelect: () => setDetailOffer(offer) },
+                            { key: "view", label: tc("view"), icon: Eye, onSelect: () => setDetailOffer(offer) },
                           ]}
                           menu={[
                             ...(offer.status === "accepted" ? [{ key: "placements", label: t("viewPlacements"), icon: UserCheck, href: `/${locale}/employer/placements` }] : []),
@@ -415,16 +415,20 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
             })}
           </ul>
 
-          <div className="overflow-x-auto">
+          {/* From sm only: phones have the list above. Left visible, the shared
+              table stacked into cards under it and every offer showed twice.
+              Tablets (sm–lg) drop Role and Expires so View stays on screen; the
+              role moves under the name and both are in the offer details. */}
+          <div className="hidden overflow-x-auto sm:block">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="min-w-[220px]">{t("candidate")}</TableHead>
-                  <TableHead className="min-w-[180px]">{t("role")}</TableHead>
+                  <TableHead className="lg:min-w-[220px]">{t("candidate")}</TableHead>
+                  <TableHead className="hidden min-w-[180px] lg:table-cell">{t("role")}</TableHead>
                   <TableHead>{t("salary")}</TableHead>
                   <TableHead>{t("startDate")}</TableHead>
                   <TableHead>{t("status")}</TableHead>
-                  <TableHead>{t("expires")}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t("expires")}</TableHead>
                   <TableHead className="text-right">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -432,17 +436,20 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
                 {offers.map((offer) => (
                   <TableRow key={offer._id} className={`group ${isExpiring(offer) ? "bg-amber-500/10" : ""}`}>
                     <TableCell>
-                      <div className="flex min-w-0 items-center gap-3">
+                      {/* Capped on tablets: a long role under the name widened
+                          this column until the actions were pushed off screen. */}
+                      <div className="flex min-w-0 max-w-[14rem] items-center gap-3 lg:max-w-none">
                         <UserAvatar name={offer.jobSeekerId?.userId?.name ?? offer.jobSeekerId?.fullName} className="h-9 w-9" colorful />
                         <div className="min-w-0 space-y-1">
                           <p className="truncate font-semibold text-foreground">
                             {candidateName(offer)}
                           </p>
-                          <p className="truncate text-xs text-muted-foreground">{t("createdAt")} {formatDate(offer.createdAt)}</p>
+                          <p className="truncate text-xs text-muted-foreground lg:hidden">{offer.jobId?.title || t("untitledRole")}</p>
+                          <p className="hidden truncate text-xs text-muted-foreground lg:block">{t("createdAt")} {formatDate(offer.createdAt)}</p>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <div className="space-y-1">
                         <p className="font-medium text-foreground">{offer.jobId?.title || t("untitledRole")}</p>
                         {offer.jobId?.location ? (
@@ -454,17 +461,18 @@ export function OffersWorkspace({ jobId, embedded = false }: OffersWorkspaceProp
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <p className="font-medium text-foreground">{formatSalary(offer)}</p>
-                      <p className="text-xs text-muted-foreground">{offer.salary.period === "monthly" ? t("perMonth") : t("perYear")}</p>
+                    {/* One line: "AED 15,000 /mo" used to break into three. */}
+                    <TableCell className="whitespace-nowrap">
+                      <span className="font-medium text-foreground">{formatSalary(offer)}</span>{" "}
+                      <span className="text-xs text-muted-foreground">{offer.salary.period === "monthly" ? t("perMonth") : t("perYear")}</span>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{formatDate(offer.startDate)}</TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatDate(offer.startDate)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={getStatusColor(offer.status)}>
                         {isExpired(offer) ? t("expired") : t(offer.status)}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <div className="text-sm text-muted-foreground">
                         {formatDate(offer.expiresAt)}
                         {isExpiring(offer) ? (

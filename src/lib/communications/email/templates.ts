@@ -139,7 +139,7 @@ export const EmailTemplates = {
         </div>
         <div style="padding: 32px 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
           <p style="font-size: 15px; color: #374151; line-height: 1.6;">Hi ${esc(greetingName)},</p>
-          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Verify your email address by entering this 6-digit code on the job application page:</p>
+          <p style="font-size: 15px; color: #374151; line-height: 1.6;">Enter this 6-digit code on MPLOYEDIN to confirm your email address and continue:</p>
           <div style="text-align: center; margin: 32px 0;">
             <div style="display: inline-block; background: #f3f4f6; border: 2px solid #0D6FD8; border-radius: 8px; padding: 16px 32px;">
               <span style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #0D6FD8;">${esc(otp)}</span>

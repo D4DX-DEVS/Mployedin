@@ -1,5 +1,6 @@
 "use client";
 
+import { IndustryChips } from "@/components/shared/IndustryChips";
 import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
 import type { ReferralSummary } from "@/lib/referrals/summary";
@@ -34,6 +35,7 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
+import { cvIdsInListOrder } from "@/lib/jobseekers/cvIdsInListOrder";
 import { toast } from "sonner";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
@@ -68,6 +70,8 @@ interface JobSeeker {
   cv?: { originalUrl?: string };
   referralSummary?: ReferralSummary;
   badges?: string[];
+  industry?: string;
+  industrySource?: "auto" | "manual";
   createdAt: string;
 }
 
@@ -88,6 +92,30 @@ interface AiFilters {
   summary?: string;
 }
 
+/** The ZIP holds at most this many CVs (each is streamed through the CV endpoint). */
+const BULK_CV_MAX = 50;
+
+/**
+ * The list query for the current search + filters. The table, the exports and
+ * the CV download all build it here, so they always describe the same people.
+ */
+function seekerListParams(search: string, filters: JobSeekerFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (filters.skills) params.set("skills", filters.skills);
+  if (filters.location) params.set("location", filters.location);
+  if (filters.availability) params.set("availability", filters.availability);
+  if (filters.jobType) params.set("jobType", filters.jobType);
+  if (filters.sort && filters.sort !== "newest") params.set("sort", filters.sort);
+  if (filters.hasCV) params.set("hasCV", "1");
+  if (filters.referred) params.set("referred", filters.referred);
+  if (filters.education) params.set("education", filters.education);
+  if (filters.nationality) params.set("nationality", filters.nationality);
+  if (filters.industry) params.set("industry", filters.industry);
+  if (filters.experienceYears > 0) params.set("experienceYears", String(filters.experienceYears));
+  return params;
+}
+
 export default function AdminJobSeekersPage() {
   const tr = useTranslations("adminJobSeekers");
   const tf = useTranslations("formErrors");
@@ -102,13 +130,6 @@ export default function AdminJobSeekersPage() {
     not_available: tr("availabilityNotAvailable"),
   };
 
-  const editFields: CrudField[] = [
-    { name: "name", label: tr("editFieldName"), type: "text", required: true },
-    { name: "email", label: tr("editFieldEmail"), type: "email" },
-    { name: "nationality", label: tr("editFieldNationality"), type: "text" },
-    { name: "currentLocation", label: tr("editFieldLocation"), type: "text" },
-    { name: "summary", label: tr("editFieldSummary"), type: "textarea" },
-  ];
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
 
@@ -118,6 +139,10 @@ export default function AdminJobSeekersPage() {
   const [loadError, setLoadError] = useState(false);
   const [editItem, setEditItem] = useState<JobSeeker | null>(null);
   const [viewCv, setViewCv] = useState<{ id: string; name: string } | null>(null);
+  // Industry counts aggregated from the filtered scope
+  const [industryCounts, setIndustryCounts] = useState<Array<{ industry: string; count: number }>>([]);
+  // Industries for the admin edit form dropdown
+  const [industryOptions, setIndustryOptions] = useState<Array<{ value: string; label: string }>>([]);
 
   // ── Filter state ────────────────────────────────────────
   /* In the URL so a ⌘K hit, an application row or a notification can open this
@@ -162,6 +187,7 @@ export default function AdminJobSeekersPage() {
     { header: tr("exportColumnHeaderHeadline"), key: "headline", formatter: (v) => String(v ?? "—") },
     { header: tr("tableHeaderNationality"), key: "nationality", formatter: (v) => String(v ?? "—") },
     { header: tr("tableHeaderLocation"), key: "currentLocation", formatter: (v) => String(v ?? "—") },
+    { header: tr("tableHeaderIndustry"), key: "industry", formatter: (v) => String(v ?? "—") },
     { header: tr("tableHeaderSkills"), key: "skills", formatter: (v) => Array.isArray(v) ? v.join(", ") : "—" },
     { header: tr("tableHeaderExp"), key: "totalExperienceYears", formatter: (v) => v != null ? String(v) : "—" },
     { header: tr("exportHeaderCurrentRole"), key: "experience", formatter: (v) => {
@@ -203,18 +229,7 @@ export default function AdminJobSeekersPage() {
   // Ranked vector-search results have no paginated full set — export the page.
   const fetchAllJobSeekers = useCallback(async () => {
     if (closestTo) return jobSeekers as unknown as Record<string, unknown>[];
-    const base = new URLSearchParams();
-    if (search) base.set("search", search);
-    if (filters.skills) base.set("skills", filters.skills);
-    if (filters.location) base.set("location", filters.location);
-    if (filters.availability) base.set("availability", filters.availability);
-    if (filters.jobType) base.set("jobType", filters.jobType);
-    if (filters.sort && filters.sort !== "newest") base.set("sort", filters.sort);
-    if (filters.hasCV) base.set("hasCV", "1");
-    if (filters.referred) base.set("referred", filters.referred);
-    if (filters.education) base.set("education", filters.education);
-    if (filters.nationality) base.set("nationality", filters.nationality);
-    if (filters.experienceYears > 0) base.set("experienceYears", String(filters.experienceYears));
+    const base = seekerListParams(search, filters);
     return fetchAllPaginated<Record<string, unknown>>(
       (page, limit) => `/api/job-seekers?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
       (json) => ({
@@ -235,18 +250,10 @@ export default function AdminJobSeekersPage() {
   // ── Fetch job seekers ───────────────────────────────────
   const fetchJobSeekers = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (search) params.set("search", search);
-    if (filters.skills) params.set("skills", filters.skills);
-    if (filters.location) params.set("location", filters.location);
-    if (filters.availability) params.set("availability", filters.availability);
-    if (filters.jobType) params.set("jobType", filters.jobType);
-    if (filters.sort && filters.sort !== "newest") params.set("sort", filters.sort);
-    if (filters.hasCV) params.set("hasCV", "1");
-    if (filters.referred) params.set("referred", filters.referred);
-    if (filters.education) params.set("education", filters.education);
-    if (filters.nationality) params.set("nationality", filters.nationality);
-    if (filters.experienceYears > 0) params.set("experienceYears", String(filters.experienceYears));
+    const params = seekerListParams(search, filters);
+    params.set("page", String(page));
+    params.set("limit", String(limit));
+    params.set("industryCounts", "1");
 
     try {
       const res = closestTo
@@ -263,6 +270,7 @@ export default function AdminJobSeekersPage() {
       const data = await res.json();
       setJobSeekers(data.items ?? data.jobSeekers ?? []);
       updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? 1) * limit));
+      setIndustryCounts(data.industryCounts ?? []);
       setLoadError(false);
     } catch {
       setLoadError(true);
@@ -275,6 +283,35 @@ export default function AdminJobSeekersPage() {
     const timeout = setTimeout(fetchJobSeekers, 300);
     return () => clearTimeout(timeout);
   }, [fetchJobSeekers]);
+
+  // ── Fetch industries for admin edit form ─────────────────
+  useEffect(() => {
+    const fetchIndustries = async () => {
+      try {
+        const res = await fetch("/api/admin/job-attributes/industries?limit=500&status=active");
+        if (!res.ok) return;
+        const data = await res.json();
+        const options = (data.data ?? []).map((ind: Record<string, unknown>) => ({
+          value: String(ind._id ?? ind.name ?? ""),
+          label: String(ind.name ?? ""),
+        }));
+        setIndustryOptions(options);
+      } catch {
+        // Non-critical: industry dropdown may be empty
+      }
+    };
+    void fetchIndustries();
+  }, []);
+
+  // ── Edit form fields (dynamic to include industries) ──────
+  const editFields: CrudField[] = useMemo(() => [
+    { name: "name", label: tr("editFieldName"), type: "text", required: true },
+    { name: "email", label: tr("editFieldEmail"), type: "email" },
+    { name: "nationality", label: tr("editFieldNationality"), type: "text" },
+    { name: "currentLocation", label: tr("editFieldLocation"), type: "text" },
+    { name: "summary", label: tr("editFieldSummary"), type: "textarea" },
+    { name: "industry", label: tr("editFieldIndustry"), type: "select", options: industryOptions },
+  ], [tr, industryOptions]);
 
   // ── AI Search handler ───────────────────────────────────
   // Reads the search box as a plain-language brief ("HR managers in Dubai")
@@ -356,17 +393,28 @@ export default function AdminJobSeekersPage() {
     if (!ok) return;
     setCvDownloading(true);
     try {
+      // The ZIP holds exactly the people on screen, top to bottom: page through
+      // the same list query (filters + sort) the table uses, then fetch those ids.
+      // A ranked AI search has no paged full set — use the rows it showed.
+      const ids = closestTo
+        ? jobSeekers.filter((js) => js.cv?.originalUrl).map((js) => js._id).slice(0, BULK_CV_MAX)
+        : await cvIdsInListOrder(async (p, l) => {
+            const params = seekerListParams(search, filters);
+            params.set("page", String(p));
+            params.set("limit", String(l));
+            const listRes = await fetch(`/api/job-seekers?${params}`);
+            if (!listRes.ok) throw new Error("list");
+            const json = await listRes.json();
+            return { rows: json.items ?? json.jobSeekers ?? [], total: Number(json.total ?? 0) };
+          }, BULK_CV_MAX);
+      if (ids.length === 0) {
+        toast.error(tr("noCvsFound"));
+        return;
+      }
       const res = await fetch("/api/job-seekers/bulk-cv-download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          search: search || undefined,
-          skills: filters.skills ? filters.skills.split(",").map((s) => s.trim()) : undefined,
-          location: filters.location || undefined,
-          availability: filters.availability || undefined,
-          hasCV: "1",
-          jobType: filters.jobType || undefined,
-        }),
+        body: JSON.stringify({ ids }),
       });
       if (!res.ok) throw new Error("Failed to fetch CVs");
       const data = await res.json();
@@ -436,7 +484,7 @@ export default function AdminJobSeekersPage() {
   // ── Handlers ────────────────────────────────────────────
   const handleEdit = async (values: Record<string, string>) => {
     const item = editItem!;
-    const { name = "", email = "", ...profile } = values;
+    const { name = "", email = "", industry = "", ...profile } = values;
     // Name and email belong to the account. The profile route refuses to write
     // them (account-takeover fix W1-1), so they go through the admin user
     // route, which also keeps the profile's display name in step.
@@ -455,6 +503,11 @@ export default function AdminJobSeekersPage() {
       if (!accountRes.ok) {
         throw await formErrorFromResponse(accountRes, { t: tf, locale, fieldLabels: editFields, conflict: tf("emailInUse") });
       }
+    }
+    // When admin sets industry, mark it as manual override
+    if (industry.trim()) {
+      profile.industry = industry.trim();
+      profile.industrySource = "manual";
     }
     const res = await fetch(`/api/job-seekers/${item._id}`, {
       method: "PATCH",
@@ -510,7 +563,7 @@ export default function AdminJobSeekersPage() {
   };
   const canUpdate = can("job_seekers", "update");
   const canDelete = can("job_seekers", "delete");
-  const columnCount = 8;
+  const columnCount = 9;
 
   // Premium = the `premium` entry in badges[]; the route also re-stamps the
   // seeker's applications as priority (or takes it back).
@@ -617,6 +670,13 @@ export default function AdminJobSeekersPage() {
         ) : undefined}
       />
 
+      {/* Seekers per industry; a chip filters the list (rollout rows 14/17). */}
+      <IndustryChips
+        counts={industryCounts}
+        selected={filters.industry ?? ""}
+        onSelect={(next) => updateFilters({ ...filters, industry: next })}
+      />
+
       {/* ── List ──────────────────────────────────────────── */}
       {/* Phones: the cards sit straight on the page; a box around bordered cards doubled border and padding. */}
       <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:!overflow-visible max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none">
@@ -670,6 +730,7 @@ export default function AdminJobSeekersPage() {
               </TableHead>
               <TableHead>{tr("tableHeaderProfession")}</TableHead>
               <TableHead>{tr("tableHeaderNationality")}</TableHead>
+              <TableHead>{tr("tableHeaderIndustry")}</TableHead>
               <TableHead>{tr("tableHeaderSkills")}</TableHead>
               {/* Wraps to two lines: nowrap made this the widest column. */}
               <TableHead className="whitespace-normal">
@@ -757,6 +818,11 @@ export default function AdminJobSeekersPage() {
                     </span>
                   ) : "—"}
                 </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {js.industry ? (
+                    <span className="inline-block rounded-md bg-muted px-2 py-1 text-xs font-medium">{js.industry}</span>
+                  ) : "—"}
+                </TableCell>
                 <TableCell className="max-w-[16rem] text-xs text-muted-foreground">
                   <span className="line-clamp-2">{js.skills?.length ? `${js.skills.slice(0, 2).join(", ")}${js.skills.length > 2 ? ` +${js.skills.length - 2}` : ""}` : "—"}</span>
                   <span className="mt-1 block">{js.totalExperienceYears != null ? `${js.totalExperienceYears}y` : "—"}</span>
@@ -800,7 +866,7 @@ export default function AdminJobSeekersPage() {
 
       {/* ── Edit Modal ────────────────────────────────────── */}
       <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title={tr("editModalTitle")} fields={editFields}
-        initialValues={editItem ? { name: editItem.fullName || editItem.userId?.name || "", email: editItem.email ?? editItem.userId?.email ?? "", nationality: editItem.nationality ?? "", currentLocation: editItem.currentLocation ?? "", summary: editItem.summary ?? "" } : undefined}
+        initialValues={editItem ? { name: editItem.fullName || editItem.userId?.name || "", email: editItem.email ?? editItem.userId?.email ?? "", nationality: editItem.nationality ?? "", currentLocation: editItem.currentLocation ?? "", summary: editItem.summary ?? "", industry: editItem.industry ?? "" } : undefined}
         onSubmit={handleEdit} />
     </div>
   );

@@ -43,6 +43,7 @@ import { UserAvatar } from "@/components/shared/UserAvatar";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
+import { OverflowTabs } from "@/components/shared/OverflowTabs";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { HIRING_RANGES, knownStageDetails, missingStageFields } from "@/lib/leads/stageRules";
 import {
@@ -136,7 +137,9 @@ function DroppableKanbanColumn({
   t,
   locale,
   stageConfig,
+  hiddenBelowLg = false,
 }: {
+  hiddenBelowLg?: boolean;
   stage: LeadStatus;
   leads: Lead[];
   total: number;
@@ -162,7 +165,7 @@ function DroppableKanbanColumn({
        released over the header used to snap back with nothing happening. */
     <div
       ref={setNodeRef}
-      className={`flex h-full w-full min-w-0 flex-col rounded-xl border bg-muted/30 transition-colors sm:w-auto sm:min-w-[140px] sm:flex-1 sm:basis-0 ${isOver ? "border-primary bg-primary/5 ring-1 ring-primary/40" : "border-border/50"}`}
+      className={`flex h-full w-full min-w-0 flex-col rounded-xl border bg-muted/30 transition-colors lg:w-auto lg:min-w-[140px] lg:flex-1 lg:basis-0 ${hiddenBelowLg ? "max-lg:hidden" : ""} ${isOver ? "border-primary bg-primary/5 ring-1 ring-primary/40" : "border-border/50"}`}
     >
       {/* Column Header */}
       <div className={`rounded-t-xl border-b px-2.5 py-1.5 ${config.bgColor} ${config.borderColor}`}>
@@ -194,7 +197,7 @@ function DroppableKanbanColumn({
       {/* Cards */}
       {/* Phone: columns stack, so a capped column became a scroll box inside
           the page scroll with its last card cut off; it grows instead. */}
-      <div className="flex-1 space-y-1.5 overflow-y-auto p-1.5 max-sm:!max-h-none max-sm:!overflow-visible" style={{ maxHeight: "calc(100vh - 236px)" }}>
+      <div className="flex-1 space-y-1.5 overflow-y-auto p-1.5 max-lg:!max-h-none max-lg:!overflow-visible" style={{ maxHeight: "calc(100vh - 236px)" }}>
         {leads.length === 0 ? (
           <div className={`flex flex-col items-center gap-1.5 rounded-lg border border-dashed py-5 text-center transition-colors ${isOver ? "border-primary/60 bg-primary/5" : "border-transparent"}`}>
             <div className={`rounded-full p-2 ${config.bgColor}`}>
@@ -437,6 +440,12 @@ export default function AgentLeadsPage() {
     () => STAGES.filter((st) => statusFilter === "all" || st === statusFilter),
     [statusFilter],
   );
+  // Phones and tablets show one stage at a time, picked from a chip row with
+  // counts: six columns in 780px left ~70px cards ("QA_AUTO_e…") and pushed
+  // Lost off screen. The full board stays from lg up.
+  const [pickedStage, setPickedStage] = useState<LeadStatus | null>(null);
+  const focusStage: LeadStatus | undefined =
+    pickedStage && visibleStages.includes(pickedStage) ? pickedStage : visibleStages[0];
 
   const fetchStage = useCallback(async (stage: LeadStatus) => {
     const params = sharedParams();
@@ -894,7 +903,7 @@ export default function AgentLeadsPage() {
         actions={can("leads", "create") ? (
           <Button onClick={openAdd} aria-label={t("newLead")} className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("newLead")}</span>
+            <span>{t("newLead")}</span>
           </Button>
         ) : null}
       />
@@ -934,7 +943,6 @@ export default function AgentLeadsPage() {
           value={search}
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
@@ -1066,16 +1074,26 @@ export default function AgentLeadsPage() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          {/* Phones stack the stages; sideways scrolling hid every column but
-              the first and fought the page's own vertical scroll. */}
-          {/* Six columns divide the row rather than running off it — the board
-              only falls back to sideways scrolling when they hit their 168px
-              floor. Phones keep stacking them. */}
-          <section className="pb-2 sm:overflow-x-auto">
-            <div className="flex flex-col gap-2 sm:w-full sm:flex-row sm:gap-2">
+          {/* Below lg: one stage at a time, chosen from the chip row. From lg the
+              six columns divide the row; sideways scroll only past their floor. */}
+          {visibleStages.length > 1 && focusStage && (
+            <OverflowTabs
+              className="mb-2 lg:hidden"
+              ariaLabel={t("tableHeaderStage")}
+              value={focusStage}
+              onChange={(next) => setPickedStage(next)}
+              items={visibleStages.map((stage) => ({
+                key: stage,
+                label: `${STAGE_CONFIG[stage].label} · ${formatCount(stageBuckets[stage].total)}`,
+              }))}
+            />
+          )}
+          <section className="pb-2 lg:overflow-x-auto">
+            <div className="flex flex-col gap-2 lg:w-full lg:flex-row lg:gap-2">
               {visibleStages.map((stage) => (
                 <DroppableKanbanColumn
                   key={stage}
+                  hiddenBelowLg={stage !== focusStage}
                   stage={stage}
                   leads={stageBuckets[stage].items}
                   total={stageBuckets[stage].total}

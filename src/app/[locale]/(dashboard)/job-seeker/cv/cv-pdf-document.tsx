@@ -6,7 +6,7 @@ import React from "react";
 import { Document, Font } from "@react-pdf/renderer";
 import type { CVForm, FormattingOptions } from "./types";
 import { getTheme, getFontScale, getSectionGap, getPdfPageSize, getMarginPt, getLineHeight } from "./types";
-import { getPDFBoldFont, getPDFFont, makeStyles, type CVPDFLabels, type PdfTemplateProps } from "./pdf/shared";
+import { getPDFBoldFont, getPDFFont, makeStyles, registerCvPdfFonts, type CVPDFLabels, type PdfTemplateProps } from "./pdf/shared";
 import { ClassicPDF } from "./pdf/classic";
 import { ModernPDF } from "./pdf/modern";
 import { MinimalPDF } from "./pdf/minimal";
@@ -19,6 +19,7 @@ import { TimelinePDF } from "./pdf/timeline";
 import { AcademicPDF } from "./pdf/academic";
 import { TechnicalPDF } from "./pdf/technical";
 import { BannerPDF } from "./pdf/banner";
+import { PdfLayoutProvider } from "./pdf/pdf-layout";
 
 export type { CVPDFLabels } from "./pdf/shared";
 
@@ -52,6 +53,7 @@ export function CVPDFDocument({
   formatting: FormattingOptions;
   labels: CVPDFLabels;
 }) {
+  registerCvPdfFonts();
   const theme = getTheme(formatting);
   const styles = makeStyles(
     theme.primary, getFontScale(formatting), getSectionGap(formatting), getPDFFont(formatting),
@@ -61,6 +63,7 @@ export function CVPDFDocument({
 
   return (
     <Document>
+      <PdfLayoutProvider formatting={formatting}>
       <Template
         data={data}
         formatting={formatting}
@@ -71,6 +74,7 @@ export function CVPDFDocument({
         df={formatting.dateFormat}
         pageSize={getPdfPageSize(formatting)}
       />
+      </PdfLayoutProvider>
     </Document>
   );
 }

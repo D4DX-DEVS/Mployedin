@@ -98,11 +98,15 @@ type RouteHandler = (
 export function withAuth(
   handler: RouteHandler,
   guard?:
-    | { resource: Resource; action: Action; skipTenantView?: boolean; aiQuota?: boolean }
-    | { skipTenantView?: boolean; aiQuota?: boolean }
+    | { resource: Resource; action: Action; skipTenantView?: boolean; aiQuota?: boolean; freshSession?: boolean }
+    | { skipTenantView?: boolean; aiQuota?: boolean; freshSession?: boolean }
 ) {
   const skipTenantView = guard && "skipTenantView" in guard ? guard.skipTenantView : false;
   const aiQuota = guard && "aiQuota" in guard ? guard.aiQuota === true : false;
+  // Steps that hand out access outliving the session read the session cut-off
+  // from the database, not the jwt callback's 30 s cache: another server may
+  // have ended this session seconds ago (lib/auth/sessionCutOff.ts).
+  const freshSession = guard?.freshSession === true;
   return async (
     req: NextRequest,
     context: { params: Promise<Record<string, string>> }
@@ -132,6 +136,14 @@ export function withAuth(
     const role = (session.user as unknown as { role: UserRole }).role;
     const locale = (session.user as unknown as { locale: string }).locale ?? "en";
     const userId = session.user.id ?? "";
+
+    if (freshSession) {
+      // Loaded here only: most routes never need it.
+      const { sessionEndedNow } = await import("@/lib/auth/sessionCutOff");
+      if (!userId || (await sessionEndedNow(userId, session.user as { authAt?: unknown; authAtMs?: unknown }))) {
+        return NextResponse.json({ error: "Your session has ended. Please sign in again.", code: "SESSION_ENDED" }, { status: 401 });
+      }
+    }
     const permissionMode = ((session.user as unknown as { permissionMode?: PermissionMode }).permissionMode) ?? "role_default";
     const customPermissions = (session.user as unknown as { customPermissions?: CustomPermissions }).customPermissions;
     const companyUserRole = (session.user as unknown as { companyUserRole?: CompanyRole }).companyUserRole;

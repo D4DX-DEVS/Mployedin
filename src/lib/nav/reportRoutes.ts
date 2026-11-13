@@ -27,6 +27,14 @@ export const SUPER_AGENT_REPORT_TABS = [
   { key: "market", path: "/super-agent/market" },
 ] as const;
 
+/** The agent's Performance set: four pages under one sidebar row. */
+export const AGENT_PERFORMANCE_PATHS = [
+  "/agent/reports",
+  "/agent/target-management",
+  "/agent/target-report",
+  "/agent/commissions-report",
+] as const;
+
 export interface ReportTab {
   key: string;
   path: string;

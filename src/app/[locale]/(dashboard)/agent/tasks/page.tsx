@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import { formatListDate } from "@/lib/ui/intlFormat";
 import { useConfirm } from "@/hooks/useConfirm";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
-import { RowActions, type RowPicker } from "@/components/shared/RowActions";
+import { InlinePicker, RowActions, type RowPicker } from "@/components/shared/RowActions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -206,11 +206,9 @@ export default function AgentTasksPage() {
     return (
       <RowActions
         name={task.title}
-        labelsFrom="wide"
-        // Phone footer: the status picker leads the row (beside the title it
-        // crushed long names), View details fills it, Delete is an icon.
-        // The header badge already shows the status, so the picker names the action.
-        picker={phone ? { ...statusPickerFor(task), display: <span className="ps-1.5">{t("changeStatus")}</span> } : undefined}
+        // Phone card: the status picker is the badge in the card's corner, so
+        // the row keeps one worded action (View details) and ⋯ (Delete).
+        labelsFrom={phone ? "always" : "wide"}
         quick={[{ key: "details", label: t("detailsAction"), icon: Eye, onSelect: () => setDetailsTask(task) }]}
         menu={[
           // An assigned task belongs to whoever gave it: no delete.
@@ -218,7 +216,6 @@ export default function AgentTasksPage() {
             key: "delete",
             label: tc("delete"),
             icon: Trash2,
-            iconOnly: phone,
             destructive: true,
             onSelect: () => { void deleteTask(task._id); },
           }]),
@@ -238,7 +235,7 @@ export default function AgentTasksPage() {
         actions={
           <Button onClick={() => setShowForm(true)} aria-label={t("newTaskButton")} className="min-h-11 gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("newTaskButton")}</span>
+            <span>{t("newTaskButton")}</span>
           </Button>
         }
         // The strip used to be four dead numbers. Each cell is now the filter
@@ -274,7 +271,6 @@ export default function AgentTasksPage() {
           value={search}
           onChange={(v) => { setSearch(v); resetPage(); }}
           placeholder={t("searchPlaceholder")}
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
@@ -340,62 +336,35 @@ export default function AgentTasksPage() {
           const assigned = Boolean(task.assignedBy);
           const assignerName = task.assignedBy?.name ?? "";
           const closed = task.status === "completed" || task.status === "failed";
+          // One shape for every card (owner, 2026-11-12: cards of different
+          // heights): name and status, then one facts line with View details
+          // and ⋯. Description and linked records open in the details panel.
+          const overdue = Boolean(task.dueDate) && new Date(task.dueDate as string) < new Date() && !closed;
+          const facts: ReactNode[] = [
+            task.dueDate ? (
+              <span key="due" className={overdue ? "font-semibold text-red-500" : ""}>
+                {formatListDate(new Date(task.dueDate))}
+              </span>
+            ) : null,
+            t(`priorityLabel${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}`),
+            assigned
+              ? (task.assignedBy?.role === "admin"
+                ? t("assignedByAdmin", { name: assignerName })
+                : t("assignedBySuperAgent", { name: assignerName }))
+              : null,
+            task.reviewStatus === "approved" ? t("reviewApproved") : task.reviewStatus === "returned" ? t("reviewReturned") : null,
+          ];
           return {
             key: task._id,
+            onSelect: () => setDetailsTask(task),
             title: (
-              <button
-                type="button"
-                onClick={() => setDetailsTask(task)}
-                className={`block max-w-full break-words rounded text-start hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${closed && task.reviewStatus !== "awaiting_review" ? "line-through text-muted-foreground" : "text-foreground"}`}
-              >
+              <span className={closed && task.reviewStatus !== "awaiting_review" ? "text-muted-foreground line-through" : "text-foreground"}>
                 {task.title}
-              </button>
+              </span>
             ),
-            subtitle: task.description || undefined,
-            trailing: <TaskStatusBadge status={task.status} reviewStatus={task.reviewStatus} />,
+            trailing: <InlinePicker name={task.title} picker={statusPickerFor(task)} />,
+            facts,
             actions: taskActions(task, true),
-            meta: (
-              <>
-                {task.reviewStatus === "returned" && task.reviewComment && (
-                  <p className="mt-1 flex items-start gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-900">
-                    <Undo2 className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="break-words"><span className="font-semibold">{t("returnedReasonLabel")}</span> {task.reviewComment}</span>
-                  </p>
-                )}
-              </>
-            ),
-            badges: (
-              <>
-                <span className={`inline-flex w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${PRIORITY_COLORS[task.priority]}`}>
-                  {t(`priorityLabel${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}`)}
-                </span>
-                {task.dueDate && (
-                  <span
-                    title={`${t("columnDueDate")}: ${formatListDate(new Date(task.dueDate))}`}
-                    className={`inline-flex items-center gap-1 whitespace-nowrap text-[11px] ${new Date(task.dueDate) < new Date() && !closed ? "font-semibold text-red-500" : "text-muted-foreground"}`}
-                  >
-                    <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="sr-only">{t("columnDueDate")}:</span>
-                    {formatListDate(new Date(task.dueDate))}
-                  </span>
-                )}
-                {assigned && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
-                    <UserCheck className="h-3 w-3" aria-hidden="true" />
-                    {task.assignedBy?.role === "admin"
-                      ? t("assignedByAdmin", { name: assignerName })
-                      : t("assignedBySuperAgent", { name: assignerName })}
-                  </span>
-                )}
-                {task.reviewStatus === "approved" && (
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">{t("reviewApproved")}</span>
-                )}
-                {task.reviewStatus === "returned" && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">{t("reviewReturned")}</span>
-                )}
-                <TaskLinkChips locale={locale} links={task.links} />
-              </>
-            ),
           };
         })}
       />
@@ -409,7 +378,7 @@ export default function AgentTasksPage() {
                 <TableHead className="min-w-[200px]">{t("columnTask")}</TableHead>
                 {/* Was headed "Status" over the priority badge and "Date" over the due date. */}
                 <TableHead className="w-[130px]">{tc("status")}</TableHead>
-                <TableHead className="w-[100px]">{t("priorityPlaceholder")}</TableHead>
+                <TableHead className="w-[100px] hidden lg:table-cell">{t("priorityPlaceholder")}</TableHead>
                 <TableHead className="w-[120px]">{t("columnDueDate")}</TableHead>
                 <TableHead className="text-right">{tc("actions")}</TableHead>
               </TableRow>
@@ -429,12 +398,14 @@ export default function AgentTasksPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                tasks.map((task) => {
-                  const assigned = Boolean(task.assignedBy);
-                  const assignerName = task.assignedBy?.name ?? "";
-                  const closed = task.status === "completed" || task.status === "failed";
-                  return (
-                  <TableRow key={task._id} className={`group ${closed ? "opacity-60" : ""}`}>
+                <>
+                  {/* Open tasks first */}
+                  {tasks.filter((t) => t.status !== "completed" && t.status !== "failed").map((task) => {
+                    const assigned = Boolean(task.assignedBy);
+                    const assignerName = task.assignedBy?.name ?? "";
+                    const closed = task.status === "completed" || task.status === "failed";
+                    return (
+                    <TableRow key={task._id} className="group">
                     <TableCell>
                       <div className="flex min-w-0 items-start gap-3">
                         <div className="min-w-0">
@@ -477,7 +448,7 @@ export default function AgentTasksPage() {
                     <TableCell>
                       <RowActions name={task.title} picker={statusPickerFor(task)} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <div className="flex flex-col gap-1">
                         <span className={`inline-flex w-fit rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${PRIORITY_COLORS[task.priority]}`}>
                           {t(`priorityLabel${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}`)}
@@ -501,7 +472,43 @@ export default function AgentTasksPage() {
                     </TableCell>
                   </TableRow>
                   );
-                })
+                  })}
+                  {/* Completed tasks - in a separate section */}
+                  {tasks.filter((t) => t.status === "completed" || t.status === "failed").length > 0 && (
+                    <>
+                      <TableRow className="bg-muted/20">
+                        <TableCell colSpan={5} className="py-2">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase">{t("statCompleted")}</p>
+                        </TableCell>
+                      </TableRow>
+                      {tasks.filter((t) => t.status === "completed" || t.status === "failed").map((task) => (
+                        <TableRow key={task._id} className="opacity-60">
+                          <TableCell>
+                            <div className="flex min-w-0 items-start gap-3">
+                              <div className="min-w-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setDetailsTask(task)}
+                                  className="block max-w-full truncate rounded text-start text-sm font-medium line-through text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                  {task.title}
+                                </button>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <TaskStatusBadge status={task.status} reviewStatus={task.reviewStatus} />
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell" />
+                          <TableCell />
+                          <TableCell className="text-right">
+                            {taskActions(task)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </>
+                  )}
+                </>
               )}
             </TableBody>
           </Table>

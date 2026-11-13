@@ -1,11 +1,13 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Briefcase, Check, ChevronDown, CircleAlert, Eye, MapPin, Send } from "lucide-react";
+import { Briefcase, Check, CircleAlert, Eye, ListChecks, MapPin, Send } from "lucide-react";
 import { QualificationLineList } from "./QualificationLineList";
 import { RequirementsChecklist } from "@/components/features/employer/applications/RequirementsChecklist";
+import { RequirementReport } from "@/components/features/matching/RequirementReport";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { cn } from "@/lib/utils";
 import type { MatchingCandidate } from "@/hooks/useJobMatchingCandidates";
@@ -34,10 +36,19 @@ function scoreTone(score: number): string {
 export function MatchCandidateCard({ candidate, rank, canInvite, onInvite, onViewProfile }: MatchCandidateCardProps) {
   const t = useTranslations("agentJobMatches");
   const { breakdown } = candidate;
-  const [expanded, setExpanded] = useState(false);
-  const detailsId = useId();
+  // The full match opens in a side panel: expanding inline stretched the
+  // card's row neighbours in the grid into tall empty cards (owner, 2026-11-12).
+  const [open, setOpen] = useState(false);
   const hasDetails =
-    (candidate.qualifications?.length ?? 0) > 0 || (candidate.lineChecks?.length ?? 0) > 0 || candidate.matchedSkills.length > 0 || candidate.missingSkills.length > 0;
+    (candidate.qualifications?.length ?? 0) > 0 ||
+    (candidate.lineChecks?.length ?? 0) > 0 ||
+    (candidate.requirementReport?.items.length ?? 0) > 0 ||
+    candidate.matchedSkills.length > 0 ||
+    candidate.missingSkills.length > 0;
+  // The report reads the job's education, experience, licence and language
+  // lines itself; the older line-by-line list stays for rankings cached
+  // before it existed.
+  const report = candidate.requirementReport?.items.length ? candidate.requirementReport : null;
 
   // Literal keys only — a template-literal key escapes the missing-key checks.
   const parts: Array<{ label: string; value: number }> = [
@@ -80,7 +91,7 @@ export function MatchCandidateCard({ candidate, rank, canInvite, onInvite, onVie
       : null);
 
   return (
-    <article className="card-base flex flex-col gap-4 p-4 sm:p-5" aria-label={t("cardLabel", { rank, name: candidate.name })}>
+    <article className="card-base flex h-full flex-col gap-3 p-4 sm:gap-4 sm:p-5" aria-label={t("cardLabel", { rank, name: candidate.name })}>
       <div className="flex items-start gap-3">
         <UserAvatar name={candidate.name} src={candidate.avatar} className="h-11 w-11 shrink-0" colorful />
         <div className="min-w-0 flex-1">
@@ -95,9 +106,13 @@ export function MatchCandidateCard({ candidate, rank, canInvite, onInvite, onVie
             )}
             <span className="inline-flex items-center gap-1">
               <Briefcase className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {/* The years the score used; "not stated" only when the profile
+                  says nothing about experience at all. */}
               {candidate.totalExperienceYears
                 ? t("yearsExperience", { count: candidate.totalExperienceYears })
-                : t("experienceNotStated")}
+                : candidate.experienceKnown
+                  ? t("noExperienceYet")
+                  : t("experienceNotStated")}
             </span>
           </div>
         </div>
@@ -116,7 +131,7 @@ export function MatchCandidateCard({ candidate, rank, canInvite, onInvite, onVie
         ))}
       </dl>
 
-      {!expanded && (candidate.matchedSkills.length > 0 || candidate.missingSkills.length > 0) && (
+      {(candidate.matchedSkills.length > 0 || candidate.missingSkills.length > 0) && (
         <div className="space-y-2 text-xs">
           {candidate.matchedSkills.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
@@ -146,28 +161,47 @@ export function MatchCandidateCard({ candidate, rank, canInvite, onInvite, onVie
         <div>
           <button
             type="button"
-            onClick={() => setExpanded((open) => !open)}
-            aria-expanded={expanded}
-            aria-controls={detailsId}
+            onClick={() => setOpen(true)}
+            aria-haspopup="dialog"
             className="inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
           >
-            <ChevronDown className={cn("size-4 transition-transform", expanded && "rotate-180")} aria-hidden />
-            {expanded ? t("hideDetails") : t("showDetails")}
+            <ListChecks className="size-4" aria-hidden />
+            {t("showDetails")}
           </button>
-          <div id={detailsId}>
-            {expanded && (
-              <RequirementsChecklist
-                className="mt-2"
-                checks={candidate.qualifications}
-                status={candidate.requirementsStatus}
-                matchedSkills={candidate.matchedSkills}
-                missingSkills={candidate.missingSkills}
-              />
-            )}
-            {expanded && candidate.lineChecks && candidate.lineChecks.length > 0 && (
-              <QualificationLineList className="mt-2" checks={candidate.lineChecks} />
-            )}
-          </div>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent side="end" className="flex flex-col gap-0 p-0 sm:max-w-xl">
+              <DialogHeader className="space-y-0.5 border-b px-5 py-4 pe-16 text-start">
+                <DialogTitle className="break-words">{candidate.name}</DialogTitle>
+                <DialogDescription>
+                  <span className={cn("font-semibold tabular-nums", scoreTone(candidate.score))}>{candidate.score}%</span>{" "}
+                  {t("scoreLabel")}
+                  {subtitle ? ` · ${subtitle}` : ""}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+                {report ? (
+                  <>
+                    <RequirementReport report={report} audience="employer" />
+                    {/* Location, pay, work mode, screening, CV: the last group of
+                        the same report, not a second "Requirements" box. */}
+                    <RequirementsChecklist checks={candidate.qualifications} status={candidate.requirementsStatus} coveredByReport />
+                  </>
+                ) : (
+                  <>
+                    <RequirementsChecklist
+                      checks={candidate.qualifications}
+                      status={candidate.requirementsStatus}
+                      matchedSkills={candidate.matchedSkills}
+                      missingSkills={candidate.missingSkills}
+                    />
+                    {candidate.lineChecks && candidate.lineChecks.length > 0 && (
+                      <QualificationLineList checks={candidate.lineChecks} />
+                    )}
+                  </>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
 
@@ -188,7 +222,10 @@ export function MatchCandidateCard({ candidate, rank, canInvite, onInvite, onVie
         </ul>
       )}
 
-      <div className="flex flex-col-reverse gap-2 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-end">
+      {/* No footer at all when there is nothing to press (job not published,
+          no profile access): a disabled Invite on every card said nothing. */}
+      {(canInvite || candidate.invited || onViewProfile) && (
+      <div className="mt-auto flex flex-col-reverse gap-2 border-t border-border/60 pt-3 sm:flex-row sm:items-center sm:justify-end">
         {onViewProfile && candidate.canViewProfile ? (
           <Button
             type="button"
@@ -208,19 +245,19 @@ export function MatchCandidateCard({ candidate, rank, canInvite, onInvite, onVie
             <Check className="h-4 w-4" aria-hidden />
             {t("invited")}
           </span>
-        ) : (
+        ) : canInvite ? (
           <Button
             type="button"
             onClick={onInvite}
-            disabled={!canInvite}
             className="min-h-11 gap-2 rounded-xl sm:min-h-9"
             aria-label={t("inviteAria", { name: candidate.name })}
           >
             <Send className="h-4 w-4" aria-hidden />
             {t("invite")}
           </Button>
-        )}
+        ) : null}
       </div>
+      )}
     </article>
   );
 }

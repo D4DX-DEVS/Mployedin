@@ -46,9 +46,13 @@ let mockPool: {
   eligibleCount: number;
   bestScore: number;
   limitingFactor?: string;
+  scoresUnsupported?: true;
 };
 const scoreSeekerPool = jest.fn(async (..._args: unknown[]) => mockPool);
-jest.mock("@/lib/matching/seekerMatches", () => ({ scoreSeekerPool: (...a: unknown[]) => scoreSeekerPool(...a) }));
+jest.mock("@/lib/matching/seekerMatches", () => ({
+  ...jest.requireActual("@/lib/matching/seekerMatches"),
+  scoreSeekerPool: (...a: unknown[]) => scoreSeekerPool(...a),
+}));
 
 const now = new Date().toISOString();
 const pj = (id: string, score: number, recommended: boolean, eligible = true): PoolJob => ({
@@ -147,5 +151,20 @@ describe("GET /api/jobs/recommended", () => {
     expect(body.strongMatches).toBe(2);
     expect(body.matchedCount).toBe(3);
     expect(body.limitingFactor).toBeNull();
+  });
+
+  it("sends no percentage when the profile gives the engine nothing to score", async () => {
+    // A new account with an empty profile read "29% match" on every job.
+    mockPool = { ...mockPool, scoresUnsupported: true };
+    const body = await get("limit=10");
+    expect(body.matchUnavailable).toBe(true);
+    expect(body.jobs.map((j: PoolJob) => j._id)).toEqual(["a", "b", "c", "d"]);
+    for (const j of body.jobs) expect(j).not.toHaveProperty("matchScore");
+  });
+
+  it("keeps the percentage for a profile that states something", async () => {
+    const body = await get("limit=10");
+    expect(body.matchUnavailable).toBe(false);
+    expect(body.jobs[0].matchScore).toBe(91);
   });
 });

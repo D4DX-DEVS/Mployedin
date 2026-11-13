@@ -70,6 +70,8 @@ jest.mock("@/models/User", () => ({
     create: (...a: unknown[]) => userCreate(...a),
     findByIdAndUpdate: jest.fn().mockResolvedValue({}),
     findByIdAndDelete: jest.fn().mockResolvedValue({}),
+    // PATCH edits agents only (agentApprovalNeedsVerifiedEmail.test.ts).
+    findById: jest.fn(() => ({ select: () => ({ lean: () => Promise.resolve({ role: "agent", isActive: true }) }) })),
   },
 }));
 jest.mock("@/models/Agent", () => ({

@@ -24,10 +24,13 @@ export const CLIENT_NAMESPACES = {
     // they built on Mployedin from the public job page (EasyApply). Two
     // sub-trees, not the whole builder namespace.
     "cvBuilderPage.previewSections", "cvBuilderPage.proficiency",
+    // The "set a password" form on the apply-success card (EasyApply): an
+    // account made by an e-mail code has none.
+    "formErrors", "passwordRequirements", "setPassword",
   ],
   auth: [
     "a11y", "agentRegister", "auth", "calendar", "common", "confirmEmailChange", "employerRegister",
-    "forgotPasswordPage", "formErrors", "interviewResponse", "mcpAuthorize", "passwordRequirements", "resetPassword",
+    "forgotPasswordPage", "formErrors", "interviewResponse", "linkPassword", "mcpAuthorize", "passwordRequirements", "resetPassword",
     "teamJoin", "verifyEmail",
   ],
   onboarding: ["a11y", "common", "footer", "onboarding"],

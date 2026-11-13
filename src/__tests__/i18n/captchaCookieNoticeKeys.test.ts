@@ -83,7 +83,8 @@ describe("captcha and cookies-disabled copy", () => {
 /**
  * The Cookie settings purpose line for reCAPTCHA is what a visitor is told the
  * captcha is for. It once said "only when you ask for an apply code" and went
- * stale when the contact form started using the captcha too.
+ * stale when the contact form started using the captcha too, and again when
+ * the login page began mailing a login code (2026-11-12).
  * [LEGAL] the wording of the purpose line.
  */
 describe("consent purpose line for reCAPTCHA", () => {
@@ -92,7 +93,7 @@ describe("consent purpose line for reCAPTCHA", () => {
 
   it("uses the agreed English wording", () => {
     expect(purpose(en)).toBe(
-      "Spam protection by Google reCAPTCHA, only when you send a protected form (asking for an apply code, or the contact form)",
+      "Spam protection by Google reCAPTCHA, only when you send a protected form (asking for an apply code or a login code, or the contact form)",
     );
   });
 
@@ -107,6 +108,7 @@ describe("consent purpose line for reCAPTCHA", () => {
     const callers: Array<[file: string, mention: RegExp]> = [
       ["src/components/features/public/EasyApply.tsx", /apply code/i],
       ["src/app/[locale]/(public)/contact/page.tsx", /contact form/i],
+      ["src/components/features/auth/EmailCodeLogin.tsx", /login code/i],
     ];
     for (const [file, mention] of callers) {
       expect(read(file)).toMatch(/getCaptchaToken\(/);
@@ -125,6 +127,7 @@ describe("consent purpose line for reCAPTCHA", () => {
     })(dir);
     expect(users.filter((u) => u !== "lib/browser/captcha.ts").sort()).toEqual([
       "app/[locale]/(public)/contact/page.tsx",
+      "components/features/auth/EmailCodeLogin.tsx",
       "components/features/public/EasyApply.tsx",
     ]);
   });

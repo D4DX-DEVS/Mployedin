@@ -25,6 +25,20 @@ export const webhookCreateSchema = z.object({
   retryCount: z.number().int().min(0).max(10).optional(),
 });
 
+/**
+ * What an employer may send when creating their own webhook through
+ * /api/developer. Same field rules as the admin form, minus `secret` and
+ * `isActive`: the route always generates the secret and creates the hook
+ * active, so those are dropped rather than trusted from the request.
+ */
+export const employerWebhookCreateSchema = webhookCreateSchema.pick({
+  name: true,
+  url: true,
+  events: true,
+  headers: true,
+  retryCount: true,
+});
+
 export const webhookUpdateSchema = z.object({
   name: z.string().min(1).max(100).trim().optional(),
   url: webhookUrl.optional(),

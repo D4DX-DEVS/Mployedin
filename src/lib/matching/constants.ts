@@ -29,10 +29,29 @@ export const MAX_RECOMMENDATIONS = 5;
  * strength of a neutral salary and an unstated experience level.
  */
 export const RELEVANCE_WEIGHTS = {
-  skills: 0.6,
+  skills: 0.4,
   role: 0.25,
   experience: 0.15,
+  education: 0.2,
 } as const;
+
+/**
+ * Points each part is worth in the seeker relevance score (decided 2026-11-12,
+ * D7/D12). Only what the job asks for is scored: role and experience always;
+ * skills when the job has any (stated or extracted, D8); education, licences
+ * and languages only when the job states them (owner, 2026-11-12: "No free
+ * points for unspecified requirements"). The score is the points earned over
+ * the points in play, so a job that asks more is not easier or harder to clear.
+ */
+export const RELEVANCE_POINTS = {
+  skills: 40,
+  role: 25,
+  experience: 15,
+  education: 20,
+  credentials: 20,
+  languages: 10,
+} as const;
+export type RelevancePart = keyof typeof RELEVANCE_POINTS;
 
 /**
  * Cosine thresholds for treating two differently-worded skills as the same.
@@ -89,4 +108,4 @@ export const RECOMMENDATION_COOLDOWN_DAYS = 30;
  * this list is shared and pinned by a test rather than repeated per caller.
  */
 export const JOB_MATCH_FIELDS =
-  "title requirements salary location workMode employerId discloseCompany createdAt expiresAt status";
+  "title requirements salary location workMode employerId discloseCompany createdAt expiresAt status qualifications hireType";

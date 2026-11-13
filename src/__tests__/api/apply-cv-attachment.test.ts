@@ -170,6 +170,23 @@ describe("POST /api/applications", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it("refuses — and saves nothing — when the seeker has no CV at all", async () => {
+    seeker.cv = undefined;
+    seeker.documents = [];
+    const res = await post({});
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "CV_REQUIRED" });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("refuses a portfolio link alone: it is not a CV", async () => {
+    seeker.cv = undefined;
+    seeker.documents = [];
+    const res = await post({ portfolioUrl: "https://example.com/me" });
+    expect(res.status).toBe(400);
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("refuses a chosen file that is gone, even with other resumes on hand", async () => {
     const res = await post({ documentIds: ["deleted"] });
     expect(res.status).toBe(400);
@@ -185,6 +202,18 @@ describe("POST /api/jobs/[id]/apply (one tap)", () => {
     );
     expect(res.status).toBeLessThan(300);
     expect(sentDocuments()).toEqual([{ name: "CV", url: PROFILE_CV, type: "resume" }]);
+  });
+
+  it("refuses — and saves nothing — when the seeker has no CV at all", async () => {
+    seeker.cv = undefined;
+    seeker.documents = [];
+    const { POST } = await import("@/app/api/jobs/[id]/apply/route");
+    const res = await (POST as unknown as (req: NextRequest) => Promise<Response>)(
+      new NextRequest(`http://localhost/api/jobs/${JOB}/apply`, { method: "POST" }),
+    );
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "CV_REQUIRED" });
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("refuses when the CV is replaced in another tab while applying", async () => {
@@ -248,6 +277,13 @@ describe("assistant apply_to_job", () => {
     const result = await run();
     expect(result).toMatchObject({ ok: false });
     expect(result.message).toMatch(/CV changed/);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("does not apply for a seeker with no CV at all", async () => {
+    seeker.cv = undefined;
+    seeker.documents = [];
+    expect(await run()).toMatchObject({ ok: false });
     expect(create).not.toHaveBeenCalled();
   });
 

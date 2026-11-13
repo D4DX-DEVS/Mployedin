@@ -57,7 +57,7 @@ beforeEach(() => {
 /** Opens the Notifications tab and waits for its categories card. */
 async function openNotifications() {
   render(<AgentSettingsPage />);
-  await userEvent.click(screen.getByRole("button", { name: /Notifications/ }));
+  await userEvent.click(screen.getAllByRole("button", { name: /Notifications/ })[0]);
   await screen.findByText("Notification Categories");
 }
 

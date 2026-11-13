@@ -8,7 +8,9 @@ import { JobSeekerTopNav, JobSeekerBottomNav, splitSeekerNav } from "@/component
 import { getNavGroups, getAllNavItems } from "@/lib/nav/menuConfig";
 import {
   APPLICATION_JOURNEY_PATHS,
+  JOBS_SECTION_PATHS,
   PROFILE_SECTION_PATHS,
+  SETTINGS_SECTION_PATHS,
 } from "@/components/features/job-seeker/JobSeekerSectionNav";
 
 let currentPath = "/en/job-seeker";
@@ -35,15 +37,13 @@ jest.mock("framer-motion", () => ({
 }));
 
 describe("splitSeekerNav", () => {
-  it("promotes the six job-board tabs", () => {
+  it("promotes the five job-board tabs", () => {
     const groups = getNavGroups("job_seeker", "en");
     const { primary } = splitSeekerNav(groups, "en");
 
     expect(primary.map((i) => i.href)).toEqual([
       "/en/job-seeker",
       "/en/job-seeker/jobs",
-      // Saved jobs, restored on the client's request (2026-10-27).
-      "/en/job-seeker/saved-jobs",
       "/en/job-seeker/applications",
       "/en/job-seeker/messages",
       "/en/job-seeker/companies",
@@ -80,9 +80,15 @@ describe("splitSeekerNav", () => {
     const hubbed = new Set(
       [
         ...APPLICATION_JOURNEY_PATHS,
+        // Saved jobs is the second tab on the Jobs page.
+        ...JOBS_SECTION_PATHS,
         ...PROFILE_SECTION_PATHS,
+        ...SETTINGS_SECTION_PATHS,
+        // Tools opened from a profile tab: CV & documents opens the builder,
+        // the Skills section opens the gap analysis.
+        "/job-seeker/cv",
+        "/job-seeker/skills",
         // Reached from the header avatar menu rather than from a hub page.
-        "/job-seeker/subscription",
         "/job-seeker/settings",
       ].map((p) => `/en${p}`)
     );
@@ -137,6 +143,15 @@ describe("JobSeekerTopNav", () => {
     expect(nav).toHaveTextContent("Companies");
     // Saved Searches was removed outright, not just hidden.
     expect(nav).not.toHaveTextContent("Saved Searches");
+  });
+
+  it("keeps Jobs lit on the Saved tab and lists no separate Saved item", () => {
+    currentPath = "/en/job-seeker/saved-jobs";
+    render(<JobSeekerTopNav locale="en" navGroups={getNavGroups("job_seeker", "en")} />);
+
+    const nav = screen.getByRole("navigation", { name: "jobSeekerNavigation" });
+    expect(screen.getByText("Jobs").closest("a")).toHaveAttribute("aria-current", "page");
+    expect(nav.querySelector('a[href="/en/job-seeker/saved-jobs"]')).toBeNull();
   });
 });
 

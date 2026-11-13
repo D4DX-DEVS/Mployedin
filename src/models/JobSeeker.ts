@@ -2,7 +2,9 @@ import mongoose, { Document, Schema } from "mongoose";
 import { encryptIfPlain, decrypt } from "@/lib/security/encryption";
 import {
   CV_TEMPLATE_IDS, CV_FONTS, CV_FONT_SIZES, CV_SPACINGS, CV_PAGE_FORMATS,
-  CV_DATE_FORMATS, CV_LINE_HEIGHTS, CV_MARGINS, CV_SECTION_KEYS, CV_THEME_COLOR_PATTERN,
+  CV_DATE_FORMATS, CV_LINE_HEIGHTS, CV_MARGINS,
+  CV_HEADER_ALIGNS, CV_TEXT_ALIGNS, CV_HEADING_STYLES, CV_SKILLS_STYLES,
+  CV_NAME_SIZES, CV_BULLET_STYLES, CV_DATE_POSITIONS, CV_PHOTO_SHAPES, CV_SECTION_KEYS, CV_THEME_COLOR_PATTERN,
   type CvDesign,
 } from "@/lib/jobSeeker/cvDesign";
 
@@ -205,6 +207,12 @@ export interface IJobSeeker extends Document {
   // Job-seeker settings page. Discoverability is deliberately NOT here — it is
   // `profileVisibility` above, so there is one answer, not two.
   settings?: IJobSeekerSettings;
+  /**
+   * The CV the seeker marked "send this one" on My CVs: a document id, or the
+   * Profile CV / built CV keys from lib/applications/cvChoice.ts. Honoured
+   * before the default order while it still exists.
+   */
+  preferredCvId?: string | null;
   // Documents
   documents: {
     id: string;
@@ -226,7 +234,10 @@ export interface IJobSeeker extends Document {
   totalExperienceYears: number;
   totalExperienceMonths: number;
   currentSalary?: { amount: number; currency: string };
+  /** Industry name from the Industry catalogue, auto-classified from profile. */
   industry?: string;
+  /** Whether industry was auto-classified or manually set by admin. */
+  industrySource?: "auto" | "manual";
   preferredLocations: string[];
   isOnboarded: boolean;
   profileCompletedLater?: boolean;
@@ -256,6 +267,8 @@ export interface IJobSeeker extends Document {
    */
   availabilityStatusSetAt?: Date;
   noticePeriod?: number; // in days
+  /** The seeker's own answer, set on Preferences; absent until they answer. Employers see it. */
+  openToRelocation?: boolean;
   applicationMode: "auto" | "manual";
   autoApplyCount: number;
   autoApplyResetAt?: Date;
@@ -408,6 +421,14 @@ const CvDesignSchema = new Schema(
           lineHeight: { type: String, enum: CV_LINE_HEIGHTS, required: true },
           margin: { type: String, enum: CV_MARGINS, required: true },
           sectionOrder: { type: [{ type: String, enum: CV_SECTION_KEYS }], default: undefined },
+          headerAlign: { type: String, enum: CV_HEADER_ALIGNS },
+          textAlign: { type: String, enum: CV_TEXT_ALIGNS },
+          headingStyle: { type: String, enum: CV_HEADING_STYLES },
+          skillsStyle: { type: String, enum: CV_SKILLS_STYLES },
+          nameSize: { type: String, enum: CV_NAME_SIZES },
+          bulletStyle: { type: String, enum: CV_BULLET_STYLES },
+          datePosition: { type: String, enum: CV_DATE_POSITIONS },
+          photoShape: { type: String, enum: CV_PHOTO_SHAPES },
         },
         { _id: false }
       ),
@@ -557,6 +578,8 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       attachedAt: { type: Date },
       _id: false,
     }],
+    // See IJobSeeker.preferredCvId.
+    preferredCvId: { type: String, default: null },
     summary: String,
     headline: String,
     workStatus: { type: String, enum: ["experienced", "fresher"] },
@@ -567,7 +590,8 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
       amount: Number,
       currency: { type: String, default: "USD" },
     },
-    industry: String,
+    industry: { type: String, index: true },
+    industrySource: { type: String, enum: ["auto", "manual"], default: "auto" },
     preferredLocations: [String],
     isOnboarded: { type: Boolean, default: false, index: true },
     profileCompletedLater: { type: Boolean, default: false },
@@ -591,6 +615,8 @@ const JobSeekerSchema = new Schema<IJobSeeker>(
     },
     availabilityStatusSetAt: Date,
     noticePeriod: Number,
+    // No default: "not answered" must stay different from "yes" (rollout row 18).
+    openToRelocation: { type: Boolean },
     applicationMode: { type: String, enum: ["auto", "manual"], default: "manual" },
     autoApplyCount: { type: Number, default: 0, min: 0 },
     autoApplyResetAt: Date,

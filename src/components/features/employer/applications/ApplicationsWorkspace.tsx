@@ -1,5 +1,7 @@
 "use client";
 
+import { RequirementReport } from "@/components/features/matching/RequirementReport";
+import type { RequirementReport as RequirementReportData } from "@/lib/matching/requirementReport";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -36,6 +38,7 @@ import {
   FileText,
   SlidersHorizontal,
   History,
+  ListChecks,
   Inbox,
   Mail,
   MapPin,
@@ -54,6 +57,7 @@ import {
 } from "lucide-react";
 import { ScorecardForm } from "@/components/scorecards/ScorecardForm";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
+import { PhoneActionsMenu } from "@/components/shared/PhoneActionsMenu";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
@@ -74,6 +78,13 @@ import { AIEmailDraftButton } from "@/components/shared/AIEmailDraftButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { CompareCandidatesDialog } from "@/components/features/employer/applications/CompareCandidatesDialog";
 import { useJobWorkflow } from "@/hooks/useJobWorkflow";
@@ -88,6 +99,7 @@ import {
   useApplications,
   useBulkAction,
   useBulkAiMatch,
+  useBulkScreening,
   useComputeAiMatch,
   useCreateInterviewFromApp,
   useCreateOfferFromApp,
@@ -221,6 +233,7 @@ export interface Applicant {
   /** Employer ATS: the requirements checklist and its roll-up (lib/matching/qualifications.ts). */
   qualifications?: QualificationItem[];
   requirementsStatus?: RequirementsStatus;
+  requirementReport?: RequirementReportData;
   matchedSkills?: string[];
   missingSkills?: string[];
   weightsApplied?: boolean;
@@ -472,12 +485,14 @@ export function ApplicationsWorkspace({
     candidate?: { role?: string; experience?: number; skills?: string[]; location?: string };
     aiMatchScore?: number;
     matchBreakdown?: { skills?: number; role?: number; experience?: number; location?: number; salary?: number; overall?: number };
+    requirementReport?: RequirementReportData;
   } | null>(null);
   const [bulkMatchProgress, setBulkMatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [rescoring, setRescoring] = useState(false);
 
   // ── Bulk interview & email state ──────────────────────────────────
   const [bulkInterviewModal, setBulkInterviewModal] = useState(false);
+  const [bulkScreeningModal, setBulkScreeningModal] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [emailPreviewModal, setEmailPreviewModal] = useState<{
     action: "reject" | "move_stage" | "send_message";
@@ -546,12 +561,13 @@ export function ApplicationsWorkspace({
   const jobsLoaded = jobOptionsQuery.isSuccess;
 
   // Sort order for the list. API supports appliedAt/aiMatchScore; "newest" is the default.
-  const [sortOption, setSortOption] = useState<"newest" | "oldest" | "score" | "score_low">(() => {
+  const [sortOption, setSortOption] = useState<"newest" | "oldest" | "score" | "score_low" | "best_fit">(() => {
     const sort = searchParams.get("sort");
-    return sort === "oldest" || sort === "score" || sort === "score_low" ? sort : "newest";
+    return sort === "oldest" || sort === "score" || sort === "score_low" || sort === "best_fit" ? sort : "newest";
   });
-  const [sortBy, sortOrder]: ["appliedAt" | "aiMatchScore", "asc" | "desc"] =
+  const [sortBy, sortOrder]: ["appliedAt" | "aiMatchScore" | "bestFit", "asc" | "desc"] =
     sortOption === "oldest" ? ["appliedAt", "asc"]
+    : sortOption === "best_fit" ? ["bestFit", "desc"]
     : sortOption === "score" ? ["aiMatchScore", "desc"]
     : sortOption === "score_low" ? ["aiMatchScore", "asc"]
     : ["appliedAt", "desc"];
@@ -611,6 +627,7 @@ export function ApplicationsWorkspace({
   const updateStatus = useUpdateApplicationStatus();
   const updateInterview = useUpdateInterview();
   const bulkAction = useBulkAction();
+  const bulkScreening = useBulkScreening();
   const createScorecard = useCreateScorecard();
   const createInterview = useCreateInterviewFromApp();
   const createOffer = useCreateOfferFromApp();
@@ -1078,6 +1095,7 @@ export function ApplicationsWorkspace({
       },
       aiMatchScore: app.aiMatchScore,
       matchBreakdown: app.matchBreakdown,
+      requirementReport: app.requirementReport,
     };
   }
 
@@ -1264,6 +1282,30 @@ export function ApplicationsWorkspace({
     setBulkInterviewModal(true);
   }
 
+  /** Send screening questions to selected candidates */
+  async function handleBulkScreening() {
+    if (!selected.length) return;
+    try {
+      const result = await bulkScreening.mutateAsync(selected);
+      setBulkScreeningModal(false);
+      if (result.sent > 0) {
+        const msg = result.skipped > 0
+          ? t("screeningSentWithSkipped", { sent: result.sent, skipped: result.skipped })
+          : t("screeningSent", { count: result.sent });
+        toast.success(msg);
+      }
+      if (result.skipped > 0 && result.sent === 0) {
+        toast.info(t("screeningAllSkipped"));
+      }
+      // Nothing sent and nothing skipped: the job asks no screening questions.
+      if (result.sent === 0 && result.skipped === 0) {
+        toast.error(t("screeningNoQuestions"));
+      }
+    } catch {
+      toast.error(t("screeningError"));
+    }
+  }
+
   async function handleBulkInterview(data: {
     scheduledAt: string;
     type: string;
@@ -1446,8 +1488,8 @@ export function ApplicationsWorkspace({
           aria-label={activeFilterCount > 0 ? `${t("filters")} (${activeFilterCount})` : t("filters")}
           className={`h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4 ${showFilters ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
         >
-          <SlidersHorizontal className="h-4 w-4 sm:me-2" aria-hidden="true" />
-          <span className="hidden sm:inline">{t("filters")}</span>
+          <SlidersHorizontal className="h-4 w-4 me-2" aria-hidden="true" />
+          <span>{t("filters")}</span>
           {activeFilterCount > 0 ? (
             <span className="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
               {activeFilterCount}
@@ -1543,6 +1585,7 @@ export function ApplicationsWorkspace({
               options={[
                 { value: "newest", label: t("sortNewest") },
                 { value: "oldest", label: t("sortOldest") },
+                { value: "best_fit", label: t("sortBestFit") },
                 { value: "score", label: t("sortScore") },
                 { value: "score_low", label: t("sortScoreLow") },
               ]}
@@ -1678,10 +1721,10 @@ export function ApplicationsWorkspace({
               <X className="h-4 w-4" />
             </Button>
           </div>
-          {/* Phones: all three verbs on one row with short labels. Two rows of
-              wide buttons cost a third of the viewport and pushed the candidate
-              list off screen — the list is what the selection is for. */}
-          <div className="flex gap-2">
+          {/* Phones: a three-column grid of short labels — up to six verbs
+              (with screening and compare) overlapped on one row at 375px.
+              From sm the row wraps, so the verbs never run off the card. */}
+          <div className="grid min-w-0 grid-cols-3 gap-2 sm:flex sm:flex-wrap">
             <Button size="sm" variant="outline" className="h-10 flex-1 rounded-xl border-border bg-background/80 px-2 text-xs sm:flex-none sm:px-4 sm:text-sm"
               onClick={() => openEmailPreview("move_stage", "shortlisted")} disabled={bulkAction.isPending}>
               <span className="sm:hidden">{t("moveToShortlistedShort")}</span>
@@ -1693,6 +1736,15 @@ export function ApplicationsWorkspace({
               <span className="hidden sm:inline">{t("scheduleInterview")}</span>
               <span className="ms-1.5 sm:hidden">{t("scheduleInterviewShort")}</span>
             </Button>
+            {/* Screening questions belong to one job, so only on a job's list. */}
+            {jobFilter && (
+              <Button size="sm" variant="outline" className="h-10 flex-1 rounded-xl border-border bg-background/80 px-2 text-xs sm:flex-none sm:px-4 sm:text-sm"
+                onClick={() => setBulkScreeningModal(true)} disabled={bulkScreening.isPending}>
+                <ListChecks className="h-3.5 w-3.5 sm:me-2" aria-hidden="true" />
+                <span className="hidden sm:inline">{t("sendScreening")}</span>
+                <span className="ms-1.5 sm:hidden">{t("sendScreeningShort")}</span>
+              </Button>
+            )}
             <Button size="sm" variant="outline" className="h-10 flex-1 rounded-xl border-destructive/30 bg-background/80 px-2 text-xs text-destructive hover:bg-destructive/10 sm:flex-none sm:px-4 sm:text-sm"
               onClick={() => setShowRejectPrompt(true)} disabled={bulkAction.isPending}>
               {t("reject")}
@@ -1973,10 +2025,49 @@ export function ApplicationsWorkspace({
               {canUpdate && view === "list" && (<>
               {/* Privacy info at the point candidate data is shown — same spot as on Candidates. */}
               <CandidateDataNotice variant="candidateList" compact />
+            {/* Phones: three worded buttons do not fit beside the view switch —
+                they overlapped and "Shortlist Top" was cut on both sides. One
+                labelled menu holds them; from 640px they sit side by side. */}
+            <PhoneActionsMenu
+              label={tc("actions")}
+              actions={[
+                {
+                  key: "select",
+                  label: allVisibleSelected ? t("clearVisible") : t("selectVisible"),
+                  icon: allVisibleSelected ? CheckSquare : Square,
+                  onSelect: toggleAll,
+                  disabled: !filteredApplications.length,
+                },
+                ...(jobFilter
+                  ? [
+                      {
+                        key: "score",
+                        label: t("scoreAll"),
+                        busyLabel: rescoring
+                          ? t("rescoringScores")
+                          : bulkMatchProgress
+                            ? t("scoringCandidate", { done: bulkMatchProgress.done, total: bulkMatchProgress.total })
+                            : undefined,
+                        icon: Sparkles,
+                        onSelect: () => { void handleBulkAiMatch(true); },
+                        disabled: bulkAiMatch.isPending || rescoring,
+                      },
+                      {
+                        key: "shortlist",
+                        label: t("shortlistTop"),
+                        busyLabel: shortlistLoading ? ta("shortlistLoading") : undefined,
+                        icon: CheckCheck,
+                        onSelect: () => { void handleAutoShortlist(); },
+                        disabled: bulkAction.isPending || shortlistLoading,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
             <Button
               size="sm"
               variant="outline"
-              className="min-h-11 flex-1 justify-center rounded-xl border-border bg-background/80 px-2 text-xs font-medium sm:min-h-0 sm:flex-none sm:px-3"
+              className="hidden min-h-11 flex-1 justify-center rounded-xl border-border bg-background/80 px-2 text-xs font-medium sm:inline-flex sm:min-h-0 sm:flex-none sm:px-3"
               onClick={toggleAll}
               disabled={!filteredApplications.length}
             >
@@ -1992,7 +2083,7 @@ export function ApplicationsWorkspace({
               <Button
                 size="sm"
                 variant="outline"
-                className="min-h-11 flex-1 justify-center rounded-xl border-border bg-background/80 px-2 text-xs sm:min-h-0 sm:flex-none sm:px-3"
+                className="hidden min-h-11 flex-1 justify-center rounded-xl border-border bg-background/80 px-2 text-xs sm:inline-flex sm:min-h-0 sm:flex-none sm:px-3"
                 disabled={bulkAiMatch.isPending || rescoring}
                 aria-busy={rescoring || undefined}
                 onClick={() => { void handleBulkAiMatch(true); }}
@@ -2006,7 +2097,7 @@ export function ApplicationsWorkspace({
               </Button>
               <Button
                 size="sm"
-                className="min-h-11 flex-1 justify-center rounded-xl bg-emerald-700 px-2 text-xs font-semibold text-white hover:bg-emerald-800 sm:min-h-0 sm:flex-none sm:px-3"
+                className="hidden min-h-11 flex-1 justify-center rounded-xl bg-emerald-700 px-2 text-xs font-semibold text-white hover:bg-emerald-800 sm:inline-flex sm:min-h-0 sm:flex-none sm:px-3"
                 disabled={bulkAction.isPending || shortlistLoading}
                 aria-busy={shortlistLoading || undefined}
                 onClick={() => void handleAutoShortlist()}
@@ -2189,6 +2280,31 @@ export function ApplicationsWorkspace({
         />
       )}
 
+      {/* Bulk Screening Confirmation Modal */}
+      <Dialog open={bulkScreeningModal} onOpenChange={setBulkScreeningModal}>
+        <DialogContent>
+          <DialogTitle>{t("sendScreening")}</DialogTitle>
+          <DialogDescription>
+            {t("screeningConfirm", { count: selected.length })}
+          </DialogDescription>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkScreeningModal(false)}
+              disabled={bulkScreening.isPending}
+            >
+              {tc("cancel")}
+            </Button>
+            <Button
+              onClick={() => void handleBulkScreening()}
+              disabled={bulkScreening.isPending}
+            >
+              {bulkScreening.isPending ? t("screeningSending") : t("screeningSend")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Email Preview Modal */}
       {emailPreviewModal && (
         <EmailPreviewModal
@@ -2235,6 +2351,7 @@ export function ApplicationsWorkspace({
           candidate={viewingCv.candidate}
           aiMatchScore={viewingCv.aiMatchScore}
           matchBreakdown={viewingCv.matchBreakdown}
+          requirementReport={viewingCv.requirementReport}
           jobSeekerId={viewingCv.jobSeekerId}
           jobId={viewingCv.jobId}
           onStatusChange={
@@ -2301,7 +2418,7 @@ function TableView({
   /** Shown under the empty message, e.g. Clear filters when filters hide everyone. */
   emptyAction?: ReactNode;
   /** With onSort, the Match and Applied On headers sort the list. */
-  sortBy?: "appliedAt" | "aiMatchScore";
+  sortBy?: "appliedAt" | "aiMatchScore" | "bestFit";
   sortOrder?: "asc" | "desc";
   onSort?: (field: "appliedAt" | "aiMatchScore") => void;
 }) {
@@ -2345,7 +2462,7 @@ function TableView({
         {!compact && <span>{t("roleMatchSkills").split(",")[0]?.trim()}</span>}
         {onSort ? (
           <span>
-            <SortableTableHeader label={t("matchLabel")} active={sortBy === "aiMatchScore"} order={sortOrder ?? "desc"} onClick={() => onSort("aiMatchScore")} className="whitespace-nowrap" />
+            <SortableTableHeader label={t("matchLabel")} active={sortBy === "aiMatchScore" || sortBy === "bestFit"} order={sortOrder ?? "desc"} onClick={() => onSort("aiMatchScore")} className="whitespace-nowrap" />
           </span>
         ) : (
           <span>{t("matchLabel")}</span>
@@ -2400,7 +2517,7 @@ function TableView({
                   onOpenDetails?.(app, event.currentTarget);
                 }
               }}
-              className={`group cursor-pointer rounded-lg px-4 py-3 transition-all duration-200 hover:bg-status-applied-bg/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:grid lg:items-center lg:gap-3 ${
+              className={`group cursor-pointer rounded-lg px-4 py-3 transition-all duration-200 hover:bg-status-applied-bg/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:flex md:items-center md:gap-3 lg:grid ${
                 isSelected ? "bg-sky-500/10" : "bg-transparent"
               }`}
               style={{ gridTemplateColumns: gridCols }}
@@ -2423,7 +2540,7 @@ function TableView({
               </div>
 
               {/* Candidate */}
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 items-start gap-2.5 md:flex-1 md:items-center md:gap-3">
                 {/* Selection below `lg`. The checkbox above is a grid cell that
                     only exists from `lg`, so without this one the narrower
                     layouts can only select every visible row at once. */}
@@ -2435,7 +2552,9 @@ function TableView({
                       event.stopPropagation();
                       onToggle(app._id);
                     }}
-                    className="tap-target-box shrink-0 text-muted-foreground transition hover:text-foreground lg:hidden"
+                    role="checkbox"
+                    aria-checked={isSelected}
+                    className="tap-target-box mt-2.5 shrink-0 text-muted-foreground transition hover:text-foreground md:mt-0 lg:hidden"
                   >
                     {isSelected ? <CheckSquare className="h-5 w-5 text-status-applied" /> : <Square className="h-5 w-5" />}
                   </button>
@@ -2480,20 +2599,17 @@ function TableView({
                       the whole point of the list. Repeated here, compactly, for
                       the widths where those cells do not render. */}
                   {!compact && (
-                    <p className="truncate text-xs font-medium text-foreground lg:hidden">
+                    <p className="line-clamp-2 break-words text-xs font-medium text-foreground lg:hidden">
                       {app.jobId?.title || t("roleNotSpecified")}
                     </p>
                   )}
                   {/* Wraps: with several badges the last one ran under the score column. */}
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+                  <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                     {location ? (
                       <span className="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
                         <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
                         <span className="truncate">{location}</span>
                       </span>
-                    ) : null}
-                    {location && experienceYears != null ? (
-                      <span aria-hidden="true" className="shrink-0 text-xs text-muted-foreground">•</span>
                     ) : null}
                     {experienceYears != null ? (
                       <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
@@ -2519,7 +2635,9 @@ function TableView({
                   ) : (
                     <p className="text-[11px] text-muted-foreground">{t("aiPending")}</p>
                   )}
-                  <StatusBadge status={app.status} />
+                  {/* Phones carry the status in the card footer, beside the
+                      worded actions; here it would crowd the score. */}
+                  <span className="hidden md:block"><StatusBadge status={app.status} /></span>
                 </div>
               </div>
 
@@ -2588,12 +2706,13 @@ function TableView({
                   below lg with no table-action hook). The wrapper stops the
                   click reaching the row, which would open the details drawer
                   underneath the CV viewer. */}
-              <div className="flex items-center justify-end gap-1.5" onClick={(event) => event.stopPropagation()}>
+              <div className="mt-2 flex items-center justify-between gap-2 md:mt-0 md:shrink-0 md:justify-end" onClick={(event) => event.stopPropagation()}>
+                <span className="md:hidden"><StatusBadge status={app.status} /></span>
                 <RowActions
                   name={candidateName}
                   quick={[
-                    ...(onOpenDetails ? [{ key: "details", label: t("detailedView"), icon: BarChart3, iconOnly: true as const, onSelect: () => onOpenDetails?.(app, document.activeElement as HTMLElement) }] : []),
-                    ...(resumeViewHref(app) && onViewCv ? [{ key: "cv", label: t("viewCvFor", { name: candidateName }), icon: FileText, iconOnly: true as const, onSelect: () => onViewCv(app) }] : []),
+                    ...(onOpenDetails ? [{ key: "details", label: t("detailedView"), icon: BarChart3, iconOnly: true as const, phoneLabel: t("reviewShort"), onSelect: () => onOpenDetails?.(app, document.activeElement as HTMLElement) }] : []),
+                    ...(resumeViewHref(app) && onViewCv ? [{ key: "cv", label: t("viewCvFor", { name: candidateName }), icon: FileText, iconOnly: true as const, phoneLabel: t("cvShort"), onSelect: () => onViewCv(app) }] : []),
                   ]}
                 />
               </div>
@@ -2619,36 +2738,45 @@ function StageStepper({
   const t = useTranslations("employerApplications");
   const stageNameOf = useStageLabel();
   const steps = stages.map((stage) => ({ key: stage.id, label: stageNameOf(stage) }));
-  const isRejected = currentStatus === "rejected" || currentStatus === "withdrawn";
+  // Both leave the path, but only a rejection is the employer's call: a
+  // withdrawn application used to read "Rejected" here beside a Withdrawn badge.
+  const isWithdrawn = currentStatus === "withdrawn";
+  const isRejected = currentStatus === "rejected" || isWithdrawn;
   const currentIndex = steps.findIndex((s) => s.key === currentStageId);
   const lastIndex = steps.length - 1;
   return (
     <div className="mt-4">
-      <div className="flex items-start">
+      {/* Equal columns, so the steps are evenly spaced whatever their labels.
+          Sized by label width, the connectors came out anywhere from a dot to
+          a long bar on a phone. Each connector runs from this step's centre to
+          the next one's, behind the circles. */}
+      <ol className="grid" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
         {steps.map((step, i) => {
           const reached = !isRejected && currentIndex >= 0 && i <= currentIndex;
           const isCurrent = !isRejected && i === currentIndex;
           return (
-            <div key={step.key} className={i < lastIndex ? "flex flex-1 items-start" : "flex items-start"}>
-              <div className="flex flex-col items-center gap-1">
-                <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition ${reached ? "bg-sky-500 text-white" : "bg-muted text-muted-foreground"} ${isCurrent ? "ring-2 ring-sky-300 ring-offset-2 ring-offset-background" : ""}`}
-                >
-                  {reached ? <Check className="h-3.5 w-3.5" /> : i + 1}
-                </span>
-                <span className={`whitespace-nowrap text-[11px] font-medium ${isCurrent ? "text-status-applied" : "text-muted-foreground"}`}>
-                  {step.label}
-                </span>
-              </div>
+            <li key={step.key} aria-current={isCurrent ? "step" : undefined} className="relative flex min-w-0 flex-col items-center gap-1 px-0.5">
               {i < lastIndex ? (
-                <span className={`mx-1.5 mt-3 h-0.5 flex-1 rounded-full ${reached && i < currentIndex ? "bg-sky-500" : "bg-muted"}`} />
+                <span aria-hidden="true" className={`absolute start-1/2 top-3 h-0.5 w-full -translate-y-1/2 ${reached && i < currentIndex ? "bg-sky-500" : "bg-muted"}`} />
               ) : null}
-            </div>
+              <span
+                className={`relative flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition ${reached ? "bg-sky-500 text-white" : "bg-muted text-muted-foreground"} ${isCurrent ? "ring-2 ring-sky-300 ring-offset-2 ring-offset-background" : ""}`}
+              >
+                {reached ? <Check className="h-3.5 w-3.5" /> : i + 1}
+              </span>
+              <span className={`max-w-full text-center text-[10px] font-medium leading-tight tracking-tight hyphens-auto [overflow-wrap:anywhere] sm:text-[11px] sm:tracking-normal ${isCurrent ? "text-status-applied" : "text-muted-foreground"}`}>
+                {step.label}
+              </span>
+            </li>
           );
         })}
-      </div>
-      <p className={`mt-2.5 text-center text-[11px] ${isRejected ? "font-semibold text-rose-500" : "text-muted-foreground"}`}>
-        {isRejected ? t("rejected") : `${t("currentStageLabel")}: ${steps[currentIndex]?.label ?? t("applied")} • ${t("appliedOnDate", { date: appliedDate })}`}
+      </ol>
+      <p className={`mt-2.5 text-center text-[11px] ${isWithdrawn ? "font-semibold text-muted-foreground" : isRejected ? "font-semibold text-rose-500" : "text-muted-foreground"}`}>
+        {isWithdrawn
+          ? t("withdrawnByCandidate")
+          : isRejected
+            ? t("rejected")
+            : `${t("currentStageLabel")}: ${steps[currentIndex]?.label ?? t("applied")} • ${t("appliedOnDate", { date: appliedDate })}`}
       </p>
     </div>
   );
@@ -2934,10 +3062,12 @@ function ApplicationDetailsPanel({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
+                {/* Wraps: with the "+23 other roles" chip on the same line the
+                    name was cut to "Job S…" on a phone. */}
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
                   <a
                     href={`/${locale}/employer/candidates/${app.jobSeekerId?._id}`}
-                    className="truncate text-lg font-bold tracking-tight text-foreground hover:text-status-applied hover:underline"
+                    className="min-w-0 max-w-full truncate text-lg font-bold tracking-tight text-foreground hover:text-status-applied hover:underline"
                   >
                     {candidateName}
                   </a>
@@ -3216,7 +3346,7 @@ function ApplicationDetailsPanel({
                   <div className="mt-3 space-y-2">
                     {matchItems.map((item) => (
                       <div key={item.key} className="flex items-center gap-2">
-                        <span className="w-20 text-[11px] text-muted-foreground">{item.key === "cv" ? t("breakdownCv") : t(item.key)}</span>
+                        <span className="w-24 shrink-0 text-[11px] text-muted-foreground">{item.key === "cv" ? t("breakdownCv") : item.key === "education" ? t("breakdownQualifications") : t(item.key)}</span>
                         <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/50">
                           {item.value !== null ? (
                             <div
@@ -3267,15 +3397,34 @@ function ApplicationDetailsPanel({
               )}
             </div>
 
-            {/* Requirements checklist — what the job asks for, met or not.
-                The score says how good a fit; this says whether they qualify. */}
-            <RequirementsChecklist
-              checks={app.qualifications}
-              status={app.requirementsStatus}
-              matchedSkills={app.matchedSkills}
-              missingSkills={app.missingSkills}
-              weightsApplied={app.weightsApplied}
-            />
+            {/* Requirement report — each thing the job asks for, and what this
+                candidate has against it: Has / Partly / Does not have / Needs checking. */}
+            {/* With a report, the checklist's leftover rows (location, salary,
+                work mode, screening, CV) are its last group, "Other details" —
+                not a second "Requirements" box with its own badge. */}
+            {app.requirementReport?.items?.length ? (
+              <div className="workspace-glass-panel card-pad rounded-2xl">
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("requirementReportTitle")}</p>
+                <RequirementReport report={app.requirementReport} audience="employer" />
+                <RequirementsChecklist
+                  className="mt-4"
+                  checks={app.qualifications}
+                  status={app.requirementsStatus}
+                  weightsApplied={app.weightsApplied}
+                  coveredByReport
+                />
+              </div>
+            ) : (
+              /* Requirements checklist — what the job asks for, met or not.
+                 The score says how good a fit; this says whether they qualify. */
+              <RequirementsChecklist
+                checks={app.qualifications}
+                status={app.requirementsStatus}
+                matchedSkills={app.matchedSkills}
+                missingSkills={app.missingSkills}
+                weightsApplied={app.weightsApplied}
+              />
+            )}
 
             {/* Every answer this candidate gave, open questions included. */}
             <ScreeningAnswers answers={app.screeningAnswers} checks={app.qualifications} />
@@ -3538,7 +3687,7 @@ function ApplicationDetailsPanel({
         role="dialog"
         aria-modal="true"
         aria-label={t("candidateDetailsFor", { name: candidateName })}
-        className="absolute inset-y-0 right-0 flex h-dvh min-h-0 w-[96vw] max-w-[760px] flex-col overflow-hidden border-l border-border bg-background shadow-[0_24px_80px_rgba(15,23,42,0.24)] animate-in slide-in-from-right duration-300"
+        className="absolute inset-y-0 right-0 flex h-dvh min-h-0 w-full max-w-[760px] flex-col sm:w-[96vw] overflow-hidden border-l border-border bg-background shadow-[0_24px_80px_rgba(15,23,42,0.24)] animate-in slide-in-from-right duration-300"
         onClick={(event) => event.stopPropagation()}
       >
         {panelBody}
@@ -4517,7 +4666,7 @@ function ActivityTimelinePanel({
         role="dialog"
         aria-modal="true"
         aria-label={`Activity timeline for ${candidateLabel}`}
-        className="absolute inset-y-0 right-0 flex h-dvh min-h-0 w-[92vw] max-w-[460px] flex-col overflow-hidden border-l border-border/60 bg-background shadow-[0_24px_80px_rgba(15,23,42,0.24)] animate-in slide-in-from-right duration-300 sm:w-[520px] sm:max-w-[520px]"
+        className="absolute inset-y-0 right-0 flex h-dvh min-h-0 w-full flex-col sm:max-w-[460px] overflow-hidden border-l border-border/60 bg-background shadow-[0_24px_80px_rgba(15,23,42,0.24)] animate-in slide-in-from-right duration-300 sm:w-[520px] sm:max-w-[520px]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="sticky top-0 z-10 shrink-0 border-b border-border/60 bg-gradient-to-br from-slate-50 via-background to-blue-50/70 px-5 py-4 sm:px-6">

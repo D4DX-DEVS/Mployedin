@@ -14,8 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldError } from "@/components/shared/FieldError";
 import { CookiesDisabledNotice } from "@/components/shared/CookiesDisabledNotice";
+import { EmailCodeLogin } from "@/components/features/auth/EmailCodeLogin";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, LockKeyhole } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, Mail } from "lucide-react";
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
 import { postSignInPath } from "@/lib/auth/roleHome";
 import { oauthRedirectUrl } from "@/lib/auth/oauthRedirect";
@@ -92,6 +93,9 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [requires2fa, setRequires2fa] = useState(false);
+  // Job seekers can ask for a 6-digit code instead of typing a password: an
+  // account made on a shared job link has none.
+  const [codeLogin, setCodeLogin] = useState(false);
   // Resolved after mount: the callback URL lives on `window.location`, which
   // does not exist while the page is server-rendered.
   const [callbackPath, setCallbackPath] = useState<string | null>(null);
@@ -118,6 +122,9 @@ export default function LoginPage() {
     const reason = params.get("reason");
     if (reason === "idle") {
       setError({ kind: "session", message: t("sessionExpiredInactivity") });
+    } else if (reason === "password-changed") {
+      // ChangePasswordCard: a new password ends every session, this one too.
+      setError({ kind: "session", message: t("passwordChangedSignIn") });
     }
     const oauthError = params.get("error");
     const consentProvider = params.get("provider");
@@ -157,6 +164,9 @@ export default function LoginPage() {
   }, [error]);
 
   async function handleGoogleSignIn() {
+    // The error banner lives in the password form; show that form so a
+    // refused Google sign-in is not silent while the code form is open.
+    setCodeLogin(false);
     setError(null);
     setGoogleWindowBlocked(false);
     setGoogleLoading(true);
@@ -230,6 +240,15 @@ export default function LoginPage() {
     });
   }
 
+  // Where a signed-in visitor goes: the page they came for, or their home.
+  async function goToSignedInPage() {
+    const session = await getSession();
+    const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
+    const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
+    clearPendingReferral(); // signed in: a held referral code has no more use
+    router.replace(getSafeCallbackPath(locale) ?? postSignInPath(locale, role, isOnboarded));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -299,11 +318,7 @@ export default function LoginPage() {
         return;
       }
 
-      const session = await getSession();
-      const role = (session?.user as Record<string, unknown>)?.role as string ?? "job_seeker";
-      const isOnboarded = (session?.user as Record<string, unknown>)?.isOnboarded as boolean ?? true;
-      clearPendingReferral(); // signed in: a held referral code has no more use
-      router.replace(getSafeCallbackPath(locale) ?? postSignInPath(locale, role, isOnboarded));
+      await goToSignedInPage();
     } catch {
       setError({ kind: "service", message: t("somethingWentWrong") });
     } finally {
@@ -420,6 +435,15 @@ export default function LoginPage() {
         </div>
       </div>
 
+      {codeLogin ? (
+        <EmailCodeLogin
+          initialEmail={email}
+          registerHref={withCallback(registerHrefFor(locale, pendingReferral), callbackPath)}
+          onSignedIn={goToSignedInPage}
+          onBack={() => setCodeLogin(false)}
+        />
+      ) : (
+      <>
       {/* `noValidate`: the browser's own bubbles are untranslated, vanish after
           a moment and are not tied to the field, so handleSubmit checks the
           fields and writes the reason under each one instead. */}
@@ -556,6 +580,20 @@ export default function LoginPage() {
           {t("signIn")}
         </Button>
       </form>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="lg"
+        className="w-full rounded-xl text-sm font-medium"
+        onClick={() => { setError(null); setCodeLogin(true); }}
+        disabled={anyLoading}
+      >
+        <Mail className="me-2 h-4 w-4" aria-hidden="true" />
+        {t("codeLoginLink")}
+      </Button>
+      </>
+      )}
 
       <p className="text-center text-sm text-muted-foreground">
         <Link

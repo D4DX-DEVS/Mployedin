@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { JobFeedCard, type FeedJob } from "./JobFeedCard";
 import { JobFeedSidebar, type FeedFilters } from "./JobFeedSidebar";
 import { EasyApplyFlowDialog } from "./EasyApplyFlowDialog";
+import { JobSeekerSectionNav, JOBS_SECTION_PATHS } from "../JobSeekerSectionNav";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,8 @@ interface JobPage {
   newThisWeek: number;
   /** The admin's recommendation threshold, as the engine applied it. */
   threshold?: number;
+  /** The profile has nothing to score: no job carries a percentage. */
+  matchUnavailable?: boolean;
 }
 
 // ── Filter logic ──────────────────────────────────────────────────────────────
@@ -52,6 +55,9 @@ function passesFilters(job: FeedJob, filters: FeedFilters, inSearchMode: boolean
 
   // Only apply match score filtering in recommended mode (not in search mode where matchScore is always 0)
   if (filters.matchRanges.length > 0 && !inSearchMode) {
+    // No percentage (a profile with nothing to score): the filter cannot
+    // judge the job, so it does not hide it.
+    if (typeof job.matchScore !== "number") return true;
     const s = job.matchScore;
     const in80 = filters.matchRanges.includes("80+") && s >= 80;
     const in60 = filters.matchRanges.includes("60-79") && s >= 60 && s < 80;
@@ -196,6 +202,7 @@ function CardSkeleton() {
 export function JobFeedPage({ locale }: { locale: string }) {
   const t = useTranslations("jobFeed");
   const tSidebar = useTranslations("jobFeed.sidebar");
+  const tJourney = useTranslations("jobSeekerJourney");
   const qc = useQueryClient();
   const searchParams = useSearchParams();
   const employerIdParam = searchParams.get("employerId")?.trim() ?? "";
@@ -345,6 +352,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
   const strongMatches = data?.pages[0]?.strongMatches ?? 0;
   const newThisWeek = data?.pages[0]?.newThisWeek ?? 0;
   const threshold = data?.pages[0]?.threshold ?? 80;
+  const matchUnavailable = data?.pages[0]?.matchUnavailable === true;
   const hasMorePoolPages = poolPage < totalPoolPages;
 
   const visibleJobs = allJobs
@@ -372,6 +380,9 @@ export function JobFeedPage({ locale }: { locale: string }) {
                 </p>
               </div>
             </div>
+
+            {/* All jobs | Saved: saved jobs are the same list, filtered. */}
+            <JobSeekerSectionNav locale={locale} paths={JOBS_SECTION_PATHS} label={tJourney("jobsNavLabel")} />
 
             {/* Three side-by-side tiles on phones — stacked full-width blocks pushed
                 the actual job list a full screen down. Hints hide below sm. */}
@@ -814,6 +825,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
             filters={filters}
             onFiltersChange={setFilters}
             locale={locale}
+            hideMatchFilter={matchUnavailable}
           />
         </div>
       </div>
@@ -829,6 +841,7 @@ export function JobFeedPage({ locale }: { locale: string }) {
               onFiltersChange={setFilters}
               locale={locale}
               filtersOnly
+              hideMatchFilter={matchUnavailable}
             />
           </div>
         </DialogContent>

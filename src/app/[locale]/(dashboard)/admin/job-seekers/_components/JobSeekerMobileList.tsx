@@ -22,6 +22,7 @@ export interface MobileSeeker {
   profileCompleteness?: number;
   referralSummary?: ReferralSummary;
   badges?: string[];
+  industry?: string;
 }
 
 interface JobSeekerMobileListProps<T extends MobileSeeker> {
@@ -115,6 +116,11 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
                 <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800">
                   <Crown className="h-3 w-3" aria-hidden="true" />
                   {tr("premiumChip")}
+                </span>
+              )}
+              {js.industry && (
+                <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">
+                  {js.industry}
                 </span>
               )}
               {js.availabilityStatus && (

@@ -56,9 +56,11 @@ jest.mock("@/models/Job", () => ({
     updateOne: jest.fn().mockResolvedValue({}),
   },
 }));
+// The seeker's CV is held while the application is saved; nothing was removed.
+jest.mock("@/lib/cv/fileClaims", () => ({ claimSeekerFiles: jest.fn().mockResolvedValue([]) }));
 jest.mock("@/models/JobSeeker", () => ({
   __esModule: true,
-  default: { findOne: () => chain({ _id: SEEKER, fullName: stored.seekerName, documents: [] }) },
+  default: { findOne: () => chain({ _id: SEEKER, fullName: stored.seekerName, documents: [], cv: { originalUrl: "https://files.example.com/sara-cv.pdf" } }) },
 }));
 jest.mock("@/models/User", () => ({
   __esModule: true,

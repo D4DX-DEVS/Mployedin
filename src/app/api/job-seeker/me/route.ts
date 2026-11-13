@@ -11,7 +11,7 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
 
   await connectDB();
   const seeker = await JobSeeker.findOne({ userId: ctx.userId })
-    .select("fullName phone skills documents cv socialLinks cvDesign")
+    .select("fullName phone skills documents cv socialLinks cvDesign preferredCvId")
     .lean();
 
   if (!seeker) {
@@ -38,6 +38,8 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
         // The builder saves its design with the profile, so a saved design
         // means there is a built CV to offer.
         hasBuiltCv: !!seeker.cvDesign,
+        // Chosen on My CVs; the apply screens preselect it (cvChoice.ts).
+        preferredCvId: (seeker as { preferredCvId?: string | null }).preferredCvId ?? null,
         socialLinks: (seeker.socialLinks ?? []).map((l: { label: string; url: string }) => ({ label: l.label, url: l.url })),
       },
     },

@@ -17,6 +17,7 @@ import {
   GraduationCap,
   Info,
   Languages as LanguagesIcon,
+  Plane,
   MapPin,
   MessageSquare,
   Sparkles,
@@ -69,6 +70,7 @@ interface CandidateDetailResponse {
     certifications?: string[];
     preferredSalary?: { min?: number; max?: number; currency?: string };
     noticePeriod?: number;
+    openToRelocation?: boolean;
     availabilityStatus?: string;
     profileCompleteness?: number;
     totalExperienceYears?: number;
@@ -256,6 +258,10 @@ export function CandidateDetailPanel({
       : detail.noticePeriod === 0
         ? t("immediateStart")
         : t("noticeDaysValue", { days: detail.noticePeriod });
+  const relocationText =
+    detail?.openToRelocation == null
+      ? t("notProvided")
+      : detail.openToRelocation ? t("relocationOpen") : t("relocationNo");
   const languageText =
     detail?.languages && detail.languages.length > 0
       ? detail.languages.map((l) => l.language).join(", ")
@@ -379,6 +385,7 @@ export function CandidateDetailPanel({
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             <QuickFact icon={<Wallet className="h-3.5 w-3.5" />} label={t("expectedSalary")} value={salaryText} loading={isLoading} />
             <QuickFact icon={<CalendarClock className="h-3.5 w-3.5" />} label={t("noticePeriod")} value={noticeText} loading={isLoading} />
+            <QuickFact icon={<Plane className="h-3.5 w-3.5" />} label={t("relocationLabel")} value={relocationText} loading={isLoading} />
             <QuickFact icon={<LanguagesIcon className="h-3.5 w-3.5" />} label={t("languagesLabel")} value={languageText} loading={isLoading} />
             <QuickFact
               icon={<Sparkles className="h-3.5 w-3.5" />}

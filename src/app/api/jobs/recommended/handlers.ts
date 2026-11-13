@@ -11,7 +11,7 @@ import {
   RECOMMENDATION_POOL_SIZE,
   RECOMMENDED_JOB_SELECT,
 } from "@/lib/jobRecommendations";
-import { scoreSeekerPool } from "@/lib/matching/seekerMatches";
+import { displayedJobs, scoreSeekerPool } from "@/lib/matching/seekerMatches";
 import { maskJobEmployer } from "@/lib/jobs/companyDisclosure";
 import { restrictToIds, vectorRetrievalEnabled, vectorRetrieveJobs } from "@/lib/matching/vectorRetrieval";
 import type { UserRole } from "@/models/User";
@@ -177,9 +177,12 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     startIndex = idx + 1;
   }
 
-  const page = scored
+  const pageJobs = scored
     .slice(startIndex, startIndex + limit)
     .map((job) => maskJobEmployer(job as unknown as Record<string, unknown>) as unknown as typeof job);
+  // An empty profile scores the same neutral figure against every job; the
+  // cards then carry no percentage at all (displayedJobs).
+  const page = displayedJobs(pageJobs, pool);
   const nextCursor =
     page.length > 0 && startIndex + page.length < poolTotal
       ? String(page[page.length - 1]._id)
@@ -196,6 +199,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     strongMatches,
     newThisWeek,
     ...matchSummary,
+    matchUnavailable: pool.scoresUnsupported === true,
   });
 }
 

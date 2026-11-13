@@ -48,6 +48,13 @@ describe("isRelevantToJob (client 2026-10-28: a journalist listed for a backend 
     expect(isRelevantToJob(backend, { matchedSkills: [], roles: ["Quality Control Engineer"] })).toBe(false);
     expect(isRelevantToJob(backend, { matchedSkills: [], roles: [] })).toBe(false);
   });
+  it("does not count a language or driving skill alone (rollout row 33: bilinguals listed for a science teacher)", () => {
+    const teacher = "Science Teacher";
+    expect(isRelevantToJob(teacher, { matchedSkills: ["Bilingual (English/Arabic)"], roles: ["Safety Officer"] })).toBe(false);
+    expect(isRelevantToJob(teacher, { matchedSkills: ["English"], roles: [] })).toBe(false);
+    expect(isRelevantToJob(teacher, { matchedSkills: ["Valid driving licence"], roles: [] })).toBe(false);
+    expect(isRelevantToJob(teacher, { matchedSkills: ["Bilingual (English/Arabic)", "Lesson Planning"], roles: [] })).toBe(true);
+  });
 });
 
 describe("shortlistByPairScore", () => {

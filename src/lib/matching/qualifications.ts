@@ -24,9 +24,9 @@
 import type { SeekerProfile, JobProfile } from "@/lib/matchScore";
 import { workModePenalty } from "@/lib/matchScore";
 import { countryKey } from "@/lib/i18n/locations";
-import { monthlySalaryMidpoint } from "@/lib/matching/eligibility";
+import { expectationInJobCurrency, monthlySalaryMidpoint } from "@/lib/matching/eligibility";
 import type { RelevanceBreakdown } from "@/lib/matching/relevance";
-import { EXPERIENCE_SLACK_YEARS, SALARY_TOLERANCE } from "@/lib/matching/constants";
+import { SALARY_TOLERANCE } from "@/lib/matching/constants";
 import { describeKnockout, evaluateKnockout, type KnockoutRule } from "@/lib/matching/knockouts";
 import type { IndustryFit, IndustryKey } from "@/lib/matching/industry";
 import type { Locality, LocalityLevel } from "@/lib/matching/locality";
@@ -41,6 +41,7 @@ export type QualificationKey =
   | "salary"
   | "work_mode"
   | "languages"
+  | "credential"
   | "screening"
   | "cv";
 
@@ -98,28 +99,67 @@ export interface QualificationInput {
 
 const fmtYears = (years: number) => String(Math.round(years * 10) / 10);
 
-function experienceCheck(seeker: SeekerProfile, job: JobProfile): QualificationCheck | null {
+/*
+ * Experience, education, licences and languages read the same evaluation the
+ * scores and the requirement report use (requirementParts.ts), so the
+ * checklist, the report and both scores cannot disagree. A must-have is hard;
+ * a nice-to-have is shown only.
+ */
+
+function experienceCheck(seeker: SeekerProfile, job: JobProfile, relevance: RelevanceBreakdown): QualificationCheck | null {
+  const ex = relevance.evaluation?.experience;
   if (!(job.minExp > 0)) {
     // No minimum to meet, but the employer still sees that nothing was stated
     // (the breakdown reads "Not provided"); soft, so it never blocks anyone.
     return seeker.experienceKnown === false ? { key: "experience", status: "unknown", hard: false } : null;
   }
-  const base = { key: "experience" as const, hard: true, required: fmtYears(job.minExp) };
-  if (seeker.experienceKnown === false) return { ...base, status: "unknown" };
-  const years = seeker.experienceYears;
-  const status: QualificationStatus =
-    years >= job.minExp ? "met" : years >= job.minExp - EXPERIENCE_SLACK_YEARS ? "partial" : "not_met";
-  return { ...base, status, actual: fmtYears(years) };
+  if (!ex) {
+    // A breakdown built without the requirement evaluation: career length only.
+    const base = { key: "experience" as const, hard: true, required: fmtYears(job.minExp) };
+    if (seeker.experienceKnown === false) return { ...base, status: "unknown" };
+    const years = seeker.experienceYears;
+    const status: QualificationStatus = years >= job.minExp ? "met" : years >= job.minExp - 1 ? "partial" : "not_met";
+    return { ...base, status, actual: fmtYears(years) };
+  }
+  const base = {
+    key: "experience" as const,
+    hard: ex.asked.importance === "must",
+    required: fmtYears(job.minExp),
+    ...(ex.asked.subjectSource !== "title" && ex.asked.subject ? { label: ex.asked.subject } : {}),
+  };
+  if (!ex.known) return { ...base, status: "unknown" };
+  const shown = ex.asked.subjectSource !== "title" && ex.relevantYears !== null ? ex.relevantYears : ex.totalYears;
+  // Met only by a guessed end date: show the years that are certain.
+  return { ...base, status: ex.status, actual: fmtYears(ex.confirmedYears ?? shown) };
 }
 
-function educationCheck(seeker: SeekerProfile, job: JobProfile): QualificationCheck | null {
-  const required = job.requiredEducationLevel ?? 0;
-  if (required <= 0) return null;
-  const held = seeker.educationLevel ?? 0;
-  const base = { key: "education" as const, hard: true, required: String(required) };
-  if (held <= 0) return { ...base, status: "unknown" };
-  const status: QualificationStatus = held >= required ? "met" : required - held === 1 ? "partial" : "not_met";
-  return { ...base, status, actual: String(held) };
+function educationCheck(seeker: SeekerProfile, job: JobProfile, relevance: RelevanceBreakdown): QualificationCheck | null {
+  if (!relevance.evaluation) {
+    // A breakdown built without the requirement evaluation: levels only.
+    const required = job.requiredEducationLevel ?? 0;
+    if (required <= 0) return null;
+    const held = seeker.educationLevel ?? 0;
+    const base = { key: "education" as const, hard: true, required: String(required) };
+    if (held <= 0) return { ...base, status: "unknown" };
+    const status: QualificationStatus = held >= required ? "met" : required - held === 1 ? "partial" : "not_met";
+    return { ...base, status, actual: String(held) };
+  }
+  const ed = relevance.evaluation.education;
+  if (!ed) return null;
+  const base = { key: "education" as const, hard: ed.asked.importance === "must", required: String(ed.asked.level) };
+  if (ed.held <= 0) return { ...base, status: "unknown" };
+  return { ...base, status: ed.status, actual: String(ed.held) };
+}
+
+function credentialChecks(relevance: RelevanceBreakdown): QualificationCheck[] {
+  return (relevance.evaluation?.credentials ?? []).map((c) => ({
+    key: "credential" as const,
+    status: c.status,
+    hard: c.asked.importance === "must",
+    required: c.asked.name,
+    label: c.asked.name,
+    ...(c.quote ? { actual: c.quote } : {}),
+  }));
 }
 
 function skillsCheck(relevance: RelevanceBreakdown): QualificationCheck | null {
@@ -178,15 +218,20 @@ function salaryCheck(seeker: SeekerProfile, job: JobProfile): QualificationCheck
   if (!(seeker.salaryExpectation > 0)) return null;
   const mid = monthlySalaryMidpoint(job);
   if (!(mid > 0)) return null;
+  const expected = expectationInJobCurrency(seeker, job);
+  if (expected == null) return null;
   const seekerCur = (seeker.salaryCurrency ?? "").toUpperCase().trim();
   const jobCur = (job.salaryCurrency ?? "").toUpperCase().trim();
-  if (seekerCur && jobCur && seekerCur !== jobCur) return null;
-  const expected = seeker.salaryExpectation;
   const status: QualificationStatus =
     expected <= mid ? "met" : mid >= expected * SALARY_TOLERANCE ? "partial" : "not_met";
   const cur = jobCur || seekerCur;
-  const money = (n: number) => `${cur ? `${cur} ` : ""}${Math.round(n)}`;
-  return { key: "salary", status, hard: false, required: money(mid), actual: money(expected) };
+  const money = (n: number, c = cur) => `${c ? `${c} ` : ""}${Math.round(n)}`;
+  // Converted: show the figure in the job's currency and what the seeker typed.
+  const converted = Boolean(seekerCur && jobCur && seekerCur !== jobCur);
+  const actual = converted
+    ? `≈ ${money(expected)} (${money(seeker.salaryExpectation, seekerCur)})`
+    : money(expected);
+  return { key: "salary", status, hard: false, required: money(mid), actual };
 }
 
 function workModeCheck(seeker: SeekerProfile, job: JobProfile): QualificationCheck | null {
@@ -198,7 +243,19 @@ function workModeCheck(seeker: SeekerProfile, job: JobProfile): QualificationChe
   return { key: "work_mode", status, hard: false, required: mode, actual: pref };
 }
 
-function languagesCheck(seekerLanguages: readonly string[], jobLanguages: readonly string[]): QualificationCheck | null {
+function languagesCheck(
+  relevance: RelevanceBreakdown,
+  seekerLanguages: readonly string[],
+  jobLanguages: readonly string[],
+): QualificationCheck | null {
+  const lang = relevance.evaluation?.languages;
+  if (lang) {
+    const base = { key: "languages" as const, hard: lang.importance === "must", required: [...lang.have, ...lang.missing].join(", ") };
+    if (lang.status === "unknown") return { ...base, status: "unknown" };
+    return { ...base, status: lang.status, actual: lang.have.join(", ") };
+  }
+  // Languages stored on the job but never confirmed on the form (D14): shown
+  // to the employer, never scored, never a must-have.
   const wanted = jobLanguages.map((l) => l.trim()).filter(Boolean);
   if (wanted.length === 0) return null;
   const base = { key: "languages" as const, hard: false, required: wanted.join(", ") };
@@ -286,13 +343,14 @@ export function evaluateQualifications(input: QualificationInput): {
 } {
   const { seeker, job, relevance } = input;
   const checks = [
-    experienceCheck(seeker, job),
-    educationCheck(seeker, job),
+    experienceCheck(seeker, job, relevance),
+    educationCheck(seeker, job, relevance),
+    ...credentialChecks(relevance),
     ...screeningChecks(input),
     locationCheck(seeker, job, input.locality),
     skillsCheck(relevance),
     industryCheck(input),
-    languagesCheck(input.seekerLanguages ?? [], input.jobLanguages ?? []),
+    languagesCheck(relevance, input.seekerLanguages ?? [], input.jobLanguages ?? []),
     salaryCheck(seeker, job),
     workModeCheck(seeker, job),
     cvCheck(input.cv),

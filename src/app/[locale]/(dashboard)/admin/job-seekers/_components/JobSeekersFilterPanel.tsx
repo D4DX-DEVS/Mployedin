@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { SlidersHorizontal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { InlineFilterBar, INLINE_FILTER_CONTROL } from "@/components/shared/Inli
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { TableSortControl } from "@/components/shared/TableSortControl";
+import { toast } from "sonner";
 
 export interface JobSeekerFilters {
   skills: string;
@@ -22,6 +23,7 @@ export interface JobSeekerFilters {
   referred: string;
   education: string;
   nationality: string;
+  industry: string;
   experienceYears: number;
 }
 
@@ -35,6 +37,7 @@ export const EMPTY_JOB_SEEKER_FILTERS: JobSeekerFilters = {
   referred: "",
   education: "",
   nationality: "",
+  industry: "",
   experienceYears: 0,
 };
 
@@ -139,6 +142,7 @@ export function buildJobSeekerFilterChips(
   if (filters.location) chips.push(chip("location", tr("filterLabelLocation"), filters.location));
   if (filters.referred) chips.push(chip("referred", tr("tableHeaderReferredBy"), optionLabel(options.referred, filters.referred)));
   if (filters.nationality) chips.push(chip("nationality", tr("tableHeaderNationality"), filters.nationality));
+  if (filters.industry) chips.push(chip("industry", tr("filterLabelIndustry"), filters.industry));
   if (filters.education) chips.push(chip("education", tr("exportColumnHeaderEducation"), filters.education));
   if (filters.experienceYears > 0) chips.push(chip("experienceYears", tr("filterLabelMinExperience"), String(filters.experienceYears)));
   if (filters.hasCV) chips.push({ key: "hasCV", label: tr("filterHasCvOnly"), clear: { hasCV: false } });
@@ -188,6 +192,27 @@ export function JobSeekersFilterPanel({
 }: JobSeekersFilterPanelProps) {
   const tr = useTranslations("adminJobSeekers");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [industries, setIndustries] = useState<Array<{ value: string; label: string }>>([{ value: "", label: tr("filterLabelIndustry") }]);
+
+  useEffect(() => {
+    const fetchIndustries = async () => {
+      try {
+        const res = await fetch("/api/admin/job-attributes/industries");
+        if (res.ok) {
+          const data = await res.json();
+          const industryOptions = (data.items ?? []).map((ind: any) => ({
+            value: ind.name,
+            label: ind.name,
+          }));
+          setIndustries([{ value: "", label: tr("filterLabelIndustry") }, ...industryOptions]);
+        }
+      } catch (error) {
+        toast.error(tr("failedToLoadIndustries"));
+      }
+    };
+    fetchIndustries();
+  }, [tr]);
+
   const options = filterOptions(tr);
   // Typed or AI-set experience outside the presets still shows as itself.
   const experienceOptions = filters.experienceYears > 0 && !EXPERIENCE_PRESETS.includes(filters.experienceYears)
@@ -216,6 +241,14 @@ export function JobSeekersFilterPanel({
             value={filters.nationality}
             onChange={(e) => onFiltersChange({ nationality: e.target.value })}
             className={`${INLINE_FILTER_CONTROL} shadow-none`}
+          />
+          <SearchableSelect
+            ariaLabel={tr("filterLabelIndustry")}
+            className={INLINE_FILTER_CONTROL}
+            options={industries}
+            value={filters.industry}
+            onValueChange={(value) => onFiltersChange({ industry: value })}
+            placeholder={tr("filterLabelIndustry")}
           />
           <SearchableSelect
             ariaLabel={tr("filterLabelJobType")}
@@ -298,6 +331,14 @@ export function JobSeekersFilterPanel({
         className={`${INLINE_FILTER_CONTROL} shadow-none`}
       />
       <SearchableSelect
+        ariaLabel={tr("filterLabelIndustry")}
+        className={INLINE_FILTER_CONTROL}
+        options={industries}
+        value={filters.industry}
+        onValueChange={(value) => onFiltersChange({ industry: value })}
+        placeholder={tr("filterLabelIndustry")}
+      />
+      <SearchableSelect
         ariaLabel={tr("filterLabelMinExperience")}
         // Wide enough for "Any experience" / "10+ years" without an ellipsis.
         className={`${INLINE_FILTER_CONTROL} min-w-40`}
@@ -332,6 +373,7 @@ export function JobSeekersFilterPanel({
       experienceYears={filters.experienceYears}
       hasCV={filters.hasCV}
       nationality={filters.nationality}
+      industry={filters.industry}
       jobType={filters.jobType}
       referred={filters.referred}
       options={{ ...options, experience: experienceOptions }}

@@ -430,8 +430,11 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3">
-          <TabsList className="w-full justify-start">
+        {/* min-w-0: as a grid item the tab row's full width (four tabs with
+            icons, ~396px) stretched the whole pop-up 23px past a 390px phone and
+            cut the Support tab. Phones drop the tab icons so all four fit. */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 space-y-3">
+          <TabsList className="w-full justify-start max-sm:[&_svg]:hidden max-sm:[&>button]:px-2.5">
             <TabsTrigger value="details" className="gap-1.5">
               <Receipt className="h-3 w-3" /> {t("tabDetails")}
             </TabsTrigger>
@@ -962,8 +965,14 @@ export default function EmployerInvoicesPage() {
   const currencyTotals: CurrencyTotals[] = summary.byCurrency?.length
     ? summary.byCurrency
     : [{ currency: displayCurrency, totalAmount: summary.totalAmount, totalPaid: summary.totalPaid, totalBalance: summary.totalBalance, count: 0 }];
-  const moneyStrip = (pick: (row: CurrencyTotals) => number) =>
-    currencyTotals.map((row) => `${row.currency} ${formatCount(pick(row), { maximumFractionDigits: 0 })}`).join(" · ");
+  // One line per currency: joined with " · " the pair broke mid-value on a
+  // phone ("AED 3,150 · USD" / "0").
+  const moneyLines = (pick: (row: CurrencyTotals) => number) =>
+    currencyTotals.map((row) => (
+      <span key={row.currency} className="block whitespace-nowrap">
+        {row.currency} {formatCount(pick(row), { maximumFractionDigits: 0 })}
+      </span>
+    ));
 
   const exportColumns: ExportColumn<Invoice>[] = [
     { header: t("invoiceHash"), key: "invoiceNumber" },
@@ -1039,22 +1048,22 @@ export default function EmployerInvoicesPage() {
       <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border border-border/70 bg-card card-pad">
           <p className="text-xs text-muted-foreground">{t("totalBilled")}</p>
-          <p className="mt-1 text-xl font-bold">{moneyStrip((r) => r.totalAmount)}</p>
+          <p className="mt-1 text-lg font-bold sm:text-xl">{moneyLines((r) => r.totalAmount)}</p>
         </div>
         <div className="rounded-2xl border border-status-selected/20 bg-status-selected-bg/50 card-pad">
           <p className="text-xs text-status-selected">{t("totalPaid")}</p>
-          <p className="mt-1 text-xl font-bold text-emerald-700">{moneyStrip((r) => r.totalPaid)}</p>
+          <p className="mt-1 text-lg font-bold text-emerald-700 sm:text-xl">{moneyLines((r) => r.totalPaid)}</p>
         </div>
         <div className="rounded-2xl border border-status-shortlisted/20 bg-status-shortlisted-bg/50 card-pad">
           <p className="text-xs text-status-shortlisted">{t("outstandingBalance")}</p>
-          <p className="mt-1 text-xl font-bold text-status-shortlisted">{moneyStrip((r) => r.totalBalance)}</p>
+          <p className="mt-1 text-lg font-bold text-status-shortlisted sm:text-xl">{moneyLines((r) => r.totalBalance)}</p>
         </div>
         <div className="rounded-2xl border border-status-rejected/20 bg-status-rejected-bg/50 card-pad">
           <p className="text-xs text-status-rejected">{t("overdue")}</p>
           {/* A count, not money. This printed `summary.overdue` — the summed
               overdue AMOUNT — so an AED 3,150 invoice showed as a bare "3150"
               under a label promising a number of invoices. */}
-          <p className="mt-1 text-xl font-bold text-rose-700">{formatCount(summary.counts?.overdue ?? 0)}</p>
+          <p className="mt-1 text-lg font-bold text-rose-700 sm:text-xl">{formatCount(summary.counts?.overdue ?? 0)}</p>
         </div>
       </div>
 
@@ -1103,12 +1112,14 @@ export default function EmployerInvoicesPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
+                {/* Tablets (sm–lg) keep invoice, total, status and due date so the
+                    actions stay on screen; the row opens the invoice for the rest. */}
                 <TableHead>{t("invoiceHash")}</TableHead>
-                <TableHead>{t("job")}</TableHead>
-                <TableHead>{t("categoryCol")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("job")}</TableHead>
+                <TableHead className="hidden xl:table-cell">{t("categoryCol")}</TableHead>
                 <TableHead className="text-right">{t("total")}</TableHead>
-                <TableHead className="text-right">{t("paid")}</TableHead>
-                <TableHead className="text-right">{t("balance")}</TableHead>
+                <TableHead className="hidden text-right lg:table-cell">{t("paid")}</TableHead>
+                <TableHead className="hidden text-right lg:table-cell">{t("balance")}</TableHead>
                 <TableHead>{t("status")}</TableHead>
                 <TableHead>{t("dueDate")}</TableHead>
                 <TableHead className="text-right">{t("actions")}</TableHead>
@@ -1125,14 +1136,14 @@ export default function EmployerInvoicesPage() {
                 </TableRow>
               ) : invoices.map((inv) => (
                 <TableRow key={inv._id} className="group cursor-pointer" onClick={() => setSelectedInvoice(inv)}>
-                  <TableCell><p className="font-mono text-sm font-medium">{inv.invoiceNumber}</p></TableCell>
-                  <TableCell><p className="max-w-[160px] truncate text-sm">{inv.jobId?.title ?? "—"}</p></TableCell>
-                  <TableCell><span className="text-[11px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span></TableCell>
-                  <TableCell className="text-right font-semibold">{inv.currency} {formatCount((inv.totalAmount ?? 0))}</TableCell>
-                  <TableCell className="text-right text-sm text-status-selected">{inv.currency} {formatCount((inv.paidAmount ?? 0))}</TableCell>
-                  <TableCell className="text-right text-sm text-status-shortlisted">{inv.currency} {formatCount((inv.balanceDue ?? 0))}</TableCell>
+                  <TableCell><p className="whitespace-nowrap font-mono text-sm font-medium">{inv.invoiceNumber}</p></TableCell>
+                  <TableCell className="hidden lg:table-cell"><p className="max-w-[160px] truncate text-sm">{inv.jobId?.title ?? "—"}</p></TableCell>
+                  <TableCell className="hidden xl:table-cell"><span className="text-[11px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span></TableCell>
+                  <TableCell className="whitespace-nowrap text-right font-semibold">{inv.currency} {formatCount((inv.totalAmount ?? 0))}</TableCell>
+                  <TableCell className="hidden whitespace-nowrap text-right text-sm text-status-selected lg:table-cell">{inv.currency} {formatCount((inv.paidAmount ?? 0))}</TableCell>
+                  <TableCell className="hidden whitespace-nowrap text-right text-sm text-status-shortlisted lg:table-cell">{inv.currency} {formatCount((inv.balanceDue ?? 0))}</TableCell>
                   <TableCell><StatusBadge status={inv.status} /></TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{inv.dueDate ? formatDate(new Date(inv.dueDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"}</TableCell>
+                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{inv.dueDate ? formatDate(new Date(inv.dueDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end" onClick={e => e.stopPropagation()}>
                       <RowActions

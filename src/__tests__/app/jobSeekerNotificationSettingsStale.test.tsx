@@ -17,6 +17,8 @@ jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  // The Settings tab row reads the current path to mark its tab.
+  usePathname: () => "/en/job-seeker/settings/notifications",
 }));
 jest.mock("@/hooks/useBackNavigation", () => ({ useBackNavigation: () => ({ goBack: jest.fn() }) }));
 

@@ -145,5 +145,6 @@ async function deleteHandler(req: NextRequest, ctx: AuthContext) {
 }
 
 export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+// freshSession: a new address outlives the session that asks for it.
+export const POST = withAuth(postHandler, { freshSession: true });
 export const DELETE = withAuth(deleteHandler);

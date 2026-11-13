@@ -15,7 +15,7 @@
  */
 
 import { isAiRerankEnabled, resolveMatchThreshold } from "@/models/SystemConfig";
-import type { SeekerProfile } from "@/lib/matchScore";
+import { hasScoringEvidence, type SeekerProfile } from "@/lib/matchScore";
 import type { IneligibleReason } from "@/lib/matching/eligibility";
 import { mongoJevVerdictStore } from "@/lib/matching/jevVerdictStore";
 import {
@@ -93,6 +93,27 @@ export interface ScoredPool<T> {
   bestScore: number;
   /** Why nothing was recommended. Absent when something was. */
   limitingFactor?: LimitingFactor;
+  /**
+   * The profile states nothing the score reads (`hasScoringEvidence`), so every
+   * matchScore here is the engine's neutral defaults. The jobs are still scored
+   * and ordered; a response must not print the number — see `displayedJobs`.
+   * Absent when the scores mean something.
+   */
+  scoresUnsupported?: true;
+}
+
+/**
+ * The jobs as a response may carry them: without `matchScore` when the pool's
+ * scores are unsupported. Every seeker card prints the percentage only when it
+ * is a number, so leaving it out is what hides it — on the home page, the feed
+ * and the preferences page alike.
+ */
+export function displayedJobs<T extends { matchScore?: number }>(
+  jobs: readonly T[],
+  pool: Pick<ScoredPool<Record<string, unknown>>, "scoresUnsupported">,
+): Array<Omit<T, "matchScore"> & { matchScore?: number }> {
+  if (!pool.scoresUnsupported) return [...jobs];
+  return jobs.map(({ matchScore: _withheld, ...rest }) => rest);
 }
 
 /**
@@ -172,6 +193,7 @@ export async function scoreSeekerPool<T extends Record<string, unknown>>(
     ...(recommendedCount === 0
       ? { limitingFactor: diagnoseLimitingFactor(seeker, rejected, eligibleCount) }
       : {}),
+    ...(hasScoringEvidence(seeker) ? {} : { scoresUnsupported: true as const }),
   };
 }
 

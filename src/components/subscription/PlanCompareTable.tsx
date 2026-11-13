@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { convertCurrency, formatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import { OverflowTabs } from "@/components/shared/OverflowTabs";
 import { useRequestPlanChange, type AvailablePlan } from "@/hooks/useSubscription";
 import {
   billingCurrency, compareRows, planMove, sortPlans, type CompareCell, type CustomerRole,
@@ -43,7 +44,7 @@ function Cell({ cell, label }: { cell: CompareCell; label: (k: string) => string
   return <span className="font-medium tabular-nums">{["basic", "advanced"].includes(v) ? label(`analytics_${v}`) : v}</span>;
 }
 
-/** Every plan side by side, always open; it is the most useful thing here. */
+/** Every plan side by side (two at a time on phones), always open; it is the most useful thing here. */
 export function PlanCompareTable(props: Props) {
   const { role, currentPlanId, currentTier, enforced, hasPendingRequest, displayCurrency, rates } = props;
   const t = useTranslations("planBilling");
@@ -52,8 +53,17 @@ export function PlanCompareTable(props: Props) {
   const rows = compareRows(role);
   const [target, setTarget] = useState<AvailablePlan | null>(null);
   const request = useRequestPlanChange();
+  // Phones compare two plans at a time: yours and the one picked from the
+  // chips. All four side by side needed a 520px table that scrolled sideways
+  // with a scroll bar and showed only Free and Silver.
+  const [pickedId, setPickedId] = useState<string | null>(null);
 
   if (plans.length === 0) return null;
+
+  const others = plans.filter((p) => p._id !== currentPlanId);
+  const picked = others.find((p) => p._id === pickedId) ?? others[0];
+  const baseId = plans.some((p) => p._id === currentPlanId) ? currentPlanId : others.find((p) => p._id !== picked?._id)?._id;
+  const phoneHidden = (p: AvailablePlan) => (p._id === baseId || p._id === picked?._id ? "" : "max-sm:hidden");
 
   const send = () => {
     if (!target) return;
@@ -79,10 +89,21 @@ export function PlanCompareTable(props: Props) {
         <h3 id="compare-title" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("comparePlans")}</h3>
         <p className="text-xs text-muted-foreground">{enforced ? t("billedIn", { currency }) : t("pricePreview", { currency })}</p>
       </div>
+      {others.length > 1 && picked && (
+        <div className="space-y-1.5 sm:hidden">
+          <p className="text-xs font-medium text-muted-foreground">{t("compareWith")}</p>
+          <OverflowTabs
+            ariaLabel={t("compareWith")}
+            value={picked._id}
+            onChange={setPickedId}
+            items={others.map((p) => ({ key: p._id, label: p.name }))}
+          />
+        </div>
+      )}
       <div className="overflow-x-auto rounded-2xl border border-border/60 bg-card" tabIndex={0} role="region" aria-labelledby="compare-title">
         {/* data-mobile-table="scroll": a comparison only reads as columns; the
             phone card treatment would split every plan into separate rows. */}
-        <table data-mobile-table="scroll" className="w-full min-w-[520px] text-sm">
+        <table data-mobile-table="scroll" className="w-full text-sm sm:min-w-[520px]">
           <thead>
             <tr className="border-b border-border/60">
               <th scope="col" className="sticky start-0 z-10 bg-card p-3 text-start font-medium text-muted-foreground">
@@ -91,7 +112,7 @@ export function PlanCompareTable(props: Props) {
               {plans.map((p) => {
                 const current = p._id === currentPlanId;
                 return (
-                  <th key={p._id} scope="col" className={cn("p-3 text-center align-top", current && "bg-primary/5")}>
+                  <th key={p._id} scope="col" className={cn("p-3 text-center align-top", current && "bg-primary/5", phoneHidden(p))}>
                     <span className="block font-semibold">{p.name}</span>
                     <span className="mt-1 block text-lg font-bold tabular-nums">{price(p)}</span>
                     <span className="block text-xs font-normal text-muted-foreground">
@@ -108,7 +129,7 @@ export function PlanCompareTable(props: Props) {
               <tr key={row.key} className="border-b border-border/40 last:border-0">
                 <th scope="row" className="sticky start-0 z-10 bg-card p-3 text-start font-normal">{t(row.key)}</th>
                 {plans.map((p) => (
-                  <td key={p._id} className={cn("p-3 text-center", p._id === currentPlanId && "bg-primary/5")}>
+                  <td key={p._id} className={cn("p-3 text-center", p._id === currentPlanId && "bg-primary/5", phoneHidden(p))}>
                     <Cell cell={row.cell(p)} label={t} />
                   </td>
                 ))}
@@ -119,7 +140,7 @@ export function PlanCompareTable(props: Props) {
               {plans.map((p) => {
                 const move = planMove(p, currentPlanId, currentTier);
                 return (
-                  <td key={p._id} className={cn("p-3 text-center", move === "current" && "bg-primary/5")}>
+                  <td key={p._id} className={cn("p-3 text-center", move === "current" && "bg-primary/5", phoneHidden(p))}>
                     {move === "current" ? (
                       <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{t("current")}</span>
                     ) : enforced ? (

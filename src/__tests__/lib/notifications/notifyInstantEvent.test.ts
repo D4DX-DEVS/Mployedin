@@ -87,7 +87,7 @@ describe("helpers whose caller sends its own email", () => {
   });
 
   it.each([
-    ["notifyStatusChange", () => notifyStatusChange("u1", "Nurse", "shortlisted", "a1", { sendEmail: false })],
+    ["notifyStatusChange", () => notifyStatusChange("u1", "Nurse", "hired", "a1", { sendEmail: false })],
     ["notifyOfferMade", () => notifyOfferMade("u1", "Nurse", "Acme", "a1", { sendEmail: false })],
     ["notifyInterviewScheduled", () => notifyInterviewScheduled("u1", "Nurse", new Date("2026-10-05T06:00:00Z"), "Dubai office", "i1", { sendEmail: false })],
   ])("%s keeps the in-app row and WhatsApp but drops the email copy", async (_name, call) => {
@@ -117,7 +117,15 @@ describe("helpers whose caller sends its own email", () => {
 
   it("still emails by default", async () => {
     const { send } = await mocks();
-    await notifyStatusChange("u1", "Nurse", "shortlisted", "a1");
+    await notifyStatusChange("u1", "Nurse", "hired", "a1");
     expect(send.mock.calls[0][0].data).toEqual(expect.objectContaining({ sendEmail: true, sendWhatsApp: true }));
+  });
+
+  // The seeker sees In review / Interview through these moves, so nothing is sent.
+  it.each(["shortlisted", "selected"])("tells the seeker nothing about a move to %s", async (status) => {
+    const { create, send } = await mocks();
+    await notifyStatusChange("u1", "Nurse", status, "a1");
+    expect(create).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
   });
 });

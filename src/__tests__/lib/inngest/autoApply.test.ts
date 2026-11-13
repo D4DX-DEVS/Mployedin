@@ -118,6 +118,8 @@ beforeEach(() => {
     preferredCountries: ["India"],
     preferredRoles: ["React Developer"],
     totalExperienceYears: 3,
+    // Every application carries a CV; a seeker with none is skipped (below).
+    cv: { originalUrl: "https://cdn/cvs/profile.pdf" },
   };
   jobs = [
     job("strong"),
@@ -189,6 +191,7 @@ describe("autoApply — the CV sent", () => {
   });
 
   it("stores the newest uploaded resume when there is no Profile CV", async () => {
+    seekerDoc.cv = undefined;
     seekerDoc.documents = [
       { id: "d1", name: "Old.pdf", category: "resume", url: "https://cdn/documents/old.pdf" },
       { id: "d2", name: "New.pdf", category: "resume", url: "https://cdn/documents/new.pdf" },
@@ -198,9 +201,10 @@ describe("autoApply — the CV sent", () => {
     expect(created().documents).toEqual([{ name: "New.pdf", url: "https://cdn/documents/new.pdf", type: "resume" }]);
   });
 
-  it("still applies, with no attachment, for a seeker who has no CV file", async () => {
-    expect(await run()).toEqual({ applied: 1 });
-    expect(created().documents).toEqual([]);
+  it("sends nothing for a seeker who has no CV file", async () => {
+    seekerDoc.cv = undefined;
+    expect(await run()).toEqual({ applied: 0 });
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it("reads the seeker's documents and Profile CV as they are when the application is saved", async () => {

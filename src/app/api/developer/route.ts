@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import ApiKey from "@/models/ApiKey";
 import Webhook from "@/models/Webhook";
 import Employer from "@/models/Employer";
+import { employerWebhookCreateSchema } from "@/lib/validators/webhooks";
 import { logActivity } from "@/lib/audit/log";
 import mongoose from "mongoose";
 import crypto from "crypto";
@@ -19,7 +20,9 @@ async function getHandler(req: NextRequest, ctx: { userId: string; role: string 
 
   if (type === "webhooks") {
     const webhooks = await Webhook.find({ createdBy: new mongoose.Types.ObjectId(ctx.userId) })
-      .select("-secret")
+      // deliveryLog.payload is the admin replay copy; rows that predate tenant
+      // scoping may hold other companies' events there.
+      .select("-secret -deliveryLog.payload")
       .sort({ createdAt: -1 })
       .lean();
     return NextResponse.json({ webhooks });
@@ -75,21 +78,30 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 
   // Create Webhook
   if (body.type === "webhook") {
-    const { name, url: webhookUrl, events } = body;
-    if (!name || !webhookUrl || !events?.length) {
-      return NextResponse.json({ error: "name, url, events required" }, { status: 400 });
+    // Same field rules as the admin webhook form. Unknown keys (secret,
+    // isActive, createdBy...) are stripped, so the caller cannot set them.
+    const parsed = employerWebhookCreateSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+        },
+        { status: 400 },
+      );
     }
+    const { name, url: webhookUrl, events, headers, retryCount } = parsed.data;
 
     const secret = crypto.randomBytes(32).toString("hex");
 
     const webhook = await Webhook.create({
-      name: name.trim(),
+      name,
       url: webhookUrl,
       secret,
       events,
-      headers: body.headers || {},
+      headers: headers ?? {},
       isActive: true,
-      retryCount: body.retryCount || 3,
+      retryCount: retryCount ?? 3,
       createdBy: new mongoose.Types.ObjectId(ctx.userId),
     });
 
@@ -122,5 +134,6 @@ async function deleteHandler(req: NextRequest, ctx: { userId: string; role: stri
 }
 
 export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+// freshSession: an API key or webhook outlives the session that makes it.
+export const POST = withAuth(postHandler, { freshSession: true });
 export const DELETE = withAuth(deleteHandler);

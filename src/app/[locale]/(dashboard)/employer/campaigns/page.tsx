@@ -105,8 +105,8 @@ export default function EmployerCampaignsPage() {
         actions={
           total > 0 ? (
             <Button onClick={() => setCreateOpen(true)} aria-label={t("create")} className="rounded-xl px-3 sm:px-4">
-              <Plus className="h-4 w-4 sm:me-2" aria-hidden="true" />
-              <span className="hidden sm:inline">{t("create")}</span>
+              <Plus className="h-4 w-4 me-2" aria-hidden="true" />
+              <span>{t("create")}</span>
             </Button>
           ) : undefined
         }
@@ -121,14 +121,14 @@ export default function EmployerCampaignsPage() {
               placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="h-10 min-w-0 flex-1 rounded-xl border-border bg-background sm:w-64 sm:flex-none"
+              className="h-11 min-w-0 basis-full rounded-xl border-border bg-background sm:h-10 sm:w-64 sm:basis-auto"
               aria-label={t("searchPlaceholder")}
             />
             <Select
               value={statusFilter || "all"}
               onValueChange={(v) => { setStatusFilter(v === "all" ? null : v); setPage(1); }}
             >
-              <SelectTrigger className="h-10 w-44 shrink-0 rounded-xl border-border bg-background" aria-label={t("status")}>
+              <SelectTrigger className="h-11 min-w-0 flex-1 rounded-xl border-border bg-background sm:h-10 sm:w-44 sm:flex-none" aria-label={t("status")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -99,6 +99,11 @@ jest.mock("@/lib/security/rateLimit", () => ({
   checkRateLimit: (...a: unknown[]) => mockCheckRateLimit(...a),
 }));
 jest.mock("@/lib/employers/company-membership", () => ({ __esModule: true, ensureEmployerOwnerMembership: jest.fn() }));
+const mockDropUnprovenPassword = jest.fn();
+jest.mock("@/lib/auth/unprovenPassword", () => ({
+  __esModule: true,
+  dropUnprovenPassword: (...a: unknown[]) => mockDropUnprovenPassword(...a),
+}));
 jest.mock("@/lib/gdpr/consent", () => ({ __esModule: true, recordRegistrationConsents: (...a: unknown[]) => mockRecordConsents(...a) }));
 jest.mock("next/headers", () => ({ __esModule: true, cookies: jest.fn(async () => ({ get: () => undefined })) }));
 jest.mock("@/lib/referrals/attachJobSeeker", () => ({ __esModule: true, attachJobSeekerReferral: jest.fn() }));
@@ -188,6 +193,7 @@ beforeEach(() => {
   // An account exists unless a test says otherwise (the consent gate asks first).
   mockUserExists.mockResolvedValue({ _id: "job-seeker-id" });
   mockRecordConsents.mockResolvedValue(undefined);
+  mockDropUnprovenPassword.mockResolvedValue(false);
 });
 
 describe("email-otp Credentials provider — authorize()", () => {
@@ -205,6 +211,56 @@ describe("email-otp Credentials provider — authorize()", () => {
       expect(update.$set).toMatchObject({ isEmailVerified: true, failedLoginAttempts: 0, lockUntil: null });
       expect(update).not.toHaveProperty("$unset");
       expect(JSON.stringify(update)).not.toContain("emailVerification");
+    });
+
+    describe("a password nobody proved the mailbox for", () => {
+      // Someone can register another person's address with their own password;
+      // the account stays unverified. The code proves who owns the mailbox, so
+      // that password must not survive it.
+      test("is dropped when the code verifies an unverified account, before it is marked verified", async () => {
+        existingUser(baseUser({ isEmailVerified: false }));
+        const order: string[] = [];
+        mockDropUnprovenPassword.mockImplementation(async () => {
+          order.push("drop");
+          return true;
+        });
+        mockUserFindByIdAndUpdate.mockImplementation(async () => {
+          order.push("verify");
+          return {};
+        });
+
+        await expect(authorize({ email: EMAIL, otp: CODE })).resolves.toMatchObject({ id: "job-seeker-id" });
+
+        expect(mockDropUnprovenPassword).toHaveBeenCalledWith("job-seeker-id", { provider: "email-otp", role: "job_seeker" });
+        // The helper's filter needs the account still unverified.
+        expect(order).toEqual(["drop", "verify"]);
+      });
+
+      test("is not looked for on an account that is already verified", async () => {
+        existingUser(baseUser({ isEmailVerified: true }));
+
+        await authorize({ email: EMAIL, otp: CODE });
+
+        expect(mockDropUnprovenPassword).not.toHaveBeenCalled();
+      });
+
+      test("is not looked for on an account the code just created", async () => {
+        existingUser(null);
+        mockUserExists.mockResolvedValue(null);
+        mockUserCreate.mockResolvedValue(baseUser({ _id: "new-id", isEmailVerified: true }));
+
+        await authorize({ email: EMAIL, otp: CODE, termsAccepted: "true" });
+
+        expect(mockDropUnprovenPassword).not.toHaveBeenCalled();
+      });
+
+      test("a refused sign-in (inactive, locked) drops nothing", async () => {
+        existingUser(baseUser({ isEmailVerified: false, isActive: false }));
+
+        expect(await authorize({ email: EMAIL, otp: CODE })).toBeNull();
+
+        expect(mockDropUnprovenPassword).not.toHaveBeenCalled();
+      });
     });
 
     test("unknown email: this is where the account is created (User + JobSeeker + default plan)", async () => {

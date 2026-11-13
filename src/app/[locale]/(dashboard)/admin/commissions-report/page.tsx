@@ -376,7 +376,6 @@ export default function AdminCommissionsReportPage() {
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder={t("searchPlaceholder")}
-            className="max-sm:basis-0"
           />
         </InlineFilterBar>
         <PhoneRecordList

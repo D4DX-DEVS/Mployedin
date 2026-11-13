@@ -224,7 +224,7 @@ async function postHandler(
       currency: invoice.currency,
       status: "paid",
       paidAt: invoice.paidAt?.toISOString(),
-    });
+    }, { employerId: invoice.employerId });
   }
 
   return NextResponse.json({

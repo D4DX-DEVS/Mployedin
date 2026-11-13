@@ -24,9 +24,32 @@ export interface IJobRequirements {
   experienceMin: number;
   experienceMax: number;
   education?: string;
+  /**
+   * Structured education ask from the job form: 1 school … 5 doctorate, and
+   * 0 for an explicit "No minimum". Absent on jobs posted before the field,
+   * whose `education` text and qualification lines are read instead
+   * (lib/matching/jobRequirements.ts).
+   */
+  educationLevel?: number | null;
+  /** Field of study, free text ("Computer Science or related"). */
+  educationField?: string;
+  /** The field itself is essential: a degree in another field is a miss. */
+  educationFieldEssential?: boolean;
+  educationImportance?: RequirementImportance;
+  /** What the minimum years are in: "MERN stack", "GCC freight forwarding". */
+  experienceIn?: string;
   languages: string[];
+  languagesImportance?: RequirementImportance;
+  /** When the employer confirmed `languages` on the form; unconfirmed stored languages are not scored. */
+  languagesConfirmedAt?: Date | null;
+  /** Licences / certificates: "Valid UAE driving licence", "DHA licence". */
+  credentials?: Array<{ name: string; importance: RequirementImportance }>;
   nationality?: string[];
 }
+
+export type RequirementImportance = "must" | "nice";
+/** The kind of hire, which sets the standard ranking weights (matchingWeights.ts HIRE_TYPE_WEIGHTS). */
+export type HireType = "experienced" | "skills" | "qualification" | "entry";
 
 export type SalaryPeriod = "monthly" | "yearly" | "lpa";
 export type JobVisibility = "public" | "private" | "invite_only";
@@ -166,6 +189,7 @@ export interface IJob extends Document {
   responsibilitiesAr?: string[];
   qualifications?: string[];
   qualificationsAr?: string[];
+  hireType?: HireType;
   benefits?: string[];
   benefitsAr?: string[];
   learningOutcomes?: string[];
@@ -232,9 +256,24 @@ const JobSchema = new Schema<IJob>(
       experienceMin: { type: Number, default: 0 },
       experienceMax: { type: Number, default: 30 },
       education: String,
+      educationLevel: { type: Number, min: 0, max: 5 },
+      educationField: { type: String, trim: true },
+      educationFieldEssential: Boolean,
+      educationImportance: { type: String, enum: ["must", "nice"] },
+      experienceIn: { type: String, trim: true },
       languages: [String],
+      languagesImportance: { type: String, enum: ["must", "nice"] },
+      languagesConfirmedAt: Date,
+      credentials: [
+        {
+          _id: false,
+          name: { type: String, trim: true, required: true },
+          importance: { type: String, enum: ["must", "nice"], default: "must" },
+        },
+      ],
       nationality: [String],
     },
+    hireType: { type: String, enum: ["experienced", "skills", "qualification", "entry"] },
     employmentType: {
       type: String,
       enum: ["full_time", "part_time", "contract", "internship", "freelance", "walk_in"],

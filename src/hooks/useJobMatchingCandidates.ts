@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import type { QualificationLineCheck } from "@/lib/matching/qualificationLines";
 import type { QualificationItem } from "@/components/features/employer/applications/RequirementsChecklist";
+import type { RequirementReport } from "@/lib/matching/requirementReport";
 
 /** Mirrors PoolCandidate (lib/matching/talentPoolMatches.ts) plus the invite flag. */
 export interface MatchingCandidate {
@@ -10,7 +11,9 @@ export interface MatchingCandidate {
   avatar?: string;
   headline?: string;
   currentLocation?: string;
+  /** Years the score used (dated roles, then the stated total). */
   totalExperienceYears?: number;
+  experienceKnown?: boolean;
   availabilityStatus?: string;
   score: number;
   breakdown: {
@@ -29,6 +32,8 @@ export interface MatchingCandidate {
   lineChecks?: QualificationLineCheck[];
   /** Every requirement checked (met or not), for the expanded card. */
   qualifications?: QualificationItem[];
+  /** Each job requirement: has / partly / does not have / needs checking. */
+  requirementReport?: RequirementReport;
   preferenceMismatch: "country" | "work_mode" | "salary" | null;
   latestRole?: { title?: string; company?: string };
   invited: boolean;

@@ -40,4 +40,49 @@ describe("OnboardingPage", () => {
     expect(screen.queryByText(/Welcome aboard/)).toBeNull();
     expect(screen.getByText(/don't have any onboarding yet/)).toBeInTheDocument();
   });
+
+  // An uploaded document used to stay under "Action needed" with a Re-upload
+  // button, as if the candidate still owed it, and nothing said what came next.
+  it("sorts requested documents by whose turn it is", async () => {
+    const doc = (index: number, name: string, extra: Record<string, unknown>) => ({
+      index, name, url: null, requestedFromCandidate: true, requiresSignature: false,
+      status: "requested", uploadedBy: null, dueDate: null, signature: null, reviewNote: null, ...extra,
+    });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        onboardings: [{
+          _id: "ob1",
+          status: "in_progress",
+          startDate: null,
+          probation: null,
+          documents: [
+            doc(0, "Passport copy", { reviewNote: "The scan is cut off" }),
+            doc(1, "Old salary slip", { url: "https://files/slip.pdf", status: "submitted" }),
+            doc(2, "Bank letter", { url: "https://files/bank.pdf", status: "approved" }),
+          ],
+          placement: { jobTitle: "QA Engineer", companyName: "d4dx", startDate: null },
+        }],
+      }),
+    });
+    render(<OnboardingPage />);
+
+    const toUpload = (await screen.findByText("Passport copy")).closest("li") as HTMLElement;
+    expect(within(toUpload).getByText("To upload")).toBeInTheDocument();
+    expect(within(toUpload).getByText(/asked for a new copy/)).toBeInTheDocument();
+    expect(within(toUpload).getByText("The scan is cut off")).toBeInTheDocument();
+    expect(within(toUpload).getByRole("button", { name: "Upload" })).toBeInTheDocument();
+
+    expect(screen.getByRole("heading", { name: "Sent to d4dx" })).toBeInTheDocument();
+    const inReview = screen.getByText("Old salary slip").closest("li") as HTMLElement;
+    expect(within(inReview).getByText("In review")).toBeInTheDocument();
+    expect(within(inReview).getByRole("button", { name: "Replace file" })).toBeInTheDocument();
+    expect(within(inReview).queryByRole("button", { name: "Upload" })).toBeNull();
+
+    // Approved is closed: it can be opened, not replaced.
+    const approved = screen.getByText("Bank letter").closest("li") as HTMLElement;
+    expect(within(approved).queryByRole("button", { name: /Replace file|Upload/ })).toBeNull();
+
+    expect(screen.getByText("2 of 3 sent")).toBeInTheDocument();
+  });
 });

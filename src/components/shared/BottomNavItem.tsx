@@ -35,7 +35,7 @@ interface BottomNavButtonProps extends BottomNavItemBaseProps {
 export type BottomNavItemProps = BottomNavLinkProps | BottomNavButtonProps;
 
 const ITEM_CLASS =
-  "group relative flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 outline-none [-webkit-tap-highlight-color:transparent]";
+  "group relative flex h-15 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 outline-none [-webkit-tap-highlight-color:transparent]";
 
 /**
  * One tab of a phone bottom bar (workspace roles and job seeker alike):
@@ -110,6 +110,13 @@ export function BottomNavItem(props: BottomNavItemProps) {
   );
 }
 
-/** Surface shared by every phone bottom bar. */
+/**
+ * Surface shared by every phone bottom bar: a rounded bar floating above the
+ * screen edge (owner, 2026-11-12), capped at phone width and centred on
+ * tablets so it does not stretch across 820px. Pair with BOTTOM_BAR_STYLE.
+ */
 export const BOTTOM_BAR_CLASS =
-  "fixed inset-x-0 bottom-0 border-t border-border/50 bg-background/90 shadow-[0_-8px_24px_-16px_rgba(15,23,42,0.25)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 lg:hidden";
+  "fixed inset-x-3 mx-auto max-w-md rounded-2xl border border-border/60 bg-background/95 shadow-[0_10px_30px_-10px_rgba(15,23,42,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/85 lg:hidden";
+
+/** Lifts the floating bar off the edge, above the home indicator. */
+export const BOTTOM_BAR_STYLE = { bottom: "calc(0.5rem + env(safe-area-inset-bottom))" } as const;

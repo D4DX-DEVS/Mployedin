@@ -23,7 +23,6 @@ export function AgentAccounts({ rows, locale }: AgentAccountsProps) {
   const columns = [
     { key: "openJobs", label: t("openJobs") },
     { key: "newApplicants", label: t("newApplicants") },
-    { key: "upcomingInterviews", label: t("interviews") },
     { key: "hires", label: t("hires") },
   ] as const;
 
@@ -48,7 +47,7 @@ export function AgentAccounts({ rows, locale }: AgentAccountsProps) {
               value instead, where a header would scroll away from it. */}
           <li aria-hidden="true" className="hidden items-center gap-3 px-4 py-2 text-[11px] font-medium text-muted-foreground sm:flex sm:px-5">
             <span className="min-w-0 flex-1">{t("account")}</span>
-            <span className="grid shrink-0 grid-cols-4 gap-4 text-end">
+            <span className="grid shrink-0 grid-cols-3 gap-4 text-end">
               {columns.map((column) => (
                 <span key={column.key} className="min-w-[5.5rem]">{column.label}</span>
               ))}
@@ -74,9 +73,9 @@ export function AgentAccounts({ rows, locale }: AgentAccountsProps) {
                   className="order-last h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5 max-sm:hidden"
                   aria-hidden="true"
                 />
-                <dl className="grid w-full shrink-0 grid-cols-4 gap-2 sm:w-auto sm:gap-4 sm:text-end">
+                <dl className="grid w-full shrink-0 grid-cols-3 gap-2 sm:w-auto sm:gap-4 sm:text-end">
                   {columns.map((column) => (
-                    // Phones: label on top, figure pinned to the bottom of the cell, so the four
+                    // Phones: label on top, figure pinned to the bottom of the cell, so the three
                     // numbers share one line however many lines each label wraps to.
                     <div key={column.key} className="flex flex-col justify-between gap-0.5 sm:block sm:min-w-[5.5rem]">
                       <dt className="text-[11px] font-medium leading-tight text-muted-foreground sm:sr-only">{column.label}</dt>

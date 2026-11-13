@@ -1,4 +1,40 @@
 {
+  "linkPassword": {
+    "verifyHelpCode": "يمكن للباحثين عن عمل أيضاً تسجيل الدخول برمز نرسله إليهم بالبريد الإلكتروني.",
+    "codeLoginLink": "تسجيل الدخول برمز",
+    "stillStuck": "ما زلت تواجه مشكلة؟",
+    "contactSupport": "تواصل مع الدعم",
+    "passwordLabel": "كلمة المرور",
+    "emptyError": "أدخل كلمة المرور.",
+    "wrongPassword": "كلمة المرور غير صحيحة.",
+    "tooManyAttempts": "محاولات كثيرة. انتظر بضع دقائق ثم حاول مرة أخرى.",
+    "checking": "جارٍ التحقق…",
+    "verifyTitle": "أدخل كلمة المرور للتأكيد",
+    "verifyBody": "لست مسجلاً الدخول إلى هذا الحساب على هذا الجهاز. أدخل كلمة مروره لإكمال تأكيد بريدك الإلكتروني.",
+    "verifySubmit": "تأكيد البريد الإلكتروني",
+    "helpTitle": "لا تعرف كلمة المرور هذه؟",
+    "verifyHelpIgnore": "إذا لم تنشئ حساباً على MPLOYEDIN، فتجاهل الرسالة. لن يتغير شيء.",
+    "verifyHelpReset": "إذا كان الحساب لك، فأعد تعيين كلمة المرور بدلاً من ذلك. سيؤكد ذلك بريدك الإلكتروني أيضاً.",
+    "resetLink": "إعادة تعيين كلمة المرور",
+    "changeTitle": "أدخل كلمة المرور لتأكيد التغيير",
+    "changeBody": "لست مسجلاً الدخول إلى هذا الحساب على هذا الجهاز. أدخل كلمة مرور الحساب الذي طلب هذا التغيير.",
+    "changeSubmit": "تأكيد التغيير",
+    "changeHelpIgnore": "إذا لم تطلب تغيير عنوان بريد إلكتروني، فتجاهل الرسالة. لن يتغير شيء.",
+    "codePasswordLabel": "كلمة المرور الخاصة بك",
+    "codePasswordHint": "مطلوبة لأنك لست مسجلاً الدخول على هذا الجهاز."
+  },
+  "setPassword": {
+    "reauth": "حفاظاً على أمانك، لا يمكن تعيين كلمة مرور إلا خلال 15 دقيقة من تسجيل الدخول. سجّل الخروج ثم سجّل الدخول مرة أخرى وعيّنها.",
+    "newPassword": "كلمة المرور الجديدة",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "save": "حفظ كلمة المرور",
+    "cancel": "ليس الآن",
+    "saved": "تم حفظ كلمة المرور. يمكنك الآن تسجيل الدخول ببريدك الإلكتروني وكلمة المرور.",
+    "mismatch": "كلمتا المرور غير متطابقتين.",
+    "alreadySet": "لهذا الحساب كلمة مرور بالفعل. لتغييرها استخدم «تغيير كلمة المرور» في الإعدادات.",
+    "tooMany": "محاولات كثيرة. حاول مرة أخرى بعد ساعة.",
+    "failed": "تعذّر حفظ كلمة المرور. حاول مرة أخرى."
+  },
   "savedJobs": {
     "title": "الوظائف المحفوظة",
     "description": "الوظائف التي حفظتها للعودة إليها.",
@@ -30,9 +66,11 @@
     "common": "كلمة المرور هذه شائعة جدًا. اختر كلمة أخرى."
   },
   "changePasswordCard": {
+    "setDescription": "هذا الحساب لا يملك كلمة مرور بعد: تسجّل الدخول برمز عبر البريد أو عبر Google أو Apple أو LinkedIn. عيّن كلمة مرور لتتمكن أيضاً من الدخول ببريدك الإلكتروني وكلمة المرور. سنرسل إليك بريداً عند تعيينها.",
+    "setOpen": "تعيين كلمة مرور",
     "eyebrow": "الأمان",
     "title": "كلمة المرور",
-    "description": "غيّر كلمة المرور التي تسجّل الدخول بها. نرسل لك بريدًا إلكترونيًا عند كل تغيير.",
+    "description": "غيّر كلمة المرور التي تسجّل الدخول بها. نرسل لك بريدًا إلكترونيًا عند كل تغيير، ونسجّل خروجك من جميع الأجهزة، ومنها هذا الجهاز.",
     "open": "تغيير كلمة المرور",
     "currentPassword": "كلمة المرور الحالية",
     "newPassword": "كلمة المرور الجديدة",
@@ -107,6 +145,26 @@
     "candidates": "المرشحون"
   },
   "auth": {
+    "passwordChangedSignIn": "تم تغيير كلمة المرور، لذلك سُجّل خروجك من جميع الأجهزة. سجّل الدخول بكلمة المرور الجديدة.",
+    "codeLoginLink": "تسجيل الدخول برمز عبر البريد بدلاً من ذلك",
+    "codeLoginTitle": "تسجيل الدخول برمز عبر البريد",
+    "codeLoginHint": "للباحثين عن عمل. نرسل إليك رمزاً من 6 أرقام عبر البريد، فلا تحتاج إلى كلمة مرور.",
+    "codeLoginSend": "أرسل لي رمزاً",
+    "codeLoginSent": "إذا كان هناك حساب باحث عن عمل يستخدم {email} فقد أرسلنا إليه رمزاً من 6 أرقام. الرمز صالح لمدة 10 دقائق.",
+    "codeLoginCodeLabel": "الرمز المكوّن من 6 أرقام",
+    "codeLoginCodeRequired": "أدخل الرمز المكوّن من 6 أرقام من البريد.",
+    "codeLoginVerify": "تسجيل الدخول",
+    "codeLoginResend": "أرسل رمزاً جديداً",
+    "codeLoginResendIn": "أرسل رمزاً جديداً بعد {seconds} ث",
+    "codeLoginChangeEmail": "استخدم بريداً آخر",
+    "codeLoginBack": "العودة إلى الدخول بكلمة المرور",
+    "codeLoginInvalid": "الرمز غير صحيح أو انتهت صلاحيته. تحقق منه أو اطلب رمزاً جديداً.",
+    "codeLoginNoAccount": "لا يوجد حساب لهذا البريد الإلكتروني بعد.",
+    "codeLoginRegister": "أنشئ حساباً",
+    "codeLoginRateLimited": "محاولات كثيرة. يرجى المحاولة لاحقاً.",
+    "codeLoginEmailFailed": "تعذّر إرسال البريد. يرجى المحاولة مرة أخرى.",
+    "codeLoginCaptchaFailed": "تعذّر التأكد من أنك لست برنامجاً آلياً. يرجى المحاولة مرة أخرى.",
+    "codeLoginFailed": "تعذّر تسجيل دخولك. يرجى المحاولة مرة أخرى.",
     "signupConsentNeeded": "لم يتم إنشاء حسابك. وافق على شروط الخدمة وسياسة الخصوصية للتسجيل.",
     "signupConsentCancel": "إلغاء",
     "signupConsentContinue": "إنشاء الحساب",
@@ -549,6 +607,7 @@
     "superAgentWorkspace": "مساحة عمل الوكيل الرئيسي",
     "currency": "العملة",
     "a11yFormProgress": "تقدم النموذج",
+    "stepNextUp": "التالي: {label}",
     "youreOffline": "أنت غير متصل بالإنترنت",
     "offlineDescription": "يبدو أنك فقدت اتصالك بالإنترنت. يرجى التحقق من إعدادات الشبكة الخاصة بك والمحاولة مرة أخرى.",
     "unknownCandidate": "مرشح غير معروف",
@@ -592,8 +651,8 @@
       "cityTypeToSearch": "اكتب حرفين على الأقل",
       "cityNoMatch": "لا توجد مدينة مطابقة. جرّب تهجئة أخرى.",
       "citySearching": "جارٍ البحث…",
-      "hint": "يمكن للوكلاء الذين يغطون منطقتك رؤية ملفك ومساعدتك في إيجاد عمل. يبقى الملف المخفي مخفيًا.",
-      "notSet": "أضف منطقتك ليتمكن الوكلاء القريبون منك من مساعدتك في إيجاد عمل.",
+      "hint": "نستخدم هذا لنعرض لك الوظائف والدعم القريبين منك.",
+      "notSet": "أضف مكان إقامتك لنعرض لك الوظائف والدعم القريبين منك.",
       "add": "أضف المنطقة",
       "change": "تغيير",
       "dialogDescription": "اختر المدينة التي تعيش فيها. إن لم تكن في القائمة، اختر إقليمك.",
@@ -606,9 +665,18 @@
       "regionNoMatch": "لا يوجد إقليم مطابق",
       "cityNotListed": "مدينتي غير موجودة في القائمة",
       "pickCityInstead": "اختر مدينة بدلًا من ذلك",
-      "regionHint": "يمكن للوكلاء الذين يغطون إقليمك بالكامل رؤية ملفك ومساعدتك في إيجاد عمل. يبقى الملف المخفي مخفيًا.",
+      "regionHint": "نستخدم هذا لنعرض لك الوظائف والدعم في منطقتك.",
       "required": "اختر مدينتك، أو إقليمك إن لم تكن مدينتك في القائمة.",
-      "prefilled": "ملأنا هذا من بياناتك. غيّره إن لم يكن صحيحًا."
+      "prefilled": "ملأنا هذا من بياناتك. غيّره إن لم يكن صحيحًا.",
+      "promptTitle": "أين تقيم؟",
+      "promptDescription": "اختر مدينتك، أو منطقتك إن لم تكن مدينتك مدرجة.",
+      "notNow": "ليس الآن",
+      "prefilledFromProfile": "ملأناه من ملفك الشخصي. تحقّق منه ثم احفظ."
+    },
+    "industryChips": {
+      "label": "القطاعات",
+      "showAll": "عرض الكل ({count} أخرى)",
+      "showFewer": "عرض أقل"
     }
   },
   "table": {
@@ -821,6 +889,8 @@
       "applied": "تم التقديم",
       "easyApply": "تقديم سريع",
       "applyWithCv": "التقديم بسيرة ذاتية",
+      "activelyHiring": "توظّف الآن",
+      "open": "مفتوحة",
       "time": {
         "justNow": "الآن",
         "hoursAgo": "منذ {value} س",
@@ -865,15 +935,28 @@
       "next": "التالي",
       "submit": "إرسال الطلب",
       "submitting": "جارٍ الإرسال…",
+      "education": {
+        "title": "تعليمك",
+        "asks": "تطلب هذه الوظيفة: {asked}. لا يظهر في ملفك أي مؤهل بعد، لذا سيراه صاحب العمل \"بحاجة إلى تحقق\".",
+        "levelLabel": "أعلى مؤهل لديك",
+        "levelPlaceholder": "اختر أعلى مؤهل لديك",
+        "fieldLabel": "التخصص",
+        "fieldPlaceholder": "مثال: علوم الحاسوب، التمريض، التجارة",
+        "optional": "اختياري",
+        "skipHint": "سنضيف هذا إلى ملفك. يمكنك التخطي والتقديم مع ذلك.",
+        "skip": "تخطٍّ",
+        "saveFailed": "تعذّر حفظ تعليمك. حاول مرة أخرى، أو تخطَّ هذه الخطوة."
+      },
       "cv": {
         "heading": "السيرة الذاتية",
         "subtitle": "اختر السيرة الذاتية التي سترسلها مع هذا الطلب.",
         "builtCvHint": "تُنشأ من ملفك الشخصي بالتصميم الذي حفظته في منشئ السيرة الذاتية.",
         "uploadCv": "رفع سيرة ذاتية مختلفة",
         "uploading": "جارٍ الرفع…",
-        "noCv": "لا توجد سيرة ذاتية بعد — ارفع واحدة للمتابعة.",
-        "buildCV": "بناء سيرتك الذاتية",
-        "uploadDocuments": "رفع المستندات"
+        "autoCv": "سيرتك الذاتية على Mployedin",
+        "autoCvHint": "تُنشأ من بيانات ملفك الشخصي عند التقديم.",
+        "previewCv": "معاينتها أو تعديلها",
+        "uploadOwnCv": "ارفع سيرتك الذاتية الخاصة بدلاً من ذلك"
       },
       "skills": {
         "heading": "أكّد مهاراتك",
@@ -913,7 +996,7 @@
         "applyFailed": "تعذر التقديم. حاول مرة أخرى.",
         "planLimitReached": "لقد وصلت إلى الحد الأقصى للتقديمات في باقتك. قم بترقية باقتك لمتابعة التقديم.",
         "jobClosed": "لم تعد هذه الوظيفة تستقبل طلبات.",
-        "selectCv": "يرجى اختيار أو رفع سيرة ذاتية أولاً.",
+        "selectCv": "أضف سيرتك الذاتية للتقديم. ارفع واحدة، أو اختر سيرة محفوظة.",
         "builtCvFailed": "تعذّر تجهيز سيرتك الذاتية المُنشأة على Mployedin. اختر سيرة ذاتية أخرى أو حاول مرة أخرى.",
         "documentNotFound": "هذه السيرة الذاتية لم تعد ضمن مستنداتك. اختر سيرتك الذاتية من جديد ثم أرسل الطلب.",
         "unsupportedFile": "نوع الملف غير مدعوم. ارفع ملف PDF أو ملف Word بصيغة ‎.docx أو صورة (JPG أو PNG أو WebP). ملفات ‎.doc القديمة يجب حفظها أولاً بصيغة ‎.docx أو PDF.",
@@ -1118,14 +1201,9 @@
     "title": "طلباتي",
     "status": {
       "all": "الكل",
-      "applied": "تم التقديم",
-      "shortlisted": "في القائمة المختصرة",
-      "interview_scheduled": "مقابلة",
-      "selected": "مختار",
+      "interview": "مقابلة",
       "offer": "عرض",
-      "hired": "تم التوظيف",
-      "rejected": "مرفوض",
-      "withdrawn": "مسحوب"
+      "closed": "مغلقة"
     },
     "searchLabel": "البحث في الطلبات",
     "searchPlaceholder": "ابحث باسم الوظيفة أو الشركة...",
@@ -1200,7 +1278,10 @@
     },
     "withdraw": "سحب الطلب",
     "showSummary": "عرض ملخص {job}",
-    "hideSummary": "إخفاء ملخص {job}"
+    "hideSummary": "إخفاء ملخص {job}",
+    "answerScreening": "الإجابة على أسئلة الفحص",
+    "answerScreeningDesc": "أرسل إليك صاحب العمل أسئلة الفحص لمساعدته على التعرّف عليك بشكل أفضل. يرجى الإجابة عليها في أقرب وقت ممكن.",
+    "answerNow": "الإجابة الآن"
   },
   "jobSeekerCalendar": {
     "title": "تقويمي",
@@ -1548,8 +1629,8 @@
       "saving": "جار الحفظ…",
       "present": "حتى الآن",
       "myDocuments": "مستنداتي",
-      "empty": "لا توجد مستندات مرفوعة بعد",
-      "emptyDescription": "ارفع سيرتك الذاتية والشهادات والمستندات الأخرى أعلاه",
+      "empty": "لا توجد شهادات أو مستندات أخرى بعد",
+      "emptyDescription": "أضف شهادات الدراسة أو الدورات أو الشهادات المهنية أعلاه. سيرك الذاتية مدرجة تحت سيري الذاتية.",
       "view": "عرض المستند",
       "remove": "إزالة المستند",
       "documentFallback": "مستند",
@@ -1584,7 +1665,36 @@
       "cvRead": "تمت القراءة — يعتمد أصحاب العمل على هذه السيرة الذاتية في نسبة التطابق",
       "cvReading": "نقرأ هذه السيرة الذاتية الآن. يستغرق ذلك عادةً دقيقة.",
       "cvUnreadable": "تعذّرت علينا قراءة هذا الملف. ارفع ملف PDF أو Word يحتوي على نص قابل للتحديد.",
-      "profileCvUnreadable": "تعذّرت علينا قراءة السيرة الذاتية في ملفك الشخصي، لذا يطابقك أصحاب العمل بناءً على بيانات ملفك الشخصي فقط. ارفع ملف PDF أو Word يحتوي على نص قابل للتحديد."
+      "profileCvUnreadable": "تعذّرت علينا قراءة السيرة الذاتية في ملفك الشخصي، لذا يطابقك أصحاب العمل بناءً على بيانات ملفك الشخصي فقط. ارفع ملف PDF أو Word يحتوي على نص قابل للتحديد.",
+      "myCvs": {
+        "title": "سيري الذاتية",
+        "description": "السيرة المعلَّمة بـ\"تُرسل عند التقديم\" تُرفق بكل طلب، ما لم تختر غيرها أثناء التقديم.",
+        "sentBadge": "تُرسل عند التقديم",
+        "sendThis": "أرسل هذه",
+        "chosen": "ستُرفق هذه السيرة بطلباتك من الآن.",
+        "chooseFailed": "لم نتمكن من تغيير السيرة المرسلة. حاول مرة أخرى.",
+        "rename": "إعادة تسمية",
+        "renameLabel": "اسم السيرة الذاتية",
+        "renameNamed": "إعادة تسمية {name}",
+        "viewNamed": "عرض {name}",
+        "removeNamed": "إزالة {name}",
+        "save": "حفظ",
+        "cancel": "إلغاء",
+        "renamed": "تمت إعادة تسمية السيرة.",
+        "renameFailed": "لم نتمكن من إعادة تسمية هذه السيرة. حاول مرة أخرى.",
+        "copyOf": "الملف نفسه مثل {name}، رُفع مرتين",
+        "removeCopy": "أزل النسخة",
+        "uploadedDetail": "رُفعت في {date} · {size} كيلوبايت",
+        "builtDetail": "مُعدّة بأداة إنشاء السيرة، من ملفك",
+        "profileDetail": "سيرتك الرئيسية، المقروءة في ملفك",
+        "build": "أنشئ سيرة ذاتية",
+        "editBuilt": "عدّل السيرة المُنشأة",
+        "empty": "لا توجد سير ذاتية بعد. ارفع واحدة أدناه، أو أنشئها من ملفك.",
+        "uploadCv": "رفع سيرة ذاتية"
+      },
+      "certificatesTitle": "الشهادات والمستندات الأخرى",
+      "certificatesDescription": "شهادات الدراسة والدورات والشهادات المهنية التي قد يطلبها أصحاب العمل",
+      "addDocument": "إضافة مستند"
     },
     "experience": {
       "title": "الخبرة العملية",
@@ -1697,7 +1807,9 @@
         "salaryOrder": "لا يمكن أن يكون الحد الأدنى أعلى من الحد الأقصى.",
         "noticeRange": "أدخل عددًا صحيحًا من الأيام بين 0 و{max}.",
         "invalid": "تحقق من هذا الحقل وحاول مرة أخرى."
-      }
+      },
+      "openToRelocation": "مستعد للانتقال",
+      "openToRelocationDescription": "مستعد للانتقال إلى مدينة أو دولة أخرى من أجل الوظيفة المناسبة. يرى أصحاب العمل ذلك في ملفك."
     },
     "personalDetails": {
       "documentTitle": "البيانات الشخصية · MPLOYEDIN",
@@ -1805,7 +1917,10 @@
         "uploadToAutofill": "رفع السيرة للتعبئة تلقائياً",
         "showAll": "عرض الكل ({count})",
         "showLess": "عرض أقل",
-        "readMore": "اقرأ المزيد"
+        "readMore": "اقرأ المزيد",
+        "editInCvBuilder": "إضافة أو تعديل في منشئ السيرة الذاتية",
+        "editSkills": "تعديل المهارات",
+        "editInPersonalDetails": "تعديل في البيانات الشخصية"
       },
       "languagesSection": {
         "title": "اللغات والروابط",
@@ -1934,7 +2049,12 @@
         "removePhoto": "تعذر إزالة الصورة. يرجى المحاولة مرة أخرى.",
         "saveFailed": "تعذر حفظ التغييرات. يرجى المحاولة مرة أخرى.",
         "summaryFailed": "تعذر إنشاء النبذة. يرجى المحاولة مرة أخرى."
-      }
+      },
+      "navLabel": "أقسام الملف الشخصي",
+      "visibilityChangeLink": "التغيير من إعدادات الخصوصية",
+      "analyseSkillGap": "تحليل فجوة المهارات",
+      "thingsLeft": "{count, plural, one {تبقّى أمر واحد للوصول إلى 100%} two {تبقّى أمران للوصول إلى 100%} few {تبقّت # أمور للوصول إلى 100%} many {تبقّى # أمرًا للوصول إلى 100%} other {تبقّى # أمر للوصول إلى 100%}}",
+      "degreeInField": "{degree} في {field}"
     },
     "settings": {
       "back": "رجوع",
@@ -2026,7 +2146,11 @@
         "interviewNotificationsDescription": "تذكيرات وتحديثات حول المقابلات المجدولة.",
         "advancedTitle": "تسليم الإشعارات",
         "advancedDescription": "اختر البريد أو التطبيق أو واتساب لكل تنبيه، وحدد وقت الملخص اليومي، أو ألغِ الاشتراك."
-      }
+      },
+      "pageTitle": "الإعدادات",
+      "pageDescription": "الإشعارات والخصوصية والمقابلات وحسابك",
+      "navLabel": "أقسام الإعدادات",
+      "loadFailed": "تعذّر تحميل مواعيد المقابلات. حدّث الصفحة للمحاولة مرة أخرى."
     },
     "smartWelcome": {
       "resumeUploadedSuccessfully": "تم تحميل السيرة الذاتية بنجاح",
@@ -2163,6 +2287,7 @@
       "download": "تحميل",
       "saving": "جار الحفظ...",
       "addToProfile": "إضافة إلى الملف",
+      "savedToProfile": "محفوظ في الملف",
       "tips": "نصائح",
       "reorder": "اسحب لإعادة الترتيب",
       "removeExperience": "إزالة الخبرة",
@@ -2204,7 +2329,9 @@
       "minimize": "تصغير",
       "expand": "توسيع",
       "hide": "إخفاء المعاينة",
-      "show": "إظهار المعاينة"
+      "show": "إظهار المعاينة",
+      "pageBreak": "صفحة {n}",
+      "updating": "جارٍ التحديث…"
     },
     "messages": {
       "importSuccess": "تم استيراد السيرة الذاتية بنجاح! راجع الحقول وعدلها أدناه.",
@@ -2378,6 +2505,59 @@
       },
       "badges": {
         "photo": "صورة"
+      },
+      "layout": {
+        "title": "التخطيط",
+        "hint": "يظهر بالشكل نفسه في المعاينة وفي ملف PDF المُنزَّل.",
+        "headerAlign": "محاذاة الترويسة",
+        "headerAligns": {
+          "auto": "افتراضي القالب",
+          "left": "يسار",
+          "center": "وسط"
+        },
+        "textAlign": "محاذاة النص",
+        "textAligns": {
+          "left": "يسار",
+          "justify": "ضبط"
+        },
+        "headingStyle": "عناوين الأقسام",
+        "headingStyles": {
+          "auto": "افتراضي القالب",
+          "underline": "مسطّرة",
+          "plain": "بسيطة",
+          "band": "شريط ملوّن"
+        },
+        "skillsStyle": "المهارات",
+        "skillsStyles": {
+          "auto": "افتراضي القالب",
+          "chips": "شارات",
+          "comma": "قائمة بفواصل",
+          "columns": "أعمدة نقطية"
+        },
+        "nameSize": "حجم الاسم",
+        "nameSizes": {
+          "small": "صغير",
+          "medium": "متوسط",
+          "large": "كبير"
+        },
+        "bulletStyle": "النقاط",
+        "bulletStyles": {
+          "dot": "• نقطة",
+          "dash": "– شرطة",
+          "arrow": "› سهم"
+        },
+        "datePosition": "التواريخ",
+        "datePositions": {
+          "auto": "افتراضي القالب",
+          "right": "على الجانب",
+          "below": "تحت المسمى"
+        },
+        "photoShape": "شكل الصورة",
+        "photoShapes": {
+          "circle": "دائرة",
+          "rounded": "مستدير الحواف",
+          "square": "مربع"
+        }
       }
     },
     "richText": {
@@ -2569,6 +2749,9 @@
       "emptyTitle": "لا توجد توصيات بعد",
       "emptyBody": "أكمل ملفك وتفضيلاتك للحصول على اقتراحات وظائف أقوى.",
       "emptyCta": "حدد التفضيلات",
+      "setupTitle": "أخبرنا بالوظيفة التي تريدها",
+      "setupBody": "أضف الوظائف التي تبحث عنها والمكان الذي تريد العمل فيه، وسنعرض لك هنا الوظائف المناسبة لك.",
+      "setupCta": "حدد تفضيلاتي",
       "browseJobsCta": "تصفح جميع الوظائف",
       "strongOnlyTitle": "لا توجد مطابقات قوية حالياً",
       "strongOnlyBody": "نوصي فقط بالوظائف التي تبلغ نسبة تطابقها {threshold}% أو أكثر. أقرب وظيفة إلى ملفك حالياً بنسبة {best}%.",
@@ -2740,6 +2923,39 @@
     },
     "encouragement": {
       "cta": "استكشف الوظائف"
+    },
+    "header": {
+      "addDetails": "{count, plural, one {أضف تفصيلًا واحدًا لتحصل على وظائف أنسب} two {أضف تفصيلين لتحصل على وظائف أنسب} few {أضف # تفاصيل لتحصل على وظائف أنسب} other {أضف # تفصيلًا لتحصل على وظائف أنسب}}"
+    },
+    "tiles": {
+      "active": "طلبات قيد المتابعة",
+      "interviewing": "في المقابلات",
+      "offers": "العروض",
+      "of": "من {total}"
+    },
+    "updates": {
+      "title": "تحديثات الطلبات",
+      "description": "ما تغيّر في طلباتك، الأحدث أولًا.",
+      "viewAllCount": "الكل ({count})",
+      "status": {
+        "applied": "تقدّمت: {title}",
+        "in_review": "قيد المراجعة: {title}",
+        "interview": "مقابلة: {title}",
+        "offer": "عرض: {title}",
+        "hired": "تم تعيينك: {title}",
+        "not_selected": "لم يتم اختيارك: {title}",
+        "withdrawn": "سحبت الطلب: {title}"
+      }
+    },
+    "cvCard": {
+      "title": "السيرة الذاتية المرسلة عند التقديم",
+      "myCvs": "سيري الذاتية",
+      "profileDetail": "سيرتك الرئيسية، المقروءة في ملفك",
+      "builtDetail": "مُعدّة بأداة إنشاء السيرة الذاتية",
+      "uploadedDetail": "رُفعت في {date}",
+      "change": "تغيير",
+      "none": "ليست لديك سيرة ذاتية بعد. أضف واحدة ليراها أصحاب العمل.",
+      "add": "أضف سيرة ذاتية"
     }
   },
   "ai": {
@@ -2791,7 +3007,11 @@
       "inputPlaceholder": "صِف الدور والموقع والمهارات والراتب أو عدد الشواغر (اختياري)...",
       "draftReady": "المسودة جاهزة للمراجعة في النموذج.",
       "examplesTitle": "أو ابدأ من مثال:",
-      "examples": { "teacher": "معلم علوم في مدينة الكويت، خبرة 5 سنوات أو أكثر، في الموقع، 800 دينار كويتي شهريًا", "sales": "مسؤول مبيعات في دبي، خبرة سنتين، 3 شواغر", "developer": "مطور React أول، عن بُعد، Node و React" },
+      "examples": {
+        "teacher": "معلم علوم في مدينة الكويت، خبرة 5 سنوات أو أكثر، في الموقع، 800 دينار كويتي شهريًا",
+        "sales": "مسؤول مبيعات في دبي، خبرة سنتين، 3 شواغر",
+        "developer": "مطور React أول، عن بُعد، Node و React"
+      },
       "voiceLanguageShort": "الصوت:",
       "writingDraft": "جارٍ تعبئة تفاصيل الوظيفة…",
       "draftReadyPanel": "المسودة جاهزة. راجعها في معاينة الوظيفة",
@@ -4749,6 +4969,9 @@
     "languageAxis": "اللغة",
     "notProvided": "غير متوفر",
     "immediateStart": "فوري",
+    "relocationLabel": "الانتقال",
+    "relocationOpen": "مستعد للانتقال",
+    "relocationNo": "غير مستعد للانتقال",
     "noticeDaysValue": "{days} يوم",
     "close": "إغلاق",
     "matchLabel": "تطابق",
@@ -5137,6 +5360,8 @@
     "sortNewest": "الأحدث أولاً",
     "sortOldest": "الأقدم أولاً",
     "sortScore": "الأعلى تطابقاً",
+    "requirementReportTitle": "مقارنة بمتطلبات هذه الوظيفة",
+    "sortBestFit": "الأنسب (المتطلبات الأساسية أولًا)",
     "sortScoreLow": "الأدنى تطابقاً",
     "latestPosting": "الأحدث",
     "filters": "التصفية",
@@ -5147,6 +5372,8 @@
     "roleMatchSkills": "الدور، التطابق، المهارات",
     "actions": "الإجراءات",
     "detailedView": "عرض تفصيلي",
+    "reviewShort": "مراجعة",
+    "cvShort": "السيرة",
     "applied": "مقدّم",
     "shortlisted": "مرشّح",
     "shortlistedOnwards": "في القائمة المختصرة أو ما بعدها",
@@ -5155,6 +5382,7 @@
     "hired": "تم التوظيف",
     "rejected": "مرفوض",
     "withdrawn": "منسحب",
+    "withdrawnByCandidate": "سحب المرشح طلبه",
     "otherRole": "دور آخر",
     "match": "تطابق",
     "matchExcellent": "ممتاز",
@@ -5189,6 +5417,13 @@
     "interviewScheduledToast": "تم جدولة المقابلة",
     "interviewScheduleFailed": "تعذّر جدولة المقابلة",
     "interviewAlreadyScheduled": "لدى هذا المرشح مقابلة مجدولة بالفعل لهذه الوظيفة. أعد جدولتها أو أضف جولة تالية من تبويب المقابلات.",
+    "sendScreening": "إرسال أسئلة الفحص",
+    "screeningConfirm": "إرسال أسئلة الفحص الخاصة بهذه الوظيفة إلى {count, plural, one {مرشح واحد} other {# مرشحين}}؟ سيتم تخطي من أجاب عنها مسبقًا.",
+    "screeningSent": "تم إرسال أسئلة الفحص إلى {count, plural, one {مرشح واحد} other {# مرشحين}}",
+    "screeningSentWithSkipped": "تم الإرسال إلى {sent} · تم تخطي {skipped} (أجابوا مسبقًا)",
+    "screeningAllSkipped": "جميع المرشحين أجابوا بالفعل على أسئلة الفحص.",
+    "screeningError": "تعذّر إرسال أسئلة الفحص. حاول مرة أخرى.",
+    "screeningNoQuestions": "لا توجد أسئلة فحص لهذه الوظيفة.",
     "noResumeUploaded": "لم يتم رفع سيرة ذاتية بعد.",
     "openFullTimeline": "فتح الجدول الزمني الكامل",
     "timelineHint": "راجع سجل النشاط الكامل وتغييرات المراحل لهذا المرشح.",
@@ -5437,6 +5672,7 @@
     "scoresRefreshed": "{count, plural, =0 {النتائج محدَّثة} one {تم تحديث نتيجة واحدة} two {تم تحديث نتيجتين} few {تم تحديث # نتائج} many {تم تحديث # نتيجة} other {تم تحديث # نتيجة}}",
     "scoresRefreshFailed": "تعذّر تحديث النتائج. حاول مرة أخرى.",
     "rescoringScores": "جارٍ تحديث النتائج…",
+    "breakdownQualifications": "المؤهلات",
     "breakdownCv": "السيرة الذاتية",
     "breakdownNotProvided": "غير متوفر",
     "breakdownCvRead": "تمت قراءتها",
@@ -5467,7 +5703,10 @@
     "scoreMaxLabel": "الحد الأقصى لتقييم الذكاء الاصطناعي",
     "experienceMinLabel": "الحد الأدنى لسنوات الخبرة",
     "experienceMaxLabel": "الحد الأقصى لسنوات الخبرة",
-    "offerPeriodLabel": "فترة الدفع"
+    "offerPeriodLabel": "فترة الدفع",
+    "screeningSend": "إرسال",
+    "screeningSending": "جارٍ الإرسال…",
+    "sendScreeningShort": "الأسئلة"
   },
   "employerAnalytics": {
     "title": "مركز قيادة التحليلات",
@@ -6848,7 +7087,7 @@
   "agentSettings": {
     "hero": {
       "title": "الإعدادات",
-      "description": "أدر إعدادات مساحة الوكيل: الملف الشخصي، تفضيلات المنطقة، نسب العمولة، قنوات الإشعارات، التوفر، وأمان الحساب."
+      "description": "الملف الشخصي والمنطقة والعمولة والإشعارات والتوفر والأمان."
     },
     "nav": {
       "profile": {
@@ -7332,6 +7571,10 @@
     }
   },
   "employerActivity": {
+    "colWho": "من",
+    "colWhat": "الإجراء",
+    "colWhen": "متى",
+    "colWhere": "المكان",
     "title": "سجل النشاط",
     "description": "اطلع على جميع الإجراءات التي تمت على حسابك من قبل الوكلاء والمشرفين والمسؤولين.",
     "filterByAction": "تصفية حسب الإجراء",
@@ -7373,6 +7616,8 @@
     "onThisPage": "في هذه الصفحة"
   },
   "employerInterviews": {
+    "interviewCount": "{count, plural, zero {لا مقابلات} one {مقابلة واحدة} two {مقابلتان} few {# مقابلات} many {# مقابلة} other {# مقابلة}}",
+    "searchPlaceholder": "ابحث باسم المرشح أو الوظيفة",
     "priorRounds": "{count} جولة/جولات سابقة",
     "title": "مساحة عمل المقابلات",
     "description": "حافظ على زخم المقابلات مرئيًا عبر كل نقطة تواصل مع المرشحين.",
@@ -7578,6 +7823,7 @@
     "jobFilterLabel": "الوظيفة"
   },
   "employerBackgroundChecks": {
+    "referenceCount": "{count, plural, zero {لا مراجع} one {مرجع واحد} two {مرجعان} few {# مراجع} many {# مرجعاً} other {# مرجع}}",
     "agentLabel": "وكيل",
     "searchPlaceholder": "ابحث باسم المرشح...",
     "title": "فحوصات الخلفية",
@@ -7738,6 +7984,28 @@
     "progress": "تقدّم التهيئة",
     "tasksDone": "{done} من {total} مهام منجزة",
     "tasks": "المهام",
+    "tasksHint": "قائمة مهام فريقك الخاصة. لا يراها المرشح.",
+    "addDocumentTitle": "إضافة مستند",
+    "docModeRequest": "اطلب من المرشح",
+    "docModeReference": "احتفظ برابط في الملف",
+    "docStage": {
+      "waiting": "بانتظار المرشح",
+      "review": "جاهز للمراجعة",
+      "approved": "معتمد"
+    },
+    "waitingFile": "لم يُرفع بعد",
+    "waitingSignature": "تم الرفع، والتوقيع ما زال مطلوبًا",
+    "viewFile": "فتح",
+    "askAgain": "اطلب مجددًا",
+    "askAgainTitle": "طلب نسخة جديدة",
+    "askAgainDescription": "سيعود \"{document}\" إلى المرشح، وسيُحذف الملف الذي أرسله. أخبره بما يجب تغييره.",
+    "askAgainReasonLabel": "ما الذي يجب تغييره؟",
+    "askAgainReasonPlaceholder": "مثال: الصورة مقطوعة من الأسفل.",
+    "askAgainConfirm": "إعادة للمرشح",
+    "askedAgainNote": "طلبت نسخة جديدة: {note}",
+    "documentSentBack": "أُعيد إلى المرشح.",
+    "saved": "تم الحفظ",
+    "cancel": "إلغاء",
     "noTasks": "لا توجد مهام بعد. أضف مهامك الخاصة أو ابدأ من القالب الافتراضي.",
     "addTask": "إضافة مهمة",
     "addTaskPlaceholder": "أضف مهمة تهيئة…",
@@ -7805,11 +8073,25 @@
     "yourEmployer": "صاحب العمل",
     "startDate": "تبدأ في {date}",
     "welcomeMessage": "مرحبًا بك في {company}! يسعدنا انضمامك إلى الفريق. يرجى إكمال أي عناصر مطلوبة أدناه.",
-    "progress": "تقدّم التهيئة",
-    "tasksDone": "{done} من {total} خطوات منجزة",
+    "progress": "مستنداتك",
+    "tasksDone": "تم إرسال {done} من {total}",
+    "card_action": "إجراء مطلوب",
+    "card_waiting": "بانتظار صاحب العمل",
+    "card_approved": "تم اعتماد المستندات",
+    "stage_upload": "بانتظار الرفع",
+    "stage_sign": "بانتظار التوقيع",
+    "stage_review": "قيد المراجعة",
+    "stage_approved": "معتمد",
+    "inReviewTitle": "أُرسلت إلى {company}",
+    "inReviewHint": "{company} يراجع هذه المستندات. سيصلك إشعار عند اعتمادها أو إذا لزمت نسخة جديدة.",
+    "approvedTitle": "معتمدة",
+    "replaceFile": "استبدال الملف",
+    "sentBackTitle": "{company} طلب نسخة جديدة:",
+    "uploadThenSign": "ارفع الملف أولًا ثم وقّعه.",
+    "uploadSuccessSign": "تم رفع الملف. وقّعه لإرساله.",
     "probationEnds": "تنتهي فترة التجربة في {date}",
     "actionNeeded": "إجراء مطلوب",
-    "noActionDocs": "لا يوجد شيء لرفعه الآن. أنت جاهز!",
+    "noActionDocs": "لم يطلب صاحب العمل أي مستندات. سيصلك إشعار إذا طلب ذلك.",
     "sharedWithYou": "تمت مشاركته معك",
     "download": "تنزيل",
     "view": "عرض",
@@ -7829,10 +8111,12 @@
     "signNamePlaceholder": "اسمك القانوني الكامل",
     "signConfirm": "توقيع",
     "cancel": "إلغاء",
-    "uploadSuccess": "تم رفع المستند.",
+    "uploadSuccess": "أُرسل إلى {company}. سيصلك إشعار بعد مراجعته.",
     "uploadFailed": "تعذر الرفع. يرجى المحاولة مرة أخرى.",
-    "signSuccess": "تم توقيع المستند.",
-    "signFailed": "تعذر التوقيع. يرجى المحاولة مرة أخرى."
+    "signSuccess": "تم التوقيع والإرسال إلى {company}.",
+    "signFailed": "تعذر التوقيع. يرجى المحاولة مرة أخرى.",
+    "nothingRequested": "لا شيء مطلوب الآن",
+    "onboardingAt": "الانضمام إلى {company}"
   },
   "employerCommTemplates": {
     "title": "قوالب الاتصالات",
@@ -8130,6 +8414,7 @@
         "freelance": "عمل حر",
         "walk_in": "حضور مباشر"
       },
+      "workModeLabel": "طريقة العمل",
       "workModes": {
         "onsite": "حضوري",
         "hybrid": "هجين",
@@ -8290,8 +8575,8 @@
       "minimumYears": "الحد الأدنى (سنوات)",
       "maximumYears": "الحد الأقصى (سنوات)",
       "candidateFitRange": "نطاق ملاءمة المرشح",
-      "education": "الحد الأدنى للتعليم",
-      "educationHint": "اختياري. الحد الأدنى من التعليم أو المؤهل المتوقع لهذا الدور.",
+      "education": "صياغة التعليم في الإعلان",
+      "educationHint": "اختياري. يظهر في صفحة الوظيفة كما تكتبه، مثل جامعة أو تقدير محدد.",
       "educationPlaceholder": "مثال: بكالوريوس في علوم الحاسب",
       "validation": {
         "experienceRange": "أدخل عدد سنوات صحيحًا من 0 إلى 50",
@@ -8524,7 +8809,7 @@
   "employerScorecards": {
     "reviewInterviews": "مراجعة المقابلات",
     "title": "بطاقات تقييم المقابلات",
-    "totalScorecards": "{count} بطاقة تقييم",
+    "totalScorecards": "{count, plural, zero {لا بطاقات تقييم} one {بطاقة تقييم واحدة} two {بطاقتا تقييم} few {# بطاقات تقييم} many {# بطاقة تقييم} other {# بطاقة تقييم}}",
     "loadingFeedbackTrends": "جارٍ تحميل اتجاهات التقييم…",
     "feedbackTrends": "ستظهر اتجاهات التقييم هنا بمجرد وجود بطاقات تقييم.",
     "totalEvaluations": "إجمالي التقييمات",
@@ -9335,7 +9620,8 @@
     "quietHoursDesc": "إيقاف الإشعارات غير الحرجة خلال هذه الساعات",
     "from": "من",
     "to": "إلى",
-    "changedElsewhere": "تغيّرت إعدادات الإشعارات الخاصة بك من مكان آخر. أعدنا تحميل أحدث الإعدادات، يرجى مراجعتها ثم الحفظ مرة أخرى."
+    "changedElsewhere": "تغيّرت إعدادات الإشعارات الخاصة بك من مكان آخر. أعدنا تحميل أحدث الإعدادات، يرجى مراجعتها ثم الحفظ مرة أخرى.",
+    "columnOn": "تشغيل"
   },
   "notificationsPage": {
     "enablePush": "تفعيل الإشعارات الفورية",
@@ -9500,7 +9786,9 @@
     "upgradeApprovedTitle": "تم تغيير خطتك",
     "upgradeApprovedBody": "أنت الآن على خطة {toPlanName}.",
     "upgradeDeclinedTitle": "لم تتم الموافقة على طلب الخطة",
-    "upgradeDeclinedBody": "لم تتم الموافقة على طلبك للانتقال إلى {toPlanName}. تواصل معنا إذا كانت لديك أسئلة."
+    "upgradeDeclinedBody": "لم تتم الموافقة على طلبك للانتقال إلى {toPlanName}. تواصل معنا إذا كانت لديك أسئلة.",
+    "screeningRequestTitle": "أسئلة الفحص لوظيفة {jobTitle}",
+    "screeningRequestBody": "أرسل إليك صاحب العمل بعض الأسئلة حول طلبك. أجب عنها ليتمكن من المضي في طلبك."
   },
   "publicPages": {
     "jobsTitle": "البحث عن وظائف",
@@ -9702,7 +9990,7 @@
     "sent": "مُرسل",
     "opened": "مفتوح",
     "clicked": "تم النقر",
-    "stepCount": "{count} خطوات",
+    "stepCount": "{count, plural, zero {لا خطوات} one {خطوة واحدة} two {خطوتان} few {# خطوات} many {# خطوة} other {# خطوة}}",
     "noSequences": "لا توجد تسلسلات بريد إلكتروني بعد. أنشئ واحدة لرعاية المرشحين تلقائيًا.",
     "loadError": "تعذر تحميل تسلسلات البريد الإلكتروني",
     "nameRequired": "اسم التسلسل مطلوب",
@@ -9950,6 +10238,8 @@
     "postAJob": "انشر وظيفة"
   },
   "employerAssessments": {
+    "questionCount": "{count, plural, zero {لا أسئلة} one {سؤال واحد} two {سؤالان} few {# أسئلة} many {# سؤالاً} other {# سؤال}}",
+    "attemptCount": "{count, plural, zero {لا محاولات} one {محاولة واحدة} two {محاولتان} few {# محاولات} many {# محاولة} other {# محاولة}}",
     "title": "تقييمات المهارات",
     "description": "أنشئ اختبارات لتقييم مهارات المرشحين",
     "createAssessment": "إنشاء تقييم",
@@ -10222,7 +10512,10 @@
     "matchBreakdown": "تفصيل التطابق",
     "applicationsShort": "تقديمات",
     "showAllSkills": "عرض كل المهارات ({count})",
-    "showFewerSkills": "عرض عدد أقل من المهارات"
+    "showFewerSkills": "عرض عدد أقل من المهارات",
+    "relocation": "الانتقال",
+    "relocationOpen": "مستعد للانتقال",
+    "relocationNo": "غير مستعد للانتقال"
   },
   "employerAiExtract": {
     "title": "مستخرج الوظائف بالذكاء الاصطناعي",
@@ -10440,6 +10733,8 @@
     "lpa": "لاخ سنوياً",
     "salaryPreview": "سيرى المرشحون:",
     "perPeriod": "/ {period}",
+    "periodMonth": "شهر",
+    "periodYear": "سنة",
     "negotiableYes": "نعم، قابل للتفاوض",
     "fixedSalary": "راتب ثابت",
     "responsibilities": "المسؤوليات الرئيسية",
@@ -10537,7 +10832,7 @@
     "description": "عرض فواتيرك، تتبع المدفوعات، وتحميل مستندات الفوترة.",
     "searchPlaceholder": "بحث في الفواتير…",
     "employerBilling": "فوترة صاحب العمل",
-    "invoiceCount": "{count} فواتير",
+    "invoiceCount": "{count, plural, zero {لا فواتير} one {فاتورة واحدة} two {فاتورتان} few {# فواتير} many {# فاتورة} other {# فاتورة}}",
     "totalBilled": "إجمالي المفوتر",
     "totalPaid": "إجمالي المدفوع",
     "outstandingBalance": "الرصيد المستحق",
@@ -11380,10 +11675,30 @@
     "image": "الصورة",
     "order": "الترتيب",
     "banners": "البانرات",
-    "manageBanners": "إدارة صور عرض البانر على الصفحة الرئيسية",
+    "manageBanners": "شرائح الصفحة الرئيسية والإعلانات داخل التطبيق",
     "searchBannerTitle": "البحث عن عنوان البانر…",
     "visibility": "الرؤية",
-    "allStatuses": "جميع الحالات"
+    "allStatuses": "جميع الحالات",
+    "placement": "الموضع",
+    "landingCarousel": "عرض الصفحة الرئيسية",
+    "inAppAnnouncement": "الإعلان داخل التطبيق",
+    "audienceRoles": "الإظهار إلى",
+    "everyone": "الجميع",
+    "adminsOnly": "المسؤولون",
+    "superAgentsOnly": "الوكلاء الرئيسيون",
+    "agentsOnly": "الوكلاء",
+    "employersOnly": "أرباب العمل",
+    "jobSeekersOnly": "الباحثون عن وظائف",
+    "startDate": "تاريخ البدء",
+    "endDate": "تاريخ الانتهاء",
+    "style": "النمط",
+    "styleInfo": "معلومات",
+    "styleSuccess": "نجاح",
+    "styleWarning": "تحذير",
+    "dismissible": "قابل للإغلاق",
+    "placementIndicator": "يظهر على: {placement}",
+    "placementAudience": "{placement} (الأدوار: {roles})",
+    "imageHint": "مطلوبة لشريط الصفحة الرئيسية. اتركها فارغة للإعلان داخل التطبيق."
   },
   "adminCmsStaticPages": {
     "slugLabel": "معرّف فريد",
@@ -12927,6 +13242,7 @@
     "deleteButtonLabel": "حذف قالب سير العمل"
   },
   "adminAgents": {
+    "activateAwaitingEmail": "تفعيل (بانتظار تأكيد البريد الإلكتروني)",
     "adminWorkspace": "مساحة عمل المسؤول",
     "agents": "الوكلاء",
     "heroDescription": "إدارة وكلاء التوظيف والمناطق المخصصة لهم.",
@@ -13647,6 +13963,7 @@
     "downloadCvsButton": "تحميل السير الذاتية",
     "filterLabelSkills": "المهارات",
     "filterLabelLocation": "الموقع",
+    "filterLabelIndustry": "الصناعة",
     "filterLabelAvailability": "التوفر",
     "filterLabelJobType": "نوع الوظيفة",
     "filterLabelSort": "ترتيب حسب",
@@ -13667,6 +13984,7 @@
     "tableHeaderProfession": "المهنة",
     "tableHeaderEducation": "التعليم",
     "tableHeaderNationality": "الجنسية",
+    "tableHeaderIndustry": "الصناعة",
     "tableHeaderSkills": "المهارات",
     "tableHeaderExp": "الخبرة",
     "tableHeaderProfilePercent": "اكتمال الملف",
@@ -13715,6 +14033,7 @@
     "editFieldNationality": "الجنسية",
     "editFieldLocation": "الموقع",
     "editFieldSummary": "الملخص",
+    "editFieldIndustry": "الصناعة",
     "editModalTitle": "تعديل طالب الوظيفة",
     "actionReactivateTitle": "إعادة تفعيل",
     "exportHeaderCurrentRole": "الوظيفة الحالية",
@@ -13733,7 +14052,7 @@
     "exportColumnHeaderLanguages": "اللغات",
     "exportColumnHeaderCertifications": "الشهادات",
     "exportColumnHeaderHasCv": "السيرة الذاتية",
-    "bulkCvDownloadConfirmMessage": "تحميل السير الذاتية المطابقة (حتى 50) كملف ZIP واحد مع ورقة تفاصيل المرشحين؟",
+    "bulkCvDownloadConfirmMessage": "تحميل السير الذاتية لأول 50 شخصًا في هذه القائمة، بالترتيب المعروض، كملف ZIP واحد مع ورقة تفاصيل المرشحين؟",
     "bulkCvExcelSheetHeaderName": "الاسم",
     "bulkCvExcelSheetHeaderEmail": "البريد الإلكتروني",
     "bulkCvExcelSheetHeaderNationality": "الجنسية",
@@ -13784,7 +14103,9 @@
     "exportHeaderReferredBy": "أُحيل بواسطة",
     "backToList": "العودة إلى الباحثين عن عمل",
     "openProfile": "فتح الملف الشخصي لـ {name}",
-    "profileNotFound": "تعذّر العثور على هذا الباحث عن عمل. ربما تمت إزالته."
+    "profileNotFound": "تعذّر العثور على هذا الباحث عن عمل. ربما تمت إزالته.",
+    "industriesChipsLabel": "الصناعات",
+    "failedToLoadIndustries": "تعذّر تحميل الصناعات. حاول مرة أخرى."
   },
   "adminReports": {
     "reportsAndAnalytics": "تقرير المنصة",
@@ -13840,7 +14161,8 @@
     "jobHealthTitle": "حالة الوظائف",
     "jobHealthActive": "الوظائف النشطة",
     "jobHealthReceiving": "تتلقى طلبات",
-    "jobHealthNone": "بلا طلبات"
+    "jobHealthNone": "بلا طلبات",
+    "industriesChipsLabel": "الصناعات"
   },
   "adminSettingsNotifications": {
     "adminWorkspaceLabel": "مساحة العمل الإدارية",
@@ -14300,7 +14622,8 @@
     "createAgentElsewhere": "يتم إعداد الوكلاء من صفحة الوكلاء، حيث تختار الوكيل الرئيسي والمنطقة.",
     "createSuperAgentElsewhere": "يتم إعداد الوكلاء الرئيسيين من صفحة الوكلاء الرئيسيين، حيث تختار نطاقهم ووكلاءهم.",
     "continueOnAgentsPage": "المتابعة في صفحة الوكلاء",
-    "continueOnSuperAgentsPage": "المتابعة في صفحة الوكلاء الرئيسيين"
+    "continueOnSuperAgentsPage": "المتابعة في صفحة الوكلاء الرئيسيين",
+    "toastDeletingUser": "جارٍ حذف {name}…"
   },
   "superAgentSettings": {
     "profilePhoto": "صورة الملف الشخصي",
@@ -15485,7 +15808,8 @@
         "any": "أي نوع"
       }
     },
-    "filterAvailability": "التوفر"
+    "filterAvailability": "التوفر",
+    "industriesChipsLabel": "الصناعات"
   },
   "superAgentReports": {
     "teamPerformanceSummary": "ملخص أداء الفريق",
@@ -15700,7 +16024,7 @@
     "exportHeaderFollowUp": "المتابعة",
     "exportHeaderCreated": "تاريخ الإنشاء",
     "exportFilename": "فرص-الجهات",
-    "pageTitle": "إدارة فرص جهات التوظيف",
+    "pageTitle": "العملاء المحتملون",
     "scoringFailed": "تعذر التقييم",
     "failedToScoreLead": "تعذر تقييم الفرصة",
     "leadScored": "تم تقييم الفرصة: {temperature} ({score}/100)",
@@ -16226,6 +16550,7 @@
     "filterHiringStatus": "حالة التوظيف",
     "hiringStatusLabel": "حالة التوظيف",
     "hiringStatusAny": "أي حالة توظيف",
+    "industriesChipsLabel": "الصناعات",
     "viewAllShort": "الكل"
   },
   "agentEmployers": {
@@ -16350,6 +16675,8 @@
     "tableHeaderCurrency": "العملة",
     "tableHeaderStartDate": "تاريخ البدء",
     "noPlacementsYet": "لا توجد توظيفات حتى الآن",
+    "noPlacementsDescription": "يظهر التوظيف عندما يقبل المرشح عرضاً.",
+    "viewOffers": "عرض العروض",
     "statusAllStatuses": "جميع الحالات",
     "statusPending": "قيد الانتظار",
     "statusOffer": "عرض",
@@ -16842,6 +17169,7 @@
   },
   "agentChat": {
     "agentWorkspaceBadge": "مساحة العمل للوكلاء",
+    "messagesTitle": "الرسائل",
     "teamChannelsHeading": "قنوات الفريق",
     "teamChannelsDescription": "تنسيق مع الوكلاء وأصحاب العمل والمشرفين في نفس مساحة العمل الحديثة مع الحفاظ على كل محادثة في قناتها الخاصة.",
     "presenceLabel": "الحضور",
@@ -16870,7 +17198,9 @@
     "commissionsCount": "{count} عمولة",
     "monthlyBreakdown": "التفصيل الشهري",
     "byType": "حسب النوع",
-    "noData": "لا توجد بيانات"
+    "noData": "لا توجد بيانات",
+    "noEarningsYet": "لا توجد أرباح حتى الآن",
+    "commissionReportEmptyHint": "ستظهر أرباحك هنا بمجرد إتمام أول عملية توظيف لك والحصول عليها."
   },
   "onboarding": {
     "stepBasicDetails": "البيانات الأساسية",
@@ -16990,6 +17320,8 @@
     "locationsPlaceholder": "مثال: دبي، الرياض، ممبي",
     "preferredSalary": "الراتب المفضل",
     "perYear": "سنوياً",
+    "perMonth": "شهرياً",
+    "monthlySalaryPlaceholder": "مثال: 8000",
     "gender": "النوع",
     "enterHeadline": "يرجى إدخال عنوان السيرة الذاتية.",
     "back": "رجوع",
@@ -17005,6 +17337,7 @@
     "universityRequired": "يرجى إدخال اسم الجامعة أو المؤسسة التعليمية"
   },
   "verifyEmail": {
+    "codeLocked": "تم إدخال هذا الرمز بشكل خاطئ مرات كثيرة. استخدم الرابط في الرسالة، أو اطلب رمزاً جديداً.",
     "resendSuccess": "تم إرسال بريد التحقق! تحقق من صندوق الوارد الخاص بك.",
     "resendFailure": "تعذر إعادة الإرسال. يرجى المحاولة مرة أخرى لاحقًا.",
     "networkError": "خطأ في الشبكة. يرجى المحاولة مرة أخرى.",
@@ -17217,6 +17550,181 @@
     "countriesSalaries": "الرواتب حسب الدولة",
     "jobsCount": "{count} وظيفة"
   },
+  "jobRequirementExtras": {
+    "optional": "اختياري",
+    "add": "إضافة",
+    "remove": "إزالة {name}",
+    "importance": {
+      "must": "أساسي",
+      "nice": "مرغوب"
+    },
+    "hireType": {
+      "label": "ما الأهم في هذا التوظيف؟",
+      "hint": "يحدد طريقة ترتيب المتقدمين حتى تختار أوزانك الخاصة.",
+      "none": "متوازن (الترتيب القياسي)",
+      "experienced": "خبرة مثبتة في الدور",
+      "skills": "مهارات محددة",
+      "qualification": "مؤهل أو ترخيص",
+      "entry": "مستوى مبتدئ / حديثو التخرج"
+    },
+    "education": {
+      "label": "الحد الأدنى للتعليم",
+      "hint": "مطلوب. اختر \"لا يوجد حد أدنى\" إذا كان أي تعليم مقبولًا. المؤهلات الأعلى تُحتسب دائمًا.",
+      "placeholder": "اختر الحد الأدنى للتعليم",
+      "required": "اختر الحد الأدنى للتعليم، أو \"لا يوجد حد أدنى\"",
+      "importanceLabel": "مدى أهمية مستوى التعليم",
+      "levels": {
+        "0": "لا يوجد حد أدنى",
+        "1": "المدرسة (العاشر / الثاني عشر)",
+        "2": "دبلوم / معهد فني",
+        "3": "بكالوريوس",
+        "4": "ماجستير",
+        "5": "دكتوراه"
+      },
+      "fieldLabel": "التخصص",
+      "fieldPlaceholder": "مثال: علوم الحاسوب أو تخصص ذو صلة",
+      "essentialLabel": "التخصص نفسه أساسي",
+      "essentialHint": "لن تُحتسب شهادة في تخصص آخر. اتركه مغلقًا إذا كان التخصص ذو الصلة أو أي تخصص مقبولًا."
+    },
+    "experienceIn": {
+      "label": "الخبرة في ماذا؟",
+      "hint": "المجال الذي يجب أن تكون فيه سنوات الخبرة أعلاه. يُقيَّم المرشحون بالسنوات التي قضوها فيه، لا بإجمالي خبرتهم فقط.",
+      "placeholder": "مثال: تطوير MERN stack، الشحن في دول الخليج"
+    },
+    "credentials": {
+      "label": "التراخيص والشهادات",
+      "hint": "مثال: رخصة قيادة سارية، ترخيص هيئة الصحة بدبي، PMP. اضغط Enter لإضافة كل واحدة.",
+      "placeholder": "مثال: رخصة قيادة إماراتية سارية",
+      "importanceLabel": "مدى أهمية {name}"
+    },
+    "languages": {
+      "label": "اللغات",
+      "hint": "اللغات التي يجب أن يتحدثها الشخص. اضغط Enter لإضافة كل لغة.",
+      "placeholder": "مثال: الإنجليزية، العربية",
+      "importanceLabel": "مدى أهمية اللغات"
+    }
+  },
+  "requirementReport": {
+    "none": "لا تذكر هذه الوظيفة متطلبات للتحقق منها.",
+    "mustHave": "أساسي",
+    "equivalent": "ما يعادله",
+    "notSetForJob": "غير محدد لهذه الوظيفة",
+    "mustHaveSummary": "{has} من {total} متطلبات أساسية مستوفاة",
+    "mustHaveSummaryPartly": "{has} من {total} متطلبات أساسية مستوفاة، و{partial} جزئيًا",
+    "counts": "{has} مستوفى · {partial} جزئيًا · {missing} غير متوفر · {verify} للتحقق",
+    "kind": {
+      "education": "التعليم",
+      "experience": "الخبرة",
+      "skill": "المهارات المطلوبة",
+      "preferred_skill": "مهارات مرغوبة",
+      "credential": "التراخيص والشهادات",
+      "language": "اللغات",
+      "visa": "التأشيرة والإقامة"
+    },
+    "status": {
+      "employer": {
+        "partly": "يستوفي المتطلبات الأساسية جزئيًا",
+        "met": "يستوفي كل المتطلبات الأساسية",
+        "unverified": "متطلبات أساسية تحتاج إلى تحقق",
+        "not_met": "ينقصه متطلب أساسي"
+      },
+      "seeker": {
+        "partly": "تستوفي المتطلبات الأساسية جزئيًا",
+        "met": "تستوفي كل المتطلبات الأساسية",
+        "unverified": "بعض المتطلبات الأساسية غير موجودة في ملفك",
+        "not_met": "ينقصك متطلب أساسي"
+      }
+    },
+    "verdict": {
+      "employer": {
+        "has": "متوفر",
+        "partial": "جزئيًا",
+        "missing": "غير متوفر",
+        "verify": "يحتاج إلى تحقق",
+        "info": "غير مطلوب"
+      },
+      "seeker": {
+        "has": "لديك هذا",
+        "partial": "جزئيًا",
+        "missing": "غير متوفر",
+        "verify": "غير موجود في ملفك",
+        "info": "غير مطلوب"
+      }
+    },
+    "education": {
+      "employer": {
+        "none": "لا يوجد مؤهل في الملف.",
+        "held": "يحمل: {actual}",
+        "higher": "يحمل مؤهلًا أعلى: {actual}",
+        "related": "يحمل تخصصًا ذا صلة: {actual}",
+        "fieldNotStated": "يحمل: {actual} (التخصص غير مذكور)",
+        "differentField": "يحمل المستوى في تخصص مختلف: {actual}",
+        "lower": "أعلى مؤهل لديه أقل: {actual}",
+        "info": "يحمل: {actual}",
+        "infoNone": "لا يوجد مؤهل في الملف"
+      },
+      "seeker": {
+        "none": "لا يذكر ملفك أي مؤهل. أضفه ليُحتسب هنا.",
+        "held": "تحمل: {actual}",
+        "higher": "تحمل مؤهلًا أعلى: {actual}",
+        "related": "تخصصك ذو صلة: {actual}",
+        "fieldNotStated": "تحمل: {actual}. أضف تخصصك للتأكد.",
+        "differentField": "شهادتك في تخصص مختلف: {actual}",
+        "lower": "أعلى مؤهل لديك أقل: {actual}",
+        "info": "مؤهلك: {actual} — لا تشترط هذه الوظيفة حدًا أدنى",
+        "infoNone": "لا يذكر ملفك أي مؤهل — لا تشترط هذه الوظيفة حدًا أدنى"
+      }
+    },
+    "experience": {
+      "employer": {
+        "unknown": "لا يذكر الملف مقدار خبرته.",
+        "relevant": "{relevant, plural, one {سنة واحدة} two {سنتان} few {# سنوات} many {# سنة} other {# سنة}} ذات صلة من أصل {total, plural, one {سنة واحدة} two {سنتان} few {# سنوات} many {# سنة} other {# سنة}} ({roles})",
+        "total": "{total, plural, one {سنة واحدة} two {سنتان} few {# سنوات} many {# سنة} other {# سنة}} إجمالًا؛ لا يوجد دور يطابق المجال",
+        "needsEndDate": "{years, plural, one {سنة واحدة} two {سنتان} few {# سنوات} many {# سنة} other {# سنة}} مؤكدة. لا يوجد تاريخ انتهاء لـ {roles}، لذا لم تُحتسب مدته."
+      },
+      "seeker": {
+        "unknown": "لا يذكر ملفك مقدار خبرتك.",
+        "relevant": "لديك {relevant, plural, one {سنة واحدة} two {سنتان} few {# سنوات} many {# سنة} other {# سنة}} ذات صلة من أصل {total, plural, one {سنة واحدة} two {سنتان} few {# سنوات} many {# سنة} other {# سنة}} ({roles})",
+        "total": "لديك {total, plural, one {سنة واحدة} two {سنتان} few {# سنوات} many {# سنة} other {# سنة}} إجمالًا؛ لا يوجد دور في ملفك يطابق هذا",
+        "needsEndDate": "مجموع وظائفك المؤرخة {years, plural, one {سنة واحدة} two {سنتان} few {# سنوات} many {# سنة} other {# سنة}}. لا يوجد تاريخ انتهاء لـ {roles}. أضف التاريخ أو حدّدها كوظيفة حالية لتُحتسب."
+      }
+    },
+    "skill": {
+      "employer": {
+        "has": "موجودة في الملف أو السيرة الذاتية",
+        "missing": "غير موجودة في الملف أو السيرة الذاتية"
+      },
+      "seeker": {
+        "has": "موجودة في ملفك أو سيرتك الذاتية",
+        "missing": "غير موجودة في ملفك أو سيرتك الذاتية"
+      }
+    },
+    "credential": {
+      "employer": {
+        "listed": "مذكور في الملف: {quote}",
+        "cv": "مذكور في السيرة الذاتية: \"{quote}\"",
+        "none": "غير مذكور. اسأل المرشح."
+      },
+      "seeker": {
+        "listed": "في ملفك: {quote}",
+        "cv": "في سيرتك الذاتية: \"{quote}\"",
+        "none": "غير موجود في ملفك. أضفه ضمن الشهادات إن كان لديك."
+      }
+    },
+    "language": {
+      "employer": {
+        "all": "يتحدثها جميعًا",
+        "some": "يتحدث {have}؛ غير مذكور: {missing}",
+        "none": "لا توجد لغات في الملف."
+      },
+      "seeker": {
+        "all": "تتحدثها جميعًا",
+        "some": "تتحدث {have}؛ غير موجود في ملفك: {missing}",
+        "none": "لا يذكر ملفك أي لغات."
+      }
+    },
+    "visa": "ذكره صاحب العمل؛ تحقق منه مع المرشح."
+  },
   "jobSeekerJobDetail": {
     "jobDetail": "تفاصيل الوظيفة",
     "notAvailableClosed": "هذه الوظيفة لم تعد تقبل الطلبات.",
@@ -17266,14 +17774,21 @@
       "eyebrow": "مدى تطابقك",
       "score": "تطابق {score}%",
       "howItWorks": "كيف نحسب هذه النتيجة",
+      "askedTitle": "المهارات التي تطلبها هذه الوظيفة",
       "skills": "المهارات",
       "role": "ملاءمة الدور",
       "experience": "الخبرة",
+      "education": "التعليم",
+      "credentials": "التراخيص والشهادات",
+      "languages": "اللغات",
+      "requirementsHeading": "متطلبات هذه الوظيفة مقارنة بملفك",
+      "noGaps": "ملفك يغطي كل ما تطلبه هذه الوظيفة.",
+      "mustHaveNote": "لا نرسل لك وظيفة بالبريد إلا إذا ظهر كل متطلب أساسي مستوفى في ملفك. يمكنك التقديم على هذه الوظيفة مع ذلك.",
       "weight": "يمثل {weight}%",
       "aiUp": "أضافت مراجعة الذكاء الاصطناعي {points, plural, one {نقطة واحدة} two {نقطتين} few {# نقاط} many {# نقطة} other {# نقطة}}.",
       "aiDown": "خصمت مراجعة الذكاء الاصطناعي {points, plural, one {نقطة واحدة} two {نقطتين} few {# نقاط} many {# نقطة} other {# نقطة}}.",
-      "skillsUnknown": "لا تذكر هذه الوظيفة أي مهارات، لذا فإن جزء المهارات تقديري.",
-      "gatesNote": "الموقع والراتب ونمط العمل لا تضيف نقاطًا، بل تحدد ما إذا كنا سنرشّح الوظيفة لك.",
+      "skillsUnknown": "لا تذكر هذه الوظيفة أي مهارات، لذا لا تدخل المهارات في هذه النتيجة.",
+      "gatesNote": "الموقع والراتب ونمط العمل لا تضيف نقاطًا، بل تحدد ما إذا كنا سنرشّح الوظيفة لك. التعليم والخبرة لا يخفيان أي وظيفة، بل يغيّران النتيجة.",
       "notRecommended": "غير مرشّحة لك: {reason}.",
       "reasons": {
         "country": "الوظيفة خارج الدول التي تفضّلها",
@@ -17317,6 +17832,8 @@
     "requirements": "المتطلبات",
     "negotiable": "قابل للتفاوض",
     "fromSalaryPerMonth": "من {currency} {min} / شهر",
+    "fixedSalaryPerMonth": "{currency} {amount} / شهر",
+    "salaryNegotiable": "{amount} / شهر · قابل للتفاوض",
     "salaryRangePerMonth": "{currency} {min} – {max} / شهر",
     "jobSearch": "البحث عن الوظائف",
     "stickyApply": "تقديم سهل",
@@ -17391,24 +17908,22 @@
     "events": {
       "applied": "قدّمت طلبك",
       "viewed": "اطّلع صاحب العمل على طلبك",
-      "shortlisted": "أضافك صاحب العمل إلى القائمة المختصرة",
-      "interview_scheduled": "انتقلت إلى مرحلة المقابلات",
-      "selected": "اختارك صاحب العمل",
+      "in_review": "يراجع صاحب العمل طلبك",
+      "interview": "انتقلت إلى مرحلة المقابلات",
       "offer": "تلقيت عرضًا وظيفيًا",
       "hired": "تم توظيفك",
-      "rejected": "قرر صاحب العمل عدم المتابعة",
+      "not_selected": "قرر صاحب العمل عدم المتابعة",
       "withdrawn": "سحبت طلبك"
     },
     "nextTitle": "الخطوة التالية",
     "next": {
       "applied": "لم يفتح صاحب العمل طلبك بعد. سنخبرك عندما يطّلع عليه أو ينقلك إلى المرحلة التالية.",
       "applied_viewed": "اطّلع صاحب العمل على طلبك. سنخبرك عندما ينقلك إلى المرحلة التالية.",
-      "shortlisted": "أنت ضمن القائمة المختصرة لدى صاحب العمل، وقد يتواصل معك لترتيب مقابلة.",
-      "interview_scheduled": "راجع تفاصيل المقابلة أدناه وأخبر صاحب العمل إن كان بإمكانك الحضور.",
-      "selected": "اختارك صاحب العمل. سنخبرك فور إرساله عرضًا وظيفيًا.",
+      "in_review": "يراجع صاحب العمل طلبك. سنخبرك إذا دعاك إلى مقابلة.",
+      "interview": "أنت في مرحلة المقابلات. راجع تفاصيل المقابلة أدناه ورُدّ على الدعوات، وسنخبرك عندما يتخذ صاحب العمل قراره.",
       "offer": "راجع العرض أدناه واقبله أو ارفضه قبل انتهاء صلاحيته.",
       "hired": "تهانينا على وظيفتك الجديدة. خطوات الانضمام موجودة في صفحة الانضمام.",
-      "rejected": "قرر صاحب العمل عدم المتابعة هذه المرة. ستجد وظائف جديدة تناسب ملفك الشخصي في صفحة الوظائف.",
+      "not_selected": "قرر صاحب العمل عدم المتابعة هذه المرة. ستجد وظائف جديدة تناسب ملفك الشخصي في صفحة الوظائف.",
       "withdrawn": "سحبت هذا الطلب. يمكنك التقديم مجددًا من صفحة الوظيفة ما دامت متاحة."
     },
     "sentTitle": "ما أرسلته",
@@ -17797,8 +18312,18 @@
     "no": "لا",
     "unknown": "حالة غير معروفة"
   },
+  "seekerStatus": {
+    "applied": "تم التقديم",
+    "in_review": "قيد المراجعة",
+    "interview": "مقابلة",
+    "offer": "عرض",
+    "hired": "تم التوظيف",
+    "not_selected": "لم يتم اختيارك",
+    "withdrawn": "مسحوب"
+  },
   "resumeViewerModal": {
     "downloadCv": "تحميل السيرة الذاتية",
+    "requirements": "مقارنة بمتطلبات هذه الوظيفة",
     "resumeReadability": "قابلية قراءة السيرة الذاتية",
     "readabilityHint": "مدى دقة قراءتنا التلقائية لهذه السيرة الذاتية وتحويلها إلى بيانات منظمة.",
     "more": "المزيد",
@@ -18504,6 +19029,10 @@
     "networkError": "خطأ في الشبكة"
   },
   "easyApply": {
+    "uploadCv": "ارفع سيرتك الذاتية",
+    "loginNextTimeTitle": "كيف تسجّل الدخول في المرة القادمة",
+    "loginNextTimeBody": "حسابك لا يملك كلمة مرور بعد. في صفحة تسجيل الدخول اختر «تسجيل الدخول برمز عبر البريد» وسنرسل رمزاً إلى {email}. أو عيّن كلمة مرور الآن.",
+    "setPasswordAction": "تعيين كلمة مرور",
     "signupConsentNeeded": "لم يتم إنشاء حسابك. وافق على شروط الخدمة وسياسة الخصوصية للتقديم.",
     "loading": "جاري التحميل…",
     "quickApplyTitle": "قدّم في ثوانٍ",
@@ -18524,7 +19053,6 @@
     "profileCvLabel": "السيرة الذاتية للملف الشخصي",
     "builtCv": "السيرة الذاتية المُنشأة على Mployedin",
     "builtCvHint": "تُنشأ من ملفك الشخصي بالتصميم الذي حفظته في منشئ السيرة الذاتية.",
-    "noCvOnFile": "لا توجد سيرة ذاتية حتى الآن — يرجى تحميل واحدة أدناه.",
     "uploading": "جاري التحميل…",
     "uploadDifferentCv": "تحميل سيرة ذاتية مختلفة",
     "additionalDocuments": "المستندات الإضافية",
@@ -18565,9 +19093,12 @@
       "popupBlocked": "حجب متصفحك نافذة تسجيل الدخول من Google. جرب استخدام البريد الإلكتروني بدلاً من ذلك.",
       "captchaFailed": "تعذر علينا التأكد من أنك لست روبوتًا. حاول مرة أخرى.",
       "captchaUnavailable": "فحص الروبوتات غير متاح مؤقتًا. حاول مرة أخرى بعد قليل.",
-      "nameRequired": "يرجى إدخال اسمك الكامل"
+      "nameRequired": "يرجى إدخال اسمك الكامل",
+      "cvRequired": "أضف سيرة ذاتية للتقديم: ارفع سيرتك، أو أضف بياناتك وسننشئ واحدة."
     },
-    "continueWithEmail": "المتابعة عبر البريد الإلكتروني",
+    "continueWithEmail": "قدّم الآن عبر البريد الإلكتروني",
+    "haveAccount": "لديك حساب بالفعل؟",
+    "logInToApply": "سجّل الدخول للتقديم",
     "sendCode": "إرسال الرمز",
     "verify": "تحقق",
     "enterCode": "أدخل الرمز",
@@ -18597,20 +19128,26 @@
     "applyNow": "تقدّم الآن",
     "changeCv": "تغيير",
     "authDialogTitle": "سجّل الدخول للتقديم",
-    "authDialogHint": "سجّل الدخول عبر Google أو بريدك الإلكتروني. جديد هنا؟ سننشئ حسابك، ويمكنك إضافة سيرتك الذاتية لاحقاً.",
+    "authDialogHint": "سجّل الدخول عبر Google أو بريدك الإلكتروني. لا توجد لديك سيرة ذاتية محفوظة لدينا؟ بضعة أسئلة سريعة تنشئ واحدة.",
     "authDialogHintCv": "سجّل الدخول عبر Google أو بريدك الإلكتروني. سنقرأ {file} ونملأ ملفك الشخصي.",
     "orDivider": "أو",
     "backToOptions": "العودة إلى خيارات تسجيل الدخول",
     "applyWithCv": "قدّم بالسيرة الذاتية",
-    "applyWithoutCv": "قدّم بدون سيرة ذاتية",
     "cvDialogTitle": "أضف سيرتك الذاتية",
     "cvDialogHint": "يقرأ الذكاء الاصطناعي سيرتك الذاتية ويملأ ملفك الشخصي، دون نماذج طويلة.",
     "cvFormats": "PDF أو Word",
     "aiBadge": "AI",
     "chooseHowToApply": "اختر طريقة التقديم.",
-    "recommended": "موصى به",
     "applyWithCvDesc": "يقرأ الذكاء الاصطناعي سيرتك الذاتية ويملأ ملفك الشخصي نيابةً عنك.",
-    "applyWithoutCvDesc": "أدخل بياناتك بنفسك، ويمكنك إضافة سيرتك الذاتية لاحقاً."
+    "uploadCvToApply": "ارفع سيرتك الذاتية للتقديم",
+    "applyWithoutCv": "قدّم بدون سيرة ذاتية",
+    "applyWithoutCvDesc": "أجب عن بضعة أسئلة سريعة، وسننشئ سيرتك الذاتية على Mployedin منها.",
+    "recommended": "موصى به",
+    "addDetailsForCv": "ليست لديك سيرة ذاتية؟ أضف بياناتك وسننشئ واحدة",
+    "autoCv": "سيرتك الذاتية على Mployedin",
+    "autoCvHint": "تُنشأ من بيانات ملفك الشخصي عند التقديم.",
+    "previewCv": "معاينتها أو تعديلها",
+    "uploadOwnCv": "ارفع سيرتك الذاتية الخاصة بدلاً من ذلك"
   },
   "socialShare": {
     "shareJob": "مشاركة الوظيفة",
@@ -18618,7 +19155,33 @@
     "linkCopied": "تم نسخ الرابط!",
     "failedCopy": "تعذر نسخ الرابط",
     "copyLink": "نسخ الرابط",
-    "linkCopiedToClipboard": "تم نسخ الرابط إلى الحافظة"
+    "linkCopiedToClipboard": "تم نسخ الرابط إلى الحافظة",
+    "messageHeadline": "نحن نوظّف: {title}",
+    "messageSkills": "المهارات: {skills}",
+    "messageApply": "قدّم هنا: {url}",
+    "editMessage": "تعديل الرسالة…",
+    "editMessageTitle": "تعديل رسالة المشاركة",
+    "editMessageHint": "يُرسَل هذا النص إلى واتساب وX. أما لينكدإن وفيسبوك فيشاركان الرابط فقط — انسخ الرسالة والصقها هناك.",
+    "editMessageCount": "{count} / {max} حرفًا",
+    "resetMessage": "إعادة تعيين",
+    "copyMessage": "نسخ الرسالة",
+    "messageCopied": "تم نسخ الرسالة",
+    "sendOnWhatsApp": "إرسال عبر واتساب",
+    "salaryNegotiable": "الراتب: قابل للتفاوض",
+    "salaryFigure": "الراتب: {amount}",
+    "employment": {
+      "full_time": "دوام كامل",
+      "part_time": "دوام جزئي",
+      "contract": "عقد",
+      "internship": "تدريب",
+      "freelance": "عمل حر"
+    },
+    "workMode": {
+      "onsite": "في الموقع",
+      "hybrid": "هجين",
+      "remote": "عن بُعد"
+    },
+    "salaryFigureNegotiable": "الراتب: {amount} (قابل للتفاوض)"
   },
   "errorBoundary": {
     "title": "تعذر تحميل هذه الصفحة",
@@ -18665,6 +19228,7 @@
   "copilot": {
     "title": "مساعد MPLOYEDIN",
     "openCopilot": "فتح المساعد",
+    "launcherLabel": "المساعد",
     "assistant": "المساعد الذكي",
     "greeting": "مرحباً! أنا مساعدك الذكي.",
     "howCanIHelp": "اطلب مني البحث أو التحقق أو تنفيذ إجراء — سأعرض لك ما سأقوم به قبل أي تغيير.",
@@ -19029,6 +19593,7 @@
   },
   "jobCard": {
     "company": "الشركة",
+    "salaryNegotiable": "{amount} · قابل للتفاوض",
     "companyLogo": "شعار {company}",
     "viewCompany": "عرض {company}",
     "matchPercent": "تطابق {score}%",
@@ -19291,6 +19856,7 @@
     "matchesHeading": "الملفات المناسبة لهذه الوظيفة"
   },
   "formErrors": {
+    "agentEmailNotVerified": "لم يؤكد هذا الوكيل عنوان بريده الإلكتروني بعد. يمكنك الموافقة عليه بعد تأكيده.",
     "fallback": "لم نتمكن من حفظ التغييرات. لم يتغير شيء. راجع الحقول وحاول مرة أخرى.",
     "network": "تعذر الوصول إلى الخادم. تحقق من اتصالك وحاول مرة أخرى.",
     "permission": "ليست لديك صلاحية للقيام بذلك.",
@@ -19359,7 +19925,8 @@
     "contextApplications": "{total, plural, zero {لا طلبات} one {طلب واحد} two {طلبان} few {# طلبات} many {# طلبًا} other {# طلب}} · {active} نشطة",
     "contextInterviews": "{upcoming} قادمة · {past} سابقة",
     "contextOffers": "{pending} معلقة · {accepted} مقبولة",
-    "contextOnboarding": "{count, plural, =0 {لا شيء قيد التنفيذ} one {تهيئة واحدة قيد التنفيذ} two {تهيئتان قيد التنفيذ} few {# تهيئات قيد التنفيذ} many {# تهيئة قيد التنفيذ} other {# تهيئة قيد التنفيذ}}"
+    "contextOnboarding": "{count, plural, =0 {لا شيء قيد التنفيذ} one {تهيئة واحدة قيد التنفيذ} two {تهيئتان قيد التنفيذ} few {# تهيئات قيد التنفيذ} many {# تهيئة قيد التنفيذ} other {# تهيئة قيد التنفيذ}}",
+    "jobsNavLabel": "عرض الوظائف"
   },
   "teamJoin": {
     "title": "انضم إلى فريقك",
@@ -19418,6 +19985,7 @@
     "dismiss": "إغلاق"
   },
   "employerAts": {
+    "otherDetails": "تفاصيل أخرى",
     "requirements": "المتطلبات",
     "status": {
       "met": "يستوفي الشروط الأساسية",
@@ -19425,7 +19993,7 @@
       "unverified": "شرط أساسي غير مذكور"
     },
     "statusHint": {
-      "met": "يستوفي كل الشروط الأساسية لهذه الوظيفة: الحد الأدنى للخبرة، والمؤهل المطلوب، وبلدان التوظيف للعمل عن بُعد، والإجابات الحاسمة (يُقبل الفارق بسنة واحدة أو مستوى واحد). لا تُفحص المهارات هنا، فهي محسوبة في نسبة التطابق.",
+      "met": "يستوفي كل الشروط الأساسية لهذه الوظيفة: الحد الأدنى للخبرة، والمؤهل المطلوب، والتراخيص واللغات المحددة كشرط أساسي، وبلدان التوظيف للعمل عن بُعد، والإجابات الحاسمة (يُقبل الفارق بسنة واحدة أو مستوى واحد). لا تُفحص المهارات هنا، فهي محسوبة في نسبة التطابق.",
       "not_met": "ينقصه شرط أساسي واحد على الأقل: الحد الأدنى للخبرة أو المؤهل المطلوب أو بلد التوظيف أو إجابة حاسمة. يُستبعد من اختيار الأفضل مهما كانت نسبة التطابق.",
       "unverified": "لم يفشل أي شرط أساسي، لكن المرشح لم يذكر معلومة يحتاجها أحدها (مثل خبرته)، فتعذّر التحقق منه."
     },
@@ -19446,10 +20014,14 @@
       "work_mode": "نمط العمل",
       "languages": "اللغات",
       "screening": "إجابة الفرز",
+      "credential": "ترخيص / شهادة",
       "cv": "السيرة الذاتية"
     },
     "detail": {
       "experience": "تتطلب {required}+ سنوات · لديه {actual}",
+      "experienceIn": "تتطلب {required}+ سنوات في {subject} · لديه {actual} ذات صلة",
+      "credentialFound": "موجود: {actual}",
+      "credentialNone": "غير مذكور في الملف أو السيرة الذاتية — اسأل المرشح",
       "education": "تتطلب {required} · لديه {actual}",
       "skills": "لديه {actual} من {required}",
       "industryYears": "قطاع الوظيفة: {required} · {actual} سنوات فيه",
@@ -19981,7 +20553,12 @@
       "title": "ما تطلبه الوظيفة، بعد الفحص",
       "summary": "{has} من {total} موجود في الملف",
       "note": "تم الفحص بمقارنة مهارات الملف وأدواره وتعليمه وسيرته الذاتية مع كل سطر. دليل إرشادي وليس حكمًا نهائيًا.",
-      "verdict": { "has": "لديه", "partial": "جزئيًا", "missing": "ليس لديه", "unknown": "لا يمكن الحكم" },
+      "verdict": {
+        "has": "لديه",
+        "partial": "جزئيًا",
+        "missing": "ليس لديه",
+        "unknown": "لا يمكن الحكم"
+      },
       "detail": {
         "education": "يتطلب {required} · لديه {actual}",
         "educationNone": "يتطلب {required} · لا يوجد تعليم في الملف",
@@ -20016,10 +20593,11 @@
       "skills": "المهارات",
       "role": "الدور",
       "experience": "الخبرة",
-      "education": "التعليم",
+      "education": "المؤهلات",
       "industry": "القطاع"
     },
     "yearsExperience": "{count, plural, zero {بدون خبرة} one {سنة واحدة خبرة} two {سنتان خبرة} few {# سنوات خبرة} many {# سنة خبرة} other {# سنة خبرة}}",
+    "noExperienceYet": "لا توجد خبرة عمل بعد",
     "experienceNotStated": "الخبرة غير محددة",
     "latestRole": "{title} لدى {company}",
     "hasSkills": "لديه",
@@ -20747,6 +21325,8 @@
     "agentReportOf": "تقرير {name}",
     "agentReportTitle": "تقرير أرباحي",
     "agentTitle": "هدف أرباحي",
+    "reportEmptyTitle": "لا يوجد تقرير حتى الآن",
+    "reportEmptyDescription": "سيظهر تقرير أرباحك هنا بمجرد تعيين هدف وتسجيل الأرباح.",
     "allRegions": "كل المناطق",
     "allRisk": "جميع المخاطر",
     "allSizes": "جميع الأحجام",
@@ -20780,6 +21360,7 @@
     "colUpdate": "تحديث",
     "completed": "مكتملة",
     "contactSupervisor": "تواصل مع مشرفك لتعيين الأهداف",
+    "targetAssignedBySupervisor": "مشرفك يعين أهداف الربح. عند التعيين، ستتمكن من رؤية هدفك وتتبع تقدمك هنا.",
     "createDescription": "حدد هدف الربح السنوي لكل مشرف وكيفية توزيعه على الأشهر",
     "createProfilesToSeeRankings": "أنشئ ملفات أهداف لعرض التصنيفات",
     "createTargetsCount": "إنشاء الأهداف ({count})",
@@ -21041,7 +21622,7 @@
       "jobDraft": "حفظ مسودة إعلان الوظيفة في علامة التبويب هذه",
       "noticeDismissed": "تذكّر إشعار أغلقته، في علامة التبويب هذه",
       "firebase": "تسجيل الدخول عبر Google، فقط بعد أن تختاره",
-      "recaptcha": "الحماية من الرسائل المزعجة عبر Google reCAPTCHA، فقط عند إرسال نموذج محمي (طلب رمز التقديم أو نموذج التواصل)",
+      "recaptcha": "الحماية من الرسائل المزعجة عبر Google reCAPTCHA، فقط عند إرسال نموذج محمي (طلب رمز التقديم أو رمز تسجيل الدخول، أو نموذج التواصل)",
       "offline": "التطبيق المثبّت والإشعارات، فقط بعد تفعيلها",
       "files": "عرض ملفاتك وصورك المرفوعة",
       "locale": "لغتك",
@@ -21170,6 +21751,7 @@
     }
   },
   "planBilling": {
+    "compareWith": "قارن خطتك مع",
     "title": "الخطة والفوترة",
     "description": "خطتك الحالية، وما استخدمته، وما هو متاح أيضًا.",
     "yourPlan": "خطتك",
@@ -21661,12 +22243,33 @@
         "resolved": "أُغلقت الفجوة"
       }
     }
+  },
+  "portalAnnouncements": {
+    "dismiss": "تجاهل",
+    "count": "{current} من {total}",
+    "next": "الإعلان التالي"
+  },
+  "screeningQuestions": {
+    "title": "أسئلة الفحص لـ {jobTitle}",
+    "description": "أجب عن هذه الأسئلة لمساعدة صاحب العمل على التعرف عليك بشكل أفضل.",
+    "error": "خطأ",
+    "errorFetching": "تعذّر تحميل أسئلة الفحص. حاول تحديث الصفحة.",
+    "errorSubmitting": "تعذّر حفظ إجاباتك. حاول مجددًا.",
+    "notFound": "لم يتم العثور على أسئلة الفحص.",
+    "noQuestions": "لا توجد أسئلة فحص",
+    "noQuestionsMsg": "لا توجد أسئلة فحص لهذه الوظيفة حتى الآن.",
+    "alreadyAnswered": "لقد أجبت بالفعل عن أسئلة الفحص",
+    "answeredOn": "تمت الإجابة في {date}",
+    "submit": "إرسال الإجابات",
+    "submitting": "جاري الإرسال…",
+    "yes": "نعم",
+    "no": "لا",
+    "nothingToAnswerTitle": "لا توجد أسئلة للإجابة عنها",
+    "nothingToAnswerBody": "لم يرسل صاحب العمل أي أسئلة بخصوص هذا الطلب. سنخبرك إذا أرسلها.",
+    "chooseOption": "اختر إجابة",
+    "answerRequired": "أجب عن هذا السؤال.",
+    "answerAllRequired": "أجب عن كل سؤال عليه علامة *.",
+    "answerAtLeastOne": "أجب عن سؤال واحد على الأقل.",
+    "submitted": "تم إرسال إجاباتك إلى صاحب العمل."
   }
 }
-
-
-
-
-
-
-

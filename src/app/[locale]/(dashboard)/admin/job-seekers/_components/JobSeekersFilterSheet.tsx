@@ -25,6 +25,7 @@ export interface JobSeekersFilterSheetProps {
   experienceYears: number;
   hasCV: boolean;
   nationality: string;
+  industry: string;
   jobType: string;
   referred: string;
   options: {
@@ -44,6 +45,7 @@ export interface JobSeekersFilterSheetProps {
     experienceYears?: number;
     hasCV?: boolean;
     nationality?: string;
+    industry?: string;
     jobType?: string;
     referred?: string;
   }) => void;
@@ -148,6 +150,16 @@ export function JobSeekersFilterSheet(props: JobSeekersFilterSheetProps) {
               placeholder={tr("tableHeaderNationality")}
               value={props.nationality}
               onChange={(e) => onChange({ nationality: e.target.value })}
+              className={CONTROL}
+            />
+          </Field>
+
+          <Field id="js-sheet-industry" label={tr("filterLabelIndustry")}>
+            <Input
+              id="js-sheet-industry"
+              placeholder={tr("filterLabelIndustry")}
+              value={props.industry}
+              onChange={(e) => onChange({ industry: e.target.value })}
               className={CONTROL}
             />
           </Field>

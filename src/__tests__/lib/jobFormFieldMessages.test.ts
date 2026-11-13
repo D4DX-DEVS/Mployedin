@@ -13,7 +13,8 @@ const baseForm = {
   title: "Senior Backend Engineer",
   location: { country: "AE", city: "Dubai", isRemote: false },
   description: "We are hiring a backend engineer to build and run our APIs.",
-  requirements: { skills: [], preferredSkills: [], experienceMin: 2, experienceMax: 8 },
+  // Required since 2026-11-12 (D10): a level, or 0 for "No minimum".
+  requirements: { skills: [], preferredSkills: [], experienceMin: 2, experienceMax: 8, educationLevel: 0 },
   salary: { min: 5000, max: 9000, currency: "USD", isNegotiable: false, period: "monthly" },
 };
 
@@ -52,6 +53,13 @@ describe("jobFormSchema field messages", () => {
       "requirements.experienceMax",
     );
     expect(issue?.code).toBe("custom");
+  });
+
+  it("asks for the minimum education (D10) — a level or No minimum — and accepts No minimum", () => {
+    const { educationLevel: _omit, ...withoutEducation } = baseForm.requirements;
+    const issue = issueAt({ ...baseForm, requirements: withoutEducation }, "requirements.educationLevel");
+    expect(issue?.message).toBe("Choose the minimum education, or No minimum");
+    expect(issueAt({ ...baseForm, requirements: { ...baseForm.requirements, educationLevel: 0 } }, "requirements.educationLevel")).toBeUndefined();
   });
 
   it("says when a title is too long", () => {

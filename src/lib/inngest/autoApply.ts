@@ -131,7 +131,7 @@ export const autoApplyFunction = inngest.createFunction(
     // and held while the application is saved (lib/cv/fileClaims.ts).
     type SeekerFiles = { documents?: { name: string; url: string; category?: string; type?: string; builtHash?: string }[]; cv?: { originalUrl?: string } };
     const currentCv = async () => {
-      const files = (await JobSeeker.findById(seeker._id).select("documents cv.originalUrl").lean()) as SeekerFiles | null;
+      const files = (await JobSeeker.findById(seeker._id).select("documents cv.originalUrl preferredCvId").lean()) as SeekerFiles | null;
       const cv = defaultApplicationCv(files ?? {});
       return (await claimSeekerFiles(seeker._id, cv.map((d) => d.url))).length > 0 ? null : cv;
     };
@@ -148,6 +148,11 @@ export const autoApplyFunction = inngest.createFunction(
         const applicationCv = await currentCv();
         if (!applicationCv) {
           logger.warn({ jobSeekerId: String(seeker._id), jobId }, "[auto-apply] CV changed while applying; skipped");
+          return;
+        }
+        // No CV on file: every application carries one, so none is sent.
+        if (applicationCv.length === 0) {
+          logger.info({ jobSeekerId: String(seeker._id), jobId }, "[auto-apply] seeker has no CV; skipped");
           return;
         }
 

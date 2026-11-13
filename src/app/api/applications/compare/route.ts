@@ -118,6 +118,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       isPriority: app.isPriority === true,
       matchBreakdown: app.matchBreakdown ?? null,
       requirementsStatus: app.requirementsStatus ?? null,
+      requirementReport: app.requirementReport ?? null,
       // False when the job set no must-haves: "met" then means nothing, so no badge.
       hasMustHaves: Array.isArray(app.qualifications) ? app.qualifications.some((check: { hard?: boolean }) => check.hard === true) : null,
       candidate: {

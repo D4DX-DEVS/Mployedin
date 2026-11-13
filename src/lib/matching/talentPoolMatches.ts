@@ -14,6 +14,7 @@ import { vectorRetrievalEnabled, vectorRetrieveSeekers } from "@/lib/matching/ve
 import type { ApplicantBreakdown } from "@/lib/matching/applicantScore";
 import type { IneligibleReason } from "@/lib/matching/eligibility";
 import type { RequirementsStatus } from "@/lib/matching/qualifications";
+import type { RequirementReport } from "@/lib/matching/requirementReport";
 import {
   TALENT_POOL_SHORTLIST,
   isRelevantToJob,
@@ -47,7 +48,15 @@ export interface PoolCandidate {
   avatar?: string;
   headline?: string;
   currentLocation?: string;
+  /**
+   * The career length the score used: the union of dated roles, then the
+   * stated total (seekerProfileFromDoc). Undefined when experience is not
+   * known. Reading only the stated total showed "Experience not stated" beside
+   * an 80% experience part (owner, 2026-11-12).
+   */
   totalExperienceYears?: number;
+  /** False when the profile says nothing about experience at all. */
+  experienceKnown?: boolean;
   availabilityStatus?: string;
   /** Employer-side applicant score — what the employer sees once they apply. */
   score: number;
@@ -67,6 +76,12 @@ export interface PoolCandidate {
    * (has / partly / doesn't have / can't tell). Empty when the job lists none.
    */
   lineChecks: QualificationLineCheck[];
+  /**
+   * Each job requirement (education, experience "in what", skills, licences,
+   * languages) against this profile: has / partly / does not have / needs
+   * checking — the same report an applicant gets.
+   */
+  requirementReport: RequirementReport;
   /** The candidate's own preference that rules this job out, if any. */
   preferenceMismatch: IneligibleReason | null;
   /** Most recent role, for the card. */
@@ -184,7 +199,7 @@ async function rankPoolForJob(jobId: string, job: Lean): Promise<TalentPoolMatch
         matchedSkills: [...pair.breakdown.matchedSkills, ...pair.breakdown.requiredMatched],
         roles: [...(profiles[i].roleHistory ?? []).map((role) => role.title), ...(profiles[i].preferredRoles ?? [])],
       });
-      return { seeker, eligible: pair.eligible, reason: pair.reason, score: pair.score, relevant };
+      return { seeker, profile: profiles[i], eligible: pair.eligible, reason: pair.reason, score: pair.score, relevant };
     }),
   );
   // Only people with a skill or a role in common with the job are listed —
@@ -194,7 +209,7 @@ async function rankPoolForJob(jobId: string, job: Lean): Promise<TalentPoolMatch
   // Pass 2 — the employer-side score for the shortlist.
   const employerWeights = (employer as { matchingWeights?: unknown } | null)?.matchingWeights;
   const employerIndustry = (employer as { industry?: string } | null)?.industry;
-  const rows = await mapInBatches(shortlist, SCORE_CONCURRENCY, async ({ seeker, eligible, reason }) => {
+  const rows = await mapInBatches(shortlist, SCORE_CONCURRENCY, async ({ seeker, profile, eligible, reason }) => {
     const seekerForScore = { ...seeker, userId: userIdOf(seeker) };
     const match = await computeApplicantMatch({ job, seeker: seekerForScore, employerWeights, employerIndustry, engine });
     const user = seeker.userId as { name?: string; avatar?: string } | null;
@@ -204,7 +219,8 @@ async function rankPoolForJob(jobId: string, job: Lean): Promise<TalentPoolMatch
       avatar: user?.avatar,
       headline: seeker.headline as string | undefined,
       currentLocation: seeker.currentLocation as string | undefined,
-      totalExperienceYears: seeker.totalExperienceYears as number | undefined,
+      totalExperienceYears: profile.experienceKnown !== false ? profile.experienceYears : undefined,
+      experienceKnown: profile.experienceKnown !== false,
       availabilityStatus: seeker.availabilityStatus as string | undefined,
       score: match.aiMatchScore,
       breakdown: match.matchBreakdown,
@@ -218,6 +234,7 @@ async function rankPoolForJob(jobId: string, job: Lean): Promise<TalentPoolMatch
         .filter((check) => !HIDDEN_CHECKS.includes(check.key))
         .map(({ key, status, hard, required, actual, label }) => ({ key, status, hard, required, actual, label })),
       lineChecks: checkQualificationLines(job.qualifications as string[] | undefined, evidenceFromSeeker(seeker as EvidenceDoc)),
+      requirementReport: match.requirementReport,
       preferenceMismatch: preferenceMismatchOf(eligible, reason),
       latestRole: latestRoleOf(seeker),
     };

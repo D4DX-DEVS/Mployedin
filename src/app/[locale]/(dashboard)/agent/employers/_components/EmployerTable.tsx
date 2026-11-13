@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowRight, Award, BriefcaseBusiness, Building2, CalendarClock, Check, Edit2, LogIn, MapPin, Trash2, UserPlus, type LucideIcon } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Building2, Check, Edit2, LogIn, MapPin, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
@@ -43,56 +43,39 @@ export function EmployerTable({
       href: `/${locale}/agent/jobs?employerId=${em._id}`,
     };
     const remove: RowAction[] = canDelete
-      ? [{ key: "delete", label: tc("delete"), icon: Trash2, iconOnly: true, destructive: true, onSelect: () => onDelete(em._id) }]
+      ? [{ key: "delete", label: tc("delete"), icon: Trash2, destructive: true, onSelect: () => onDelete(em._id) }]
       : [];
-    if (!em.assignedToMe) return { quick: [viewJobs], menu: remove };
+    const menuActions: RowAction[] = [
+      viewJobs,
+      {
+        key: "switch",
+        label: t("cardSwitchWorkspaceAriaLabel", { company }),
+        icon: LogIn,
+        pending: switchingEmployerId === em._id,
+        disabled: switchingEmployerId === em._id || !em.isActive,
+        onSelect: () => onSwitch(em._id),
+      },
+      ...(canUpdate
+        ? [{ key: "edit", label: t("cardEditAriaLabel", { company }), icon: Edit2, onSelect: () => onEdit(em) }]
+        : []),
+      ...remove,
+    ];
+    if (!em.assignedToMe) return { quick: [], menu: menuActions };
     return {
-      // The arrow alone, as on the card: a labelled "View Jobs" next to "Post
-      // Job" pushed the row's actions out of the panel at 1280px.
       quick: [
         { key: "post", label: t("cardPostJobButton"), icon: BriefcaseBusiness, href: `/${locale}/agent/jobs/new?employer=${em._id}` },
-        { ...viewJobs, iconOnly: true },
-        {
-          key: "switch",
-          label: t("cardSwitchWorkspaceAriaLabel", { company }),
-          icon: LogIn,
-          iconOnly: true,
-          pending: switchingEmployerId === em._id,
-          disabled: switchingEmployerId === em._id || !em.isActive,
-          onSelect: () => onSwitch(em._id),
-        },
-        ...(canUpdate
-          ? [{ key: "edit", label: t("cardEditAriaLabel", { company }), icon: Edit2, iconOnly: true, onSelect: () => onEdit(em) }]
-          : []),
       ],
-      menu: remove,
+      menu: menuActions,
     };
   };
 
-  // The account's numbers, one per line: two-by-two, the grid's tracks shrank
-  // below the text at 1366px and each pair ran into the next column. Four
-  // xs lines are the height the row already has. A zero stays printed but
-  // recedes; a row without numbers reads as zeros.
+  // Activity becomes one line: 1 open job · 0 new · 0 hires.
   const activityCell = (em: Employer) => {
     const activity = em.activity ?? NO_ACTIVITY;
-    const items: { key: string; icon: LucideIcon; count: number; label: string }[] = [
-      { key: "jobs", icon: BriefcaseBusiness, count: activity.openJobs, label: t("activityOpenJobs", { count: activity.openJobs }) },
-      { key: "new", icon: UserPlus, count: activity.newApplicants, label: t("activityNewApplicants", { count: activity.newApplicants }) },
-      { key: "interviews", icon: CalendarClock, count: activity.upcomingInterviews, label: t("activityInterviews", { count: activity.upcomingInterviews }) },
-      { key: "hires", icon: Award, count: activity.hires, label: t("activityHires", { count: activity.hires }) },
-    ];
     return (
-      <div className="flex flex-col gap-0.5 text-xs leading-4">
-        {items.map(({ key, icon: Icon, count, label }) => (
-          <span
-            key={key}
-            className={`inline-flex items-center gap-1 whitespace-nowrap ${count > 0 ? "font-medium text-foreground" : "text-muted-foreground"}`}
-          >
-            <Icon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
-            {label}
-          </span>
-        ))}
-      </div>
+      <span className="text-xs text-muted-foreground">
+        {t("activityOpenJobs", { count: activity.openJobs })} · {t("activityNewApplicants", { count: activity.newApplicants })} · {t("activityHires", { count: activity.hires })}
+      </span>
     );
   };
 
@@ -115,39 +98,27 @@ export function EmployerTable({
         const { quick, menu } = rowActions(em);
         const activity = em.activity ?? NO_ACTIVITY;
         const plan = em.userId ? plans?.get(em.userId) : undefined;
+        const facts: React.ReactNode[] = [];
+        if (em.industry || em.location) {
+          facts.push([em.industry, em.location].filter(Boolean).join(" · "));
+        }
+        facts.push(
+          <span key="activity">
+            {t("activityOpenJobs", { count: activity.openJobs })} · {t("activityNewApplicants", { count: activity.newApplicants })} · {t("activityHires", { count: activity.hires })}
+          </span>
+        );
         return {
           key: em._id,
           leading: <UserAvatar name={em.companyName ?? em.name} email={em.email} className="h-10 w-10" colorful />,
           title: em.companyName ?? em.name,
           subtitle: em.email,
+          trailing: <StatusBadge status={em.isActive ? "active" : "inactive"} />,
           // Phone buttons get a 40px touch height; the "view jobs" arrow is a
           // link and stayed 36px, so the footer's icons were mismatched.
           actions: <RowActions name={em.companyName ?? em.name} quick={quick} menu={menu} className="[&>a]:!h-10 [&>a[data-icon-only]]:!w-10" />,
-          meta: (
-            <>
-              {(em.industry || em.location) && (
-                <p className="flex min-w-0 items-center gap-1">
-                  <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{[em.industry, em.location].filter(Boolean).join(" · ")}</span>
-                </p>
-              )}
-              <p className="flex min-w-0 items-center gap-1">
-                <BriefcaseBusiness className="h-3 w-3 shrink-0" aria-hidden="true" />
-                <span className="truncate">
-                  {t("activityOpenJobs", { count: activity.openJobs })} · {t("activityNewApplicants", { count: activity.newApplicants })}
-                </span>
-              </p>
-              <p className="flex min-w-0 items-center gap-1">
-                <CalendarClock className="h-3 w-3 shrink-0" aria-hidden="true" />
-                <span className="truncate">
-                  {t("activityInterviews", { count: activity.upcomingInterviews })} · {t("activityHires", { count: activity.hires })}
-                </span>
-              </p>
-            </>
-          ),
+          facts,
           badges: (
             <>
-              <StatusBadge status={em.isActive ? "active" : "inactive"} />
               {em.isAgentVerified && (
                 <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-status-selected">
                   <Check className="h-3 w-3" aria-hidden="true" />

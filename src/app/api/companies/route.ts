@@ -34,6 +34,8 @@ export async function GET(req: NextRequest) {
     {
       $match: {
         status: "active",
+        // Hidden-company jobs must not be tied back to the employer.
+        discloseCompany: { $ne: false },
         $or: [
           { expiresAt: { $exists: false } },
           { expiresAt: null },

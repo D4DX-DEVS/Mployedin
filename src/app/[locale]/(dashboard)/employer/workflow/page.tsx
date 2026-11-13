@@ -65,12 +65,14 @@ export default function EmployerWorkflowPage() {
     );
   }
 
+  // Desktop only: phones and tablets get the one Save in the bottom bar. With
+  // both, a greyed Save sat alone under the title and a second one at the end.
   const saveButton = (
     <Button
       onClick={handleSave}
       disabled={saveWorkflow.isPending || !dirty}
       size="sm"
-      className="gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
+      className="hidden gap-2 rounded-xl lg:inline-flex bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
     >
       {saveWorkflow.isPending ? (
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -79,12 +81,7 @@ export default function EmployerWorkflowPage() {
       ) : (
         <Save className="h-4 w-4" aria-hidden="true" />
       )}
-      {saveWorkflow.isPending ? tc("loading") : saved ? t("saved") : (
-        <>
-          <span className="sm:hidden">{t("saveShort")}</span>
-          <span className="hidden sm:inline">{t("save")}</span>
-        </>
-      )}
+      {saveWorkflow.isPending ? tc("loading") : saved ? t("saved") : t("save")}
     </Button>
   );
 
@@ -111,14 +108,16 @@ export default function EmployerWorkflowPage() {
           <DefaultWorkflowCard defaultTemplateId={data?.defaultTemplateId ?? null} />
           <div className="space-y-4">
             <HiringRulesPanel rules={rules} onChange={handleChange} disabled={saveWorkflow.isPending} />
+            <div className="sticky-action-bar rounded-xl border border-border/70 bg-background/95 p-2 shadow-sm backdrop-blur lg:hidden">
             <Button
               onClick={handleSave}
               disabled={saveWorkflow.isPending || !dirty}
-              className="w-full gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground lg:hidden"
+              className="min-h-11 w-full gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
             >
               {saveWorkflow.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : saved ? <CheckCircle className="h-4 w-4" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
               {saveWorkflow.isPending ? t("saving") : saved ? t("saved") : t("save")}
             </Button>
+            </div>
           </div>
         </div>
       </div>

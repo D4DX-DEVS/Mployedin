@@ -26,7 +26,8 @@ export interface FeedJob {
   tags?: string[];
   createdAt: string;
   expiresAt?: string;
-  matchScore: number;
+  /** Absent in search results' place-holder and for a profile with nothing to score. */
+  matchScore?: number;
   matchedSkills?: string[];
   /** Set by the engine: eligible and at or above the admin threshold. Absent in search results. */
   recommended?: boolean;
@@ -46,6 +47,15 @@ interface JobCardProps {
 
 function isNewJob(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 3 * 24 * 3600_000;
+}
+
+/**
+ * Every listed job is open; "actively hiring" says it was posted in the last
+ * 30 days, so an old post reads as "Open" rather than looking fresh (rollout
+ * row "Active status of job showing in browse jobs").
+ */
+export function isActivelyHiring(createdAt: string) {
+  return Date.now() - new Date(createdAt).getTime() < 30 * 24 * 3600_000;
 }
 
 function isUrgentJob(expiresAt?: string) {
@@ -108,18 +118,30 @@ export const JobFeedCard = memo(function JobFeedCard({
           <Badge variant="info" dot className="py-0 text-[11px]">
             {t("new")}
           </Badge>
-        ) : null
+        ) : isActivelyHiring(job.createdAt) ? (
+          <Badge variant="success" dot className="py-0 text-[11px]">
+            {t("activelyHiring")}
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="py-0 text-[11px]">
+            {t("open")}
+          </Badge>
+        )
       }
       bookmark={<SaveJobButton jobId={job._id} />}
       actions={
         <>
-          <ShareJob
-            jobId={job._id}
-            jobTitle={job.title}
-            companyName={job.employerId?.companyName ?? t("company")}
-            locale={locale}
-            variant="icon"
-          />
+          {/* Phone: the card's last row is skills + save + apply; sharing
+              stays on the job page, where it has room. */}
+          <span className="max-sm:hidden">
+            <ShareJob
+              jobId={job._id}
+              jobTitle={job.title}
+              companyName={job.employerId?.companyName ?? t("company")}
+              locale={locale}
+              variant="icon"
+            />
+          </span>
           {/* Was "Hide" — a session-only dismiss the client asked to remove
               (2026-10-27); a lasting Save takes its place. */}
           <SaveJobButton jobId={job._id} className="max-sm:hidden" />
@@ -127,7 +149,7 @@ export const JobFeedCard = memo(function JobFeedCard({
             type="button"
             onClick={onApply}
             disabled={isApplied}
-            className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-semibold transition-all ${
+            className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-semibold transition-all max-sm:px-3 ${
               isApplied
                 ? "cursor-not-allowed bg-muted text-muted-foreground"
                 : "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 hover:shadow-md"

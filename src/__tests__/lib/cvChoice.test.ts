@@ -103,3 +103,34 @@ describe("accepted CV files — pickers and routes agree", () => {
     expect(src).toContain("CV_UPLOAD_MIME_TYPES");
   });
 });
+
+describe("the CV the seeker chose on My CVs (preferredCvId)", () => {
+  const docs = [
+    { id: "old", name: "old.pdf", url: "u-old", category: "resume" },
+    { id: "new", name: "new.pdf", url: "u-new", category: "resume" },
+    { id: "built", name: "built.pdf", url: "u-built", category: "resume", builtHash: "abcdef12" },
+  ];
+
+  it("preselects the chosen upload over the Profile CV", () => {
+    expect(defaultCvKey({ documents: docs, hasProfileCv: true, hasBuiltCv: true, preferredId: "old" })).toBe("old");
+    expect(defaultApplicationCv({ documents: docs, cv: { originalUrl: "u-profile" }, preferredCvId: "old" })).toEqual([
+      { name: "old.pdf", url: "u-old", type: "resume" },
+    ]);
+  });
+
+  it("honours the built CV and the Profile CV as choices", () => {
+    expect(defaultCvKey({ documents: docs, hasProfileCv: true, hasBuiltCv: true, preferredId: BUILT_CV_KEY })).toBe(BUILT_CV_KEY);
+    expect(defaultApplicationCv({ documents: docs, cv: { originalUrl: "u-profile" }, preferredCvId: BUILT_CV_KEY })).toEqual([
+      { name: "built.pdf", url: "u-built", type: "resume" },
+    ]);
+    expect(defaultCvKey({ documents: docs, hasProfileCv: true, hasBuiltCv: false, preferredId: PROFILE_CV_KEY })).toBe(PROFILE_CV_KEY);
+  });
+
+  it("falls back to the usual order when the chosen CV is gone", () => {
+    expect(defaultCvKey({ documents: docs, hasProfileCv: true, hasBuiltCv: true, preferredId: "deleted" })).toBe(PROFILE_CV_KEY);
+    expect(defaultCvKey({ documents: docs, hasProfileCv: false, hasBuiltCv: true, preferredId: "built" })).toBe("new");
+    expect(defaultApplicationCv({ documents: docs, cv: null, preferredCvId: PROFILE_CV_KEY })).toEqual([
+      { name: "new.pdf", url: "u-new", type: "resume" },
+    ]);
+  });
+});

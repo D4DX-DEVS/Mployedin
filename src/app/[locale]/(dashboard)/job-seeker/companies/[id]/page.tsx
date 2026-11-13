@@ -112,6 +112,7 @@ const getEmployerProfile = cache(async (id: string) => {
   const activeJobs = await Job.find({
     employerId: id,
     status: "active",
+    discloseCompany: { $ne: false },
     $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gte: new Date() } }],
   })
     .sort({ createdAt: -1 })

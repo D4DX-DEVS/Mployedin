@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
 import OnboardingChecklist from "@/models/OnboardingChecklist";
+import { signedOnboardingDocUrl } from "@/lib/onboarding/documentAccess";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -17,14 +18,13 @@ interface LeanDoc {
   uploadedBy?: string;
   dueDate?: Date;
   signature?: LeanSignature;
+  reviewNote?: string;
 }
-interface LeanTask { title: string; completed?: boolean }
 interface LeanChecklist {
   _id: unknown;
   status: string;
   startDate?: Date;
   probation?: { endDate?: Date; status?: string; notes?: string };
-  tasks?: LeanTask[];
   documents?: LeanDoc[];
   placementId?: { startDate?: Date; jobId?: { title?: string } };
   employerId?: { companyName?: string };
@@ -33,7 +33,7 @@ interface LeanChecklist {
 /**
  * GET /api/job-seeker/onboarding (FG-1 self-service)
  * Returns the calling candidate's onboarding workspaces (one per placement),
- * with read-only tasks and the documents they may upload or sign.
+ * with the documents they may upload or sign.
  */
 async function getHandler(_req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "job_seeker") {
@@ -50,31 +50,35 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
     .sort({ updatedAt: -1 })
     .lean()) as unknown as LeanChecklist[];
 
-  const onboardings = checklists.map((c) => ({
+  // Uploaded files are private objects: hand out signed addresses, not the
+  // stored ones (those answer AccessDenied).
+  const onboardings = await Promise.all(checklists.map(async (c) => ({
     _id: String(c._id),
     status: c.status,
     startDate: c.startDate ?? c.placementId?.startDate ?? null,
     probation: c.probation
       ? { endDate: c.probation.endDate ?? null, status: c.probation.status ?? null }
       : null,
-    tasks: (c.tasks ?? []).map((task) => ({ title: task.title, completed: Boolean(task.completed) })),
-    documents: (c.documents ?? []).map((doc, index) => ({
+    // The task list is the employer's own to-do list (set up workstation,
+    // assign a buddy…). It never leaves the server for the candidate.
+    documents: await Promise.all((c.documents ?? []).map(async (doc, index) => ({
       index,
       name: doc.name,
-      url: doc.url ?? null,
+      url: await signedOnboardingDocUrl(doc.url),
       requestedFromCandidate: Boolean(doc.requestedFromCandidate),
       requiresSignature: Boolean(doc.requiresSignature),
       status: doc.status ?? null,
       uploadedBy: doc.uploadedBy ?? null,
       dueDate: doc.dueDate ?? null,
       signature: doc.signature ? { fullName: doc.signature.fullName, signedAt: doc.signature.signedAt } : null,
-    })),
+      reviewNote: doc.reviewNote ?? null,
+    }))),
     placement: {
       jobTitle: c.placementId?.jobId?.title ?? null,
       companyName: c.employerId?.companyName ?? null,
       startDate: c.placementId?.startDate ?? null,
     },
-  }));
+  })));
 
   return NextResponse.json({ onboardings });
 }

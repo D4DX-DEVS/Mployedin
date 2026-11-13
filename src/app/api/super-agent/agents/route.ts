@@ -281,6 +281,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     passwordHash,
     role: "agent",
     isActive: true,
+    // Created active by staff: approved (lib/auth/agentApproval.ts).
+    agentApprovedAt: new Date(),
   });
 
   try {

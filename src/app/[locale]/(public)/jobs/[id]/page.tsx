@@ -107,7 +107,17 @@ function salaryLabel(
   t: Awaited<ReturnType<typeof getTranslations>>
 ) {
   if (!salary) return null;
-  if (salary.isNegotiable) return t("negotiable");
+  // A figure marked negotiable shows the figure too — the seeker's own job
+  // cards print it, so hiding it here made the two pages disagree.
+  if (salary.isNegotiable && !salary.min && !salary.max) return t("negotiable");
+  if (salary.isNegotiable)
+    return t("salaryNegotiable", {
+      amount: salary.min && salary.max && salary.min !== salary.max
+        ? `${salary.currency ?? "AED"} ${formatCount(salary.min)} – ${formatCount(salary.max)}`
+        : `${salary.currency ?? "AED"} ${formatCount(salary.min || salary.max || 0)}`,
+    });
+  if (salary.min && salary.max && salary.min === salary.max)
+    return t("fixedSalaryPerMonth", { currency: salary.currency ?? "AED", amount: formatCount(salary.min) });
   if (salary.min && salary.max)
     return t("salaryRangePerMonth", {
       currency: salary.currency ?? "AED",

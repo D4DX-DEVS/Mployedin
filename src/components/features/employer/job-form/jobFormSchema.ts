@@ -170,13 +170,33 @@ export const jobFormSchema = z.object({
       experienceMin: z.number({ error: "Enter whole years from 0 to 50" }).int("Enter whole years from 0 to 50").min(0, "Enter whole years from 0 to 50").max(50, "Enter whole years from 0 to 50").default(0),
       experienceMax: z.number({ error: "Enter whole years from 0 to 50" }).int("Enter whole years from 0 to 50").min(0, "Enter whole years from 0 to 50").max(50, "Enter whole years from 0 to 50").default(10),
       education: z.string().max(200).optional(),
+      // A level, or 0 for "No minimum". Required to move past this step or
+      // publish (refine below, D10); a draft may be saved without it.
+      educationLevel: z.number().int().min(0).max(5).nullable().optional(),
+      educationField: z.string().max(200).optional(),
+      educationFieldEssential: z.boolean().optional(),
+      educationImportance: z.enum(["must", "nice"]).optional(),
+      experienceIn: z.string().max(200).optional(),
+      languages: z.array(z.string().max(100)).max(20).optional(),
+      languagesImportance: z.enum(["must", "nice"]).optional(),
+      credentials: z
+        .array(z.object({ name: z.string().min(1).max(200), importance: z.enum(["must", "nice"]) }))
+        .max(10)
+        .optional(),
     })
     // The API enforces the same rule (lib/validators/jobs.ts). Without it here
     // the wizard let min > max reach the final submit and failed there instead.
     .refine((r) => r.experienceMax >= r.experienceMin, {
       message: "Maximum years must be greater than or equal to minimum",
       path: ["experienceMax"],
+    })
+    .refine((r) => r.educationLevel !== null && r.educationLevel !== undefined, {
+      message: "Choose the minimum education, or No minimum",
+      path: ["educationLevel"],
     }),
+
+  /** The kind of hire; sets the standard ranking weights. Null = balanced. */
+  hireType: z.enum(["experienced", "skills", "qualification", "entry"]).nullable().optional(),
 
   // New optional fields
   employmentType: z.enum(["full_time", "part_time", "contract", "internship", "freelance"]).optional(),

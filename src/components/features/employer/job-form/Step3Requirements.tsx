@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { useLocale, useTranslations } from "next-intl";
 import { motion } from "framer-motion";
@@ -9,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { SkillsChips, type Skill } from "@/components/shared/SkillsChips";
 import { cn } from "@/lib/utils";
+import { educationLevel as readEducationLevel } from "@/lib/matching/educationLevel";
+import { RequirementExtrasFields, type RequirementExtras } from "@/components/features/jobs/RequirementExtrasFields";
 import type { JobFormValues } from "./jobFormSchema";
 
 interface Step3RequirementsProps {
@@ -26,6 +29,7 @@ const EXPERIENCE_PRESETS = [
 
 export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsProps) {
   const t = useTranslations("employerJobForm.step3");
+  const tExtras = useTranslations("jobRequirementExtras");
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const {
@@ -48,6 +52,45 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
         : t("validation.experienceRange")
       : null;
   const maxSkillsLabel = (30).toLocaleString(numberLocale);
+
+  // Education, experience "in what", licences, languages and the kind of
+  // hire (RequirementExtrasFields), bridged onto the form values.
+  const requirements = watch("requirements");
+  const hireType = watch("hireType");
+  const extras: RequirementExtras = {
+    educationLevel: requirements?.educationLevel ?? null,
+    educationField: requirements?.educationField ?? "",
+    educationFieldEssential: requirements?.educationFieldEssential ?? false,
+    educationImportance: requirements?.educationImportance ?? "must",
+    experienceIn: requirements?.experienceIn ?? "",
+    languages: requirements?.languages ?? [],
+    languagesImportance: requirements?.languagesImportance ?? "nice",
+    credentials: requirements?.credentials ?? [],
+    hireType: hireType ?? null,
+  };
+  function handleExtrasChange(next: RequirementExtras) {
+    const opts = { shouldValidate: true, shouldDirty: true } as const;
+    if (next.educationLevel !== extras.educationLevel) setValue("requirements.educationLevel", next.educationLevel, opts);
+    if (next.educationField !== extras.educationField) setValue("requirements.educationField", next.educationField, opts);
+    if (next.educationFieldEssential !== extras.educationFieldEssential) setValue("requirements.educationFieldEssential", next.educationFieldEssential, opts);
+    if (next.educationImportance !== extras.educationImportance) setValue("requirements.educationImportance", next.educationImportance, opts);
+    if (next.experienceIn !== extras.experienceIn) setValue("requirements.experienceIn", next.experienceIn, opts);
+    if (next.languages !== extras.languages) setValue("requirements.languages", next.languages, opts);
+    if (next.languagesImportance !== extras.languagesImportance) setValue("requirements.languagesImportance", next.languagesImportance, opts);
+    if (next.credentials !== extras.credentials) setValue("requirements.credentials", next.credentials, opts);
+    if (next.hireType !== extras.hireType) setValue("hireType", next.hireType, opts);
+  }
+  // A job read from a poster or a template arrives with education as text
+  // ("Bachelor's degree in Nursing"): start the picker on that level, which
+  // the poster still sees and can change.
+  const educationText = requirements?.education ?? "";
+  useEffect(() => {
+    if (requirements?.educationLevel != null || !educationText.trim()) return;
+    const level = readEducationLevel(educationText);
+    if (level > 0) setValue("requirements.educationLevel", level, { shouldValidate: false });
+    // Once per prefilled text: a level the poster picks is never overwritten.
+  }, [educationText]);
+  const educationError = errors.requirements?.educationLevel ? tExtras("education.required") : null;
 
   // Bridge between string[] (form) and Skill[] (SkillsChips)
   const skillObjects: Skill[] = rawSkills.map((name) => ({ name }));
@@ -279,7 +322,12 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
           )}
         </div>
 
-        {/* Education / Minimum Qualification */}
+        {/* Education level, experience "in what", licences, languages, kind of hire */}
+        <div className="xl:col-span-2">
+          <RequirementExtrasFields value={extras} onChange={handleExtrasChange} educationError={educationError} />
+        </div>
+
+        {/* Education as written on the advert */}
         <div className="space-y-3">
           <div>
             <Label htmlFor="education" className="text-sm font-semibold">

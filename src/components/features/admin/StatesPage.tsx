@@ -263,7 +263,6 @@ export default function StatesPage() {
           value={search}
           onChange={(v) => { setSearch(v); resetPage(); }}
           placeholder={t("searchStates")}
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">

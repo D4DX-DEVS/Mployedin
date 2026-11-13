@@ -73,6 +73,8 @@ export const jobSeekerProfileUpdateSchema = z
     ).optional(),
     availabilityStatus: z.enum(["immediately", "within_month", "within_3_months", "not_available"]).optional(),
     noticePeriod: z.number().int().min(0).max(365).optional(),
+    // Root field the employer's candidate view reads (rollout row 18).
+    openToRelocation: z.boolean().optional(),
     permanentAddress: z.string().max(500).trim().optional(),
     hometown: z.string().max(200).trim().optional(),
     pincode: z.string().max(20).trim().optional(),
@@ -158,4 +160,7 @@ export const jobSeekerAdminUpdateSchema = z.object({
   email: commonSchemas.email.optional(),
   // Admin-only in the route handler: (re)activates the linked user account
   isActive: z.boolean().optional(),
+  // Admin override: when set to "manual", prevents auto-classification
+  industry: z.string().max(200).trim().optional(),
+  industrySource: z.enum(["auto", "manual"]).optional(),
 });

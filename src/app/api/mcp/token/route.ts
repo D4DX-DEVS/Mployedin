@@ -7,6 +7,7 @@ import McpToken from "@/models/McpToken";
 import User from "@/models/User";
 import { normalizeMcpResource } from "@/lib/mcp/baseUrl";
 import {
+  codePredatesPasswordChange,
   grantPredatesPasswordChange,
   isValidPkceVerifier,
   MCP_AUTHORIZATION_TTL_SECONDS,
@@ -111,11 +112,16 @@ export async function POST(req: NextRequest) {
     }
 
     const user = await User.findById(authCode.userId)
-      .select("role isActive permissionMode customPermissions")
+      .select("role isActive permissionMode customPermissions passwordChangedAt")
       .lean();
     if (!user?.isActive) return tokenError("invalid_grant", "User authorization is no longer active");
     if (user.role !== authCode.role) {
       return tokenError("invalid_grant", "User role changed; authorization is required again");
+    }
+    // Approved with the old password's session: the change ended that session,
+    // so the approval goes with it.
+    if (codePredatesPasswordChange(authCode.createdAt, user.passwordChangedAt)) {
+      return tokenError("invalid_grant", "Password changed; authorization is required again");
     }
     const scopes = retainAuthorizedScopes(authCode.scopes, user.role);
     if (scopes.length === 0) {

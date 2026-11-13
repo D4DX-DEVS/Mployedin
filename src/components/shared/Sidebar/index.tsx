@@ -639,6 +639,36 @@ export function Sidebar({
                branch and then dropped on the floor — only the inline layouts
                printed it, so a dual-tier rail authored in sections rendered as
                one flat list. */
+            /* The phone/tablet drawer lists every group's screens straight
+               away, with the current one marked. As collapsed rows the drawer
+               opened showing four group names and nothing to tap through to
+               without a second step. (Admin keeps its drill-down for now: its
+               groups nest a level deeper.) */
+            if (opensFlyout && mobileOpen && !isAdminWorkspace) {
+              const drawerChildren = item.children!.flatMap((child) =>
+                child.children?.length ? child.children : [child]
+              );
+              const drawerHrefs = drawerChildren.map((child) => child.href);
+              return (
+                <Fragment key={item.title}>
+                  {/* No section label here: this group's own name is the
+                      heading, and both stacked read as "WORK / ACCOUNTS". */}
+                  <div role="group" aria-labelledby={`${itemSubmenuId}-heading`} className="pt-3 first:pt-0">
+                    <div
+                      id={`${itemSubmenuId}-heading`}
+                      data-sidebar-section-label=""
+                      className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+                    >
+                      {dualTierLabel}
+                    </div>
+                    <div className="space-y-0.5">
+                      {drawerChildren.map((child) => renderSubmenuLink(child, "panel", drawerHrefs))}
+                    </div>
+                  </div>
+                </Fragment>
+              );
+            }
+
             if (opensFlyout) {
               return (
                 <Fragment key={item.title}>

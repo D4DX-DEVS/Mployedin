@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { isFormError } from "@/lib/errors/form-error";
 import { PhoneInput } from "@/components/shared/PhoneInput";
 import { StepFormDialog } from "@/components/shared/StepFormDialog";
@@ -26,7 +28,7 @@ import { formatList } from "@/lib/i18n/formatList";
 export interface CrudField {
   name: string;
   label: string;
-  type: "text" | "email" | "number" | "select" | "textarea" | "date" | "password" | "phone";
+  type: "text" | "email" | "number" | "select" | "textarea" | "date" | "password" | "phone" | "multiselect" | "switch";
   required?: boolean;
   placeholder?: string;
   /** Short rule shown under the input, e.g. the password policy. */
@@ -126,23 +128,82 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
     return badEmail ? tf("emailInvalid") : null;
   };
 
-  const renderField = (field: CrudField) => (
-    <div key={field.name} className="space-y-2">
-      <Label htmlFor={field.name}>
-        {field.label}
-        {field.required && <span className="text-destructive ml-0.5">*</span>}
-      </Label>
+  const renderField = (field: CrudField) => {
+    if (field.type === "switch") {
+      return (
+        <div key={field.name} className="flex items-center justify-between rounded-lg border border-input bg-background px-3 py-2">
+          <Label htmlFor={field.name} className="cursor-pointer">
+            {field.label}
+            {field.required && <span className="text-destructive ml-0.5">*</span>}
+          </Label>
+          <Switch
+            id={field.name}
+            checked={values[field.name] === "true"}
+            onCheckedChange={(checked) => updateValue(field.name, checked ? "true" : "false")}
+          />
+        </div>
+      );
+    }
 
-      {field.type === "select" ? (
-        <SearchableSelect
-          id={field.name}
-          options={field.options ?? []}
-          value={values[field.name] ?? ""}
-          onValueChange={(v) => updateValue(field.name, v)}
-          placeholder={field.placeholder || "Select…"}
-          modal
-        />
-      ) : field.type === "textarea" ? (
+    if (field.type === "multiselect") {
+      const selectedValues = (() => {
+        try {
+          const val = values[field.name];
+          return val ? JSON.parse(val) : [];
+        } catch {
+          return [];
+        }
+      })();
+
+      return (
+        <div key={field.name} className="space-y-2">
+          <Label>
+            {field.label}
+            {field.required && <span className="text-destructive ml-0.5">*</span>}
+          </Label>
+          <div className="space-y-2">
+            {(field.options ?? []).map((option) => (
+              <div key={option.value} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`${field.name}-${option.value}`}
+                  checked={selectedValues.includes(option.value)}
+                  onCheckedChange={(checked) => {
+                    const newValues = checked
+                      ? [...selectedValues, option.value]
+                      : selectedValues.filter((v: string) => v !== option.value);
+                    updateValue(field.name, JSON.stringify(newValues));
+                  }}
+                />
+                <Label htmlFor={`${field.name}-${option.value}`} className="cursor-pointer font-normal">
+                  {option.label}
+                </Label>
+              </div>
+            ))}
+          </div>
+          {field.hint && (
+            <p className="text-xs text-muted-foreground">{field.hint}</p>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div key={field.name} className="space-y-2">
+        <Label htmlFor={field.name}>
+          {field.label}
+          {field.required && <span className="text-destructive ml-0.5">*</span>}
+        </Label>
+
+        {field.type === "select" ? (
+          <SearchableSelect
+            id={field.name}
+            options={field.options ?? []}
+            value={values[field.name] ?? ""}
+            onValueChange={(v) => updateValue(field.name, v)}
+            placeholder={field.placeholder || "Select…"}
+            modal
+          />
+        ) : field.type === "textarea" ? (
         <Textarea
           id={field.name}
           value={values[field.name] ?? ""}
@@ -180,11 +241,12 @@ export function CrudModal({ open, onClose, title, description, fields, initialVa
           aria-describedby={field.hint ? `${field.name}-hint` : undefined}
         />
       )}
-      {field.hint && (
-        <p id={`${field.name}-hint`} className="text-xs text-muted-foreground">{field.hint}</p>
-      )}
-    </div>
-  );
+        {field.hint && (
+          <p id={`${field.name}-hint`} className="text-xs text-muted-foreground">{field.hint}</p>
+        )}
+      </div>
+    );
+  };
 
   if (steps && steps.length > 1) {
     const byName = new Map(fields.map((f) => [f.name, f]));

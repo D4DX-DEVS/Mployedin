@@ -32,7 +32,7 @@ async function handler(req: NextRequest, ctx: { userId: string }, params?: Recor
 
   const seeker = await JobSeeker.findById(jobSeekerId)
     .populate("userId", "name email avatar")
-    .select("userId currentLocation skills experience education languages preferredSalary preferredJobType availabilityStatus profileCompleteness badges createdAt cv.originalUrl certifications headline summary totalExperienceYears preferredLocations preferredRoles noticePeriod workStatus profileVisibility sectionVisibility isAgentReferred socialLinks")
+    .select("userId currentLocation skills experience education languages preferredSalary preferredJobType availabilityStatus profileCompleteness badges createdAt cv.originalUrl certifications headline summary totalExperienceYears preferredLocations preferredRoles noticePeriod openToRelocation workStatus profileVisibility sectionVisibility isAgentReferred socialLinks")
     .lean();
 
   if (!seeker) {

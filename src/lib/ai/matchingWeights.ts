@@ -19,18 +19,39 @@ export interface MatchingWeights {
   preferredQualifications: number;
 }
 
+/**
+ * How a recruiter reads a CV (decided 2026-11-12, D17): relevant experience
+ * first, then the skills, then qualifications (education, licences, languages),
+ * with industry and nice-to-haves as tie-breakers.
+ */
 export const DEFAULT_WEIGHTS: MatchingWeights = {
-  skills: 40,
-  experience: 30,
+  skills: 35,
+  experience: 40,
   education: 15,
-  industryExperience: 10,
+  industryExperience: 5,
   preferredQualifications: 5,
 };
+
+/**
+ * Starting weights by the kind of hire the employer picked on the job form.
+ * Used only when the employer saved no weights of their own.
+ */
+export const HIRE_TYPE_WEIGHTS: Record<"experienced" | "skills" | "qualification" | "entry", MatchingWeights> = {
+  experienced: { skills: 30, experience: 45, education: 10, industryExperience: 10, preferredQualifications: 5 },
+  skills: { skills: 50, experience: 25, education: 10, industryExperience: 5, preferredQualifications: 10 },
+  qualification: { skills: 25, experience: 25, education: 35, industryExperience: 5, preferredQualifications: 10 },
+  entry: { skills: 40, experience: 10, education: 30, industryExperience: 5, preferredQualifications: 15 },
+};
+
+/** The standard weights for a job: its hire type's preset, else DEFAULT_WEIGHTS. */
+export function standardWeightsFor(hireType?: string | null): MatchingWeights {
+  return (hireType && HIRE_TYPE_WEIGHTS[hireType as keyof typeof HIRE_TYPE_WEIGHTS]) || DEFAULT_WEIGHTS;
+}
 
 const WEIGHT_LABELS: Record<keyof MatchingWeights, string> = {
   skills: "Required skills match",
   experience: "Relevant experience (depth and relevance to this role, not raw years)",
-  education: "Education & certifications",
+  education: "Qualifications: education, licences & certificates, languages",
   industryExperience: "Role / industry experience",
   preferredQualifications: "Preferred (nice-to-have) qualifications",
 };

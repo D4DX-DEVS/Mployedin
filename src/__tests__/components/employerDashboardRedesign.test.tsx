@@ -171,8 +171,9 @@ describe("Employer task-first dashboard", () => {
       "href",
       "/en/employer/applications",
     );
-    expect(container.querySelector(".md\\:grid-cols-5")).toBeInTheDocument();
-    expect(container.querySelector(".grid-cols-6")).toBeInTheDocument();
+    // Five even columns at every width (phones used to get 3 tiles + 2 wider ones).
+    expect(container.querySelector(".grid-cols-5")).toBeInTheDocument();
+    expect(container.querySelector(".grid-cols-6")).not.toBeInTheDocument();
     expect(screen.queryByText("Swipe to see every stage")).not.toBeInTheDocument();
     expect(screen.getAllByRole("link")).toHaveLength(6);
     // Hired counts hired applications, not placements (QA EMP-005, owner 2026-10-06).

@@ -50,6 +50,26 @@ describe("SocialShare", () => {
     expect(screen.getByRole("button", { name: /copy link/i })).toBeInTheDocument();
   });
 
+  it("shares a full job message the sharer can edit when details are given", () => {
+    render(
+      <SocialShare
+        url={props.url}
+        title="Pharmacist"
+        details={{ company: "d4dx", location: "Doha, Qatar", salary: "Salary: QAR 9,000", type: "Full-time · On-site", skills: ["Dispensing", "Inventory"] }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /share/i }));
+    const href = decodeURIComponent(screen.getByText("WhatsApp").closest("a")!.getAttribute("href")!);
+    expect(href).toContain("We're hiring: Pharmacist\nd4dx\nDoha, Qatar\nSalary: QAR 9,000\nFull-time · On-site\nSkills: Dispensing, Inventory");
+    expect(href).toContain(`Apply here: ${props.url}`);
+
+    fireEvent.click(screen.getByRole("button", { name: /edit message/i }));
+    const box = screen.getByRole("textbox");
+    fireEvent.change(box, { target: { value: "Custom text " + props.url } });
+    const sent = screen.getByRole("link", { name: /send on whatsapp/i }).getAttribute("href")!;
+    expect(decodeURIComponent(sent)).toBe(`https://wa.me/?text=Custom text ${props.url}`);
+  });
+
   it("copies URL to clipboard when copy link is clicked", async () => {
     Object.assign(navigator, {
       clipboard: { writeText: jest.fn().mockResolvedValue(undefined) },

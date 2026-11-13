@@ -63,7 +63,8 @@ const baseForm = {
   title: "Senior Backend Engineer",
   location: { country: "AE", city: "Dubai", isRemote: false },
   description: "We are hiring a backend engineer to build and run our APIs.",
-  requirements: { skills: [], preferredSkills: [], experienceMin: 2, experienceMax: 8 },
+  // Required since 2026-11-12 (D10): a level, or 0 for "No minimum".
+  requirements: { skills: [], preferredSkills: [], experienceMin: 2, experienceMax: 8, educationLevel: 0 },
   salary: { min: 5000, max: 9000, currency: "USD", isNegotiable: false, period: "monthly" },
 };
 

@@ -120,6 +120,16 @@
     "purposeKey": "jobDraft"
   },
   {
+    "name": "mployedin:apply-auto-cv",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "seeker",
+    "purposeKey": "taskState"
+  },
+  {
     "name": "job-prefs-draft",
     "kind": "sessionStorage",
     "category": "necessary",

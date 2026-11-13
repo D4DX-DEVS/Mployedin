@@ -63,13 +63,14 @@ describe("InvoiceTable", () => {
     expect(onSelect).toHaveBeenCalledWith("inv-1");
   });
 
-  it("does not open the invoice when a phone tap expands the card", () => {
+  it("opens the invoice once when its phone card is tapped", () => {
     setPhoneWidth(true);
     const onSelect = jest.fn();
     render(<InvoiceTable invoices={[invoice]} loading={false} role="agent" onSelect={onSelect} />);
-    // Phones get the card list; tapping the card text must not open the invoice.
+    // Phones get the two-row card list; the whole card opens the invoice
+    // (the lone eye-icon row is gone).
     fireEvent.click(within(screen.getByRole("list")).getByText("INV-0001"));
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
   it("opens the invoice from the eye button on a phone, once", () => {

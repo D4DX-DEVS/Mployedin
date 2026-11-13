@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronDown, MoreHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BottomNavItem, BOTTOM_BAR_CLASS } from "@/components/shared/BottomNavItem";
+import { BottomNavItem, BOTTOM_BAR_CLASS, BOTTOM_BAR_STYLE } from "@/components/shared/BottomNavItem";
 import { getIcon } from "@/lib/nav/iconRegistry";
 import type { NavBadgeKey, NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import {
@@ -46,9 +46,9 @@ const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffec
  */
 const PRIMARY_PATHS = [
   "/job-seeker",
+  // Saved jobs is a tab on the Jobs page (All jobs | Saved), not a top-level
+  // item: the owner dropped it from the nav on 2026-11-13.
   "/job-seeker/jobs",
-  // Saved jobs came back on the client's request (2026-10-27).
-  "/job-seeker/saved-jobs",
   "/job-seeker/applications",
   "/job-seeker/messages",
   "/job-seeker/companies",
@@ -89,7 +89,6 @@ const MORE_PATHS = [] as const;
  * them twice made the sheet read as a second account menu.
  */
 const MOBILE_MORE_PATHS = [
-  "/job-seeker/saved-jobs",
   "/job-seeker/messages",
   "/job-seeker/companies",
 ] as const;
@@ -156,6 +155,8 @@ function useIsActive(locale: string) {
   const root = `/${locale}/job-seeker`;
   return (href: string) => {
     if (href === root) return pathname === root;
+    // Saved jobs lives under the Jobs tab, so Jobs stays lit there.
+    if (href === `${root}/jobs` && (pathname === `${root}/saved-jobs` || pathname.startsWith(`${root}/saved-jobs/`))) return true;
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 }
@@ -405,7 +406,7 @@ export function JobSeekerBottomNav({ locale, navGroups, counts }: JobSeekerNavPr
         // CookieConsent measures this bar and sits on top of it.
         data-bottom-nav=""
         className={cn(BOTTOM_BAR_CLASS, "z-[90]")}
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={BOTTOM_BAR_STYLE}
       >
         <div className="flex items-stretch justify-around px-1">
           {primary.map((item) => (

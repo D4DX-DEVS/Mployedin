@@ -28,6 +28,7 @@ import type { ReferralSummary } from "@/lib/referrals/summary";
 import { formatDate, formatListDate } from "@/lib/ui/intlFormat";
 import { cn } from "@/lib/utils";
 import type { SeekerApplicationRow } from "@/lib/jobseekers/hiringStatus";
+import { SeekerApplicationsCard } from "@/components/shared/SeekerApplicationsCard";
 import { cleanRoleTitle } from "@/lib/jobseekers/roleTitle";
 
 interface DetailLanguage {
@@ -191,20 +192,6 @@ export function SeekerDetailPanel({ seekerId, context, onViewCv }: SeekerDetailP
   const wantedRoles = (seeker.preferredRoles ?? []).map((r) => r.trim()).filter(Boolean);
   // Imported CVs put the employer and dates in the title; show only the role.
   const role = cleanRoleTitle(seeker.headline) || cleanRoleTitle(current?.jobTitle);
-  const appStatusLabel = (status: string): string => {
-    // Literal keys only — a template-literal key escapes the missing-key checks.
-    switch (status) {
-      case "applied": return t("detail.applications.status.applied");
-      case "shortlisted": return t("detail.applications.status.shortlisted");
-      case "interview_scheduled": return t("detail.applications.status.interview_scheduled");
-      case "selected": return t("detail.applications.status.selected");
-      case "offer": return t("detail.applications.status.offer");
-      case "hired": return t("detail.applications.status.hired");
-      case "rejected": return t("detail.applications.status.rejected");
-      case "withdrawn": return t("detail.applications.status.withdrawn");
-      default: return t("detail.applications.status.other");
-    }
-  };
   const isPremium = (seeker.badges ?? []).includes("premium");
   const location = [seeker.currentLocation, seeker.country].filter(Boolean).join(", ");
   const completeness = Math.max(0, Math.min(100, Math.round(seeker.profileCompleteness ?? 0)));
@@ -333,28 +320,7 @@ export function SeekerDetailPanel({ seekerId, context, onViewCv }: SeekerDetailP
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
           {/* Which job each application is for and where it stands. */}
-          <section className="rounded-xl border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground">{t("detail.applications.title")}</h3>
-            {applications.length === 0 ? (
-              <p className="mt-2 text-xs text-muted-foreground">{t("detail.applications.empty")}</p>
-            ) : (
-              <ul className="mt-2 divide-y divide-border">
-                {applications.map((app) => (
-                  <li key={app.id} className="flex items-start justify-between gap-3 py-2 first:pt-0 last:pb-0">
-                    <div className="min-w-0">
-                      <p dir="auto" className="break-words text-sm font-medium text-foreground">{app.jobTitle}</p>
-                      <p dir="auto" className="text-xs text-muted-foreground">
-                        {[app.company, t("detail.applications.updated", { date: formatListDate(app.updatedAt, locale) })].filter(Boolean).join(" · ")}
-                      </p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
-                      {appStatusLabel(app.status)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <SeekerApplicationsCard applications={applications} />
 
           {/* Completeness, with what is missing named. */}
           <section className="rounded-xl border border-border bg-card p-4">

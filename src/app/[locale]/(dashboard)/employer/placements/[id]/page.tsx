@@ -7,11 +7,12 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   ArrowLeft, Briefcase, User, Building2, Calendar, DollarSign,
-  ClipboardCheck, CheckCircle2, XCircle, StickyNote,
+  ClipboardCheck, CheckCircle2, XCircle, StickyNote, UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { useConfirm } from "@/hooks/useConfirm";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 
@@ -133,32 +134,40 @@ export default function PlacementDetailPage() {
     <div className="page-container">
       {ConfirmDialogNode}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Button variant="ghost" size="sm" className="w-fit gap-1.5" onClick={() => router.push(`/${locale}/employer/placements`)}>
-          <ArrowLeft className="h-4 w-4" /> {t("backToPlacements")}
-        </Button>
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Badge variant="outline" className={STATUS_BADGE[status]}>{t(`status_${status}`)}</Badge>
-          {status === "active" && (
-            <>
-              <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90" disabled={transitioning} onClick={() => void transition("completed")}>
-                <CheckCircle2 className="h-4 w-4" /> {t("markCompleted")}
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10" disabled={transitioning} onClick={() => void transition("terminated")}>
-                <XCircle className="h-4 w-4" /> {t("markTerminated")}
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      {/* The standard title row: back link, then name, status and actions. The
+          name used to sit inside the card as an oversized heading and the page
+          had no title of its own. */}
+      <Link
+        href={`/${locale}/employer/placements`}
+        className="tap-target-row inline-flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+        {t("backToPlacements")}
+      </Link>
+      <WorkspaceHeader
+        icon={UserCheck}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {candidate?.name ?? t("candidate")}
+            <Badge variant="outline" className={STATUS_BADGE[status]}>{t(`status_${status}`)}</Badge>
+          </span>
+        }
+        context={[placement.jobId?.title, candidate?.email].filter(Boolean).join(" · ") || undefined}
+        actions={status === "active" ? (
+          <>
+            <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90" disabled={transitioning} onClick={() => void transition("completed")}>
+              <CheckCircle2 className="h-4 w-4" /> {t("markCompleted")}
+            </Button>
+            <Button size="sm" variant="outline" className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10" disabled={transitioning} onClick={() => void transition("terminated")}>
+              <XCircle className="h-4 w-4" /> {t("markTerminated")}
+            </Button>
+          </>
+        ) : undefined}
+      />
 
       <CandidateDataNotice variant="candidateDetail" />
 
       <div className="card-base space-y-5 panel-body">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{candidate?.name ?? t("candidate")}</h1>
-          {candidate?.email && <p className="text-sm text-muted-foreground mt-0.5">{candidate.email}</p>}
-        </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <InfoItem icon={Briefcase} label={t("jobCol")} value={placement.jobId?.title} />

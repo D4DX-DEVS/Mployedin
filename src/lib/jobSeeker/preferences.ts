@@ -21,6 +21,8 @@ export interface PreferencesData {
   preferredJobType: string;
   availabilityStatus: string;
   noticePeriod: number;
+  /** Absent until the seeker answers; employers see it on the candidate profile. */
+  openToRelocation?: boolean;
 }
 
 interface StoredPreferences {
@@ -30,6 +32,7 @@ interface StoredPreferences {
   preferredJobType?: unknown;
   availabilityStatus?: unknown;
   noticePeriod?: unknown;
+  openToRelocation?: unknown;
 }
 
 const nonNegative = (value: unknown): number =>
@@ -57,6 +60,7 @@ export function preferencesFromProfile(profile: StoredPreferences | null | undef
     preferredJobType: typeof p.preferredJobType === "string" ? p.preferredJobType : "any",
     availabilityStatus: typeof p.availabilityStatus === "string" ? p.availabilityStatus : "immediately",
     noticePeriod: Math.round(nonNegative(p.noticePeriod)),
+    ...(typeof p.openToRelocation === "boolean" ? { openToRelocation: p.openToRelocation } : {}),
   };
 }
 

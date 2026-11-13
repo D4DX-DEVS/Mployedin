@@ -128,11 +128,10 @@ beforeEach(() => {
 describe("POST /api/mcp/consent", () => {
   it("opts out of tenant view so an approval is never minted in an employer's name", () => {
     // consent, connected-apps GET and DELETE all register with skipTenantView.
-    expect(mockWithAuthOptions).toEqual([
-      { skipTenantView: true },
-      { skipTenantView: true },
-      { skipTenantView: true },
-    ]);
+    expect(mockWithAuthOptions).toHaveLength(3);
+    for (const options of mockWithAuthOptions) expect(options).toMatchObject({ skipTenantView: true });
+    // The approval also reads the session cut-off fresh (withAuthFreshSession.test.ts).
+    expect(mockWithAuthOptions).toContainEqual({ skipTenantView: true, freshSession: true });
   });
 
   it("mints a code for the signed-in owner, bound to the resource, and audits it", async () => {

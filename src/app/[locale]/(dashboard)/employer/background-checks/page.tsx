@@ -267,8 +267,8 @@ export default function BackgroundChecksPage() {
         context={t("description")}
         actions={
           <Button onClick={() => { void openCreate(); }} aria-label={t("newCheck")} className="rounded-xl px-3 sm:px-4">
-            <Plus className="h-4 w-4 sm:me-2" aria-hidden="true" />
-            <span className="hidden sm:inline">{t("newCheck")}</span>
+            <Plus className="h-4 w-4 me-2" aria-hidden="true" />
+            <span>{t("newCheck")}</span>
           </Button>
         }
       />
@@ -370,7 +370,7 @@ export default function BackgroundChecksPage() {
                 <div>
                   <p className="font-medium text-foreground">{candidateName(c)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {c.jobId?.title} · {t(`type.${c.checkType}`)} · {c.references.length} {t("references")}
+                    {c.jobId?.title} · {t(`type.${c.checkType}`)} · {t("referenceCount", { count: c.references.length })}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {c.assignedTo

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceTabs } from "@/components/shared/WorkspaceTabs";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -33,33 +33,20 @@ export function AgentSectionTabs({ tabs, ariaLabelKey }: AgentSectionTabsProps) 
   const t = useTranslations("agentSections");
   const pathname = usePathname();
   const locale = pathname?.split("/")[1] ?? "en";
+  const activeKey = tabs.find((tab) => {
+    const href = `/${locale}${tab.href}`;
+    return pathname === href || pathname?.startsWith(`${href}/`);
+  })?.href;
 
+  // The shared workspace strip: it never scrolls sideways or cuts a label
+  // ("Commi…" on phones) — tabs that do not fit sit under More, and the
+  // open tab always stays on the row.
   return (
-    <nav
-      aria-label={t(ariaLabelKey)}
-      // Scrolls rather than wraps: five tabs at phone width would otherwise
-      // stack into a block taller than the panel they introduce.
-      className="scroll-hint-x -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      {tabs.map((tab) => {
-        const href = `/${locale}${tab.href}`;
-        const active = pathname === href || pathname?.startsWith(`${href}/`);
-        return (
-          <Link
-            key={tab.href}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={`inline-flex min-h-11 shrink-0 items-center rounded-xl px-3 text-sm font-semibold transition ${
-              active
-                ? "bg-primary/10 text-primary ring-1 ring-inset ring-primary/25"
-                : "text-muted-foreground hover:bg-card hover:text-foreground"
-            }`}
-          >
-            {t(tab.labelKey)}
-          </Link>
-        );
-      })}
-    </nav>
+    <WorkspaceTabs
+      ariaLabel={t(ariaLabelKey)}
+      activeKey={activeKey ?? ""}
+      tabs={tabs.map((tab) => ({ key: tab.href, label: t(tab.labelKey), href: `/${locale}${tab.href}` }))}
+    />
   );
 }
 

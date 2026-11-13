@@ -1,14 +1,16 @@
-import { getTranslations } from "next-intl/server";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { SettingsHubShell } from "@/components/features/job-seeker/SettingsHubShell";
 import { PlanBillingView } from "@/components/subscription/PlanBillingView";
 
-/** Job-seeker Plan & billing. */
-export default async function JobSeekerSubscriptionPage() {
-  const t = await getTranslations("planBilling");
+/** Settings › Plan & billing for the job seeker. */
+export default async function JobSeekerSubscriptionPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
   return (
-    <div className="page-container">
-      <PageHeader title={t("title")} description={t("description")} backHref="/job-seeker" />
+    <SettingsHubShell locale={locale}>
       <PlanBillingView role="job_seeker" />
-    </div>
+    </SettingsHubShell>
   );
 }

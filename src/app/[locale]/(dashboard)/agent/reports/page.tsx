@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { formatCount, formatTime } from "@/lib/ui/intlFormat";
+import { formatTime } from "@/lib/ui/intlFormat";
 import { formatCurrency } from "@/lib/currency";
 
 /* ─── AI Report Templates ─── */
@@ -55,12 +55,6 @@ interface Analytics {
 interface ReportResult { content: string; generatedAt: string }
 
 /* ─── Helpers ─── */
-
-function TrendBadge({ trend }: { trend: TrendData }) {
-  if (trend.direction === "up") return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3 w-3" />+{trend.delta}%</span>;
-  if (trend.direction === "down") return <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-600"><ArrowDownRight className="h-3 w-3" />{trend.delta}%</span>;
-  return <span className="text-xs text-muted-foreground">—</span>;
-}
 
 const FUNNEL_STAGES = ["new", "contacted", "interested", "negotiating", "converted", "lost"] as const;
 const FUNNEL_COLORS: Record<string, string> = { new: "bg-blue-500/60", contacted: "bg-blue-600/60", interested: "bg-amber-500/60", negotiating: "bg-violet-500/60", converted: "bg-emerald-500/60", lost: "bg-muted-foreground/40" };
@@ -227,7 +221,7 @@ export default function AgentReportsPage() {
                   <Users className="h-4 w-4 text-primary" aria-hidden="true" />
                   <h2 id="report-seekers-heading" className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("seekersHeading")}</h2>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-5">
                   {tiles.map((tile) => (
                     <Link
                       key={tile.key}
@@ -281,7 +275,7 @@ export default function AgentReportsPage() {
                 <div key={c.label} className="min-w-0 workspace-glass-panel card-pad rounded-2xl text-center">
                   <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground max-sm:tracking-normal">{c.label}</p>
                   <p className={`mt-2 text-xl sm:text-2xl font-semibold ${c.color}`}>{c.data?.count ?? 0}</p>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">{formatCurrency((c.data?.total ?? 0), currencyCode)}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">{formatCurrency((c.data?.total ?? 0), currencyCode, "code")}</p>
                 </div>
               ))}
             </div>

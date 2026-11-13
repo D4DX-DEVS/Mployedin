@@ -59,8 +59,8 @@ export default function AgentTargetReportPage() {
       ) : !data.report ? (
         <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
           <Target className="mb-4 h-12 w-12 text-muted-foreground/40" />
-          <h2 className="heading-section font-semibold">{t("noTargetAssigned")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("contactSupervisor")}</p>
+          <h2 className="heading-section font-semibold">{t("reportEmptyTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("reportEmptyDescription")}</p>
         </div>
       ) : (
         <ProfitReportView report={data.report} />

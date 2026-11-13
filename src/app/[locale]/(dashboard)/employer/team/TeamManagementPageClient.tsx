@@ -271,14 +271,14 @@ export default function TeamManagementPage() {
           <>
             <Button asChild variant="outline" className="rounded-xl px-3 sm:px-4">
               <Link href={`/${locale}/employer/team/activity-logs`} aria-label={t("activityLogs")}>
-                <Activity className="h-4 w-4 sm:me-2" aria-hidden="true" />
-                <span className="hidden sm:inline">{t("activityLogs")}</span>
+                <Activity className="h-4 w-4 me-2" aria-hidden="true" />
+                <span>{t("activityLogs")}</span>
               </Link>
             </Button>
             {TEAM_INVITE_ENABLED && (
               <Button onClick={() => setShowInviteModal(true)} aria-label={t("inviteMember")} className="rounded-xl px-3 sm:px-4">
-                <Plus className="h-4 w-4 sm:me-2" aria-hidden="true" />
-                <span className="hidden sm:inline">{t("inviteMember")}</span>
+                <Plus className="h-4 w-4 me-2" aria-hidden="true" />
+                <span>{t("inviteMember")}</span>
               </Button>
             )}
           </>
@@ -365,9 +365,11 @@ export default function TeamManagementPage() {
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("name")}</TableHead>
                   <TableHead>{t("role")}</TableHead>
-                  <TableHead>{t("jobAccess")}</TableHead>
+                  {/* Tablets keep member, role, status and the actions; job
+                      access and the date join from lg (Edit shows both). */}
+                  <TableHead className="hidden lg:table-cell">{t("jobAccess")}</TableHead>
                   <TableHead>{t("status")}</TableHead>
-                  <TableHead>{t("joined")}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t("joined")}</TableHead>
                   <TableHead className="text-right">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -409,7 +411,7 @@ export default function TeamManagementPage() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <Badge variant="outline" className="whitespace-nowrap text-xs">
                         {getJobAccessLabel(member)}
                       </Badge>
@@ -420,7 +422,7 @@ export default function TeamManagementPage() {
                         {statusLabel(displayStatus(member))}
                       </Badge>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                    <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground lg:table-cell">
                       {member.acceptedAt
                         ? formatDate(member.acceptedAt, { day: "2-digit", month: "short", year: "numeric" }, locale)
                         : member.invitedAt

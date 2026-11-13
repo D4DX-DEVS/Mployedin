@@ -1,3 +1,4 @@
+import { stampLanguagesConfirmed } from "@/lib/jobs/requirementLanguages";
 import { NextRequest, NextResponse } from "next/server";
 import { Types, Error as MongooseError } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
@@ -288,6 +289,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     } else {
       query.employerId = requested;
     }
+    // Outside the owning side, a hidden-company job must not come back under
+    // its employer's filter: the result set itself would name the company.
+    if (!canFilterManagedJobs) {
+      query.$and = [...(query.$and ?? []), { discloseCompany: { $ne: false } }];
+    }
   }
 
   if (withoutApplications) {
@@ -484,6 +490,7 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     tags,
     visibility,
     status,
+    hireType,
   } = body;
 
   let employerId: string | undefined;
@@ -604,7 +611,8 @@ async function createHandler(req: NextRequest, ctx: AuthCtx) {
     description: sanitizeHtml(description),
     category,
     location: location ?? { country: "", city: "", isRemote: false },
-    requirements: requirements ?? { skills: [], experienceMin: 0, experienceMax: 99 },
+    requirements: requirements ? stampLanguagesConfirmed(requirements) : { skills: [], experienceMin: 0, experienceMax: 99 },
+    ...(hireType ? { hireType } : {}),
     salary: salary ?? { min: 0, max: 0, currency: "USD", period: "monthly" },
     employmentType,
     workMode,

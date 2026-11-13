@@ -117,3 +117,10 @@ export const npsCreateSchema = z.object({
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(500).trim().optional(),
 });
+
+export const bulkScreeningSchema = z.object({
+  applicationIds: z
+    .array(commonSchemas.objectId)
+    .min(1)
+    .max(100, "Maximum 100 applications per bulk action"),
+});

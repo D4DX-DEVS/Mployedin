@@ -84,11 +84,15 @@ export default function JobBackgroundChecksPage() {
           <h2 className="heading-section font-semibold text-foreground" tabIndex={-1}>{t("checksHeading")}</h2>
           <p className="text-xs text-muted-foreground">{t("checksHint")}</p>
         </div>
-        <Button asChild className="min-h-11 rounded-xl sm:min-h-10">
-          <Link href={newCheckHref}>
-            <ShieldCheck className="me-2 h-4 w-4" aria-hidden /> {tb("newCheck")}
-          </Link>
-        </Button>
+        {/* Not on the empty screen: the message below carries the same button,
+            and two "New check" buttons on one blank page read as a mistake. */}
+        {(loading || failed || checks.length > 0) && (
+          <Button asChild className="min-h-11 rounded-xl sm:min-h-10">
+            <Link href={newCheckHref}>
+              <ShieldCheck className="me-2 h-4 w-4" aria-hidden /> {tb("newCheck")}
+            </Link>
+          </Button>
+        )}
       </div>
 
       {loading ? (

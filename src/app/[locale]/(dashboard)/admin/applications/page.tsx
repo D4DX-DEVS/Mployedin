@@ -712,7 +712,7 @@ export default function AdminApplicationsPage() {
           placeholder={t("searchPlaceholder")}
           onAskAi={(q) => { void ai.askAi(q); }}
           pending={ai.pending}
-          className="flex-[2_1_20rem] max-sm:basis-0"
+          className="flex-[2_1_20rem]"
           inputClassName="h-11 rounded-lg bg-card sm:h-9"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />

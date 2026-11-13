@@ -29,6 +29,16 @@ export interface PhoneRecord {
   stats?: readonly PhoneRecordStat[];
   /** Row actions (RowActions menu, icon buttons). Stay clickable above the card link. */
   actions?: ReactNode;
+  /**
+   * Two-row card (agent lists, owner 2026-11-12): the facts as ONE inline,
+   * dot-separated line under the name — no label-over-value grid — with the
+   * actions at the end of that same row instead of a footer. Empty and "—"
+   * values are dropped. When set, `meta`, `stats` and the footer are not used;
+   * `badges` sit under the name.
+   */
+  facts?: readonly ReactNode[];
+  /** Facts cards only: opens the record in place (a dialog) when it has no page of its own. */
+  onSelect?: () => void;
 }
 
 interface PhoneRecordListProps {
@@ -76,6 +86,7 @@ export function PhoneRecordList({ items, loading, empty, className, label, compa
     <ul className={cn("space-y-2", className)} aria-label={label}>
       {items.map((item) => {
         const hasLeading = Boolean(item.leading);
+        if (item.facts) return <FactsCard key={item.key} item={item} />;
         return (
           <li key={item.key} className={cn("relative rounded-xl border border-border/70 bg-card shadow-sm", compact ? "p-2.5" : "p-3")}>
             <div className="flex items-start gap-3">
@@ -153,5 +164,73 @@ export function PhoneRecordList({ items, loading, empty, className, label, compa
         );
       })}
     </ul>
+  );
+}
+
+function isBlankFact(fact: ReactNode): boolean {
+  return fact === null || fact === undefined || fact === false || fact === "" || fact === "—";
+}
+
+/** The two-row phone card: who + status, then facts with the action beside them. */
+function FactsCard({ item }: { item: PhoneRecord }) {
+  const facts = (item.facts ?? []).filter((fact) => !isBlankFact(fact));
+  return (
+    <li className="relative rounded-xl border border-border/70 bg-card px-3 py-2.5 shadow-sm" data-phone-card="facts">
+      <div className="flex items-start gap-2.5">
+        {item.leading && <div className="shrink-0">{item.leading}</div>}
+        <div className="min-w-0 flex-1">
+          {/* The name is never cut: it may wrap, it is never truncated. */}
+          <p className="break-words text-sm font-semibold leading-5 text-foreground">
+            {item.href ? (
+              <Link
+                href={item.href}
+                className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
+              >
+                {item.title}
+              </Link>
+            ) : item.onSelect ? (
+              <button
+                type="button"
+                onClick={item.onSelect}
+                className="rounded-sm text-start after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
+              >
+                {item.title}
+              </button>
+            ) : (
+              item.title
+            )}
+          </p>
+          {item.subtitle && <div className="truncate text-xs leading-5 text-muted-foreground">{item.subtitle}</div>}
+          {/* Badges sit under the name: inline with the facts they crushed the
+              facts line to a few clipped words. */}
+          {item.badges && <div className="relative z-10 mt-1 flex flex-wrap items-center gap-1 text-[11px]">{item.badges}</div>}
+        </div>
+        {item.trailing && <div className="relative z-10 shrink-0">{item.trailing}</div>}
+      </div>
+      {(facts.length > 0 || item.actions) && (
+        // Facts keep at least ~9rem; when the actions need more than the rest,
+        // they wrap under the facts at the end instead of crushing them.
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          <p className="line-clamp-3 min-w-[9rem] flex-1 text-xs leading-5 text-muted-foreground">
+            {/* The dot rides at the end of the fact before it, so a wrapped
+                line ends with "·" rather than starting with one. */}
+            {facts.map((fact, index) => (
+              <span key={index}>
+                <span className="whitespace-nowrap">
+                  {fact}
+                  {index < facts.length - 1 && <span aria-hidden="true">{" ·"}</span>}
+                </span>
+                {index < facts.length - 1 && " "}
+              </span>
+            ))}
+          </p>
+          {item.actions && (
+            <div className="relative z-10 ms-auto flex shrink-0 items-center gap-1.5 [&_a]:!min-h-8 [&_button]:!min-h-8 [&_button]:!h-8 [&_a]:!h-8 [&_button]:!text-xs">
+              {item.actions}
+            </div>
+          )}
+        </div>
+      )}
+    </li>
   );
 }

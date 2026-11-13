@@ -2,7 +2,8 @@
  * @jest-environment jsdom
  */
 import type React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import { renderWithProviders as render } from "@/test-utils";
 import { JobSeekerHomePage, type InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 
 function getByPath(obj: Record<string, unknown>, path: string): string | undefined {
@@ -235,8 +236,11 @@ describe("JobSeekerHomePage", () => {
     const { unmount } = render(
       <JobSeekerHomePage locale="ar" initialData={initialData} userName="Muhammed Ilyas MK" />
     );
-    // initialData has no offers, interviews or unread messages.
-    expect(screen.queryByText("الخطوة التالية المقترحة")).not.toBeInTheDocument();
+    // initialData has no offers, interviews or unread messages. The waiting
+    // step is one banner linking to it (2026-11-12 home rebuild).
+    const interviewsLink = () =>
+      screen.queryAllByRole("link").find((a) => a.getAttribute("href") === "/ar/job-seeker/interviews");
+    expect(interviewsLink()).toBeUndefined();
     unmount();
 
     render(
@@ -249,7 +253,7 @@ describe("JobSeekerHomePage", () => {
         }}
       />
     );
-    expect(await screen.findByText("الخطوة التالية المقترحة")).toBeInTheDocument();
+    await waitFor(() => expect(interviewsLink()).toBeDefined());
   });
   // The cards are the first four of the Jobs page: strong matches (the ones the
   // digest email would send) lead, then the closest others. The admin's match
@@ -372,6 +376,30 @@ describe("JobSeekerHomePage", () => {
       json: async () => ({ jobs: [job("late")], threshold: 80, bestScore: 88, strongMatches: 1, limitingFactor: null }),
     });
     expect(await screen.findByText("Job late")).toBeInTheDocument();
+  });
+
+  it("asks for preferences instead of listing jobs when no role is set (owner, 2026-11-13)", async () => {
+    const data = withRecommendation([job("a"), job("b", false)], null);
+    render(
+      <JobSeekerHomePage
+        locale="ar"
+        initialData={{ ...data, profile: { ...data.profile!, preferredRoles: [] } }}
+      />,
+    );
+    expect(await screen.findByText("recommendedJobs.setupTitle")).toBeInTheDocument();
+    expect(screen.queryByText("Job a")).not.toBeInTheDocument();
+    expect(screen.queryByText("Job b")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "recommendedJobs.setupCta" })).toHaveAttribute("href", "/ar/job-seeker/preferences");
+    // Browsing stays open: the card's button and the section's "view all" both lead to all jobs.
+    for (const link of screen.getAllByRole("link", { name: "تصفح جميع الوظائف" })) {
+      expect(link).toHaveAttribute("href", "/ar/job-seeker/jobs");
+    }
+  });
+
+  it("lists jobs as before once a role is set", async () => {
+    render(<JobSeekerHomePage locale="ar" initialData={withRecommendation([job("a")], null)} />);
+    expect(await screen.findByText("Job a")).toBeInTheDocument();
+    expect(screen.queryByText("recommendedJobs.setupTitle")).not.toBeInTheDocument();
   });
 
   it("still treats SSR jobs: [] as final and fetches nothing for them", async () => {

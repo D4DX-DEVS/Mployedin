@@ -67,13 +67,20 @@ export function JobSeekerSectionNav({ locale, paths, counts, label, className }:
 
   if (entries.length === 0) return null;
 
+  // Longest match wins: on /profile/personal-details both "/profile" and
+  // "/profile/personal-details" are prefixes, and only the deeper one is the
+  // page the seeker is on.
+  const activeHref = entries
+    .filter((entry) => pathname === entry.href || pathname.startsWith(`${entry.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
   return (
     <nav
       className={cn("scroll-hint-x scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1", className)}
       aria-label={label ?? entries[0]?.title}
     >
       {entries.map((entry) => {
-        const active = pathname === entry.href || pathname.startsWith(`${entry.href}/`);
+        const active = entry.href === activeHref;
         const Icon = getIcon(entry.icon);
         const count = entry.badgeKey ? counts?.[entry.badgeKey] ?? 0 : 0;
         // The visible badge caps at BADGE_CAP ("99+"); the announced count
@@ -122,12 +129,29 @@ export const APPLICATION_JOURNEY_PATHS = [
   "/job-seeker/onboarding",
 ] as const;
 
-/** Everything that makes up how the seeker presents themselves. */
+/**
+ * Everything that makes up how the seeker presents themselves. The CV builder
+ * and the skills gap tool are tools opened from these tabs (CV & documents,
+ * the Skills section), not tabs of their own.
+ */
 export const PROFILE_SECTION_PATHS = [
   "/job-seeker/profile",
   "/job-seeker/profile/personal-details",
-  "/job-seeker/cv",
-  "/job-seeker/skills",
   "/job-seeker/documents",
   "/job-seeker/preferences",
+] as const;
+
+/** Jobs: every open job, or the ones the seeker saved. */
+export const JOBS_SECTION_PATHS = [
+  "/job-seeker/jobs",
+  "/job-seeker/saved-jobs",
+] as const;
+
+/** One Settings page: each tab is its own route so e-mail links keep working. */
+export const SETTINGS_SECTION_PATHS = [
+  "/job-seeker/settings/notifications",
+  "/job-seeker/settings/privacy",
+  "/job-seeker/settings/interviews",
+  "/job-seeker/settings/account",
+  "/job-seeker/subscription",
 ] as const;

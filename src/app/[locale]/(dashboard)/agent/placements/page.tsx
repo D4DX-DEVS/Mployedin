@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -126,11 +127,16 @@ export default function AgentPlacementsPage() {
     <EmptyState
       icon={Inbox}
       title={t("noPlacementsYet")}
+      description={t("noPlacementsDescription")}
       action={hasActiveFilters ? (
         <Button variant="outline" onClick={clearAllFilters} className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
           Clear filters
         </Button>
-      ) : undefined}
+      ) : (
+        <Button variant="outline" asChild className="min-h-11 rounded-xl px-4 text-sm sm:min-h-9">
+          <Link href="../offers">{t("viewOffers")}</Link>
+        </Button>
+      )}
     />
   );
 
@@ -190,7 +196,6 @@ export default function AgentPlacementsPage() {
           value={search}
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
       </InlineFilterBar>
@@ -243,9 +248,9 @@ export default function AgentPlacementsPage() {
           title: p.jobSeekerId?.fullName ?? "—",
           subtitle: `${p.jobId?.title ?? "—"} · ${p.employerId?.companyName ?? "—"}`,
           trailing: <StatusBadge status={p.status} />,
-          stats: [
-            { label: t("tableHeaderSalary"), value: p.salary ? `${p.currency ?? "USD"} ${formatCount(p.salary)}` : "—" },
-            { label: t("tableHeaderStartDate"), value: p.startDate ? formatListDate(p.startDate, locale) : "—" },
+          facts: [
+            p.salary ? `${p.currency ?? "USD"} ${formatCount(p.salary)}` : "—",
+            p.startDate ? formatListDate(p.startDate, locale) : "—",
           ],
         }))}
       />

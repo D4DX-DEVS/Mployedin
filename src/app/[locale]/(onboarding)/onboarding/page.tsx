@@ -198,7 +198,10 @@ const INDUSTRY_OPTIONS = [
 const QUALIFICATION_OPTIONS = [
   { value: "doctorate", label: "Doctorate/PhD" },
   { value: "masters", label: "Masters/Post-Graduation" },
-  { value: "graduation", label: "Graduation/Diploma" },
+  // Two choices since 2026-11-12 (D5): one "Graduation/Diploma" chip let a
+  // diploma holder read as a graduate to every job asking for a degree.
+  { value: "graduation", label: "Graduation (Bachelor's)" },
+  { value: "diploma", label: "Diploma / ITI" },
   { value: "12th", label: "12th" },
   { value: "10th", label: "10th" },
   { value: "below_10th", label: "Below 10th" },
@@ -222,9 +225,11 @@ function splitPhone(raw: string): { countryCode: string; phone: string } | null 
 }
 
 /** Stored label → option value, so a saved qualification comes back selected. */
-const QUALIFICATION_BY_LABEL: Record<string, string> = Object.fromEntries(
-  QUALIFICATION_OPTIONS.map((q) => [q.label, q.value]),
-);
+const QUALIFICATION_BY_LABEL: Record<string, string> = {
+  // Stored before the split; the seeker picks again if it was a diploma.
+  "Graduation/Diploma": "graduation",
+  ...Object.fromEntries(QUALIFICATION_OPTIONS.map((q) => [q.label, q.value])),
+};
 
 /**
  * Best-effort map from a CV's free-text degree ("B.Tech", "MSc", "Bachelor of
@@ -238,7 +243,8 @@ function qualificationLevelFrom(degree?: string): string {
   if (QUALIFICATION_BY_LABEL[degree!]) return QUALIFICATION_BY_LABEL[degree!];
   if (/\b(ph\.?d|doctor|dphil)\b/.test(d)) return "doctorate";
   if (/\b(m\.?tech|m\.?sc|m\.?a|m\.?com|mba|mca|master|post.?grad|pg)\b/.test(d)) return "masters";
-  if (/\b(b\.?tech|b\.?e|b\.?sc|b\.?a|b\.?com|bba|bca|llb|bachelor|under.?grad|diploma)\b/.test(d)) return "graduation";
+  if (/\b(b\.?tech|b\.?e|b\.?sc|b\.?a|b\.?com|bba|bca|llb|bachelor|under.?grad)\b/.test(d)) return "graduation";
+  if (/\b(diploma|polytechnic|iti|gnm|anm)\b/.test(d)) return "diploma";
   if (/\b(12th|higher secondary|hsc|intermediate|a.?level)\b/.test(d)) return "12th";
   if (/\b(10th|secondary|ssc|o.?level|matric)\b/.test(d)) return "10th";
   return "";
@@ -288,7 +294,8 @@ function educationAnswers(entry: CareerEducation) {
 }
 
 const COURSE_SUGGESTIONS: Record<string, string[]> = {
-  graduation: ["B.Tech/B.E.", "B.A", "BCA", "B.B.A/B.M.S", "B.Com", "B.Ed", "B.Pharma", "B.Sc", "LLB", "Diploma"],
+  graduation: ["B.Tech/B.E.", "B.A", "BCA", "B.B.A/B.M.S", "B.Com", "B.Ed", "B.Pharma", "B.Sc", "LLB"],
+  diploma: ["Diploma in Engineering", "Polytechnic Diploma", "ITI", "GNM Nursing", "D.Pharm", "Diploma in Hotel Management"],
   masters: ["M.Tech/M.E.", "MBA/PGDM", "MCA", "M.A", "M.Sc", "M.Com", "LLM"],
   doctorate: ["Ph.D", "M.Phil"],
 };
@@ -462,13 +469,16 @@ export default function JobSeekerOnboardingPage() {
     setAreaPrefilled(true);
   };
 
-  // Guard: redirect already-onboarded users away from this page
+  // Guard: redirect already-onboarded users away from this page — to where
+  // they were going. Finishing onboarding marks the session onboarded, which
+  // runs this too: sending them to the dashboard here overrode the push to the
+  // callback (a job they were applying to landed them on the dashboard).
   useEffect(() => {
     if (status !== "authenticated") return;
     if ((session?.user as unknown as { isOnboarded?: boolean })?.isOnboarded === true) {
-      router.replace(`/${locale ?? "en"}/job-seeker`);
+      router.replace(callback ?? `/${locale ?? "en"}/job-seeker`);
     }
-  }, [status, session, locale, router]);
+  }, [status, session, locale, router, callback]);
 
   // Pre-fill from session name + fetch existing profile for OAuth users
   useEffect(() => {
@@ -969,7 +979,7 @@ export default function JobSeekerOnboardingPage() {
         // Qualification is always required
         if (!step2.qualification) return false;
         // For graduation and above, course must be confirmed
-        if (["graduation", "masters", "doctorate"].includes(step2.qualification)) {
+        if (["diploma", "graduation", "masters", "doctorate"].includes(step2.qualification)) {
           if (!courseConfirmed) return false;
           // After course is confirmed, specialization must be confirmed
           if (!specConfirmed) return false;
@@ -1774,7 +1784,7 @@ export default function JobSeekerOnboardingPage() {
                 </div>
 
                 {/* Course — shown when qualification is graduation or above */}
-                {["graduation", "masters", "doctorate"].includes(step2.qualification) && (
+                {["diploma", "graduation", "masters", "doctorate"].includes(step2.qualification) && (
                   <>
                     <div className="field">
                       <Label className="text-sm font-medium text-gray-800">{t("course")}</Label>
@@ -2000,10 +2010,10 @@ export default function JobSeekerOnboardingPage() {
                       min="0"
                       value={step3.preferredSalary}
                       onChange={(e) => setStep3((p) => ({ ...p, preferredSalary: e.target.value }))}
-                      placeholder={t("salaryPlaceholder")}
+                      placeholder={t("monthlySalaryPlaceholder")}
                       className="flex-1 h-11 border-gray-300 focus:border-blue-500"
                     />
-                    <span className="text-sm text-gray-500 shrink-0">{t("perYear")}</span>
+                    <span className="text-sm text-gray-500 shrink-0">{t("perMonth")}</span>
                   </div>
                 </div>
 

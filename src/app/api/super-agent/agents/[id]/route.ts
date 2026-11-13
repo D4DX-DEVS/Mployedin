@@ -12,6 +12,13 @@ import { validateBody } from "@/lib/validators";
 import { saAgentUpdateSchema } from "@/lib/validators/super-agent";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { EMPTY_AGENT_PERFORMANCE, getLiveAgentPerformance } from "@/lib/agentPerformance";
+import {
+  agentEmailNotVerifiedResponse,
+  approvalStamp,
+  loadApprovalState,
+  wouldApproveUnverifiedAgent,
+  type ApprovalAccountState,
+} from "@/lib/auth/agentApproval";
 
 export const GET = withAuth(async (req: NextRequest, ctx, params) => {
   await connectDB();
@@ -164,6 +171,17 @@ export const PATCH = withAuth(async (req: NextRequest, ctx, params) => {
   const body = await validateBody(req, saAgentUpdateSchema);
   const { assignedCityIds, assignedStateIds, workingHoursStart, workingHoursEnd, workingDays, isActive, commissionRate } = body;
 
+  // Approving an agent needs a confirmed email (lib/auth/agentApproval.ts).
+  // Checked before any write, so a refused save changes nothing.
+  let account: ApprovalAccountState | null = null;
+  if (isActive !== undefined) {
+    const agent = await Agent.findById(agentDocId).select("userId").lean();
+    account = agent?.userId ? await loadApprovalState(agent.userId) : null;
+    if (wouldApproveUnverifiedAgent(account, { isActive })) {
+      return agentEmailNotVerifiedResponse();
+    }
+  }
+
   // Validate region changes against SA's own territory
   if (assignedCityIds !== undefined || assignedStateIds !== undefined) {
     const saRegion = await getSuperAgentOwnRegion(ctx.userId);
@@ -203,7 +221,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx, params) => {
   if (isActive !== undefined) {
     const agent = await Agent.findById(agentDocId).select("userId").lean();
     if (agent?.userId) {
-      await User.findByIdAndUpdate(agent.userId, { $set: { isActive } });
+      await User.findByIdAndUpdate(agent.userId, { $set: { isActive, ...approvalStamp(account, { isActive }) } });
     }
   }
 

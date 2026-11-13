@@ -8,6 +8,7 @@
  * Status is never colour alone: every state carries an icon and a word.
  */
 
+import { useId } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { CheckCircle2, CircleDashed, HelpCircle, MinusCircle, TriangleAlert, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -123,7 +124,7 @@ function countryNames(value: string, locale: string): string {
 
 const WORK_MODES = ["onsite", "hybrid", "remote"] as const;
 
-const CHECK_KEYS = ["experience", "education", "skills", "industry", "location", "salary", "work_mode", "languages", "screening", "cv"] as const;
+const CHECK_KEYS = ["experience", "education", "skills", "industry", "location", "salary", "work_mode", "languages", "screening", "credential", "cv"] as const;
 
 /** lib/cv/parsedCv.ts CvState — carried in the cv check's `actual`. */
 const CV_STATES = ["read", "reading", "unreadable", "none"] as const;
@@ -144,8 +145,17 @@ interface RequirementsChecklistProps {
   matchedSkills?: string[] | null;
   missingSkills?: string[] | null;
   weightsApplied?: boolean | null;
+  /**
+   * A requirement report sits beside this checklist: leave out the rows it
+   * already spells out (experience, education, licences, languages, skills),
+   * keeping location, industry, screening, salary, work mode and the CV.
+   */
+  coveredByReport?: boolean;
   className?: string;
 }
+
+/** Rows the requirement report (RequirementReport.tsx) already shows. */
+const REPORT_KEYS: readonly string[] = ["experience", "education", "credential", "languages", "skills"];
 
 export function RequirementsChecklist({
   checks,
@@ -153,13 +163,15 @@ export function RequirementsChecklist({
   matchedSkills,
   missingSkills,
   weightsApplied,
+  coveredByReport = false,
   className,
 }: RequirementsChecklistProps) {
   const t = useTranslations("employerAts");
   const locale = useLocale();
-  const items = checks ?? [];
-  const has = matchedSkills ?? [];
-  const missing = missingSkills ?? [];
+  const headingId = useId();
+  const items = (checks ?? []).filter((check) => !coveredByReport || !REPORT_KEYS.includes(check.key));
+  const has = coveredByReport ? [] : matchedSkills ?? [];
+  const missing = coveredByReport ? [] : missingSkills ?? [];
   if (!status && items.length === 0) return null;
 
   const notStated = t("notStated");
@@ -175,6 +187,8 @@ export function RequirementsChecklist({
       case "experience":
         // A soft note: the job sets no minimum, the candidate stated nothing.
         if (!check.required) return t("detail.experienceNotStated");
+        // The employer named what the years are in: "5+ years in MERN stack".
+        if (check.label) return t("detail.experienceIn", { required, subject: check.label, actual });
         return t("detail.experience", { required, actual });
       case "education":
         return t("detail.education", { required: level(check.required), actual: level(check.actual) });
@@ -204,6 +218,8 @@ export function RequirementsChecklist({
       }
       case "languages":
         return t("detail.languages", { required, actual });
+      case "credential":
+        return check.actual ? t("detail.credentialFound", { actual: check.actual }) : t("detail.credentialNone");
       case "screening":
         // A soft screening check is a preferred answer, not a qualifying one.
         return t(check.hard ? "detail.screening" : "detail.screeningPreferred", { required, actual });
@@ -226,11 +242,64 @@ export function RequirementsChecklist({
   }
 
   const title = (check: QualificationItem) =>
-    check.key === "screening" && check.label
+    (check.key === "screening" || check.key === "credential") && check.label
       ? check.label
       : (CHECK_KEYS as readonly string[]).includes(check.key)
         ? t(`check.${check.key}`)
         : check.key;
+
+  const rowList = (
+    <ul className={cn("space-y-2", coveredByReport ? "mt-2" : "mt-3")}>
+      {items.map((check) => {
+        const { icon: Icon, className: tone } = ITEM_STYLE[check.status];
+        return (
+          <li key={`${check.key}-${check.questionId ?? check.label ?? ""}`} className="flex items-start gap-2">
+            <Icon className={cn("mt-0.5 size-4 shrink-0", tone)} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="flex flex-wrap items-center gap-x-1.5 text-xs font-medium text-foreground">
+                <span className="min-w-0 break-words">{title(check)}</span>
+                <span className={cn("text-[11px] font-semibold", tone)}>
+                  {check.key === "cv"
+                    ? t(`cvState.${cvStateOf(check.actual)}`)
+                    : check.key === "location" && check.status === "unknown" && check.actual
+                      ? // The candidate did state a place; it just could not be matched to the job's.
+                        t("itemStatus.cantCompare")
+                      : t(`itemStatus.${check.status}`)}
+                </span>
+                {check.hard ? (
+                  <span className="rounded border border-border px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {t("hardTag")}
+                  </span>
+                ) : null}
+              </p>
+              <p className="break-words text-[11px] text-muted-foreground">{detail(check)}</p>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  // Beside a requirement report: one more group inside the same panel, not a
+  // second "Requirements" box with its own must-have badge — the report owns
+  // that verdict, and "No must-haves set" under "Meets all must-haves · 1 of 1"
+  // contradicted it (owner, 2026-11-12).
+  if (coveredByReport) {
+    if (items.length === 0 && !weightsApplied) return null;
+    return (
+      <section className={className} aria-labelledby={headingId}>
+        {items.length > 0 ? (
+          <>
+            <h4 id={headingId} className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("otherDetails")}
+            </h4>
+            {rowList}
+          </>
+        ) : null}
+        {weightsApplied ? <p className="mt-3 text-[11px] text-muted-foreground">{t("weightsApplied")}</p> : null}
+      </section>
+    );
+  }
 
   return (
     <div className={cn("workspace-glass-panel card-pad rounded-2xl", className)}>
@@ -244,35 +313,7 @@ export function RequirementsChecklist({
       </div>
 
       {items.length > 0 ? (
-        <ul className="mt-3 space-y-2">
-          {items.map((check) => {
-            const { icon: Icon, className: tone } = ITEM_STYLE[check.status];
-            return (
-              <li key={`${check.key}-${check.questionId ?? ""}`} className="flex items-start gap-2">
-                <Icon className={cn("mt-0.5 size-4 shrink-0", tone)} aria-hidden="true" />
-                <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-x-1.5 text-xs font-medium text-foreground">
-                    <span className="min-w-0 break-words">{title(check)}</span>
-                    <span className={cn("text-[11px] font-semibold", tone)}>
-                      {check.key === "cv"
-                        ? t(`cvState.${cvStateOf(check.actual)}`)
-                        : check.key === "location" && check.status === "unknown" && check.actual
-                          ? // The candidate did state a place; it just could not be matched to the job's.
-                            t("itemStatus.cantCompare")
-                          : t(`itemStatus.${check.status}`)}
-                    </span>
-                    {check.hard ? (
-                      <span className="rounded border border-border px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                        {t("hardTag")}
-                      </span>
-                    ) : null}
-                  </p>
-                  <p className="break-words text-[11px] text-muted-foreground">{detail(check)}</p>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        rowList
       ) : (
         <p className="mt-3 text-xs text-muted-foreground">{t("noneStated")}</p>
       )}

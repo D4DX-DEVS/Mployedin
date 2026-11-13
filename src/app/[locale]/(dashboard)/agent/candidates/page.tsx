@@ -447,7 +447,7 @@ export default function AgentCandidatesPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); pagination.resetPage(); }} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); pagination.resetPage(); }} placeholder={t("searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect
@@ -506,43 +506,25 @@ export default function AgentCandidatesPage() {
           items={applications.map((app) => {
             const name = app.jobSeekerId?.userId?.name ?? tc("unknownCandidate");
             const experience = experienceLabel(app.jobSeekerId);
-            // Phone: with no labelled next step the footer held only the "…"
-            // menu, a bordered strip for one icon; it ends the status chip row.
-            const menuOnly = !TERMINAL_STATUSES.has(app.status) && !NEXT_STAGE_KEYS[app.status] && app.status !== "selected";
             return {
               key: app._id,
-              leading: <UserAvatar name={app.jobSeekerId?.userId?.name} className="h-10 w-10" colorful />,
+              leading: <UserAvatar name={app.jobSeekerId?.userId?.name} className="size-[34px]" colorful />,
               title: name,
               subtitle: [app.jobId?.title ?? "—", app.jobId?.employerId?.companyName].filter(Boolean).join(" · "),
-              actions: menuOnly ? undefined : appActions(app),
-              meta: (
-                <>
-                  {app.jobSeekerId?.currentLocation ? (
-                    <p className="flex min-w-0 items-center gap-1">
-                      <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-                      <span className="truncate">{app.jobSeekerId.currentLocation}</span>
-                    </p>
-                  ) : null}
-                  <p className="flex min-w-0 items-center gap-1">
-                    <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="truncate">{t("tableHeaderApplied")}: {formatListDate(app.appliedAt ?? app.createdAt, locale)}</span>
-                  </p>
-                </>
+              trailing: app.aiMatchScore != null && (
+                <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${matchScoreColor(app.aiMatchScore)}`}>
+                  <Star className="h-3 w-3" aria-hidden="true" />
+                  {app.aiMatchScore}%
+                </span>
               ),
               badges: (
                 <>
                   <StatusBadge status={app.status} />
                   {app.isPriority ? <PriorityBadge size="xs" /> : null}
-                  {menuOnly && <div className="ms-auto">{appActions(app)}</div>}
                 </>
               ),
-              stats: [
-                { label: t("tableHeaderExperience"), value: experience || "—" },
-                {
-                  label: t("tableHeaderAIMatch"),
-                  value: <span className={matchScoreColor(app.aiMatchScore)}>{app.aiMatchScore != null ? `${app.aiMatchScore}%` : "—"}</span>,
-                },
-              ],
+              facts: [experience, formatListDate(app.appliedAt ?? app.createdAt, locale)],
+              actions: appActions(app),
             };
           })}
         />
@@ -560,7 +542,7 @@ export default function AgentCandidatesPage() {
                 <TableHead>{t("tableHeaderCandidate")}</TableHead>
                 <TableHead>{tc("status")}</TableHead>
                 <TableHead>{t("tableHeaderJob")}</TableHead>
-                <TableHead>{t("tableHeaderExperience")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("tableHeaderExperience")}</TableHead>
                 <TableHead>{t("tableHeaderAIMatch")}</TableHead>
                 <TableHead className="hidden md:table-cell">{t("tableHeaderApplied")}</TableHead>
                 <TableHead className="text-right">{tc("actions")}</TableHead>
@@ -607,7 +589,7 @@ export default function AgentCandidatesPage() {
                         </span>
                       ) : null}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm text-foreground">
+                    <TableCell className="hidden lg:table-cell whitespace-nowrap text-sm text-foreground">
                       {experienceLabel(app.jobSeekerId) ? (
                         <span className="inline-flex items-center gap-1">
                           <Briefcase className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />

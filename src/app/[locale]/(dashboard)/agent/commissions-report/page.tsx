@@ -149,8 +149,9 @@ export default function AgentCommissionsReportPage() {
                 </Select>
               )}
             </InlineLabelled>
-            <Button variant="outline" size="icon" onClick={fetchReport} disabled={loading} aria-label={tc("refresh")} className="h-11 w-11 rounded-xl">
+            <Button variant="outline" size="sm" onClick={fetchReport} disabled={loading} className="h-11 rounded-xl gap-2">
               <RotateCcw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{tc("refresh")}</span>
             </Button>
           </>
         }
@@ -168,57 +169,64 @@ export default function AgentCommissionsReportPage() {
       </div>
 
       {/* ── Monthly Chart + Type Breakdown ── */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-lg border bg-card card-pad">
-          <h2 className="heading-label mb-3 font-semibold">{t("monthlyBreakdown")}</h2>
-          {chartData.length > 0 && chartData.some((m) => m.Pending > 0 || m.Approved > 0 || m.Paid > 0) ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}K`} />
-                <ReTooltip formatter={(v) => fmt(v as number, ytd?.currency ?? "AED")} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="Pending" fill="#fbbf24" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="Approved" fill="#6366f1" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="Paid" fill="#10b981" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-56 items-center justify-center text-sm text-muted-foreground">{t("noData")}</div>
-          )}
+      {ytd && ytd.totalAmount === 0 ? (
+        <div className="rounded-lg border bg-card card-pad text-center py-12">
+          <h2 className="heading-section font-semibold">{t("noEarningsYet")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("commissionReportEmptyHint")}</p>
         </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2 rounded-lg border bg-card card-pad">
+            <h2 className="heading-label mb-3 font-semibold">{t("monthlyBreakdown")}</h2>
+            {chartData.length > 0 && chartData.some((m) => m.Pending > 0 || m.Approved > 0 || m.Paid > 0) ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v / 1000)}K`} />
+                  <ReTooltip formatter={(v) => fmt(v as number, ytd?.currency ?? "AED")} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="Pending" fill="#fbbf24" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Approved" fill="#6366f1" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Paid" fill="#10b981" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-56 items-center justify-center text-sm text-muted-foreground">{t("noData")}</div>
+            )}
+          </div>
 
-        <div className="rounded-lg border bg-card card-pad">
-          <h2 className="heading-label mb-3 font-semibold">{t("byType")}</h2>
-          {pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2}>
-                  {pieData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-                <ReTooltip formatter={(v) => fmt(v as number, ytd?.currency ?? "AED")} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">{t("noData")}</div>
-          )}
-          <div className="mt-2 space-y-1.5">
-            {data?.typeBreakdown.map((t) => (
-              <div key={t.type} className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 capitalize">
-                  <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[t.type] ?? "#94a3b8" }} />
-                  {t.type}
-                </span>
-                <span className="font-medium">{t.percent}%</span>
-              </div>
-            ))}
+          <div className="rounded-lg border bg-card card-pad">
+            <h2 className="heading-label mb-3 font-semibold">{t("byType")}</h2>
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={180}>
+                <PieChart>
+                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={2}>
+                    {pieData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <ReTooltip formatter={(v) => fmt(v as number, ytd?.currency ?? "AED")} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-36 items-center justify-center text-sm text-muted-foreground">{t("noData")}</div>
+            )}
+            <div className="mt-2 space-y-1.5">
+              {data?.typeBreakdown.map((t) => (
+                <div key={t.type} className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 capitalize">
+                    <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLORS[t.type] ?? "#94a3b8" }} />
+                    {t.type}
+                  </span>
+                  <span className="font-medium">{t.percent}%</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

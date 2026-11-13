@@ -5,12 +5,14 @@ import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Building2, DollarSign, Edit2, Loader2, Send, Trash2, Users, Eye, Tag, Clock, UserSearch, ImagePlus,
+  ArrowLeft, Building2, DollarSign, Edit2, Send, Trash2, Users, Eye, Tag, Clock, UserSearch, ImagePlus,
 } from "lucide-react";
 import { POSTERS_ENABLED } from "@/lib/features/posterFeature";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { WorkspaceTabs, type WorkspaceTab } from "@/components/shared/WorkspaceTabs";
+import { RowActions } from "@/components/shared/RowActions";
 import { useQueryClient } from "@tanstack/react-query";
 import { jobKeys, useJobDetail } from "@/hooks/useJobs";
 import Link from "next/link";
@@ -117,11 +119,10 @@ export default function AgentJobDetailPage() {
 
   return (
     <div className="page-container">
-      {/* Desktop only: one back link above the header, as on the employer's
-          job page. Phones use the sidebar / system back. */}
+      {/* Back link above the header, as on the employer's job page. */}
       <Link
         href={`/${locale}/agent/jobs`}
-        className="hidden items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground sm:inline-flex"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden /> {t("backToJobs")}
       </Link>
@@ -137,34 +138,16 @@ export default function AgentJobDetailPage() {
           t("posted", { date: posted }),
         ].filter(Boolean).join(" · ")}
         actions={
-          <>
-            {/* Status rides with the actions, styled and worded as on the employer's page. */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {/* Status badge beside title */}
             <span className={`${JOB_STATUS_BADGE_CLASS[job.status] ?? ""} inline-flex shrink-0 items-center self-center rounded-full border px-2 py-1 text-[11px] font-semibold sm:px-2.5`}>
               {tJobs(jobStatusLabelKey(job.status))}
             </span>
+
+            {/* Main action: View candidates for active jobs, or draft actions for drafts */}
             {job.viewerCanEdit && job.status === "draft" ? (
               <>
                 {/* A draft's next steps: finish it, publish it, or throw it away. */}
-                <Button
-                  variant="outline"
-                  onClick={() => { void draftActions.discard(id).then((ok) => { if (ok) router.push(`/${locale}/agent/jobs`); }); }}
-                  disabled={draftActions.isPending(id, "delete")}
-                  aria-label={tJobs("deleteButton")}
-                  className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4 text-destructive hover:text-destructive"
-                >
-                  {draftActions.isPending(id, "delete") ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Trash2 className="h-4 w-4" aria-hidden />}
-                  <span className="hidden sm:inline">{tJobs("deleteButton")}</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => { void draftActions.publish(id); }}
-                  disabled={draftActions.isPending(id, "publish")}
-                  aria-label={tJobs("publishButton")}
-                  className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4"
-                >
-                  {draftActions.isPending(id, "publish") ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
-                  <span className="hidden sm:inline">{draftActions.isPending(id, "publish") ? tJobs("publishingButton") : tJobs("publishButton")}</span>
-                </Button>
                 <Button asChild className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4">
                   <Link href={`/${locale}/agent/jobs/${id}/edit`} aria-label={tJobs("continueDraftButton")}>
                     <Edit2 className="h-4 w-4" aria-hidden />
@@ -173,55 +156,82 @@ export default function AgentJobDetailPage() {
                     <span className="hidden sm:inline">{tJobs("continueDraftButton")}</span>
                   </Link>
                 </Button>
+
+                {/* Dropdown menu for draft actions */}
+                <RowActions
+                  name={job.title}
+                  quick={[]}
+                  menu={[
+                    {
+                      key: "publish",
+                      label: draftActions.isPending(id, "publish") ? tJobs("publishingButton") : tJobs("publishButton"),
+                      icon: Send,
+                      pending: draftActions.isPending(id, "publish"),
+                      disabled: draftActions.isPending(id, "publish"),
+                      onSelect: () => { void draftActions.publish(id); },
+                    },
+                    {
+                      key: "delete",
+                      label: draftActions.isPending(id, "delete") ? tJobs("deletingButton") : tJobs("deleteButton"),
+                      icon: Trash2,
+                      destructive: true,
+                      pending: draftActions.isPending(id, "delete"),
+                      disabled: draftActions.isPending(id, "delete"),
+                      onSelect: () => { void draftActions.discard(id).then((ok) => { if (ok) router.push(`/${locale}/agent/jobs`); }); },
+                    },
+                  ]}
+                  labelsFrom="wide"
+                />
               </>
-            ) : job.viewerCanEdit && job.status !== "closed" ? (
-              <Button asChild variant="outline" className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4">
-                <Link href={`/${locale}/agent/jobs/${id}/edit`} aria-label={tJobs("editButton")}>
-                  <Edit2 className="h-4 w-4" aria-hidden />
-                  <span className="hidden sm:inline">{tJobs("editButton")}</span>
-                </Link>
-              </Button>
+            ) : job.status !== "draft" ? (
+              <>
+                {/* Main button: View candidates */}
+                <Button asChild className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4">
+                  <Link href={`/${locale}/agent/candidates?jobId=${id}`} aria-label={t("viewCandidates")}>
+                    <Users className="h-4 w-4" aria-hidden="true" />
+                    <span>{t("viewCandidates")}</span>
+                  </Link>
+                </Button>
+
+                {/* Dropdown menu for other actions */}
+                <RowActions
+                  name={job.title}
+                  quick={[]}
+                  menu={[
+                    {
+                      key: "matches",
+                      label: t("findCandidates"),
+                      icon: UserSearch,
+                      href: `/${locale}/agent/jobs/${id}/matches`,
+                    },
+                    ...(POSTERS_ENABLED && job.viewerCanManage ? [{
+                      key: "poster",
+                      label: tWs("postingCreatePoster"),
+                      icon: ImagePlus,
+                      pending: openingTarget === "/poster",
+                      disabled: openingTarget !== null,
+                      onSelect: () => { void openEmployerView("/poster"); },
+                    }] : []),
+                    ...(job.viewerCanEdit && job.status !== "closed" ? [{
+                      key: "edit",
+                      label: tJobs("editButton"),
+                      icon: Edit2,
+                      href: `/${locale}/agent/jobs/${id}/edit`,
+                    }] : []),
+                    ...(job.viewerCanManage ? [{
+                      key: "employer",
+                      label: openingEmployerView ? t("openingEmployerView") : t("openEmployerView"),
+                      icon: Building2,
+                      pending: openingEmployerView,
+                      disabled: openingTarget !== null,
+                      onSelect: () => { void openEmployerView(); },
+                    }] : []),
+                  ]}
+                  labelsFrom="wide"
+                />
+              </>
             ) : null}
-            {job.status !== "draft" && <Link href={`/${locale}/agent/candidates?jobId=${id}`}>
-              <Button variant="outline" aria-label={t("viewCandidates")} className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4">
-                <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("viewCandidates")}</span>
-              </Button>
-            </Link>}
-            {job.status !== "draft" && <Link href={`/${locale}/agent/jobs/${id}/matches`}>
-              <Button variant={job.viewerCanManage ? "outline" : "default"} aria-label={t("findCandidates")} className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4">
-                <UserSearch className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("findCandidates")}</span>
-              </Button>
-            </Link>}
-            {/* Straight to the poster maker: it lives in the employer's job
-                page, which used to mean opening that view, then scrolling its
-                tabs to Posting, then Create poster. */}
-            {POSTERS_ENABLED && job.viewerCanManage ? (
-              <Button
-                variant="outline"
-                onClick={() => { void openEmployerView("/poster"); }}
-                disabled={openingTarget !== null}
-                aria-label={tWs("postingCreatePoster")}
-                className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4"
-              >
-                {openingTarget === "/poster" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ImagePlus className="h-4 w-4" aria-hidden />}
-                <span className="hidden sm:inline">{tWs("postingCreatePoster")}</span>
-              </Button>
-            ) : null}
-            {job.viewerCanManage ? (
-              <Button
-                variant={job.status === "draft" ? "outline" : "default"}
-                onClick={() => { void openEmployerView(); }}
-                disabled={openingTarget !== null}
-                aria-label={t("openEmployerView")}
-                className="h-10 min-h-10 gap-1.5 rounded-xl px-2.5 sm:h-11 sm:min-h-11 sm:gap-2 sm:px-4"
-              >
-                {openingEmployerView ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Building2 className="h-4 w-4" aria-hidden />}
-                <span className="hidden sm:inline">{openingEmployerView ? t("openingEmployerView") : t("openEmployerView")}</span>
-              </Button>
-            ) : null}
-          </>
+          </div>
         }
         metrics={[
           { label: t("vacancies"), value: job.vacancies ?? 1, icon: Users, tone: "primary" },
@@ -238,7 +248,43 @@ export default function AgentJobDetailPage() {
         ]}
       />
 
+      {/* Full-width salary tile */}
+      {job.salary && (salaryMin || salaryMax || job.salary.isNegotiable) && (
+        <div className="card-base panel-body">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3">
+              <DollarSign className="h-5 w-5 text-success shrink-0" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("salaryIn", { currency: job.salary.currency ?? "USD" })}</p>
+                <p className="text-sm sm:text-lg font-semibold text-foreground mt-1">{salaryValue}</p>
+              </div>
+            </div>
+            {expires && (
+              <div className="flex items-center gap-3">
+                <Clock className="h-5 w-5 text-warning shrink-0" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("expires")}</p>
+                  <p className="text-sm sm:text-lg font-semibold text-foreground mt-1">{expires}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {draftActions.dialog}
+
+      {/* Tabs for navigation */}
+      {job.status !== "draft" && (
+        <WorkspaceTabs
+          tabs={[
+            { key: "overview", label: tWs("overview"), href: `/${locale}/agent/jobs/${id}` },
+            { key: "matches", label: t("findCandidates"), href: `/${locale}/agent/jobs/${id}/matches` },
+          ] as WorkspaceTab[]}
+          activeKey="overview"
+          ariaLabel={job.title}
+        />
+      )}
 
       {/* Description */}
       <div className="card-base panel-body">

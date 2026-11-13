@@ -15,6 +15,10 @@ describe("applyErrorKey", () => {
     expect(applyErrorKey({ error: "This job is no longer taking applications.", code: "JOB_CLOSED" })).toBe("jobClosed");
   });
 
+  it("maps an application with no CV to the dialog's own copy", () => {
+    expect(applyErrorKey({ error: "Add your CV to apply.", code: "CV_REQUIRED" })).toBe("cvRequired");
+  });
+
   it("leaves any other refusal to the server's message", () => {
     expect(applyErrorKey({ error: "Job seeker profile not found" })).toBeNull();
     expect(applyErrorKey(null)).toBeNull();

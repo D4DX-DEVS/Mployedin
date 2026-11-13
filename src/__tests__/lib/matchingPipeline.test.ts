@@ -10,7 +10,7 @@ import { calculateRelevance } from "@/lib/matching/relevance";
 import { jobProfileFromDoc, type SeekerProfile, type JobProfile } from "@/lib/matchScore";
 import {
   DEFAULT_MIN_RELEVANCE,
-  RELEVANCE_WEIGHTS,
+  RELEVANCE_POINTS,
   JOB_MATCH_FIELDS,
 } from "@/lib/matching/constants";
 // Exercised through the real pipeline so the diagnosis is pinned to actual
@@ -142,30 +142,22 @@ describe("eligibility — a criterion only votes when both sides stated it", () 
   });
 });
 
-describe("eligibility — an employer requirement is pass / fail / unknown", () => {
-  // 37 of 62 live jobs state a minimum experience. Treating "we never asked"
-  // as "meets it" let the score reach 92 for a candidate whose experience is
-  // entirely unknown, because relevance scores the missing years at a neutral
-  // 0.5 rather than a zero.
-  it("rejects as unknown when the job needs years and the seeker never said", () => {
-    expect(checkEligibility(seeker({ experienceKnown: false }), job({ minExp: 5 }))).toEqual({
-      eligible: false,
-      reason: "experience_unknown",
-    });
+describe("eligibility — employer requirements never hide a job (D6/D15, 2026-11-12)", () => {
+  // Until 2026-11-12 a job that asked for years or a qualification the seeker
+  // had not stated, or had less of, was removed from their feed. The owner
+  // chose "visible, lower score" instead: the requirement is scored and shown
+  // as Met / Partly / Missing / Needs checking, and the email rule (D16) is
+  // where a missed or unverified must-have holds the job back.
+  it("keeps a job that needs years when the seeker never said", () => {
+    expect(checkEligibility(seeker({ experienceKnown: false }), job({ minExp: 5 })).eligible).toBe(true);
   });
 
-  it("rejects as unknown when the job needs a qualification and the seeker lists none", () => {
-    expect(
-      checkEligibility(seeker({ educationLevel: 0 }), job({ requiredEducationLevel: 3 })),
-    ).toEqual({ eligible: false, reason: "education_unknown" });
+  it("keeps a job that needs a qualification the seeker does not list", () => {
+    expect(checkEligibility(seeker({ educationLevel: 0 }), job({ requiredEducationLevel: 3 })).eligible).toBe(true);
   });
 
-  it("separates 'unknown' from 'not enough' so the email can say which", () => {
-    const tooJunior = checkEligibility(
-      seeker({ experienceKnown: true, experienceYears: 0 }),
-      job({ minExp: 5 }),
-    );
-    expect(tooJunior).toEqual({ eligible: false, reason: "experience" });
+  it("keeps a job the seeker is too junior for", () => {
+    expect(checkEligibility(seeker({ experienceKnown: true, experienceYears: 0 }), job({ minExp: 5 })).eligible).toBe(true);
   });
 
   it("lets a declared fresher through a job with no stated minimum", () => {
@@ -176,18 +168,15 @@ describe("eligibility — an employer requirement is pass / fail / unknown", () 
     ).toBe(true);
   });
 
-  it("caps an unknown-experience seeker's reachable score below any sane bar", () => {
-    // The arithmetic behind the gate: a perfect skills and role match with
-    // unknown experience still reads 93, which is why a pass was unsafe.
+  it("prices unknown experience in instead, and holds the job back from email", () => {
     const best = calculateRelevance(
       seeker({ skills: ["react"], preferredRoles: ["software engineer"], experienceKnown: false }),
       job({ skills: ["react"], title: "software engineer", minExp: 5 }),
     );
-    expect(best.overall).toBeGreaterThanOrEqual(DEFAULT_MIN_RELEVANCE);
-    expect(checkEligibility(
-      seeker({ skills: ["react"], preferredRoles: ["software engineer"], experienceKnown: false }),
-      job({ skills: ["react"], title: "software engineer", minExp: 5 }),
-    ).eligible).toBe(false);
+    // "Not stated" against a stated minimum scores 25, not a neutral 50.
+    expect(best.experience).toBe(25);
+    expect(best.evaluation.experience.status).toBe("unknown");
+    expect(best.mustHaveStatus).toBe("unverified");
   });
 });
 
@@ -222,10 +211,12 @@ describe("eligibility — rejects when both sides stated and they conflict", () 
     });
   });
 
-  it("rejects a seeker more than a year short of the stated minimum", () => {
-    expect(
-      checkEligibility(seeker({ experienceKnown: true, experienceYears: 1 }), job({ minExp: 5 })),
-    ).toEqual({ eligible: false, reason: "experience" });
+  it("keeps a seeker more than a year short of the stated minimum, marked as missing it", () => {
+    const s1 = seeker({ experienceKnown: true, experienceYears: 1 });
+    expect(checkEligibility(s1, job({ minExp: 5 })).eligible).toBe(true);
+    const r = calculateRelevance(s1, job({ minExp: 5 }));
+    expect(r.evaluation.experience.status).toBe("not_met");
+    expect(r.mustHaveStatus).toBe("not_met");
   });
 
   it("allows a seeker one year short", () => {
@@ -263,10 +254,10 @@ describe("relevance — location and salary must not score", () => {
     expect(a.overall).toBe(b.overall);
   });
 
-  it("weights sum to 1 so the score is a real percentage", () => {
+  it("the core parts add to 100 so the score is a real percentage", () => {
     const total =
-      RELEVANCE_WEIGHTS.skills + RELEVANCE_WEIGHTS.role + RELEVANCE_WEIGHTS.experience;
-    expect(total).toBeCloseTo(1, 10);
+      RELEVANCE_POINTS.skills + RELEVANCE_POINTS.role + RELEVANCE_POINTS.experience + RELEVANCE_POINTS.education;
+    expect(total).toBe(100);
   });
 });
 
@@ -301,8 +292,10 @@ describe("relevance — skills", () => {
     expect(result.skills).toBe(15);
   });
 
-  it("cannot reach the default threshold on a job with no stated skills", () => {
-    // Even with a perfect role and experience match.
+  it("leaves skills out of the score on a job with no stated skills (D8)", () => {
+    // Decided 2026-11-12: the no-evidence floor (15 of 60) is gone. A job
+    // with no skills — typed or extracted from its description — is scored
+    // on role, experience and education, and says so on the job page.
     const s = seeker({
       skills: ["React"],
       preferredRoles: ["software engineer"],
@@ -310,7 +303,8 @@ describe("relevance — skills", () => {
       experienceYears: 3,
     });
     const result = calculateRelevance(s, job({ skills: [], minExp: 2, maxExp: 5 }));
-    expect(result.overall).toBeLessThan(DEFAULT_MIN_RELEVANCE);
+    expect(result.shares.skills).toBeUndefined();
+    expect(result.overall).toBeGreaterThanOrEqual(DEFAULT_MIN_RELEVANCE);
   });
 
   it("credits a skill found only in the CV text", () => {
@@ -533,30 +527,31 @@ describe("AI re-rank — Jev advises, it does not decide", () => {
 describe("relevance — the arithmetic behind the published ceilings", () => {
   // Both figures appear in the implementation report; pin them so the report
   // and the code cannot drift apart.
-  it("caps a skill-less seeker at 40 against a job that does list skills", () => {
+  it("caps a skill-less seeker at 50 against a job that does list skills", () => {
     const r = calculateRelevance(
       seeker({ preferredRoles: ["react developer"], experienceKnown: true, experienceYears: 3 }),
       job({ skills: ["React"], title: "react developer", minExp: 0, maxExp: 10 }),
     );
-    // 0 x 0.60 + 1.00 x 0.25 + 1.00 x 0.15 = 0.40
+    // 0 x 40 + 25 + 15 = 40 of 80 in play; education is left out when the
+    // job asks for none (owner, 2026-11-12: no free points).
     expect(r.skills).toBe(0);
-    expect(r.overall).toBe(40);
+    expect(r.overall).toBe(50);
   });
 
-  it("caps it at 49 against a job that lists none either", () => {
+  it("scores a job that lists no skills on the parts it does state (D8)", () => {
     const r = calculateRelevance(
       seeker({ preferredRoles: ["react developer"], experienceKnown: true, experienceYears: 3 }),
       job({ skills: [], title: "react developer", minExp: 0, maxExp: 10 }),
     );
-    // The no-evidence floor, not a re-weighting: 0.15 x 0.60 + 0.25 + 0.15 = 0.49
+    // role 25 + experience 15, out of 40 in play = 100; no skills, no
+    // education requirement, so neither counts.
     expect(r.skillsUnknown).toBe(true);
-    expect(r.overall).toBe(49);
+    expect(r.shares).toEqual({ role: 63, experience: 37 });
+    expect(r.overall).toBe(100);
   });
 
-  it("keeps the weights fixed — nothing is re-normalised when skills are absent", () => {
-    expect(
-      RELEVANCE_WEIGHTS.skills + RELEVANCE_WEIGHTS.role + RELEVANCE_WEIGHTS.experience,
-    ).toBeCloseTo(1);
+  it("re-normalises over the parts in play, and the core parts are fixed at 100", () => {
+    expect(RELEVANCE_POINTS.skills + RELEVANCE_POINTS.role + RELEVANCE_POINTS.experience + RELEVANCE_POINTS.education).toBe(100);
   });
 });
 

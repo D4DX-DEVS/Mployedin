@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
+import { ChevronDown, type LucideIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { usePriorityOverflow } from "@/hooks/usePriorityOverflow";
 
 export interface WorkspaceTab {
   key: string;
@@ -25,6 +33,19 @@ interface Props {
   className?: string;
 }
 
+function activeTabKey(tabs: readonly WorkspaceTab[], pathname: string): string | undefined {
+  for (const tab of tabs) {
+    if (pathname === tab.href) return tab.key;
+    if (!tab.exact && pathname.startsWith(`${tab.href}/`)) return tab.key;
+  }
+  return undefined;
+}
+
+/**
+ * Section tabs for a workspace (a job, a people list). The row never scrolls
+ * sideways and never cuts a label: tabs that do not fit move under a "More"
+ * button, and the open tab always stays on the row.
+ */
 export function WorkspaceTabs({
   tabs,
   ariaLabel,
@@ -33,38 +54,20 @@ export function WorkspaceTabs({
   className = "",
 }: Props) {
   const pathname = usePathname();
-  const activeTabRef = useRef<HTMLAnchorElement>(null);
+  const tCommon = useTranslations("common");
+  const listRef = useRef<HTMLUListElement>(null);
 
-  // Determine which tab is active
-  const getActiveKey = () => {
-    if (activeKey) return activeKey;
-
-    // Match based on pathname
-    for (const tab of tabs) {
-      if (tab.exact) {
-        if (pathname === tab.href) return tab.key;
-      } else {
-        if (pathname === tab.href || pathname.startsWith(tab.href + "/")) {
-          return tab.key;
-        }
-      }
-    }
-    return undefined;
-  };
-
-  const active = getActiveKey();
-
-  // Scroll active tab into view on mount
-  useEffect(() => {
-    if (activeTabRef.current && typeof activeTabRef.current.scrollIntoView === "function") {
-      activeTabRef.current.scrollIntoView({ block: "nearest", inline: "center" });
-    }
-  }, [active]);
+  const active = activeKey ?? activeTabKey(tabs, pathname);
+  const overflow = usePriorityOverflow(listRef, {
+    activeIndex: tabs.findIndex((tab) => tab.key === active),
+    watch: tabs.map((tab) => `${tab.label}:${tab.count ?? ""}`).join("|"),
+  });
+  const overflowTabs = overflow.map((index) => tabs[index]).filter(Boolean);
 
   return (
     <nav aria-label={ariaLabel}>
-      <ul role="list" className={`workspace-tabs ${className}`}>
-        {tabs.map((tab) => {
+      <ul ref={listRef} role="list" className={`workspace-tabs ${className}`}>
+        {tabs.map((tab, index) => {
           const isActive = active === tab.key;
           const Icon = tab.icon;
           const tabCountLabel = countLabel && tab.count ? countLabel(tab.label, tab.count) : undefined;
@@ -72,10 +75,11 @@ export function WorkspaceTabs({
           return (
             <li
               key={tab.key}
+              data-overflow-item=""
+              data-overflowed={overflow.includes(index) ? "true" : undefined}
               className={tab.hideOnPhone ? "hidden sm:inline-flex" : undefined}
             >
               <Link
-                ref={isActive ? activeTabRef : null}
                 href={tab.href}
                 className="workspace-tab"
                 aria-current={isActive ? "page" : undefined}
@@ -97,6 +101,29 @@ export function WorkspaceTabs({
             </li>
           );
         })}
+        {/* Always rendered so its width can be measured; parked out of sight
+            (and out of the tab order) until a tab actually overflows. */}
+        <li data-overflow-more="" data-overflowed={overflowTabs.length === 0 ? "true" : undefined}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="workspace-tab">
+                <span>{tCommon("more")}</span>
+                <ChevronDown className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {overflowTabs.map((tab) => (
+                <DropdownMenuItem key={tab.key} asChild className="min-h-11 sm:min-h-9">
+                  <Link href={tab.href} aria-label={countLabel && tab.count ? countLabel(tab.label, tab.count) : undefined}>
+                    {tab.icon ? <tab.icon className="h-4 w-4" aria-hidden="true" /> : null}
+                    <span className="min-w-0 flex-1 truncate">{tab.label}</span>
+                    {tab.count !== undefined && <span className="workspace-tab-count">{tab.count}</span>}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </li>
       </ul>
     </nav>
   );

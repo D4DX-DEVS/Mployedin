@@ -169,15 +169,15 @@ describe("ApplicationsPage", () => {
       expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&fetchCounts=true");
     });
 
-    await user.click(screen.getByRole("tab", { name: "Selected" }));
+    await user.click(screen.getByRole("tab", { name: "Interview" }));
 
     expect(resetPageMock).toHaveBeenCalledTimes(1);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&status=selected&fetchCounts=true");
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&status=interview&fetchCounts=true");
     });
 
-    expect(screen.getByRole("tab", { name: "Selected" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Interview" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("keeps cards compact by default and expands details on demand", async () => {
@@ -296,27 +296,31 @@ describe("ApplicationsPage", () => {
     expect(screen.queryByText(/applications? · \d+ active/i)).not.toBeInTheDocument();
   });
 
-  // QA 2026-10-01: a withdrawn application counted under All but had no tab of
-  // its own, so a search could read "All 1" beside a row of zeros.
-  it("gives withdrawn applications their own tab with a count", async () => {
+  // QA 2026-10-01: a withdrawn application counted under All but had no tab, so
+  // a search could read "All 1" beside a row of zeros. Since 2026-11-13 the
+  // seeker's tabs are All · Interview · Offer · Closed; withdrawn is under Closed.
+  it("shows the seeker's four tabs and counts a withdrawn application under Closed", async () => {
     const user = userEvent.setup();
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
         applications: [],
-        statusCounts: { all: 1, applied: 0, shortlisted: 0, interview_scheduled: 0, selected: 0, offer: 0, hired: 0, rejected: 0, withdrawn: 1 },
+        statusCounts: { all: 1, applied: 0, shortlisted: 0, interview_scheduled: 0, selected: 0, offer: 0, hired: 0, rejected: 0, withdrawn: 1, interview: 0, closed: 1 },
         pagination: { total: 1 },
       }),
     });
 
     render(<ApplicationsPage />);
 
-    const tab = await screen.findByRole("tab", { name: /^withdrawn/i });
+    const tabs = await screen.findAllByRole("tab");
+    expect(tabs.map((t) => t.textContent?.replace(/\d+/g, "").trim())).toEqual(["All", "Interview", "Offer", "Closed"]);
+
+    const tab = await screen.findByRole("tab", { name: /^closed/i });
     await waitFor(() => expect(within(tab).getByText("1")).toBeInTheDocument());
 
     await user.click(tab);
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&status=withdrawn&fetchCounts=true");
+      expect(fetchMock).toHaveBeenCalledWith("/api/applications?page=1&limit=10&status=closed&fetchCounts=true");
     });
   });
 

@@ -11,7 +11,7 @@ import {
   Trash2, Eye, EyeOff, Briefcase, GraduationCap,
   Globe, Award, User as UserIcon, FolderKanban,
   LayoutTemplate, Paintbrush, Maximize2, Minimize2,
-  ChevronDown, Lightbulb,
+  ChevronDown, Lightbulb, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,6 +39,8 @@ import {
   DEFAULT_FORMATTING, toMonthInput, resolveTheme, restoreCvDesign, getVisibleForm,
 } from "./types";
 import { TemplateRenderer } from "./templates";
+import { PagedPreview } from "./paged-preview";
+import { PdfPagesPreview } from "./pdf-pages-preview";
 import { TemplatePicker, FormattingPanel } from "./template-picker";
 import { CvAssistant } from "./cv-assistant";
 import { RichTextEditor } from "./rich-text-editor";
@@ -122,6 +124,20 @@ export default function CVBuilderPage() {
   // One object per edit, shared by the live preview and the template gallery.
   const previewForm = useMemo(() => getVisibleForm(form, hiddenSections), [form, hiddenSections]);
 
+  // What the profile holds right now, so "Add to Profile" turns into "Saved"
+  // until something is edited again. Photo and email are left out: the save
+  // doesn't send them (the photo uploads on its own, email is the account's).
+  const currentSnapshot = useMemo(
+    () => JSON.stringify([{ ...form, photo: undefined, email: undefined }, selectedTemplate, formatting, [...hiddenSections].sort()]),
+    [form, selectedTemplate, formatting, hiddenSections],
+  );
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const isSaved = savedSnapshot !== null && savedSnapshot === currentSnapshot && !importPending;
+  // Baseline once the profile has loaded (and after the session fill-in has run).
+  useEffect(() => {
+    if (!loading && savedSnapshot === null) setSavedSnapshot(currentSnapshot);
+  }, [loading, savedSnapshot, currentSnapshot]);
+
   useEffect(() => {
     document.title = t("documentTitle");
     fetchProfile();
@@ -138,6 +154,31 @@ export default function CVBuilderPage() {
       photo: prev.photo || session.user?.image || "",
     }));
   }, [session]);
+
+  /* Profile "Update" buttons link here with ?section=<card>. Once the form is
+     on screen, bring that card into view instead of leaving the user at the
+     top of a long editor, and flash it so they can see where they landed. */
+  useEffect(() => {
+    if (loading) return;
+    const section = new URLSearchParams(window.location.search).get("section");
+    if (!section || !CV_SECTION_ANCHORS.includes(section)) return;
+    const card = document.getElementById(`cv-section-${section}`);
+    if (!card) return;
+    // Wait a beat: the router resets the scroll to the top after the page
+    // mounts, and a scroll started before that is thrown away.
+    let unflash: number | undefined;
+    const jump = window.setTimeout(() => {
+      // Instant: a smooth scroll is dropped when anything else scrolls first.
+      card.scrollIntoView({ block: "start" });
+      if (section === "skills") document.getElementById("cv-skills")?.focus({ preventScroll: true });
+      card.classList.add("ring-2", "ring-primary/40");
+      unflash = window.setTimeout(() => card.classList.remove("ring-2", "ring-primary/40"), 2000);
+    }, 250);
+    return () => {
+      window.clearTimeout(jump);
+      window.clearTimeout(unflash);
+    };
+  }, [loading]);
 
   /* ── Fetch profile ── */
   async function fetchProfile() {
@@ -399,6 +440,7 @@ export default function CVBuilderPage() {
       if (!res.ok) throw new Error(t("errors.saveProfile"));
       toast.success(t("messages.profileSaved"));
       void invalidateSeekerProfile(queryClient);
+      setSavedSnapshot(currentSnapshot);
       setImportPending(false);
       preImportForm.current = null;
     } catch {
@@ -599,7 +641,7 @@ export default function CVBuilderPage() {
                 </div>
 
                 {/* Personal Information */}
-                <SectionCard title={t("sections.personalDetails")} icon={<UserIcon className="w-4 h-4" />}>
+                <SectionCard title={t("sections.personalDetails")} icon={<UserIcon className="w-4 h-4" />} anchor="personal">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Profile photo */}
                     <div className="flex flex-col items-start gap-3 min-[360px]:flex-row min-[360px]:items-center min-[360px]:gap-4 md:col-span-2">
@@ -691,18 +733,18 @@ export default function CVBuilderPage() {
                   title={t("sections.workExperience", { count: form.experience.length })}
                   icon={<Briefcase className="w-4 h-4" />}
                   action={<Button variant="outline" size="sm" onClick={addExperience} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> {t("actions.add")}</Button>}
-                  sectionKey="experience" hidden={hiddenSections.has("experience")} onToggle={() => toggleSection("experience")}
+                  sectionKey="experience" anchor="experience" hidden={hiddenSections.has("experience")} onToggle={() => toggleSection("experience")}
                 >
                   {form.experience.length === 0 && (
                     <p className="text-xs text-muted-foreground py-4 text-center">{t("empty.experience")}</p>
                   )}
-                  <SortableList className="space-y-4"
+                  <SortableList className="divide-y divide-border/60 [&>*:first-child>div]:pt-0 [&>*:last-child>div]:pb-0"
                     ids={form.experience.map((_, i) => String(i))}
                     onReorder={(ids) => setForm((f) => ({ ...f, experience: reorderByIds(f.experience, ids) }))}>
                     {form.experience.map((exp, i) => (
-                      <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
-                      <div className="pl-9 rounded-lg border bg-muted/20 space-y-3 relative group card-pad">
-                        <button type="button" onClick={() => removeExperience(i)} aria-label={t("actions.removeExperience")} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                      <SortableItem key={i} id={String(i)} className="group" handleClassName={ENTRY_HANDLE} handleLabel={t("actions.reorder")}>
+                      <div className="relative space-y-3 py-4 pl-9 group">
+                        <button type="button" onClick={() => removeExperience(i)} aria-label={t("actions.removeExperience")} className="absolute top-4 right-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
                           <Trash2 aria-hidden="true" className="w-4 h-4" />
                         </button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -752,18 +794,18 @@ export default function CVBuilderPage() {
                   title={t("sections.education", { count: form.education.length })}
                   icon={<GraduationCap className="w-4 h-4" />}
                   action={<Button variant="outline" size="sm" onClick={addEducation} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> {t("actions.add")}</Button>}
-                  sectionKey="education" hidden={hiddenSections.has("education")} onToggle={() => toggleSection("education")}
+                  sectionKey="education" anchor="education" hidden={hiddenSections.has("education")} onToggle={() => toggleSection("education")}
                 >
                   {form.education.length === 0 && (
                     <p className="text-xs text-muted-foreground py-4 text-center">{t("empty.education")}</p>
                   )}
-                  <SortableList className="space-y-4"
+                  <SortableList className="divide-y divide-border/60 [&>*:first-child>div]:pt-0 [&>*:last-child>div]:pb-0"
                     ids={form.education.map((_, i) => String(i))}
                     onReorder={(ids) => setForm((f) => ({ ...f, education: reorderByIds(f.education, ids) }))}>
                     {form.education.map((edu, i) => (
-                      <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
-                      <div className="pl-9 rounded-lg border bg-muted/20 space-y-3 relative group card-pad">
-                        <button type="button" onClick={() => removeEducation(i)} aria-label={t("actions.removeEducation")} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                      <SortableItem key={i} id={String(i)} className="group" handleClassName={ENTRY_HANDLE} handleLabel={t("actions.reorder")}>
+                      <div className="relative space-y-3 py-4 pl-9 group">
+                        <button type="button" onClick={() => removeEducation(i)} aria-label={t("actions.removeEducation")} className="absolute top-4 right-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
                           <Trash2 aria-hidden="true" className="w-4 h-4" />
                         </button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -786,7 +828,7 @@ export default function CVBuilderPage() {
 
                 {/* Skills */}
                 <SectionCard title={t("sections.skills", { count: form.skills.length })} icon={<Award className="w-4 h-4" />}
-                  sectionKey="skills" hidden={hiddenSections.has("skills")} onToggle={() => toggleSection("skills")}
+                  sectionKey="skills" anchor="skills" hidden={hiddenSections.has("skills")} onToggle={() => toggleSection("skills")}
                 >
                   {/* Visible label: once skills exist the box only says "Add more…". */}
                   <Label htmlFor="cv-skills" className="mb-1.5 block text-xs text-muted-foreground">{t("fields.skills")}</Label>
@@ -806,18 +848,18 @@ export default function CVBuilderPage() {
                   title={t("sections.projects", { count: form.projects.length })}
                   icon={<FolderKanban className="w-4 h-4" />}
                   action={<Button variant="outline" size="sm" onClick={addProject} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> {t("actions.add")}</Button>}
-                  sectionKey="projects" hidden={hiddenSections.has("projects")} onToggle={() => toggleSection("projects")}
+                  sectionKey="projects" anchor="projects" hidden={hiddenSections.has("projects")} onToggle={() => toggleSection("projects")}
                 >
                   {form.projects.length === 0 && (
                     <p className="text-xs text-muted-foreground py-4 text-center">{t("empty.projects")}</p>
                   )}
-                  <SortableList className="space-y-4"
+                  <SortableList className="divide-y divide-border/60 [&>*:first-child>div]:pt-0 [&>*:last-child>div]:pb-0"
                     ids={form.projects.map((_, i) => String(i))}
                     onReorder={(ids) => setForm((f) => ({ ...f, projects: reorderByIds(f.projects, ids) }))}>
                     {form.projects.map((proj, i) => (
-                      <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
-                      <div className="pl-9 rounded-lg border bg-muted/20 space-y-3 relative group card-pad">
-                        <button type="button" onClick={() => removeProject(i)} aria-label={t("actions.removeProject")} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
+                      <SortableItem key={i} id={String(i)} className="group" handleClassName={ENTRY_HANDLE} handleLabel={t("actions.reorder")}>
+                      <div className="relative space-y-3 py-4 pl-9 group">
+                        <button type="button" onClick={() => removeProject(i)} aria-label={t("actions.removeProject")} className="absolute top-4 right-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground hover:text-destructive">
                           <Trash2 aria-hidden="true" className="w-4 h-4" />
                         </button>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -856,14 +898,14 @@ export default function CVBuilderPage() {
                   title={t("sections.languages", { count: form.languages.length })}
                   icon={<Globe className="w-4 h-4" />}
                   action={<Button variant="outline" size="sm" onClick={addLanguage} className="gap-1 h-7 text-xs"><Plus className="w-3.5 h-3.5" /> {t("actions.add")}</Button>}
-                  sectionKey="languages" hidden={hiddenSections.has("languages")} onToggle={() => toggleSection("languages")}
+                  sectionKey="languages" anchor="languages" hidden={hiddenSections.has("languages")} onToggle={() => toggleSection("languages")}
                 >
                   {form.languages.length === 0 && <p className="text-xs text-muted-foreground py-2 text-center">{t("empty.languages")}</p>}
                   <SortableList className="space-y-3"
                     ids={form.languages.map((_, i) => String(i))}
                     onReorder={(ids) => setForm((f) => ({ ...f, languages: reorderByIds(f.languages, ids) }))}>
                     {form.languages.map((lang, i) => (
-                      <SortableItem key={i} id={String(i)} className="group" handleLabel={t("actions.reorder")}>
+                      <SortableItem key={i} id={String(i)} className="group" handleClassName={ENTRY_HANDLE} handleLabel={t("actions.reorder")}>
                       <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-3 pl-9 group">
                         <FormField label={t("fields.language")} value={lang.language}
                           onChange={(v) => updateLanguage(i, "language", v)} placeholder={t("placeholders.language")} />
@@ -883,7 +925,7 @@ export default function CVBuilderPage() {
 
                 {/* Certifications */}
                 <SectionCard title={t("sections.certifications", { count: form.certifications.length })} icon={<Award className="w-4 h-4" />}
-                  sectionKey="certifications" hidden={hiddenSections.has("certifications")} onToggle={() => toggleSection("certifications")}
+                  sectionKey="certifications" anchor="certifications" hidden={hiddenSections.has("certifications")} onToggle={() => toggleSection("certifications")}
                 >
                   <div className="space-y-2">
                     {form.certifications.map((c, i) => (
@@ -942,9 +984,9 @@ export default function CVBuilderPage() {
             <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="gap-2 flex-1">
               {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} {t("actions.downloadPdf")}
             </Button>
-            <Button variant="outline" onClick={handleSaveToProfile} disabled={saving} className="gap-2 flex-1 sm:flex-none sm:min-w-[160px]">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {saving ? t("actions.saving") : t("actions.addToProfile")}
+            <Button variant="outline" onClick={handleSaveToProfile} disabled={saving || isSaved} className="gap-2 flex-1 sm:flex-none sm:min-w-[160px]">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : isSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {saving ? t("actions.saving") : isSaved ? t("actions.savedToProfile") : t("actions.addToProfile")}
             </Button>
           </div>
         </div>
@@ -954,22 +996,23 @@ export default function CVBuilderPage() {
           ref={previewRef}
           className={`hidden sticky top-4 transition-all duration-300 ${previewHidden ? "" : "lg:block"} ${previewExpanded ? "w-full" : "w-[45%]"}`}
         >
-          <div className="border border-border rounded-xl bg-card shadow-sm overflow-hidden">
+          {/* One grey surface the sheets sit on; the sheet itself is the only "card". */}
+          <div className="rounded-xl bg-muted/50 ring-1 ring-border/60 overflow-hidden">
             {/* Preview header */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30">
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <Eye className="w-3.5 h-3.5" />
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <div className="text-xs font-medium text-muted-foreground">
                 {t("preview.resume")}
               </div>
               <div className="flex items-center gap-2">
                 <Button
-                  variant="default"
+                  variant={isSaved ? "outline" : "default"}
                   size="sm"
                   onClick={handleSaveToProfile}
-                  disabled={saving}
+                  disabled={saving || isSaved}
                   className="h-7 text-xs gap-1"
                 >
-                  {t("actions.addToProfile")}
+                  {isSaved && <Check aria-hidden="true" className="w-3.5 h-3.5" />}
+                  {isSaved ? t("actions.savedToProfile") : t("actions.addToProfile")}
                 </Button>
                 <Button
                   variant="outline"
@@ -1002,16 +1045,26 @@ export default function CVBuilderPage() {
             </div>
 
             {/* Template preview */}
-            <div data-cv-preview className="p-6 min-h-[600px] max-h-[85vh] overflow-y-auto bg-white">
-              <TemplateRenderer
-                templateId={selectedTemplate}
+            {/* A4 / Letter sheets, exactly as the downloaded PDF. */}
+            <div data-cv-preview className="scrollbar-thin px-4 pb-4 min-h-[600px] max-h-[85vh] overflow-y-auto">
+              {/* The real PDF, page by page; the on-screen layout only if it can't be drawn. */}
+              <PdfPagesPreview
                 data={previewForm}
+                templateId={selectedTemplate}
                 formatting={formatting}
+                labels={cvPdfLabels}
+                pageLabel={(n) => t("preview.pageBreak", { n })}
+                updatingLabel={t("preview.updating")}
+                fallback={
+                  <PagedPreview formatting={formatting} bleed={selectedTemplate === "modern"} pageLabel={(n) => t("preview.pageBreak", { n })}>
+                    <TemplateRenderer templateId={selectedTemplate} data={previewForm} formatting={formatting} />
+                  </PagedPreview>
+                }
               />
             </div>
 
             {/* Progress bar indicator */}
-            <div className="h-1.5 bg-muted">
+            <div className="h-1 bg-border/60">
               <div
                 className="h-full transition-all duration-500"
                 style={{
@@ -1044,10 +1097,17 @@ function getCompleteness(form: CVForm): number {
   return score;
 }
 
+/** Entries are plain rows inside a section card, so the drag handle is a small
+    grip beside the first field rather than a full-height grey strip. */
+const ENTRY_HANDLE = "inset-y-auto top-4 h-8 rounded-md bg-transparent";
+
+/** Cards the profile page can deep-link to with ?section=. */
+const CV_SECTION_ANCHORS = ["personal", "experience", "education", "skills", "projects", "languages", "certifications"];
+
 /* ── Sub-components ── */
 
 function SectionCard({
-  title, icon, badge, action, children, sectionKey, hidden, onToggle,
+  title, icon, badge, action, children, sectionKey, hidden, onToggle, anchor,
 }: {
   title: string;
   icon: React.ReactNode;
@@ -1057,11 +1117,16 @@ function SectionCard({
   sectionKey?: string;
   hidden?: boolean;
   onToggle?: () => void;
+  /** Deep-link target: renders id="cv-section-<anchor>". */
+  anchor?: string;
 }) {
   const t = useTranslations("cvBuilderPage.visibility");
   const [collapsed, setCollapsed] = useState(false);
   return (
-    <div className={`card-base space-y-4 ${hidden ? "opacity-50" : ""} panel-body`}>
+    <div
+      id={anchor ? `cv-section-${anchor}` : undefined}
+      className={`card-base scroll-mt-24 space-y-4 transition-shadow ${hidden ? "opacity-50" : ""} panel-body`}
+    >
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <button
           type="button"

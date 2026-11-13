@@ -9,6 +9,7 @@ import { User } from "@/models/User";
 import type { UserRole } from "@/models/User";
 import JobSeeker from "@/models/JobSeeker";
 import { logActivity } from "@/lib/audit/log";
+import { dropUnprovenPassword } from "@/lib/auth/unprovenPassword";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import { getFirebaseAdminAuth } from "@/lib/firebase/admin";
 import type { CompanyRole } from "@/models/CompanyUser";
@@ -25,6 +26,7 @@ import { hashOtp, otpHashesMatch } from "@/lib/auth/emailVerification";
 import PendingSignin, { PENDING_SIGNIN_MAX_ATTEMPTS } from "@/models/PendingSignin";
 import { autoAssignDefaultPlan } from "@/lib/subscription/autoAssign";
 import { isSessionRevoked, revokeSession } from "@/lib/auth/sessionRevocation";
+import { sessionsCutOffFor, signedInBeforeCutOff } from "@/lib/auth/sessionCutOff";
 import { recordRegistrationConsents } from "@/lib/gdpr/consent";
 import { parseCookieChoice } from "@/lib/gdpr/cookieChoice";
 import { getCurrentTermsVersion, isTermsAcceptancePending, termsPendingFor } from "@/lib/gdpr/termsVersion";
@@ -473,6 +475,10 @@ export const authConfig: NextAuthConfig = {
           // unverified and were otherwise sent to /verify-email for a code
           // straight after a successful Google sign-in.
           const googleVerifiesEmail = isEmailVerified && !dbUser.isEmailVerified;
+          // Whoever set a password on this address never proved it was theirs.
+          if (googleVerifiesEmail) {
+            await dropUnprovenPassword(dbUser._id.toString(), { provider: "firebase-google", role: dbUser.role });
+          }
           await User.findByIdAndUpdate(dbUser._id, {
             lastLogin: new Date(),
             ...(googleVerifiesEmail
@@ -778,6 +784,13 @@ export const authConfig: NextAuthConfig = {
             return null;
           }
 
+          // The code proves who owns the mailbox. A password already on an
+          // unverified account was set by someone who never proved that, so it
+          // goes before the account is marked verified.
+          if (!isNewUser && !user.isEmailVerified) {
+            await dropUnprovenPassword(user._id.toString(), { provider: "email-otp", role: user.role });
+          }
+
           // Mark verified and reset lockout state. The signup flow's
           // emailVerification* fields are deliberately NOT touched: a pending
           // "confirm your address" code on the same account stays valid.
@@ -913,6 +926,13 @@ export const authConfig: NextAuthConfig = {
       if (!user && typeof token.sid === "string" && (await isSessionRevoked(token.sid))) {
         return null;
       }
+      // A changed or reset password (or a removed unproven one) ends every
+      // session signed in before it, on every device, on its next request
+      // (lib/auth/sessionCutOff.ts, cached 30 s). Compared with the sign-in
+      // time, never `iat`, which each cookie re-issue moves forward.
+      if (!user && typeof token.id === "string" && signedInBeforeCutOff({ authAt: token.authAt, authAtMs: token.authAtMs }, await sessionsCutOffFor(token.id))) {
+        return null;
+      }
 
       // Client called update() — merge the new values into the token.
       //
@@ -932,8 +952,13 @@ export const authConfig: NextAuthConfig = {
         if (data.role !== undefined || data.isEmailVerified !== undefined || data.isOnboarded !== undefined) {
           await connectDB();
           const dbUser = await User.findById(token.id)
-            .select("role isEmailVerified")
-            .lean() as { role?: UserRole; isEmailVerified?: boolean } | null;
+            .select("role isEmailVerified sessionsValidAfter")
+            .lean() as { role?: UserRole; isEmailVerified?: boolean; sessionsValidAfter?: Date } | null;
+          // This refresh re-reads the verified flag: without the cut-off here, a
+          // session ended by lib/auth/unprovenPassword.ts would come out of it
+          // "confirmed" and skip the every-request check until the next
+          // five-minute one.
+          if (signedInBeforeCutOff({ authAt: token.authAt, authAtMs: token.authAtMs }, dbUser?.sessionsValidAfter)) return null;
           if (dbUser) {
             token.role = dbUser.role ?? token.role;
             token.isEmailVerified = dbUser.isEmailVerified ?? false;
@@ -960,6 +985,12 @@ export const authConfig: NextAuthConfig = {
         token.id = user.id;
         // One id per sign-in, so sign-out can revoke exactly this session.
         token.sid = globalThis.crypto.randomUUID();
+        // When this sign-in happened. Read by steps that need a recent one
+        // (POST /api/users/set-password) and by the session cut-off
+        // (lib/auth/sessionCutOff.ts, in ms); a token rotation never moves it.
+        const signedInMs = Date.now();
+        token.authAtMs = signedInMs;
+        token.authAt = Math.floor(signedInMs / 1000);
         token.picture = user.image ?? token.picture;
         token.role = ((user as unknown) as { role: UserRole }).role ?? "job_seeker";
         token.locale = ((user as unknown) as { locale: string }).locale ?? "en";
@@ -991,18 +1022,29 @@ export const authConfig: NextAuthConfig = {
         if (typeof token.sid !== "string") token.sid = globalThis.crypto.randomUUID();
         const nowSec = Math.floor(Date.now() / 1000);
         const pcaSec = (token.pca as number | null) ?? 0;
-        const lastCheck = (token.lastDbCheck as number | undefined) ?? (token.iat as number | undefined) ?? 0;
+        // Until a check has been stored, count from the sign-in. `iat` is
+        // rewritten every time the cookie is re-issued, so counting from it
+        // meant a session that never went quiet was never checked at all.
+        const signedInAt = typeof token.authAt === "number" ? token.authAt : undefined;
+        const lastCheck = (token.lastDbCheck as number | undefined) ?? signedInAt ?? (token.iat as number | undefined) ?? 0;
         // Immediate re-check if a known password change postdates this token,
         // otherwise re-check at most once per updateAge (5-min) window.
         const passwordChangedAfterToken = pcaSec > 0 && (token.iat as number) < pcaSec;
         const dueForPeriodicCheck = nowSec - lastCheck >= 5 * 60;
+        // A session of an unconfirmed account may be whoever registered someone
+        // else's address. When the owner confirms it (lib/auth/unprovenPassword.ts)
+        // that session must end at once, not up to five minutes later, while it
+        // could still add a webhook or a push subscription. Few sessions are
+        // unconfirmed: the proxy keeps them on /verify-email.
+        const unconfirmedSession = token.isEmailVerified === false;
 
-        if (passwordChangedAfterToken || dueForPeriodicCheck) {
+        if (passwordChangedAfterToken || dueForPeriodicCheck || unconfirmedSession) {
           await connectDB();
           const dbUser = await User.findById(token.id)
-            .select("passwordChangedAt isActive role permissionMode customPermissions termsAcceptedVersion isEmailVerified")
+            .select("passwordChangedAt sessionsValidAfter isActive role permissionMode customPermissions termsAcceptedVersion isEmailVerified")
             .lean() as {
               passwordChangedAt?: Date;
+              sessionsValidAfter?: Date;
               isActive?: boolean;
               isEmailVerified?: boolean;
               role?: UserRole;
@@ -1012,6 +1054,14 @@ export const authConfig: NextAuthConfig = {
             } | null;
 
           if (!dbUser?.isActive) return null;
+
+          // The password was changed or reset, or a password nobody proved the
+          // mailbox for was removed (lib/auth/sessionCutOff.ts): every session
+          // from before that ends here. Also checked on every request above;
+          // this read is the fresh one. The sign-in time decides it, never
+          // `iat`, which a session in use keeps moving past the change. A token
+          // with no sign-in time predates the stamp, so it predates the change.
+          if (signedInBeforeCutOff({ authAt: token.authAt, authAtMs: token.authAtMs }, dbUser.sessionsValidAfter)) return null;
 
           // Admin role/permission changes must reach live sessions — the token
           // caches these at login, so refresh them on the same periodic check
@@ -1103,6 +1153,24 @@ export const authConfig: NextAuthConfig = {
           // Update lastLogin for returning OAuth users
           await User.findByIdAndUpdate(dbUser._id, { lastLogin: new Date() });
           if (!dbUser.isActive) return null;
+        }
+
+        // LinkedIn / Apple are about to mark this address verified below. A
+        // password set while it was unverified was never proved to be the
+        // owner's (Google does the same in its authorize()).
+        if (
+          !isNewUser &&
+          !dbUser.isEmailVerified &&
+          (account.provider === "linkedin" || account.provider === "apple")
+        ) {
+          const removed = await dropUnprovenPassword(dbUser._id.toString(), { provider: account.provider, role: dbUser.role });
+          // The removal ends every session signed in before it. This one was
+          // stamped above, before the account was looked up: count it from now.
+          if (removed) {
+            const signedInMs = Date.now();
+            token.authAtMs = signedInMs;
+            token.authAt = Math.floor(signedInMs / 1000);
+          }
         }
 
         if (!isNewUser && account.provider === "linkedin" && !dbUser.linkedinSub) {
@@ -1315,6 +1383,10 @@ export const authConfig: NextAuthConfig = {
         (session.user as unknown as { isEmailVerified: boolean }).isEmailVerified = (token.isEmailVerified as boolean) ?? false;
         (session.user as unknown as { termsPending: boolean }).termsPending = token.termsPending === true;
         (session.user as unknown as { provider?: string }).provider = (token.provider as string) ?? undefined;
+        (session.user as unknown as { authAt?: number }).authAt =
+          typeof token.authAt === "number" ? token.authAt : undefined;
+        (session.user as unknown as { authAtMs?: number }).authAtMs =
+          typeof token.authAtMs === "number" ? token.authAtMs : undefined;
         if (token.companyUserRole) {
           (session.user as unknown as { companyUserRole: CompanyRole }).companyUserRole = token.companyUserRole as CompanyRole;
         }

@@ -9,6 +9,7 @@
 import type { IneligibleReason } from "@/lib/matching/eligibility";
 import type { QualificationKey, RequirementsStatus } from "@/lib/matching/qualifications";
 import { sharesRole } from "@/lib/matching/roleMatch";
+import { isLanguageOrDrivingSkill } from "@/lib/matching/relevance";
 
 /** Candidates scored in full per request, after a cheap first pass over the pool. */
 export const TALENT_POOL_SHORTLIST = 50;
@@ -42,10 +43,12 @@ export function rankPoolCandidates<T extends RankablePoolCandidate>(rows: readon
  * the job's skills, or have held or want the same kind of role. Everyone else
  * is left out, however many years they have — a list that always showed the
  * best 50 put a journalist and a sales executive among the "suitable" profiles
- * for a backend engineer (client, 2026-10-28).
+ * for a backend engineer (client, 2026-10-28). A shared language or driving
+ * licence alone does not count (rollout row 33, 2026-11-13).
  */
 export function isRelevantToJob(jobTitle: string, candidate: { matchedSkills: readonly string[]; roles: readonly string[] }): boolean {
-  return candidate.matchedSkills.length > 0 || sharesRole(jobTitle, candidate.roles);
+  // A language or a driving licence alone says nothing about the trade.
+  return candidate.matchedSkills.some((skill) => !isLanguageOrDrivingSkill(skill)) || sharesRole(jobTitle, candidate.roles);
 }
 
 /** First pass: which of the pool get a full score. Eligible pairs lead. */

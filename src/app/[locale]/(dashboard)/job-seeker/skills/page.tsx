@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { invalidateSeekerProfile, readSeekerProfile } from "@/hooks/useSeekerCache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/shared/PageHeader";
 import {
   Sparkles,
   Plus,
@@ -528,15 +529,12 @@ export default function JobSeekerSkillsPage() {
 
   return (
     <div className="page-container mx-auto max-w-6xl">
-      {/* ── PAGE HEADER ── */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {t("title")}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t("description")}
-        </p>
-      </div>
+      {/* ── PAGE HEADER ── back goes to Profile like CV / Documents / Preferences */}
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        backHref="/job-seeker/profile"
+      />
 
       {/* ── STEP 1 & 2: Role + Skills Input ── */}
       {!profileLoaded ? (

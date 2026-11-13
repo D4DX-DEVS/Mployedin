@@ -142,6 +142,19 @@ function formatAction(action: string): string {
 }
 
 /* ─── Component ─── */
+/**
+ * A log's extra details as readable text. Database ids ("applicationId:
+ * 6af46fc…") and secrets are left out: an id tells a team owner nothing.
+ */
+function describeMeta(meta: Record<string, unknown> | null | undefined, max: number): string {
+  if (!meta) return "";
+  return Object.entries(meta)
+    .filter(([key, value]) => !/^(__v|_id|id|password|token)$|Id$/.test(key) && value != null && typeof value !== "object")
+    .slice(0, max)
+    .map(([key, value]) => `${key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ").toLowerCase()}: ${String(value).slice(0, 30)}`)
+    .join(" · ");
+}
+
 export default function TeamActivityLogsPage() {
   const t = useTranslations("employerActivityLogs");
   const { locale } = useParams<{ locale: string }>();
@@ -225,85 +238,27 @@ export default function TeamActivityLogsPage() {
 
   return (
     <div className="page-container">
-      {/* Header */}
-      {/* compact: "Back to Team" shares the title row on phones — it is the only
-          route to /employer/team, which has no side-menu entry, so it stays.
-          compactOnMobile: the description repeats the Total Activities and Team
-          Members stat cards right below. */}
-      {/* Icon-only on phones — the labeled button crowded the title row. */}
+      {/* Back link above the title, like the job workspace: it is the only
+          route to /employer/team, which has no side-menu entry. */}
+      <Link
+        href={`/${locale}/employer/team`}
+        className="tap-target-row inline-flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+        {t("backToTeam")}
+      </Link>
+      {/* The standard summary strip. These were four small boxes with labels
+          wrapping to three lines, unlike every other screen. */}
       <WorkspaceHeader
         title={t("title")}
         context={t("description", { activities: formatCount(total), members: members.length })}
-        actions={
-          <Button asChild variant="outline" className="rounded-xl px-3 sm:px-4">
-            <Link href={`/${locale}/employer/team`} aria-label={t("backToTeam")}>
-              <ArrowLeft className="h-4 w-4 sm:me-2" aria-hidden="true" />
-              <span className="hidden sm:inline">{t("backToTeam")}</span>
-            </Link>
-          </Button>
-        }
+        metrics={loading ? undefined : [
+          { label: t("teamMembers"), value: formatCount(members.length), icon: Users, tone: "primary" },
+          { label: t("totalActivities"), value: formatCount(total), icon: Activity, tone: "success" },
+          { label: t("today"), value: formatCount(logs.filter((l) => new Date(l.createdAt).toDateString() === new Date().toDateString()).length), icon: Calendar, tone: "info" },
+          { label: t("loginEvents"), value: formatCount(logs.filter((l) => l.action.startsWith("login")).length), icon: LogIn, tone: "warning" },
+        ]}
       />
-
-      {/* Stats Summary */}
-      {!loading && (
-        <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
-          {[
-            {
-              label: t("teamMembers"),
-              value: members.length,
-              icon: Users,
-              color: "text-primary",
-              bg: "bg-card border-border",
-            },
-            {
-              label: t("totalActivities"),
-              value: total,
-              icon: Activity,
-              color: "text-status-selected",
-              bg: "bg-card border-border",
-            },
-            {
-              label: t("today"),
-              value: logs.filter(
-                (l) =>
-                  new Date(l.createdAt).toDateString() === new Date().toDateString()
-              ).length,
-              icon: Calendar,
-              color: "text-status-applied",
-              bg: "bg-card border-border",
-            },
-            {
-              label: t("loginEvents"),
-              value: logs.filter((l) => l.action.startsWith("login")).length,
-              icon: LogIn,
-              color: "text-status-shortlisted",
-              bg: "bg-card border-border",
-            },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className={`card-base flex items-center gap-2.5 border p-2 sm:gap-3 sm:p-3 ${s.bg}`}
-            >
-              {/* Icon beside the figure, not stacked above it. Hidden on phones
-                  so all four cards fit across a 390px row — at ~93px each there
-                  is only room for the label and the number. */}
-              <div className="hidden shrink-0 rounded-xl border border-border bg-background/80 chip-pad sm:block">
-                <s.icon className={`h-5 w-5 ${s.color}`} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="line-clamp-2 text-[11px] font-medium leading-tight text-muted-foreground sm:truncate sm:text-xs">
-                  {s.label}
-                </p>
-                <p
-                  className={`mt-1 text-base font-bold sm:text-xl ${s.color} leading-none tabular-nums`}
-                >
-                  {typeof s.value === "number" ? formatCount(s.value) : s.value}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Filters — phones get a clear hierarchy instead of ad-hoc wrapping:
           member + resource selects on one row, the search full-width beneath,
@@ -467,8 +422,10 @@ export default function TeamActivityLogsPage() {
                   <TableHead className="text-start">{t("teamMember")}</TableHead>
                   <TableHead className="text-start">{t("action")}</TableHead>
                   <TableHead className="text-start">{t("resource")}</TableHead>
-                  <TableHead className="text-start">{t("details")}</TableHead>
-                  <TableHead className="text-start">{t("ipAddress")}</TableHead>
+                  {/* Tablets keep when, who, what and where; Details joins from lg
+                      and IP address from xl, so nothing is cut off screen. */}
+                  <TableHead className="hidden text-start lg:table-cell">{t("details")}</TableHead>
+                  <TableHead className="hidden text-start xl:table-cell">{t("ipAddress")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -519,21 +476,13 @@ export default function TeamActivityLogsPage() {
                           variant="outline"
                           className="text-xs capitalize"
                         >
-                          {log.resource}
+                          {log.resource.replace(/_/g, " ")}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-48 truncate">
-                        {log.meta
-                          ? Object.entries(log.meta)
-                              .filter(([k]) => !["__v", "password", "token"].includes(k))
-                              .slice(0, 3)
-                              .map(([k, v]) => `${k}: ${String(v).slice(0, 30)}`)
-                              .join(", ")
-                          : log.resourceId
-                            ? `ID: ${log.resourceId.slice(-8)}`
-                            : "—"}
+                      <TableCell className="hidden max-w-48 truncate text-xs text-muted-foreground lg:table-cell">
+                        {describeMeta(log.meta, 3) || "—"}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground font-mono">
+                      <TableCell className="hidden font-mono text-xs text-muted-foreground xl:table-cell">
                         {log.ipAddress && log.ipAddress !== "unknown" && log.ipAddress !== FALLBACK_CLIENT ? log.ipAddress : "—"}
                       </TableCell>
                     </TableRow>
@@ -579,17 +528,11 @@ export default function TeamActivityLogsPage() {
                       <span className="truncate">{formatAction(log.action)}</span>
                     </span>
                     <Badge variant="outline" className="ms-auto shrink-0 text-[11px] capitalize">
-                      {log.resource}
+                      {log.resource.replace(/_/g, " ")}
                     </Badge>
                   </div>
-                  {log.meta && (
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      {Object.entries(log.meta)
-                        .filter(([k]) => !["__v", "password", "token"].includes(k))
-                        .slice(0, 2)
-                        .map(([k, v]) => `${k}: ${String(v).slice(0, 30)}`)
-                        .join(" · ")}
-                    </p>
+                  {describeMeta(log.meta, 2) && (
+                    <p className="truncate text-[11px] text-muted-foreground">{describeMeta(log.meta, 2)}</p>
                   )}
                 </div>
               );

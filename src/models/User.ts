@@ -25,6 +25,8 @@ export interface IUser extends Document {
   emailVerificationToken?: string;
   emailVerificationOtp?: string;
   emailVerificationExpiry?: Date;
+  /** Wrong guesses at the live 6-digit code; the code stops working at 5. */
+  emailVerificationAttempts?: number;
   // Verified email-change flow
   pendingEmail?: string;
   emailChangeToken?: string;
@@ -33,6 +35,10 @@ export interface IUser extends Document {
   passwordResetExpiry?: Date;
   passwordResetAttempts?: number;
   passwordChangedAt?: Date;
+  /** Sessions signed in before this are ended (lib/auth/sessionCutOff.ts): set on password change/reset and unproven-password removal. */
+  sessionsValidAfter?: Date;
+  /** Staff first created or approved this account as an active agent (lib/auth/agentApproval.ts). */
+  agentApprovedAt?: Date;
   tempPasswordIssuedAt?: Date;
   failedLoginAttempts: number;
   lockUntil?: Date;
@@ -121,6 +127,7 @@ const UserSchema = new Schema<IUser>(
     emailVerificationToken: { type: String, select: false },
     emailVerificationOtp: { type: String, select: false },
     emailVerificationExpiry: { type: Date, select: false },
+    emailVerificationAttempts: { type: Number, select: false },
     pendingEmail: { type: String, select: false, lowercase: true, trim: true },
     emailChangeToken: { type: String, select: false, index: true },
     emailChangeExpires: { type: Date, select: false },
@@ -128,6 +135,8 @@ const UserSchema = new Schema<IUser>(
     passwordResetExpiry: { type: Date, select: false },
     passwordResetAttempts: { type: Number, default: 0 },
     passwordChangedAt: { type: Date },
+    sessionsValidAfter: { type: Date },
+    agentApprovedAt: { type: Date },
     tempPasswordIssuedAt: { type: Date },
     failedLoginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date },

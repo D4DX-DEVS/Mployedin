@@ -16,9 +16,7 @@ import {
   AgentSmartHeader,
   AgentPipeline,
   AgentRolePerformance,
-  AgentTalentSpotlight,
   type AgentRoleMetric,
-  type SpotlightSeeker,
 } from "@/components/features/agent/dashboard";
 import { getAgentActionCounts, getAgentQueueItems, resolveAgentScope, EMPTY_AGENT_COUNTS } from "@/lib/agents/workQueue";
 import { resolveAssignedRegions } from "@/lib/agents/assignedRegion";
@@ -29,29 +27,6 @@ import { buildBroughtInFilter } from "@/lib/jobseekers/onboarded";
 import { leadPeriodFilter } from "@/lib/leads/period";
 import { isValidTimeZone } from "@/lib/datetime/zone";
 import { localHourIn } from "@/lib/datetime/countryZone";
-
-interface SpotlightSeekerDoc {
-  _id: unknown;
-  userId?: { name?: string; email?: string } | null;
-  currentLocation?: string;
-  experience?: { jobTitle?: string; isCurrent?: boolean }[];
-  badges?: string[];
-  referral?: unknown;
-  createdAt?: Date;
-}
-
-function toSpotlightSeeker(doc: SpotlightSeekerDoc): SpotlightSeeker {
-  const title = doc.experience?.find((e) => e.isCurrent)?.jobTitle;
-  return {
-    id: String(doc._id),
-    name: doc.userId?.name ?? "—",
-    email: doc.userId?.email ?? "",
-    subtitle: title || doc.currentLocation || undefined,
-    premium: (doc.badges ?? []).includes("premium"),
-    referred: Boolean(doc.referral),
-    createdAt: (doc.createdAt ?? new Date(0)).toISOString(),
-  };
-}
 
 /**
  * The agent home, on the employer home's shape: greeting header carrying the
@@ -104,7 +79,6 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   // API path — so it showed "12 employers created" beside "22 active
   // accounts" and "0 placements" over a book with placements in it.
   let activeJobs = 0;
-  let vacanciesPosted = 0;
   let totalApps = 0;
   let totalInterviews = 0;
   let totalOffers = 0;
@@ -115,11 +89,7 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
   let leadsConvertedToday = 0;
   let activeLeadsThisWeek = 0;
   let placementsCount = 0;
-  let onboardedSeekers = 0;
   let premiumCandidates = 0;
-  let onboardedPremium = 0;
-  let recentOnboarded: SpotlightSeeker[] = [];
-  let recentPremium: SpotlightSeeker[] = [];
   let jobMetrics: AgentRoleMetric[] = [];
 
   if (agentId) {
@@ -152,33 +122,16 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
     const seekerOr: Record<string, unknown>[] = [...((broughtIn.$or as Record<string, unknown>[]) ?? [])];
     if (seekerAreaMatch) seekerOr.push(seekerAreaMatch);
     const seekerScope = { roleArchivedAt: null, $or: seekerOr };
-    // The three newest of each, for the spotlight's "latest" rows.
-    const recentSeekers = (scope: Record<string, unknown>, filter: Record<string, unknown> = {}) =>
-      JobSeeker.find({ ...scope, ...filter })
-        .sort({ createdAt: -1 })
-        .limit(3)
-        .select("userId currentLocation experience badges referral createdAt")
-        .populate("userId", "name email")
-        .lean<SpotlightSeekerDoc[]>();
-    let onboardedDocs: SpotlightSeekerDoc[];
-    let premiumDocs: SpotlightSeekerDoc[];
-    [activeJobs, vacanciesPosted, leadsGenerated, leadsConverted, leadsConvertedToday, activeLeadsThisWeek, placementsCount, onboardedSeekers, premiumCandidates, onboardedPremium, onboardedDocs, premiumDocs] = await Promise.all([
+    [activeJobs, leadsGenerated, leadsConverted, leadsConvertedToday, activeLeadsThisWeek, placementsCount, premiumCandidates] = await Promise.all([
       Job.countDocuments({ ...jobFilter, status: "active" }),
-      Job.countDocuments(jobFilter),
       Lead.countDocuments({ agentId }),
       Lead.countDocuments({ agentId, status: "converted" }),
       // Same query /api/leads?period= runs, in the agent's own day and week.
       Lead.countDocuments({ agentId, ...leadPeriodFilter("converted_today", timeZone, now) }),
       Lead.countDocuments({ agentId, ...leadPeriodFilter("active_week", timeZone, now) }),
       Placement.countDocuments(portfolioFilter),
-      JobSeeker.countDocuments(broughtIn),
       JobSeeker.countDocuments({ ...seekerScope, badges: "premium" }),
-      JobSeeker.countDocuments({ ...broughtIn, badges: "premium" }),
-      recentSeekers(broughtIn),
-      recentSeekers(seekerScope, { badges: "premium" }),
     ]);
-    recentOnboarded = onboardedDocs.map(toSpotlightSeeker);
-    recentPremium = premiumDocs.map(toSpotlightSeeker);
 
     // Per-job status counts across the ENTIRE portfolio for accurate totals
     // and rates, joined to job titles/statuses for the displayed top rows.
@@ -382,15 +335,6 @@ export default async function AgentDashboard({ params }: { params: Promise<{ loc
       <AgentTodayQueue items={queueItems} counts={queueCounts} locale={locale} labels={queueLabels} />
 
       <AgentAccounts rows={accounts.rows} locale={locale} />
-
-      <AgentTalentSpotlight
-        onboarded={onboardedSeekers}
-        onboardedPremium={onboardedPremium}
-        premium={premiumCandidates}
-        recentOnboarded={recentOnboarded}
-        recentPremium={recentPremium}
-        locale={locale}
-      />
 
       {/* Two-up on wide screens: stacked, these two cost a second screen of
           scrolling. Both cards are now header + list rows — five funnel stages

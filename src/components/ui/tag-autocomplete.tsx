@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import * as React from "react";
 import { X, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import type { TaxonomyType } from "@/lib/taxonomy/seeds";
 
 /**
@@ -49,16 +50,62 @@ function useTaxonomySearch(type: TaxonomyType, query: string, debounceMs = 200) 
   return { items: result.items, loading, fresh: result.query === query };
 }
 
+/**
+ * Clicks outside the field AND outside its suggestion panel. The panel is
+ * portalled to <body>, so it is not inside the field's DOM subtree and has to
+ * be checked on its own — otherwise picking a suggestion would count as
+ * clicking away.
+ */
 function useOutsideClick(onOutside: () => void) {
   const ref = React.useRef<HTMLDivElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     function handle(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onOutside();
+      const target = e.target as Node;
+      if (panelRef.current?.contains(target)) return;
+      if (ref.current && !ref.current.contains(target)) onOutside();
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, [onOutside]);
-  return ref;
+  return { ref, panelRef };
+}
+
+/**
+ * The suggestion list, drawn in a popover layer anchored to the field. It used
+ * to be an absolute z-30 box inside the field, but every .card-base isolates
+ * its own stacking context, so the next card on the page painted over the
+ * list. A portal escapes that, and Radix flips it above the field when there
+ * is no room below. The scrollbar is hidden; the list still scrolls.
+ */
+function SuggestionPanel({
+  open,
+  anchor,
+  panelRef,
+  children,
+}: {
+  open: boolean;
+  anchor: React.ReactElement;
+  panelRef: React.RefObject<HTMLDivElement | null>;
+  children: React.ReactNode;
+}) {
+  return (
+    <Popover open={open}>
+      <PopoverAnchor asChild>{anchor}</PopoverAnchor>
+      <PopoverContent
+        ref={panelRef}
+        align="start"
+        sideOffset={4}
+        // The input keeps focus; the field opens and closes the list itself.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+        className="max-h-60 w-[var(--radix-popover-trigger-width)] overflow-y-auto overscroll-contain rounded-lg border-border p-0 shadow-lg scrollbar-none"
+      >
+        {children}
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 // ─── Multi-select tag autocomplete ──────────────────────────────────────────
@@ -97,7 +144,7 @@ export function TagAutocomplete({
   const [open, setOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(-1);
   const { items, loading, fresh } = useTaxonomySearch(type, input);
-  const containerRef = useOutsideClick(() => setOpen(false));
+  const { ref: containerRef, panelRef } = useOutsideClick(() => setOpen(false));
 
   const lowerValue = value.map((v) => v.toLowerCase());
   const suggestions = items.filter((s) => !lowerValue.includes(s.toLowerCase()));
@@ -143,6 +190,10 @@ export function TagAutocomplete({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
+      <SuggestionPanel
+        open={open && (input.trim().length > 0 || suggestions.length > 0)}
+        panelRef={panelRef}
+        anchor={
       <div className="flex flex-wrap gap-1.5 sm:gap-2 rounded-lg border border-border bg-background min-h-[44px] focus-within:border-primary transition-colors chip-pad">
         {value.map((tag) => (
           <span
@@ -180,9 +231,8 @@ export function TagAutocomplete({
           />
         )}
       </div>
-
-      {open && (input.trim().length > 0 || suggestions.length > 0) && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        }
+      >
           {loading && suggestions.length === 0 && (
             <div className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Searching…
@@ -213,8 +263,7 @@ export function TagAutocomplete({
               <Plus className="w-3.5 h-3.5" /> Add &ldquo;{input.trim()}&rdquo;
             </button>
           )}
-        </div>
-      )}
+      </SuggestionPanel>
     </div>
   );
 }
@@ -265,7 +314,7 @@ export function Autocomplete({
   // not fire for clicks inside the dropdown, which is why it is used here
   // instead of the input's onBlur — blur would beat a suggestion click and
   // commit the half-typed text instead of the option the user just picked.
-  const containerRef = useOutsideClick(() => {
+  const { ref: containerRef, panelRef } = useOutsideClick(() => {
     setOpen(false);
     if (value.trim()) onCommit?.(value);
   });
@@ -306,6 +355,10 @@ export function Autocomplete({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
+      <SuggestionPanel
+        open={open && suggestions.length > 0}
+        panelRef={panelRef}
+        anchor={
       <input
         id={id}
         value={value}
@@ -324,8 +377,8 @@ export function Autocomplete({
           inputClassName
         )}
       />
-      {open && suggestions.length > 0 && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        }
+      >
           {loading && suggestions.length === 0 && (
             <div className="flex items-center gap-2 px-4 py-2.5 text-sm text-muted-foreground">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Searching…
@@ -346,8 +399,7 @@ export function Autocomplete({
               {s}
             </button>
           ))}
-        </div>
-      )}
+      </SuggestionPanel>
     </div>
   );
 }

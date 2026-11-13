@@ -15,6 +15,18 @@ import { notifyRoleChanged } from "@/lib/notifications/trigger";
 
 import bcrypt from "bcryptjs";
 import logger from "@/lib/logger";
+import {
+  AGENT_EMAIL_NOT_VERIFIED,
+  AGENT_EMAIL_NOT_VERIFIED_MESSAGE,
+  APPROVAL_STATE_FIELDS,
+  agentEmailChangeUpdate,
+  agentEmailNotVerifiedResponse,
+  approvalStamp,
+  emailChanges,
+  loadApprovalState,
+  wouldApproveUnverifiedAgent,
+  type ApprovalAccountState,
+} from "@/lib/auth/agentApproval";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -191,7 +203,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
       return NextResponse.json({ error: "Unknown action." }, { status: 400 });
     }
 
-    const results: Array<{ userId: string; status: "updated" | "skipped" | "error"; reason?: string }> = [];
+    const results: Array<{ userId: string; status: "updated" | "skipped" | "error"; reason?: string; code?: string }> = [];
     // Recorded per user so the audit row can say what each account was before,
     // not just which role they all ended up on.
     const roleChanges: Array<{ userId: string; from: string; to: string }> = [];
@@ -210,7 +222,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
         switch (action) {
           case "setRole": {
             // Prevent removing the last admin
-            const targetUser = await User.findById(id).select("role").lean();
+            const targetUser = (await User.findById(id).select(APPROVAL_STATE_FIELDS).lean()) as ApprovalAccountState | null;
+            // Making an active, unconfirmed account an agent approves it as one
+            // (lib/auth/agentApproval.ts).
+            if (wouldApproveUnverifiedAgent(targetUser, { role })) {
+              results.push({ userId: id, status: "skipped", reason: AGENT_EMAIL_NOT_VERIFIED_MESSAGE, code: AGENT_EMAIL_NOT_VERIFIED });
+              continue;
+            }
             if (targetUser?.role === "admin" && role !== "admin") {
               const adminCount = await User.countDocuments({ role: "admin", isActive: true });
               if (adminCount <= 1) {
@@ -223,21 +241,31 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
             // grant from their previous role after a bulk conversion.
             modified = (await User.updateOne(
               { _id: id },
-              { $set: { role, permissionMode: "role_default" }, $unset: { customPermissions: "" } },
+              { $set: { role, permissionMode: "role_default", ...approvalStamp(targetUser, { role }) }, $unset: { customPermissions: "" } },
             )).modifiedCount > 0;
             // Idempotent — also heals accounts converted before this fix existed.
             const u = await User.findById(id).select("name email role").lean();
-            if (u && role) await applyRoleProfileChange(u, role, targetUser?.role);
+            if (u && role) await applyRoleProfileChange(u, role, targetUser?.role ?? undefined);
             if (role && targetUser?.role && targetUser.role !== role) {
               roleChanges.push({ userId: id, from: String(targetUser.role), to: role });
               await notifyRoleChanged(id, String(targetUser.role), role);
             }
             break;
           }
-          case "activate":
-            modified = (await User.updateOne({ _id: id }, { $set: { isActive: true } })).modifiedCount > 0;
+          case "activate": {
+            // Approving an agent needs a confirmed email (lib/auth/agentApproval.ts).
+            const state = await loadApprovalState(id);
+            if (wouldApproveUnverifiedAgent(state, { isActive: true })) {
+              results.push({ userId: id, status: "skipped", reason: AGENT_EMAIL_NOT_VERIFIED_MESSAGE, code: AGENT_EMAIL_NOT_VERIFIED });
+              continue;
+            }
+            modified = (await User.updateOne(
+              { _id: id },
+              { $set: { isActive: true, ...approvalStamp(state, { isActive: true }) } },
+            )).modifiedCount > 0;
             if (modified) await syncEmployerAccountStatus(id, true);
             break;
+          }
           case "deactivate":
             modified = (await User.updateOne({ _id: id }, { $set: { isActive: false } })).modifiedCount > 0;
             if (modified) await syncEmployerAccountStatus(id, false);
@@ -359,8 +387,27 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const oldUser = await User.findById(userId)
-    .select("role isActive name email permissionMode")
+    .select(`${APPROVAL_STATE_FIELDS} name permissionMode`)
     .lean<Record<string, unknown> | null>();
+  // Approving an agent needs a confirmed email (lib/auth/agentApproval.ts):
+  // switching one on, or making an active account an agent.
+  const approvalState = oldUser as ApprovalAccountState | null;
+  const approvalChange = {
+    isActive: isActive as boolean | undefined,
+    role: role as string | undefined,
+    email: email as string | undefined,
+  };
+  if (wouldApproveUnverifiedAgent(approvalState, approvalChange)) {
+    return agentEmailNotVerifiedResponse();
+  }
+  // An agent's address replaced by staff is unproven; codes and links went to
+  // the old one.
+  if ((approvalChange.role ?? approvalState?.role) === "agent" && emailChanges(approvalState, approvalChange.email)) {
+    const unconfirm = agentEmailChangeUpdate();
+    Object.assign(updateData, unconfirm.$set);
+    Object.assign(unsetData, unconfirm.$unset);
+  }
+  Object.assign(updateData, approvalStamp(approvalState, approvalChange));
   const updated = await User.findByIdAndUpdate(
     userId,
     {
@@ -462,6 +509,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     role,
     locale: locale ?? "en",
     isActive: true,
+    // An agent created active by staff is approved (lib/auth/agentApproval.ts).
+    ...(role === "agent" ? { agentApprovedAt: new Date() } : {}),
   };
 
   // Custom permissions

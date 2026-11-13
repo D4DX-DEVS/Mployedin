@@ -16,6 +16,7 @@ import logger from "@/lib/logger";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { formatZonedDateTime } from "@/lib/datetime/zone";
 import { resolveRecipientTimeZone } from "@/lib/notifications/recipientZone";
+import { isSilentForSeeker } from "@/lib/jobSeeker/seekerStatus";
 
 // Mirrors the enum on the Notification model. A member missing here is a
 // compile error at the call site, not a runtime one, so the two lists have
@@ -214,6 +215,11 @@ export async function notifyStatusChange(
   applicationId: string,
   options: NotifyHelperOptions = {},
 ): Promise<void> {
+  // Shortlisted and Selected are the employer's sorting: the seeker's own view
+  // stays at In review / Interview, so there is nothing to tell them
+  // (lib/jobSeeker/seekerStatus). Checked here so every caller — single move,
+  // bulk move, Copilot, AI screening — keeps to it.
+  if (isSilentForSeeker(status)) return;
   await notify({
     userId: jobSeekerId,
     type: "application_status_update",

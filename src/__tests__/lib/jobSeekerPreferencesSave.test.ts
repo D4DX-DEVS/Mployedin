@@ -76,3 +76,17 @@ describe("saving preferences built from stored profiles", () => {
     expect(jobSeekerProfileUpdateSchema.safeParse({ preferredSalary: { min: -1, max: 0, currency: "USD" } }).success).toBe(false);
   });
 });
+
+describe("relocation preference (rollout row 18)", () => {
+  it("carries a stored relocation answer and leaves an unanswered one out", () => {
+    const fromProfile = preferencesFromProfile;
+    expect(fromProfile({ openToRelocation: false }).openToRelocation).toBe(false);
+    expect(fromProfile({ openToRelocation: true }).openToRelocation).toBe(true);
+    expect("openToRelocation" in fromProfile({})).toBe(false);
+  });
+
+  it("is accepted by the profile update schema", () => {
+    expect(jobSeekerProfileUpdateSchema.safeParse({ openToRelocation: true }).success).toBe(true);
+    expect(jobSeekerProfileUpdateSchema.safeParse({ openToRelocation: "yes" }).success).toBe(false);
+  });
+});

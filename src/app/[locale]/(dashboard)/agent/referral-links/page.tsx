@@ -251,13 +251,12 @@ export default function AgentReferralLinksPage() {
           value={search}
           onChange={(v) => { setSearch(v); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
-          className="max-sm:basis-0"
         />
       </InlineFilterBar>
 
       {/* Links: cards on phones, the table from sm up */}
       <PhoneRecordList
-        className="sm:hidden"
+        className="p-3 sm:hidden"
         label={t("pageTitle")}
         loading={isLoading}
         empty={
@@ -269,52 +268,43 @@ export default function AgentReferralLinksPage() {
         }
         items={links.map((link) => {
           const status = linkStatus(link);
-          const isExpanded = expandedId === link._id;
           return {
             key: link._id,
-            title: <span className="font-mono">{link.code}</span>,
-            subtitle: link.label || undefined,
+            title: link.label || t("tableHeaderCode"),
+            subtitle: <span className="font-mono">{link.code}</span>,
             trailing: <StatusBadge status={status === "active" ? "active" : status === "expired" ? "expired" : "inactive"} />,
-            actions: linkActions(link),
-            meta: (
-              <>
-                <p className="flex min-w-0 items-center gap-1">
-                  <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{link.expiresAt ? `${t("tableHeaderExpires")}: ${formatListDate(new Date(link.expiresAt))}` : t("noExpiry")}</span>
-                </p>
-                {/* The registrations toggle sits on the Used line it expands;
-                    in the footer it wrapped onto a row of its own. */}
-                <div className="flex min-w-0 items-center gap-1">
-                  <Users className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{t("tableHeaderUsed")}: {link.usedCount}{link.maxUses > 0 ? `/${link.maxUses}` : ""}</span>
-                  <RowExpandToggle
-                    // !min-h-0: the phone 44px button floor made the Used line
-                    // 44px tall; tap-target-box keeps the 44px hit area.
-                    className="tap-target-box ms-auto !min-h-0 !min-w-0"
-                    expanded={isExpanded}
-                    onToggle={() => setExpandedId(isExpanded ? null : link._id)}
-                  />
-                </div>
-                {isExpanded && (
-                  <div className="mt-2 space-y-1.5 border-t border-border/60 pt-2">
-                    <p className="font-semibold">{t("registrationsLabel", { count: link.registrations.length })}</p>
-                    {link.registrations.length === 0 ? (
-                      <p>{t("noRegistrationsYet")}</p>
-                    ) : (
-                      link.registrations.map((reg, i) => (
-                        <div key={i} className="min-w-0">
-                          <p className="truncate font-medium text-foreground">{registrationDisplayName(reg)}</p>
-                          <p className="truncate">
-                            {reg.email}
-                            {reg.country ? ` · ${reg.city ? `${reg.city}, ` : ""}${reg.country}` : ""}
-                            {` · ${formatListDate(new Date(reg.registeredAt))}`}
-                          </p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </>
+            facts: [
+              `${link.usedCount}${link.maxUses > 0 ? `/${link.maxUses}` : ""} ${t("tableHeaderUsed")}`,
+              link.expiresAt ? formatListDate(new Date(link.expiresAt)) : t("noExpiry"),
+            ],
+            actions: (
+              <RowActions
+                name={link.code}
+                quick={[
+                  {
+                    key: "copy",
+                    label: copyMap[link.code] ? t("copiedFeedback") : t("copyLinkButton"),
+                    icon: copyMap[link.code] ? Check : Copy,
+                    onSelect: () => handleCopy(link),
+                  },
+                ]}
+                menu={[
+                  {
+                    key: "toggle",
+                    label: link.isActive ? t("disableButton") : t("enableButton"),
+                    icon: link.isActive ? PowerOff : Power,
+                    destructive: link.isActive,
+                    onSelect: () => { void handleToggleActive(link); },
+                  },
+                  ...(link.usedCount === 0 && link.registrations.length === 0 ? [{
+                    key: "delete",
+                    label: tc("delete"),
+                    icon: Trash2,
+                    destructive: true,
+                    onSelect: () => { void handleDelete(link._id); },
+                  }] : []),
+                ]}
+              />
             ),
           };
         })}

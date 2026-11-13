@@ -8,6 +8,8 @@
  * the paths with no screen (auto-apply, the assistant) attached none.
  *
  * The order, wherever nothing was chosen explicitly:
+ *   0. the CV the seeker marked "send this one" on My CVs (`preferredCvId`),
+ *      while it still exists;
  *   1. the Profile CV — the seeker's main CV, the one their profile was read from;
  *   2. the resume they uploaded most recently;
  *   3. the CV built on Mployedin.
@@ -53,7 +55,15 @@ export function defaultCvKey(input: {
   documents: readonly SeekerDocumentLike[] | null | undefined;
   hasProfileCv: boolean;
   hasBuiltCv: boolean;
+  /** The seeker's own pick from My CVs: a document id, PROFILE_CV_KEY or BUILT_CV_KEY. */
+  preferredId?: string | null;
 }): string {
+  const preferred = input.preferredId;
+  if (preferred) {
+    if (preferred === PROFILE_CV_KEY && input.hasProfileCv) return PROFILE_CV_KEY;
+    if (preferred === BUILT_CV_KEY && input.hasBuiltCv) return BUILT_CV_KEY;
+    if (uploadedResumes(input.documents).some((d) => d.id === preferred)) return preferred;
+  }
   if (input.hasProfileCv) return PROFILE_CV_KEY;
   const newest = uploadedResumes(input.documents).at(-1);
   if (newest?.id) return newest.id;
@@ -69,8 +79,18 @@ export function defaultCvKey(input: {
 export function defaultApplicationCv(seeker: {
   documents?: readonly SeekerDocumentLike[] | null;
   cv?: { originalUrl?: string | null } | null;
+  /** The seeker's own pick from My CVs (see `defaultCvKey`). */
+  preferredCvId?: string | null;
 } | null | undefined): ApplicationDocument[] {
   const profileCvUrl = seeker?.cv?.originalUrl;
+  const preferred = seeker?.preferredCvId;
+  if (preferred) {
+    if (preferred === PROFILE_CV_KEY && profileCvUrl) return [{ name: "CV", url: profileCvUrl, type: "resume" }];
+    const builtCopy = (seeker?.documents ?? []).filter((d) => isResume(d) && !!d.builtHash).at(-1);
+    if (preferred === BUILT_CV_KEY && builtCopy?.url) return [{ name: builtCopy.name, url: builtCopy.url, type: "resume" }];
+    const chosen = uploadedResumes(seeker?.documents).find((d) => d.id === preferred);
+    if (chosen?.url) return [{ name: chosen.name, url: chosen.url, type: "resume" }];
+  }
   // "CV" is the name applications have always given the Profile CV.
   if (profileCvUrl) return [{ name: "CV", url: profileCvUrl, type: "resume" }];
 
@@ -80,6 +100,14 @@ export function defaultApplicationCv(seeker: {
     documents.filter((d) => isResume(d) && !!d.builtHash).at(-1);
   return pick?.url ? [{ name: pick.name, url: pick.url, type: "resume" }] : [];
 }
+
+/**
+ * Every application carries a CV: employers read it first, and one sent
+ * without it is skipped. Each apply path refuses with this code when the
+ * seeker has none (the apply screens map it to their own copy).
+ */
+export const CV_REQUIRED_CODE = "CV_REQUIRED";
+export const CV_REQUIRED_MESSAGE = "Add your CV to apply. Upload one, or build one on My CVs.";
 
 /* ── Accepted CV files ──
    One list for the file pickers and the upload routes. The pickers used to

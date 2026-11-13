@@ -57,6 +57,14 @@ jest.mock("@/lib/security/encryption", () => ({ __esModule: true, encrypt: jest.
 jest.mock("@/lib/security/totp", () => ({ __esModule: true, verifyTotp: jest.fn(), hashRecoveryCode: jest.fn() }));
 jest.mock("@/lib/security/rateLimit", () => ({ __esModule: true, checkRateLimit: jest.fn() }));
 jest.mock("@/lib/employers/company-membership", () => ({ __esModule: true, ensureEmployerOwnerMembership: jest.fn() }));
+// The every-request session cut-off (password change/reset) reads its own field
+// from a 30 s cache and has its own tests (sessionCutOff, jwtEmailVerifiedRecheck);
+// "no DB hit" below is about the authorization fields of update().
+jest.mock("@/lib/auth/sessionCutOff", () => ({
+  __esModule: true,
+  sessionsCutOffFor: jest.fn().mockResolvedValue(0),
+  signedInBeforeCutOff: jest.requireActual("@/lib/auth/sessionCutOff").signedInBeforeCutOff,
+}));
 
 import { authConfig } from "@/lib/auth/config";
 

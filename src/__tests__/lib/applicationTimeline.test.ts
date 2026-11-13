@@ -20,7 +20,28 @@ describe("buildApplicationTimeline", () => {
     expect(events.map((e) => [e.kind, e.status ?? null, e.current])).toEqual([
       ["status", "applied", false],
       ["viewed", null, false],
-      ["status", "shortlisted", true],
+      ["status", "in_review", true],
+    ]);
+  });
+
+  it("shows the seeker's steps: Selected stays under Interview, Rejected reads Not selected", () => {
+    const events = buildApplicationTimeline({
+      status: "rejected",
+      appliedAt: "2026-09-01T08:00:00Z",
+      statusHistory: [
+        { status: "applied", changedAt: "2026-09-01T08:00:00Z" },
+        { status: "shortlisted", changedAt: "2026-09-02T08:00:00Z" },
+        { status: "interview_scheduled", changedAt: "2026-09-03T08:00:00Z" },
+        { status: "selected", changedAt: "2026-09-04T08:00:00Z" },
+        { status: "rejected", changedAt: "2026-09-05T08:00:00Z" },
+      ],
+    });
+    expect(events.map((e) => [e.status, e.at, e.current])).toEqual([
+      ["applied", "2026-09-01T08:00:00Z", false],
+      ["in_review", "2026-09-02T08:00:00Z", false],
+      // Interview began on the 3rd; Selected on the 4th adds no step.
+      ["interview", "2026-09-03T08:00:00Z", false],
+      ["not_selected", "2026-09-05T08:00:00Z", true],
     ]);
   });
 
@@ -59,10 +80,14 @@ describe("nextStepFor", () => {
     expect(nextStepFor("applied", true)).toBe("applied_viewed");
   });
 
-  it("has guidance for every pipeline and closing status, and none for unknown ones", () => {
-    for (const s of ["shortlisted", "interview_scheduled", "selected", "offer", "hired", "rejected", "withdrawn"]) {
-      expect(nextStepFor(s, false)).toBe(s);
-    }
+  it("has guidance for every status in the seeker's steps, and none for unknown ones", () => {
+    expect(nextStepFor("shortlisted", false)).toBe("in_review");
+    expect(nextStepFor("interview_scheduled", false)).toBe("interview");
+    expect(nextStepFor("selected", false)).toBe("interview");
+    expect(nextStepFor("offer", false)).toBe("offer");
+    expect(nextStepFor("hired", false)).toBe("hired");
+    expect(nextStepFor("rejected", false)).toBe("not_selected");
+    expect(nextStepFor("withdrawn", false)).toBe("withdrawn");
     expect(nextStepFor("custom_stage", false)).toBeNull();
   });
 });

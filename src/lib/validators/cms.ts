@@ -78,8 +78,13 @@ export const blogUpdateSchema = blogCreateSchema.partial().extend({
 });
 
 // ── Banners ─────────────────────────────────────────────────────────
-export const bannerCreateSchema = z.object({
-  image: urlOrPath(),
+const placementEnum = z.enum(["landing-carousel", "in-app-announcement"]);
+const audienceRoleEnum = z.enum(["all", "admin", "super_agent", "agent", "employer", "job_seeker"]);
+const styleEnum = z.enum(["info", "success", "warning"]);
+
+const bannerFields = z.object({
+  // Required for the landing carousel only; an in-app announcement is text.
+  image: urlOrPath().optional().or(z.literal("")),
   title: bilingualText(200),
   titleAr: bilingualText(200),
   subtitle: bilingualText(500),
@@ -87,10 +92,30 @@ export const bannerCreateSchema = z.object({
   linkUrl: urlOrPath().optional().or(z.literal("")),
   linkText: bilingualText(100),
   linkTextAr: bilingualText(100),
+  placement: z.array(placementEnum).min(1).optional(),
+  audienceRoles: z.array(audienceRoleEnum).min(1).optional(),
+  startDate: z.coerce.date().optional().nullable(),
+  endDate: z.coerce.date().optional().nullable(),
+  style: styleEnum.optional(),
+  dismissible: z.boolean().optional(),
   ...sortActive,
 });
 
-export const bannerUpdateSchema = bannerCreateSchema.partial();
+export const bannerCreateSchema = bannerFields.superRefine((banner, ctx) => {
+  // No placement = a legacy banner, which shows on the landing carousel.
+  const onLanding = !banner.placement || banner.placement.includes("landing-carousel");
+  if (onLanding && !banner.image) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["image"], message: "Add an image for the landing page banner." });
+  }
+  if (!onLanding && !banner.title && !banner.subtitle) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["title"], message: "Add a title or text for the announcement." });
+  }
+  if (banner.startDate && banner.endDate && banner.endDate < banner.startDate) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["endDate"], message: "The end date can't be before the start date." });
+  }
+});
+
+export const bannerUpdateSchema = bannerFields.partial();
 
 // ── Testimonials ────────────────────────────────────────────────────
 export const testimonialCreateSchema = z.object({

@@ -39,6 +39,20 @@ describe("StatusPillTabs", () => {
     expect(onChange).toHaveBeenCalledWith("hired");
   });
 
+  // globals.css spreads a data-fit row across a phone's width; longer rows
+  // stay a scrolling carousel.
+  it("marks a row of four tabs or fewer to fit a phone, and leaves longer rows to scroll", () => {
+    const { rerender } = render(
+      <StatusPillTabs tabs={["all", "interview", "offer", "closed"] as const} active="all" onChange={() => {}} label="x" renderLabel={(t) => t} idPrefix="p" />
+    );
+    expect(screen.getByRole("tablist")).toHaveAttribute("data-fit");
+
+    rerender(
+      <StatusPillTabs tabs={["all", "a", "b", "c", "d"] as const} active="all" onChange={() => {}} label="x" renderLabel={(t) => t} idPrefix="p" />
+    );
+    expect(screen.getByRole("tablist")).not.toHaveAttribute("data-fit");
+  });
+
   describe("keyboard navigation", () => {
     function renderTabs(active: (typeof TABS)[number]) {
       const onChange = jest.fn();

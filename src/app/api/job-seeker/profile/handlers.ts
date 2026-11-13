@@ -7,6 +7,7 @@ import { jobSeekerProfileUpdateSchema } from "@/lib/validators/job-seekers";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
 import { forgetWaIdOnPhoneChange } from "@/lib/communications/whatsapp/waId";
+import { ensureIndustryClassified } from "@/lib/jobseekers/ensureIndustryClassified";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -90,6 +91,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     const completeness = profileCompletenessScore(doc);
     await JobSeeker.updateOne({ userId: ctx.userId }, { $set: { profileCompleteness: completeness } });
     doc.profileCompleteness = completeness;
+
+    // Auto-classify industry from updated profile (unless manually set)
+    await ensureIndustryClassified(doc);
+
     responseDoc = doc;
   }
 

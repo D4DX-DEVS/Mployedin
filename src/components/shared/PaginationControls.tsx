@@ -49,6 +49,8 @@ interface PaginationControlsProps {
   shown?: number;
   /** Replaces "Rows per page" where a page is not rows (a board's columns). */
   sizeLabel?: string;
+  /** Page sizes offered, where 10/25/50/100 does not fit (a 4-wide grid uses 12/24/48). */
+  sizeOptions?: readonly number[];
   /** Replaces "Showing X–Y of Z" where that range would not be true. */
   summary?: ReactNode;
 }
@@ -63,6 +65,7 @@ export function PaginationControls({
   className = "",
   shown,
   sizeLabel,
+  sizeOptions = PAGE_SIZE_OPTIONS,
   summary,
 }: PaginationControlsProps) {
   const t = useTranslations("employerCommon");
@@ -112,7 +115,7 @@ export function PaginationControls({
           <SelectContent>
             {/* A page whose own size is not in the list (Resources uses 20) still
                 shows it: otherwise the trigger rendered empty. */}
-            {(PAGE_SIZE_OPTIONS.includes(limit) ? PAGE_SIZE_OPTIONS : [...PAGE_SIZE_OPTIONS, limit].sort((a, b) => a - b)).map((size) => (
+            {(sizeOptions.includes(limit) ? sizeOptions : [...sizeOptions, limit].sort((a, b) => a - b)).map((size) => (
               <SelectItem key={size} value={String(size)}>
                 {formatNumber(size, locale)}
               </SelectItem>

@@ -24,7 +24,13 @@ export async function GET(req: NextRequest) {
 
     const [faqs, banners, testimonials, videos, recentPosts, stats] = await Promise.all([
       FAQ.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
-      Banner.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
+      Banner.find({
+        isActive: true,
+        $or: [
+          { placement: { $exists: false } },
+          { placement: "landing-carousel" },
+        ],
+      }).sort({ sortOrder: 1 }).lean(),
       Testimonial.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
       Video.find({ isActive: true }).sort({ sortOrder: 1 }).lean(),
       BlogPost.find({ isActive: true, status: "published" })

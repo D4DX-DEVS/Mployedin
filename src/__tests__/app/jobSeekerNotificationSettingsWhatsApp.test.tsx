@@ -15,6 +15,8 @@ jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  // The Settings tab row reads the current path to mark its tab.
+  usePathname: () => "/en/job-seeker/settings/notifications",
 }));
 jest.mock("@/hooks/useBackNavigation", () => ({ useBackNavigation: () => ({ goBack: jest.fn() }) }));
 
@@ -100,7 +102,8 @@ describe("job-seeker notification settings — WhatsApp verification", () => {
     expect(screen.queryByText("Send START K7P4QX")).toBeNull();
     // This page has the toggle: no invitation (that is for the pages without one).
     expect(screen.queryByText("Get your updates on WhatsApp")).toBeNull();
-    await user.click(screen.getAllByRole("button", { name: "WhatsApp" })[0]);
+    // The channel table: one WhatsApp checkbox per category, named "<category>: WhatsApp".
+    await user.click(screen.getAllByRole("checkbox", { name: /: WhatsApp$/ })[0]);
     expect(screen.getByText("Send START to get WhatsApp messages")).toBeInTheDocument();
     expect(screen.getByText("Send START K7P4QX")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Message us on WhatsApp" })).toHaveAttribute("href", LINK);

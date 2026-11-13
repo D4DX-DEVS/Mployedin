@@ -54,13 +54,13 @@ export default async function PublicCompanyDetailPage({ params }: PageProps) {
   const websiteHref = safeHref(employer.website);
   const linkedinHref = safeHref(socialLinks?.linkedin);
 
-  const jobs = await Job.find({ employerId: id, status: "active", deletedAt: null })
+  const jobs = await Job.find({ employerId: id, status: "active", deletedAt: null, discloseCompany: { $ne: false } })
     .select("title location salary requirements employmentType workMode createdAt")
     .sort({ createdAt: -1 })
     .limit(20)
     .lean();
 
-  const jobCount = await Job.countDocuments({ employerId: id, status: "active", deletedAt: null });
+  const jobCount = await Job.countDocuments({ employerId: id, status: "active", deletedAt: null, discloseCompany: { $ne: false } });
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">

@@ -3,7 +3,10 @@
 import {
   CV_FONTS, CV_FONT_SIZES, CV_SPACINGS, CV_PAGE_FORMATS, CV_DATE_FORMATS,
   CV_LINE_HEIGHTS, CV_MARGINS, CV_SECTION_KEYS, cvDesignSchema, cvFormattingSchema,
+  CV_HEADER_ALIGNS, CV_TEXT_ALIGNS, CV_HEADING_STYLES, CV_SKILLS_STYLES,
+  CV_NAME_SIZES, CV_BULLET_STYLES, CV_DATE_POSITIONS, CV_PHOTO_SHAPES,
 } from "@/lib/jobSeeker/cvDesign";
+import { CV_FONTS_BY_ID } from "./fonts";
 
 export interface WorkExperience {
   jobTitle: string;
@@ -69,6 +72,14 @@ export type PageFormat = (typeof CV_PAGE_FORMATS)[number];
 export type DateFormat = (typeof CV_DATE_FORMATS)[number];
 export type LineHeight = (typeof CV_LINE_HEIGHTS)[number];
 export type PageMargin = (typeof CV_MARGINS)[number];
+export type HeaderAlign = (typeof CV_HEADER_ALIGNS)[number];
+export type TextAlign = (typeof CV_TEXT_ALIGNS)[number];
+export type HeadingStyle = (typeof CV_HEADING_STYLES)[number];
+export type SkillsStyle = (typeof CV_SKILLS_STYLES)[number];
+export type NameSize = (typeof CV_NAME_SIZES)[number];
+export type BulletStyle = (typeof CV_BULLET_STYLES)[number];
+export type DatePosition = (typeof CV_DATE_POSITIONS)[number];
+export type PhotoShape = (typeof CV_PHOTO_SHAPES)[number];
 
 /** Reorderable resume body sections (header, contact & summary stay fixed at the top). */
 export type SectionKey = (typeof CV_SECTION_KEYS)[number];
@@ -98,6 +109,76 @@ export interface FormattingOptions {
   margin: PageMargin;
   /** Order of the reorderable body sections. Falls back to DEFAULT_SECTION_ORDER. */
   sectionOrder?: SectionKey[];
+  /* Layout controls — optional so older saved designs still load; read them
+     through getCvLayout(), which fills the defaults. "auto" = template's own. */
+  headerAlign?: HeaderAlign;
+  textAlign?: TextAlign;
+  headingStyle?: HeadingStyle;
+  skillsStyle?: SkillsStyle;
+  nameSize?: NameSize;
+  bulletStyle?: BulletStyle;
+  datePosition?: DatePosition;
+  photoShape?: PhotoShape;
+}
+
+/** The layout controls with defaults filled in. */
+export interface CvLayout {
+  headerAlign: HeaderAlign;
+  textAlign: TextAlign;
+  headingStyle: HeadingStyle;
+  skillsStyle: SkillsStyle;
+  nameSize: NameSize;
+  bulletStyle: BulletStyle;
+  datePosition: DatePosition;
+  photoShape: PhotoShape;
+}
+
+export const DEFAULT_CV_LAYOUT: CvLayout = {
+  headerAlign: "auto",
+  textAlign: "left",
+  headingStyle: "auto",
+  skillsStyle: "auto",
+  nameSize: "medium",
+  bulletStyle: "dot",
+  datePosition: "auto",
+  photoShape: "circle",
+};
+
+/** Layout controls for rendering, shared by the on-screen templates and the PDF. */
+export function getCvLayout(formatting: FormattingOptions): CvLayout {
+  return {
+    headerAlign: formatting.headerAlign ?? DEFAULT_CV_LAYOUT.headerAlign,
+    textAlign: formatting.textAlign ?? DEFAULT_CV_LAYOUT.textAlign,
+    headingStyle: formatting.headingStyle ?? DEFAULT_CV_LAYOUT.headingStyle,
+    skillsStyle: formatting.skillsStyle ?? DEFAULT_CV_LAYOUT.skillsStyle,
+    nameSize: formatting.nameSize ?? DEFAULT_CV_LAYOUT.nameSize,
+    bulletStyle: formatting.bulletStyle ?? DEFAULT_CV_LAYOUT.bulletStyle,
+    datePosition: formatting.datePosition ?? DEFAULT_CV_LAYOUT.datePosition,
+    photoShape: formatting.photoShape ?? DEFAULT_CV_LAYOUT.photoShape,
+  };
+}
+
+/** Name font multiplier: small / medium / large. */
+export function getNameScale(formatting: FormattingOptions): number {
+  const size = getCvLayout(formatting).nameSize;
+  return size === "small" ? 0.82 : size === "large" ? 1.22 : 1;
+}
+
+/** Bullet character for description lists. */
+export function getBulletChar(formatting: FormattingOptions): string {
+  const style = getCvLayout(formatting).bulletStyle;
+  return style === "dash" ? "–" : style === "arrow" ? "›" : "•";
+}
+
+/** Corner radius for a photo of `size`: circle, softly rounded, or square. */
+export function getPhotoRadius(formatting: FormattingOptions, size: number): number {
+  const shape = getCvLayout(formatting).photoShape;
+  return shape === "square" ? 0 : shape === "rounded" ? Math.round(size * 0.18) : size / 2;
+}
+
+/** Template default if "auto", otherwise the seeker's choice. */
+export function pickAuto<T extends string>(choice: T | "auto", templateDefault: T): T {
+  return choice === "auto" ? templateDefault : choice;
 }
 
 /* ── Template Definitions ── */
@@ -139,13 +220,12 @@ export const THEME_COLORS: ThemeColor[] = [
   { id: "slate",   label: "Slate",   primary: "#475569", light: "#f8fafc", css: "text-slate-600",   bg: "bg-slate-600",   border: "border-slate-600" },
 ];
 
-export const FONT_OPTIONS: { value: FontFamily; label: string; stack: string }[] = [
-  { value: "inter",        label: "Inter",        stack: "'Inter', system-ui, sans-serif" },
-  { value: "georgia",      label: "Georgia",      stack: "'Georgia', serif" },
-  { value: "merriweather", label: "Merriweather", stack: "'Merriweather', serif" },
-  { value: "roboto",       label: "Roboto",       stack: "'Roboto', sans-serif" },
-  { value: "playfair",     label: "Playfair",     stack: "'Playfair Display', serif" },
-];
+/** Same font files on screen and in the PDF (see ./fonts.ts). */
+export const FONT_OPTIONS: { value: FontFamily; label: string; stack: string }[] =
+  (["inter", "georgia", "merriweather", "roboto", "playfair"] as const).map((value) => {
+    const font = CV_FONTS_BY_ID[value];
+    return { value, label: font.label, stack: `'${font.family}', ${font.generic}` };
+  });
 
 export const TEMPLATES: TemplateDefinition[] = [
   { id: "classic",      name: "Classic",      description: "Clean professional layout with blue accents",     tier: "free", style: "minimal", atsFriendly: true },
@@ -184,6 +264,7 @@ export const DEFAULT_FORMATTING: FormattingOptions = {
   lineHeight: "normal",
   margin: "normal",
   sectionOrder: DEFAULT_SECTION_ORDER,
+  ...DEFAULT_CV_LAYOUT,
 };
 
 /** The look the builder opens with. */
@@ -348,6 +429,15 @@ export const LINE_HEIGHT_OPTIONS: { value: LineHeight; label: string }[] = [
   { value: "relaxed", label: "Relaxed" },
 ];
 
+export const HEADER_ALIGN_OPTIONS: HeaderAlign[] = [...CV_HEADER_ALIGNS];
+export const TEXT_ALIGN_OPTIONS: TextAlign[] = [...CV_TEXT_ALIGNS];
+export const HEADING_STYLE_OPTIONS: HeadingStyle[] = [...CV_HEADING_STYLES];
+export const SKILLS_STYLE_OPTIONS: SkillsStyle[] = [...CV_SKILLS_STYLES];
+export const NAME_SIZE_OPTIONS: NameSize[] = [...CV_NAME_SIZES];
+export const BULLET_STYLE_OPTIONS: BulletStyle[] = [...CV_BULLET_STYLES];
+export const DATE_POSITION_OPTIONS: DatePosition[] = [...CV_DATE_POSITIONS];
+export const PHOTO_SHAPE_OPTIONS: PhotoShape[] = [...CV_PHOTO_SHAPES];
+
 export const MARGIN_OPTIONS: { value: PageMargin; label: string }[] = [
   { value: "narrow", label: "Narrow" },
   { value: "normal", label: "Normal" },
@@ -359,9 +449,13 @@ export function getLineHeight(formatting: FormattingOptions): number {
   return formatting.lineHeight === "tight" ? 1.3 : formatting.lineHeight === "relaxed" ? 1.7 : 1.5;
 }
 
-/** Page padding in px for the on-screen preview. */
+/**
+ * Page padding for the on-screen sheet. The web templates size text with the
+ * same numbers the PDF uses in points (9.5px title ↔ 9.5pt title), so the
+ * sheet is laid out in point units too: same margin number as the PDF.
+ */
 export function getMarginPx(formatting: FormattingOptions): number {
-  return formatting.margin === "narrow" ? 24 : formatting.margin === "wide" ? 56 : 40;
+  return getMarginPt(formatting);
 }
 
 /** Page padding in PDF points (1pt ≈ 1.333px). */
@@ -369,9 +463,13 @@ export function getMarginPt(formatting: FormattingOptions): number {
   return formatting.margin === "narrow" ? 24 : formatting.margin === "wide" ? 44 : 34;
 }
 
-/** Preview sheet width in px (height grows with content). A4 vs Letter aspect. */
+/**
+ * On-screen sheet width, in the PDF's point units (A4 595pt, Letter 612pt) so
+ * text, margins and line wraps land where they land in the downloaded PDF.
+ * The sheet is then scaled to fit its frame.
+ */
 export function getPageWidthPx(formatting: FormattingOptions): number {
-  return formatting.pageFormat === "letter" ? 816 : 794; // 96dpi: Letter 8.5in, A4 8.27in
+  return formatting.pageFormat === "letter" ? 612 : 595;
 }
 
 /** react-pdf page size string. */

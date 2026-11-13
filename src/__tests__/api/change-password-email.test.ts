@@ -45,6 +45,9 @@ jest.mock("bcryptjs", () => ({
   hash: jest.fn().mockResolvedValue("new-hash"),
 }));
 
+// Ending the account's sessions has its own test (passwordChangeEndsSessions).
+jest.mock("@/lib/auth/sessionCutOff", () => ({ endAllSessions: jest.fn().mockResolvedValue(undefined) }));
+
 import { POST } from "@/app/api/users/change-password/route";
 
 function changePassword() {

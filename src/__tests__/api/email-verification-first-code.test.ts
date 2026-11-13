@@ -33,6 +33,12 @@ jest.mock("bcryptjs", () => ({
   default: { genSalt: jest.fn().mockResolvedValue("salt"), hash: jest.fn().mockResolvedValue("hash") },
 }));
 
+// Pinned in emailedLinkPasswordHolder.test.ts; its User calls are not mocked here.
+jest.mock("@/lib/auth/unprovenPassword", () => ({
+  unprovenAccessCleanup: () => ({ $set: {}, $unset: {} }),
+  revokeUnprovenAccessElsewhere: jest.fn().mockResolvedValue(undefined),
+}));
+
 let sessionEmail: string | null = "agent@mployedin.com";
 jest.mock("@/lib/auth/config", () => ({
   auth: jest.fn(async () => (sessionEmail ? { user: { email: sessionEmail } } : null)),
@@ -40,10 +46,12 @@ jest.mock("@/lib/auth/config", () => ({
 
 const findOne = jest.fn();
 const findByIdAndUpdate = jest.fn().mockResolvedValue(null);
+const updateOne = jest.fn().mockResolvedValue({ modifiedCount: 1 });
 jest.mock("@/models/User", () => ({
   User: {
     findOne: (...a: unknown[]) => findOne(...a),
     findByIdAndUpdate: (...a: unknown[]) => findByIdAndUpdate(...a),
+    updateOne: (...a: unknown[]) => updateOne(...a),
   },
 }));
 
@@ -167,7 +175,7 @@ describe("reset-password", () => {
     found(user);
     const res = await resetPassword(post("/api/auth/reset-password", { token: "setup-token", password: "Str0ng!Passw0rd#" }));
     expect(res.status).toBe(200);
-    expect(user.isEmailVerified).toBe(true);
-    expect(user.save).toHaveBeenCalled();
+    // Unconfirmed: one write sets the password and confirms the address.
+    expect(updateOne.mock.calls[0][1].$set).toMatchObject({ isEmailVerified: true });
   });
 });

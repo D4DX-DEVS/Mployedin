@@ -340,6 +340,12 @@ export default function UnifiedCandidatePage() {
                     <p className="font-medium">{candidate.noticePeriod} days</p>
                   </div>
                 )}
+                {typeof candidate.openToRelocation === "boolean" && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">{t("relocation")}</span>
+                    <p className="font-medium">{candidate.openToRelocation ? t("relocationOpen") : t("relocationNo")}</p>
+                  </div>
+                )}
                 {candidate.preferredJobType && (
                   <div>
                     <span className="text-xs text-muted-foreground">{t("preferredType")}</span>

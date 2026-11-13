@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Info, UserSearch } from "lucide-react";
+import { ChevronDown, CircleAlert, Info, UserSearch } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { ListSkeleton } from "@/components/shared/ListSkeleton";
@@ -52,6 +52,7 @@ export function JobMatches({ jobId, role, applicantsHref, emptyAction, onViewPro
   const { data, isLoading, isError, error, refetch, isFetching } = useJobMatchingCandidates(jobId, page, pageSize);
   const forbidden = error instanceof MatchingRequestError && error.status === 403;
   const [inviting, setInviting] = useState<MatchingCandidate | null>(null);
+  const [howOpen, setHowOpen] = useState(false);
 
   const jobActive = data?.job.status === "active";
 
@@ -69,13 +70,13 @@ export function JobMatches({ jobId, role, applicantsHref, emptyAction, onViewPro
     <div className="space-y-4 lg:space-y-6">
       {header?.(data, isFetching && !isLoading)}
 
-      <section aria-labelledby={`matches-how-${jobId}`} className="flex gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 text-sm">
+      {/* The numbers stay in view; the explanation folds behind its heading.
+          Open by default it was a 280px box above the list on a phone. */}
+      <section aria-labelledby={`matches-how-${jobId}`} className="flex gap-3 rounded-2xl border border-border/70 bg-muted/20 px-4 py-3 text-sm">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-        <div className="min-w-0 space-y-1">
-          <h2 id={`matches-how-${jobId}`} className="font-semibold text-foreground">{t("howTitle")}</h2>
-          <p className="text-muted-foreground">{copy.how}</p>
+        <div className="min-w-0 flex-1 space-y-1">
           {data && (
-            <p className="text-muted-foreground">
+            <p className="text-foreground">
               {t("poolStats", {
                 pool: formatCount(data.poolSize),
                 shown: formatCount(data.total),
@@ -88,9 +89,30 @@ export function JobMatches({ jobId, role, applicantsHref, emptyAction, onViewPro
               )}
             </p>
           )}
-          {data && !jobActive && <p className="font-medium text-foreground">{t("inviteNeedsActive")}</p>}
+          <h2 id={`matches-how-${jobId}`}>
+            <button
+              type="button"
+              onClick={() => setHowOpen((open) => !open)}
+              aria-expanded={howOpen}
+              aria-controls={`matches-how-body-${jobId}`}
+              className="tap-target-row inline-flex items-center gap-1 rounded-md text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {t("howTitle")}
+              <ChevronDown className={`size-4 transition-transform ${howOpen ? "rotate-180" : ""}`} aria-hidden />
+            </button>
+          </h2>
+          <p id={`matches-how-body-${jobId}`} hidden={!howOpen} className="text-muted-foreground">{copy.how}</p>
         </div>
       </section>
+
+      {/* Said once here. Each card used to carry a greyed Invite button
+          instead: ten buttons on a page that could not be pressed. */}
+      {data && !jobActive && data.data.length > 0 && (
+        <p role="note" className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          {t("inviteNeedsActive")}
+        </p>
+      )}
 
       {isLoading ? (
         <ListSkeleton count={4} itemClassName="h-44" />
@@ -107,9 +129,10 @@ export function JobMatches({ jobId, role, applicantsHref, emptyAction, onViewPro
         />
       ) : (
         <>
-          <ul className="space-y-3" aria-label={t("listLabel")}>
+          {/* One card per row left most of an 820px or 1440px row empty. */}
+          <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-label={t("listLabel")}>
             {data.data.map((candidate, i) => (
-              <li key={candidate.jobSeekerId}>
+              <li key={candidate.jobSeekerId} className="min-w-0">
                 <MatchCandidateCard
                   candidate={candidate}
                   // From the page the data came from: while the next page

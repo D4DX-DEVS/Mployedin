@@ -12,9 +12,8 @@ import { HIDDEN_COMPANY_NAME, displayCompanyLogo, isCompanyHidden } from "@/lib/
 import { JobSeekerHomePage } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import type { InitialHomeData } from "@/components/features/job-seeker/home/JobSeekerHomePage";
 import { setRequestLocale } from "next-intl/server";
+import { ACTIVE_APPLICATION_STATUSES } from "@/components/features/job-seeker/home/homeData";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export default async function JobSeekerPage({
   params,
@@ -39,7 +38,10 @@ export default async function JobSeekerPage({
       "_id userId skills preferredCountries preferredRoles preferredSalary preferredJobType " +
         "experience education languages summary profileCompleteness cvFileUrl cv " +
         "nationality currentLocation preferredLocations linkedin socialLinks " +
-        "totalExperienceYears workStatus"
+        "totalExperienceYears workStatus " +
+        // The home's "CV sent when you apply" card: which CV the apply rule picks.
+        "documents.id documents.name documents.category documents.uploadedAt documents.builtHash documents.size " +
+        "preferredCvId cvDesign"
     )
     .lean();
 
@@ -71,7 +73,11 @@ export default async function JobSeekerPage({
   }
 
   const countPromises: Promise<unknown>[] = [
-    Application.countDocuments({ jobSeekerId: seekerId }),
+    // One pass for the home's tiles: total, still in play, at interview.
+    Application.aggregate<{ _id: string; count: number }>([
+      { $match: { jobSeekerId: seekerId } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
     Interview.countDocuments({
       jobSeekerId: seekerId,
       scheduledAt: { $gte: now },
@@ -85,10 +91,11 @@ export default async function JobSeekerPage({
       viewedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
     }),
     Application.find({ jobSeekerId: seekerId })
-      .select("jobId status createdAt")
-      .populate({ path: "jobId", select: "title employerId discloseCompany", populate: { path: "employerId", select: "companyName logo" } })
-      .sort({ createdAt: -1 })
-      .limit(5)
+      .select("jobId status createdAt updatedAt statusHistory.changedAt")
+      .populate({ path: "jobId", select: "title employerId discloseCompany location", populate: { path: "employerId", select: "companyName logo" } })
+      // Latest change first: the home lists what changed, not what was sent.
+      .sort({ updatedAt: -1 })
+      .limit(8)
       .lean(),
   ];
 
@@ -121,15 +128,42 @@ export default async function JobSeekerPage({
     countPromises.push(Promise.resolve(0));
   }
 
-  const [appCount, interviewCount, viewCount, appliedApps, pendingOfferCount, unreadMessageCount] = await Promise.all(countPromises);
+  const [statusCounts, interviewCount, viewCount, appliedApps, pendingOfferCount, unreadMessageCount] = await Promise.all(countPromises);
 
   // No job cards here: the client loads them from /api/jobs/recommended (same
   // engine, same pool) after the page paints, so the page never waits on the
   // 200-job pool query and its scoring.
+  const byStatus = new Map((statusCounts as Array<{ _id: string; count: number }>).map((row) => [row._id, row.count]));
+  const countOf = (statuses: readonly string[]) => statuses.reduce((sum, status) => sum + (byStatus.get(status) ?? 0), 0);
+  const appCount = [...byStatus.values()].reduce((sum, count) => sum + count, 0);
+
+  // The built CV's design is only needed as a yes/no; the documents only as
+  // what the CV card names (no file URLs reach the page).
+  type HomeDoc = { id?: string; name?: string; category?: string; uploadedAt?: Date; builtHash?: string };
+  const { cvDesign, documents: rawDocuments, ...profileFields } = seeker as unknown as Record<string, unknown> & {
+    cvDesign?: unknown;
+    documents?: HomeDoc[];
+  };
+  const documents: HomeDoc[] = rawDocuments ?? [];
+
   const initialData: InitialHomeData = {
-    profile: JSON.parse(JSON.stringify(seeker)),
+    profile: {
+      ...JSON.parse(JSON.stringify(profileFields)),
+      hasBuiltCv: Boolean(cvDesign),
+      resumes: documents
+        .filter((d) => d.category === "resume" && d.id)
+        .map((d) => ({
+          id: String(d.id),
+          name: String(d.name ?? ""),
+          uploadedAt: d.uploadedAt ? new Date(d.uploadedAt).toISOString() : undefined,
+          builtHash: d.builtHash || undefined,
+        })),
+    },
     stats: {
-      applicationsSent: { count: appCount as number },
+      applicationsSent: { count: appCount },
+      activeApplications: { count: countOf(ACTIVE_APPLICATION_STATUSES) },
+      // The seeker's Interview step: Selected is the employer's sorting.
+      interviewing: { count: countOf(["interview_scheduled", "selected"]) },
       upcomingInterviews: { count: interviewCount as number },
       recruiterViews: { total: viewCount as number },
       pendingOffers: { count: Math.max(0, Number(pendingOfferCount) || 0) },
@@ -140,6 +174,10 @@ export default async function JobSeekerPage({
       const emp = job?.employerId as { companyName?: string; logo?: string } | null;
       const disclosure = job as { discloseCompany?: boolean } | null;
       const appliedDate = app.createdAt instanceof Date ? app.createdAt : new Date(String(app.createdAt ?? ""));
+      const history = (app.statusHistory as Array<{ changedAt?: Date }> | undefined) ?? [];
+      const lastChange = history.at(-1)?.changedAt;
+      const changedDate = lastChange ? new Date(lastChange) : appliedDate;
+      const location = job?.location as { city?: string; country?: string } | undefined;
       return {
         _id: String(job?._id ?? ""),
         title: String(job?.title ?? ""),
@@ -147,6 +185,8 @@ export default async function JobSeekerPage({
         companyLogo: displayCompanyLogo(disclosure, emp?.logo),
         status: String(app.status ?? "applied"),
         appliedAt: isNaN(appliedDate.getTime()) ? undefined : appliedDate.toISOString(),
+        changedAt: isNaN(changedDate.getTime()) ? undefined : changedDate.toISOString(),
+        place: [location?.city, location?.country].filter(Boolean).join(", ") || undefined,
       };
     })
       .filter((a) => a._id)

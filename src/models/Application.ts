@@ -102,6 +102,12 @@ export interface IApplication extends Document {
   aiMatchNotifiedAt?: Date;
   /** Set the first time the employer opens this application — drives the "New" badge. */
   viewedByEmployerAt?: Date;
+  /** Set when the employer requests screening questions be answered. */
+  screeningRequestedAt?: Date;
+  /** User ID of who requested the screening. */
+  screeningRequestedBy?: mongoose.Types.ObjectId;
+  /** Set when the seeker completes the screening answers. */
+  screeningAnsweredAt?: Date;
   /**
    * The job workflow stage the candidate sits in, when the job's workflow has
    * several stages for the current status. Unset or unknown = the first stage
@@ -117,13 +123,18 @@ export interface IApplication extends Document {
    * is the employer's ATS ranking (lib/matching/applicantScore.ts); absent on
    * rows scored before 2026-09-24, where aiMatchScore is the engine number.
    */
-  seekerMatchScore?: number;
+  /** Null: scored, but the profile gave the engine nothing to read. */
+  seekerMatchScore?: number | null;
   /** Job skills the candidate has / lacks, by the engine's evidence rules. */
   matchedSkills?: string[];
   missingSkills?: string[];
   /** The requirements checklist and its roll-up; Shortlist Top excludes "not_met". */
   qualifications?: IQualificationCheck[];
   requirementsStatus?: "met" | "not_met" | "unverified";
+  /** Each job requirement against this applicant (lib/matching/requirementReport.ts). */
+  requirementReport?: import("@/lib/matching/requirementReport").RequirementReport;
+  /** "Best fit" order: 3 meets every must-have, 2 needs checking, 1 misses one. */
+  mustHaveRank?: number;
   /** True when aiMatchScore came from the employer's saved weights. */
   weightsApplied?: boolean;
   /** When the ATS scoring last ran — on apply, on "Score", or after a job edit. */
@@ -205,6 +216,9 @@ const ApplicationSchema = new Schema<IApplication>(
     scoredVia: String,
     aiMatchNotifiedAt: Date,
     viewedByEmployerAt: Date,
+    screeningRequestedAt: Date,
+    screeningRequestedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    screeningAnsweredAt: Date,
     stageId: String,
     matchBreakdown: {
       skills: Number,
@@ -234,6 +248,8 @@ const ApplicationSchema = new Schema<IApplication>(
       _id: false,
     }],
     requirementsStatus: { type: String, enum: ["met", "not_met", "unverified"] },
+    requirementReport: { type: Schema.Types.Mixed },
+    mustHaveRank: { type: Number },
     weightsApplied: Boolean,
     scoredAt: Date,
     behaviorSignals: {
@@ -348,6 +364,7 @@ ApplicationSchema.index({ status: 1 });
 ApplicationSchema.index({ aiMatchScore: -1 });
 // Shortlist Top: one job's open applicants, qualified first, best score first.
 ApplicationSchema.index({ jobId: 1, status: 1, requirementsStatus: 1, aiMatchScore: -1 });
+ApplicationSchema.index({ jobId: 1, mustHaveRank: -1, aiMatchScore: -1 });
 ApplicationSchema.index({ appliedAt: -1 });
 
 export const Application =

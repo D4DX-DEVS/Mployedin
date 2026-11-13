@@ -209,6 +209,30 @@ describe("POST /api/auth/apply-otp/start", () => {
     expect(mockSendEmail).not.toHaveBeenCalled();
   });
 
+  describe("log in with a code (no name sent)", () => {
+    // The login page asks for the e-mail only. It may sign a seeker in, never
+    // make an account: one made here would be named after the e-mail's local part.
+    it("existing job_seeker: emails a code", async () => {
+      existingUser({});
+
+      const res = await POST(otpReq({ email: "jane@example.com" }));
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ sent: true });
+      expect(mockPendingSignin.findOneAndUpdate).toHaveBeenCalledTimes(1);
+      expect(mockSendEmail.mock.calls[0][0].html).toContain("Hi Jane,");
+    });
+
+    it("unknown email: same 200 body, no code stored, no email", async () => {
+      noUser();
+
+      const res = await POST(otpReq({ email: "nobody@example.com" }));
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ sent: true });
+      expect(mockPendingSignin.findOneAndUpdate).not.toHaveBeenCalled();
+      expect(mockSendEmail).not.toHaveBeenCalled();
+    });
+  });
+
   it("returns 400 INVALID_EMAIL for a malformed email", async () => {
     const res = await POST(otpReq({ email: "not-an-email" }));
     expect(res.status).toBe(400);
@@ -247,7 +271,7 @@ describe("POST /api/auth/apply-otp/start", () => {
     noUser();
     mockSendEmail.mockRejectedValueOnce(new Error("SMTP error"));
 
-    const res = await POST(otpReq({ email: "test@example.com" }));
+    const res = await POST(otpReq({ email: "test@example.com", name: "Test Person" }));
     expect(res.status).toBe(502);
     expect((await res.json()).error).toBe("EMAIL_FAILED");
     expect(mockUser.create).not.toHaveBeenCalled();

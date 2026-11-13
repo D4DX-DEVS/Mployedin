@@ -30,7 +30,8 @@
 
 import { countryKey } from "@/lib/i18n/locations";
 import { workModePenalty, type SeekerProfile, type JobProfile } from "@/lib/matchScore";
-import { SALARY_TOLERANCE, EXPERIENCE_SLACK_YEARS } from "@/lib/matching/constants";
+import { SALARY_TOLERANCE } from "@/lib/matching/constants";
+import { AED_EXCHANGE_RATES, convertCurrency } from "@/lib/currency";
 
 export type IneligibleReason =
   | "country"
@@ -61,6 +62,27 @@ export function monthlySalaryMidpoint(job: JobProfile): number {
   if (job.salaryPeriod === "lpa" && mid > 0 && mid < 1000) mid *= 100_000;
   const perYear = job.salaryPeriod === "yearly" || job.salaryPeriod === "lpa";
   return perYear ? mid / 12 : mid;
+}
+
+/**
+ * The seeker's monthly pay expectation in the job's currency, or `null` when
+ * the two cannot be compared.
+ *
+ * Same currency (or one side silent on currency) compares as-is. Different
+ * currencies convert through the indicative AED rates — before this, an AED
+ * seeker was never checked against an INR or KWD job at all (454 of 729 live
+ * pairs where both sides state pay, 2026-11-13). A currency missing from the
+ * rate table stays incomparable: `convertCurrency` would silently treat it as
+ * 1:1, and a wrong rate must never hide a job. The rates are approximate, which
+ * SALARY_TOLERANCE's 20% slack absorbs.
+ */
+export function expectationInJobCurrency(seeker: SeekerProfile, job: JobProfile): number | null {
+  if (!(seeker.salaryExpectation > 0)) return null;
+  const seekerCur = (seeker.salaryCurrency ?? "").toUpperCase().trim();
+  const jobCur = (job.salaryCurrency ?? "").toUpperCase().trim();
+  if (!seekerCur || !jobCur || seekerCur === jobCur) return seeker.salaryExpectation;
+  if (!(seekerCur in AED_EXCHANGE_RATES) || !(jobCur in AED_EXCHANGE_RATES)) return null;
+  return convertCurrency(seeker.salaryExpectation, seekerCur, jobCur);
 }
 
 /**
@@ -130,49 +152,22 @@ export function checkEligibility(seeker: SeekerProfile, job: JobProfile): Eligib
     return { eligible: false, reason: "work_mode" };
   }
 
-  // ── Experience ─────────────────────────────────────────────────────────
-  // An employer requirement, so it resolves three ways. Unknown does not pass:
-  // relevance would score the missing years at a neutral 0.5, leaving a ceiling
-  // of 92 — comfortably over any sane threshold — for a candidate we cannot
-  // confirm meets the stated minimum at all.
-  if (job.minExp > 0) {
-    if (seeker.experienceKnown === false) {
-      return { eligible: false, reason: "experience_unknown" };
-    }
-    // Under-qualified by more than a year. Being *over*-qualified is not a
-    // disqualification — that is a ranking signal, handled in relevance.
-    if (seeker.experienceYears < job.minExp - EXPERIENCE_SLACK_YEARS) {
-      return { eligible: false, reason: "experience" };
-    }
-  }
+  // ── Experience and education: never gates (decided 2026-11-12, D6/D15) ──
+  // Both are employer requirements, scored in stage 2 against the job's own
+  // wording (requirementParts.ts) and shown to the seeker as Met / Partly /
+  // Missing / Needs verification. A seeker who falls short still sees the job
+  // with a lower score; the email rule (recommendJobsFor) is where a missed or
+  // unverified must-have holds a job back. The reason values stay in the type
+  // for old log rows.
 
   // ── Salary ─────────────────────────────────────────────────────────────
-  // Both sides stated a figure, in a currency we can actually compare, and the
-  // job pays materially less than the seeker asked for.
-  if (seeker.salaryExpectation > 0) {
+  // Both sides stated a figure, in currencies we can compare (converted when
+  // they differ), and the job pays materially less than the seeker asked for.
+  const expected = expectationInJobCurrency(seeker, job);
+  if (expected != null) {
     const mid = monthlySalaryMidpoint(job);
-    const seekerCur = (seeker.salaryCurrency ?? "").toUpperCase().trim();
-    const jobCur = (job.salaryCurrency ?? "").toUpperCase().trim();
-    const comparable = !seekerCur || !jobCur || seekerCur === jobCur;
-    if (mid > 0 && comparable && mid < seeker.salaryExpectation * SALARY_TOLERANCE) {
+    if (mid > 0 && mid < expected * SALARY_TOLERANCE) {
       return { eligible: false, reason: "salary" };
-    }
-  }
-
-  // ── Education ──────────────────────────────────────────────────────────
-  // The other employer requirement, so the same three-way rule. Education is
-  // scored nowhere in stage 2, so an unknown qualification used to skip the
-  // only check there was.
-  const required = job.requiredEducationLevel ?? 0;
-  const held = seeker.educationLevel ?? 0;
-  if (required > 0) {
-    if (held === 0) {
-      return { eligible: false, reason: "education_unknown" };
-    }
-    // Two or more qualification ranks short. A one-rank gap stays a ranking
-    // penalty, because employers routinely over-state the requirement.
-    if (required - held >= 2) {
-      return { eligible: false, reason: "education" };
     }
   }
 

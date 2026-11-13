@@ -13,6 +13,7 @@ import { validateBody } from "@/lib/validators";
 import { jobSeekerAdminUpdateSchema } from "@/lib/validators/job-seekers";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { applicationsBySeeker } from "@/lib/jobseekers/hiringStatus.server";
+import { ensureIndustryClassified } from "@/lib/jobseekers/ensureIndustryClassified";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -103,7 +104,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (accessError) return accessError;
 
   const body = await validateBody(req, jobSeekerAdminUpdateSchema) as Record<string, unknown>;
-  const allowed = ["nationality", "currentLocation", "summary", "skills", "experience", "education", "languages"];
+  const allowed = ["nationality", "currentLocation", "summary", "skills", "experience", "education", "languages", "industry", "industrySource"];
   const update: Record<string, unknown> = {};
   for (const k of allowed) if (body[k] !== undefined) update[k] = body[k];
 
@@ -121,6 +122,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // legacy profiles may contain values that fail current schema validation;
   // validating the whole doc here would throw a 500 on an unrelated field.
   await seeker.save({ validateModifiedOnly: true });
+
+  // Auto-classify industry if not manually set (respects industrySource="manual")
+  await ensureIndustryClassified(seeker);
 
   await logActivity({
     ...actorFromCtx(ctx),

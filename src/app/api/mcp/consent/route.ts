@@ -114,4 +114,5 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
 // impersonating one) runs as that employer inside withAuth. Without this, their
 // approval would mint a 90-day token in the EMPLOYER's name that outlives the
 // tenant-view session and any later reassignment. Consent is always the actor's own.
-export const POST = withAuth(postHandler, { skipTenantView: true });
+// freshSession: an approval outlives the session that gives it.
+export const POST = withAuth(postHandler, { skipTenantView: true, freshSession: true });

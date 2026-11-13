@@ -232,7 +232,6 @@ export default function AdminSubscriptionsPage() {
                 value={searchQuery}
                 onChange={setSearchQuery}
                 placeholder={t("searchPlaceholder")}
-                className="max-sm:basis-0"
               />
             </InlineFilterBar>
             {filteredResults.length > 0 && !selectedUser && (
@@ -526,7 +525,6 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
               value={searchInput}
               onChange={(v) => { setSearchInput(v); resetPage(); }}
               placeholder={t("searchPlaceholder")}
-              className="max-sm:basis-0"
             />
             <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
             {expiring && (

@@ -22,6 +22,8 @@ interface PopulatedApplication {
   jobSeekerId: unknown;
   status: string;
   updatedAt?: Date;
+  appliedAt?: Date;
+  statusHistory?: { changedAt?: Date }[];
   jobId?: { _id: unknown; title?: string; employerId?: { companyName?: string } | null } | null;
 }
 
@@ -38,10 +40,14 @@ export async function applicationsBySeeker(seekerIds: unknown[]): Promise<Map<st
   void Job;
   void Employer;
   const rows = (await Application.find({ jobSeekerId: { $in: ids } })
-    .select("jobSeekerId jobId status updatedAt")
+    .select({ jobSeekerId: 1, jobId: 1, status: 1, updatedAt: 1, appliedAt: 1, statusHistory: { $slice: -1 } })
     .populate({ path: "jobId", select: "title employerId", populate: { path: "employerId", select: "companyName" } })
-    .sort({ updatedAt: -1 })
     .lean()) as unknown as PopulatedApplication[];
+  // When the status last changed — not `updatedAt`, which a rescore or a note
+  // also moves (every row read "Updated today" after a scoring run).
+  const statusAt = (r: PopulatedApplication): Date =>
+    r.statusHistory?.[0]?.changedAt ?? r.appliedAt ?? r.updatedAt ?? new Date(0);
+  rows.sort((a, b) => statusAt(b).getTime() - statusAt(a).getTime());
   for (const r of rows) {
     if (!r.jobId?.title) continue;
     const key = String(r.jobSeekerId);
@@ -52,7 +58,7 @@ export async function applicationsBySeeker(seekerIds: unknown[]): Promise<Map<st
       jobTitle: r.jobId.title,
       company: r.jobId.employerId?.companyName,
       status: r.status,
-      updatedAt: (r.updatedAt ?? new Date(0)).toISOString(),
+      updatedAt: new Date(statusAt(r)).toISOString(),
     });
     out.set(key, list);
   }

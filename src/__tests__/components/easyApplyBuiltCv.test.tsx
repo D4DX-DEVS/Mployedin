@@ -154,3 +154,19 @@ describe("EasyApplyFlowDialog — CV built on Mployedin", () => {
     expect(onApplied).not.toHaveBeenCalled();
   });
 });
+
+describe("EasyApplyFlowDialog — a seeker with no CV", () => {
+  it("applies with the Mployedin CV made from their details, so no application goes without a CV", async () => {
+    me.hasBuiltCv = false;
+    const { onApplied } = open();
+    expect(await screen.findByRole("button", { name: /Your Mployedin CV/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Preview or edit it/ })).toHaveAttribute("target", "_blank");
+    expect(screen.getByRole("button", { name: /Upload your own CV instead/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Submit application/ }));
+
+    await waitFor(() => expect(onApplied).toHaveBeenCalledWith("job1"));
+    expect(ensureBuiltCvDocument).toHaveBeenCalledTimes(1);
+    expect(applicationBody()).toMatchObject({ documentIds: ["built-1"] });
+  });
+});

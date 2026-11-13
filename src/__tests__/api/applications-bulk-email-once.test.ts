@@ -99,7 +99,7 @@ describe("bulk stage moves email each candidate once", () => {
   it.each([
     ["a rejection", { action: "reject" }, notifyRejected, ["seeker_user", "Nurse", "app_1", { sendEmail: false, sendPush: true }]],
     ["an offer", { action: "move_stage", params: { targetStage: "offer" } }, notifyOfferMade, ["seeker_user", "Nurse", "MPLOYEDIN", "app_1", { sendEmail: false }]],
-    ["any other stage", { action: "move_stage", params: { targetStage: "shortlisted" } }, notifyStatusChange, ["seeker_user", "Nurse", "shortlisted", "app_1", { sendEmail: false }]],
+    ["any other stage", { action: "move_stage", params: { targetStage: "interview_scheduled" } }, notifyStatusChange, ["seeker_user", "Nurse", "interview_scheduled", "app_1", { sendEmail: false }]],
   ])("%s: the direct email goes out and notify() asks for no email copy", async (_label, body, helper, args) => {
     const b = body as { action: string; params?: Record<string, unknown> };
     const res = await bulk({ ...b, params: { ...b.params, notifyCandidate: true } });
@@ -107,6 +107,23 @@ describe("bulk stage moves email each candidate once", () => {
     expect(sendEmail).toHaveBeenCalledTimes(1);
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "sara@example.com" }));
     expect(helper).toHaveBeenCalledWith(...args);
+  });
+
+  // Shortlisted and Selected are steps the seeker never sees (they stay at In
+  // review / Interview), so only the employer's own wording goes out.
+  it.each(["shortlisted", "selected"])("a move to %s sends no default status email", async (targetStage) => {
+    const res = await bulk({ action: "move_stage", params: { targetStage, notifyCandidate: true } });
+    expect(res.status).toBe(200);
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("a move to shortlisted still sends an email the employer wrote", async () => {
+    const res = await bulk({
+      action: "move_stage",
+      params: { targetStage: "shortlisted", notifyCandidate: true, emailSubject: "Next steps", emailBody: "<p>Hi {{candidateName}}</p>" },
+    });
+    expect(res.status).toBe(200);
+    expect(sendEmail).toHaveBeenCalledTimes(1);
   });
 
   it("sends neither when the employer chose not to notify the candidate", async () => {

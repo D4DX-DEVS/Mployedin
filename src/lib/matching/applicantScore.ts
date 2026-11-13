@@ -22,8 +22,9 @@
  * Pure: the caller loads documents (see scoreApplication.ts).
  */
 
-import { DEFAULT_WEIGHTS, type MatchingWeights } from "@/lib/ai/matchingWeights";
+import { standardWeightsFor, type MatchingWeights } from "@/lib/ai/matchingWeights";
 import type { JobProfile, SeekerProfile } from "@/lib/matchScore";
+import { hasScoringEvidence } from "@/lib/matchScore";
 import { roleWords, sharesRole } from "@/lib/matching/roleMatch";
 import { applyJev, type PairScore } from "@/lib/matching/recommend";
 import { evaluateKnockout } from "@/lib/matching/knockouts";
@@ -34,6 +35,7 @@ import {
   type QualificationInput,
   type RequirementsStatus,
 } from "@/lib/matching/qualifications";
+import { reportFromBreakdown, type RequirementReport } from "@/lib/matching/requirementReport";
 
 /** Application.matchBreakdown as the employer side stores it. 0–100 each. */
 export interface ApplicantBreakdown {
@@ -51,14 +53,21 @@ export interface ApplicantBreakdown {
 export interface ApplicantMatch {
   /** The employer's ranking score. */
   aiMatchScore: number;
-  /** The engine score — what the seeker is shown for this pair. */
-  seekerMatchScore: number;
+  /**
+   * The engine score — what the seeker is shown for this pair. Null when the
+   * profile states nothing the score reads (`hasScoringEvidence`): the figure
+   * would be the engine's neutral defaults, the same for every job, and the
+   * seeker's Applications page must not print it.
+   */
+  seekerMatchScore: number | null;
   matchBreakdown: ApplicantBreakdown;
   /** Required skills with evidence (all of them, not the engine's core six). */
   matchedSkills: string[];
   missingSkills: string[];
   qualifications: QualificationCheck[];
   requirementsStatus: RequirementsStatus;
+  /** Each job requirement against this candidate: has / partly / does not have / needs checking. */
+  requirementReport: RequirementReport;
   /** True when the employer's own saved weights produced `aiMatchScore`. */
   weightsApplied: boolean;
 }
@@ -115,12 +124,30 @@ export function employerExperienceFit(years: number, known: boolean, minExp: num
   return over <= 5 ? 85 : over <= 10 ? 70 : 55;
 }
 
-const EDUCATION_PART: Record<QualificationCheck["status"], number> = {
-  met: 100,
-  partial: 50,
-  not_met: 0,
-  unknown: NOT_PROVIDED_PART,
-};
+/**
+ * The qualifications part: education, licences / certificates and languages,
+ * each as requirementParts marked it, averaged over the ones the job states.
+ * Null when it states none, so the part drops out (D4).
+ */
+function qualificationsPart(relevance: PairScore["breakdown"]): number | null {
+  const ev = relevance.evaluation;
+  if (!ev) return null;
+  const marks: number[] = [];
+  if (ev.education) marks.push(ev.education.mark);
+  for (const c of ev.credentials) marks.push(c.mark);
+  if (ev.languages) marks.push(ev.languages.mark);
+  return marks.length ? Math.round(marks.reduce((a, b) => a + b, 0) / marks.length) : null;
+}
+
+/**
+ * Relevant experience for the employer: the shared experience mark (relevant
+ * years when the employer named a subject), and "Not provided" when unstated.
+ */
+function experiencePart(seeker: SeekerProfile, job: JobProfile, relevance: PairScore["breakdown"]): number {
+  if (seeker.experienceKnown === false) return NOT_PROVIDED_PART;
+  const ev = relevance.evaluation?.experience;
+  return ev ? ev.mark : employerExperienceFit(seeker.experienceYears, true, job.minExp, job.maxExp);
+}
 
 /**
  * Weighted mean of the parts that apply to this job. A part the job gives no
@@ -171,7 +198,6 @@ export function buildApplicantMatch(input: ApplicantMatchInput): ApplicantMatch 
   const { checks, status } = evaluateQualifications({ ...input, relevance });
 
   const allRequired = relevance.requiredCoverage !== null;
-  const education = checks.find((check) => check.key === "education");
   const role = roleFit(seeker, job, relevance.role);
   const industry = input.industry ? input.industry.score : null;
   const skills = relevance.requiredCoverage ?? relevance.skills;
@@ -179,12 +205,12 @@ export function buildApplicantMatch(input: ApplicantMatchInput): ApplicantMatch 
   const parts = {
     skills: selfReported ? Math.round(skills * SELF_REPORTED_SKILLS) : skills,
     preferred: mean([relevance.preferredCoverage, preferredAnswersPart(input)]),
-    experience: employerExperienceFit(seeker.experienceYears, seeker.experienceKnown !== false, job.minExp, job.maxExp),
+    experience: experiencePart(seeker, job, relevance),
     role: industry === null ? role : Math.round((1 - INDUSTRY_SHARE) * role + INDUSTRY_SHARE * industry),
-    education: education ? EDUCATION_PART[education.status] : null,
+    education: qualificationsPart(relevance),
   };
 
-  const weighted = weightedApplicantScore(parts, input.weights ?? DEFAULT_WEIGHTS);
+  const weighted = weightedApplicantScore(parts, input.weights ?? standardWeightsFor(job.requirements?.hireType));
   // Jev's verdict, when the engine asked for one, nudges this number within
   // the same ±10 it may move the engine score; nearness then breaks ties.
   const judged = pair.aiConfidence !== undefined ? applyJev(weighted, pair.aiConfidence) : weighted;
@@ -192,7 +218,7 @@ export function buildApplicantMatch(input: ApplicantMatchInput): ApplicantMatch 
 
   return {
     aiMatchScore: score,
-    seekerMatchScore: pair.score,
+    seekerMatchScore: hasScoringEvidence(seeker) ? pair.score : null,
     matchBreakdown: {
       skills: parts.skills,
       role,
@@ -205,6 +231,7 @@ export function buildApplicantMatch(input: ApplicantMatchInput): ApplicantMatch 
     missingSkills: allRequired ? relevance.requiredMissing : relevance.missingSkills,
     qualifications: checks,
     requirementsStatus: status,
+    requirementReport: reportFromBreakdown(relevance, job.requirements),
     weightsApplied: input.weights !== null,
   };
 }
