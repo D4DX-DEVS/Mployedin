@@ -10,6 +10,7 @@ import { onboardingCreateSchema, onboardingUpdateSchema } from "@/lib/validators
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { notify } from "@/lib/notifications/trigger";
+import { withSignedDocUrls } from "@/lib/onboarding/documentAccess";
 import type { UserRole } from "@/models/User";
 import type { IOnboardingTask } from "@/models/OnboardingChecklist";
 
@@ -24,6 +25,22 @@ const DEFAULT_TASKS = [
   { title: "Schedule first-week orientation", completed: false },
   { title: "Assign onboarding buddy / manager", completed: false },
 ];
+
+interface ChecklistLike {
+  documents?: { url?: string | null }[];
+  toObject?: () => ChecklistLike;
+}
+
+/**
+ * The checklist as the employer's page gets it: uploaded files are private
+ * objects, so each address is swapped for a signed one. Runs on a plain copy,
+ * after any save, so a signed address is never written back to the database.
+ */
+async function forEmployer(checklist: unknown) {
+  const source = checklist as ChecklistLike;
+  const plain = typeof source.toObject === "function" ? source.toObject() : source;
+  return { ...plain, documents: await withSignedDocUrls(plain.documents ?? []) };
+}
 
 /** Resolve the placement and verify the caller (admin or owning employer) may access it. */
 async function resolvePlacement(ctx: AuthCtx, placementId?: string) {
@@ -71,7 +88,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     checklist = created.toObject();
   }
 
-  return NextResponse.json({ onboarding: checklist, placement });
+  return NextResponse.json({ onboarding: await forEmployer(checklist), placement });
 }
 
 /**
@@ -122,7 +139,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx, params?: Record<strin
     req,
   }).catch(() => { /* non-blocking */ });
 
-  return NextResponse.json({ onboarding: checklist }, { status: 201 });
+  return NextResponse.json({ onboarding: await forEmployer(checklist) }, { status: 201 });
 }
 
 /**
@@ -205,11 +222,27 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     if (requested) requestedDocName = body.addDocument.name;
     checklist.markModified("documents");
   }
-  // Update an existing document's status (e.g. employer marks it approved).
+  // Review a document: approve it, or send it back to the candidate for a new copy.
+  let reviewed: { name: string; outcome: "approved" | "sent_back"; note?: string } | undefined;
   if (body.document) {
     const doc = checklist.documents[body.document.index];
     if (!doc) return NextResponse.json({ error: "Document not found" }, { status: 404 });
-    if (body.document.status) doc.status = body.document.status;
+    if (body.document.status === "requested" && doc.requestedFromCandidate) {
+      // Sent back: the rejected file and its signature no longer count, so the
+      // candidate starts this one again and sees why.
+      doc.status = "requested";
+      doc.url = undefined;
+      doc.signature = undefined;
+      doc.reviewNote = body.document.reviewNote;
+      reviewed = { name: doc.name, outcome: "sent_back", note: body.document.reviewNote };
+    } else if (body.document.status) {
+      const wasApproved = doc.status === "approved";
+      doc.status = body.document.status;
+      if (body.document.status === "approved") {
+        doc.reviewNote = undefined;
+        if (doc.requestedFromCandidate && !wasApproved) reviewed = { name: doc.name, outcome: "approved" };
+      }
+    }
     checklist.markModified("documents");
   }
   if (body.removeDocumentIndex !== undefined && checklist.documents[body.removeDocumentIndex]) {
@@ -228,19 +261,40 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   await checklist.save();
 
-  // Notify the candidate when the employer requests a document from them.
-  if (requestedDocName) {
+  // Tell the candidate what just happened to a document of theirs: a new
+  // request, an approval, or a request for a new copy. Without the last two
+  // they uploaded into silence.
+  const candidateNotice = requestedDocName
+    ? {
+        document: requestedDocName,
+        title: "Onboarding document requested",
+        message: `Your new employer has requested a document: "${requestedDocName}". Please upload it from your onboarding page.`,
+      }
+    : reviewed?.outcome === "approved"
+      ? {
+          document: reviewed.name,
+          title: "Onboarding document approved",
+          message: `Your employer approved "${reviewed.name}". There is nothing more to do for this document.`,
+        }
+      : reviewed?.outcome === "sent_back"
+        ? {
+            document: reviewed.name,
+            title: "A new copy of your document is needed",
+            message: `Your employer asked you to send "${reviewed.name}" again: ${reviewed.note ?? ""}`.trim(),
+          }
+        : undefined;
+  if (candidateNotice) {
     const candidateUserId = (placement as { jobSeekerId?: { userId?: { _id?: unknown } } })?.jobSeekerId?.userId?._id;
     if (candidateUserId) {
       await notify({
         actorId: ctx.userId,
         userId: String(candidateUserId),
         type: "system",
-        title: "Onboarding document requested",
-        message: `Your new employer has requested a document: "${requestedDocName}". Please upload it from your onboarding page.`,
+        title: candidateNotice.title,
+        message: candidateNotice.message,
         link: `/${ctx.locale}/job-seeker/onboarding`,
         sendEmail: true,
-        metadata: { onboardingId: String(checklist._id), document: requestedDocName },
+        metadata: { onboardingId: String(checklist._id), document: candidateNotice.document },
       }).catch(() => { /* non-blocking */ });
     }
   }
@@ -253,7 +307,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     req,
   }).catch(() => { /* non-blocking */ });
 
-  return NextResponse.json({ onboarding: checklist });
+  return NextResponse.json({ onboarding: await forEmployer(checklist) });
 }
 
 export const GET = withAuth(getHandler, { resource: "placements", action: "read" });

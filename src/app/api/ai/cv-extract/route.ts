@@ -23,6 +23,7 @@ import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
 import { cleanSocialLinks } from "@/lib/jobSeeker/socialLinks";
 import { extractResumeText } from "@/lib/ats/analyzeCv";
 import { saveReadCv } from "@/lib/cv/cvDocuments";
+import { ensureIndustryClassified } from "@/lib/jobseekers/ensureIndustryClassified";
 import CvDocument from "@/models/CvDocument";
 import {
   CV_PARSE_PROMPT,
@@ -338,6 +339,9 @@ async function handlePOST(req: NextRequest) {
     // Recalculate profile completeness
     const completeness = profileCompletenessScore(seeker.toObject(), extracted);
     await JobSeeker.updateOne({ userId }, { $set: { profileCompleteness: completeness } });
+
+    // Auto-classify industry from extracted/updated profile (unless manually set)
+    await ensureIndustryClassified(seeker);
 
     await logActivity({
       actorId: userId,

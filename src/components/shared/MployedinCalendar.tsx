@@ -1076,7 +1076,7 @@ export default function MployedinCalendar({
               className="gap-1.5 rounded-xl shadow-sm shadow-primary/20"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t("bookInterview")}</span>
+              {t("bookInterview")}
             </Button>
           )}
           <div className="flex items-center rounded-xl border border-border/40 bg-muted/20 p-0.5">
@@ -1090,15 +1090,14 @@ export default function MployedinCalendar({
             <button
               key={key}
               onClick={() => setView(key)}
-              /* The label is hidden below `sm`; without a name these are three
-                 unnamed icon buttons on a phone. `aria-pressed` states which
-                 view is the current one. */
-              aria-label={t(labelKey)}
+              /* Words at every width. As three bare icons on phones they repeated
+                 the List / Calendar icons of the page switch above and read as a
+                 second copy of it. `aria-pressed` states the current view. */
               aria-pressed={view === key}
               className={`flex items-center gap-1.5 rounded-[10px] text-xs font-medium transition-all duration-200 ${ view === key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground" } chip-pad`}
             >
-              <Icon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t(labelKey)}</span>
+              <Icon className="hidden h-3.5 w-3.5 sm:block" aria-hidden="true" />
+              <span>{t(labelKey)}</span>
             </button>
           ))}
         </div>

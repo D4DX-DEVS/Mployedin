@@ -29,6 +29,7 @@ import logger from "@/lib/logger";
 import { enforceFeatureGate } from "@/lib/subscription/featureGate";
 import { resolveHiringRulesForJob, type WorkflowSettingsCarrier } from "@/lib/hiring/workflowSettings";
 import { stampHumanReview } from "@/lib/hiring/automatedDecision";
+import { isSilentForSeeker } from "@/lib/jobSeeker/seekerStatus";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -263,8 +264,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
           }
         }
 
-        // Send direct email if employer provided custom content or we have defaults
-        if (seekerEmail && notifyCandidate) {
+        // Send direct email if employer provided custom content or we have defaults.
+        // A Shortlisted/Selected move sends only the employer's own wording: the
+        // default "status update" would announce a stage the seeker never sees.
+        const employerWrote = Boolean(emailSubjectOverride && emailBodyOverride);
+        if (seekerEmail && notifyCandidate && (employerWrote || !isSilentForSeeker(newStatus))) {
           try {
             let emailContent: { subject: string; html: string };
 

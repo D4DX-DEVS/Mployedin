@@ -12,7 +12,6 @@ import {
   Lock,
   Banknote,
   Zap,
-  Check,
 } from "lucide-react";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { csrfFetch } from "@/lib/security/csrf-client";
@@ -100,11 +99,15 @@ export default function EmployerPaymentSetupPage() {
       <WorkspaceHeader
         title={t("title")}
         context={t("subtitle")}
-        status={
-          <>
-            <span className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500"}`} aria-hidden="true" />
-            {connected ? t("statusConnected") : t("statusDisconnected")}
-          </>
+        // A badge beside the title. As a status inside the description line it
+        // cut the description short on phones and tablets.
+        actions={
+          <span className="inline-flex items-center">
+            <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold ${connected ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+              <span className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-emerald-500" : "bg-amber-500"}`} aria-hidden="true" />
+              {connected ? t("statusConnected") : t("statusDisconnected")}
+            </span>
+          </span>
         }
       />
 
@@ -179,22 +182,6 @@ export default function EmployerPaymentSetupPage() {
           </div>
         </section>
       )}
-
-      {/* Info Note */}
-      <section className="workspace-panel-surface rounded-3xl panel-body">
-        <div className="flex items-start gap-3">
-          <Shield className="mt-0.5 h-5 w-5 text-muted-foreground" />
-          <div>
-            <p className="text-sm font-medium text-foreground">{t("roadmapTitle")}</p>
-            <ul className="mt-2 space-y-1 text-xs text-muted-foreground list-disc list-inside">
-              <li>{t("roadmapStep1")} <Check className="inline h-3 w-3 align-[-2px] text-emerald-600" aria-hidden="true" /></li>
-              <li>{t("roadmapStep2")}</li>
-              <li>{t("roadmapStep3")}</li>
-              <li>{t("roadmapStep4")}</li>
-            </ul>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

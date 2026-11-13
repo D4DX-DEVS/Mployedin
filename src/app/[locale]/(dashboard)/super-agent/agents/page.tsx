@@ -512,7 +512,6 @@ export default function SuperAgentAgentsPage() {
             value={filters.search}
             onChange={(v) => { setFilter("search", v); resetPage(); }}
             placeholder={t("searchAgentsPlaceholder")}
-            className="max-sm:basis-0"
           />
           <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
           {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}

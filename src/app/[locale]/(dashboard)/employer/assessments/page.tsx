@@ -74,18 +74,18 @@ export default function EmployerAssessmentsPage() {
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">{t("createAssessment")}</span>
+            <span>{t("createAssessment")}</span>
           </button>
         ) : undefined}
+        // The standard summary strip (one row on phones). These were four
+        // full-width tiles stacked 340px tall, unlike every other screen.
+        metrics={[
+          { label: t("totalTests"), value: assessments.length, icon: ClipboardCheck, tone: "primary" },
+          { label: t("active"), value: assessments.filter((a) => a.isActive).length, icon: CheckCircle2, tone: "success" },
+          { label: t("totalAttempts"), value: assessments.reduce((sum, a) => sum + a.totalAttempts, 0), icon: Users, tone: "info" },
+          { label: t("avgScore"), value: `${assessments.length > 0 ? Math.round(assessments.reduce((sum, a) => sum + a.avgScore, 0) / assessments.length) : 0}%`, icon: BarChart3, tone: "warning" },
+        ]}
       />
-
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <StatCard icon={<ClipboardCheck className="w-5 h-5 text-primary" />} label={t("totalTests")} value={assessments.length} />
-        <StatCard icon={<CheckCircle2 className="w-5 h-5 text-green-600" />} label={t("active")} value={assessments.filter(a => a.isActive).length} />
-        <StatCard icon={<Users className="w-5 h-5 text-blue-600" />} label={t("totalAttempts")} value={assessments.reduce((s, a) => s + a.totalAttempts, 0)} />
-        <StatCard icon={<BarChart3 className="w-5 h-5 text-purple-600" />} label={t("avgScore")} value={`${assessments.length > 0 ? Math.round(assessments.reduce((s, a) => s + a.avgScore, 0) / assessments.length) : 0}%`} />
-      </div>
 
       {/* Assessment List */}
       {loading ? (
@@ -112,27 +112,36 @@ export default function EmployerAssessmentsPage() {
                 type="button"
                 onClick={() => setExpandedId(expandedId === assessment._id ? null : assessment._id)}
                 aria-expanded={expandedId === assessment._id}
-                className="p-4 flex w-full items-center justify-between text-left cursor-pointer hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                className="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-start transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
-                <div className="flex items-center gap-4">
+                {/* Name, then the facts on one wrapping line, then the skill chips
+                    under them on phones. Side by side the facts were squeezed
+                    into four narrow columns and the chips ran off the edge. */}
+                <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center sm:gap-4">
                   <div className={`p-2 rounded-lg ${assessment.isActive ? "bg-green-500/10" : "bg-muted"}`}>
                     <ClipboardCheck className={`w-5 h-5 ${assessment.isActive ? "text-green-600" : "text-muted-foreground"}`} />
                   </div>
-                  <div>
-                    <h3 className="font-medium text-foreground">{assessment.title}</h3>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>{assessment.questions.length} {t("questions")}</span>
-                      <span>•</span>
-                      <span>{assessment.timeLimit} {t("min")}</span>
-                      <span>•</span>
-                      <span>{assessment.totalAttempts} {t("attempts")}</span>
-                      <span>•</span>
-                      <span>{t("pass", { score: assessment.passingScore })}</span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="break-words font-medium text-foreground">{assessment.title}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {[
+                        t("questionCount", { count: assessment.questions.length }),
+                        `${assessment.timeLimit} ${t("min")}`,
+                        t("attemptCount", { count: assessment.totalAttempts }),
+                        t("pass", { score: assessment.passingScore }),
+                      ].join(" · ")}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1 sm:hidden">
+                      {assessment.skills.slice(0, 3).map((skill) => (
+                        <span key={skill} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                          {skill}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-1 flex-wrap">
+                <div className="flex shrink-0 items-center gap-3">
+                  <div className="hidden flex-wrap gap-1 sm:flex">
                     {assessment.skills.slice(0, 3).map((skill) => (
                       <span key={skill} className="px-2 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
                         {skill}
@@ -179,18 +188,6 @@ export default function EmployerAssessmentsPage() {
           onCreated={() => { setShowCreate(false); fetchAssessments(); }}
         />
       )}
-    </div>
-  );
-}
-
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
-  return (
-    <div className="bg-card border border-border rounded-xl flex items-center gap-3 card-pad">
-      <div className="p-2 bg-muted rounded-lg">{icon}</div>
-      <div>
-        <p className="text-lg font-bold text-foreground">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
-      </div>
     </div>
   );
 }

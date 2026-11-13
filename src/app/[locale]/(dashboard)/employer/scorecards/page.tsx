@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, Fragment } from "react";
-import { Calendar, Award } from "lucide-react";
+import { Calendar, Award, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +22,7 @@ import { TableToolbar } from "@/components/shared/TableToolbar";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { RowExpandToggle } from "@/components/shared/RowExpandToggle";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { useScorecards } from "@/hooks/useScorecards";
+import { useScorecards, type Scorecard } from "@/hooks/useScorecards";
 import { useTableExport } from "@/hooks/useTableExport";
 import { FeedbackTrendsPanel } from "@/components/features/employer/FeedbackTrendsPanel";
 import type { ExportColumn } from "@/lib/export";
@@ -45,6 +45,43 @@ const RECOMMENDATION_LABELS_KEY: Record<string, string> = {
   strong_no: "strongNo",
 };
 
+
+interface ScorecardDetailProps {
+  scorecard: Scorecard;
+  strengthsLabel: string;
+  concernsLabel: string;
+}
+
+/** The scores and written notes of one scorecard, shared by the table row and the phone card. */
+function ScorecardDetail({ scorecard, strengthsLabel, concernsLabel }: ScorecardDetailProps) {
+  return (
+    <div className="space-y-3 py-1">
+      {scorecard.scores && (
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-3">
+          {(Object.entries(scorecard.scores) as [string, number][]).map(([dim, value]) => (
+            <div key={dim} className="flex items-center justify-between gap-2 text-sm">
+              <dt className="capitalize text-muted-foreground">{dim.replace(/([A-Z])/g, " $1").trim()}</dt>
+              <dd className="font-semibold tabular-nums text-foreground">{Number(value).toFixed(1)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {scorecard.strengths && (
+        <p className="text-sm leading-6 text-foreground/85">
+          <span className="font-semibold">{strengthsLabel}: </span>
+          {scorecard.strengths}
+        </p>
+      )}
+      {scorecard.concerns && (
+        <p className="text-sm leading-6 text-foreground/85">
+          <span className="font-semibold">{concernsLabel}: </span>
+          {scorecard.concerns}
+        </p>
+      )}
+      {scorecard.notes && <p className="text-sm leading-6 text-muted-foreground">{scorecard.notes}</p>}
+    </div>
+  );
+}
 
 export default function ScorecardListPage() {
   const router = useRouter();
@@ -155,8 +192,50 @@ export default function ScorecardListPage() {
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <Table>
+        <>
+        {/* Phones: one card per scorecard — candidate, date, rating and
+            recommendation; tap for the scores and notes. The folded table put
+            its empty arrow column first, so each card opened with a blank line. */}
+        <ul className="divide-y divide-border/60 sm:hidden">
+          {scorecards.map((scorecard) => {
+            const name = candidateNameOf(scorecard);
+            const isOpen = expandedId === scorecard._id;
+            return (
+              <li key={scorecard._id}>
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  onClick={() => setExpandedId(isOpen ? null : scorecard._id)}
+                  className="flex w-full items-start gap-3 px-4 py-3 text-start"
+                >
+                  <UserAvatar name={name} className="h-9 w-9 shrink-0" colorful />
+                  <span className="min-w-0 flex-1">
+                    <span className="block break-words text-sm font-semibold text-foreground">{name}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {formatDate(new Date(scorecard.interviewId.scheduledAt), { day: "2-digit", month: "short", year: "numeric" })}
+                    </span>
+                    <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <Badge className={getScoreBadgeColor(scorecard.overallScore)}>
+                        {scorecard.overallScore.toFixed(1)}/5
+                      </Badge>
+                      <Badge className={RECOMMENDATION_COLORS[scorecard.recommendation] || ""}>
+                        {t(RECOMMENDATION_LABELS_KEY[scorecard.recommendation])}
+                      </Badge>
+                    </span>
+                  </span>
+                  <ChevronDown className={`mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+                </button>
+                {isOpen ? (
+                  <div className="bg-muted/20 px-4 pb-3 pt-1">
+                    <ScorecardDetail scorecard={scorecard} strengthsLabel={t("strengths")} concernsLabel={t("concerns")} />
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+        <div className="hidden overflow-x-auto sm:block">
+          <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="w-10" />
@@ -221,39 +300,7 @@ export default function ScorecardListPage() {
                   <TableRow className="hover:bg-transparent">
                     <TableCell />
                     <TableCell colSpan={5} className="bg-muted/20">
-                      <div className="space-y-3 py-1">
-                        {scorecard.scores && (
-                          <dl className="grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-3">
-                            {(
-                              Object.entries(scorecard.scores) as [string, number][]
-                            ).map(([dim, value]) => (
-                              <div key={dim} className="flex items-center justify-between gap-2 text-sm">
-                                <dt className="capitalize text-muted-foreground">
-                                  {dim.replace(/([A-Z])/g, " $1").trim()}
-                                </dt>
-                                <dd className="font-semibold tabular-nums text-foreground">
-                                  {Number(value).toFixed(1)}
-                                </dd>
-                              </div>
-                            ))}
-                          </dl>
-                        )}
-                        {scorecard.strengths && (
-                          <p className="text-sm leading-6 text-foreground/85">
-                            <span className="font-semibold">{t("strengths")}: </span>
-                            {scorecard.strengths}
-                          </p>
-                        )}
-                        {scorecard.concerns && (
-                          <p className="text-sm leading-6 text-foreground/85">
-                            <span className="font-semibold">{t("concerns")}: </span>
-                            {scorecard.concerns}
-                          </p>
-                        )}
-                        {scorecard.notes && (
-                          <p className="text-sm leading-6 text-muted-foreground">{scorecard.notes}</p>
-                        )}
-                      </div>
+                      <ScorecardDetail scorecard={scorecard} strengthsLabel={t("strengths")} concernsLabel={t("concerns")} />
                     </TableCell>
                   </TableRow>
                 )}
@@ -263,6 +310,7 @@ export default function ScorecardListPage() {
             </TableBody>
           </Table>
         </div>
+        </>
       )}
       </section>
 

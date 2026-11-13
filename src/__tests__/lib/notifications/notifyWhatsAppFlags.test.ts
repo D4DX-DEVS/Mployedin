@@ -41,7 +41,7 @@ beforeEach(() => jest.clearAllMocks());
 describe("notify helpers that go out on WhatsApp", () => {
   it.each([
     ["notifyApplicationReceived", () => notifyApplicationReceived("u1", "Sara", "Nurse", "Acme", "a1")],
-    ["notifyStatusChange", () => notifyStatusChange("u1", "Nurse", "shortlisted", "a1")],
+    ["notifyStatusChange", () => notifyStatusChange("u1", "Nurse", "hired", "a1")],
     ["notifyInterviewScheduled", () => notifyInterviewScheduled("u1", "Nurse", new Date("2026-10-05T06:00:00Z"), "Dubai office", "i1")],
     ["notifyInterviewSelected", () => notifyInterviewSelected("u1", "Nurse", "Acme", "a1")],
     ["notifyOfferMade", () => notifyOfferMade("u1", "Nurse", "Acme", "a1")],

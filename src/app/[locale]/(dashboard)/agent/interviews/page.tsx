@@ -509,7 +509,7 @@ export default function AgentInterviewsPage() {
           </>
         )}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect
@@ -594,31 +594,13 @@ export default function AgentInterviewsPage() {
           loading={loading}
           empty={emptyState}
           items={interviews.map((iv) => {
-            // Phone: a closed interview has only the edit pencil. In a footer
-            // row of its own it took a whole bordered strip for one icon, so
-            // it sits at the end of the status chip row instead.
-            const editOnly = canUpdate && !interviewState(iv).open && !interviewState(iv).awaitingOutcome;
+            const { open, awaitingOutcome } = interviewState(iv);
+            const name = iv.jobSeekerId?.fullName ?? tc("name");
             return {
             key: iv._id,
-            leading: <UserAvatar name={iv.jobSeekerId?.fullName} email={iv.jobSeekerId?.email} className="h-10 w-10" colorful />,
+            leading: <UserAvatar name={iv.jobSeekerId?.fullName} email={iv.jobSeekerId?.email} className="size-[34px]" colorful />,
             title: iv.jobSeekerId?.fullName ?? "—",
             subtitle: `${iv.jobId?.title ?? "—"} · ${iv.employerId?.companyName ?? "—"}`,
-            actions: canUpdate && !editOnly ? interviewActions(iv) : undefined,
-            meta: (
-              <>
-                <p className="flex min-w-0 items-center gap-1">
-                  <CalendarCheck2 className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate">
-                    {formatListDate(iv.scheduledAt, locale)} · {formatTime(iv.scheduledAt, { hour: "2-digit", minute: "2-digit" }, locale)}
-                    {iv.duration ? ` · ${t("durationMinutes", { duration: iv.duration })}` : ""}
-                  </span>
-                </p>
-                <p className="flex min-w-0 items-center gap-1">
-                  {typeIcon(iv.type)}
-                  <span className="truncate">{typeLabel(iv.type)} · {t("columnRound")}: {iv.interviewRound ?? 1}</span>
-                </p>
-              </>
-            ),
             badges: (
               <>
                 <StatusBadge status={iv.status} />
@@ -628,8 +610,40 @@ export default function AgentInterviewsPage() {
                     label={OUTCOME_OPTIONS.find((o) => o.value === iv.outcome)?.label}
                   />
                 )}
-                {editOnly && <div className="ms-auto">{interviewActions(iv)}</div>}
               </>
+            ),
+            facts: [
+              `${formatListDate(iv.scheduledAt, locale)} · ${formatTime(iv.scheduledAt, { hour: "2-digit", minute: "2-digit" }, locale)}${iv.duration ? ` · ${t("durationMinutes", { duration: iv.duration })}` : ""}`,
+              `${typeLabel(iv.type)} · ${t("columnRound")}: ${iv.interviewRound ?? 1}`,
+            ],
+            actions: canUpdate && (
+              <RowActions
+                name={name}
+                labelsFrom="widest"
+                quick={[
+                  {
+                    key: "edit",
+                    label: t("ariaEditInterview", { name }),
+                    icon: Pencil,
+                    onSelect: () => { setEditInterview(iv); setModalOpen(true); },
+                  },
+                  ...(awaitingOutcome ? [{
+                    key: "outcome",
+                    label: t("recordOutcome"),
+                    icon: ClipboardCheck,
+                    iconClassName: "text-emerald-600",
+                    onSelect: () => setOutcomeTarget({ _id: iv._id, candidateName: name, jobTitle: iv.jobId?.title, scheduledAt: iv.scheduledAt }),
+                  }] : []),
+                ]}
+                menu={open ? [{
+                  key: "cancel",
+                  label: t("ariaCancel"),
+                  icon: XCircle,
+                  destructive: true,
+                  pending: updatingId === iv._id,
+                  onSelect: () => void cancelInterview(iv),
+                }] : []}
+              />
             ),
             };
           })}
@@ -647,7 +661,7 @@ export default function AgentInterviewsPage() {
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("columnCandidate")}</TableHead>
                 <TableHead>{t("columnStatus")}</TableHead>
-                <TableHead>{t("columnJob")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("columnJob")}</TableHead>
                 <TableHead className="hidden md:table-cell">{t("columnType")}</TableHead>
                 <TableHead>{t("columnScheduled")}</TableHead>
                 {canUpdate && <TableHead className="text-right">{tc("actions")}</TableHead>}
@@ -671,6 +685,7 @@ export default function AgentInterviewsPage() {
                         <div className="min-w-0">
                           <p className="truncate font-medium text-foreground">{iv.jobSeekerId?.fullName ?? "—"}</p>
                           {iv.jobSeekerId?.email && <p className="truncate text-xs text-muted-foreground">{iv.jobSeekerId.email}</p>}
+                          <span className="mt-1 block truncate text-xs text-muted-foreground">{iv.jobId?.title ?? "—"}</span>
                         </div>
                       </div>
                     </TableCell>
@@ -686,7 +701,7 @@ export default function AgentInterviewsPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-[200px] text-foreground/80" title={iv.jobId?.title}>
+                    <TableCell className="hidden lg:table-cell max-w-[200px] text-foreground/80" title={iv.jobId?.title}>
                       <span className="block truncate">{iv.jobId?.title ?? "—"}</span>
                       <span className="mt-1 block truncate text-xs text-muted-foreground">{iv.employerId?.companyName ?? "—"}</span>
                     </TableCell>

@@ -6,6 +6,7 @@ import {
   KeepWithFirst, PdfContactBar, RichPdfText, companyPhrase, dateRange, orderedSections, pdfScale, type PdfTemplateProps,
 } from "./shared";
 import { GRAY, sectionGap, standardFonts } from "./standard-sections";
+import { headerAlignOf, nameSizeOf, PdfSkillList, usePdfLayout } from "./pdf-layout";
 
 /* ═══════════════════════════════════════
    MINIMAL PDF — mirrors MinimalTemplate:
@@ -16,8 +17,11 @@ const G800 = "#1f2937";
 
 export function MinimalPDF(props: PdfTemplateProps) {
   const { data, styles: s, primary, labels, df, pageSize, formatting } = props;
+  const { layout } = usePdfLayout();
   const scale = pdfScale(s);
   const fonts = standardFonts(props);
+  const headerAlign = headerAlignOf(formatting, "center");
+  const contactAlign = (headerAlign === "center" ? "center" : "start") as "start" | "center";
 
   const heading = (label: string) => (
     <Text style={{ fontFamily: fonts.bold, fontSize: 8 * scale, color: GRAY.g400, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 6 }}>{label}</Text>
@@ -60,7 +64,7 @@ export function MinimalPDF(props: PdfTemplateProps) {
     skills: data.skills.length > 0 ? (
       <View wrap={false}>
         {heading(labels.skills)}
-        <Text style={{ fontSize: 8.5 * scale, color: GRAY.g600 }}>{data.skills.join(" · ")}</Text>
+        <PdfSkillList skills={data.skills} chip={(sk) => <Text style={{ fontSize: 8.5 * scale, color: GRAY.g600 }}>{sk}</Text>} fontSize={8.5 * scale} color={GRAY.g600} templateDefault="comma" separator=" · " />
       </View>
     ) : null,
     projects: data.projects?.length > 0 ? (
@@ -91,10 +95,10 @@ export function MinimalPDF(props: PdfTemplateProps) {
 
   return (
     <Page size={pageSize} style={{ ...s.page, fontSize: 8 * scale, color: G800 }}>
-      <View style={{ alignItems: "center", paddingBottom: 9, marginBottom: 12, borderBottomWidth: 1, borderBottomColor: "#e5e7eb" }}>
-        <Text style={{ fontFamily: fonts.bold, fontSize: 22 * scale, color: primary, letterSpacing: 0.5, lineHeight: 1.2, textAlign: "center" }}>{data.fullName || labels.yourName}</Text>
-        {data.headline ? <Text style={{ fontSize: 9 * scale, color: GRAY.g500, marginTop: 2, textAlign: "center" }}>{data.headline}</Text> : null}
-        <PdfContactBar data={data} scale={scale} color={GRAY.g400} align="center" style={{ marginTop: 6 }} />
+      <View style={{ alignItems: headerAlign === "center" ? "center" : "flex-start", paddingBottom: 9, marginBottom: 12, borderBottomWidth: 1, borderBottomColor: "#e5e7eb" }}>
+        <Text style={{ fontFamily: fonts.bold, fontSize: nameSizeOf(formatting, 22), color: primary, letterSpacing: 0.5, lineHeight: 1.2, textAlign: headerAlign }}>{data.fullName || labels.yourName}</Text>
+        {data.headline ? <Text style={{ fontSize: 9 * scale, color: GRAY.g500, marginTop: 2, textAlign: layout.textAlign === "justify" ? "left" : layout.textAlign }}>{data.headline}</Text> : null}
+        <PdfContactBar data={data} scale={scale} color={GRAY.g400} align={contactAlign} style={{ marginTop: 6 }} />
       </View>
       <View style={{ gap: sectionGap(props) }}>
         {orderedSections(formatting, sections)}

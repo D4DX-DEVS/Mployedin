@@ -22,6 +22,7 @@ import { ProfileDetailSkeleton } from "@/components/ui/loading";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { WorkspaceTabs, type WorkspaceTab } from "@/components/shared/WorkspaceTabs";
 import SocialShare from "@/components/features/public/SocialShare";
+import { useJobShareDetails } from "@/components/features/employer/jobs/useJobShareDetails";
 import { JOB_STATUS_BADGE_CLASS, jobStatusLabelKey } from "@/components/features/employer/jobs/jobStatus";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -68,6 +69,8 @@ export default function JobWorkspaceLayout({ children }: { children: ReactNode }
   const cloneJob = useCloneJob();
   const deleteJob = useDeleteJob();
   const [busy, setBusy] = useState<"publish" | "pause" | "resume" | "close" | "delete" | "clone" | null>(null);
+  // What the Share message says (company, place, pay, type, skills); editable before sending.
+  const shareDetails = useJobShareDetails(job ?? undefined, job ? formatLocation(job, t("remoteSuffix")) : "");
 
   const jobHref = `/${locale}/employer/jobs/${id}`;
   const subPath = pathname.slice(pathname.indexOf(`/jobs/${id}`) + `/jobs/${id}`.length);
@@ -222,31 +225,22 @@ export default function JobWorkspaceLayout({ children }: { children: ReactNode }
 
   const actions = (
     <>
-      {/* Status rides with the actions so it centres on the same line as the buttons. */}
-      <span className={`${JOB_STATUS_BADGE_CLASS[job.status] ?? ""} inline-flex items-center self-center rounded-full border px-2.5 py-1 text-[11px] font-semibold`} aria-live="polite">
+      {/* Status rides with the actions so it centres on the same line as the buttons.
+          Phones show it after the title instead, which frees the row for the menu. */}
+      <span className={`${JOB_STATUS_BADGE_CLASS[job.status] ?? ""} hidden items-center self-center sm:inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold`} aria-live="polite">
         {statusLabel}
       </span>
       {canUpdate && (
-        <Button asChild variant="outline" className="h-11 w-11 rounded-xl p-0 sm:h-10 sm:w-auto sm:px-3">
-          <Link href={`${jobHref}/edit`} aria-label={t("edit")}>
+        <Button asChild variant="outline" className="hidden h-10 rounded-xl px-3 sm:inline-flex">
+          <Link href={`${jobHref}/edit`}>
             <Edit2 className="h-4 w-4" aria-hidden />
-            <span className="hidden sm:inline">{t("edit")}</span>
-          </Link>
-        </Button>
-      )}
-      {/* Phones only: Posting is the ninth tab, a long sideways scroll away, and
-          posters are what this page is opened for most. From sm every tab is
-          on screen, so the header does not repeat it there. */}
-      {POSTERS_ENABLED && canCreate && (
-        <Button asChild variant="outline" className="h-11 w-11 rounded-xl p-0 sm:hidden">
-          <Link href={`${jobHref}/poster`} aria-label={t("postingCreatePoster")}>
-            <ImagePlus className="h-4 w-4" aria-hidden />
+            {t("edit")}
           </Link>
         </Button>
       )}
       {job.status === "active" && publicUrl && (
         <div className="[&>div>button]:min-h-11 [&>div>button]:rounded-xl sm:[&>div>button]:min-h-10">
-          <SocialShare url={publicUrl} title={job.title} description={job.description?.slice(0, 120)} />
+          <SocialShare url={publicUrl} title={job.title} description={job.description?.slice(0, 120)} details={shareDetails} />
         </div>
       )}
       {statusAction}
@@ -261,6 +255,19 @@ export default function JobWorkspaceLayout({ children }: { children: ReactNode }
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
+          {/* Phones only: Edit and Create poster were two unlabelled icon buttons
+              that pushed the header to three rows. Here they carry their words;
+              from sm Edit is a button and Posting is a tab on screen. */}
+          {canUpdate && (
+            <DropdownMenuItem asChild className="min-h-11 sm:hidden">
+              <Link href={`${jobHref}/edit`}><Edit2 className="h-4 w-4" /> {t("edit")}</Link>
+            </DropdownMenuItem>
+          )}
+          {POSTERS_ENABLED && canCreate && (
+            <DropdownMenuItem asChild className="min-h-11 sm:hidden">
+              <Link href={`${jobHref}/poster`}><ImagePlus className="h-4 w-4" /> {t("postingCreatePoster")}</Link>
+            </DropdownMenuItem>
+          )}
           {canCreate && (
             <DropdownMenuItem className="min-h-11 sm:min-h-8" onClick={() => { void handleClone(); }} disabled={busy === "clone"}>
               <Copy className="h-4 w-4" /> {busy === "clone" ? t("cloning") : t("clone")}
@@ -306,17 +313,25 @@ export default function JobWorkspaceLayout({ children }: { children: ReactNode }
     <div className="page-container">
       {ConfirmDialogNode}
 
-      {/* Desktop only: single back link. Phones use the sidebar / system back. */}
+      {/* One back link at every width: on phones the Jobs tab in the bottom bar
+          reloads the list, it does not read as "back". */}
       <Link
         href={`/${locale}/employer/jobs`}
-        className="hidden items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground sm:inline-flex"
+        className="tap-target-row inline-flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden /> {t("backToJobs")}
       </Link>
 
       <WorkspaceHeader
         className="job-workspace-header"
-        title={job.title}
+        title={
+          <>
+            {job.title}{" "}
+            <span className={`${JOB_STATUS_BADGE_CLASS[job.status] ?? ""} inline-flex items-center rounded-full border px-2 py-0.5 align-middle text-[11px] font-semibold leading-4 tracking-normal sm:hidden`}>
+              {statusLabel}
+            </span>
+          </>
+        }
         context={
           context ? (
             <span className="inline-flex items-center gap-1.5">

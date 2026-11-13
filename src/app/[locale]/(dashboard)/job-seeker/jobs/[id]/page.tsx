@@ -12,7 +12,6 @@ import { getTranslations } from "next-intl/server";
 import EasyApply, { type EasyApplyScreeningQuestion } from "@/components/features/public/EasyApply";
 import TrackJobView from "@/components/features/public/TrackJobView";
 import { SimilarJobs } from "@/components/features/job-seeker/SimilarJobs";
-import { SkillInsights } from "@/components/features/job-seeker/skills/SkillInsights";
 import { JobMatchCard } from "@/components/features/job-seeker/skills/JobMatchCard";
 import { JobMatchBanner } from "@/components/features/job-seeker/skills/JobMatchBanner";
 import RelativeDate from "@/components/shared/RelativeDate";
@@ -127,6 +126,9 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
   const tFeed = await getTranslations("jobFeed.sidebar");
   const tPrefs = await getTranslations("jobSeekerExtra.preferences");
   const tEasyApply = await getTranslations("easyApply");
+  // Employers store an industry key ("human_resources"); print its label.
+  const tIndustry = await getTranslations("employerRegister.industries");
+  const industryName = (key: string) => (tIndustry.has(key) ? tIndustry(key) : key.replace(/_/g, " "));
 
   await connectDB();
   const job = await Job.findById(id)
@@ -464,11 +466,18 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 </section>
               )}
 
-              {/* The list's match percentage, and what it is made of */}
-              <JobMatchCard jobId={String(job._id)} />
-
-              {/* Profile Insights — skill matching + micro questions */}
-              <SkillInsights jobId={String(job._id)} source="job_view" />
+              {/* The list's match percentage, what it is made of, and each of the
+                  job's skills, languages and licences with Has / Missing. The
+                  skills used to be listed twice more below ("Profile insights"
+                  and the chips in this section); the card now carries them, and
+                  shows them as plain chips when the seeker has no score yet. */}
+              <JobMatchCard
+                jobId={String(job._id)}
+                asked={{
+                  skills: job.requirements?.skills ?? [],
+                  preferredSkills: job.requirements?.preferredSkills ?? [],
+                }}
+              />
 
               {job.requirements && (
                 <section className="card-base rounded-xl sm:rounded-3xl panel-body">
@@ -476,35 +485,6 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                   <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("whatTheEmployerIsLookingFor")}</h2>
 
                   <div className="mt-5 space-y-5">
-                    {job.requirements.skills?.length > 0 && (
-                      <div>
-                        <p className="mb-2 text-sm font-medium text-foreground">{t("skills")}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {job.requirements.skills.map((s: string) => (
-                            <span key={s} className="rounded-full border border-border/60 bg-muted/20 px-3 py-1 text-sm text-muted-foreground">
-                              {s}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Preferred skills count toward the match and the skill
-                        check, so they are shown here too — otherwise a matched
-                        "TypeScript" looked like it came from nowhere. */}
-                    {job.requirements.preferredSkills?.length > 0 && (
-                      <div>
-                        <p className="mb-2 text-sm font-medium text-foreground">{t("niceToHave")}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {job.requirements.preferredSkills.map((s: string) => (
-                            <span key={s} className="rounded-full border border-dashed border-border/60 px-3 py-1 text-sm text-muted-foreground">
-                              {s}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
                     <div>
                       <p className="mb-1 text-sm font-medium text-foreground">{t("experience")}</p>
                       <p className="text-sm text-muted-foreground">
@@ -513,7 +493,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                               job.requirements.experienceMax != null
                                 ? `–${job.requirements.experienceMax}`
                                 : "+"
-                            } ${t("experience")}`
+                            } ${t("yearsExperience")}`
                           : t("notSpecified")}
                       </p>
                     </div>
@@ -528,11 +508,13 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                     {employer?.industry && (
                       <div>
                         <p className="mb-1 text-sm font-medium text-foreground">{t("industry")}</p>
-                        <p className="text-sm text-muted-foreground">{employer.industry}</p>
+                        <p className="text-sm text-muted-foreground">{industryName(employer.industry)}</p>
                       </div>
                     )}
 
-                    {job.requirements.languages?.length > 0 && (
+                    {/* Confirmed languages are scored and listed in the match
+                        card; only unconfirmed ones (not scored, D14) show here. */}
+                    {job.requirements.languages?.length > 0 && !job.requirements.languagesConfirmedAt && (
                       <div>
                         <p className="mb-2 text-sm font-medium text-foreground">{t("languages")}</p>
                         <div className="flex flex-wrap gap-2">
@@ -608,7 +590,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                   ) : (
                     <p className="font-medium text-foreground">{employer?.companyName}</p>
                   )}
-                  {employer?.industry && <p>{t("industryLabel")}: {employer.industry}</p>}
+                  {employer?.industry && <p>{t("industryLabel")}: {industryName(employer.industry)}</p>}
                   {employerLocation && (
                     <p className="flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5" />

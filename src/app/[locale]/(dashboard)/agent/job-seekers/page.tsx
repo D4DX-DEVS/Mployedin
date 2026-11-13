@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { IndustryChips } from "@/components/shared/IndustryChips";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -72,6 +73,7 @@ interface JobSeeker {
   preferredRoles?: string[];
   /** A guess from their skills, present only when they stated no role. */
   suggestedRole?: string;
+  industry?: string;
   createdAt: string;
 }
 
@@ -124,6 +126,8 @@ export default function AgentJobSeekersPage() {
   const [seekers, setSeekers] = useState<JobSeeker[]>([]);
   // Header numbers over the whole filtered list (the route's ?stats=1), not the page on screen.
   const [stats, setStats] = useState<SeekerListStats | null>(null);
+  // Industry counts aggregated from the filtered scope
+  const [industryCounts, setIndustryCounts] = useState<Array<{ industry: string; count: number }>>([]);
   const [loading, setLoading] = useState(true);
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
@@ -149,6 +153,28 @@ export default function AgentJobSeekersPage() {
     url.searchParams.delete("profile");
     window.history.replaceState(null, "", url);
   }, []);
+
+  // Fetch industries
+  const [industryOptions, setIndustryOptions] = useState<{ value: string; label: string }[]>([{ value: "", label: t("filterLabelIndustry") ?? "Industry" }]);
+
+  useEffect(() => {
+    const fetchIndustries = async () => {
+      try {
+        const res = await fetch("/api/admin/job-attributes/industries");
+        if (res.ok) {
+          const data = await res.json();
+          const industries = (data.items ?? []).map((ind: any) => ({
+            value: ind.name,
+            label: ind.name,
+          }));
+          setIndustryOptions([{ value: "", label: t("filterLabelIndustry") ?? "Industry" }, ...industries]);
+        }
+      } catch (error) {
+        // Fall back to just the label
+      }
+    };
+    fetchIndustries();
+  }, [t]);
 
   // Build options with translations
   const AVAILABILITY_OPTIONS = [
@@ -200,6 +226,7 @@ export default function AgentJobSeekersPage() {
   const [skillsFilter, setSkillsFilter] = useUrlFilter("skills", "", { debounceMs: 400 });
   const [hasCV, setHasCV] = useState(false);
   const [jobType, setJobType] = useUrlFilter("jobType", "");
+  const [industry, setIndustry] = useUrlFilter("industry", "");
   const [hiringStatus, setHiringStatus] = useUrlFilter("hiringStatus", "");
   const [sortBy, setSortBy] = useState("newest");
   // Dashboard deep-links: ?onboarded=1 (isOnboarded) and ?premium=1 (badges).
@@ -231,6 +258,7 @@ export default function AgentJobSeekersPage() {
     skillsFilter,
     hasCV,
     jobType,
+    industry,
     hiringStatus,
     onboardedOnly === "1",
     premiumOnly === "1",
@@ -245,6 +273,7 @@ export default function AgentJobSeekersPage() {
     setSkillsFilter("");
     setHasCV(false);
     setJobType("");
+    setIndustry("");
     setHiringStatus("");
     setOnboardedOnly("");
     setPremiumOnly("");
@@ -259,6 +288,7 @@ export default function AgentJobSeekersPage() {
     setLoading(true);
     const params = pagination.paginationParams();
     params.set("stats", "1");
+    params.set("industryCounts", "1");
     if (query.trim()) params.set("search", query.trim());
     if (availability) params.set("availability", availability);
     if (minProfile > 0) params.set("minProfile", String(minProfile));
@@ -266,6 +296,7 @@ export default function AgentJobSeekersPage() {
     if (skillsFilter) params.set("skills", skillsFilter);
     if (locationFilter) params.set("location", locationFilter);
     if (hasCV) params.set("hasCV", "1");
+    if (industry) params.set("industry", industry);
     if (hiringStatus) params.set("hiringStatus", hiringStatus);
     if (onboardedOnly === "1") params.set("onboarded", "1");
     if (premiumOnly === "1") params.set("premium", "1");
@@ -280,16 +311,17 @@ export default function AgentJobSeekersPage() {
       if (requestId !== latestRequest.current) return;
       setSeekers(data.items ?? []);
       setStats(data.stats ?? null);
+      setIndustryCounts(data.industryCounts ?? []);
       setAreaAssigned(data.areaAssigned !== false);
       pagination.updateTotal(data.total ?? data.items?.length ?? 0);
     }
     setLoading(false);
 
-  }, [query, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy, pagination.page, pagination.limit]);
+  }, [query, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, industry, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy, pagination.page, pagination.limit]);
 
   useEffect(() => { fetchSeekers(); }, [fetchSeekers]);
 
-  useEffect(() => { pagination.resetPage(); }, [query, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy]);
+  useEffect(() => { pagination.resetPage(); }, [query, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, industry, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy]);
 
   // Premium is the `premium` entry in badges[] — what the dashboard's
   // Premium card and ?premium=1 count. Only seekers the agent manages.
@@ -338,6 +370,7 @@ export default function AgentJobSeekersPage() {
     { header: tc("name"), key: "userId", formatter: (_v, row) => (row.userId as { name?: string })?.name ?? "" },
     { header: tc("email"), key: "userId", formatter: (_v, row) => (row.userId as { email?: string })?.email ?? "" },
     { header: tc("country"), key: "currentLocation" },
+    { header: tc("industry"), key: "industry" },
     { header: t("tableHeaderTopSkills"), key: "skills", formatter: (v) => Array.isArray(v) ? (v as string[]).join(", ") : "" },
     { header: t("hiringStatusLabel"), key: "hiringStatus", formatter: (v) => v ? t(hiringStatusLabelKeyMap[v as keyof typeof hiringStatusLabelKeyMap] || "hiringStatus.waiting") : "" },
     { header: t("tableHeaderExperience"), key: "totalExperienceYears", formatter: (_v, row) => experienceLabel(row as unknown as JobSeeker) ?? "" },
@@ -356,6 +389,7 @@ export default function AgentJobSeekersPage() {
     if (skillsFilter.trim()) base.set("skills", skillsFilter.trim());
     if (locationFilter.trim()) base.set("location", locationFilter.trim());
     if (hasCV) base.set("hasCV", "1");
+    if (industry) base.set("industry", industry);
     if (hiringStatus) base.set("hiringStatus", hiringStatus);
     if (onboardedOnly === "1") base.set("onboarded", "1");
     if (premiumOnly === "1") base.set("premium", "1");
@@ -370,7 +404,7 @@ export default function AgentJobSeekersPage() {
         total: Number(json.total ?? 0),
       }),
     );
-  }, [query, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy]);
+  }, [query, availability, minProfile, maxProfile, skillsFilter, locationFilter, hasCV, industry, hiringStatus, onboardedOnly, premiumOnly, view, jobType, sortBy]);
 
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: seekers as unknown as Record<string, unknown>[],
@@ -395,12 +429,11 @@ export default function AgentJobSeekersPage() {
 
   const phoneFilterCount = [availability, jobType, hiringStatus, locationFilter, skillsFilter].filter(Boolean).length;
 
-  const seekerActions = (s: JobSeeker, phone = false) => {
+  const seekerActions = (s: JobSeeker) => {
     const actions: RowAction[] = [{
       key: "view",
       label: t("viewProfile"),
       icon: Eye,
-      iconOnly: true,
       onSelect: () => setProfileSeekerId(s._id),
     }];
     const menuActions: RowAction[] = [];
@@ -416,21 +449,15 @@ export default function AgentJobSeekersPage() {
           disabled: premiumPendingId === s._id,
           onSelect: () => { void togglePremium(s); },
         });
-        actions.push({
+        menuActions.push({
           key: "edit",
           label: tc("edit"),
           icon: Edit2,
-          iconOnly: true,
           onSelect: () => { setEditSeeker(s); setModalOpen(true); },
         });
       }
     }
-    // Phone card with nothing but View: a lone eye icon in a footer row of
-    // its own read as a stray button, so there it is labelled and fills the row.
-    const quick = phone && actions.length === 1 && menuActions.length === 0
-      ? [{ ...actions[0], iconOnly: false }]
-      : actions;
-    return <RowActions name={s.userId?.name ?? "job seeker"} quick={quick} menu={menuActions} labelsFrom="wide" />;
+    return <RowActions name={s.userId?.name ?? "job seeker"} quick={actions} menu={menuActions} labelsFrom="wide" />;
   };
 
   const emptyState = (
@@ -467,7 +494,7 @@ export default function AgentJobSeekersPage() {
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
           >
             <UserPlus className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">{t("refer.button")}</span>
+            <span>{t("refer.button")}</span>
           </button>
         }
         metrics={[
@@ -502,6 +529,14 @@ export default function AgentJobSeekersPage() {
               value={jobType}
               onValueChange={(v) => { setJobType(v); pagination.resetPage(); }}
               placeholder={t("filterJobTypePlaceholder")}
+            />
+            <SearchableSelect
+              id="agent-seekers-industry"
+              className={INLINE_FILTER_CONTROL}
+              options={industryOptions}
+              value={industry}
+              onValueChange={(v) => { setIndustry(v); pagination.resetPage(); }}
+              placeholder={t("filterLabelIndustry") ?? "Industry"}
             />
             <SearchableSelect
               id="agent-seekers-hiringStatus"
@@ -551,7 +586,6 @@ export default function AgentJobSeekersPage() {
           value={search}
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         {/* Dashboard deep-link chips: the metric links here with ?onboarded=1 /
@@ -618,6 +652,16 @@ export default function AgentJobSeekersPage() {
             placeholder={t("filterJobTypePlaceholder")}
           />
         </FilterField>
+        <FilterField label={t("filterLabelIndustry") ?? "Industry"} htmlFor="agent-seekers-sheet-industry">
+          <SearchableSelect
+            id="agent-seekers-sheet-industry"
+            className={SHEET_CONTROL}
+            options={industryOptions}
+            value={industry}
+            onValueChange={(v) => { setIndustry(v); pagination.resetPage(); }}
+            placeholder={t("filterLabelIndustry") ?? "Industry"}
+          />
+        </FilterField>
         <FilterField label={t("hiringStatusLabel")} htmlFor="agent-seekers-sheet-hiringStatus">
           <SearchableSelect
             id="agent-seekers-sheet-hiringStatus"
@@ -648,6 +692,13 @@ export default function AgentJobSeekersPage() {
         </FilterField>
       </PhoneFilterSheet>
 
+      {/* Seekers per industry; a chip filters the list (rollout rows 14/17). */}
+      <IndustryChips
+        counts={industryCounts}
+        selected={industry}
+        onSelect={(next) => { setIndustry(next); pagination.resetPage(); }}
+      />
+
       <PhoneRecordList
         className="sm:hidden"
         label={t("heroTitle")}
@@ -660,15 +711,27 @@ export default function AgentJobSeekersPage() {
             : role.kind === "preferred" ? `${t("preferredRole")}: ${role.title}`
             : role.kind === "suggested" ? `${t("suggestedRole")}: ${role.title}`
             : role.title;
-          const line = [roleText, experienceLabel(s)].filter(Boolean).join(" · ");
+          // Facts line: trade · experience · place
+          const factsLine1: (string | null)[] = [
+            roleText,
+            experienceLabel(s),
+            s.currentLocation,
+          ].filter(Boolean) as string[];
+          // Second line: profile % · joined
+          const joined = s.createdAt ? formatListDate(s.createdAt, locale) : null;
+          const factsLine2: (string | null)[] = [
+            `${s.profileCompleteness ?? 0}%`,
+            joined,
+          ].filter(Boolean) as string[];
+          const allFacts = [...factsLine1, ...factsLine2].filter(Boolean) as string[];
           return {
             key: s._id,
-            leading: <UserAvatar name={s.userId?.name} email={s.userId?.email} className="h-10 w-10" colorful />,
+            leading: <UserAvatar name={s.userId?.name} email={s.userId?.email} className="h-8 w-8 shrink-0" colorful />,
             title: (
               <button
                 type="button"
                 onClick={() => setProfileSeekerId(s._id)}
-                className="block max-w-full break-words text-start line-clamp-2 !min-h-0 hover:text-primary hover:underline"
+                className="block max-w-full break-words text-start !min-h-0 hover:text-primary hover:underline"
               >
                 {s.userId?.name ?? "—"}
               </button>
@@ -681,33 +744,7 @@ export default function AgentJobSeekersPage() {
                 className={`whitespace-nowrap ${hiringStatusClassMap[s.hiringStatus as keyof typeof hiringStatusClassMap] || "status-pending"}`}
               />
             ) : undefined,
-            actions: seekerActions(s, true),
-            meta: (
-              <>
-                {line && (
-                  <p className="flex min-w-0 items-center gap-1">
-                    <BriefcaseBusiness className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span dir="auto" className="truncate">{line}</span>
-                  </p>
-                )}
-                {s.currentLocation && (
-                  <p className="flex min-w-0 items-center gap-1">
-                    <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span dir="auto" className="truncate">{s.currentLocation}</span>
-                  </p>
-                )}
-                {/* Which job the status badge is for. */}
-                {s.hiringJob && (
-                  <p dir="auto" className="truncate font-medium text-foreground/80">
-                    {[s.hiringJob.title, s.hiringJob.company].filter(Boolean).join(" · ")}
-                    {(s.applicationCount ?? 0) > 1 ? ` · ${t("moreApplications", { count: (s.applicationCount ?? 1) - 1 })}` : ""}
-                  </p>
-                )}
-                {(s.skills ?? []).length > 0 && (
-                  <p className="truncate">{(s.skills ?? []).slice(0, 3).join(" · ")}{(s.skills ?? []).length > 3 ? ` +${s.skills.length - 3}` : ""}</p>
-                )}
-              </>
-            ),
+            facts: allFacts,
             badges: (
               <>
                 {s.availabilityStatus ? (
@@ -725,6 +762,11 @@ export default function AgentJobSeekersPage() {
                     {t("premiumChip")}
                   </span>
                 )}
+                {s.industry && (
+                  <span className="inline-flex items-center whitespace-nowrap rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium leading-none text-muted-foreground">
+                    {s.industry}
+                  </span>
+                )}
                 <ReferralSourceChip namespace="agentJobSeekers" summary={s.referralSummary} />
                 {s.staffAccess === "area" && (
                   <span
@@ -737,10 +779,7 @@ export default function AgentJobSeekersPage() {
                 )}
               </>
             ),
-            stats: [
-              { label: t("tableHeaderProfile"), value: `${s.profileCompleteness ?? 0}%` },
-              { label: t("tableHeaderJoined"), value: formatListDate(s.createdAt, locale) },
-            ],
+            actions: seekerActions(s),
           };
         })}
       />
@@ -750,20 +789,20 @@ export default function AgentJobSeekersPage() {
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               <TableHead>{tc("name")}</TableHead>
-              <TableHead>{t("tableHeaderTitle")}</TableHead>
-              {/* Skills and profile % sit out the 640–1279px band so the row actions stay in view; the profile panel has both. */}
-              <TableHead className="sm:max-xl:hidden">{t("tableHeaderTopSkills")}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t("tableHeaderTitle")}</TableHead>
+              <TableHead className="hidden lg:table-cell">{tc("industry")}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t("tableHeaderTopSkills")}</TableHead>
               <TableHead>{t("hiringStatusLabel")}</TableHead>
-              <TableHead className="sm:max-xl:hidden">{t("tableHeaderProfile")}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t("tableHeaderProfile")}</TableHead>
               <TableHead className="text-right">{tc("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && seekers.length === 0 ? (
-              <TableBodySkeleton rows={5} cols={6} />
+              <TableBodySkeleton rows={5} cols={7} />
             ) : seekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="py-12">
+                <TableCell colSpan={7} className="py-12">
                   {emptyState}
                 </TableCell>
               </TableRow>
@@ -830,7 +869,7 @@ export default function AgentJobSeekersPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell data-mobile-hidden className="text-muted-foreground">
+                  <TableCell className="hidden lg:table-cell text-muted-foreground">
                     <div className="grid w-full min-w-0 gap-1 text-start">
                       {getRole(s) ? (
                         <span className={getRole(s)!.kind === "suggested" ? "font-medium italic text-foreground/70" : "font-medium text-foreground/80"}>
@@ -856,7 +895,12 @@ export default function AgentJobSeekersPage() {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="sm:max-xl:hidden">
+                  <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
+                    {s.industry ? (
+                      <span className="inline-block rounded-md bg-muted px-2 py-1 font-medium">{s.industry}</span>
+                    ) : "—"}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {(s.skills ?? []).slice(0, 3).map((skill) => (
                         <span key={skill} className="workspace-tone-sky rounded-full px-2 py-0.5 text-xs">{skill}</span>
@@ -867,7 +911,7 @@ export default function AgentJobSeekersPage() {
                     </div>
                   </TableCell>
                   {/* On phones the badge is on the card face (name cell). */}
-                  <TableCell data-mobile-hidden>
+                  <TableCell>
                     {s.hiringStatus ? (
                       <div className="grid min-w-0 justify-items-start gap-1">
                         <StatusBadge
@@ -888,7 +932,7 @@ export default function AgentJobSeekersPage() {
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="sm:max-xl:hidden">
+                  <TableCell className="hidden lg:table-cell">
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 w-24 bg-muted rounded-full overflow-hidden">
                         <div

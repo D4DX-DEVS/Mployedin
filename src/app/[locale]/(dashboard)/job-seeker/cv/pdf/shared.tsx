@@ -3,12 +3,14 @@
    Keep the two in step: same sections, same order, same layout. */
 
 import React from "react";
-import { Text, View, Link, StyleSheet, Svg, Path, Rect, Circle } from "@react-pdf/renderer";
+import { Font, Text, View, Link, StyleSheet, Svg, Path, Rect, Circle } from "@react-pdf/renderer";
 import type { Style } from "@react-pdf/types";
 import type { CVForm, FormattingOptions, DateFormat } from "../types";
-import { formatDateValue, getSectionOrder, normalizeUrl } from "../types";
+import { formatDateValue, getBulletChar, getSectionOrder, normalizeUrl } from "../types";
 import { parseRichText } from "../rich-text";
 import { toSafeImageSrc } from "@/lib/images/externalAvatar";
+import { CV_FONTS_BY_ID, cvFontFile, pdfFamilies, type CvFont } from "../fonts";
+import { usePdfLayout } from "./pdf-layout";
 
 export type CVPDFLabels = {
   yourName: string;
@@ -56,8 +58,11 @@ export function dateRange(start: string, end: string, isCurrent: boolean, df: Da
 export function RichPdfText({
   value, style,
 }: { value: string; style?: Style }) {
+  const { layout, formatting } = usePdfLayout();
   if (!value) return null;
   const blocks = parseRichText(value);
+  const bullet = getBulletChar(formatting);
+  const align: Style = layout.textAlign === "justify" ? { textAlign: "justify" } : {};
   if (blocks.length === 0) return null;
   let numberCounter = 0;
   return (
@@ -76,11 +81,11 @@ export function RichPdfText({
           </Text>
         ));
         let prefix = "";
-        if (block.type === "bullet") prefix = "•  ";
+        if (block.type === "bullet") prefix = `${bullet}  `;
         else if (block.type === "number") prefix = `${++numberCounter}.  `;
         else numberCounter = 0;
         return (
-          <Text key={bi} style={style}>
+          <Text key={bi} style={{ ...(style as object), ...align }}>
             {prefix}{inline}
           </Text>
         );
@@ -127,18 +132,64 @@ export function profileLinks(data: CVForm): { url: string; label: string }[] {
   return links;
 }
 
-/* ── Helper to resolve PDF font ── */
+/* ── PDF fonts: the same files the preview shows (../fonts.ts), registered once ── */
+
+let fontsRegistered = false;
+
+/** Register every CV font with react-pdf. Called before rendering a PDF. */
+export function registerCvPdfFonts(): void {
+  if (fontsRegistered) return;
+  // react-pdf fetches the files itself; it needs a full URL in the browser.
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const url = (font: CvFont, weight: 400 | 700, style: "normal" | "italic") => `${origin}${cvFontFile(font, weight, style)}`;
+  for (const font of Object.values(CV_FONTS_BY_ID)) {
+    const names = pdfFamilies(font);
+    Font.register({
+      family: names.regular,
+      fonts: [
+        { src: url(font, 400, "normal"), fontWeight: 400, fontStyle: "normal" },
+        { src: url(font, 700, "normal"), fontWeight: 700, fontStyle: "normal" },
+        { src: url(font, 400, "italic"), fontWeight: 400, fontStyle: "italic" },
+        { src: url(font, 700, "italic"), fontWeight: 700, fontStyle: "italic" },
+      ],
+    });
+    // Templates name bold / italic text by family, as they did with Helvetica-Bold.
+    Font.register({
+      family: names.bold,
+      fonts: [
+        { src: url(font, 700, "normal"), fontWeight: 400, fontStyle: "normal" },
+        { src: url(font, 700, "normal"), fontWeight: 700, fontStyle: "normal" },
+        { src: url(font, 700, "italic"), fontWeight: 400, fontStyle: "italic" },
+        { src: url(font, 700, "italic"), fontWeight: 700, fontStyle: "italic" },
+      ],
+    });
+    Font.register({
+      family: names.italic,
+      fonts: [
+        { src: url(font, 400, "italic"), fontWeight: 400, fontStyle: "normal" },
+        { src: url(font, 700, "italic"), fontWeight: 700, fontStyle: "normal" },
+        { src: url(font, 400, "italic"), fontWeight: 400, fontStyle: "italic" },
+        { src: url(font, 700, "italic"), fontWeight: 700, fontStyle: "italic" },
+      ],
+    });
+  }
+  fontsRegistered = true;
+}
+
+function cvFont(formatting: FormattingOptions): CvFont {
+  return CV_FONTS_BY_ID[formatting.font] ?? CV_FONTS_BY_ID.inter;
+}
+
 export function getPDFFont(formatting: FormattingOptions): string {
-  // react-pdf only has built-in: Helvetica, Times-Roman, Courier
-  const f = formatting.font;
-  if (f === "georgia" || f === "merriweather" || f === "playfair") return "Times-Roman";
-  return "Helvetica";
+  return pdfFamilies(cvFont(formatting)).regular;
 }
 
 export function getPDFBoldFont(formatting: FormattingOptions): string {
-  const f = formatting.font;
-  if (f === "georgia" || f === "merriweather" || f === "playfair") return "Times-Bold";
-  return "Helvetica-Bold";
+  return pdfFamilies(cvFont(formatting)).bold;
+}
+
+export function getPDFItalicFont(formatting: FormattingOptions): string {
+  return pdfFamilies(cvFont(formatting)).italic;
 }
 
 /* ═══════════════════════════════════════

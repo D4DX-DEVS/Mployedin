@@ -450,6 +450,53 @@ body {
   display: none;
 }
 
+/* ── CV builder fonts: the same files the PDF embeds (cv/fonts.ts). Loaded only when a CV uses them. ── */
+@font-face { font-family: "CV Inter"; src: url("/fonts/cv/inter-400-normal.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "CV Inter"; src: url("/fonts/cv/inter-400-italic.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "CV Inter"; src: url("/fonts/cv/inter-700-normal.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "CV Inter"; src: url("/fonts/cv/inter-700-italic.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "CV Roboto"; src: url("/fonts/cv/roboto-400-normal.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "CV Roboto"; src: url("/fonts/cv/roboto-400-italic.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "CV Roboto"; src: url("/fonts/cv/roboto-700-normal.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "CV Roboto"; src: url("/fonts/cv/roboto-700-italic.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "CV Lora"; src: url("/fonts/cv/lora-400-normal.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "CV Lora"; src: url("/fonts/cv/lora-400-italic.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "CV Lora"; src: url("/fonts/cv/lora-700-normal.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "CV Lora"; src: url("/fonts/cv/lora-700-italic.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "CV Merriweather"; src: url("/fonts/cv/merriweather-400-normal.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "CV Merriweather"; src: url("/fonts/cv/merriweather-400-italic.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "CV Merriweather"; src: url("/fonts/cv/merriweather-700-normal.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "CV Merriweather"; src: url("/fonts/cv/merriweather-700-italic.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "CV Playfair Display"; src: url("/fonts/cv/playfair-display-400-normal.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "CV Playfair Display"; src: url("/fonts/cv/playfair-display-400-italic.ttf") format("truetype"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "CV Playfair Display"; src: url("/fonts/cv/playfair-display-700-normal.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "CV Playfair Display"; src: url("/fonts/cv/playfair-display-700-italic.ttf") format("truetype"); font-weight: 700; font-style: italic; font-display: swap; }
+
+/* ── Thin overlay-style scrollbar: barely there until the pane is hovered ── */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scrollbar-thin:hover,
+.scrollbar-thin:focus-within {
+  scrollbar-color: rgb(148 163 184 / 0.6) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+}
+.scrollbar-thin:hover::-webkit-scrollbar-thumb,
+.scrollbar-thin:focus-within::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / 0.6);
+}
+
 /* ── SCROLLBAR STYLING ── */
 ::-webkit-scrollbar {
   width: 6px;
@@ -467,6 +514,23 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--brand-blue) / 0.5);
+}
+
+/* Phones and tablets: no painted scroll bars. Styling ::-webkit-scrollbar above
+   turns the platform's fading overlay bar into a permanent 6px grey strip, so
+   every scrolling region (the page, tab rows, the chat box, wide tables) showed
+   one — two on screens with a nested scroller. Touch scrolling needs no bar;
+   a mouse on a wide screen keeps the thin one above. */
+@media (hover: none), (pointer: coarse), (max-width: 1023px) {
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
 }
 
 /* ── SIDEBAR SCROLLBAR (thinner, hidden when not scrolling) ── */
@@ -716,7 +780,9 @@ body {
     --workspace-panel-padding-desktop: 1.25rem;
     --workspace-section-gap: 1rem;
     --workspace-mobile-nav-height: 4rem;
-    --workspace-copilot-size: 3rem;
+    /* 0: Copilot opens from the top bar now (2026-11-12). Nothing floats in the
+       corner, so pages no longer keep a 48px band free for it at the bottom. */
+    --workspace-copilot-size: 0rem;
     --workspace-copilot-gap: 0.75rem;
     background:
       radial-gradient(circle at top left, hsl(var(--brand-cyan) / 0.07), transparent 18%),
@@ -1163,6 +1229,19 @@ body > div:not([data-state]):not([data-radix-popper-content-wrapper]) {
 .reference-tab:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: -2px;
+}
+
+/* A short row (StatusPillTabs sets data-fit for four tabs or fewer) shares a
+   phone's width instead of running its last count off the edge. */
+@media (max-width: 39.99rem) {
+  .reference-tablist[data-fit] {
+    gap: 0;
+    padding: 0;
+  }
+  .reference-tablist[data-fit] > .reference-tab {
+    flex: 1 1 auto;
+    padding-inline: 0.5rem;
+  }
 }
 
 /* ── STATUS BADGE CLASSES ── */
@@ -2246,13 +2325,15 @@ input::placeholder {
   }
 }
 
-/* Phones (non-employer roles): the Copilot opens from the top-bar launcher,
-   so the floating button goes — it sat on card actions and pagination — and
-   the panel takes the whole screen instead of a 400px box over the page. */
+/* Every role, every width: the Copilot opens from the top-bar launcher, so the
+   floating button goes — it sat on card actions, footnotes, pagination and the
+   job form's Next button. */
+body:has([data-copilot-launcher]) .copilot-fab-button {
+  display: none !important;
+}
+
+/* Phones: the panel takes the whole screen instead of a 400px box over the page. */
 @media (max-width: 639px) {
-  body:has([data-copilot-launcher]) .copilot-fab-button {
-    display: none !important;
-  }
   .copilot-panel {
     inset: 0 !important;
     width: 100vw !important;
@@ -2261,6 +2342,12 @@ input::placeholder {
     border-radius: 0 !important;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* The full-screen chat owns the phone: the floating tab bar (job seeker's is
+     z-90, above the panel's z-70) would cover the message box and Send. */
+  body:has(.copilot-panel) [data-bottom-nav] {
+    display: none;
   }
 }
 
@@ -2298,7 +2385,8 @@ input::placeholder {
   }
 
   :root[data-scroll-chrome="hidden"] .dashboard-role-job-seeker [data-bottom-nav]:not(:has(:focus-visible, [aria-expanded="true"])) {
-    transform: translateY(100%);
+    /* The bar floats above the edge: clear the gap and the home indicator too. */
+    transform: translateY(calc(100% + 1rem + env(safe-area-inset-bottom)));
   }
 }
 
@@ -4019,6 +4107,9 @@ table.workspace-list-table tbody tr:focus-visible {
       border-radius: var(--workspace-radius-card);
       background: hsl(var(--card) / 0.85);
     }
+    /* The phone strip drops the last divider with :last-child, which outranks
+       the card border above, so the last tile was drawn with no right edge. */
+    .workspace-header-metric:last-child { border-inline-end: 1px solid hsl(var(--border) / 0.7); }
     .workspace-header-metric-icon {
       display: grid;
       place-items: center;
@@ -4158,6 +4249,17 @@ table.workspace-list-table tbody tr:focus-visible {
 @media (min-width: 640px) {
   .workspace-toolbar [data-table-toolbar] button,
   .workspace-header-actions [data-table-toolbar] button { height: 2.5rem; }
+}
+
+/* One bottom action bar for long pages (Save, Next, the chat message box):
+   it stays in reach above the phone and tablet tab bar instead of sitting a
+   full scroll away. */
+/* In the components layer so a page can still switch it off with a utility (lg:static). */
+@layer components {
+  /* A sticky box is held inside the scroll area's padding, and <main> already
+     pads its bottom by the tab bar plus 1.5rem (1.75rem from lg), so -1rem
+     leaves about 0.5rem above the tab bar at every width. */
+  .sticky-action-bar { position: sticky; bottom: -1rem; z-index: 10; }
 }
 
 /* rebuild marker: workspace header cards 2026-09-04 */
@@ -4338,12 +4440,15 @@ table.workspace-list-table tbody tr:focus-visible {
 /* rebuild nudge 2026-09-07 sa-header */
 
 /* ── WorkspaceTabs (job workspace) — mobile-first, scroll-snap, logical props ── */
-.workspace-tabs { display: flex; gap: 0.25rem; max-width: 100%; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; border-bottom: 1px solid hsl(var(--border) / 0.7); margin: 0; padding: 0; list-style: none; }
-.workspace-tabs::-webkit-scrollbar { display: none; }
+/* One line, never scrolled and never cut mid-word: tabs that do not fit are
+   parked (still measurable) and listed under the More button instead
+   (usePriorityOverflow). clip, not hidden, so the open tab's underline can
+   still sit on the bottom border. */
+.workspace-tabs { position: relative; display: flex; gap: 0.25rem; max-width: 100%; overflow-x: clip; border-bottom: 1px solid hsl(var(--border) / 0.7); margin: 0; padding: 0; list-style: none; }
+[data-overflowed="true"] { position: absolute !important; inset-inline-start: 0; top: 0; visibility: hidden; pointer-events: none; }
 /* Phones: a soft shadow on whichever edge still has tabs past it, so a strip cut at the
    screen edge reads as scrollable. "local" covers the shadow once you reach that end. */
 @media (max-width: 639px) {
-  .workspace-tabs,
   .scroll-hint-x {
     background:
       linear-gradient(to right, hsl(var(--background)) 30%, transparent) left center / 1.5rem 100% no-repeat local,
@@ -4352,7 +4457,7 @@ table.workspace-list-table tbody tr:focus-visible {
       radial-gradient(farthest-side at 100% 50%, hsl(var(--foreground) / 0.16), transparent) right center / 0.5rem 100% no-repeat scroll;
   }
 }
-.workspace-tabs > li { flex-shrink: 0; scroll-snap-align: start; }
+.workspace-tabs > li { flex-shrink: 0; }
 .workspace-tab { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2.75rem; padding-inline: 0.75rem; margin-bottom: -1px; border-bottom: 2px solid transparent; font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; color: hsl(var(--muted-foreground)); white-space: nowrap; text-decoration: none; }
 .workspace-tab:hover { color: hsl(var(--foreground)); }
 .workspace-tab:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: -2px; border-radius: 0.375rem; }
@@ -4371,8 +4476,12 @@ table.workspace-list-table tbody tr:focus-visible {
    squeezed beside the action buttons); the embedded applications toolbar keeps
    search on the same row as the Filters / Export icons since the job selector is gone. */
 @media (max-width: 639.98px) {
-  .job-workspace-header .workspace-header-text { flex-basis: 100%; }
-  .workspace-toolbar.is-embedded .workspace-toolbar-search { flex: 1 1 8rem; }
+  /* A job title is long: with Publish or Pause beside it the title was left
+     ~100px. Below 12rem the actions take their own row instead. */
+  .dashboard-main .job-workspace-header .workspace-header-title { min-width: 12rem; }
+  /* (The embedded applications toolbar used to keep search beside two icon
+     buttons. Filters and Export are worded now, which left search ~50px wide,
+     so it takes its own row like every other list.) */
 }
 
 /* rebuild nudge 2026-09-08 job-workspace r3 */
@@ -4523,6 +4632,24 @@ table.workspace-list-table tbody tr:focus-visible {
     min-width: 0;
     align-items: flex-start;
     gap: 0.75rem;
+  }
+
+  /* Phones: icon, title and the main button share the first line; the
+     description takes the full width under them. Before, the description sat
+     beside the button in a ~150px column, so it either pushed a lone "+" onto
+     a row of its own (14 screens) or ended in an ellipsis after four words.
+     display:contents lifts the title and description into the row so they
+     can be ordered around the actions. Actions wider than the room left by
+     a 6rem title still wrap to their own line, as before. */
+  @media (max-width: 639.98px) {
+    .dashboard-main .workspace-header-row > .workspace-header-identity,
+    .dashboard-main .workspace-header-row > .workspace-header-identity > .workspace-header-text {
+      display: contents;
+    }
+    .dashboard-main .workspace-header-row .workspace-header-icon { order: 1; }
+    .dashboard-main .workspace-header-row .workspace-header-title { order: 2; flex: 1 1 0; min-width: 7.5rem; }
+    .dashboard-main .workspace-header-row > .workspace-header-actions { order: 3; }
+    .dashboard-main .workspace-header-row .workspace-header-context { order: 4; flex: 1 1 100%; margin-top: 0; }
   }
 
   .dashboard-main :is(.page-header-icon, .workspace-header-icon, .dashboard-page-header-icon) {

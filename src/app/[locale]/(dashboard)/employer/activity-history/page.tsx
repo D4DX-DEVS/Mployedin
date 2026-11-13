@@ -7,8 +7,6 @@ import {
   Globe,
   Calendar,
   ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
   RefreshCw,
   LogIn,
   LogOut,
@@ -20,7 +18,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { PaginationControls } from "@/components/shared/PaginationControls";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { StackedLabelled } from "@/components/shared/LabelledControl";
@@ -60,11 +60,16 @@ const ACTION_META: Record<string, { label: string; color: string; icon: typeof H
   write: { label: "Modified", color: "bg-status-shortlisted-bg text-status-shortlisted border-status-shortlisted/20", icon: FileText },
 };
 
+const ROLE_LABEL_KEY: Record<string, string> = { admin: "roleAdmin", super_agent: "roleSuperAgent", agent: "roleAgent" };
+
 const ROLE_META: Record<string, { label: string; color: string }> = {
   admin: { label: "Admin", color: "bg-status-interview-bg text-status-interview" },
   super_agent: { label: "Super Agent", color: "bg-status-applied-bg text-status-applied" },
   agent: { label: "Agent", color: "bg-status-shortlisted-bg text-status-shortlisted" },
 };
+
+/** The API caps a page at 50 events. */
+const ACTIVITY_PAGE_SIZES = [15, 25, 50] as const;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -98,6 +103,10 @@ function getDetailedDescription(entry: ActivityEntry, t: (key: string, values?: 
   }
 }
 
+function formatWhen(iso: string): string {
+  return formatDate(new Date(iso), { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function ActivityHistoryPage() {
@@ -113,10 +122,12 @@ export default function ActivityHistoryPage() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = useCallback(async (page: number, action?: string, role?: string) => {
+  const [limit, setLimit] = useState(15);
+
+  const fetchData = useCallback(async (page: number, action: string, role: string, pageSize: number) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: "15" });
+      const params = new URLSearchParams({ page: String(page), limit: String(pageSize) });
       if (action && action !== "all") params.set("action", action);
       if (role && role !== "all") params.set("role", role);
       const res = await fetch(`/api/employers/activity-history?${params}`);
@@ -136,32 +147,18 @@ export default function ActivityHistoryPage() {
   }, []);
 
   useEffect(() => {
-    fetchData(1, actionFilter, roleFilter);
-  }, [actionFilter, roleFilter, fetchData]);
+    fetchData(1, actionFilter, roleFilter, limit);
+  }, [actionFilter, roleFilter, limit, fetchData]);
 
   const handlePageChange = (page: number) => {
     if (page < 1 || page > pagination.totalPages) return;
-    fetchData(page, actionFilter, roleFilter);
+    fetchData(page, actionFilter, roleFilter, limit);
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchData(pagination.page, actionFilter, roleFilter);
+    await fetchData(pagination.page, actionFilter, roleFilter, limit);
     setRefreshing(false);
-  };
-
-  // Generate page numbers for pagination
-  const getPageNumbers = (): (number | "...")[] => {
-    const { page, totalPages } = pagination;
-    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
-    const pages: (number | "...")[] = [1];
-    if (page > 3) pages.push("...");
-    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
-      pages.push(i);
-    }
-    if (page < totalPages - 2) pages.push("...");
-    pages.push(totalPages);
-    return pages;
   };
 
   return (
@@ -210,14 +207,12 @@ export default function ActivityHistoryPage() {
 
         <Button
           variant="outline"
-          size="iconDense"
-          className="ms-auto shrink-0"
+          className="ms-auto h-11 shrink-0 gap-1.5 self-end rounded-xl px-3 sm:h-10"
           onClick={handleRefresh}
           disabled={refreshing}
-          aria-label={t("refresh")}
-          title={t("refresh")}
         >
-          <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+          <RefreshCw className={cn("h-4 w-4 max-sm:hidden", refreshing && "animate-spin")} aria-hidden="true" />
+          {t("refresh")}
         </Button>
       </div>
 
@@ -246,12 +241,53 @@ export default function ActivityHistoryPage() {
             <p className="text-sm text-muted-foreground mt-2 max-w-md">{t("noActivityDescription")}</p>
           </div>
         ) : (
-          entries.map((entry) => {
+          <>
+          {/* From tablets up: one row per event — who, what, when. As full-width
+              cards each event was four-fifths empty and fifteen of them ran to
+              2,400px on a desktop. */}
+          <div className="workspace-panel-surface hidden overflow-hidden rounded-2xl md:block">
+            <Table data-mobile-table="scroll">
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead>{t("colWho")}</TableHead>
+                  <TableHead>{t("colWhat")}</TableHead>
+                  <TableHead>{t("colWhen")}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t("colWhere")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entries.map((entry) => {
+                  const actionMeta = ACTION_META[entry.action] ?? ACTION_META.write;
+                  const actionLabel = ACTION_META[entry.action] ? t(entry.action) : t("write");
+                  const roleLabel = ROLE_LABEL_KEY[entry.actorRole] ? t(ROLE_LABEL_KEY[entry.actorRole]) : entry.actorRole;
+                  return (
+                    <TableRow key={entry.id}>
+                      <TableCell>
+                        <p className="font-medium text-foreground">{entry.actorName}</p>
+                        <p className="text-xs text-muted-foreground">{roleLabel}</p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={cn("shrink-0 rounded-lg px-2 py-0.5 text-[11px] font-medium", actionMeta.color)}>
+                            {actionLabel}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">{getDetailedDescription(entry, t)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatWhen(entry.createdAt)}</TableCell>
+                      <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">{entry.country || "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="space-y-3 md:hidden">
+          {entries.map((entry) => {
             const actionMeta = ACTION_META[entry.action] ?? ACTION_META.write;
             const roleMeta = ROLE_META[entry.actorRole] ?? { label: entry.actorRole, color: "bg-secondary/75 text-foreground/85" };
             const actionLabel = ACTION_META[entry.action] ? t(entry.action) : t("write");
-            const roleLabelKey: Record<string, string> = { admin: "roleAdmin", super_agent: "roleSuperAgent", agent: "roleAgent" };
-            const roleLabel = roleLabelKey[entry.actorRole] ? t(roleLabelKey[entry.actorRole]) : entry.actorRole;
+            const roleLabel = ROLE_LABEL_KEY[entry.actorRole] ? t(ROLE_LABEL_KEY[entry.actorRole]) : entry.actorRole;
             const ActionIcon = actionMeta.icon;
 
             return (
@@ -286,14 +322,7 @@ export default function ActivityHistoryPage() {
                   <div className="flex items-center gap-4 mt-2.5 text-xs text-muted-foreground flex-wrap">
                     <span className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 shrink-0" />
-                      {formatDate(new Date(entry.createdAt), {
-                        weekday: "short",
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatWhen(entry.createdAt)}
                     </span>
                     {entry.country && (
                       <span className="flex items-center gap-1.5">
@@ -311,63 +340,24 @@ export default function ActivityHistoryPage() {
                 </div>
               </div>
             );
-          })
+          })}
+          </div>
+          </>
         )}
       </section>
 
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between rounded-3xl border border-border bg-card/90 px-5 py-3.5 backdrop-blur-sm">
-          <p className="text-sm text-muted-foreground">
-            {t("showingRange", {
-              from: String((pagination.page - 1) * pagination.limit + 1),
-              to: String(Math.min(pagination.page * pagination.limit, pagination.total)),
-              total: String(pagination.total),
-            })}
-          </p>
-
-          <div className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="dense"
-              className="rounded-xl w-8 p-0"
-              disabled={!pagination.hasPrev}
-              onClick={() => handlePageChange(pagination.page - 1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-
-            {getPageNumbers().map((pageNum, idx) =>
-              pageNum === "..." ? (
-                <span key={`dots-${idx}`} className="px-1.5 text-sm text-muted-foreground">…</span>
-              ) : (
-                <Button
-                  key={pageNum}
-                  variant={pageNum === pagination.page ? "default" : "ghost"}
-                  size="sm"
-                  className={cn(
-                    "rounded-xl h-8 w-8 p-0 text-sm",
-                    pageNum === pagination.page && "pointer-events-none"
-                  )}
-                  onClick={() => handlePageChange(pageNum)}
-                >
-                  {pageNum}
-                </Button>
-              )
-            )}
-
-            <Button
-              variant="outline"
-              size="dense"
-              className="rounded-xl w-8 p-0"
-              disabled={!pagination.hasNext}
-              onClick={() => handlePageChange(pagination.page + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* The shared page bar; this page drew its page numbers in a style of its own. */}
+      {!error && pagination.total > 0 ? (
+        <PaginationControls
+          page={pagination.page}
+          totalPages={Math.max(1, pagination.totalPages)}
+          total={pagination.total}
+          limit={limit}
+          sizeOptions={ACTIVITY_PAGE_SIZES}
+          onPageChange={handlePageChange}
+          onLimitChange={setLimit}
+        />
+      ) : null}
     </div>
   );
 }

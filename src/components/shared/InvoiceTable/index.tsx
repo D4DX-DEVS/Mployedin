@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Building2, Calendar, Eye, Inbox, User } from "lucide-react";
+import { Eye, Inbox } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RowActions } from "@/components/shared/RowActions";
@@ -52,9 +52,9 @@ export function InvoiceTable({ invoices, loading, role, onSelect, hasActiveFilte
 
   // Agent's own table hides secondary columns responsively; super-agent's
   // richer team view keeps everything visible (matches pre-extraction markup).
-  const hiddenMd = role === "agent" ? "hidden md:table-cell" : undefined;
-  const hiddenLg = role === "agent" ? "hidden lg:table-cell" : undefined;
-  const hiddenXl = role === "agent" ? "hidden xl:table-cell" : undefined;
+  // On tablets (md), only show: invoice, employer, total, status, View action.
+  // Below lg hide: job, agent, category, paid, balance, commission, dueDate
+  const hiddenTablet = role === "agent" ? "hidden lg:table-cell" : undefined;
 
   const columns: Column[] = [
     {
@@ -75,22 +75,24 @@ export function InvoiceTable({ invoices, loading, role, onSelect, hasActiveFilte
     {
       key: "job",
       header: t("job"),
-      headerClassName: hiddenMd,
-      cellClassName: hiddenMd,
+      headerClassName: hiddenTablet,
+      cellClassName: hiddenTablet,
       cell: (inv) => <p className="max-w-[120px] truncate text-sm text-muted-foreground">{inv.jobId?.title ?? "—"}</p>,
     },
     ...(role === "super_agent"
       ? [{
           key: "agent",
           header: t("agent"),
+          headerClassName: hiddenTablet,
+          cellClassName: hiddenTablet,
           cell: (inv: InvoiceTableInvoice) => <p className="text-sm text-muted-foreground">{inv.agentId?.name ?? inv.agentId?.email ?? "—"}</p>,
         }]
       : []),
     {
       key: "category",
       header: t("category"),
-      headerClassName: hiddenLg,
-      cellClassName: hiddenLg,
+      headerClassName: hiddenTablet,
+      cellClassName: hiddenTablet,
       cell: (inv) => <span className="text-[11px] capitalize text-muted-foreground">{inv.category?.replace(/_/g, " ")}</span>,
     },
     {
@@ -103,22 +105,22 @@ export function InvoiceTable({ invoices, loading, role, onSelect, hasActiveFilte
     {
       key: "paid",
       header: t("paid"),
-      headerClassName: "text-right",
-      cellClassName: "text-right text-sm text-emerald-600",
+      headerClassName: `text-right ${hiddenTablet ?? ""}`.trim(),
+      cellClassName: `text-right text-sm text-emerald-600 ${hiddenTablet ?? ""}`.trim(),
       cell: (inv) => `${inv.currency} ${formatCount((inv.paidAmount ?? 0))}`,
     },
     {
       key: "balance",
       header: t("balance"),
-      headerClassName: "text-right",
-      cellClassName: "text-right text-sm text-amber-600",
+      headerClassName: `text-right ${hiddenTablet ?? ""}`.trim(),
+      cellClassName: `text-right text-sm text-amber-600 ${hiddenTablet ?? ""}`.trim(),
       cell: (inv) => `${inv.currency} ${formatCount((inv.balanceDue ?? 0))}`,
     },
     {
       key: "commission",
       header: t("commission"),
-      headerClassName: hiddenXl,
-      cellClassName: hiddenXl,
+      headerClassName: hiddenTablet,
+      cellClassName: hiddenTablet,
       cell: (inv) => {
         const myComm = inv.commissions?.find((c) => c.role === role);
         return myComm ? (
@@ -132,8 +134,8 @@ export function InvoiceTable({ invoices, loading, role, onSelect, hasActiveFilte
     {
       key: "dueDate",
       header: t("dueDate"),
-      headerClassName: hiddenMd,
-      cellClassName: `${hiddenMd ?? ""} text-xs text-muted-foreground`.trim(),
+      headerClassName: hiddenTablet,
+      cellClassName: `${hiddenTablet ?? ""} text-xs text-muted-foreground`.trim(),
       cell: (inv) => (inv.dueDate ? formatDate(new Date(inv.dueDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"),
     },
     {
@@ -176,53 +178,16 @@ export function InvoiceTable({ invoices, loading, role, onSelect, hasActiveFilte
       loading={loading}
       empty={emptyState}
       items={invoices.map((inv) => {
-        const myComm = inv.commissions?.find((c) => c.role === role);
         return {
           key: `invoice-table-${inv._id}`,
+          onSelect: () => onSelect(inv._id),
           title: <span className="font-mono">{inv.invoiceNumber}</span>,
-          subtitle: (
-            <span className="flex min-w-0 items-center gap-1">
-              <Building2 className="h-3 w-3 shrink-0" aria-hidden="true" />
-              <span className="truncate">
-                {[inv.employerId?.companyName ?? "—", inv.jobId?.title].filter(Boolean).join(" · ")}
-              </span>
-            </span>
-          ),
+          subtitle: inv.employerId?.companyName ?? "—",
           trailing: <StatusBadge status={inv.status} />,
-          actions: (
-            <RowActions
-              name={inv.invoiceNumber}
-              quick={[
-                { key: "view", label: tc("view"), icon: Eye, iconOnly: true, onSelect: () => onSelect(inv._id) },
-              ]}
-            />
-          ),
-          meta: (
-            <>
-              {role === "super_agent" && (
-                <p className="flex min-w-0 items-center gap-1">
-                  <User className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{t("agent")}: {inv.agentId?.name ?? inv.agentId?.email ?? "—"}</span>
-                </p>
-              )}
-              <p className="flex min-w-0 items-center gap-1">
-                <Calendar className="h-3 w-3 shrink-0" aria-hidden="true" />
-                <span className="truncate">
-                  {t("dueDate")}: {inv.dueDate ? formatDate(new Date(inv.dueDate), { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-                  {inv.category ? <span className="capitalize"> · {inv.category.replace(/_/g, " ")}</span> : null}
-                </span>
-              </p>
-              {myComm && (
-                <p className="font-medium text-primary">
-                  {t("commission")}: {myComm.rate}% = {inv.currency} {formatCount(myComm.amount)}
-                </p>
-              )}
-            </>
-          ),
-          stats: [
-            { label: t("total"), value: money(inv, inv.totalAmount) },
-            { label: t("paid"), value: <span className="text-emerald-600">{money(inv, inv.paidAmount)}</span> },
-            { label: t("balance"), value: <span className="text-amber-600">{money(inv, inv.balanceDue)}</span> },
+          facts: [
+            role === "super_agent" ? (inv.agentId?.name ?? inv.agentId?.email) : null,
+            money(inv, inv.totalAmount),
+            inv.dueDate ? formatDate(new Date(inv.dueDate), { day: "2-digit", month: "short", year: "numeric" }) : "—",
           ],
         };
       })}

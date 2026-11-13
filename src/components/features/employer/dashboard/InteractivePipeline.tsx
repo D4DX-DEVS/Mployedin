@@ -117,9 +117,11 @@ export function InteractivePipeline({
     >
       <nav
         aria-label={t("hiringPipeline")}
-        className="grid grid-cols-6 gap-px bg-border/60 md:grid-cols-5"
+        // Five even columns at every width. On phones this was three tiles and
+        // then two wider ones, which read as two different groups.
+        className="grid grid-cols-5 gap-px bg-border/60"
       >
-        {stages.map((stage, index) => {
+        {stages.map((stage) => {
           const Icon = stage.icon;
           const detail = stage.subCount === stage.value
             ? t(stage.subLabelKey)
@@ -129,14 +131,14 @@ export function InteractivePipeline({
               key={stage.labelKey}
               href={stage.href}
               aria-label={t("stageAriaLabel", { stage: t(stage.labelKey), value: stage.value, detail })}
-              className={`${index < 3 ? "col-span-2" : "col-span-3"} group relative flex min-h-[76px] min-w-0 flex-col justify-center bg-background px-2.5 py-3 transition-colors hover:bg-secondary/60 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 md:col-span-1 md:min-h-[92px] md:px-4`}
+              className="group relative flex min-h-[68px] min-w-0 flex-col items-center justify-center bg-background px-1 py-2.5 text-center transition-colors hover:bg-secondary/60 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 md:min-h-[92px] md:items-stretch md:px-4 md:py-3 md:text-start"
             >
-              <span className={`absolute inset-x-2.5 top-0 h-0.5 rounded-full bg-current opacity-70 md:inset-x-3 ${stage.accent}`} aria-hidden="true" />
-              <div className="flex items-center gap-2">
-                <Icon className={`h-4 w-4 shrink-0 ${stage.accent}`} />
-                <span className={`truncate text-[11px] font-semibold sm:text-xs md:text-sm ${stage.accent}`}>{t(stage.labelKey)}</span>
+              <span className={`absolute inset-x-1.5 top-0 h-0.5 rounded-full bg-current opacity-70 md:inset-x-3 ${stage.accent}`} aria-hidden="true" />
+              <div className="flex min-w-0 max-w-full items-center gap-2">
+                <Icon className={`hidden h-4 w-4 shrink-0 md:block ${stage.accent}`} aria-hidden="true" />
+                <span className={`text-[11px] font-semibold leading-tight tracking-tight [overflow-wrap:anywhere] sm:text-xs sm:tracking-normal md:truncate md:text-sm ${stage.accent}`}>{t(stage.labelKey)}</span>
               </div>
-              <div className="mt-1.5 flex items-baseline justify-between gap-2 md:mt-2">
+              <div className="mt-1 flex items-baseline justify-center gap-2 md:mt-2 md:justify-between">
                 <AnimatedNumber value={stage.value} className="text-lg font-semibold tabular-nums tracking-tight text-foreground md:text-xl" />
                 <span className="hidden truncate text-xs font-medium text-muted-foreground md:inline">
                   {detail}

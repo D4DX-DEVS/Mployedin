@@ -7,6 +7,7 @@ import { Image, Text, View } from "@react-pdf/renderer";
 import type { SectionKey } from "../types";
 import { formatDateValue, getSectionGap } from "../types";
 import { KeepWithFirst, RichPdfText, dateRange, pdfScale, safePhoto, tint, type PdfTemplateProps } from "./shared";
+import { PdfSkillList, headingLook, photoRadiusOf, usePdfLayout } from "./pdf-layout";
 
 export const GRAY = {
   g400: "#9ca3af",
@@ -89,11 +90,13 @@ export function standardPdfSections(
     skills: data.skills.length > 0 ? (
       <View wrap={false}>
         {heading(labels.skills)}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5 }}>
-          {data.skills.map((sk, i) => (
-            <Text key={i} style={{ fontSize: 7.5 * scale, color: GRAY.g700, backgroundColor: GRAY.g100, borderRadius: 2, paddingHorizontal: 6, paddingVertical: 1.5 }}>{sk}</Text>
-          ))}
-        </View>
+        <PdfSkillList
+          skills={data.skills}
+          chip={(sk, i) => <Text key={i} style={{ fontSize: 7.5 * scale, color: GRAY.g700, backgroundColor: GRAY.g100, borderRadius: 2, paddingHorizontal: 6, paddingVertical: 1.5 }}>{sk}</Text>}
+          fontSize={7.5 * scale}
+          color={GRAY.g700}
+          chipGap={5}
+        />
       </View>
     ) : null,
     projects: data.projects?.length > 0 ? (
@@ -132,8 +135,9 @@ export function capitalize(value: string): string {
 
 /** Twin of SectionTitle in ../templates.tsx: uppercase, theme colour, faint theme rule. */
 export function SectionTitlePdf({ label, primary, bold }: { label: string; primary: string; bold: string }) {
+  const { formatting } = usePdfLayout();
   return (
-    <Text style={{ fontFamily: bold, fontSize: 10.5, color: primary, textTransform: "uppercase", letterSpacing: 0.8, borderBottomWidth: 1.5, borderBottomColor: tint(primary, 0.19), paddingBottom: 3, marginBottom: 6 }}>
+    <Text style={{ fontFamily: bold, fontSize: 10.5, textTransform: "uppercase", letterSpacing: 0.8, paddingBottom: 3, marginBottom: 6, ...headingLook(formatting, "underline", primary, tint(primary, 0.19)) }}>
       {label}
     </Text>
   );
@@ -146,9 +150,10 @@ export function SectionTitlePdf({ label, primary, bold }: { label: string; prima
 export function BandPhoto({
   photo, name, size, ring, primary, bold, initialFallback,
 }: { photo: string; name: string; size: number; ring: string; primary: string; bold: string; initialFallback: boolean }) {
+  const { formatting } = usePdfLayout();
   const src = safePhoto(photo);
   if (src) {
-    return <Image src={src} style={{ width: size, height: size, borderRadius: size / 2, objectFit: "cover", borderWidth: 2, borderColor: ring }} />;
+    return <Image src={src} style={{ width: size, height: size, borderRadius: photoRadiusOf(formatting, size), objectFit: "cover", borderWidth: 2, borderColor: ring }} />;
   }
   if (!initialFallback) return null;
   return (

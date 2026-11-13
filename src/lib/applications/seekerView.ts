@@ -20,6 +20,8 @@ export const SEEKER_HIDDEN_APPLICATION_FIELDS = [
   "matchBreakdown",
   "qualifications",
   "requirementsStatus",
+  "requirementReport",
+  "mustHaveRank",
   "missingSkills",
   "weightsApplied",
   "behaviorSignals",
@@ -36,6 +38,23 @@ const SEEKER_HIDDEN_NESTED_FIELDS = ["automatedDecision.reviewedBy"] as const;
 export const SEEKER_APPLICATION_PROJECTION = [...SEEKER_HIDDEN_APPLICATION_FIELDS, ...SEEKER_HIDDEN_NESTED_FIELDS]
   .map((f) => `-${f}`)
   .join(" ");
+
+/**
+ * The match figure a seeker sees on their own application, as the fields to
+ * lay over the document.
+ *
+ * `seekerMatchScore` is the engine's number for the pair; `aiMatchScore` is the
+ * employer's re-weighted ranking and is never the seeker's to see once the
+ * engine number exists. A stored null means the application was scored while
+ * the profile stated nothing the score reads, so there is no figure to show: a
+ * new account that applied with no CV read "29% match" on its own application.
+ * A document from before the field existed keeps what it has.
+ */
+export function seekerScoreView(app: { seekerMatchScore?: unknown }): { aiMatchScore?: number | undefined } {
+  if (app.seekerMatchScore === null) return { aiMatchScore: undefined };
+  if (typeof app.seekerMatchScore === "number") return { aiMatchScore: app.seekerMatchScore };
+  return {};
+}
 
 /**
  * A job posted with the company hidden stays hidden after the candidate

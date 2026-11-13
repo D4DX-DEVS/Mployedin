@@ -277,10 +277,13 @@ describe("AgentJobsPage", () => {
 
     it("lists industries busiest first with counts and filters by one", async () => {
       render(<AgentJobsWorkspace mode="browse" />);
-      const nav = await screen.findByRole("navigation", { name: "Jobs by industry" });
-      const chips = within(nav).getAllByRole("button").map((b) => b.textContent);
-      expect(chips).toEqual(["All industries", "Technology9", "Construction3"]);
-      await userEvent.click(within(nav).getByRole("button", { name: /Technology/ }));
+      const group = await screen.findByRole("group", { name: "Jobs by industry" });
+      const chips = within(group).getAllByRole("button").map((b) => b.textContent);
+      // OverflowTabs includes the count in the label (e.g., "Technology (9)")
+      expect(chips[0]).toBe("All industries");
+      expect(chips[1]).toMatch(/Technology.*9/);
+      expect(chips[2]).toMatch(/Construction.*3/);
+      await userEvent.click(within(group).getByRole("button", { name: /Technology/ }));
       await waitFor(() => expect(jobsCalls().at(-1)?.get("industry")).toBe("technology"));
     });
   });

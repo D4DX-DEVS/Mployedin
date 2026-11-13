@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { defaultApplicationCv } from "@/lib/applications/cvChoice";
+import { CV_REQUIRED_CODE, CV_REQUIRED_MESSAGE, defaultApplicationCv } from "@/lib/applications/cvChoice";
 import { claimSeekerFiles } from "@/lib/cv/fileClaims";
 import { withAuth } from "@/lib/auth/withAuth";
 import { withSubscription } from "@/lib/subscription/withSubscription";
@@ -58,7 +58,7 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
   const [job, seeker, seekerUser] = await Promise.all([
     Job.findOne({ _id: jobId, deletedAt: null }).select("title employerId discloseCompany status expiresAt screeningQuestions maxApplicants applicantIds").lean(),
-    JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt documents cv.originalUrl isAgentReferred badges").lean(),
+    JobSeeker.findOne({ userId: ctx.userId }).select("_id fullName profileCompleteness updatedAt documents cv.originalUrl preferredCvId isAgentReferred badges").lean(),
     User.findById(ctx.userId).select("name").lean(),
   ]);
 
@@ -110,6 +110,10 @@ async function applyHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // One CV, by the rule every apply path shares (lib/applications/cvChoice.ts);
   // this used to attach every resume the seeker had ever uploaded.
   const appDocuments = defaultApplicationCv(seeker as { documents?: { name: string; url: string; category?: string; type?: string; builtHash?: string }[]; cv?: { originalUrl?: string } });
+  // No CV at all: every application carries one.
+  if (appDocuments.length === 0) {
+    return NextResponse.json({ error: CV_REQUIRED_MESSAGE, code: CV_REQUIRED_CODE }, { status: 400 });
+  }
   // Held while the application is saved (lib/cv/fileClaims.ts); a CV replaced
   // or deleted in another tab since it was read is not sent.
   if ((await claimSeekerFiles(seeker._id, appDocuments.map((d) => d.url))).length > 0) {

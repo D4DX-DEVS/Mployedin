@@ -212,6 +212,7 @@ export default function EmployerJobTemplatesPage() {
                   </span>
                   <RowActions
                     name={tmpl.name}
+                    labelsFrom="always"
                     quick={[
                       { key: "use", label: t("use"), icon: ArrowRight, pending: busyId === tmpl._id, disabled: busyId === tmpl._id, onSelect: () => handleUse(tmpl) },
                     ]}

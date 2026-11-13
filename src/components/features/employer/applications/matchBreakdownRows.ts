@@ -46,10 +46,19 @@ export function matchBreakdownRows(
 ): BreakdownRow[] {
   const statusOf = (key: string) => checks?.find((check) => check.key === key)?.status;
   const rows: BreakdownRow[] = [];
+  // The qualifications part (education, licences, languages) is "Not
+  // provided" only when every one of them is: a licence found in the CV is
+  // something provided even when the degree is not.
+  const QUALIFICATION_KEYS = ["education", "credential", "languages"];
+  const qualificationChecks = checks?.filter((check) => QUALIFICATION_KEYS.includes(check.key)) ?? [];
+  const notProvided = (checkKey: string) =>
+    checkKey === "education"
+      ? qualificationChecks.length > 0 && qualificationChecks.every((check) => check.status === "unknown")
+      : statusOf(checkKey) === "unknown";
   const add = (key: BreakdownRowKey, value: number | undefined, checkKey?: string) => {
     // Rows whose part was never scored drop out rather than reading as 0%.
     if (typeof value !== "number") return;
-    if (checkKey && statusOf(checkKey) === "unknown") rows.push({ key, value: null, state: "not_provided" });
+    if (checkKey && notProvided(checkKey)) rows.push({ key, value: null, state: "not_provided" });
     else rows.push({ key, value, fit: fitWord(value) });
   };
 
@@ -58,7 +67,8 @@ export function matchBreakdownRows(
   // there, not parts); older rows the reverse.
   add("roleFit", breakdown.role);
   add("experience", breakdown.experience, "experience");
-  // Present only when the job names a qualification / an industry.
+  // Present only when the job names a qualification (education, licence,
+  // language) / an industry.
   add("education", breakdown.education, "education");
   add("industry", breakdown.industry);
   add("location", breakdown.location);

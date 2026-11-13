@@ -34,7 +34,7 @@ export interface JobSummary {
   matchScore?: number;
   employmentType?: string;
   location?: { city?: string; country?: string; isRemote?: boolean } | null;
-  salary?: { min?: number; max?: number; currency?: string } | null;
+  salary?: { min?: number; max?: number; currency?: string; isNegotiable?: boolean } | null;
   skills?: string[];
   /** Skills the seeker already has — rendered first and marked. */
   matchedSkills?: string[];
@@ -46,27 +46,25 @@ interface JobSummaryCardProps {
   locale: string;
   /** Buttons for this surface (apply/hide, or just view). */
   actions?: ReactNode;
-  /** Hide the match chip where no score is meaningful (plain search results). */
+  /** Hide the match ring where no score is meaningful (plain search results). */
   showMatchScore?: boolean;
-  /** Extra pill rendered next to the title, e.g. an application status. */
+  /** Extra pill for the job's state, e.g. "New" or "Closed". */
   statusSlot?: ReactNode;
   /**
-   * Phones only: the save (bookmark) toggle pinned as a small icon in the
-   * card's top corner. Callers keep their own copy in `actions` wrapped in
-   * `max-sm:hidden`, so the desktop button order is unchanged.
+   * Phones only: the save (bookmark) toggle shown as an icon beside the
+   * card's action. Callers keep their own labelled copy in `actions` wrapped
+   * in `max-sm:hidden`, so the desktop button order is unchanged.
    */
   bookmark?: ReactNode;
   className?: string;
 }
 
-/** Skill chips shown before the "+N" overflow. Three keeps the row to one line. */
+/** Skill chips shown on wider screens before the "+N" overflow. */
 export const MAX_VISIBLE_SKILLS = 3;
 
 /**
- * Phones only fit two. Three chips at 390px overflowed the card: each chip is
- * `shrink-0` inside a `flex-nowrap` row, so the third was amputated by the
- * row's `overflow-hidden` with no ellipsis and no "+N" — the label simply ran
- * off the edge and the seeker never learned it existed.
+ * Kept for callers and tests that pinned the old phone cap. Phones now show
+ * every chip in a strip that scrolls sideways instead of a fixed two.
  */
 export const MOBILE_VISIBLE_SKILLS = 2;
 
@@ -101,6 +99,13 @@ export function matchToneClass(score: number) {
   return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
+/** Arc colour of the match ring, same bands as matchToneClass. */
+export function matchRingToneClass(score: number) {
+  if (score >= 85) return "text-emerald-600";
+  if (score >= 70) return "text-blue-600";
+  return "text-amber-600";
+}
+
 export function relativeTimeParts(iso: string): {
   key: "justNow" | "hoursAgo" | "daysAgo" | "weeksAgo" | "monthsAgo";
   value?: number;
@@ -126,6 +131,8 @@ export function formatSalaryRange(
     n >= 1000
       ? new Intl.NumberFormat(numberLocale, { notation: "compact", maximumFractionDigits: 1 }).format(n)
       : n.toLocaleString(numberLocale);
+  // One figure when the range is a single amount ("800 KWD", not "800–800 KWD").
+  if (salary.min === salary.max) return `${fmt(salary.min)} ${salary.currency}`;
   return `${fmt(salary.min)}–${fmt(salary.max)} ${salary.currency}`;
 }
 
@@ -155,7 +162,9 @@ export function JobSummaryCard({
   const palette = logoPalette(companyName);
   const jobHref = `/${locale}/job-seeker/jobs/${job._id}`;
 
-  const salaryLabel = formatSalaryRange(job.salary, numberLocale);
+  const salaryFigure = formatSalaryRange(job.salary, numberLocale);
+  // Same words as the public job page: the figure, marked negotiable when it is.
+  const salaryLabel = salaryFigure && job.salary?.isNegotiable ? t("salaryNegotiable", { amount: salaryFigure }) : salaryFigure;
   const employmentLabel =
     job.employmentType && EMPLOYMENT_TYPES.has(job.employmentType)
       ? t(`employment.${job.employmentType}` as "employment.full_time")
@@ -166,6 +175,7 @@ export function JobSummaryCard({
       ? t(`time.${posted.key}` as "time.justNow")
       : t(`time.${posted.key}` as "time.hoursAgo", { value: posted.value.toLocaleString(numberLocale) })
     : null;
+  const score = showMatchScore && typeof job.matchScore === "number" ? job.matchScore : null;
 
   // Matched skills lead: the seeker should see what they already have first.
   const matchedSet = new Set((job.matchedSkills ?? []).map((s) => s.toLowerCase()));
@@ -174,145 +184,171 @@ export function JobSummaryCard({
     const bm = matchedSet.has(b.toLowerCase()) ? 0 : 1;
     return am - bm;
   });
-  const visibleSkills = orderedSkills.slice(0, MAX_VISIBLE_SKILLS);
-  const hiddenSkillCount = Math.max(0, orderedSkills.length - visibleSkills.length);
-  // The phone hides one more chip than the desktop, so it needs its own count.
-  // Both counters render and CSS picks one: resolving the width in JS would
-  // mismatch the server render.
-  const mobileHiddenSkillCount = Math.max(0, orderedSkills.length - MOBILE_VISIBLE_SKILLS);
+  // Wider screens show the first few and a "+N"; a phone shows every chip in
+  // a strip that scrolls sideways, so the row never wraps or cuts a chip.
+  const hiddenSkillCount = Math.max(0, orderedSkills.length - MAX_VISIBLE_SKILLS);
 
+  /*
+   * One grid, every element rendered once (no phone/desktop copies of a
+   * button). Placement:
+   *   phone   r1: mark | title + company | ring
+   *           r2: status · location · pay · type · age   (one line, ellipsis)
+   *           r3: skill strip ................ | save + action
+   *   wider   r1-3 mark; r1 title, r2 meta, r3 skills; r1-2 status/ring/age; r3 actions
+   * The owner asked (2026-11-12) for phone cards "more compact, inline": the
+   * old phone card stacked the actions under a divider and ran ~300px tall.
+   */
   return (
     <article
       data-testid="job-summary-card"
       className={cn(
-        "group relative rounded-2xl border border-border/80 bg-card p-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08),0_1px_3px_-1px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_12px_24px_-4px_rgba(15,23,42,0.12),0_4px_8px_-2px_rgba(15,23,42,0.06)] sm:p-4",
+        "group relative grid grid-cols-[40px_minmax(0,1fr)_auto] items-start gap-x-3 rounded-2xl border border-border/80 bg-card p-3 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.08),0_1px_3px_-1px_rgba(15,23,42,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_12px_24px_-4px_rgba(15,23,42,0.12),0_4px_8px_-2px_rgba(15,23,42,0.06)] sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:gap-x-4 sm:p-4",
         className
       )}
     >
-      {bookmark && <div className="absolute end-2 top-2 z-10 sm:hidden [&>button]:min-h-11 [&>button]:w-11 [&>button]:border-0 [&>button]:bg-transparent [&>button]:px-0">{bookmark}</div>}
-      <div className="flex min-w-0 items-start gap-3">
+      <div className="col-start-1 row-start-1 sm:row-span-3">
         {companyHref ? (
-          <Link href={companyHref} aria-label={t("viewCompany", { company: companyName })} className="shrink-0">
+          <Link href={companyHref} aria-label={t("viewCompany", { company: companyName })} className="block">
             <CompanyMark logo={job.company?.logo} name={companyName} palette={palette} alt={t("companyLogo", { company: companyName })} />
           </Link>
         ) : (
           <CompanyMark logo={job.company?.logo} name={companyName} palette={palette} alt={t("companyLogo", { company: companyName })} />
         )}
-
-        {/* Content and controls sit side by side rather than stacked: the
-            actions used to be a full-width row under a divider, which cost
-            every card ~64px of height for four buttons that fit beside the
-            match score. */}
-        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div className="min-w-0 flex-1">
-            <h3 className={cn("min-w-0 text-[15px] font-semibold leading-5 text-foreground sm:text-base", bookmark && "max-sm:pe-9")}>
-              <Link href={jobHref} className="line-clamp-1 transition-colors hover:text-primary">
-                {job.title}
-              </Link>
-            </h3>
-            <p className={cn("mt-0.5 truncate text-sm text-muted-foreground", bookmark && "max-sm:pe-9")}>{companyName}</p>
-
-          {/* Meta — always one line. Phones scroll it rather than wrapping to a
-              second row, which is what made cards different heights. */}
-          <div className="scrollbar-none mt-2 flex flex-nowrap items-center gap-x-3 gap-y-1 overflow-x-auto text-xs text-muted-foreground max-sm:flex-wrap max-sm:overflow-visible">
-            <span className="inline-flex shrink-0 items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-              {formatLocalizedLocation(job.location ?? undefined, locale, {
-                remoteLabel: t("remote"),
-                fallback: t("locationFlexible"),
-                includeLocationForRemote: true,
-              })}
-            </span>
-            {salaryLabel && (
-              <span className="inline-flex shrink-0 items-center gap-1.5">
-                <Wallet className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                {salaryLabel}
-              </span>
-            )}
-            {employmentLabel && (
-              <span className="inline-flex shrink-0 items-center gap-1.5">
-                <Briefcase className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                {employmentLabel}
-              </span>
-            )}
-          </div>
-
-          {/* Skills — capped to one row at every width. */}
-          {visibleSkills.length > 0 && (
-            <div className="mt-2 flex flex-nowrap items-center gap-1.5 overflow-hidden">
-              {visibleSkills.map((skill, index) => {
-                const isMatched = matchedSet.has(skill.toLowerCase());
-                return (
-                  <span
-                    key={skill}
-                    title={skill}
-                    className={cn(
-                      // `inline-block`, not `inline-flex`: text-overflow needs a
-                      // block container, and a flex box's bare text is an
-                      // anonymous flex item, so `truncate` painted no ellipsis
-                      // and long skills were cut mid-glyph instead.
-                      "max-w-[45%] shrink-0 truncate rounded-full border px-2.5 py-0.5 text-[11px] font-medium sm:max-w-[40%]",
-                      index < MOBILE_VISIBLE_SKILLS ? "inline-block" : "hidden sm:inline-block",
-                      isMatched
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                        : "border-border/60 bg-secondary text-secondary-foreground"
-                    )}
-                  >
-                    {skill}
-                  </span>
-                );
-              })}
-              {mobileHiddenSkillCount > 0 && (
-                <span className="shrink-0 text-[11px] font-medium text-muted-foreground sm:hidden">
-                  {t("moreSkills", { count: mobileHiddenSkillCount.toLocaleString(numberLocale) })}
-                </span>
-              )}
-              {hiddenSkillCount > 0 && (
-                <span className="hidden shrink-0 text-[11px] font-medium text-muted-foreground sm:inline">
-                  {t("moreSkills", { count: hiddenSkillCount.toLocaleString(numberLocale) })}
-                </span>
-              )}
-            </div>
-          )}
-          </div>
-
-          {/* Match, age and the surface's own buttons — one column on a wide
-              screen, one wrapped row on a phone. */}
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 max-sm:flex-col max-sm:items-stretch sm:flex-col sm:items-end sm:justify-start">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-col sm:items-end">
-              {statusSlot}
-              {showMatchScore && typeof job.matchScore === "number" && (
-                <span
-                  className={cn(
-                    "inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold",
-                    matchToneClass(job.matchScore)
-                  )}
-                >
-                  {t("matchPercent", { score: job.matchScore.toLocaleString(numberLocale) })}
-                </span>
-              )}
-              {postedLabel && (
-                <span className="whitespace-nowrap text-[11px] text-muted-foreground">
-                  {t("posted", { time: postedLabel })}
-                </span>
-              )}
-            </div>
-
-            {/* Phone: actions are the card's footer row — full card width (pulled
-                back past the 44px mark + 12px gap), under a divider, buttons
-                sharing the row evenly. Same shape as PhoneRecordList. */}
-            {actions && (
-              <div
-                data-card-footer
-                className="flex items-center gap-1.5 max-sm:-ms-14 max-sm:mt-1 max-sm:border-t max-sm:border-border/70 max-sm:pt-2.5 max-sm:[&>*]:min-w-0 max-sm:[&>*]:flex-1 max-sm:[&_button]:w-full max-sm:[&_a]:w-full sm:mt-1"
-              >
-                {actions}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
+
+      <div className="col-start-2 row-start-1 min-w-0">
+        <h3 className="min-w-0 text-[15px] font-semibold leading-5 text-foreground sm:text-base">
+          <Link href={jobHref} className="line-clamp-2 transition-colors hover:text-primary sm:line-clamp-1">
+            {job.title}
+          </Link>
+        </h3>
+        <p className="mt-0.5 truncate text-sm text-muted-foreground">{companyName}</p>
+      </div>
+
+      {/* Status, match and age. A phone keeps only the ring here; its status
+          and age move into the one-line meta row below. */}
+      <div className="col-start-3 row-start-1 flex flex-col items-end gap-1.5 sm:row-span-2">
+        {statusSlot && <div className="max-sm:hidden">{statusSlot}</div>}
+        {score !== null && (
+          <MatchRing
+            score={score}
+            label={t("matchPercent", { score: score.toLocaleString(numberLocale) })}
+            text={`${score.toLocaleString(numberLocale)}%`}
+          />
+        )}
+        {postedLabel && (
+          <span className="whitespace-nowrap text-[11px] text-muted-foreground max-sm:hidden">
+            {t("posted", { time: postedLabel })}
+          </span>
+        )}
+      </div>
+
+      {/* Meta. Phone: one line joined by dots, cut with an ellipsis. Wider:
+          the same facts with icons, still one row. */}
+      <div
+        data-card-meta
+        className="col-span-3 col-start-1 row-start-2 mt-2 text-xs text-muted-foreground max-sm:truncate max-sm:[&>span+span]:before:mx-1.5 max-sm:[&>span+span]:before:content-['·'] sm:col-span-1 sm:col-start-2 sm:flex sm:flex-nowrap sm:items-center sm:gap-x-3 sm:overflow-hidden"
+      >
+        {statusSlot && <span className="sm:hidden [&>*]:inline-flex [&>*]:align-middle">{statusSlot}</span>}
+        <span className="sm:inline-flex sm:shrink-0 sm:items-center sm:gap-1.5">
+          <MapPin className="h-3.5 w-3.5 shrink-0 opacity-70 max-sm:hidden" aria-hidden />
+          {formatLocalizedLocation(job.location ?? undefined, locale, {
+            remoteLabel: t("remote"),
+            fallback: t("locationFlexible"),
+            includeLocationForRemote: true,
+          })}
+        </span>
+        {salaryLabel && (
+          <span className="sm:inline-flex sm:shrink-0 sm:items-center sm:gap-1.5">
+            <Wallet className="h-3.5 w-3.5 shrink-0 opacity-70 max-sm:hidden" aria-hidden />
+            {salaryLabel}
+          </span>
+        )}
+        {employmentLabel && (
+          <span className="sm:inline-flex sm:shrink-0 sm:items-center sm:gap-1.5">
+            <Briefcase className="h-3.5 w-3.5 shrink-0 opacity-70 max-sm:hidden" aria-hidden />
+            {employmentLabel}
+          </span>
+        )}
+        {postedLabel && <span className="sm:hidden">{postedLabel}</span>}
+      </div>
+
+      {orderedSkills.length > 0 && (
+        <div className="scrollbar-none col-span-2 col-start-1 row-start-3 mt-2.5 flex min-w-0 flex-nowrap items-center gap-1.5 self-center max-sm:overflow-x-auto max-sm:[mask-image:linear-gradient(to_right,#000_80%,transparent)] max-sm:rtl:[mask-image:linear-gradient(to_left,#000_80%,transparent)] sm:col-span-1 sm:col-start-2 sm:overflow-hidden">
+          {orderedSkills.map((skill, index) => {
+            const isMatched = matchedSet.has(skill.toLowerCase());
+            return (
+              <span
+                key={skill}
+                title={skill}
+                className={cn(
+                  // `inline-block`, not `inline-flex`: text-overflow needs a
+                  // block container (a flex box's bare text gets no ellipsis).
+                  "inline-block max-w-[60%] shrink-0 truncate rounded-full border px-2.5 py-0.5 text-[11px] font-medium sm:max-w-[40%]",
+                  index >= MAX_VISIBLE_SKILLS && "sm:hidden",
+                  isMatched
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                    : "border-border/60 bg-secondary text-secondary-foreground"
+                )}
+              >
+                {skill}
+              </span>
+            );
+          })}
+          {hiddenSkillCount > 0 && (
+            <span className="hidden shrink-0 text-[11px] font-medium text-muted-foreground sm:inline">
+              {t("moreSkills", { count: hiddenSkillCount.toLocaleString(numberLocale) })}
+            </span>
+          )}
+        </div>
+      )}
+
+      {(actions || bookmark) && (
+        <div
+          data-card-footer
+          className="col-start-3 row-start-3 mt-2.5 flex items-center justify-end gap-1.5 self-end [&>*]:shrink-0 max-sm:[&_a]:min-h-10 max-sm:[&_button]:min-h-10"
+        >
+          {/* Phone: the save toggle sits beside the action as an icon. Callers
+              keep their own labelled copy in `actions` behind `max-sm:hidden`. */}
+          {bookmark && <div className="sm:hidden [&>button]:size-10 [&>button]:px-0">{bookmark}</div>}
+          {actions}
+        </div>
+      )}
     </article>
+  );
+}
+
+/** Match score as a small ring: the arc fills to the score, coloured by band. */
+function MatchRing({ score, label, text }: { score: number; label: string; text: string }) {
+  const pct = Math.max(0, Math.min(100, score));
+  const r = 17;
+  const circumference = 2 * Math.PI * r;
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      data-match-ring
+      className="relative inline-flex size-10 shrink-0 items-center justify-center sm:size-11"
+    >
+      <svg viewBox="0 0 40 40" className="absolute inset-0 size-full -rotate-90" aria-hidden="true">
+        <circle cx="20" cy="20" r={r} fill="none" strokeWidth="3.5" className="stroke-muted" />
+        <circle
+          cx="20"
+          cy="20"
+          r={r}
+          fill="none"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          stroke="currentColor"
+          className={matchRingToneClass(score)}
+          strokeDasharray={`${(pct / 100) * circumference} ${circumference}`}
+        />
+      </svg>
+      <span className="relative text-[11px] font-bold tabular-nums text-foreground" aria-hidden="true">
+        {text}
+      </span>
+    </span>
   );
 }
 
@@ -330,7 +366,7 @@ function CompanyMark({
   return (
     <div
       className={cn(
-        "flex h-11 w-11 items-center justify-center overflow-hidden rounded-full text-xs font-semibold",
+        "flex size-10 items-center justify-center overflow-hidden rounded-full text-xs font-semibold sm:size-11",
         palette.bg,
         palette.text
       )}

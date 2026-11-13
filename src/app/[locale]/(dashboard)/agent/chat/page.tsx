@@ -97,7 +97,7 @@ export default function AgentChatPage() {
     <div className="page-container flex flex-col">
       {/* Title first, then the Direct / Team channels tabs. */}
       <WorkspaceHeader
-        title={t("teamChannelsHeading")}
+        title={t("messagesTitle")}
         context={t("onlineCount", { count: online })}
       />
       <AgentSectionTabs tabs={AGENT_INBOX_TABS} ariaLabelKey="inboxTabsLabel" />

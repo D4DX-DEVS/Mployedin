@@ -1,3 +1,5 @@
+import { industryFilterCondition, foldIndustryCounts, industryMasterNames } from "@/lib/jobseekers/industryCanonical.server";
+import { canonicalIndustry } from "@/lib/jobseekers/industryCanonical";
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
@@ -11,7 +13,7 @@ import { computeHiringStatus, pickHiringApplication, HIRING_STATUSES } from "@/l
 import { applicationStatusesBySeeker, applicationsBySeeker } from "@/lib/jobseekers/hiringStatus.server";
 import { cleanRoleTitle } from "@/lib/jobseekers/roleTitle";
 import { suggestedRolesFor } from "@/lib/jobseekers/suggestedRole.server";
-import mongoose from "mongoose";
+import mongoose, { type PipelineStage } from "mongoose";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { isKnownCountry, locationSearchRegex } from "@/lib/i18n/locations";
 import { readSeekerListStats, SEEKER_LIST_STATS_STAGES, type SeekerListStats } from "@/lib/jobseekers/listStats";
@@ -42,6 +44,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const sort = searchParams.get("sort") ?? "newest";                    // newest | oldest | profile_high | profile_low
   const education = searchParams.get("education")?.trim();              // degree/field keyword filter
   const nationality = searchParams.get("nationality")?.trim();          // nationality filter
+  const industry = searchParams.get("industry")?.trim();                // industry from Industry master catalogue
   const experienceYears = parseInt(searchParams.get("experienceYears") ?? "0"); // minimum experience years
   const referred = searchParams.get("referred")?.trim();                // any | agent | super_agent | none | mine
   const view = searchParams.get("view")?.trim();                        // area: only seekers in the caller's area
@@ -50,6 +53,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const hiringStatusParam = searchParams.get("hiringStatus")?.trim();   // placed|offer|interviewing|shortlisted|applied|notProgressed|waiting
   // "1": also count the page-header numbers over the whole filtered list (agent Job Seekers page)
   const wantStats = searchParams.get("stats") === "1";
+  // "1": return industry counts (aggregation of industries in filtered scope)
+  const wantIndustryCounts = searchParams.get("industryCounts") === "1";
 
   // ── Agent scoping — an agent sees only their own job seekers ───
   let agentScopeFilter: Record<string, unknown> = {};
@@ -248,6 +253,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const escapedNat = escapeRegex(nationality);
     filterConditions.push({ nationality: { $regex: escapedNat, $options: "i" } });
   }
+  if (industry) {
+    // Every stored spelling of the chosen master industry (industryCanonical.ts).
+    filterConditions.push(await industryFilterCondition(industry));
+  }
   if (experienceYears > 0) {
     filterConditions.push({ totalExperienceYears: { $gte: experienceYears } });
   }
@@ -336,13 +345,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     const allConditions = [...filterConditions, ...searchConditions];
 
-    const pipeline = [
+    const searchPipeline: PipelineStage[] = [
       // Pre-filter before $lookup for agent scope + field filters
-      ...(filterConditions.length > 0 ? [{ $match: { $and: filterConditions } }] : []),
-      { $lookup: { from: User.collection.name, localField: "userId", foreignField: "_id", as: "userId" } },
-      { $unwind: { path: "$userId", preserveNullAndEmptyArrays: true } },
+      ...(filterConditions.length > 0 ? [{ $match: { $and: filterConditions } } as PipelineStage] : []),
+      { $lookup: { from: User.collection.name, localField: "userId", foreignField: "_id", as: "userId" } } as PipelineStage,
+      { $unwind: { path: "$userId", preserveNullAndEmptyArrays: true } } as PipelineStage,
       // Text-based search (needs userId to be joined)
-      ...(searchConditions.length > 0 ? [{ $match: { $and: searchConditions } }] : []),
+      ...(searchConditions.length > 0 ? [{ $match: { $and: searchConditions } } as PipelineStage] : []),
       {
         $project: {
           "userId._id": 1, "userId.name": 1, "userId.email": 1, "userId.isActive": 1,
@@ -355,23 +364,32 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           preferredLocations: 1, preferredRoles: 1,
           "cv.originalUrl": 1,
           referral: 1, isAgentReferred: 1, agentId: 1,
+          industry: 1,
           createdAt: 1,
         },
-      },
-      { $sort: sortOption as Record<string, 1 | -1> },
+      } as PipelineStage,
+      { $sort: sortOption as Record<string, 1 | -1> } as PipelineStage,
       {
         $facet: {
-          items: [{ $skip: (page - 1) * limit }, { $limit: limit }],
-          count: [{ $count: "total" }],
+          items: [{ $skip: (page - 1) * limit }, { $limit: limit }] as PipelineStage[],
+          count: [{ $count: "total" }] as PipelineStage[],
           ...(wantStats ? { stats: SEEKER_LIST_STATS_STAGES } : {}),
+          ...(wantIndustryCounts ? {
+            industryCounts: [
+              { $group: { _id: "$industry", count: { $sum: 1 } } },
+              { $match: { _id: { $not: { $in: [null, ""] } } } },
+              { $sort: { count: -1 } },
+              { $project: { _id: 0, industry: "$_id", count: 1 } },
+            ] as PipelineStage[],
+          } : {}),
         },
-      },
+      } as PipelineStage,
     ];
-
-    const [result] = await JobSeeker.aggregate(pipeline);
+    const [result] = await JobSeeker.aggregate(searchPipeline);
     const items = result?.items ?? [];
     const total = result?.count?.[0]?.total ?? 0;
-    return respond(items, total, wantStats ? readSeekerListStats(result?.stats?.[0]) : undefined);
+    const searchIndustryCounts = wantIndustryCounts ? await foldIndustryCounts(result?.industryCounts ?? []) : [];
+    return respond(items, total, wantStats ? readSeekerListStats(result?.stats?.[0]) : undefined, searchIndustryCounts);
   }
 
   // No search — simple find + populate
@@ -388,14 +406,33 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     wantStats ? JobSeeker.aggregate([{ $match: baseFilter }, ...SEEKER_LIST_STATS_STAGES]) : null,
   ]);
 
-  return respond(items as Array<Record<string, unknown>>, total, statsRows ? readSeekerListStats(statsRows[0]) : undefined);
+  // Industry counts aggregation (same scope filter, no pagination)
+  let industryCounts: Array<{ industry: string; count: number }> = [];
+  if (wantIndustryCounts) {
+    const countPipeline: PipelineStage[] = [
+      { $match: baseFilter } as PipelineStage,
+      { $group: { _id: "$industry", count: { $sum: 1 } } } as PipelineStage,
+      { $match: { _id: { $not: { $in: [null, ""] } } } } as PipelineStage,
+      { $sort: { count: -1 } } as PipelineStage,
+      { $project: { _id: 0, industry: "$_id", count: 1 } } as PipelineStage,
+    ];
+    const countResult = await JobSeeker.aggregate<{ industry: string; count: number }>(countPipeline);
+    industryCounts = await foldIndustryCounts(countResult);
+  }
+
+  return respond(items as Array<Record<string, unknown>>, total, statsRows ? readSeekerListStats(statsRows[0]) : undefined, industryCounts);
 
   /**
    * Staff rows say whether the caller owns the seeker ("own": may edit) or
    * only sees them because they live in the caller's area ("area": view only).
    * Worked out before the referral is swapped for its summary.
    */
-  async function respond(rows: Array<Record<string, unknown>>, total: number, stats?: SeekerListStats) {
+  async function respond(
+    rows: Array<Record<string, unknown>>,
+    total: number,
+    stats?: SeekerListStats,
+    industryCounts: Array<{ industry: string; count: number }> = [],
+  ) {
     const owned = ownsRow;
     const marked: Array<Record<string, unknown>> = owned ? rows.map((row) => ({ ...row, staffAccess: owned(row) ? "own" : "area" })) : rows;
 
@@ -415,6 +452,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         .filter((row) => !hasStatedRole(row))
         .map((row) => ({ id: String(row._id), skills: (row.skills as string[] | undefined) ?? [] })),
     ).catch(() => new Map<string, string>());
+    // Rows name the master industry their stored wording means, as the chips do.
+    const masterIndustries = await industryMasterNames();
 
     const withHiringStatus: Array<Record<string, unknown>> = marked.map((row) => {
       const apps = applications.get(String(row._id)) ?? [];
@@ -422,6 +461,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       const job = pickHiringApplication(apps, hiringStatus);
       return {
         ...row,
+        industry: canonicalIndustry(row.industry as string | undefined, masterIndustries) ?? row.industry,
         suggestedRole: suggestions.get(String(row._id)),
         hiringStatus,
         hiringJob: job ? { title: job.jobTitle, company: job.company } : undefined,
@@ -436,6 +476,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       totalPages: Math.ceil(total / limit),
       ...(owned ? { areaAssigned: areaMatch !== null } : {}),
       ...(stats ? { stats } : {}),
+      ...(industryCounts.length > 0 ? { industryCounts } : {}),
     });
   }
 }, { resource: "job_seekers", action: "read" });

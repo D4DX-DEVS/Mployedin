@@ -32,6 +32,11 @@ interface SidebarProps {
    * there is room for both.
    */
   filtersOnly?: boolean;
+  /**
+   * No job carries a match percentage (a profile with nothing to score), so
+   * the "Match score" group has nothing to filter on.
+   */
+  hideMatchFilter?: boolean;
 }
 
 interface SeekerProfile {
@@ -161,7 +166,7 @@ function FilterGroup({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function JobFeedSidebar({ filters, onFiltersChange, locale, filtersOnly = false }: SidebarProps) {
+export function JobFeedSidebar({ filters, onFiltersChange, locale, filtersOnly = false, hideMatchFilter = false }: SidebarProps) {
   const t = useTranslations("jobFeed.sidebar");
   const { data: profile } = useQuery<SeekerProfile>({
     queryKey: ["seeker-profile-sidebar"],
@@ -276,11 +281,13 @@ export function JobFeedSidebar({ filters, onFiltersChange, locale, filtersOnly =
             <FilterCheckbox label={t("seniorLevel")} checked={filters.experienceLevels.includes("senior")} onChange={() => toggle("experienceLevels", "senior")} />
           </FilterGroup>
 
-          <FilterGroup title={t("matchScore")} activeCount={filters.matchRanges.length}>
-            <FilterCheckbox label={t("match80")} checked={filters.matchRanges.includes("80+")} onChange={() => toggle("matchRanges", "80+")} />
-            <FilterCheckbox label={t("match60")} checked={filters.matchRanges.includes("60-79")} onChange={() => toggle("matchRanges", "60-79")} />
-            <FilterCheckbox label={t("below60")} checked={filters.matchRanges.includes("below60")} onChange={() => toggle("matchRanges", "below60")} />
-          </FilterGroup>
+          {!hideMatchFilter && (
+            <FilterGroup title={t("matchScore")} activeCount={filters.matchRanges.length}>
+              <FilterCheckbox label={t("match80")} checked={filters.matchRanges.includes("80+")} onChange={() => toggle("matchRanges", "80+")} />
+              <FilterCheckbox label={t("match60")} checked={filters.matchRanges.includes("60-79")} onChange={() => toggle("matchRanges", "60-79")} />
+              <FilterCheckbox label={t("below60")} checked={filters.matchRanges.includes("below60")} onChange={() => toggle("matchRanges", "below60")} />
+            </FilterGroup>
+          )}
 
           <FilterGroup title={t("datePosted")} activeCount={filters.dateRanges.length}>
             <FilterCheckbox label={t("last3Days")} checked={filters.dateRanges.includes("3days")} onChange={() => toggle("dateRanges", "3days")} />

@@ -16,7 +16,7 @@ import {
 import {
   TEMPLATES, FONT_OPTIONS, PAGE_FORMAT_OPTIONS, DATE_FORMAT_OPTIONS,
   LINE_HEIGHT_OPTIONS, MARGIN_OPTIONS, SECTION_META, DEFAULT_FORMATTING,
-  restoreCvDesign,
+  DEFAULT_CV_LAYOUT, restoreCvDesign,
 } from "@/app/[locale]/(dashboard)/job-seeker/cv/types";
 
 const savedDesign = {
@@ -73,8 +73,22 @@ describe("restoreCvDesign (opening the builder again)", () => {
   it("brings back the saved template, formatting and hidden sections", () => {
     const design = restoreCvDesign(savedDesign);
     expect(design.templateId).toBe("modern");
-    expect(design.formatting).toEqual(savedDesign.formatting);
+    // Saved before the Layout controls existed: those fall back to the template's own look.
+    expect(design.formatting).toEqual({ ...DEFAULT_CV_LAYOUT, ...savedDesign.formatting });
     expect([...design.hiddenSections]).toEqual(["projects"]);
+  });
+
+  it("brings back the Layout choices and drops values it doesn't know", () => {
+    const layout = {
+      headerAlign: "center", textAlign: "justify", headingStyle: "band", skillsStyle: "columns",
+      nameSize: "large", bulletStyle: "arrow", datePosition: "below", photoShape: "square",
+    };
+    const parsed = jobSeekerProfileUpdateSchema.parse({
+      cvDesign: { ...savedDesign, formatting: { ...savedDesign.formatting, ...layout } },
+    });
+    expect(parsed.cvDesign?.formatting).toMatchObject(layout);
+    const design = restoreCvDesign({ ...savedDesign, formatting: { ...savedDesign.formatting, ...layout, nameSize: "huge" } });
+    expect(design.formatting).toMatchObject({ ...layout, nameSize: "medium" });
   });
 
   it("starts from Classic and the default formatting when nothing was saved", () => {

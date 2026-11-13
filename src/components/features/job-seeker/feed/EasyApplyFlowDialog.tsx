@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { useLocale } from "next-intl";
 import { useSession } from "next-auth/react";
 import {
   Check,
   CheckCircle2,
+  Eye,
   FileText,
   Loader2,
   Plus,
@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { ApplyEducationStep, educationAsk, educationWithAnswer, type EducationAnswer } from "./ApplyEducationStep";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,7 +62,7 @@ interface ScreeningQuestion {
   order: number;
 }
 
-type StepId = "cv" | "skills" | "questions" | "review";
+type StepId = "cv" | "education" | "skills" | "questions" | "review";
 
 interface EasyApplyFlowDialogProps {
   jobId: string;
@@ -102,6 +103,9 @@ export function EasyApplyFlowDialog({
   const [hasProfileCv, setHasProfileCv] = useState(false);
   // The CV built on Mployedin: offered as one choice, made into a file on submit.
   const [hasBuiltCv, setHasBuiltCv] = useState(false);
+  // No CV of their own: the Mployedin CV is made from their profile details
+  // (rendered on submit, like the built one), so every application has a CV.
+  const [autoCv, setAutoCv] = useState(false);
   const [profileDocs, setProfileDocs] = useState<ProfileDocument[]>([]);
   const [selectedCvKey, setSelectedCvKey] = useState<string>("");
   const [uploading, setUploading] = useState(false);
@@ -116,8 +120,15 @@ export function EasyApplyFlowDialog({
   const [questions, setQuestions] = useState<ScreeningQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
 
+  // ── Education step (D11): only when the job sets a minimum and the
+  // profile shows no qualification; skippable.
+  const [educationAskState, setEducationAskState] = useState<{ level: number; text: string } | null>(null);
+  const [educationEntries, setEducationEntries] = useState<Array<Record<string, unknown>>>([]);
+  const [educationAnswer, setEducationAnswer] = useState<EducationAnswer>({ level: "", field: "" });
+  const [savingEducation, setSavingEducation] = useState(false);
+
   /** Fill the CV step from the seeker's documents as the server has them. */
-  const showCvChoices = useCallback((js: { documents?: ProfileDocument[]; cvUrl?: string | null; hasBuiltCv?: boolean } | null | undefined) => {
+  const showCvChoices = useCallback((js: { documents?: ProfileDocument[]; cvUrl?: string | null; hasBuiltCv?: boolean; preferredCvId?: string | null } | null | undefined) => {
     const docs: ProfileDocument[] = Array.isArray(js?.documents) ? js.documents : [];
     const built = js?.hasBuiltCv === true;
     setProfileDocs(docs);
@@ -125,9 +136,12 @@ export function EasyApplyFlowDialog({
     // "CV built on Mployedin" stands for it, and always sends the current one.
     setResumeDocs(uploadedResumes(docs));
     setHasProfileCv(!!js?.cvUrl);
-    setHasBuiltCv(built);
+    const auto = !js?.cvUrl && !built && uploadedResumes(docs).length === 0;
+    setAutoCv(auto);
+    setHasBuiltCv(built || auto);
     // The same CV is preselected on every apply screen (cvChoice.ts).
-    setSelectedCvKey(defaultCvKey({ documents: docs, hasProfileCv: !!js?.cvUrl, hasBuiltCv: built }));
+    // The CV marked "send this one" on My CVs comes first when it still exists.
+    setSelectedCvKey(defaultCvKey({ documents: docs, hasProfileCv: !!js?.cvUrl, hasBuiltCv: built || auto, preferredId: js?.preferredCvId }));
   }, []);
 
   // ── Load everything when the dialog opens ─────────────────────────────────────
@@ -142,6 +156,8 @@ export function EasyApplyFlowDialog({
     setSubmitting(false);
     setConfirmedSkills(new Set());
     setAnswers({});
+    setEducationAskState(null);
+    setEducationAnswer({ level: "", field: "" });
     setLoading(true);
 
     Promise.all([
@@ -174,6 +190,10 @@ export function EasyApplyFlowDialog({
           ? jobData.job.screeningQuestions
           : [];
         setQuestions([...qs].sort((a, b) => a.order - b.order));
+
+        // Education the job asks for and the profile cannot show.
+        setEducationEntries(Array.isArray(meData?.jobSeeker?.education) ? meData.jobSeeker.education : []);
+        setEducationAskState(educationAsk(jobData?.job, meData?.jobSeeker));
       })
       .catch(() => {
         if (!cancelled) setError(t("errors.loadFailed"));
@@ -190,11 +210,12 @@ export function EasyApplyFlowDialog({
   // ── Derived step list ─────────────────────────────────────────────────────────
   const steps = useMemo<StepId[]>(() => {
     const list: StepId[] = ["cv"];
+    if (educationAskState) list.push("education");
     if (unansweredSkills.length > 0 || matchedSkills.length > 0) list.push("skills");
     if (questions.length > 0) list.push("questions");
     list.push("review");
     return list;
-  }, [unansweredSkills.length, matchedSkills.length, questions.length]);
+  }, [educationAskState, unansweredSkills.length, matchedSkills.length, questions.length]);
 
   const locale = useLocale();
   const currentStep = steps[Math.min(stepIndex, steps.length - 1)];
@@ -299,7 +320,37 @@ export function EasyApplyFlowDialog({
       return;
     }
     if (currentStep === "questions" && !validateQuestions()) return;
+    if (currentStep === "education" && educationAnswer.level) {
+      void saveEducation();
+      return;
+    }
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+  }
+
+  /**
+   * Add the answer to the profile before applying, so this application is
+   * scored with it. The list is sent whole (the profile PATCH sets it), with
+   * every entry that was there. A failure is said and the step can be skipped.
+   */
+  async function saveEducation() {
+    setSavingEducation(true);
+    try {
+      const education = educationWithAnswer(educationEntries, educationAnswer);
+      const res = await csrfFetch("/api/job-seeker/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ education }),
+      });
+      if (!res.ok) throw new Error(`profile ${res.status}`);
+      setEducationEntries(education);
+      setEducationAskState(null);
+      setEducationAnswer({ level: "", field: "" });
+      // The step leaves the list, so the next step now sits at this index.
+    } catch {
+      setError(t("education.saveFailed"));
+    } finally {
+      setSavingEducation(false);
+    }
   }
 
   function goBack() {
@@ -374,12 +425,13 @@ export function EasyApplyFlowDialog({
           known === "planLimitReached" ? t("errors.planLimitReached")
             : known === "jobClosed" ? t("errors.jobClosed")
               : known === "documentNotFound" ? t("errors.documentNotFound")
-                : data?.error ?? t("errors.applyFailed"),
+                : known === "cvRequired" ? t("errors.selectCv")
+                  : data?.error ?? t("errors.applyFailed"),
         );
         // The chosen CV was deleted or replaced since the dialog opened: its
         // list is out of date, and submitting again would be refused again.
         // Show the CVs as they are now and go back to choose one.
-        if (known === "documentNotFound") {
+        if (known === "documentNotFound" || known === "cvRequired") {
           const fresh = await fetch("/api/job-seeker/me").then((r) => (r.ok ? r.json() : null)).catch(() => null);
           if (fresh?.jobSeeker) showCvChoices(fresh.jobSeeker);
           setStepIndex(0);
@@ -402,7 +454,7 @@ export function EasyApplyFlowDialog({
         ? t("builtCv")
         : resumeDocs.find((d) => d.id === selectedCvKey)?.name;
 
-  const busy = submitting || uploading;
+  const busy = submitting || uploading || savingEducation;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !busy && onOpenChange(o)}>
@@ -477,6 +529,7 @@ export function EasyApplyFlowDialog({
                       resumeDocs={resumeDocs}
                       hasProfileCv={hasProfileCv}
                       hasBuiltCv={hasBuiltCv}
+                      autoCv={autoCv}
                       selectedCvKey={selectedCvKey}
                       onSelect={setSelectedCvKey}
                       uploading={uploading}
@@ -486,6 +539,10 @@ export function EasyApplyFlowDialog({
                       locale={locale}
                       t={t}
                     />
+                  )}
+
+                  {currentStep === "education" && educationAskState && (
+                    <ApplyEducationStep ask={educationAskState} value={educationAnswer} onChange={setEducationAnswer} />
                   )}
 
                   {currentStep === "skills" && (
@@ -563,7 +620,8 @@ export function EasyApplyFlowDialog({
                   onClick={goNext}
                   className="gap-1.5 rounded-xl"
                 >
-                  {t("next")}
+                  {savingEducation ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+                  {currentStep === "education" && !educationAnswer.level ? t("education.skip") : t("next")}
                 </Button>
               )}
             </div>
@@ -582,6 +640,7 @@ function CvStep({
   resumeDocs,
   hasProfileCv,
   hasBuiltCv,
+  autoCv,
   selectedCvKey,
   onSelect,
   uploading,
@@ -594,6 +653,8 @@ function CvStep({
   resumeDocs: ProfileDocument[];
   hasProfileCv: boolean;
   hasBuiltCv: boolean;
+  /** The built option stands for the CV made from profile details (no CV of their own). */
+  autoCv: boolean;
   selectedCvKey: string;
   onSelect: (key: string) => void;
   uploading: boolean;
@@ -603,7 +664,6 @@ function CvStep({
   locale: string;
   t: Tx;
 }) {
-  const noCv = !hasProfileCv && !hasBuiltCv && resumeDocs.length === 0;
   return (
     <div className="space-y-3">
       <div>
@@ -621,11 +681,23 @@ function CvStep({
         )}
         {hasBuiltCv && (
           <CvOption
-            label={t("builtCv")}
-            hint={t("cv.builtCvHint")}
+            label={autoCv ? t("cv.autoCv") : t("builtCv")}
+            hint={autoCv ? t("cv.autoCvHint") : t("cv.builtCvHint")}
             selected={selectedCvKey === BUILT_CV_KEY}
             onSelect={() => onSelect(BUILT_CV_KEY)}
           />
+        )}
+        {autoCv && (
+          // A new tab, so the dialog and its answers stay put.
+          <a
+            href={`/${locale}/job-seeker/cv`}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-1 ps-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+          >
+            <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+            {t("cv.previewCv")}
+          </a>
         )}
         {resumeDocs.map((d) => (
           <CvOption
@@ -635,27 +707,6 @@ function CvStep({
             onSelect={() => onSelect(d.id)}
           />
         ))}
-        {noCv && (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground/70">{t("cv.noCv")}</p>
-            <div className="space-y-2">
-              <Link
-                href={`/${locale}/job-seeker/cv`}
-                className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs font-medium text-primary hover:bg-primary/[0.10] transition-colors"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                {t("cv.buildCV")}
-              </Link>
-              <Link
-                href={`/${locale}/job-seeker/documents`}
-                className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/[0.06] px-3 py-2 text-xs font-medium text-primary hover:bg-primary/[0.10] transition-colors"
-              >
-                <FileText className="h-3.5 w-3.5" />
-                {t("cv.uploadDocuments")}
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
 
       <input
@@ -678,7 +729,7 @@ function CvStep({
         ) : (
           <Upload className="h-3.5 w-3.5" />
         )}
-        {uploading ? t("cv.uploading") : t("cv.uploadCv")}
+        {uploading ? t("cv.uploading") : autoCv ? t("cv.uploadOwnCv") : t("cv.uploadCv")}
       </Button>
     </div>
   );

@@ -51,6 +51,8 @@ export interface IOnboardingDocument {
   dueDate?: Date;
   /** Candidate's typed-name signature, when signed. */
   signature?: IDocumentSignature;
+  /** Why the employer sent it back for a new copy; cleared on the next upload. */
+  reviewNote?: string;
 }
 
 export interface IProbation {
@@ -111,6 +113,7 @@ const OnboardingDocumentSchema = new Schema<IOnboardingDocument>(
     uploadedBy: { type: String, enum: ["employer", "candidate"] },
     dueDate: Date,
     signature: { type: DocumentSignatureSchema, default: undefined },
+    reviewNote: String,
   },
   { _id: true }
 );

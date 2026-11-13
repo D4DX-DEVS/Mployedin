@@ -192,9 +192,9 @@ export default function AgentInvoicesPage() {
         title={t("title")}
         context={t("description")}
         actions={
-          <Button onClick={() => setShowBuilder(true)} aria-label={t("createInvoiceButton")} className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
+          <Button onClick={() => setShowBuilder(true)} className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("createInvoiceButton")}</span>
+            <span>{t("createInvoiceButton")}</span>
           </Button>
         }
         metrics={[
@@ -227,7 +227,6 @@ export default function AgentInvoicesPage() {
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">{statusSelect}</div>

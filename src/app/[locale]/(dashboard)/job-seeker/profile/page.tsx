@@ -7,11 +7,11 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
   User, MapPin, Globe, Briefcase, GraduationCap, Award,
-  Link2, Upload, Sparkles, BrainCircuit,
+  Link2, Sparkles,
   Check, CheckCircle2, Circle, Plus, Target, Zap,
   FileText, TrendingUp, ChevronRight, Languages as LanguagesIcon,
-  UserCircle, Pencil, Camera, X, Clock, Calendar, Eye, EyeOff,
-  FolderKanban, Trophy, Building2, Shield, Settings,
+  UserCircle, Pencil, Camera, Clock, Calendar, Eye, EyeOff,
+  FolderKanban, Trophy, Building2, Settings,
   Loader2, ExternalLink, Save, Github, Linkedin,
   ArrowRight,
 } from "lucide-react";
@@ -26,11 +26,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { JobSeekerSectionNav, PROFILE_SECTION_PATHS } from "@/components/features/job-seeker/JobSeekerSectionNav";
+import { ProfileHubShell } from "@/components/features/job-seeker/ProfileHubShell";
 import { SeekerAreaCard } from "@/components/features/job-seeker/SeekerAreaCard";
 import { PhoneClampText, PhonePreviewList } from "./_components/PhonePreview";
 import { cn } from "@/lib/utils";
+import { totalExperience } from "@/lib/jobseekers/experience";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { getCsrfToken } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -44,8 +44,18 @@ import { toast } from "sonner";
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Skill { name: string; level: string; yearsOfExperience: number; }
-interface Experience { jobTitle: string; company: string; location: string; from: string; to: string; current: boolean; description: string; }
-interface Education { degree: string; field: string; institution: string; country: string; from: string; to: string; }
+// Field names as the schema stores them (the CV builder reads the same ones in
+// built-cv.ts). This page used to read from/to/current/location, which do not
+// exist, so every job showed a lone "–" where its dates belong.
+interface Experience { jobTitle: string; company: string; country?: string; startDate?: string; endDate?: string; isCurrent?: boolean; description: string; }
+interface Education { degree: string; field?: string; institution: string; country?: string; graduationDate?: string; }
+
+/** "Jan 2025" in the page language; "" for a missing or unreadable date. */
+function monthYear(value: string | undefined, locale: string): string {
+  if (!value) return "";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : new Intl.DateTimeFormat(locale, { month: "short", year: "numeric", timeZone: "UTC" }).format(d);
+}
 // Schema field is `proficiency`; `level` only exists on docs written before that
 // rename, so read it as a fallback instead of rendering an empty cell.
 interface Language { language: string; proficiency?: string; level?: string; canRead?: boolean; canWrite?: boolean; canSpeak?: boolean; }
@@ -105,10 +115,10 @@ type ChecklistLabels = Record<"cv" | "skills" | "experience" | "education" | "pe
 
 function buildChecklist(profile: ProfileData | null, labels: ChecklistLabels): ChecklistStep[] {
   return [
-    { id: "cv",          label: labels.cv,          bonus: "+30%", done: !!(profile?.cvFileUrl || profile?.cv?.originalUrl), href: "./cv",                    icon: FileText      },
-    { id: "skills",      label: labels.skills,      bonus: "+20%", done: (profile?.skills?.length ?? 0) > 0,        href: "./cv",                    icon: Award         },
-    { id: "experience",  label: labels.experience,  bonus: "+15%", done: (profile?.experience?.length ?? 0) > 0,    href: "./cv",                    icon: Briefcase     },
-    { id: "education",   label: labels.education,   bonus: "+10%", done: (profile?.education?.length ?? 0) > 0,     href: "./cv",                    icon: GraduationCap },
+    { id: "cv",          label: labels.cv,          bonus: "+30%", done: !!(profile?.cvFileUrl || profile?.cv?.originalUrl || profile?.cvExtractedByAI), href: "./documents", icon: FileText      },
+    { id: "skills",      label: labels.skills,      bonus: "+20%", done: (profile?.skills?.length ?? 0) > 0,        href: "./cv?section=skills",                    icon: Award         },
+    { id: "experience",  label: labels.experience,  bonus: "+15%", done: (profile?.experience?.length ?? 0) > 0,    href: "./cv?section=experience",                    icon: Briefcase     },
+    { id: "education",   label: labels.education,   bonus: "+10%", done: (profile?.education?.length ?? 0) > 0,     href: "./cv?section=education",                    icon: GraduationCap },
     { id: "documents",   label: labels.documents,   bonus: "+5%",  done: (profile?.documents?.length ?? 0) > 0,     href: "./documents",             icon: FileText      },
     { id: "personal",    label: labels.personal,    bonus: "+10%", done: !!(profile?.dateOfBirth || profile?.nationality), href: "./profile/personal-details", icon: UserCircle    },
     { id: "preferences", label: labels.preferences, bonus: "+15%", done: (profile?.preferredRoles?.length ?? 0) > 0,   href: "./preferences",           icon: Target        },
@@ -171,9 +181,6 @@ export default function JobSeekerProfilePage() {
     }
   }
 
-  const [showVisibilityModal, setShowVisibilityModal] = useState(false);
-  const [editVisibility, setEditVisibility] = useState<"visible" | "hidden">("visible");
-  const [savingVisibility, setSavingVisibility] = useState(false);
 
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -316,15 +323,6 @@ export default function JobSeekerProfilePage() {
     finally { setSavingSummary(false); }
   }
 
-  async function handleSaveVisibility() {
-    setSavingVisibility(true);
-    try {
-      await patchProfile({ profileVisibility: editVisibility });
-      setShowVisibilityModal(false);
-    } catch { toast.error(t("errors.saveFailed")); }
-    finally { setSavingVisibility(false); }
-  }
-
   async function handleToggleSectionVisibility(sectionId: string, visible: boolean) {
     const prev = profile?.sectionVisibility ?? {};
     const updated = { ...prev, [sectionId]: visible };
@@ -371,31 +369,34 @@ export default function JobSeekerProfilePage() {
   });
   const missingSteps    = checklist.filter((s) => !s.done);
   const doneSteps       = checklist.filter((s) => s.done);
-  const potentialBoost  = missingSteps.reduce((acc, s) => acc + parseInt(s.bonus), 0);
-  const hasCv = !!(profile?.cvFileUrl || profile?.cv?.originalUrl);
-  const aiExtracted = !!profile?.cvExtractedByAI;
 
   // ── Detailed missing-fields for reaching 100% ────────────────────────
   // `id` is what the checklist below matches on. It used to compare the English
   // label, so translating the label would have silently broken the de-duplication.
   const missingFields: { id: string; label: string; points: number; href: string; icon: React.ElementType }[] = profile ? [
-    ...(!profile.nationality     ? [{ id: "nationality", label: t("missingFields.nationality"), points: 10, href: "./cv",                        icon: Globe }] : []),
-    ...(!profile.currentLocation ? [{ id: "location",    label: t("missingFields.location"),    points: 5,  href: "./cv",                        icon: MapPin }] : []),
+    ...(!profile.nationality     ? [{ id: "nationality", label: t("missingFields.nationality"), points: 10, href: "./cv?section=personal",                        icon: Globe }] : []),
+    ...(!profile.currentLocation ? [{ id: "location",    label: t("missingFields.location"),    points: 5,  href: "./cv?section=personal",                        icon: MapPin }] : []),
     ...(!profile.summary         ? [{ id: "summary",     label: t("missingFields.summary"),     points: 10, href: "#about",                      icon: User }] : []),
-    ...((profile.skills?.length ?? 0) === 0     ? [{ id: "skills",     label: t("missingFields.skills"),     points: 20, href: "./cv",                      icon: Award }] : []),
-    ...((profile.experience?.length ?? 0) === 0 ? [{ id: "experience", label: t("missingFields.experience"), points: 20, href: "./cv",                      icon: Briefcase }] : []),
-    ...((profile.education?.length ?? 0) === 0  ? [{ id: "education",  label: t("missingFields.education"),  points: 15, href: "./cv",                      icon: GraduationCap }] : []),
+    ...((profile.skills?.length ?? 0) === 0     ? [{ id: "skills",     label: t("missingFields.skills"),     points: 20, href: "./cv?section=skills",                      icon: Award }] : []),
+    ...((profile.experience?.length ?? 0) === 0 ? [{ id: "experience", label: t("missingFields.experience"), points: 20, href: "./cv?section=experience",                      icon: Briefcase }] : []),
+    ...((profile.education?.length ?? 0) === 0  ? [{ id: "education",  label: t("missingFields.education"),  points: 15, href: "./cv?section=education",                      icon: GraduationCap }] : []),
     ...((profile.languages?.length ?? 0) === 0  ? [{ id: "languages",  label: t("missingFields.languages"),  points: 5,  href: "./profile/personal-details", icon: LanguagesIcon }] : []),
     ...(!(profile.linkedin || profile.socialLinks?.some((l) => l.label?.toLowerCase() === "linkedin"))
-      ? [{ id: "linkedin", label: t("missingFields.linkedin"), points: 5, href: "./cv",                      icon: Linkedin }] : []),
+      ? [{ id: "linkedin", label: t("missingFields.linkedin"), points: 5, href: "./cv?section=personal",                      icon: Linkedin }] : []),
   ] : [];
 
   const completenessColor     = completeness >= 80 ? "text-emerald-600" : completeness >= 50 ? "text-amber-500" : "text-rose-500";
   const completenessRingColor = completeness >= 80 ? "stroke-emerald-500" : completeness >= 50 ? "stroke-amber-500" : "stroke-rose-500";
 
   const visibility = profile?.profileVisibility ?? "visible";
-  const totalExpYears = profile?.totalExperienceYears ?? 0;
-  const totalExpMonths = profile?.totalExperienceMonths ?? 0;
+  // The figure typed at sign-up never grows; the dated jobs do. Show whichever
+  // is longer — a seeker in their job since Jan 2025 read "1 yr 2 mo" in Nov
+  // 2026 (owner, 2026-11-13). A past job with no end date adds nothing here.
+  const statedExpMonths = (profile?.totalExperienceYears ?? 0) * 12 + (profile?.totalExperienceMonths ?? 0);
+  const datedExp = totalExperience(null, profile?.experience ?? []);
+  const expMonths = Math.max(statedExpMonths, datedExp ? datedExp.years * 12 + datedExp.months : 0);
+  const totalExpYears = Math.floor(expMonths / 12);
+  const totalExpMonths = expMonths % 12;
   const hasExperience = totalExpYears > 0 || totalExpMonths > 0;
   const availabilityLabel = {
     immediately: t("setup.availabilityLabels.immediately"),
@@ -408,6 +409,11 @@ export default function JobSeekerProfilePage() {
     ? new Date(profile.updatedAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })
     : "";
 
+  // Career profile (industry, department, role category) comes from CV import
+  // and nothing on the site edits it, so it is shown only when it holds
+  // something, read-only, and never with an edit button that leads elsewhere.
+  const hasCareerProfile = Object.values(profile?.careerProfile ?? {}).some((v) => (Array.isArray(v) ? v.length > 0 : Boolean(v)));
+
   // Quick links for sidebar
   const sectionRefs = [
     { id: "about", label: t("sectionNav.about"), icon: User },
@@ -416,7 +422,7 @@ export default function JobSeekerProfilePage() {
     { id: "education", label: t("sectionNav.education"), icon: GraduationCap },
     { id: "projects", label: t("sectionNav.projects"), icon: FolderKanban },
     { id: "accomplishments", label: t("sectionNav.accomplishments"), icon: Trophy },
-    { id: "career-profile", label: t("sectionNav.careerProfile"), icon: Building2 },
+    ...(hasCareerProfile ? [{ id: "career-profile", label: t("sectionNav.careerProfile"), icon: Building2 }] : []),
     { id: "languages", label: t("sectionNav.languages"), icon: LanguagesIcon },
   ];
 
@@ -469,99 +475,42 @@ export default function JobSeekerProfilePage() {
   }
 
   return (
-    <div className="page-container max-w-5xl">
+    <ProfileHubShell
+      locale={locale}
+      actions={
+        <Button variant="outline" size="sm" onClick={() => router.push(`/${locale}/job-seeker/settings`)} aria-label={t("settings")} className="max-sm:size-11 max-sm:p-0">
+          <Settings className="w-4 h-4 sm:me-1.5" aria-hidden="true" />
+          <span className="max-sm:sr-only">{t("settings")}</span>
+        </Button>
+      }
+    >
       {ConfirmDialogNode}
 
-      {/* ── Page Header ────────────────────────────────────────────────── */}
-      {/* Phones: Settings stays beside the title as an icon button instead of
-          taking a row of its own above the section pills. */}
-      <PageHeader
-        title={t("title")}
-        description={t("description")}
-        className="max-sm:flex-row max-sm:items-start max-sm:[&>.page-header-actions]:w-auto max-sm:[&>.page-header-actions]:shrink-0"
-        actions={
-          <Button variant="outline" size="sm" onClick={() => router.push("./settings")} aria-label={t("settings")} className="max-sm:size-11 max-sm:p-0">
-            <Settings className="w-4 h-4 sm:me-1.5" aria-hidden="true" />
-            <span className="max-sm:sr-only">{t("settings")}</span>
-          </Button>
-        }
-      />
-
-      {/* CV, skills, documents, portfolio, personal details and preferences are
-          all parts of this profile. They used to be six separate entries in the
-          "More" menu, filed under a heading the seeker had to guess. */}
-      <JobSeekerSectionNav locale={locale} paths={PROFILE_SECTION_PATHS} />
-
-      <div
-        className="card-base border-primary/15 panel-body"
-        style={{ background: "linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--accent)) 100%)" }}
-      >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-background/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {t("aiTools")}
-            </div>
-            <h2 className="heading-section mt-2 font-semibold text-foreground sm:mt-3">{t("aiTitle")}</h2>
-            {/* Four lines of explainer above the fold on a phone — kept from sm up. */}
-            <p className="mt-1.5 hidden text-sm leading-relaxed text-muted-foreground sm:block">
-              {t("aiDescription")}
-            </p>
-          </div>
-
-          <div className="lg:w-[17rem]">
-            <button
-              onClick={() => router.push("./cv")}
-              aria-label={aiExtracted ? t("refreshCvAi") : t("uploadCvAi")}
-              className="group w-full rounded-2xl border border-border/60 bg-background/90 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md card-pad"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-[11px] font-medium">
-                  {aiExtracted ? t("aiReady") : hasCv ? t("cvUploaded") : t("new")}
-                </Badge>
-              </div>
-              <p className="mt-2.5 text-sm font-semibold text-foreground sm:mt-4">{t("aiExtractor")}</p>
-              <p className="mt-1 hidden text-xs leading-relaxed text-muted-foreground sm:block">
-                {aiExtracted
-                  ? t("aiExtractedDescription")
-                  : hasCv
-                    ? t("cvUploadedDescription")
-                    : t("noCvDescription")}
-              </p>
-              <div className="mt-2.5 inline-flex items-center gap-1 text-xs font-semibold text-primary sm:mt-4">
-                {aiExtracted ? t("refreshWithAi") : t("uploadCvAi")}
-                <ChevronRight className="h-3.5 w-3.5" />
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Profile Visibility Banner ─────────────────────────────────── */}
-      <button
-        onClick={() => { setEditVisibility(visibility); setShowVisibilityModal(true); }}
+      {/* ── Profile visibility: one switch, kept in Settings › Privacy ── */}
+      <Link
+        href={`/${locale}/job-seeker/settings/privacy`}
         className={cn(
-          "w-full card-base px-4 py-2.5 flex items-center justify-between text-sm transition-colors",
+          "w-full card-base px-4 py-2.5 flex min-h-11 items-center justify-between gap-3 text-sm transition-colors",
           visibility === "visible"
             ? "border-emerald-200 bg-emerald-50/50"
             : "border-amber-200 bg-amber-50/50"
         )}
       >
-        <div className="flex items-center gap-2">
+        <span className="flex items-center gap-2">
           {visibility === "visible" ? (
-            <Eye className="w-4 h-4 text-emerald-600" />
+            <Eye className="w-4 h-4 text-emerald-600" aria-hidden="true" />
           ) : (
-            <EyeOff className="w-4 h-4 text-amber-600" />
+            <EyeOff className="w-4 h-4 text-amber-600" aria-hidden="true" />
           )}
           <span className={visibility === "visible" ? "text-emerald-700" : "text-amber-700"}>
             {visibility === "visible" ? t("visibleBanner") : t("hiddenBanner")}
           </span>
-        </div>
-        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-      </button>
+        </span>
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+          {t("visibilityChangeLink")}
+          <ChevronRight className="w-4 h-4 rtl:rotate-180" aria-hidden="true" />
+        </span>
+      </Link>
 
       {/* ── Area: the city agents near the seeker match on ─────────────── */}
       <SeekerAreaCard onSaved={() => { void fetchProfile(); }} />
@@ -817,70 +766,27 @@ export default function JobSeekerProfilePage() {
         })}
       </nav>
 
-      {/* ── AI Insight Card ───────────────────────────────────────────── */}
-      {completeness < 80 && (
-        <div className="card-base border-violet-200 panel-body"
-          style={{ background: "linear-gradient(135deg, hsl(var(--card)) 0%, hsl(270 60% 98%) 100%)" }}>
-          <div className="flex items-start gap-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100">
-              <BrainCircuit className="w-4.5 h-4.5 text-violet-600" style={{ width: "18px", height: "18px" }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-sm font-semibold">{t("profile.aiCareerInsight")}</span>
-                <span className="inline-flex items-center rounded-full bg-violet-600 px-1.5 py-px text-[11px] font-bold text-white tracking-wide">
-                  {t("profile.smartBadge")}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Complete your profile to boost your job match score by{" "}
-                <span className={cn("font-bold", completeness < 50 ? "text-rose-600" : "text-amber-600")}>+{potentialBoost}%</span>.
-                {" "}Profiles with a resume get <span className="font-semibold text-foreground">3× more interviews</span>.
-              </p>
-              {missingSteps.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {missingSteps.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => router.push(s.href)}
-                      className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3 text-muted-foreground" />
-                      {s.label}
-                      <span className="text-emerald-600 font-semibold">{s.bonus}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Missing Details CTA (Naukri-style) ────────────────────────── */}
-      {missingSteps.length > 0 && completeness < 100 && (
-        <div className="card-base flex items-center justify-between panel-body max-sm:hidden">
-          <div className="flex flex-wrap gap-3">
-            {missingSteps.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => router.push(s.href)}
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <s.icon className="w-3.5 h-3.5" />
-                <span>{s.label}</span>
-                <span className="text-emerald-600 font-semibold">{s.bonus}</span>
-              </button>
-            ))}
-          </div>
-          <Button
-            size="sm"
-            variant="destructive"
-            className="shrink-0 text-xs"
-            onClick={() => router.push(missingSteps[0]?.href ?? "./cv")}
-          >
-            Add {missingSteps.length} missing detail{missingSteps.length !== 1 ? "s" : ""}
-          </Button>
+      {/* ── Every setup step done: one slim bar naming what is left ──── */}
+      {completeness < 100 && missingSteps.length === 0 && missingFields.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 max-sm:hidden">
+          <TrendingUp className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+          <span className="flex-1 text-sm font-medium text-amber-900">{t("thingsLeft", { count: missingFields.length })}</span>
+          {missingFields.map((field, idx) => (
+            <Button
+              key={field.id}
+              size="sm"
+              variant={idx === 0 ? "default" : "outline"}
+              className="gap-1.5"
+              onClick={() => {
+                if (field.href.startsWith("#")) document.getElementById(field.href.slice(1))?.scrollIntoView({ behavior: "smooth" });
+                else router.push(field.href);
+              }}
+            >
+              <field.icon className="h-3.5 w-3.5" aria-hidden="true" />
+              {field.label}
+              <span className="text-xs opacity-80">+{field.points}%</span>
+            </Button>
+          ))}
         </div>
       )}
 
@@ -920,8 +826,11 @@ export default function JobSeekerProfilePage() {
         <div className="flex-1 min-w-0 space-y-3">
 
           {/* ── Setup Checklist ─────────────────────────────────────────── */}
-          {completeness < 100 && (
+          {completeness < 100 && missingSteps.length > 0 && (
             <div className="card-base panel-body max-sm:hidden">
+              {/* Steps still to do. Finished ones are not listed: a column of
+                  "Done" rows pushed the profile itself below the fold. */}
+              <>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-amber-500" />
@@ -933,7 +842,7 @@ export default function JobSeekerProfilePage() {
               </div>
 
               <div className="space-y-1">
-                {checklist.map((step, idx) => (
+                {missingSteps.map((step, idx) => (
                   <button
                     key={step.id}
                     onClick={() => !step.done && router.push(step.href)}
@@ -987,40 +896,7 @@ export default function JobSeekerProfilePage() {
                   <span>{completeness}%</span>
                 </div>
               </div>
-
-              {/* ── Missing fields to reach 100% ──────────────────────── */}
-              {missingFields.length > 0 && missingSteps.length === 0 && (
-                <div className="mt-4 pt-4 border-t border-border/50">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
-                    <span className="text-xs font-semibold text-foreground">
-                      Add these to reach 100%
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">
-                      (+{missingFields.reduce((a, f) => a + f.points, 0)}% remaining)
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {missingFields.map((field) => (
-                      <button
-                        key={field.label}
-                        onClick={() => {
-                          if (field.href.startsWith("#")) {
-                            document.getElementById(field.href.slice(1))?.scrollIntoView({ behavior: "smooth" });
-                          } else {
-                            router.push(field.href);
-                          }
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors cursor-pointer"
-                      >
-                        <field.icon className="w-3 h-3" />
-                        {field.label}
-                        <span className="font-semibold">+{field.points}%</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              </>
 
               {/* ── Mixed: some checklist steps + extra fields missing ── */}
               {missingFields.length > 0 && missingSteps.length > 0 && missingFields.some(f =>
@@ -1051,14 +927,14 @@ export default function JobSeekerProfilePage() {
 
           {/* ── About ─────────────────────────────────────────────────── */}
           <div id="about" className="scroll-mt-24">
-            <SectionCard icon={User} title={t("sectionAbout")} onEdit={() => { setEditSummary(profile?.summary ?? ""); setShowSummaryModal(true); }} onAdd={() => router.push("./settings")} isEmpty={!profile?.summary} emptyLabel={t("emptyAddSummary")}>
+            <SectionCard icon={User} title={t("sectionAbout")} onEdit={() => { setEditSummary(profile?.summary ?? ""); setShowSummaryModal(true); }} onAdd={profile?.summary ? undefined : () => { setEditSummary(""); setShowSummaryModal(true); }} isEmpty={!profile?.summary} emptyLabel={t("emptyAddSummary")}>
               {profile?.summary && <PhoneClampText text={profile.summary} className="text-sm text-muted-foreground leading-relaxed" />}
             </SectionCard>
           </div>
 
           {/* ── Experience ────────────────────────────────────────────── */}
           <div id="experience" className="scroll-mt-24">
-            <SectionCard icon={Briefcase} title={t("sectionExperience")} onAdd={() => router.push("./experience")} isEmpty={(profile?.experience?.length ?? 0) === 0} emptyLabel={t("emptyAddWorkExperience")} visible={profile?.sectionVisibility?.experience !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("experience", v)}>
+            <SectionCard icon={Briefcase} title={t("sectionExperience")} onAdd={() => router.push("./cv?section=experience")} addLabel={t("sectionActions.editInCvBuilder")} isEmpty={(profile?.experience?.length ?? 0) === 0} emptyLabel={t("emptyAddWorkExperience")} visible={profile?.sectionVisibility?.experience !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("experience", v)}>
               {(profile?.experience?.length ?? 0) > 0 && (
                 <PhonePreviewList limit={2} className="space-y-4">
                   {profile!.experience.map((exp, i) => (
@@ -1066,10 +942,14 @@ export default function JobSeekerProfilePage() {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-sm font-semibold">{exp.jobTitle}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{exp.company}{exp.location && ` · ${exp.location}`}</p>
-                          <p className="text-xs text-muted-foreground">{exp.from} – {exp.current ? t("present") : exp.to}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{exp.company}{exp.country && ` · ${exp.country}`}</p>
+                          {exp.startDate && (
+                            <p className="text-xs text-muted-foreground">
+                              {[monthYear(exp.startDate, locale), exp.isCurrent ? t("present") : monthYear(exp.endDate, locale)].filter(Boolean).join(" – ")}
+                            </p>
+                          )}
                         </div>
-                        {exp.current && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs shrink-0">{t("currentBadge")}</Badge>}
+                        {exp.isCurrent && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs shrink-0">{t("currentBadge")}</Badge>}
                       </div>
                       {exp.description && <p className="text-xs text-muted-foreground mt-2 leading-relaxed line-clamp-3">{exp.description}</p>}
                     </div>
@@ -1081,7 +961,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Skills ────────────────────────────────────────────────── */}
           <div id="skills" className="scroll-mt-24">
-            <SectionCard icon={Award} title={t("sectionSkills")} onAdd={() => router.push("./skills")} isEmpty={(profile?.skills?.length ?? 0) === 0} emptyLabel={t("emptyAddSkills")} visible={profile?.sectionVisibility?.skills !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("skills", v)}>
+            <SectionCard icon={Award} title={t("sectionSkills")} onAdd={() => router.push("./cv?section=skills")} addLabel={t("sectionActions.editSkills")} extraAction={<Link href={`/${locale}/job-seeker/skills`} className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10 max-sm:min-h-11"><Sparkles className="h-3 w-3" aria-hidden="true" />{t("analyseSkillGap")}</Link>} isEmpty={(profile?.skills?.length ?? 0) === 0} emptyLabel={t("emptyAddSkills")} visible={profile?.sectionVisibility?.skills !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("skills", v)}>
               {(profile?.skills?.length ?? 0) > 0 && (
                 <PhonePreviewList limit={12} className="flex flex-wrap gap-2">
                   {profile!.skills.map((s, i) => {
@@ -1101,7 +981,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Education ─────────────────────────────────────────────── */}
           <div id="education" className="scroll-mt-24">
-            <SectionCard icon={GraduationCap} title={t("sectionEducation")} onAdd={() => router.push("./cv")} isEmpty={(profile?.education?.length ?? 0) === 0} emptyLabel={t("emptyAddEducation")} visible={profile?.sectionVisibility?.education !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("education", v)}>
+            <SectionCard icon={GraduationCap} title={t("sectionEducation")} onAdd={() => router.push("./cv?section=education")} addLabel={t("sectionActions.editInCvBuilder")} isEmpty={(profile?.education?.length ?? 0) === 0} emptyLabel={t("emptyAddEducation")} visible={profile?.sectionVisibility?.education !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("education", v)}>
               {(profile?.education?.length ?? 0) > 0 && (
                 <PhonePreviewList limit={2} className="space-y-3">
                   {profile!.education.map((edu, i) => (
@@ -1110,9 +990,9 @@ export default function JobSeekerProfilePage() {
                         <GraduationCap className="w-4 h-4 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium">{edu.degree} in {edu.field}</p>
+                        <p className="text-sm font-medium">{edu.field ? t("degreeInField", { degree: edu.degree, field: edu.field }) : edu.degree}</p>
                         <p className="text-xs text-muted-foreground">{edu.institution}{edu.country && ` · ${edu.country}`}</p>
-                        {edu.from && <p className="text-xs text-muted-foreground">{edu.from} – {edu.to}</p>}
+                        {edu.graduationDate && <p className="text-xs text-muted-foreground">{monthYear(edu.graduationDate, locale)}</p>}
                       </div>
                     </div>
                   ))}
@@ -1123,7 +1003,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Projects (NEW) ────────────────────────────────────────── */}
           <div id="projects" className="scroll-mt-24">
-            <SectionCard icon={FolderKanban} title={t("sectionProjects")} onAdd={() => router.push("./cv")} isEmpty={(profile?.projects?.length ?? 0) === 0} emptyLabel={t("emptyAddProjects")} visible={profile?.sectionVisibility?.projects !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("projects", v)}>
+            <SectionCard icon={FolderKanban} title={t("sectionProjects")} onAdd={() => router.push("./cv?section=projects")} addLabel={t("sectionActions.editInCvBuilder")} isEmpty={(profile?.projects?.length ?? 0) === 0} emptyLabel={t("emptyAddProjects")} visible={profile?.sectionVisibility?.projects !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("projects", v)}>
               {(profile?.projects?.length ?? 0) > 0 && (
                 <PhonePreviewList limit={2} className="space-y-4">
                   {profile!.projects!.map((proj, i) => (
@@ -1165,7 +1045,7 @@ export default function JobSeekerProfilePage() {
 
           {/* ── Accomplishments (NEW) ─────────────────────────────────── */}
           <div id="accomplishments" className="scroll-mt-24">
-            <SectionCard icon={Trophy} title={t("sectionAccomplishments")} onAdd={() => router.push("./cv")} isEmpty={(profile?.accomplishments?.length ?? 0) === 0 && (profile?.certifications?.length ?? 0) === 0} emptyLabel={t("emptyAddAccomplishments")} visible={profile?.sectionVisibility?.accomplishments !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("accomplishments", v)}>
+            <SectionCard icon={Trophy} title={t("sectionAccomplishments")} onAdd={() => router.push("./cv?section=certifications")} addLabel={t("sectionActions.editInCvBuilder")} isEmpty={(profile?.accomplishments?.length ?? 0) === 0 && (profile?.certifications?.length ?? 0) === 0} emptyLabel={t("emptyAddAccomplishments")} visible={profile?.sectionVisibility?.accomplishments !== false} onToggleVisibility={(v) => handleToggleSectionVisibility("accomplishments", v)}>
               <div className="space-y-4">
                 {/* Certifications */}
                 {(profile?.certifications?.length ?? 0) > 0 && (
@@ -1216,9 +1096,10 @@ export default function JobSeekerProfilePage() {
             </SectionCard>
           </div>
 
-          {/* ── Career Profile (NEW) ──────────────────────────────────── */}
+          {/* ── Career Profile: read-only, only when it holds something ── */}
+          {hasCareerProfile && (
           <div id="career-profile" className="scroll-mt-24">
-            <SectionCard icon={Building2} title={t("careerProfileTitle")} onAdd={() => router.push("./preferences")} isEmpty={!profile?.careerProfile} emptyLabel={t("careerProfileEmpty")}>
+            <SectionCard icon={Building2} title={t("careerProfileTitle")} isEmpty={false}>
               {profile?.careerProfile && (
                 <div className="grid grid-cols-2 gap-4">
                   {profile.careerProfile.currentIndustry && (
@@ -1267,6 +1148,7 @@ export default function JobSeekerProfilePage() {
               )}
             </SectionCard>
           </div>
+          )}
 
           {/* ── Languages & Links ─────────────────────────────────────── */}
           <div id="languages" className="scroll-mt-24">
@@ -1274,6 +1156,7 @@ export default function JobSeekerProfilePage() {
               icon={LanguagesIcon}
               title={t("languagesSection.title")}
               onAdd={() => router.push("./profile/personal-details")}
+              addLabel={t("sectionActions.editInPersonalDetails")}
               isEmpty={(profile?.languages?.length ?? 0) === 0 && !(profile?.socialLinks?.length) && !profile?.linkedin && !profile?.portfolio}
               emptyLabel={t("languagesSection.empty")}
             >
@@ -1346,21 +1229,6 @@ export default function JobSeekerProfilePage() {
               </div>
             </SectionCard>
           </div>
-        </div>
-      </div>
-
-      {/* ── Quick Actions ──────────────────────────────────────────────── */}
-      {/* Hidden on phones: the setup rows under the profile card already link
-          to the CV extractor, skills and preferences. */}
-      <div className="card-base panel-body max-sm:hidden">
-        <div className="flex items-center gap-2 mb-4">
-          <Zap className="w-4 h-4 text-amber-500" />
-          <span className="text-sm font-semibold">{t("quickActions.title")}</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <QuickAction icon={FileText}  label={t("quickActions.aiCv")}       description={t("quickActions.aiCvDescription")}       onClick={() => router.push("./cv")}          primary />
-          <QuickAction icon={Award}     label={t("quickActions.addSkills")}  description={t("quickActions.addSkillsDescription")}  onClick={() => router.push("./cv")}                  />
-          <QuickAction icon={Target}    label={t("quickActions.preferences")} description={t("quickActions.preferencesDescription")} onClick={() => router.push("./preferences")}         />
         </div>
       </div>
 
@@ -1495,93 +1363,14 @@ export default function JobSeekerProfilePage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Profile Visibility Modal (Indeed-style) ──────────────────── */}
-      <Dialog open={showVisibilityModal} onOpenChange={setShowVisibilityModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("visibilityModalTitle")}</DialogTitle>
-            <DialogDescription className="sr-only">{t("visibilityModalDescription")}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <button
-              onClick={() => setEditVisibility("visible")}
-              className={cn(
-                "w-full text-left rounded-lg border-2 p-4 transition-colors",
-                editVisibility === "visible"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-muted-foreground/30"
-              )}
-            >
-              {editVisibility === "visible" && (
-                <span className="inline-block text-[11px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full mb-2">{t("visibilityRecommended")}</span>
-              )}
-              <div className="flex items-start gap-3">
-                <Eye className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold">{t("visibilityVisibleTitle")}</p>
-                  {/* States exactly what talent search returns. The previous
-                      copy promised identifiable details were hidden, which the
-                      endpoint does not do — it returns name, location, headline,
-                      skills and experience. */}
-                  <p className="text-xs text-muted-foreground mt-1">{t("visibilityVisibleDesc")}</p>
-                </div>
-                <div className={cn(
-                  "w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center mt-0.5",
-                  editVisibility === "visible" ? "border-primary" : "border-muted-foreground/30"
-                )}>
-                  {editVisibility === "visible" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setEditVisibility("hidden")}
-              className={cn(
-                "w-full text-left rounded-lg border-2 p-4 transition-colors",
-                editVisibility === "hidden"
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-muted-foreground/30"
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <EyeOff className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold">{t("visibilityHiddenTitle")}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{t("visibilityHiddenDesc")}</p>
-                </div>
-                <div className={cn(
-                  "w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center mt-0.5",
-                  editVisibility === "hidden" ? "border-primary" : "border-muted-foreground/30"
-                )}>
-                  {editVisibility === "hidden" && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                </div>
-              </div>
-            </button>
-
-            <a href="/privacy" target="_blank" className="text-xs text-primary hover:underline block mt-2">
-              {t("visibilityPrivacyLink")}
-            </a>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline" size="sm">{t("visibilityCancel")}</Button>
-            </DialogClose>
-            <Button size="sm" onClick={handleSaveVisibility} disabled={savingVisibility}>
-              {savingVisibility ? <Loader2 className="w-4 h-4 animate-spin me-1.5" /> : null}
-              {t("visibilitySave")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-    </div>
+    </ProfileHubShell>
   );
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SectionCard({
-  icon: Icon, title, children, onAdd, onEdit, isEmpty, emptyLabel, visible, onToggleVisibility,
+  icon: Icon, title, children, onAdd, onEdit, isEmpty, emptyLabel, visible, onToggleVisibility, extraAction, addLabel,
 }: {
   icon: React.ElementType;
   title: string;
@@ -1592,18 +1381,24 @@ function SectionCard({
   emptyLabel?: string;
   visible?: boolean;
   onToggleVisibility?: (v: boolean) => void;
+  /** A link of the section's own, shown first (Skills → gap analysis). */
+  extraAction?: React.ReactNode;
+  /** Says where onAdd goes ("Add or edit in CV builder") instead of a bare "Update". */
+  addLabel?: string;
 }) {
   const t = useTranslations("jobSeekerExtra.profile");
 
   return (
     <div className="card-base panel-body">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 max-sm:mb-2">
+      {/* Header. Buttons never wrap mid-label; on a narrow phone the whole
+          row drops under the title instead of squeezing beside it. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 mb-4 max-sm:mb-2">
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4 text-primary" />
           <span className="text-sm font-semibold">{title}</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1 [&>*]:whitespace-nowrap">
+          {extraAction}
           {onToggleVisibility && (
             <button
               onClick={() => onToggleVisibility(!visible)}
@@ -1633,8 +1428,8 @@ function SectionCard({
               onClick={onAdd}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-muted max-sm:min-h-11"
             >
-              <Plus className="w-3.5 h-3.5" />
-              {isEmpty ? t("sectionActions.add") : t("sectionActions.update")}
+              {addLabel && !isEmpty ? <Pencil className="w-3 h-3" aria-hidden="true" /> : <Plus className="w-3.5 h-3.5" aria-hidden="true" />}
+              {addLabel ?? (isEmpty ? t("sectionActions.add") : t("sectionActions.update"))}
             </button>
           )}
         </div>
@@ -1662,34 +1457,3 @@ function SectionCard({
   );
 }
 
-function QuickAction({
-  icon: Icon, label, description, onClick, primary,
-}: {
-  icon: React.ElementType;
-  label: string;
-  description: string;
-  onClick: () => void;
-  primary?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "group flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-all hover:shadow-sm w-full",
-        primary ? "border-primary/30 bg-primary/5 hover:bg-primary/10" : "border-border/60 hover:bg-muted/40"
-      )}
-    >
-      <div className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
-        primary ? "bg-primary/15 group-hover:bg-primary/20" : "bg-muted group-hover:bg-muted/70"
-      )}>
-        <Icon className={cn("w-4 h-4", primary ? "text-primary" : "text-muted-foreground")} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-sm font-medium truncate">{label}</p>
-        <p className="text-xs text-muted-foreground truncate">{description}</p>
-      </div>
-      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0 ms-auto group-hover:text-muted-foreground transition-colors" />
-    </button>
-  );
-}

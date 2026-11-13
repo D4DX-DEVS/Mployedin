@@ -23,7 +23,7 @@ it("labels every number on a phone, where the column header is hidden", () => {
   );
 
   const row = screen.getByRole("link", { name: /Gulf Metals/ });
-  for (const label of ["Open jobs", "New applicants", "Interviews ahead", "Hires"]) {
+  for (const label of ["Open jobs", "New applicants", "Hires"]) {
     expect(row).toHaveTextContent(label);
   }
 });

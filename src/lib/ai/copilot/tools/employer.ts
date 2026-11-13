@@ -298,7 +298,9 @@ export const updateApplicationStatusTool: CopilotTool<{ applicationId: string; s
       const appId = String(application._id);
       if (args.status === "rejected") {
         await notifyRejected(seekerUserId, jobTitle, appId).catch(() => {});
-      } else if (args.status === "selected") {
+      } else if (args.status === "interview_scheduled") {
+        // Same as the applications PATCH: interviewing is the "selected for
+        // interview" message; Selected is silent for the seeker.
         await notifyInterviewSelected(seekerUserId, jobTitle, employer.companyName ?? "the employer", appId).catch(() => {});
       } else {
         await notifyStatusChange(seekerUserId, jobTitle, args.status, appId).catch(() => {});

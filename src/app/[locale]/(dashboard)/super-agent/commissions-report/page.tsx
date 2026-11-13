@@ -335,7 +335,6 @@ export default function SuperAgentCommissionsReportPage() {
                   value={searchQuery}
                   onChange={setSearchQuery}
                   placeholder={t("searchAgentPlaceholder")}
-                  className="max-sm:basis-0"
                 />
               </InlineFilterBar>
             </div>

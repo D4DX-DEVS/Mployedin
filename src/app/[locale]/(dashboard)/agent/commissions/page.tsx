@@ -13,6 +13,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Clock, DollarSign, Inbox, TrendingUp, X } from "lucide-react";
+import { OverflowTabs } from "@/components/shared/OverflowTabs";
 import { formatCurrency } from "@/lib/currency";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
@@ -172,13 +173,13 @@ export default function AgentCommissionsPage() {
         // Each cell filters to the status it totals, so "Pending 4,200" is the
         // way into those commissions rather than a number to read and re-find.
         metrics={summary ? [
-          { label: t("summaryCardPendingLabel"), value: formatCurrency(summary.pending, currencyCode), icon: Clock, tone: "warning",
+          { label: t("summaryCardPendingLabel"), value: formatCurrency(summary.pending, currencyCode, "code"), icon: Clock, tone: "warning",
             onClick: () => setFilter(filter === "pending" ? "all" : "pending"), active: filter === "pending" },
-          { label: t("summaryCardApprovedLabel"), value: formatCurrency(summary.approved, currencyCode), icon: TrendingUp, tone: "info",
+          { label: t("summaryCardApprovedLabel"), value: formatCurrency(summary.approved, currencyCode, "code"), icon: TrendingUp, tone: "info",
             onClick: () => setFilter(filter === "approved" ? "all" : "approved"), active: filter === "approved" },
-          { label: t("summaryCardPaidLabel"), value: formatCurrency(summary.paid, currencyCode), icon: DollarSign, tone: "success",
+          { label: t("summaryCardPaidLabel"), value: formatCurrency(summary.paid, currencyCode, "code"), icon: DollarSign, tone: "success",
             onClick: () => setFilter(filter === "paid" ? "all" : "paid"), active: filter === "paid" },
-          { label: t("summaryCardDisputedLabel"), value: formatCurrency(summary.disputed ?? 0, currencyCode), icon: X, tone: "primary",
+          { label: t("summaryCardDisputedLabel"), value: formatCurrency(summary.disputed ?? 0, currencyCode, "code"), icon: X, tone: "primary",
             onClick: () => setFilter(filter === "disputed" ? "all" : "disputed"), active: filter === "disputed" },
         ] : undefined}
       />
@@ -235,7 +236,6 @@ export default function AgentCommissionsPage() {
           value={search}
           onChange={(value) => { handleSearchChange(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
       </InlineFilterBar>
@@ -288,25 +288,17 @@ export default function AgentCommissionsPage() {
         </FilterField>
       </PhoneFilterSheet>
 
-      {/* Status filters as an inline row */}
-      <div className="flex flex-wrap gap-1.5 mb-4 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:[scrollbar-width:none]">
-        {["all", "pending", "approved", "paid", "disputed", "clawed_back"].map((status) => {
-          const isSelected = filter === status;
-          return (
-            <Button
-              key={status}
-              onClick={() => { setFilter(status); pagination.resetPage(); }}
-              size="sm"
-              aria-pressed={isSelected}
-              variant={isSelected ? "default" : "outline"}
-              // Phone: one scrolling row; wrapped, "Clawed back" sat alone on a second line.
-              className="min-h-10 shrink-0 sm:h-9 rounded-lg capitalize max-sm:min-h-11"
-            >
-              {t(`statusLabel${status.charAt(0).toUpperCase() + status.slice(1)}`)}
-            </Button>
-          );
-        })}
-      </div>
+      {/* Status filters with overflow */}
+      <OverflowTabs<string>
+        items={["all", "pending", "approved", "paid", "disputed", "clawed_back"].map((status) => ({
+          key: status,
+          label: t(`statusLabel${status.charAt(0).toUpperCase() + status.slice(1)}`),
+        }))}
+        value={filter}
+        onChange={(status) => { setFilter(status); pagination.resetPage(); }}
+        ariaLabel={t("statusFilterLabel")}
+        className="mb-4"
+      />
 
       <PhoneRecordList
         className="sm:hidden"
@@ -335,7 +327,7 @@ export default function AgentCommissionsPage() {
             </p>
           ),
           stats: [
-            { label: t("tableHeaderAmount"), value: <span className={statusColor(c.status)}>{formatCurrency(c.amount, c.currency || currencyCode)}</span> },
+            { label: t("tableHeaderAmount"), value: <span className={statusColor(c.status)}>{formatCurrency(c.amount, c.currency || currencyCode, "code")}</span> },
             { label: t("tableHeaderType"), value: <span className="capitalize">{c.type?.replace("_", " ")}</span> },
           ],
         }))}
@@ -379,7 +371,7 @@ export default function AgentCommissionsPage() {
                 </TableCell>
                 <TableCell className="capitalize text-muted-foreground">{c.type?.replace("_", " ")}</TableCell>
                 <TableCell className={`font-bold ${statusColor(c.status)}`}>
-                  {formatCurrency(c.amount, c.currency || currencyCode)}
+                  {formatCurrency(c.amount, c.currency || currencyCode, "code")}
                 </TableCell>
                 <TableCell><StatusBadge status={c.status} /></TableCell>
                 <TableCell className="text-sm text-muted-foreground">

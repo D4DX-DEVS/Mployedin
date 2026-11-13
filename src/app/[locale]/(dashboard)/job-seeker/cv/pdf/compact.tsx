@@ -4,6 +4,7 @@ import type { SectionKey } from "../types";
 import { formatDateValue } from "../types";
 import { KeepWithFirst, PdfContactBar, RichPdfText, dateRange, orderedSections, pdfScale, type PdfTemplateProps } from "./shared";
 import { GRAY, standardFonts } from "./standard-sections";
+import { headerAlignOf, nameSizeOf, PdfSkillList, usePdfLayout } from "./pdf-layout";
 
 /* ═══════════════════════════════════════
    COMPACT PDF — mirrors CompactTemplate:
@@ -12,8 +13,11 @@ import { GRAY, standardFonts } from "./standard-sections";
 
 export function CompactPDF(props: PdfTemplateProps) {
   const { data, styles: s, primary, labels, df, pageSize, formatting } = props;
+  const { layout } = usePdfLayout();
   const scale = pdfScale(s);
   const fonts = standardFonts(props);
+  const headerAlign = headerAlignOf(formatting, "left");
+  const contactAlign = (headerAlign === "center" ? "center" : "start") as "start" | "center";
 
   const heading = (label: string) => (
     <Text style={{ fontFamily: fonts.bold, fontSize: 8.5 * scale, color: primary, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>{label}</Text>
@@ -57,7 +61,7 @@ export function CompactPDF(props: PdfTemplateProps) {
     skills: data.skills.length > 0 ? (
       <View wrap={false}>
         {heading(labels.skills)}
-        <Text style={joined}>{data.skills.join("  ·  ")}</Text>
+        <PdfSkillList skills={data.skills} chip={(sk) => <Text style={joined}>{sk}</Text>} fontSize={8 * scale} color={GRAY.g700} templateDefault="comma" separator="  ·  " />
       </View>
     ) : null,
     projects: data.projects?.length > 0 ? (
@@ -88,11 +92,11 @@ export function CompactPDF(props: PdfTemplateProps) {
 
   return (
     <Page size={pageSize} style={{ ...s.page, fontSize: 7.5 * scale }}>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", columnGap: 12, borderBottomWidth: 1, borderBottomColor: primary, paddingBottom: 4, marginBottom: 6 }}>
-        <Text style={{ fontFamily: fonts.bold, fontSize: 16 * scale, color: primary, lineHeight: 1.2 }}>{data.fullName || labels.yourName}</Text>
-        <PdfContactBar data={data} scale={scale} color={GRAY.g500} style={{ marginBottom: 2 }} />
+      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: headerAlign === "center" ? "center" : "space-between", alignItems: "flex-end", columnGap: 12, borderBottomWidth: 1, borderBottomColor: primary, paddingBottom: 4, marginBottom: 6 }}>
+        <Text style={{ fontFamily: fonts.bold, fontSize: nameSizeOf(formatting, 16), color: primary, lineHeight: 1.2, textAlign: headerAlign }}>{data.fullName || labels.yourName}</Text>
+        <PdfContactBar data={data} scale={scale} color={GRAY.g500} align={contactAlign} style={{ marginBottom: 2 }} />
       </View>
-      {data.headline ? <Text style={{ fontSize: 8 * scale, color: GRAY.g600, marginBottom: 8 }}>{data.headline}</Text> : null}
+      {data.headline ? <Text style={{ fontSize: 8 * scale, color: GRAY.g600, marginBottom: 8, textAlign: layout.textAlign === "justify" ? "left" : layout.textAlign }}>{data.headline}</Text> : null}
       <View style={{ gap: 10 }}>
         {orderedSections(formatting, sections)}
       </View>

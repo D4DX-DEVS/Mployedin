@@ -17,6 +17,7 @@ import {
 import { SortableList, SortableItem } from "./sortable";
 import { SAMPLE_CV, TemplateThumbnail, hasThumbnailContent } from "./template-thumbnail";
 import { TemplatePreviewDialog } from "./template-preview-dialog";
+import { LayoutControls } from "./layout-controls";
 
 /* ─────────────────────────────────────
    Template Picker (grid of thumbnails)
@@ -335,6 +336,8 @@ export function FormattingPanel({
           </Select>
         </div>
       </div>
+
+      <LayoutControls formatting={formatting} onChange={onChange} />
 
       {/* Section order arranger */}
       <div>

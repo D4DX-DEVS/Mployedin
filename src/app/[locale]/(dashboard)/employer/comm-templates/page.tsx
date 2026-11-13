@@ -19,6 +19,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { OverflowTabs } from "@/components/shared/OverflowTabs";
 import { FeatureGate } from "@/components/shared/FeatureGate";
 import type { CommTemplateType } from "@/models/CommTemplate";
 import { toast } from "sonner";
@@ -107,29 +108,23 @@ export default function CommTemplatesPage() {
             aria-expanded={showForm}
             className="rounded-xl px-3 sm:px-4"
           >
-            <Plus className="h-4 w-4 sm:me-2" aria-hidden="true" />
-            <span className="hidden sm:inline">{t("newTemplate")}</span>
+            <Plus className="h-4 w-4 me-2" aria-hidden="true" />
+            <span>{t("newTemplate")}</span>
           </Button>
         }
       />
 
-      {/* Filter Tabs — phones: one horizontally scrollable row (chips wrapped
-          to two rows and pushed the list down); wraps again from sm. */}
-      <div className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-none sm:flex-wrap sm:overflow-visible">
-        {(["all", "rejection", "invite", "followup", "offer"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setFilterType(tab === "all" ? "all" : tab)}
-            className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-sm sm:px-4 sm:py-2 sm:text-base rounded-lg font-medium transition-colors ${
-              filterType === tab
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            }`}
-          >
-            {tab === "all" ? t("allTemplates") : t(TYPE_LABELS_KEY[tab])}
-          </button>
-        ))}
-      </div>
+      {/* Template type. Chips that do not fit sit under More: as a scrolling row
+          the last ones were cut at the screen edge with no hint of more. */}
+      <OverflowTabs
+        ariaLabel={t("allTemplates")}
+        value={filterType}
+        onChange={setFilterType}
+        items={(["all", "rejection", "invite", "followup", "offer"] as const).map((tab) => ({
+          key: tab,
+          label: tab === "all" ? t("allTemplates") : t(TYPE_LABELS_KEY[tab]),
+        }))}
+      />
 
       {/* New Template Form */}
       {showForm && (

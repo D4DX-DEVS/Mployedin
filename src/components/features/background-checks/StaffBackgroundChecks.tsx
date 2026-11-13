@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowRight, Eye, Info, Loader2, Play, ShieldCheck } from "lucide-react";
+import { ArrowRight, Eye, Info, Loader2, Play, ShieldCheck, Clock, PlayCircle, Hourglass, UserCheck, CheckCircle2 } from "lucide-react";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -28,12 +28,12 @@ import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { CheckDetailPanel } from "./CheckDetailPanel";
 import { KNOWN_ERROR_CODES, type CheckViewer } from "./checkDetailTypes";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import {
   FILTER_HOLDERS,
   FILTER_STATUSES,
   FILTER_TYPES,
   StaffCheckFilterBar,
-  StaffCheckTiles,
   type CheckOverview,
   type StaffCheckFilterValues,
 } from "./StaffCheckFilters";
@@ -241,11 +241,22 @@ export function StaffBackgroundChecks() {
     return text ? <span className={cn("text-xs font-medium", OUTCOME_TONE[check.outcome ?? "pending"])}>{text}</span> : null;
   };
 
+  const checkMetrics = overview?.canRun ? [
+    { label: t("tiles.pending"), shortLabel: t("tiles.pending"), value: overview?.counts.pending ?? 0, icon: Clock, tone: "primary" as const, onClick: () => changeFilters({ status: filters.status === "pending" && filters.holder === "all" ? "all" : "pending", holder: "all" }), active: filters.status === "pending" && filters.holder === "all" },
+    { label: t("tiles.in_progress"), shortLabel: t("tiles.in_progress"), value: overview?.counts.in_progress ?? 0, icon: PlayCircle, tone: "info" as const, onClick: () => changeFilters({ status: filters.status === "in_progress" && filters.holder === "all" ? "all" : "in_progress", holder: "all" }), active: filters.status === "in_progress" && filters.holder === "all" },
+    { label: t("tiles.awaiting_reply"), shortLabel: t("tiles.awaiting_reply"), value: overview?.counts.awaiting_reply ?? 0, icon: Hourglass, tone: "warning" as const, onClick: () => changeFilters({ status: filters.status === "awaiting_reply" && filters.holder === "all" ? "all" : "awaiting_reply", holder: "all" }), active: filters.status === "awaiting_reply" && filters.holder === "all" },
+    { label: t("tiles.mine"), shortLabel: t("tiles.mine"), value: overview?.counts.mine ?? 0, icon: UserCheck, tone: "success" as const, onClick: () => changeFilters({ status: filters.status === "open" && filters.holder === "me" ? "all" : "open", holder: filters.status === "open" && filters.holder === "me" ? "all" : "me" }), active: filters.status === "open" && filters.holder === "me" },
+    { label: t("tiles.completed"), shortLabel: t("tiles.completed"), value: overview?.counts.completed ?? 0, icon: CheckCircle2, tone: "success" as const, onClick: () => changeFilters({ status: filters.status === "completed" && filters.holder === "all" ? "all" : "completed", holder: "all" }), active: filters.status === "completed" && filters.holder === "all" },
+  ] : [
+    { label: t("tiles.pending"), shortLabel: t("tiles.pending"), value: overview?.counts.pending ?? 0, icon: Clock, tone: "primary" as const, onClick: () => changeFilters({ status: filters.status === "pending" && filters.holder === "all" ? "all" : "pending", holder: "all" }), active: filters.status === "pending" && filters.holder === "all" },
+    { label: t("tiles.in_progress"), shortLabel: t("tiles.in_progress"), value: overview?.counts.in_progress ?? 0, icon: PlayCircle, tone: "info" as const, onClick: () => changeFilters({ status: filters.status === "in_progress" && filters.holder === "all" ? "all" : "in_progress", holder: "all" }), active: filters.status === "in_progress" && filters.holder === "all" },
+    { label: t("tiles.awaiting_reply"), shortLabel: t("tiles.awaiting_reply"), value: overview?.counts.awaiting_reply ?? 0, icon: Hourglass, tone: "warning" as const, onClick: () => changeFilters({ status: filters.status === "awaiting_reply" && filters.holder === "all" ? "all" : "awaiting_reply", holder: "all" }), active: filters.status === "awaiting_reply" && filters.holder === "all" },
+    { label: t("tiles.completed"), shortLabel: t("tiles.completed"), value: overview?.counts.completed ?? 0, icon: CheckCircle2, tone: "success" as const, onClick: () => changeFilters({ status: filters.status === "completed" && filters.holder === "all" ? "all" : "completed", holder: "all" }), active: filters.status === "completed" && filters.holder === "all" },
+  ];
+
   return (
     <div className="page-container">
-      <WorkspaceHeader title={t("pageTitle")} context={t("pageContext", { count: total })} />
-
-      <StaffCheckTiles overview={overview} values={filters} onPick={changeFilters} />
+      <WorkspaceHeader title={t("pageTitle")} context={t("pageContext", { count: total })} metrics={checkMetrics} />
 
       <section className="workspace-panel-surface rounded-3xl panel-body">
         <p className="mb-3 flex items-start gap-2 text-xs text-muted-foreground">
@@ -266,30 +277,25 @@ export function StaffBackgroundChecks() {
           />
         ) : (
           <>
-            {/* Phones: the shared record card (name + status, employer · job,
-                one meta line, the action in the footer row) — five columns
-                don't fit 375px. */}
+            {/* Phones: the shared record card using facts prop — two rows with
+                candidate name and status, then facts with action. */}
             <PhoneRecordList
               className="mt-4 sm:hidden"
               loading={loading}
               label={t("pageTitle")}
               items={items.map((check) => ({
                 key: check._id,
+                leading: <UserAvatar name={check.candidateName} className="size-[34px]" colorful />,
                 title: check.candidateName || t("unknownCandidate"),
                 trailing: statusBadge(check),
                 subtitle: [check.companyName || "—", check.jobTitle].filter(Boolean).join(" · "),
-                meta: (
-                  <>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                      <span>{label.type(check.checkType)}</span>
-                      {outcomeText(check)}
-                      {referencesLine(check) ? <span>{referencesLine(check)}</span> : null}
-                      <span>{date(check.requestedAt)}</span>
-                    </div>
-                    {handledBy(check)}
-                  </>
-                ),
-                actions: actionButton(check, "min-h-11 flex-1"),
+                facts: [
+                  label.type(check.checkType),
+                  outcomeText(check) ? <span key="outcome">{outcomeText(check)}</span> : null,
+                  referencesLine(check) ? <span key="refs">{referencesLine(check)}</span> : null,
+                  date(check.requestedAt),
+                ],
+                actions: actionButton(check, "min-h-8 sm:min-h-9"),
               }))}
             />
 
@@ -298,7 +304,7 @@ export function StaffBackgroundChecks() {
                 <TableHeader>
                   <TableRow className="workspace-subtle-surface hover:bg-secondary/70">
                     <TableHead>{t("colCandidate")}</TableHead>
-                    <TableHead>{t("colEmployerJob")}</TableHead>
+                    <TableHead className="hidden lg:table-cell">{t("colEmployerJob")}</TableHead>
                     <TableHead>{t("colCheck")}</TableHead>
                     <TableHead>{t("colStatus")}</TableHead>
                     <TableHead className="hidden md:table-cell">{t("colRequested")}</TableHead>
@@ -310,7 +316,7 @@ export function StaffBackgroundChecks() {
                     ? Array.from({ length: Math.min(limit, 10) }).map((_, i) => (
                         <TableRow key={i} className="hover:bg-transparent">
                           {Array.from({ length: COLUMNS }).map((__, j) => (
-                            <TableCell key={j} className={j === COLUMNS - 2 ? "hidden md:table-cell" : undefined}>
+                            <TableCell key={j} className={j === COLUMNS - 2 ? "hidden md:table-cell" : j === 1 ? "hidden lg:table-cell" : undefined}>
                               <div className="h-4 w-full animate-pulse rounded-md bg-muted/60" />
                             </TableCell>
                           ))}
@@ -318,9 +324,13 @@ export function StaffBackgroundChecks() {
                       ))
                     : items.map((check) => (
                         <TableRow key={check._id} className="hover:bg-secondary/50">
-                          <TableCell className="font-medium text-foreground">{check.candidateName || t("unknownCandidate")}</TableCell>
                           <TableCell>
+                            <span className="block font-medium text-foreground">{check.candidateName || t("unknownCandidate")}</span>
                             {/* Employer first: an agent scans the list by who asked. */}
+                            <span className="block text-xs text-muted-foreground">{check.companyName || "—"}</span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground">{date(check.requestedAt)}</span>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
                             <span className="block font-medium text-foreground/90">{check.companyName || "—"}</span>
                             <span className="block text-xs text-muted-foreground">{check.jobTitle || "—"}</span>
                           </TableCell>

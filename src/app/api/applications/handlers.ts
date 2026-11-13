@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { defaultApplicationCv } from "@/lib/applications/cvChoice";
+import { CV_REQUIRED_CODE, CV_REQUIRED_MESSAGE, defaultApplicationCv } from "@/lib/applications/cvChoice";
 import { claimSeekerFiles } from "@/lib/cv/fileClaims";
 import { AWAITING_REVIEW_STATUSES, STALE_APPLICATION_MS } from "@/lib/admin/platformAlerts";
 import mongoose from "mongoose";
@@ -24,11 +24,12 @@ import { inngest } from "@/lib/inngest/client";
 import { notifyApplicationReceived } from "@/lib/notifications/trigger";
 import logger from "@/lib/logger";
 import { ALL_APPLICATION_STATUSES, isPipelineStage, stagesFrom } from "@/lib/hiring/pipeline";
+import { SEEKER_TAB_STATUSES, isSeekerStatusTab, seekerTabCounts } from "@/lib/jobSeeker/seekerStatus";
 import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWorkflow";
 import { stageQueryFilter } from "@/lib/hiring/workflowStages";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { isPastClosingDate } from "@/lib/jobs/expiry";
-import { SEEKER_APPLICATION_PROJECTION, stripSeekerHiddenFields } from "@/lib/applications/seekerView";
+import { SEEKER_APPLICATION_PROJECTION, seekerScoreView, stripSeekerHiddenFields } from "@/lib/applications/seekerView";
 import { applicationSnapshotFlags } from "@/lib/applications/referralSnapshot";
 import { loadAdminReferralSummaries, type ReferralSummary } from "@/lib/referrals/summary";
 
@@ -289,7 +290,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     query.$and = [...(query.$and ?? []), { jobSeekerId: new mongoose.Types.ObjectId(jobSeekerIdParam) }];
   }
 
-  if (status) {
+  if (status && ctx.role === "job_seeker" && isSeekerStatusTab(status)) {
+    // The seeker's tabs group stages (Interview, Offer, Closed). "offer" is
+    // one of them, so for a seeker it also brings back the hired.
+    query.status = { $in: [...SEEKER_TAB_STATUSES[status]] };
+  } else if (status) {
     query.status = status;
   } else if (stageFrom && isPipelineStage(stageFrom)) {
     query.status = { $in: stagesFrom(stageFrom) };
@@ -519,7 +524,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       // Nothing can match, so the seeker's status tabs all read 0 instead of
       // dropping their counts.
       const seekerCounts = fetchCounts && ctx.role === "job_seeker"
-        ? { statusCounts: Object.fromEntries(["all", ...ALL_APPLICATION_STATUSES].map((s) => [s, 0])) }
+        ? { statusCounts: Object.fromEntries(["all", ...ALL_APPLICATION_STATUSES, ...Object.keys(SEEKER_TAB_STATUSES)].map((s) => [s, 0])) }
         : {};
       return NextResponse.json({ applications: [], pagination: { page, limit, total: 0, pages: 0 }, ...(fetchJobs ? { employerJobs: [] } : {}), ...seekerCounts });
     }
@@ -531,6 +536,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const allowedSortFields: Record<string, string> = {
     appliedAt: "appliedAt",
     aiMatchScore: "aiMatchScore",
+    bestFit: "bestFit",
     status: "status",
     createdAt: "createdAt",
   };
@@ -540,7 +546,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   // order; there the badges alone carry the signal.
   // Ties break on who applied first, then _id, so a page boundary never
   // splits or repeats equal scores and "top N" is the same N on every read.
-  const sortSpec: Record<string, 1 | -1> = sortField === "aiMatchScore"
+  // "Best fit" (D18): everyone meeting every must-have first, then those still
+  // to check, then those missing one — by score inside each group.
+  const sortSpec: Record<string, 1 | -1> = sortField === "bestFit"
+    ? { mustHaveRank: -1, aiMatchScore: -1, appliedAt: 1, _id: 1 }
+    : sortField === "aiMatchScore"
     ? { [sortField]: sortOrder, appliedAt: 1, _id: 1 }
     : { isPriority: -1, isAgentReferred: -1, [sortField]: sortOrder, _id: sortOrder };
 
@@ -697,9 +707,13 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         ),
       ),
     ]);
+    const byStatus = Object.fromEntries(ALL_APPLICATION_STATUSES.map((s, i) => [s, perStatus[i]])) as Record<string, number>;
     statusCounts = {
       all: allCount,
-      ...Object.fromEntries(ALL_APPLICATION_STATUSES.map((s, i) => [s, perStatus[i]])),
+      ...byStatus,
+      // The seeker's tabs, summed from the per-stage counts above. Spread last:
+      // the Offer tab (offer + hired) replaces the bare offer count.
+      ...seekerTabCounts(byStatus),
     };
   }
 
@@ -710,9 +724,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       ...(ctx.role === "job_seeker" ? stripSeekerHiddenFields(app) : app),
       // A seeker is shown the engine's number for the pair, never an
       // employer's re-weighted ranking (equal unless weights were saved).
-      ...(ctx.role === "job_seeker" && typeof app.seekerMatchScore === "number"
-        ? { aiMatchScore: app.seekerMatchScore }
-        : {}),
+      // (seekerScoreView: no figure at all when the profile had nothing to score.)
+      ...(ctx.role === "job_seeker" ? seekerScoreView(app) : {}),
       otherApplicationsCount: Math.max(0, (crossAppCounts[String(app.jobSeekerId?._id)] ?? 1) - 1),
       ...(referralBySeeker.has(String(app.jobSeekerId?._id))
         ? { referralSummary: referralBySeeker.get(String(app.jobSeekerId?._id)) }
@@ -871,6 +884,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const choseCv = !!includeProfileCv || appDocuments.some((d) => d.type === "resume");
   if (!choseCv) {
     appDocuments.unshift(...defaultApplicationCv(seekerDoc));
+  }
+  // Still none: the seeker has no CV at all. Every application carries one.
+  if (!appDocuments.some((d) => d.type === "resume")) {
+    return NextResponse.json({ error: CV_REQUIRED_MESSAGE, code: CV_REQUIRED_CODE }, { status: 400 });
   }
 
   // Hold the seeker's files while the application is saved, so replacing or

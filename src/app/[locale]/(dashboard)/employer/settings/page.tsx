@@ -20,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { OverflowTabs } from "@/components/shared/OverflowTabs";
 import { LogoUpload } from "@/components/features/employer/LogoUpload";
 import { ChangeEmailCard } from "@/components/features/settings/ChangeEmailCard";
 import { ConnectedAppsCard } from "@/components/features/settings/ConnectedAppsCard";
@@ -492,9 +493,6 @@ function CompanySettingsPage() {
                   <span className="text-xl font-bold text-primary/70">{initials}</span>
                 </div>
               )}
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-background border-2 border-border/40 flex items-center justify-center">
-                <VBadgeIcon className="w-3 h-3 text-primary" />
-              </div>
             </div>
 
             {/* Info */}
@@ -600,7 +598,17 @@ function CompanySettingsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
 
           {/* ── Left Navigation ────────────────────────────────────────── */}
-          <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-1.5 lg:mx-0 lg:sticky lg:top-4 lg:self-start">
+          {/* Phones and tablets: section chips, the ones that do not fit under More.
+              The old scrolling strip cut its labels to a first word ("Hiri…")
+              and showed a scroll bar under them. */}
+          <OverflowTabs
+            className="lg:hidden"
+            ariaLabel={t("title")}
+            value={activeTab}
+            onChange={setActiveTab}
+            items={NAV_ITEMS.map((item) => ({ key: item.key, label: t(item.label), icon: item.icon }))}
+          />
+          <nav className="hidden gap-1.5 lg:sticky lg:top-4 lg:flex lg:flex-col lg:self-start">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.key;
@@ -1171,7 +1179,7 @@ function CompanySettingsPage() {
           inert={!hasChanges}
           aria-hidden={!hasChanges || undefined}
           className={`
-            fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-out
+            fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 z-50 transition-all duration-300 ease-out lg:bottom-0
             ${hasChanges ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"}
           `}
         >

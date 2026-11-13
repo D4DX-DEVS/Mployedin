@@ -10,8 +10,8 @@ export function mcpGrantedAt(authorizationExpiresAt: Date): Date {
 }
 
 /**
- * A password change or reset ends every web session (auth config compares it to
- * the JWT's iat). Grants approved before it must end too, or a stolen grant
+ * A password change or reset ends every web session (lib/auth/sessionCutOff.ts).
+ * Grants approved before it must end too, or a stolen grant
  * outlives the very reset meant to lock the thief out.
  */
 export function grantPredatesPasswordChange(
@@ -20,6 +20,20 @@ export function grantPredatesPasswordChange(
 ): boolean {
   if (!passwordChangedAt) return false;
   return mcpGrantedAt(authorizationExpiresAt).getTime() < new Date(passwordChangedAt).getTime();
+}
+
+/**
+ * An authorization code approved before the password last changed (or was
+ * reset) must not become a grant: whoever approved it may have signed in with
+ * the old password. A code with no approval time counts as older.
+ */
+export function codePredatesPasswordChange(
+  codeCreatedAt: Date | null | undefined,
+  passwordChangedAt: Date | null | undefined,
+): boolean {
+  if (!passwordChangedAt) return false;
+  if (!codeCreatedAt) return true;
+  return new Date(codeCreatedAt).getTime() < new Date(passwordChangedAt).getTime();
 }
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);

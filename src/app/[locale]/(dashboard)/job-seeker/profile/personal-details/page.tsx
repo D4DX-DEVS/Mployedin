@@ -19,7 +19,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { ProfileHubShell } from "@/components/features/job-seeker/ProfileHubShell";
 import { Button } from "@/components/ui/button";
 import {
   FormInput,
@@ -147,7 +147,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm panel-body">
+    <div className="h-full rounded-xl border border-border bg-card shadow-sm panel-body">
       <div className="mb-5 flex items-start gap-3">
         <div className="mt-0.5 rounded-lg bg-primary/10 p-2 text-primary shrink-0">
           {icon}
@@ -312,29 +312,24 @@ export default function PersonalDetailsPage() {
 
   if (loading) {
     return (
-      <div className="page-container">
-        <div className="max-w-2xl mx-auto w-full space-y-4">
+      <ProfileHubShell locale={locale}>
+        <div className="w-full space-y-4" aria-busy="true">
           <div className="h-20 rounded-xl bg-muted animate-pulse" />
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-36 rounded-xl bg-muted animate-pulse" />
           ))}
         </div>
-      </div>
+      </ProfileHubShell>
     );
   }
 
   return (
-    <div className="page-container">
-      {/* Back sits above the title (PageBackButton), not in the actions slot
-          where it wrapped onto its own row under the description on phones. */}
-      <PageHeader
-        title={t("title")}
-        description={t("description")}
-        backHref="/job-seeker/profile"
-      />
+    <ProfileHubShell locale={locale}>
+      <div className="w-full space-y-5">
 
-      <div className="max-w-2xl mx-auto w-full space-y-5">
-
+        {/* Short answers sit two to a row on wide screens, as in the design:
+            gender beside marital status, date of birth beside work permit. */}
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* ── Gender ──────────────────────────────────────────────────────── */}
         <Section
           icon={<User2 className="h-4 w-4" />}
@@ -365,6 +360,9 @@ export default function PersonalDetailsPage() {
           />
         </Section>
 
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* ── Date of Birth ────────────────────────────────────────────────── */}
         <Section
           icon={<Calendar className="h-4 w-4" />}
@@ -397,6 +395,8 @@ export default function PersonalDetailsPage() {
             placeholder={t("selectCountries")}
           />
         </Section>
+
+        </div>
 
         {/* ── Address ──────────────────────────────────────────────────────── */}
         <Section
@@ -533,6 +533,6 @@ export default function PersonalDetailsPage() {
         </div>
 
       </div>
-    </div>
+    </ProfileHubShell>
   );
 }

@@ -231,6 +231,16 @@ describe("employer-weighted ranking score", () => {
     expect(withDefaults.weightsApplied).toBe(true);
   });
 
+  it("stores no seeker figure for a profile with nothing to score, and still ranks for the employer", () => {
+    // A new account that applied with no CV read "29% match" on its own
+    // application: the engine's neutral defaults, the same for every job.
+    const blank = seeker({ skills: [], preferredRoles: [], cvText: "", experienceYears: 0, experienceKnown: false, roleHistory: [] });
+    const j = job();
+    const match = buildApplicantMatch({ pair: pairFor(blank, j), seeker: blank, job: j, weights: null });
+    expect(match.seekerMatchScore).toBeNull();
+    expect(typeof match.aiMatchScore).toBe("number");
+  });
+
   it("re-weights the parts when weights are saved, and keeps the seeker's number apart", () => {
     // Weak on skills, strong on experience: an employer who weights experience
     // heavily should rank this candidate higher than the engine does.
@@ -315,7 +325,9 @@ describe("employer ATS: every requirement counts", () => {
     const s = seeker({ experienceYears: 22.7 });
     const j = job({ minExp: 8, maxExp: 20 });
     const match = buildApplicantMatch({ pair: pairFor(s, j), seeker: s, job: j, weights: null });
-    expect(calculateRelevance(s, j).experience).toBe(50); // the seeker engine, unchanged
+    // Both sides read the same curve since 2026-11-12 (requirementParts
+    // yearsMark): past the band costs far less than short of it.
+    expect(calculateRelevance(s, j).experience).toBe(85);
     expect(match.matchBreakdown.experience).toBe(85);
   });
 

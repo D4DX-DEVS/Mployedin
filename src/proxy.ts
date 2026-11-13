@@ -406,6 +406,6 @@ export const config = {
   // Static images are skipped by extension, but never under /api/: an API path ending in .png must still get the
   // CSRF check and the client-IP normalisation (proxyMatcherApiExtensions.test.ts).
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|llms\\.txt|manifest\\.json|(?!api/).*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|llms\\.txt|manifest\\.json|(?!api/).*\\.(?:svg|png|jpg|jpeg|gif|webp|ttf|otf|woff2?)$).*)",
   ],
 };

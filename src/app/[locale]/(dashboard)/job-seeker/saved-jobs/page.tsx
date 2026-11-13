@@ -14,6 +14,7 @@ import { ListSkeleton } from "@/components/shared/ListSkeleton";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
 import { JobSummaryCard } from "@/components/features/job-seeker/JobSummaryCard";
+import { JobSeekerSectionNav, JOBS_SECTION_PATHS } from "@/components/features/job-seeker/JobSeekerSectionNav";
 import { SaveJobButton } from "@/components/features/job-seeker/saved/SaveJobButton";
 import { SAVED_JOBS_LIST_KEY } from "@/components/features/job-seeker/saved/useSavedJobs";
 
@@ -41,6 +42,7 @@ interface SavedJobsResponse {
 /** The jobs a seeker bookmarked from Jobs, Home or a job page, newest first. */
 export default function SavedJobsPage() {
   const t = useTranslations("savedJobs");
+  const tJourney = useTranslations("jobSeekerJourney");
   const locale = useLocale();
   const pagination = usePagination();
   const { page, limit, setPage, updateTotal } = pagination;
@@ -69,6 +71,7 @@ export default function SavedJobsPage() {
         title={t("title")}
         description={data ? t("count", { count: data.total }) : t("description")}
       />
+      <JobSeekerSectionNav locale={locale} paths={JOBS_SECTION_PATHS} label={tJourney("jobsNavLabel")} />
 
       <section className="workspace-panel-surface rounded-3xl panel-body max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none">
         {isPending ? (

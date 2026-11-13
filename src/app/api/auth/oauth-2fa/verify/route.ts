@@ -67,6 +67,12 @@ async function buildIdentityToken(userId: string, provider: string) {
     pending2faUserId: undefined as unknown as undefined,
     // Per-sign-in id, so sign-out can revoke this session (see sessionRevocation.ts).
     sid: globalThis.crypto.randomUUID(),
+    // When this sign-in happened, as the jwt callback stamps it. The session
+    // re-check ends any token older than `sessionsValidAfter`, and one with no
+    // sign-in time counts as older (lib/auth/unprovenPassword.ts).
+    authAt: Math.floor(Date.now() / 1000),
+    // The session cut-off compares in ms (lib/auth/sessionCutOff.ts).
+    authAtMs: Date.now(),
     // Identity:
     id: dbUser._id.toString(),
     role: dbUser.role as UserRole,

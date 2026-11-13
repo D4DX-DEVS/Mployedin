@@ -4,6 +4,7 @@ import { formatDateValue, getSectionOrder } from "../types";
 import type { SectionKey } from "../types";
 import { KeepWithFirst, PdfContactBar, RichPdfText, dateRange, pdfScale, tint, type PdfTemplateProps } from "./shared";
 import { BandPhoto, GRAY, sectionGap, standardFonts } from "./standard-sections";
+import { headerAlignOf, nameSizeOf, usePdfLayout } from "./pdf-layout";
 
 /* ═══════════════════════════════════════
    CREATIVE PDF — mirrors CreativeTemplate:
@@ -13,8 +14,11 @@ import { BandPhoto, GRAY, sectionGap, standardFonts } from "./standard-sections"
 
 export function CreativePDF(props: PdfTemplateProps) {
   const { data, styles: s, primary, light, labels, df, pageSize, formatting } = props;
+  const { layout } = usePdfLayout();
   const scale = pdfScale(s);
   const fonts = standardFonts(props);
+  const headerAlign = headerAlignOf(formatting, "left");
+  const contactAlign = (headerAlign === "center" ? "center" : "start") as "start" | "center";
 
   const heading = (label: string, marginBottom = 6) => (
     <Text style={{ fontFamily: fonts.bold, fontSize: 9 * scale, color: primary, textTransform: "uppercase", letterSpacing: 0.5, marginBottom }}>{label}</Text>
@@ -116,9 +120,9 @@ export function CreativePDF(props: PdfTemplateProps) {
       <View style={{ flexDirection: "row", alignItems: "center", gap: 16, padding: 20, backgroundColor: primary }}>
         <BandPhoto photo={data.photo} name={data.fullName} size={70 * scale} ring={tint(primary, 0.4)} primary={primary} bold={fonts.bold} initialFallback={false} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: fonts.bold, fontSize: 24 * scale, color: "#ffffff", lineHeight: 1.2 }}>{data.fullName || labels.yourName}</Text>
-          {data.headline ? <Text style={{ fontSize: 10 * scale, color: tint(primary, 0.2), marginTop: 2 }}>{data.headline}</Text> : null}
-          <PdfContactBar data={data} scale={scale} color={tint(primary, 0.15)} style={{ marginTop: 8 }} />
+          <Text style={{ fontFamily: fonts.bold, fontSize: nameSizeOf(formatting, 24), color: "#ffffff", lineHeight: 1.2, textAlign: headerAlign }}>{data.fullName || labels.yourName}</Text>
+          {data.headline ? <Text style={{ fontSize: 10 * scale, color: tint(primary, 0.2), marginTop: 2, textAlign: layout.textAlign === "justify" ? "left" : layout.textAlign }}>{data.headline}</Text> : null}
+          <PdfContactBar data={data} scale={scale} color={tint(primary, 0.15)} align={contactAlign} style={{ marginTop: 8 }} />
         </View>
       </View>
 

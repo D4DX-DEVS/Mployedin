@@ -1,16 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
-  ArrowLeft, ClipboardList, Plus, Trash2, FileText, CheckCircle2, Circle,
-  CalendarClock, ShieldCheck, PenLine, Send, BadgeCheck, StickyNote,
+  ArrowLeft, ClipboardList, Plus, Trash2,
+  CalendarClock, ShieldCheck, BadgeCheck, StickyNote, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,10 +23,9 @@ import {
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
-import { formatDate } from "@/lib/ui/intlFormat";
+import { OnboardingDocumentsCard, fmtDate, type OnboardingDoc } from "./_components/OnboardingDocumentsCard";
 
 type OnboardingStatus = "not_started" | "in_progress" | "completed";
-type DocStatus = "requested" | "submitted" | "signed" | "approved";
 type ProbationStatus = "pending" | "passed" | "failed" | "extended";
 
 const NONE = "__none__";
@@ -37,23 +37,6 @@ interface OnboardingTask {
   dueDate?: string;
   completed: boolean;
   completedAt?: string;
-}
-
-interface DocSignature {
-  fullName: string;
-  signedAt: string;
-}
-
-interface OnboardingDoc {
-  name: string;
-  url?: string;
-  uploadedAt?: string;
-  requestedFromCandidate?: boolean;
-  requiresSignature?: boolean;
-  status?: DocStatus;
-  uploadedBy?: string;
-  dueDate?: string;
-  signature?: DocSignature;
 }
 
 interface Probation {
@@ -83,22 +66,6 @@ interface TeamMember {
   name: string;
 }
 
-const DOC_STATUS_STYLES: Record<DocStatus, string> = {
-  requested: "bg-amber-100 text-amber-700 border-amber-300",
-  submitted: "bg-sky-100 text-sky-700 border-sky-300",
-  signed: "bg-emerald-100 text-emerald-700 border-emerald-300",
-  approved: "bg-emerald-100 text-emerald-700 border-emerald-300",
-};
-
-function fmtDate(value?: string): string {
-  if (!value) return "";
-  try {
-    return formatDate(new Date(value), { year: "numeric", month: "short", day: "numeric" });
-  } catch {
-    return "";
-  }
-}
-
 function toIso(dateValue: string): string {
   return new Date(dateValue).toISOString();
 }
@@ -117,13 +84,6 @@ export default function PlacementOnboardingPage() {
   const [newTask, setNewTask] = useState("");
   const [newTaskAssignee, setNewTaskAssignee] = useState("");
   const [newTaskDue, setNewTaskDue] = useState("");
-
-  // Add-document form
-  const [newDocName, setNewDocName] = useState("");
-  const [newDocUrl, setNewDocUrl] = useState("");
-  const [requestFromCandidate, setRequestFromCandidate] = useState(false);
-  const [requiresSignature, setRequiresSignature] = useState(false);
-  const [newDocDue, setNewDocDue] = useState("");
 
   // Notes + probation
   const [notesDraft, setNotesDraft] = useState("");
@@ -248,30 +208,6 @@ export default function PlacementOnboardingPage() {
     setNewTaskDue("");
   }
 
-  function addDocument() {
-    if (newDocName.trim().length < 1) return;
-    if (requestFromCandidate) {
-      const docBody: Record<string, unknown> = {
-        name: newDocName.trim(),
-        requestedFromCandidate: true,
-        requiresSignature,
-      };
-      if (newDocDue) docBody.dueDate = toIso(newDocDue);
-      patch({ addDocument: docBody }, t("documentRequested"));
-    } else {
-      patch({ addDocument: { name: newDocName.trim(), url: newDocUrl.trim() || undefined } });
-    }
-    setNewDocName("");
-    setNewDocUrl("");
-    setNewDocDue("");
-    setRequestFromCandidate(false);
-    setRequiresSignature(false);
-  }
-
-  function approveDoc(index: number) {
-    patch({ document: { index, status: "approved" } }, t("documentApproved"));
-  }
-
   function saveNotes() {
     patch({ notes: notesDraft }, t("notesSaved"));
   }
@@ -289,6 +225,18 @@ export default function PlacementOnboardingPage() {
     );
   }
 
+  // Due dates and a probation end are always ahead: earlier days are greyed out.
+  const today = useMemo(() => new Date(), []);
+
+  // A Save button is live only while its form differs from what is stored.
+  // Once saved it reads "Saved", so the page stops asking for a save it has.
+  const savedProbation = onboarding?.probation;
+  const probationDirty =
+    probEnd !== (savedProbation?.endDate ? savedProbation.endDate.slice(0, 10) : "")
+    || probStatus !== (savedProbation?.status ?? "pending")
+    || probNotes.trim() !== (savedProbation?.notes ?? "");
+  const notesDirty = notesDraft.trim() !== (onboarding?.notes ?? "");
+
   const tasks = onboarding?.tasks ?? [];
   const doneCount = tasks.filter((task) => task.completed).length;
   const progress = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
@@ -299,32 +247,30 @@ export default function PlacementOnboardingPage() {
       : "bg-amber-100 text-amber-700 border-amber-300";
 
   return (
-    <div className="page-container max-w-5xl">
-      <div className="flex flex-col gap-2">
-        <Link
-          href={`/${locale}/employer/placements`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t("backToPlacements")}
-        </Link>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
-              <ClipboardList className="h-6 w-6 text-primary" />
-              {t("title")}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {candidateName}{placement?.jobId?.title ? ` · ${placement.jobId.title}` : ""}
-            </p>
-          </div>
-          {onboarding && (
+    // Standard page width and header, like every other screen: it was a
+    // narrower column with its own heading, and on phones the status badge
+    // stretched across the page like a banner.
+    <div className="page-container">
+      <Link
+        href={`/${locale}/employer/placements`}
+        className="tap-target-row inline-flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+        {t("backToPlacements")}
+      </Link>
+      <WorkspaceHeader
+        icon={ClipboardList}
+        title={t("title")}
+        context={`${candidateName}${placement?.jobId?.title ? ` · ${placement.jobId.title}` : ""}`}
+        actions={onboarding ? (
+          // The span takes the action row's 44px height so the badge keeps its own.
+          <span className="inline-flex items-center">
             <Badge variant="outline" className={statusColor(onboarding.status)}>
               {t(`status.${onboarding.status}`)}
             </Badge>
-          )}
-        </div>
-      </div>
+          </span>
+        ) : undefined}
+      />
 
       {loading ? (
         <div className="space-y-3 sm:space-y-4">
@@ -347,33 +293,31 @@ export default function PlacementOnboardingPage() {
         </div>
       ) : (
         <>
-          {/* Progress */}
+          {/* Tasks, with their progress in the same card: one place to read
+              "how far along" and act on it. */}
           <div className="rounded-2xl border border-border/60 bg-card panel-body">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground">{t("progress")}</p>
-              <p className="text-sm text-muted-foreground">{t("tasksDone", { done: doneCount, total: tasks.length })}</p>
-            </div>
-            <Progress value={progress} className="mt-3 h-2" />
-          </div>
-
-          {/* Tasks */}
-          <div className="rounded-2xl border border-border/60 bg-card panel-body">
-            <div className="flex items-center justify-between">
-              <h2 className="heading-section font-semibold text-foreground">{t("tasks")}</h2>
-              {tasks.length === 0 && (
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="heading-section font-semibold text-foreground">{t("tasks")}</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">{t("tasksHint")}</p>
+              </div>
+              {tasks.length === 0 ? (
                 <Button size="sm" variant="outline" className="rounded-xl" onClick={seedDefaults} disabled={busy}>
                   <Plus className="mr-2 h-4 w-4" />
                   {t("useTemplate")}
                 </Button>
+              ) : (
+                <p className="shrink-0 text-sm text-muted-foreground">{t("tasksDone", { done: doneCount, total: tasks.length })}</p>
               )}
             </div>
+            {tasks.length > 0 && <Progress value={progress} className="mt-3 h-2" aria-label={t("progress")} />}
 
             {tasks.length === 0 ? (
               <p className="mt-4 text-sm text-muted-foreground">{t("noTasks")}</p>
             ) : (
-              <ul className="mt-4 space-y-2">
+              <ul className="mt-3 divide-y divide-border/60">
                 {tasks.map((task, i) => (
-                  <li key={i} className="flex items-center gap-3 rounded-xl border border-border/50 chip-pad">
+                  <li key={i} className="flex items-center gap-3 py-2.5">
                     <Checkbox
                       checked={task.completed}
                       onCheckedChange={(c) => toggleTask(i, Boolean(c))}
@@ -399,13 +343,8 @@ export default function PlacementOnboardingPage() {
                         )}
                       </div>
                     </div>
-                    {task.completed ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <Circle className="h-4 w-4 text-muted-foreground/40" />
-                    )}
-                    <Button size="iconDense" variant="ghost" className="" onClick={() => removeTask(i)} disabled={busy}>
-                      <Trash2 className="h-4 w-4" />
+                    <Button size="iconDense" variant="ghost" onClick={() => removeTask(i)} disabled={busy} aria-label={t("removeDocumentLabel", { document: task.title })}>
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </li>
                 ))}
@@ -413,14 +352,16 @@ export default function PlacementOnboardingPage() {
             )}
 
             {/* Add task */}
-            <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+            <div className={`grid gap-2 ${tasks.length > 0 ? "mt-1 border-t border-border/60 pt-4" : "mt-4"} ${team.length > 0 ? "sm:grid-cols-[1fr_auto_auto_auto]" : "sm:grid-cols-[1fr_auto_auto]"}`}>
               <Input
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") addTask(); }}
                 placeholder={t("addTaskPlaceholder")}
+                aria-label={t("addTaskPlaceholder")}
               />
-              <Select
+              {/* With no colleagues there is no one to assign to. */}
+              {team.length > 0 && <Select
                 value={newTaskAssignee || NONE}
                 onValueChange={(v) => setNewTaskAssignee(v === NONE ? "" : v)}
               >
@@ -433,12 +374,13 @@ export default function PlacementOnboardingPage() {
                     <SelectItem key={member.userId} value={member.userId}>{member.name}</SelectItem>
                   ))}
                 </SelectContent>
-              </Select>
+              </Select>}
               <DateTimePicker
                 mode="date"
                 value={newTaskDue}
                 onChange={setNewTaskDue}
                 placeholder={t("dueDate")}
+                minDate={today}
               />
               <Button onClick={addTask} disabled={busy || newTask.trim().length < 2} className="rounded-xl">
                 <Plus className="mr-2 h-4 w-4" />
@@ -447,114 +389,16 @@ export default function PlacementOnboardingPage() {
             </div>
           </div>
 
-          {/* Documents */}
-          <div className="rounded-2xl border border-border/60 bg-card panel-body">
-            <h2 className="heading-section font-semibold text-foreground">{t("documents")}</h2>
-            {(onboarding?.documents.length ?? 0) === 0 ? (
-              <p className="mt-4 text-sm text-muted-foreground">{t("noDocuments")}</p>
-            ) : (
-              <ul className="mt-4 space-y-2">
-                {onboarding?.documents.map((doc, i) => (
-                  <li key={i} className="flex flex-col gap-2 rounded-xl border border-border/50 sm:flex-row sm:items-center chip-pad">
-                    <FileText className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
-                    <div className="flex-1 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {doc.url ? (
-                          <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
-                            {doc.name}
-                          </a>
-                        ) : (
-                          <span className="text-sm text-foreground">{doc.name}</span>
-                        )}
-                        {doc.status && (
-                          <Badge variant="outline" className={DOC_STATUS_STYLES[doc.status]}>
-                            {t(`docStatus.${doc.status}`)}
-                          </Badge>
-                        )}
-                        {doc.requestedFromCandidate && (
-                          <Badge variant="outline" className="border-indigo-300 bg-indigo-100 text-indigo-700">
-                            <Send className="mr-1 h-3 w-3" />
-                            {t("requestedFromCandidate")}
-                          </Badge>
-                        )}
-                        {doc.requiresSignature && (
-                          <Badge variant="outline" className="border-purple-300 bg-purple-100 text-purple-700">
-                            <PenLine className="mr-1 h-3 w-3" />
-                            {t("requiresSignature")}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                        {doc.dueDate && (
-                          <span className="inline-flex items-center gap-1">
-                            <CalendarClock className="h-3 w-3" />
-                            {t("due", { date: fmtDate(doc.dueDate) })}
-                          </span>
-                        )}
-                        {doc.signature && (
-                          <span className="inline-flex items-center gap-1 text-emerald-600">
-                            <PenLine className="h-3 w-3" />
-                            {t("signedBy", { name: doc.signature.fullName, date: fmtDate(doc.signature.signedAt) })}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {doc.status === "submitted" && (
-                      <Button size="sm" variant="outline" className="rounded-xl" onClick={() => approveDoc(i)} disabled={busy}>
-                        <BadgeCheck className="mr-2 h-4 w-4" />
-                        {t("approve")}
-                      </Button>
-                    )}
-                    <Button size="iconDense" variant="ghost" className="" onClick={() => patch({ removeDocumentIndex: i })} disabled={busy} aria-label={t("removeDocumentLabel", { document: doc.name })}>
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
+          <OnboardingDocumentsCard
+            documents={onboarding?.documents ?? []}
+            busy={busy}
+            today={today}
+            onPatch={patch}
+          />
 
-            {/* Add document */}
-            <div className="mt-4 space-y-3 rounded-xl border border-dashed border-border/70 card-pad">
-              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <Checkbox
-                  checked={requestFromCandidate}
-                  onCheckedChange={(c) => setRequestFromCandidate(Boolean(c))}
-                />
-                {t("requestFromCandidate")}
-              </label>
-              <p className="text-xs text-muted-foreground">
-                {requestFromCandidate ? t("requestHint") : t("referenceHint")}
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Input value={newDocName} onChange={(e) => setNewDocName(e.target.value)} placeholder={t("docNamePlaceholder")} />
-                {requestFromCandidate ? (
-                  <DateTimePicker
-                    mode="date"
-                    value={newDocDue}
-                    onChange={setNewDocDue}
-                    placeholder={t("dueDate")}
-                  />
-                ) : (
-                  <Input value={newDocUrl} onChange={(e) => setNewDocUrl(e.target.value)} placeholder={t("docUrlPlaceholder")} />
-                )}
-              </div>
-              {requestFromCandidate && (
-                <label className="flex items-center gap-2 text-sm text-foreground">
-                  <Checkbox
-                    checked={requiresSignature}
-                    onCheckedChange={(c) => setRequiresSignature(Boolean(c))}
-                  />
-                  {t("requiresSignatureLabel")}
-                </label>
-              )}
-              <Button onClick={addDocument} disabled={busy || newDocName.trim().length < 1} className="rounded-xl">
-                {requestFromCandidate ? <Send className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                {requestFromCandidate ? t("sendRequest") : t("addDocument")}
-              </Button>
-            </div>
-          </div>
-
-          {/* Probation */}
+          {/* Probation and notes sit side by side on wide screens: two short
+              forms, not two more full-width bands to scroll past. */}
+          <div className="grid gap-3 sm:gap-4 lg:grid-cols-2 lg:items-start">
           <div className="rounded-2xl border border-border/60 bg-card panel-body">
             <h2 className="heading-section flex items-center gap-2 font-semibold text-foreground">
               <ShieldCheck className="h-5 w-5 text-primary" />
@@ -569,6 +413,7 @@ export default function PlacementOnboardingPage() {
                   value={probEnd}
                   onChange={setProbEnd}
                   placeholder={t("probationEndDate")}
+                  minDate={today}
                 />
               </div>
               <div className="field">
@@ -596,8 +441,10 @@ export default function PlacementOnboardingPage() {
                 rows={2}
               />
             </div>
-            <Button onClick={saveProbation} disabled={busy} className="mt-3 rounded-xl">
-              {t("saveProbation")}
+            <Button onClick={saveProbation} disabled={busy || !probationDirty} className="mt-3 rounded-xl">
+              {!probationDirty && savedProbation ? (
+                <><Check className="mr-2 h-4 w-4" aria-hidden="true" />{t("saved")}</>
+              ) : t("saveProbation")}
             </Button>
           </div>
 
@@ -614,9 +461,12 @@ export default function PlacementOnboardingPage() {
               rows={3}
               className="mt-3"
             />
-            <Button onClick={saveNotes} disabled={busy} className="mt-3 rounded-xl">
-              {t("saveNotes")}
+            <Button onClick={saveNotes} disabled={busy || !notesDirty} className="mt-3 rounded-xl">
+              {!notesDirty && onboarding?.notes ? (
+                <><Check className="mr-2 h-4 w-4" aria-hidden="true" />{t("saved")}</>
+              ) : t("saveNotes")}
             </Button>
+          </div>
           </div>
         </>
       )}

@@ -9,11 +9,16 @@ import { logActivity } from "@/lib/audit/log";
 import { checkRateLimit } from "@/lib/security/rateLimit";
 import { sendEmail, EmailTemplates } from "@/lib/communications/email";
 import logger from "@/lib/logger";
+import { endAllSessions } from "@/lib/auth/sessionCutOff";
 
 /**
  * POST /api/users/change-password
  * Body: { currentPassword: string, newPassword: string }
  * Requires authenticated session.
+ *
+ * Ends every session of the account, this one included, and its MCP app
+ * grants (lib/auth/sessionCutOff.ts): `{ signedOut: true }` tells the page to
+ * sign out and back in with the new password.
  */
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -60,12 +65,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Hash new password and save
+  // Hash new password and save. The cut-off goes in the same save: every
+  // session signed in before it ends on its next request, on every device.
+  const changedAt = new Date();
   user.passwordHash = await bcrypt.hash(newPassword, 12);
-  user.passwordChangedAt = new Date();
+  user.passwordChangedAt = changedAt;
+  user.sessionsValidAfter = changedAt;
   // Their own password now — the "you're on a temporary password" notice stops.
   user.tempPasswordIssuedAt = undefined;
   await user.save();
+  await endAllSessions(session.user.id, changedAt);
 
   logActivity({
     actorId: session.user.id,
@@ -98,5 +107,5 @@ export async function POST(req: NextRequest) {
     category: "security",
   }).catch((err) => logger.error({ err, userId }, "[change-password] confirmation email not sent"));
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, signedOut: true });
 }

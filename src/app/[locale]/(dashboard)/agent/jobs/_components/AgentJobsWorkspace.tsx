@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import {
-  Briefcase, Building2, CalendarDays, CheckCircle, Sparkles, Edit2, Eye, Globe, Inbox, MapPin, PauseCircle, PlayCircle, Plus, Send, Tag, Trash2, Users, Share2,
+  Briefcase, CalendarDays, CheckCircle, Sparkles, Edit2, Eye, Globe, Inbox, MapPin, PauseCircle, PlayCircle, Plus, Send, Tag, Trash2, Users, Share2,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -457,22 +457,20 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
       quick={view === "my" && job.status === "draft" ? [
         // A draft has no candidates yet: its next step is finishing it.
         { key: "continue", label: tJobs("continueDraftButton"), icon: Edit2, href: `/${locale}/agent/jobs/${job._id}/edit` },
-        { key: "view", label: t("actions.viewJob"), icon: Eye, iconOnly: true, href: jobHref },
       ] : isPhone && view !== "my" ? [
         // Browse card on a phone: the card itself opens the job, so the eye
         // repeated it; Share is the one action left, labelled across the row.
         ...(job.status === "active" ? [{ key: "share", label: t("share.title"), icon: Share2, onSelect: () => setShareJob(job) }] : []),
       ] : [
         ...(view === "my" ? [{ key: "candidates", label: t("actions.viewCandidates"), icon: Users, href: `/${locale}/agent/candidates?jobId=${job._id}` }] : []),
-        { key: "view", label: t("actions.viewJob"), icon: Eye, iconOnly: true, href: jobHref },
-        ...(job.status === "active" ? [{ key: "share", label: t("share.title"), icon: Share2, iconOnly: true, onSelect: () => setShareJob(job) }] : []),
       ]}
       menu={view === "my" ? [
+        { key: "view", label: t("actions.viewJob"), icon: Eye, href: jobHref },
         ...(job.status !== "draft" && job.status !== "closed" ? [{
           key: "edit", label: tJobs("editButton"), icon: Edit2, href: `/${locale}/agent/jobs/${job._id}/edit`,
-          // Phone card: labelled, it took a second footer row on its own; as
-          // an icon it joins View candidates / view / share on one row.
-          iconOnly: isPhone,
+        }] : []),
+        ...(job.status !== "draft" && job.status === "active" ? [{
+          key: "share", label: t("share.title"), icon: Share2, onSelect: () => setShareJob(job),
         }] : []),
         ...(job.status === "draft" ? [
           { key: "publish", label: draftActions.isPending(job._id, "publish") ? tJobs("publishingButton") : tJobs("publishButton"), icon: Send, pending: draftActions.isPending(job._id, "publish"), disabled: draftActions.isPending(job._id, "publish"), onSelect: () => { void draftActions.publish(job._id); } },
@@ -496,7 +494,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
           <Button asChild aria-label={t("postJob")} className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4">
             <Link href={`/${locale}/agent/jobs/new`}>
               <Plus className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">{t("postJob")}</span>
+              <span>{t("postJob")}</span>
             </Link>
           </Button>
         ) : null}
@@ -582,7 +580,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
           placeholder={t("filters.searchOrAsk")}
           onAskAi={(query) => { void ai.askAi(query); }}
           pending={ai.pending}
-          className="flex-[2_1_20rem] max-sm:basis-0"
+          className="flex-[2_1_20rem]"
           inputClassName="h-11 rounded-lg bg-card sm:h-9"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
@@ -736,24 +734,21 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
             const jobHref = view === "all" ? `/${locale}/jobs/${job._id}` : `/${locale}/agent/jobs/${job._id}`;
             const companyName = job.employerId?.companyName;
             const place = locationText(job.location);
+            const facts: (string | null)[] = [
+              place,
+              job.category,
+              `${formatCount(applicantsOf(job))} ${t("table.applicants")}`,
+            ].filter(Boolean) as string[];
             return {
               key: job._id,
               href: jobHref,
+              leading: <span className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-primary/10 text-primary text-xs font-semibold">{job.title.charAt(0).toUpperCase()}</span>,
               title: <span dir="auto">{job.title}</span>,
               subtitle: companyName ? <span dir="auto">{companyName}</span> : undefined,
               // Every portal job is active; only My jobs needs the badge.
               trailing: view === "my" ? <StatusBadge status={job.status} label={statusLabel(job.status)} /> : undefined,
+              facts: facts,
               actions: view !== "my" && job.status !== "active" ? undefined : jobActions(job, jobHref),
-              meta: (
-                <p className="flex min-w-0 items-center gap-3">
-                  <IconText icon={job.location?.isRemote ? Globe : MapPin} title={place} className="shrink">{place}</IconText>
-                  {job.category && <IconText icon={Tag} title={job.category} className="shrink-[2]">{job.category}</IconText>}
-                </p>
-              ),
-              stats: [
-                { label: t("table.applicants"), value: formatCount(applicantsOf(job)) },
-                { label: t("table.posted"), value: formatListDate(job.createdAt, locale) },
-              ],
             };
           })}
         />}
@@ -768,7 +763,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
                   <TableHead>
                     <SortableTableHeader label={t("table.applicants")} active={sortField === "applications"} order={sortOrder} onClick={() => toggleColumnSort("applications")} />
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="hidden lg:table-cell">
                     <SortableTableHeader label={t("table.posted")} active={sortField === "posted"} order={sortOrder} onClick={() => toggleColumnSort("posted")} />
                   </TableHead>
                   <TableHead className="text-right">{t("table.actions")}</TableHead>
@@ -794,7 +789,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
                       <TableCell className="py-3.5">
                         {/* Location rides under the title: as its own column it
                             pushed Actions out of the panel at 1280–1440. */}
-                        <div className="min-w-0 space-y-1 sm:max-w-[16rem]">
+                        <div className="min-w-0 space-y-1 sm:max-w-[13rem] lg:max-w-[16rem]">
                           <Link href={jobHref} title={job.title} dir="auto" className="block min-h-6 truncate font-semibold text-foreground underline-offset-2 hover:text-primary hover:underline">
                             {job.title}
                           </Link>
@@ -802,30 +797,21 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
                             <IconText icon={job.location?.isRemote ? Globe : MapPin} title={place} className="shrink">{place}</IconText>
                             {job.category && <IconText icon={Tag} title={job.category} className="shrink-[2]">{job.category}</IconText>}
                           </div>
-                          {/* Phone card: the employer / applicants / posted / status
-                              columns fold into this line instead of a row each. */}
-                          {isPhone && <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">
-                            {companyName && <IconText icon={Building2} title={companyName} className="max-w-[11rem]">{companyName}</IconText>}
-                            <IconText icon={Users}>{formatCount(applicantsOf(job))}</IconText>
-                            <IconText icon={CalendarDays}>{formatListDate(job.createdAt, locale)}</IconText>
-                            {/* Every portal job is active; only My jobs needs the badge. */}
-                            {view === "my" && <StatusBadge status={job.status} label={statusLabel(job.status)} />}
-                          </div>}
                         </div>
                       </TableCell>
-                      <TableCell data-mobile-hidden>
+                      <TableCell>
                         <StatusBadge status={job.status} label={statusLabel(job.status)} />
                       </TableCell>
-                      <TableCell data-mobile-hidden>
-                        <div className="flex min-w-0 max-w-[12rem] items-center gap-2.5" title={companyName}>
+                      <TableCell>
+                        <div className="flex min-w-0 max-w-[8rem] items-center gap-2.5 lg:max-w-[12rem]" title={companyName}>
                           <UserAvatar name={companyName ?? job.title} className="h-8 w-8 shrink-0" colorful />
                           <span dir="auto" className="min-w-0 truncate text-foreground/80">{companyName ?? common("dash")}</span>
                         </div>
                       </TableCell>
-                      <TableCell data-mobile-hidden className="text-sm tabular-nums text-muted-foreground">
+                      <TableCell className="text-sm tabular-nums text-muted-foreground">
                         <IconText icon={Users}>{formatCount(applicantsOf(job))}</IconText>
                       </TableCell>
-                      <TableCell data-mobile-hidden className="whitespace-nowrap text-sm text-muted-foreground">
+                      <TableCell className="hidden lg:table-cell whitespace-nowrap text-sm text-muted-foreground">
                         <IconText icon={CalendarDays}>{formatListDate(job.createdAt, locale)}</IconText>
                       </TableCell>
                       <TableCell className="text-right">

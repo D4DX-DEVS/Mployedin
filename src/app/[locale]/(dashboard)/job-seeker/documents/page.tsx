@@ -2,16 +2,18 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { ProfileHubShell } from "@/components/features/job-seeker/ProfileHubShell";
 import {
   Upload, FileText, CheckCircle, Loader2, Sparkles, X,
-  Award, GraduationCap, BookOpen, FolderOpen, Trash2, Eye, Clock, AlertTriangle,
+  Award, GraduationCap, BookOpen, FolderOpen, Trash2, Eye, Clock, AlertTriangle, Plus,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
 import { useQueryClient } from "@tanstack/react-query";
 import { seekerKeys, useSeekerResource } from "@/hooks/useSeekerCache";
+import { MyCvsPanel } from "@/components/features/job-seeker/documents/MyCvsPanel";
 
 /* ── Document Categories ── */
 
@@ -39,9 +41,17 @@ interface UploadedDocument {
   uploadedAt: string;
   /** Resumes only. */
   cvStatus?: CvStatus;
+  /** Set on the stored copy of the built CV. */
+  builtHash?: string;
 }
 
-type DocumentsResponse = { documents?: UploadedDocument[]; profileCv?: { cvStatus?: CvStatus } };
+type DocumentsResponse = {
+  documents?: UploadedDocument[];
+  profileCv?: { cvStatus?: CvStatus } | null;
+  /** My CVs: the CV chosen to go with applications, and whether a built one exists. */
+  preferredCvId?: string | null;
+  hasBuiltCv?: boolean;
+};
 
 function CvReadingNote({ status }: { status: CvStatus }) {
   const t = useTranslations("jobSeekerExtra.documents");
@@ -124,7 +134,9 @@ export default function JobSeekerDocumentsPage() {
   const locale = useLocale();
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const [file, setFile] = useState<File | null>(null);
-  const [category, setCategory] = useState<DocCategory>("resume");
+  // "resume" only while a CV picked from My CVs is in flight; drops and
+  // "Add a document" are always certificates or other documents.
+  const [category, setCategory] = useState<DocCategory>("college_certificate");
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState<ExtractedData | null>(null);
   const [saving, setSaving] = useState(false);
@@ -135,7 +147,9 @@ export default function JobSeekerDocumentsPage() {
     seekerKeys.documents,
     "/api/job-seeker/documents",
   );
-  const documents = docsData?.documents ?? [];
+  const allDocuments = docsData?.documents ?? [];
+  // CVs live in "My CVs" above; this list keeps the certificates and other files.
+  const documents = allDocuments.filter((d) => d.category !== "resume");
   const profileCvStatus = docsData?.profileCv?.cvStatus ?? null;
   // Local edits (upload, remove) land in the cache so Back and re-visits see them.
   const setDocuments = (update: (prev: UploadedDocument[]) => UploadedDocument[]) => {
@@ -169,6 +183,25 @@ export default function JobSeekerDocumentsPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** My CVs → "Upload a CV": the file picker, then upload or read with AI. */
+  const pickCv = () => {
+    setCategory("resume");
+    setFile(null);
+    setExtracted(null);
+    inputRef.current?.click();
+  };
+  /** Certificates card → "Add a document" or a click on its drop zone. */
+  const pickDocument = () => {
+    if (category === "resume") setCategory("college_certificate");
+    setFile(null);
+    setExtracted(null);
+    inputRef.current?.click();
+  };
+  const dropDocument = (e: React.DragEvent) => {
+    if (category === "resume") setCategory("college_certificate");
+    handleDrop(e);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -332,6 +365,8 @@ export default function JobSeekerDocumentsPage() {
     if (!ok) return;
     try {
       const res = await fetch(`/api/job-seeker/documents?id=${doc.id}`, { method: "DELETE" });
+      // The CV sent with applications may have changed with it.
+      void queryClient.invalidateQueries({ queryKey: seekerKeys.documents });
       if (res.ok || res.status === 404) {
         setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
         toast.success(t("removed"));
@@ -349,195 +384,237 @@ export default function JobSeekerDocumentsPage() {
     return DOC_CATEGORIES.find((c) => c.value === cat) ?? DOC_CATEGORIES[4];
   }
 
+  /* ── Upload pieces, placed by what is being uploaded: a CV goes under
+     My CVs, anything else inside the certificates card. ── */
+  const uploadBox = (
+    <div
+      onDrop={dropDocument}
+      onDragOver={(e) => e.preventDefault()}
+      onClick={() => { if (!file) pickDocument(); }}
+      className="border-2 border-dashed rounded-xl p-4 sm:p-6 text-center cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-all"
+    >
+      {file ? (
+        <div className="flex items-center justify-center gap-3">
+          <FileText className="h-8 w-8 text-primary" />
+          <div className="text-start">
+            <p className="font-medium text-sm">{file.name}</p>
+            <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB · {getCategoryLabel(category)}</p>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); setFile(null); setExtracted(null); }}
+            className="ms-2 hover:text-red-500"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <>
+          <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm font-medium">{t("uploadPrompt", { category: getCategoryLabel(category).toLowerCase() })}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("formats")}</p>
+        </>
+      )}
+    </div>
+  );
+  const uploadActions = (
+    <>
+      {file && (
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <button
+            onClick={uploadDocument}
+            disabled={uploading}
+            className="flex-1 py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {uploading ? t("uploading") : t("uploadDocument")}
+          </button>
+          {category === "resume" && !extracted && (
+            <button
+              onClick={extractCV}
+              disabled={extracting}
+              className="flex-1 py-2.5 rounded-lg border-2 border-primary text-primary font-semibold hover:bg-primary/5 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {extracting ? t("extracting") : t("extractWithAi")}
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  );
+  const extractedPreview = (
+    <>
+      {extracted && (
+        <div className="card-base space-y-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <h3 className="font-semibold">{t("extractedProfile")}</h3>
+          </div>
+
+          {extracted.fullName && <p className="text-sm"><strong>{t("extractedName")}</strong> {extracted.fullName}</p>}
+          {extracted.email && <p className="text-sm"><strong>{t("extractedEmail")}</strong> {extracted.email}</p>}
+          {extracted.currentLocation && <p className="text-sm"><strong>{t("extractedLocation")}</strong> {extracted.currentLocation}</p>}
+          {extracted.headline && <p className="text-sm"><strong>{t("extractedHeadline")}</strong> {extracted.headline}</p>}
+
+          {extracted.skills && extracted.skills.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionSkills")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {extracted.skills.map((s, i) => (
+                  <span key={`${s.name}-${i}`} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">{s.name}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {extracted.experience && extracted.experience.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionExperience")}</p>
+              <div className="space-y-1.5">
+                {extracted.experience.map((exp, i) => (
+                  <div key={i} className="text-sm border-l-2 border-primary/30 pl-3">
+                    <p className="font-medium">{exp.jobTitle} — {exp.company}</p>
+                    <p className="text-xs text-muted-foreground">{exp.from} – {exp.current ? t("present") : exp.to}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {extracted.education && extracted.education.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionEducation")}</p>
+              <div className="space-y-1.5">
+                {extracted.education.map((ed, i) => (
+                  <div key={i} className="text-sm border-l-2 border-blue-200 pl-3">
+                    <p className="font-medium">{ed.field ? t("degreeInField", { degree: ed.degree, field: ed.field }) : ed.degree}</p>
+                    <p className="text-xs text-muted-foreground">{ed.institution} · {ed.country}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {extracted.certifications && extracted.certifications.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionCertifications")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {extracted.certifications.map((cert, i) => (
+                  <span key={i} className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">{cert}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {extracted.languages && extracted.languages.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionLanguages")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {extracted.languages.map((l, i) => (
+                  <span key={i} className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium capitalize">
+                    {l.language} · {l.level}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={saveToProfile}
+            disabled={saving}
+            className="w-full py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+            {saving ? t("saving") : t("saveToProfile")}
+          </button>
+        </div>
+      )}
+    </>
+  );
+
   return (
-    <div className="page-container">
+    <ProfileHubShell locale={locale}>
       {ConfirmDialogNode}
-      <PageHeader
-        title={t("title")}
-        description={t("description")}
-        backHref="/job-seeker/profile"
-      />
 
       <div className="space-y-3 sm:space-y-6">
-        {/* ── Category selector ── */}
-        <div className="card-base panel-body">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{t("type")}</p>
-          <div className="flex flex-wrap gap-2 sm:gap-3">
-            {DOC_CATEGORIES.map((cat) => {
-              const Icon = cat.icon;
-              const isActive = category === cat.value;
-              return (
-                <button
-                  key={cat.value}
-                  onClick={() => setCategory(cat.value)}
-                  className={`flex items-center gap-2 rounded-lg text-sm font-medium transition-all border ${ isActive ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40 text-muted-foreground hover:text-foreground" } chip-pad`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {getCategoryLabel(cat.value)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <MyCvsPanel
+          locale={locale}
+          documents={allDocuments}
+          hasProfileCv={Boolean(docsData?.profileCv)}
+          hasBuiltCv={Boolean(docsData?.hasBuiltCv)}
+          preferredCvId={docsData?.preferredCvId ?? null}
+          renderStatus={(doc) => (doc.cvStatus ? <CvReadingNote status={doc.cvStatus as CvStatus} /> : null)}
+          onRemove={(doc) => void deleteDocument(doc as UploadedDocument)}
+          onChanged={() => void queryClient.invalidateQueries({ queryKey: seekerKeys.documents })}
+          onUploadCv={pickCv}
+        />
+        {profileCvStatus === "failed" ? (
+          <p role="status" className="flex items-start gap-2 rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-900">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            {t("profileCvUnreadable")}
+          </p>
+        ) : null}
 
-        {/* ── Upload area ── */}
-        <div
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          onClick={() => inputRef.current?.click()}
-          className="border-2 border-dashed rounded-xl p-4 sm:p-8 text-center cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-all"
-        >
-          <input
+        <input
             ref={inputRef}
             type="file"
             accept=".pdf,.docx,.jpg,.jpeg,.png,.webp"
             onChange={handleFileChange}
             className="hidden"
           />
-          {file ? (
-            <div className="flex items-center justify-center gap-3">
-              <FileText className="h-8 w-8 text-primary" />
-              <div className="text-start">
-                <p className="font-medium text-sm">{file.name}</p>
-                <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB · {getCategoryLabel(category)}</p>
-              </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); setFile(null); setExtracted(null); }}
-                className="ms-2 hover:text-red-500"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <>
-              <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-medium">{t("uploadPrompt", { category: getCategoryLabel(category).toLowerCase() })}</p>
-              <p className="text-xs text-muted-foreground mt-1">{t("formats")}</p>
-            </>
-          )}
-        </div>
 
-        {/* Action buttons */}
-        {file && (
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <button
-              onClick={uploadDocument}
-              disabled={uploading}
-              className="flex-1 py-2.5 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              {uploading ? t("uploading") : t("uploadDocument")}
-            </button>
-            {category === "resume" && !extracted && (
-              <button
-                onClick={extractCV}
-                disabled={extracting}
-                className="flex-1 py-2.5 rounded-lg border-2 border-primary text-primary font-semibold hover:bg-primary/5 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {extracting ? t("extracting") : t("extractWithAi")}
-              </button>
-            )}
+        {/* A CV picked from My CVs: file, upload / read-with-AI, preview. */}
+        {category === "resume" && file && (
+          <div className="space-y-3">
+            {uploadBox}
+            {uploadActions}
           </div>
         )}
+        {extractedPreview}
 
-        {/* Extracted preview */}
-        {extracted && (
-          <div className="card-base space-y-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <h3 className="font-semibold">{t("extractedProfile")}</h3>
+        {/* ── Certificates & other documents: type, drop zone, list ── */}
+        <section aria-labelledby="certificates-title" className="card-base max-sm:!p-0">
+          <div className="flex items-start justify-between gap-4 p-4 border-b flex-col sm:flex-row max-sm:items-stretch max-sm:gap-3">
+            <div className="min-w-0 flex-1">
+              <h2 id="certificates-title" className="font-semibold flex items-center gap-2">
+                {t("certificatesTitle")}
+                {documents.length > 0 && (
+                  <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{documents.length.toLocaleString(numberLocale)}</span>
+                )}
+              </h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">{t("certificatesDescription")}</p>
             </div>
-
-            {extracted.fullName && <p className="text-sm"><strong>{t("extractedName")}</strong> {extracted.fullName}</p>}
-            {extracted.email && <p className="text-sm"><strong>{t("extractedEmail")}</strong> {extracted.email}</p>}
-            {extracted.currentLocation && <p className="text-sm"><strong>{t("extractedLocation")}</strong> {extracted.currentLocation}</p>}
-            {extracted.headline && <p className="text-sm"><strong>{t("extractedHeadline")}</strong> {extracted.headline}</p>}
-
-            {extracted.skills && extracted.skills.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionSkills")}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {extracted.skills.map((s, i) => (
-                    <span key={`${s.name}-${i}`} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">{s.name}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {extracted.experience && extracted.experience.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionExperience")}</p>
-                <div className="space-y-1.5">
-                  {extracted.experience.map((exp, i) => (
-                    <div key={i} className="text-sm border-l-2 border-primary/30 pl-3">
-                      <p className="font-medium">{exp.jobTitle} — {exp.company}</p>
-                      <p className="text-xs text-muted-foreground">{exp.from} – {exp.current ? t("present") : exp.to}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {extracted.education && extracted.education.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionEducation")}</p>
-                <div className="space-y-1.5">
-                  {extracted.education.map((ed, i) => (
-                    <div key={i} className="text-sm border-l-2 border-blue-200 pl-3">
-                      <p className="font-medium">{ed.field ? t("degreeInField", { degree: ed.degree, field: ed.field }) : ed.degree}</p>
-                      <p className="text-xs text-muted-foreground">{ed.institution} · {ed.country}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {extracted.certifications && extracted.certifications.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionCertifications")}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {extracted.certifications.map((cert, i) => (
-                    <span key={i} className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">{cert}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {extracted.languages && extracted.languages.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("sectionLanguages")}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {extracted.languages.map((l, i) => (
-                    <span key={i} className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium capitalize">
-                      {l.language} · {l.level}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={saveToProfile}
-              disabled={saving}
-              className="w-full py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-              {saving ? t("saving") : t("saveToProfile")}
-            </button>
+            <Button type="button" variant="outline" size="sm" className="min-h-10 rounded-xl" onClick={pickDocument}>
+              <Plus className="me-1.5 size-4" aria-hidden="true" />
+              {t("addDocument")}
+            </Button>
           </div>
-        )}
 
-        {/* ── Uploaded Documents List ── */}
-        <div className="card-base max-sm:!p-0">
-          <div className="flex items-center justify-between gap-4 p-4 border-b flex-col sm:flex-row max-sm:items-stretch max-sm:gap-3">
-            <h3 className="font-semibold flex items-center gap-2">
-              <FolderOpen className="h-4 w-4" />
-              {t("myDocuments")}
-              {documents.length > 0 && (
-                <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{documents.length.toLocaleString(numberLocale)}</span>
-              )}
-            </h3>
+          <div className="space-y-3 border-b p-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("type")}</p>
+            <div className="flex flex-wrap gap-2">
+              {DOC_CATEGORIES.filter((cat) => cat.value !== "resume").map((cat) => {
+                const Icon = cat.icon;
+                const isActive = category === cat.value;
+                return (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => setCategory(cat.value)}
+                    className={`flex items-center gap-2 rounded-lg text-sm font-medium transition-all border ${ isActive ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40 text-muted-foreground hover:text-foreground" } chip-pad`}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    {getCategoryLabel(cat.value)}
+                  </button>
+                );
+              })}
+            </div>
+            {uploadBox}
+            {category !== "resume" && file && uploadActions}
+          </div>
+
+          <div className="flex items-center justify-end gap-4 px-4 pt-4 empty:hidden">
             {documents.length > 0 && (
               <div className="w-full sm:w-56 max-sm:space-y-1.5">
                 <label htmlFor="seeker-documents-search" className="text-sm font-medium text-foreground sm:hidden">
@@ -556,23 +633,12 @@ export default function JobSeekerDocumentsPage() {
             )}
           </div>
 
-          {profileCvStatus === "failed" ? (
-            <p role="status" className="flex items-start gap-2 border-b bg-amber-500/10 px-4 py-3 text-sm text-amber-900">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-              {t("profileCvUnreadable")}
-            </p>
-          ) : null}
-
           {loadingDocs ? (
             <div className="p-8 flex justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : documents.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              <FolderOpen className="h-10 w-10 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">{t("empty")}</p>
-              <p className="text-xs mt-1">{t("emptyDescription")}</p>
-            </div>
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">{t("empty")}</p>
           ) : (
             <div className="divide-y">
               {documents.filter((doc) => doc.name.toLowerCase().includes(searchTerm.toLowerCase())).map((doc) => {
@@ -616,8 +682,8 @@ export default function JobSeekerDocumentsPage() {
               })}
             </div>
           )}
-        </div>
+        </section>
       </div>
-    </div>
+    </ProfileHubShell>
   );
 }

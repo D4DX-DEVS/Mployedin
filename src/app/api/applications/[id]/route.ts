@@ -19,7 +19,7 @@ import { effectiveJobStages, type JobWorkflowCarrier } from "@/lib/hiring/jobWor
 import { stageForApplication, type WorkflowStageDef } from "@/lib/hiring/workflowStages";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
-import { SEEKER_HIDDEN_APPLICATION_FIELDS, maskSeekerApplicationJob } from "@/lib/applications/seekerView";
+import { SEEKER_HIDDEN_APPLICATION_FIELDS, maskSeekerApplicationJob, seekerScoreView } from "@/lib/applications/seekerView";
 import { stampHumanReview } from "@/lib/hiring/automatedDecision";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; member?: AuthContext["member"] }
@@ -260,7 +260,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
 
     const JobSeeker = (await import("@/models/JobSeeker")).default;
     const seeker = await JobSeeker.findById(application.jobSeekerId).select("userId").lean() as { userId?: unknown } | null;
-    // Candidate notifications — only for meaningful milestones (not shortlisted/screening)
+    // Candidate notifications — only for meaningful milestones: interview, offer, hire, not selected
     if (notifyOnStageChange && seeker?.userId) {
       const seekerUserId = String(seeker.userId);
       const appId = String(application._id);
@@ -272,8 +272,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         notifyOfferMade(seekerUserId, jobTitle, companyName, appId).catch((err) => { logger.error({ err, applicationId: appId, userId: seekerUserId }, "failed to notify applicant of offer"); });
       } else if (effectiveStatus === "rejected") {
         notifyRejected(seekerUserId, jobTitle, appId).catch((err) => { logger.error({ err, applicationId: appId, userId: seekerUserId }, "failed to notify applicant of rejection"); });
-      } else if (["shortlisted", "screening", "interview", "selected"].includes(effectiveStatus)) {
-        // Interim pipeline movements — candidates should see progress, not silence.
+      } else if (["screening", "interview"].includes(effectiveStatus)) {
+        // Legacy stage ids. Shortlisted and Selected are silent for the seeker
+        // (lib/jobSeeker/seekerStatus): their view stays at In review / Interview.
         notifyStatusChange(seekerUserId, jobTitle, effectiveStatus, appId).catch((err) => { logger.error({ err, applicationId: appId, userId: seekerUserId }, "failed to notify applicant of status change"); });
       }
       // withdrawn — silent (candidate-initiated; notifying them about their own action is noise)
@@ -354,7 +355,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
   // applicant. The seeker UI renders aiMatchScore, so it carries the seeker's
   // own number: the engine score, not an employer's re-weighted ranking.
   if (ctx.role === "job_seeker") {
-    if (typeof result.seekerMatchScore === "number") result.aiMatchScore = result.seekerMatchScore;
+    Object.assign(result, seekerScoreView(result));
     for (const key of SEEKER_HIDDEN_APPLICATION_FIELDS) delete result[key];
     // Masked after the ownership checks above, which read the real employer id.
     result.jobId = maskSeekerApplicationJob(result).jobId;

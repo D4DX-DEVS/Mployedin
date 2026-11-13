@@ -18,11 +18,11 @@ import {
   Save,
   Loader2,
   CheckCircle2,
-  ChevronLeft,
   Smartphone,
 } from "lucide-react";
-import { useBackNavigation } from "@/hooks/useBackNavigation";
+import { SettingsHubShell } from "@/components/features/job-seeker/SettingsHubShell";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WhatsAppVerificationPanel, hasWhatsAppOn, type WhatsAppVerification } from "@/components/features/settings/WhatsAppVerificationPanel";
@@ -137,14 +137,14 @@ const CHANNEL_LABELS: Record<Channel, { labelKey: string; icon: typeof Mail }> =
   whatsapp: { labelKey: "channelWhatsApp", icon: Smartphone },
 };
 
+/** Category column, then On + one column per channel. */
+const GRID = "grid grid-cols-[minmax(0,1fr)_3rem_repeat(3,3.25rem)] items-center gap-x-1 sm:grid-cols-[minmax(0,1fr)_4rem_repeat(3,5rem)]";
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function NotificationSettingsPage() {
   const { locale } = useParams<{ locale: string }>();
   const isAr = locale === "ar";
-  // Popping, not pushing: a <Link> back to settings would stack a second
-  // settings entry and settings' own back button would return here forever.
-  const { goBack } = useBackNavigation(`/${locale}/job-seeker/settings`);
   const t = useTranslations("notifications");
   const tCommon = useTranslations("common");
 
@@ -261,38 +261,18 @@ export default function NotificationSettingsPage() {
 
   if (loading) {
     return (
-      <div className="page-container max-w-3xl mx-auto">
-        <div className="space-y-4">
-          <div className="h-8 w-48 bg-muted animate-pulse rounded" />
+      <SettingsHubShell locale={locale}>
+        <div className="space-y-4" aria-busy="true">
           <div className="h-64 bg-card animate-pulse rounded-xl border" />
           <div className="h-96 bg-card animate-pulse rounded-xl border" />
         </div>
-      </div>
+      </SettingsHubShell>
     );
   }
 
   return (
-    <div className="page-container max-w-3xl mx-auto pb-32 lg:pb-24" dir={isAr ? "rtl" : "ltr"}>
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          type="button"
-          onClick={goBack}
-          aria-label={tCommon("back")}
-          className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors"
-        >
-          <ChevronLeft className={`w-4 h-4 ${isAr ? "rotate-180" : ""}`} />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">
-            {t("title")}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {t("subtitle")}
-          </p>
-        </div>
-      </div>
-
+    <SettingsHubShell locale={locale} className="pb-32 lg:pb-24">
+    <div dir={isAr ? "rtl" : "ltr"}>
       {/* Global Unsubscribe Banner */}
       {prefs.unsubscribedAll && (
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 card-pad">
@@ -367,64 +347,54 @@ export default function NotificationSettingsPage() {
         <div className="px-4 pt-4 empty:hidden">
           <WhatsAppVerificationPanel whatsAppOn={hasWhatsAppOn(prefs.categories)} verification={waVerification} />
         </div>
-        <div className="divide-y divide-border/30">
+        {/* One header row of channels, then one row per category: a switch for
+            the category and a checkbox per channel. Off greys the boxes out
+            rather than hiding them, so rows keep their height. */}
+        <div role="table" aria-label={t("categories")} className="text-sm">
+          <div role="row" className={`${GRID} border-b border-border/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground`}>
+            {/* The cell keeps its grid column; only its text is visually hidden
+                (sr-only on the cell itself took it out of the grid). */}
+            <span role="columnheader"><span className="sr-only">{t("categories")}</span></span>
+            <span role="columnheader" className="text-center">{t("columnOn")}</span>
+            {(Object.keys(CHANNEL_LABELS) as Channel[]).map((ch) => (
+              <span key={ch} role="columnheader" className="text-center">{t(CHANNEL_LABELS[ch].labelKey)}</span>
+            ))}
+          </div>
+          <div role="rowgroup" className="divide-y divide-border/30">
           {CATEGORIES.map((cat) => {
             const pref = prefs.categories[cat.key];
-            const Icon = cat.icon;
             return (
-              <div key={cat.key} className="px-4 py-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted/60 mt-0.5 shrink-0">
-                      <Icon className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{t(cat.labelKey)}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {t(cat.descKey)}
-                      </p>
-                    </div>
-                  </div>
+              <div key={cat.key} role="row" className={`${GRID} relative px-4 py-3`}>
+                <div role="cell" className="min-w-0">
+                  <p className="font-medium">{t(cat.labelKey)}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t(cat.descKey)}</p>
+                  {/* Password emails never pass through these preferences. */}
+                  {cat.key === "system" && (
+                    <p className="mt-1 text-xs text-muted-foreground">{tCommon("passwordEmailsAlwaysArrive")}</p>
+                  )}
+                </div>
+                <div role="cell" className="flex justify-center">
                   <Switch
                     checked={pref.enabled}
                     onCheckedChange={() => toggleCategory(cat.key)}
                     aria-label={t(cat.labelKey)}
                   />
                 </div>
-
-                {/* Password emails never pass through these preferences. */}
-                {cat.key === "system" && (
-                  <p className={`mt-2 text-xs text-muted-foreground ${isAr ? "mr-11" : "ml-11"}`}>{tCommon("passwordEmailsAlwaysArrive")}</p>
-                )}
-
-                {/* Channel toggles (shown when category is enabled) */}
-                {pref.enabled && (
-                  <div className={`flex items-center gap-2 mt-3 ${isAr ? "mr-11" : "ml-11"}`}>
-                    {(Object.keys(CHANNEL_LABELS) as Channel[]).map((ch) => {
-                      const chConf = CHANNEL_LABELS[ch];
-                      const ChIcon = chConf.icon;
-                      const active = pref.channels.includes(ch);
-                      return (
-                        <button
-                          key={ch}
-                          onClick={() => toggleChannel(cat.key, ch)}
-                          aria-pressed={active}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                            active
-                              ? "border-primary/40 bg-primary/10 text-primary"
-                              : "border-border/50 bg-muted/30 text-muted-foreground hover:border-border"
-                          }`}
-                        >
-                          <ChIcon className="w-3 h-3" />
-                          {t(chConf.labelKey)}
-                        </button>
-                      );
-                    })}
+                {(Object.keys(CHANNEL_LABELS) as Channel[]).map((ch) => (
+                  <div key={ch} role="cell" className="flex justify-center">
+                    <Checkbox
+                      checked={pref.enabled && pref.channels.includes(ch)}
+                      disabled={!pref.enabled}
+                      onCheckedChange={() => toggleChannel(cat.key, ch)}
+                      aria-label={`${t(cat.labelKey)}: ${t(CHANNEL_LABELS[ch].labelKey)}`}
+                      className="size-5"
+                    />
                   </div>
-                )}
+                ))}
               </div>
             );
           })}
+          </div>
         </div>
       </div>
 
@@ -494,5 +464,6 @@ export default function NotificationSettingsPage() {
         )}
       </div>
     </div>
+    </SettingsHubShell>
   );
 }

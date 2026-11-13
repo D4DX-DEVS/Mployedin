@@ -186,8 +186,8 @@ export default function EmployerTalentPoolsPage() {
         }
         actions={pools.length > 0 ? (
           <Button onClick={() => setCreateOpen(true)} aria-label={t("createPool")} className="rounded-xl px-3 sm:px-4">
-            <Plus className="h-4 w-4 sm:me-2" aria-hidden="true" />
-            <span className="hidden sm:inline">{t("createPool")}</span>
+            <Plus className="h-4 w-4 me-2" aria-hidden="true" />
+            <span>{t("createPool")}</span>
           </Button>
         ) : undefined}
         metrics={pools.length > 0 ? [
@@ -199,16 +199,16 @@ export default function EmployerTalentPoolsPage() {
 
       {pools.length > 0 && (
         <div className="workspace-toolbar">
-          {/* Search + sort share one row on phones too. */}
+          {/* Phones: search owns its row; beside the sort menu it was squeezed to "Search po". */}
           <SearchField
-            className="workspace-toolbar-search basis-0 sm:basis-64"
+            className="workspace-toolbar-search sm:basis-64"
             placeholder={t("searchPools")}
             value={search}
             onValueChange={setSearch}
             inputClassName="h-11 rounded-xl border-border bg-background text-sm shadow-none sm:h-10"
           />
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-            <SelectTrigger className="h-11 w-[10.5rem] shrink-0 rounded-xl sm:h-10 sm:w-[200px]" aria-label={t("sortBy")}>
+            <SelectTrigger className="h-11 min-w-0 flex-1 rounded-xl sm:h-10 sm:w-[200px] sm:flex-none" aria-label={t("sortBy")}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -290,19 +290,17 @@ function PoolCard({
 
   return (
     <div className="group relative flex h-full flex-col gap-2 rounded-2xl border border-border bg-card transition hover:border-sky-300 hover:shadow-md card-pad">
-      {/* Always visible: the hover-only pair was unreachable on touch and
-          keyboards. Rename stays in plain sight, Delete sits last in "…". */}
+      {/* Always visible (hover-only was unreachable on touch and keyboards).
+          Both sit in the ⋯ menu with their words: as two bare icons the pen and
+          a red archive box read as edit and delete, and took the room the
+          pool name needs. */}
       <div className="absolute right-3 top-3" onClick={(e) => e.stopPropagation()}>
         <RowActions
           name={pool.name}
-          quick={[
-            { key: "rename", label: t("edit"), icon: Pencil, iconOnly: true, onSelect: onRename },
-          ]}
           menu={[
-            // Icon-only like the pen: a labelled button is ~110px wide and the
-            // pool name ran underneath it. Label survives as tooltip + name.
+            { key: "rename", label: t("edit"), icon: Pencil, onSelect: onRename },
             // The pool is archived, not deleted (QA EMP-016: "Delete Pool" over an "Archive?" dialog).
-            { key: "delete", label: t("archivePool"), icon: Archive, iconOnly: true, destructive: true, onSelect: onDelete },
+            { key: "delete", label: t("archivePool"), icon: Archive, destructive: true, onSelect: onDelete },
           ]}
         />
       </div>
@@ -312,8 +310,8 @@ function PoolCard({
           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${color.bg} ring-4 ${color.ring}`}>
             <Layers className={`h-5 w-5 ${color.text}`} />
           </div>
-          <div className="min-w-0 pr-24">
-            <h3 className="heading-subsection font-semibold text-foreground line-clamp-1">{pool.name}</h3>
+          <div className="min-w-0 pe-12">
+            <h3 className="heading-subsection line-clamp-2 break-words font-semibold text-foreground">{pool.name}</h3>
             {pool.description ? (
               <p className="line-clamp-1 text-sm text-muted-foreground">{pool.description}</p>
             ) : (

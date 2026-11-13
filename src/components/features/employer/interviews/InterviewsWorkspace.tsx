@@ -461,7 +461,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
               >
                 <Link href={`/${locale}/employer/scorecards`} aria-label={tn("scorecards")}>
                   <ClipboardCheck className="h-4 w-4" />
-                  <span className="hidden lg:inline">{tn("scorecards")}</span>
+                  <span className="hidden md:inline">{tn("scorecards")}</span>
                 </Link>
               </Button>
               {can("interviews", "create") ? (
@@ -470,7 +470,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                   className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
                 >
                   <Link href={`/${locale}/employer/interviews/bulk`} aria-label={t("bulkSchedule")}>
-                    <span className="hidden sm:inline">{t("bulkSchedule")}</span>
+                    <span>{t("bulkSchedule")}</span>
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -482,7 +482,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                 onClick={exportCalendar}
               >
                 <CalendarDays className="h-4 w-4" />
-                <span className="hidden lg:inline">{t("exportCalendar")}</span>
+                <span className="hidden md:inline">{t("exportCalendar")}</span>
               </Button>
               {/* Phones: the two secondary actions live in a menu so the title keeps
                   its row; tablets show them as icon buttons for the same reason. */}
@@ -597,7 +597,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                 className="gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4 sm:text-sm min-h-11 sm:min-h-9"
               >
                 <Link href={`/${locale}/employer/interviews/bulk?jobId=${propJobId}`} aria-label={t("bulkSchedule")}>
-                  <span className="hidden sm:inline">{t("bulkSchedule")}</span>
+                  <span>{t("bulkSchedule")}</span>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -612,7 +612,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
               >
                 <Link href={`/${locale}/employer/calendar`} aria-label={t("viewCalendar")}>
                   <CalendarDays className="h-4 w-4" />
-                  <span className="hidden lg:inline">{t("viewCalendar")}</span>
+                  <span className="hidden md:inline">{t("viewCalendar")}</span>
                 </Link>
               </Button>
               <Button
@@ -622,7 +622,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
               >
                 <Link href={`/${locale}/employer/scorecards`} aria-label={tn("scorecards")}>
                   <ClipboardCheck className="h-4 w-4" />
-                  <span className="hidden lg:inline">{tn("scorecards")}</span>
+                  <span className="hidden md:inline">{tn("scorecards")}</span>
                 </Link>
               </Button>
               <Button
@@ -632,7 +632,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                 aria-label={t("exportCalendar")}
               >
                 <CalendarDays className="h-4 w-4" />
-                <span className="hidden lg:inline">{t("exportCalendar")}</span>
+                <span className="hidden md:inline">{t("exportCalendar")}</span>
               </Button>
             </div>
 
@@ -670,7 +670,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
           No select on this page, so the search shares the phone row with the
           two buttons instead of leaving them stranded on a row of their own. */}
       <div className="workspace-toolbar">
-        <div className="workspace-toolbar-search basis-0 sm:basis-64">
+        <div className="workspace-toolbar-search sm:basis-64">
           {/* Visible label (WCAG 3.3.2); the placeholder was the only one. */}
           <label htmlFor="interviews-search" className="mb-1 block truncate text-xs font-medium text-muted-foreground">{tc("search")}</label>
           <div className="relative">
@@ -680,6 +680,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder={t("searchPlaceholder")}
             className="h-11 w-full min-w-0 rounded-xl border border-border bg-background ps-9 pe-9 text-sm shadow-none focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:h-10"
           />
           {search && (
@@ -697,20 +698,19 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
         {activeFilterCount > 0 && (
           <Button variant="ghost" size="sm" className="h-11 px-2 text-xs text-muted-foreground hover:text-destructive sm:h-10"
             onClick={() => { setStatus(""); setTypeFilter(""); setOutcomeFilter(""); setDateFrom(""); setDateTo(""); setPage(1); }}>
-            <X className="h-3 w-3 sm:me-1" /> <span className="hidden sm:inline">{tc("clearFilters")}</span>
+            <X className="me-1 h-3 w-3" /> {tc("clearFilters")}
           </Button>
         )}
         <Button
           variant="outline"
           onClick={() => setFiltersOpen(!filtersOpen)}
           aria-expanded={filtersOpen}
-          aria-label={t("filters")}
           className={`h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4 ${filtersOpen ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
         >
-          <SlidersHorizontal className="h-4 w-4 sm:me-2" aria-hidden="true" />
-          <span className="hidden sm:inline">{t("filters")}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}</span>
+          <SlidersHorizontal className="me-2 h-4 w-4" aria-hidden="true" />
+          {t("filters")}
           {activeFilterCount > 0 ? (
-            <span className="ms-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground sm:hidden">
+            <span className="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
               {activeFilterCount}
             </span>
           ) : null}
@@ -852,7 +852,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
         <div className="flex items-center gap-2 border-b border-border px-4 pb-3 pt-4">
           <h2 className="heading-label font-semibold text-foreground">
-            {formatNumber(deduplicatedInterviews.length, locale)} {tn("interviews")}
+            {t("interviewCount", { count: deduplicatedInterviews.length })}
           </h2>
           {/* Privacy info at the point candidate data is shown, compacted to
               an icon + popover to keep the list above the fold. */}
@@ -867,9 +867,12 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                 tools plus the secondary actions live in the row menu (⋯). */}
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="min-w-[180px]">{t("candidate")}</TableHead>
-                <TableHead className="min-w-[200px]">{t("role")}</TableHead>
-                <TableHead>{t("interviewCol")}</TableHead>
+                {/* Tablets (sm–lg): candidate, when, status and the action. Role
+                    moves under the name and the round rides with the date, so
+                    the Actions column is never pushed off screen. */}
+                <TableHead className="lg:min-w-[180px]">{t("candidate")}</TableHead>
+                <TableHead className="hidden min-w-[200px] lg:table-cell">{t("role")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("interviewCol")}</TableHead>
                 <TableHead>
                   <SortableTableHeader label={t("scheduledCol")} active={sortBy === "scheduledAt"} order={sortOrder} onClick={() => sortByColumn("scheduledAt")} />
                 </TableHead>
@@ -903,11 +906,12 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                         <UserAvatar name={iv.jobSeekerId?.fullName} email={iv.jobSeekerId?.email} className="h-9 w-9" colorful />
                         <div className="min-w-0 space-y-1">
                           <p className="truncate font-semibold text-foreground">{iv.jobSeekerId?.fullName ?? "Candidate"}</p>
-                          <p className="truncate text-xs text-muted-foreground">{iv.jobSeekerId?.email ?? "No email available"}</p>
+                          <p className="truncate text-xs text-muted-foreground lg:hidden">{iv.jobId?.title ?? "Untitled role"}</p>
+                          <p className="hidden truncate text-xs text-muted-foreground lg:block">{iv.jobSeekerId?.email ?? "No email available"}</p>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <div className="space-y-2">
                         <p className="font-medium text-foreground">{iv.jobId?.title ?? "Untitled role"}</p>
                         {skills.length ? (
@@ -921,7 +925,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <div className="flex items-center gap-1.5">
                         <span className="inline-flex items-center gap-1 rounded-full bg-status-interview-bg px-2.5 py-1 text-xs font-semibold text-indigo-700 border border-status-interview/20">
                           R{round}
@@ -951,9 +955,9 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                       })()}
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-1 text-sm text-muted-foreground">
+                      <div className="space-y-1 whitespace-nowrap text-sm text-muted-foreground">
                         <p>{scheduled.date}</p>
-                        <p className="text-xs text-muted-foreground">{scheduled.time}</p>
+                        <p className="text-xs text-muted-foreground">{scheduled.time}<span className="lg:hidden"> · R{round}</span></p>
                       </div>
                     </TableCell>
                     <TableCell>

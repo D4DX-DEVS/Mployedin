@@ -16,6 +16,14 @@ import { isRegionSubset } from "@/lib/auth/agentRestrictions";
 import type { RegionInfo } from "@/lib/auth/agentRestrictions";
 import { regionLocale, resolveAssignedRegions } from "@/lib/agents/assignedRegion";
 import logger from "@/lib/logger";
+import {
+  agentEmailChangeUpdate,
+  agentEmailNotVerifiedResponse,
+  approvalStamp,
+  emailChanges,
+  loadApprovalState,
+  wouldApproveUnverifiedAgent,
+} from "@/lib/auth/agentApproval";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -185,6 +193,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     passwordHash,
     role: "agent",
     isActive: true,
+    // Created active by staff: approved (lib/auth/agentApproval.ts).
+    agentApprovedAt: new Date(),
   });
 
   try {
@@ -254,6 +264,23 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
 
+  // This route edits agents only: it writes the account's active flag and
+  // address, so any other account id is refused before any write.
+  const current = await loadApprovalState(userId);
+  if (!current || current.role !== "agent") {
+    return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+  }
+  // Approving an agent needs a confirmed email (lib/auth/agentApproval.ts).
+  // Checked before any write, so a refused save changes nothing.
+  if (wouldApproveUnverifiedAgent(current, { isActive, email })) {
+    return agentEmailNotVerifiedResponse();
+  }
+  const replacingEmail = emailChanges(current, email);
+  if (replacingEmail) {
+    const clash = await User.findOne({ email, _id: { $ne: userId } }).select("_id").lean();
+    if (clash) return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+  }
+
   // Resolve the super agent to validate region subset
   // Use the provided superAgentId, or fall back to current agent's super agent
   const effectiveSuperAgentId = superAgentId !== undefined ? superAgentId : undefined;
@@ -285,12 +312,23 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Update user fields
   const userUpdate: Record<string, unknown> = {};
+  let userUnset: Record<string, ""> = {};
   if (name !== undefined) userUpdate.name = name;
-  if (email !== undefined) userUpdate.email = email;
+  if (replacingEmail) {
+    // The new address is unproven; codes and links went to the old one.
+    const unconfirm = agentEmailChangeUpdate();
+    userUpdate.email = email;
+    Object.assign(userUpdate, unconfirm.$set);
+    userUnset = unconfirm.$unset;
+  }
   if (isActive !== undefined) userUpdate.isActive = isActive;
+  Object.assign(userUpdate, approvalStamp(current, { isActive }));
 
   if (Object.keys(userUpdate).length > 0) {
-    await User.findByIdAndUpdate(userId, { $set: userUpdate });
+    await User.findByIdAndUpdate(userId, {
+      $set: userUpdate,
+      ...(Object.keys(userUnset).length ? { $unset: userUnset } : {}),
+    });
   }
 
   // Update or create agent profile

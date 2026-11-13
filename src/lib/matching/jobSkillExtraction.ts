@@ -1,10 +1,11 @@
 /**
  * Filling in the skills employers did not type.
  *
- * 22 of 62 live jobs carry no `requirements.skills` at all. Skill fit is 60%
- * of the relevance score, so those jobs sit permanently at the no-evidence
- * floor and can never clear a high threshold — they are effectively invisible
- * to the recommendation engine no matter how good the candidate.
+ * 22 of 62 live jobs carry no `requirements.skills` at all. Skill fit is the
+ * largest part of the relevance score (40 of 100 points); a job with none
+ * leaves skills out of the score entirely (RELEVANCE_POINTS, D8), so it is
+ * ranked on role, experience and education alone and reads nothing about the
+ * skills it actually needs.
  *
  * The description almost always says what the job needs; it is just prose. So
  * this is the one job in the pipeline an LLM is genuinely better at than

@@ -5,12 +5,25 @@ import { z } from "zod";
 /** 24-char hex Mongo ObjectId. */
 const objectId = z.string().trim().regex(/^[a-f\d]{24}$/i, "Invalid ID");
 
+/**
+ * A new due date cannot be in the past. The page sends the picked calendar day
+ * as UTC midnight, so "today" in any time zone can sit up to ~36h behind the
+ * server clock; two days of slack keeps today valid everywhere.
+ */
+const DUE_DATE_SLACK_MS = 48 * 60 * 60 * 1000;
+const futureDueDate = z
+  .string()
+  .datetime()
+  .refine((value) => new Date(value).getTime() >= Date.now() - DUE_DATE_SLACK_MS, "Due date cannot be in the past")
+  .optional()
+  .or(z.literal(""));
+
 const taskSchema = z.object({
   title: z.string().trim().min(2).max(160),
   description: z.string().trim().max(1000).optional(),
   assignee: z.string().trim().max(120).optional(),
   assigneeUserId: objectId.optional().or(z.literal("")),
-  dueDate: z.string().datetime().optional().or(z.literal("")),
+  dueDate: futureDueDate,
 });
 
 export const onboardingCreateSchema = z.object({
@@ -25,7 +38,7 @@ const addDocumentSchema = z.object({
   url: z.string().trim().url().max(2000).optional().or(z.literal("")),
   requestedFromCandidate: z.boolean().optional(),
   requiresSignature: z.boolean().optional(),
-  dueDate: z.string().datetime().optional().or(z.literal("")),
+  dueDate: futureDueDate,
 });
 
 /** Probation period tracking (employer-managed). */
@@ -58,10 +71,16 @@ export const onboardingUpdateSchema = z.object({
   // Add a document reference (or request one from the candidate)
   addDocument: addDocumentSchema.optional(),
   // Update an existing document by index (employer side: mark approved, etc.)
+  // "requested" sends it back to the candidate for a new copy, and must say why.
   document: z
     .object({
       index: z.number().int().min(0).max(99),
       status: z.enum(["requested", "submitted", "signed", "approved"]).optional(),
+      reviewNote: z.string().trim().min(2).max(500).optional(),
+    })
+    .refine((doc) => doc.status !== "requested" || Boolean(doc.reviewNote), {
+      message: "Say what needs to change",
+      path: ["reviewNote"],
     })
     .optional(),
   // Remove a document by index

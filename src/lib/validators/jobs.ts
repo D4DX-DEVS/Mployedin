@@ -70,6 +70,10 @@ const salarySchema = z
   })
   .refine((s) => s.max >= s.min, { message: "max salary must be >= min" });
 
+const requirementImportanceSchema = z.enum(["must", "nice"]);
+/** The kind of hire: sets the standard ranking weights (lib/ai/matchingWeights.ts). */
+export const hireTypeSchema = z.enum(["experienced", "skills", "qualification", "entry"]);
+
 const requirementsSchema = z
   .object({
     skills: z.array(z.string().max(100)).max(50).optional(),
@@ -77,7 +81,19 @@ const requirementsSchema = z
     experienceMin: z.number().int().min(0).max(50).optional(),
     experienceMax: z.number().int().min(0).max(50).optional(),
     education: z.string().max(200).optional(),
+    // Structured asks (lib/matching/jobRequirements.ts). educationLevel 0 is
+    // an explicit "No minimum"; null clears the choice.
+    educationLevel: z.number().int().min(0).max(5).nullable().optional(),
+    educationField: z.string().trim().max(200).optional(),
+    educationFieldEssential: z.boolean().optional(),
+    educationImportance: requirementImportanceSchema.optional(),
+    experienceIn: z.string().trim().max(200).optional(),
     languages: z.array(z.string().max(100)).max(20).optional(),
+    languagesImportance: requirementImportanceSchema.optional(),
+    credentials: z
+      .array(z.object({ name: z.string().trim().min(1).max(200), importance: requirementImportanceSchema.default("must") }))
+      .max(10)
+      .optional(),
     nationality: z.array(z.string().max(100)).max(50).optional(),
   })
   .refine(
@@ -94,6 +110,7 @@ export const jobCreateSchema = z.object({
   category: z.string().max(100).optional(),
   location: locationSchema.optional(),
   requirements: requirementsSchema.optional(),
+  hireType: hireTypeSchema.nullable().optional(),
   salary: salarySchema.optional(),
   employmentType: z.enum(["full_time", "part_time", "contract", "internship", "freelance"]).optional(),
   workMode: z.enum(["onsite", "hybrid", "remote"]).optional(),
@@ -129,6 +146,7 @@ export const jobUpdateSchema = z.object({
   location: locationSchema.optional(),
   status: z.enum(["draft", "active", "paused", "closed", "expired"]).optional(),
   requirements: requirementsSchema.optional(),
+  hireType: hireTypeSchema.nullable().optional(),
   salary: salarySchema.optional(),
   employmentType: z.enum(["full_time", "part_time", "contract", "internship", "freelance"]).optional(),
   workMode: z.enum(["onsite", "hybrid", "remote"]).optional(),

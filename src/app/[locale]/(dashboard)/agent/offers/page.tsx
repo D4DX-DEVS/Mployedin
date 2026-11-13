@@ -27,6 +27,7 @@ import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import type { ExportColumn } from "@/lib/export";
 import {
@@ -355,7 +356,7 @@ export default function AgentOffersPage() {
       />
 
       <InlineFilterBar className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none" onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}>
-        <InlineFilterSearch value={filters.search} onChange={(v) => updateFilter("search", v)} placeholder={t("filters.searchPlaceholder")} className="max-sm:basis-0" />
+        <InlineFilterSearch value={filters.search} onChange={(v) => updateFilter("search", v)} placeholder={t("filters.searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect options={statusOptions} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder={t("filters.status")} className="w-36 shrink-0" />
@@ -389,6 +390,7 @@ export default function AgentOffersPage() {
           const { quick, menu } = offerActions(o);
           return {
             key: o._id,
+            leading: <UserAvatar name={o.candidateName} email={o.candidateEmail} className="size-[34px]" colorful />,
             title: o.candidateName,
             subtitle: [o.jobTitle, o.companyName].filter(Boolean).join(" · "),
             trailing: (
@@ -396,21 +398,12 @@ export default function AgentOffersPage() {
                 {isExpired(o) ? t("status.expired") : statusLabel(o.status)}
               </Badge>
             ),
-            // A closed offer has only View: labelled, it fills the footer row
-            // instead of a lone eye icon at the end of an empty strip.
-            actions: <RowActions name={o.candidateName} quick={quick.length === 1 && menu.length === 0 ? [{ ...quick[0], iconOnly: false }] : quick} menu={menu} />,
-            meta: (
-              <>
-                <p className="truncate">{t("table.expires")}: {formatListDate(o.expiresAt)} · {t("table.sent")}: {formatListDate(o.createdAt)}</p>
-                {isExpiringSoon(o) && (
-                  <p className="font-semibold text-amber-600">{t("expiringSoon")}</p>
-                )}
-              </>
-            ),
-            stats: [
-              { label: t("table.salary"), value: formatSalary(o) },
-              { label: t("table.startDate"), value: formatListDate(o.startDate) },
+            facts: [
+              formatSalary(o),
+              formatListDate(o.startDate),
+              `${t("table.expires")}: ${formatListDate(o.expiresAt)}`,
             ],
+            actions: <RowActions name={o.candidateName} quick={quick.length === 1 && menu.length === 0 ? [{ ...quick[0], iconOnly: false }] : quick} menu={menu} />,
           };
         })}
       />
@@ -421,7 +414,7 @@ export default function AgentOffersPage() {
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("table.candidate")}</TableHead>
-                <TableHead>{t("table.job")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("table.job")}</TableHead>
                 <TableHead>{t("table.salary")}</TableHead>
                 <TableHead>{t("table.startDate")}</TableHead>
                 <TableHead className="text-right">{t("table.actions")}</TableHead>
@@ -436,7 +429,7 @@ export default function AgentOffersPage() {
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("table.candidate")}</TableHead>
-                <TableHead>{t("table.job")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("table.job")}</TableHead>
                 <TableHead>{t("table.salary")}</TableHead>
                 <TableHead>{t("table.startDate")}</TableHead>
                 <TableHead className="text-right">{t("table.actions")}</TableHead>
@@ -456,7 +449,7 @@ export default function AgentOffersPage() {
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("table.candidate")}</TableHead>
-                  <TableHead>{t("table.job")}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t("table.job")}</TableHead>
                   <TableHead>{t("table.salary")}</TableHead>
                   <TableHead>{t("table.startDate")}</TableHead>
                   <TableHead className="text-right">{t("table.actions")}</TableHead>
@@ -478,7 +471,7 @@ export default function AgentOffersPage() {
                           </Badge>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <p className="text-sm">{o.jobTitle}</p>
                         {o.companyName && <p className="text-xs text-muted-foreground">{o.companyName}</p>}
                       </TableCell>

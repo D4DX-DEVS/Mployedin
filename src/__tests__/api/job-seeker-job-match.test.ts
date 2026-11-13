@@ -24,7 +24,8 @@ jest.mock("@/models/JobSeeker", () => ({
   __esModule: true,
   default: { findOne: jest.fn(() => ({ select: () => ({ lean: async () => seekerDoc }) })) },
 }));
-jest.mock("@/lib/effectiveSeekerProfile", () => ({ effectiveSeekerProfile: jest.fn(async () => ({ skills: ["react.js"] })) }));
+let profile: Record<string, unknown> = { skills: ["react.js"] };
+jest.mock("@/lib/effectiveSeekerProfile", () => ({ effectiveSeekerProfile: jest.fn(async () => profile) }));
 
 const scoreOnePair = jest.fn();
 jest.mock("@/lib/matching/seekerMatches", () => ({ scoreOnePair: (...a: unknown[]) => scoreOnePair(...a) }));
@@ -42,6 +43,7 @@ beforeEach(() => {
   role = "job_seeker";
   jobDoc = { _id: JOB_ID, title: "Senior React Developer", requirements: { skills: ["React"] } };
   seekerDoc = { _id: "s1", skills: ["React.js"] };
+  profile = { skills: ["react.js"] };
   scoreOnePair.mockReset();
 });
 
@@ -52,7 +54,9 @@ describe("GET /api/job-seeker/match", () => {
       score: 93,
       aiConfidence: 0.9,
       breakdown: {
-        overall: 90, skills: 100, role: 80, experience: 70,
+        overall: 90, skills: 100, role: 80, experience: 70, education: 100,
+        shares: { role: 25, experience: 15, education: 20, skills: 40 },
+        mustHaveStatus: "met",
         matchedSkills: ["React"], missingSkills: [], skillsUnknown: false,
       },
     });
@@ -61,7 +65,12 @@ describe("GET /api/job-seeker/match", () => {
     expect(await res.json()).toEqual({
       score: 93,
       eligible: true,
-      parts: { skills: 100, role: 80, experience: 70 },
+      // The parts in play for this job, with what each counts for (2026-11-12).
+      parts: { skills: 100, role: 80, experience: 70, education: 100 },
+      shares: { role: 25, experience: 15, education: 20, skills: 40 },
+      mustHaveStatus: "met",
+      // No requirement evaluation on this mocked breakdown: an empty report.
+      report: { items: [], counts: { has: 0, partial: 0, missing: 0, verify: 0, info: 0 }, mustHaves: { total: 0, has: 0, partial: 0, missing: 0, verify: 0 }, status: "met" },
       aiAdjustment: 3,
       matchedSkills: ["React"],
       missingSkills: [],
@@ -98,6 +107,14 @@ describe("GET /api/job-seeker/match", () => {
     seekerDoc = null;
     const body = await (await match()).json();
     expect(body).toEqual({ score: null });
+    expect(scoreOnePair).not.toHaveBeenCalled();
+  });
+
+  it("answers with no score when the profile states nothing the score reads", async () => {
+    // New account, no CV: the engine would return its neutral defaults (29%).
+    profile = { skills: [], preferredRoles: [], cvText: "", experienceYears: 0, experienceKnown: false };
+    const body = await (await match()).json();
+    expect(body).toEqual({ score: null, reason: "profile_empty" });
     expect(scoreOnePair).not.toHaveBeenCalled();
   });
 });

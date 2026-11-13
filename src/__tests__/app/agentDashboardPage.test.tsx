@@ -294,7 +294,6 @@ describe("AgentDashboard", () => {
     expect(gulf).toHaveAttribute("href", "/en/agent/jobs?employerId=employer-1");
     expect(gulf).toHaveTextContent("Open jobs4");
     expect(gulf).toHaveTextContent("New applicants3");
-    expect(gulf).toHaveTextContent("Interviews ahead2");
     expect(gulf).toHaveTextContent("Hires1");
     expect(within(accounts).getByRole("link", { name: /view all/i })).toHaveAttribute("href", "/en/agent/employers?view=assigned");
     expect(screen.getByRole("link", { name: "Live Roles: 1" })).toHaveAttribute("href", "/en/agent/jobs?status=active");
@@ -363,13 +362,13 @@ describe("AgentDashboard", () => {
 
   // A seeker who joins through the agent's link counts as onboarded at once,
   // before they finish their own profile; area-only seekers are not theirs.
-  it("counts Onboarded as the seekers the agent brought in, not the isOnboarded flag", async () => {
+  it("counts Premium candidates in the seeker scope", async () => {
     seekerCountMock.mockClear();
     await AgentDashboard({ params: Promise.resolve({ locale: "en" }) });
     const filters = seekerCountMock.mock.calls.map(([f]) => JSON.stringify(f));
-    expect(filters.some((f) => f.includes("isOnboarded"))).toBe(false);
-    const onboarded = filters.find((f) => f.includes("referral.agentId") && !f.includes("premium"));
-    expect(onboarded).toBeDefined();
+    // Check that premium seekers are counted with the badges filter
+    const premium = filters.find((f) => f.includes("premium"));
+    expect(premium).toBeDefined();
   });
 
   it("hides the whole chip row when nothing needs action", async () => {

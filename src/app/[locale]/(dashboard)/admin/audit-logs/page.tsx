@@ -336,7 +336,6 @@ export default function AuditLogsPage() {
           value={actorSearch}
           onChange={(value) => { setActorSearch(value); resetPage(); }}
           placeholder={t("filterByActor")}
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">

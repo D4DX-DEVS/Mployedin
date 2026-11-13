@@ -129,10 +129,10 @@ export default function EmployerBulkInterviewPage() {
           <div className="flex items-end gap-3">
             <div className="min-w-0 flex-1">
               <label htmlFor="bulk-candidate-search" className="mb-1 block text-xs text-muted-foreground">{tCommon("search")}</label>
-              <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+              <div className="relative">
+                <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <input id="bulk-candidate-search" type="search" value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder={t("searchCandidates")} className="input-field flex-1" />
+                  placeholder={t("searchCandidates")} className="input-field w-full ps-9!" />
               </div>
             </div>
             <span className="flex h-10 items-center text-sm text-muted-foreground whitespace-nowrap">

@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { KeyRound, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldError } from "@/components/shared/FieldError";
 import { PasswordRequirements } from "@/components/shared/PasswordRequirements";
+import { SetPasswordForm } from "@/components/features/auth/SetPasswordForm";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { logoutCleanup } from "@/lib/consent/logoutCleanup";
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 
 type Field = "current" | "next" | "confirm";
@@ -17,13 +20,20 @@ type Field = "current" | "next" | "confirm";
 /**
  * Change the sign-in password from Settings. POST /api/users/change-password
  * checks the current password, applies the same policy as sign-up and emails
- * the account holder; the checklist shows that policy while they type.
+ * the account holder; the checklist shows that policy while they type. It
+ * also ends every session of the account, this one included, so the card then
+ * signs out and the login page says why.
+ *
+ * An account with no password (made by an e-mail code or by Google / Apple /
+ * LinkedIn) is offered to set its first one instead: asking it for a current
+ * password it never had was a dead end.
  *
  * Not a <form>: settings pages wrap every tab in their own form, and a nested
  * form's submit (button or Enter) submits the page's settings instead.
  */
 export function ChangePasswordCard() {
   const t = useTranslations("changePasswordCard");
+  const ts = useTranslations("setPassword");
   const tf = useTranslations("formErrors");
   const locale = useLocale();
   const [open, setOpen] = useState(false);
@@ -33,6 +43,25 @@ export function ChangePasswordCard() {
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
+  // Assumed true until the server says otherwise, so the usual form never
+  // flickers into the "set a password" one.
+  const [hasPassword, setHasPassword] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    // Started inside a promise so a missing or stubbed fetch is a rejection
+    // the catch below takes, never an exception in the effect.
+    Promise.resolve()
+      .then(() => fetch("/api/user/password-status"))
+      .then((res) => (res?.ok ? res.json() : null))
+      .then((data: { hasPassword?: boolean } | null) => {
+        if (active && data?.hasPassword === false) setHasPassword(false);
+      })
+      .catch(() => {/* keep the change form: the route still refuses a wrong one */});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const reset = () => {
     setOpen(false);
@@ -64,6 +93,13 @@ export function ChangePasswordCard() {
       if (res.ok) {
         toast.success(t("success"));
         reset();
+        const data = await res.json().catch(() => null);
+        if (data?.signedOut) {
+          // The server already ended this session: clear the device and its
+          // cookie here, or the next page would bounce through a dead session.
+          await logoutCleanup();
+          await signOut({ callbackUrl: `/${locale}/login?reason=password-changed` });
+        }
         return;
       }
       // The route answers in English; each status has its own copy here.
@@ -86,15 +122,27 @@ export function ChangePasswordCard() {
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{t("eyebrow")}</div>
           <h2 className="heading-section mt-1 font-semibold tracking-tight text-foreground">{t("title")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{hasPassword ? t("description") : t("setDescription")}</p>
         </div>
         <KeyRound className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
       </div>
 
       {!open ? (
         <Button variant="outline" className="mt-5" onClick={() => setOpen(true)}>
-          {t("open")}
+          {hasPassword ? t("open") : t("setOpen")}
         </Button>
+      ) : !hasPassword ? (
+        <div className="mt-5 rounded-xl border border-border/70 card-pad">
+          <SetPasswordForm
+            idPrefix="settings"
+            onSaved={() => {
+              toast.success(ts("saved"));
+              setHasPassword(true);
+              reset();
+            }}
+            onCancel={reset}
+          />
+        </div>
       ) : (
         <div
           className="mt-5 space-y-4 rounded-xl border border-border/70 card-pad"

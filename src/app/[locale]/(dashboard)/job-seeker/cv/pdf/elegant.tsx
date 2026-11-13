@@ -2,8 +2,9 @@ import React from "react";
 import { Page, Text, View } from "@react-pdf/renderer";
 import type { SectionKey } from "../types";
 import { formatDateValue } from "../types";
-import { KeepWithFirst, PdfContactBar, RichPdfText, orderedSections, pdfScale, tint, type PdfTemplateProps } from "./shared";
+import { getPDFItalicFont, KeepWithFirst, PdfContactBar, RichPdfText, orderedSections, pdfScale, tint, type PdfTemplateProps } from "./shared";
 import { GRAY, capitalize, sectionGap, standardFonts } from "./standard-sections";
+import { headerAlignOf, headingLook, nameSizeOf, PdfSkillList } from "./pdf-layout";
 
 /* ═══════════════════════════════════════
    ELEGANT PDF — mirrors ElegantTemplate:
@@ -16,11 +17,16 @@ export function ElegantPDF(props: PdfTemplateProps) {
   const { data, styles: s, primary, labels, df, pageSize, formatting } = props;
   const scale = pdfScale(s);
   const fonts = standardFonts(props);
-  const italic = fonts.regular.startsWith("Times") ? "Times-Italic" : "Helvetica-Oblique";
+  const italic = getPDFItalicFont(formatting);
+  const headerAlign = headerAlignOf(formatting, "center");
+  const contactAlign = (headerAlign === "center" ? "center" : "start") as "start" | "center";
+  // Header alignment moves the header only; the body stays centred, as on screen.
   const center = { textAlign: "center" as const };
+  const headerText = { textAlign: headerAlign };
+  const look = headingLook(formatting, "plain", primary, tint(primary, 0.25));
 
   const heading = (label: string) => (
-    <Text style={{ ...center, fontFamily: fonts.bold, fontSize: 9 * scale, color: primary, textTransform: "uppercase", letterSpacing: 1.35, marginBottom: 6 }}>{label}</Text>
+    <Text style={{ ...center, fontFamily: fonts.bold, fontSize: 9 * scale, textTransform: "uppercase", letterSpacing: 1.35, marginBottom: 6, ...look }}>{label}</Text>
   );
 
   const sections: Record<SectionKey, React.ReactNode> = {
@@ -57,7 +63,7 @@ export function ElegantPDF(props: PdfTemplateProps) {
     skills: data.skills.length > 0 ? (
       <View wrap={false}>
         {heading(labels.decoratedSkills)}
-        <Text style={{ ...center, fontSize: 8.5 * scale, color: GRAY.g600 }}>{data.skills.join("  ·  ")}</Text>
+        <PdfSkillList skills={data.skills} chip={(sk) => <Text style={{ fontSize: 8.5 * scale, color: GRAY.g600 }}>{sk}</Text>} fontSize={8.5 * scale} color={GRAY.g600} templateDefault="comma" separator="  ·  " style={{ textAlign: "center" }} />
       </View>
     ) : null,
     projects: data.projects?.length > 0 ? (
@@ -95,15 +101,15 @@ export function ElegantPDF(props: PdfTemplateProps) {
 
   return (
     <Page size={pageSize} style={{ ...s.page, fontSize: 8 * scale, color: G800 }}>
-      <View style={{ alignItems: "center", paddingBottom: 14, marginBottom: 10 }}>
-        <Text style={{ ...center, fontFamily: fonts.bold, fontSize: 20 * scale, color: primary, textTransform: "uppercase", letterSpacing: 4, lineHeight: 1.2 }}>{data.fullName || labels.yourName}</Text>
-        {data.headline ? <Text style={{ ...center, fontFamily: italic, fontSize: 9.5 * scale, color: GRAY.g500, marginTop: 4 }}>{data.headline}</Text> : null}
+      <View style={{ alignItems: headerAlign === "center" ? "center" : "flex-start", paddingBottom: 14, marginBottom: 10 }}>
+        <Text style={{ ...headerText, fontFamily: fonts.bold, fontSize: nameSizeOf(formatting, 20), color: primary, textTransform: "uppercase", letterSpacing: 4, lineHeight: 1.2 }}>{data.fullName || labels.yourName}</Text>
+        {data.headline ? <Text style={{ ...headerText, fontFamily: italic, fontSize: 9.5 * scale, color: GRAY.g500, marginTop: 4 }}>{data.headline}</Text> : null}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8, width: "100%" }}>
           {rule}
           <View style={{ width: 6, height: 6, backgroundColor: primary, transform: "rotate(45deg)" }} />
           {rule}
         </View>
-        <PdfContactBar data={data} scale={scale} color={GRAY.g400} align="center" style={{ marginTop: 8 }} />
+        <PdfContactBar data={data} scale={scale} color={GRAY.g400} align={contactAlign} style={{ marginTop: 8 }} />
       </View>
       <View style={{ gap: sectionGap(props) }}>
         {orderedSections(formatting, sections)}

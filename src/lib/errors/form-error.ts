@@ -40,7 +40,17 @@ export interface FormErrorOptions {
 interface ApiErrorBody {
   error?: unknown;
   details?: unknown;
+  code?: unknown;
 }
+
+/**
+ * API refusal codes that have copy of their own in `formErrors`, whatever the
+ * status they come with.
+ */
+const CODED_ERRORS: Record<string, string> = {
+  // lib/auth/agentApproval.ts
+  AGENT_EMAIL_NOT_VERIFIED: "agentEmailNotVerified",
+};
 
 function toLabelMap(labels: FormErrorOptions["fieldLabels"]): Record<string, string> {
   if (!labels) return {};
@@ -75,7 +85,8 @@ function rejectedFields(details: unknown, labels: Record<string, string>): strin
 
 /**
  * Turn a failed fetch Response into a FormError with translated, actionable
- * copy chosen by status:
+ * copy. A known refusal `code` (CODED_ERRORS) has its own copy; otherwise by
+ * status:
  *   409 → conflict (or the caller's specific copy, e.g. "email already used")
  *   400/422 → "Check these fields: Phone, Email" using the form's own labels
  *   401/403 → permission · 404 → notFound · 429 → rateLimit · else → fallback
@@ -87,6 +98,11 @@ export async function formErrorFromResponse(res: Response, opts: FormErrorOption
   const { t, locale } = opts;
   const body = (await res.json().catch(() => ({}))) as ApiErrorBody;
   const status = res.status;
+  const codedKey =
+    typeof body.code === "string" && Object.prototype.hasOwnProperty.call(CODED_ERRORS, body.code)
+      ? CODED_ERRORS[body.code]
+      : undefined;
+  if (codedKey) return new FormError(t(codedKey));
 
   if (status === 409) return new FormError(opts.conflict ?? t("conflict"));
   if (status === 401 || status === 403) return new FormError(t("permission"));

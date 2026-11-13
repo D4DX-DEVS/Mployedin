@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2, MailQuestion } from "lucide-react";
+import { LinkPasswordStep, linkPasswordErrorKey } from "@/components/features/auth/LinkPasswordStep";
 
-type Status = "verifying" | "success" | "error" | "no-token";
+// "password": the link needs the account's password (lib/auth/passwordHolder.ts).
+type Status = "verifying" | "success" | "error" | "no-token" | "password";
 
 export default function ConfirmEmailChangePage() {
   const t = useTranslations("confirmEmailChange");
+  const tp = useTranslations("linkPassword");
   const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
   const token = searchParams.get("token");
@@ -18,6 +21,8 @@ export default function ConfirmEmailChangePage() {
   const [status, setStatus] = useState<Status>(token ? "verifying" : "no-token");
   const [message, setMessage] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
 
   useEffect(() => {
     if (!token) return;
@@ -33,6 +38,9 @@ export default function ConfirmEmailChangePage() {
         if (res.ok) {
           setNewEmail(data.email ?? "");
           setStatus("success");
+        } else if (data.code === "PASSWORD_REQUIRED") {
+          // Opened where the account is not signed in: ask for its password.
+          setStatus("password");
         } else {
           setStatus("error");
           setMessage(data.error ?? t("confirmationFailedFallback"));
@@ -45,6 +53,38 @@ export default function ConfirmEmailChangePage() {
 
     confirm();
   }, [token, t]);
+
+  const submitPassword = useCallback(async (password: string) => {
+    if (!token) return;
+    if (!password) {
+      setPasswordError(tp("emptyError"));
+      return;
+    }
+    setPasswordBusy(true);
+    setPasswordError("");
+    try {
+      const res = await fetch("/api/auth/confirm-email-change", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      });
+      const data = await res.json();
+      const passwordKey = linkPasswordErrorKey(data.code);
+      if (res.ok) {
+        setNewEmail(data.email ?? "");
+        setStatus("success");
+      } else if (passwordKey) {
+        setPasswordError(tp(passwordKey));
+      } else {
+        setStatus("error");
+        setMessage(data.error ?? t("confirmationFailedFallback"));
+      }
+    } catch {
+      setPasswordError(t("networkError"));
+    } finally {
+      setPasswordBusy(false);
+    }
+  }, [token, t, tp]);
 
   return (
     <div className="w-full flex flex-col gap-8">
@@ -66,6 +106,16 @@ export default function ConfirmEmailChangePage() {
             <p className="text-base text-muted-foreground font-light">{t("pleaseWait")}</p>
           </div>
         </div>
+      )}
+
+      {status === "password" && (
+        <LinkPasswordStep
+          purpose="change"
+          locale={locale ?? "en"}
+          busy={passwordBusy}
+          error={passwordError}
+          onSubmit={(password) => void submitPassword(password)}
+        />
       )}
 
       {status === "success" && (

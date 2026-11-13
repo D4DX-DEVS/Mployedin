@@ -6,9 +6,10 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
+let mockOnboarded = false;
 jest.mock("next-auth/react", () => ({
   useSession: () => ({
-    data: { user: { name: "Antony Varghese", email: "antony@example.com", role: "job_seeker", image: "" } },
+    data: { user: { name: "Antony Varghese", email: "antony@example.com", role: "job_seeker", image: "", isOnboarded: mockOnboarded } },
     status: "authenticated",
     update: jest.fn(),
   }),
@@ -26,6 +27,7 @@ jest.mock("@/app/[locale]/(dashboard)/job-seeker/cv/built-cv", () => {
 });
 
 import EasyApply from "@/components/features/public/EasyApply";
+import { navigateWithPageLoad } from "@/lib/browser/navigateWithPageLoad";
 
 type Me = { name: string; documents: unknown[]; cvUrl: string | null; hasBuiltCv: boolean; skills: string[]; socialLinks: unknown[] };
 let me: Me;
@@ -42,6 +44,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockOnboarded = false;
+  sessionStorage.clear();
   me = { name: "Antony Varghese", documents: [], cvUrl: null, hasBuiltCv: true, skills: [], socialLinks: [] };
   applyRequests = [];
   uploads = 0;
@@ -158,5 +162,50 @@ describe("public EasyApply — signed-in seeker's CV", () => {
     fireEvent.change(inputs[0], { target: { files: [new File(["x"], "old-cv.doc", { type: "application/msword" })] } });
     expect(await screen.findByText(/file type isn't supported/)).toBeInTheDocument();
     expect(uploads).toBe(0);
+  });
+});
+
+describe("public EasyApply — a seeker with no CV", () => {
+  beforeEach(() => {
+    me.hasBuiltCv = false;
+  });
+
+  it("applies with the Mployedin CV made from an onboarded seeker's details", async () => {
+    mockOnboarded = true;
+    open();
+    const auto = await screen.findByRole("radio", { name: /Your Mployedin CV/ });
+    expect(auto).toBeChecked();
+    await submit();
+    await waitFor(() => expect(applyRequests).toHaveLength(1));
+    expect(ensureBuiltCvDocument).toHaveBeenCalledTimes(1);
+    expect(applyRequests[0].documentIds).toEqual(["built-1"]);
+  });
+
+  it("sends nothing without a CV, and says how to add one", async () => {
+    open();
+    await screen.findByText(/Upload your CV to apply/);
+    await submit();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Add a CV to apply/);
+    expect(applyRequests).toHaveLength(0);
+    expect(ensureBuiltCvDocument).not.toHaveBeenCalled();
+  });
+
+  it("takes a seeker who chose Apply without CV to the questions, then back to this job", async () => {
+    sessionStorage.setItem("mployedin:apply-auto-cv", "job1");
+    open();
+    await waitFor(() => expect(navigateWithPageLoad).toHaveBeenCalledTimes(1));
+    const target = (navigateWithPageLoad as jest.Mock).mock.calls[0][0] as string;
+    expect(target).toMatch(/^\/en\/onboarding\?callbackUrl=/);
+    expect(decodeURIComponent(target.split("callbackUrl=")[1])).toBe(window.location.pathname + window.location.search);
+    // Read once: "Complete later" lands back on the form, not in a loop.
+    expect(sessionStorage.getItem("mployedin:apply-auto-cv")).toBeFalsy();
+  });
+
+  it("does not send an onboarded seeker who has a CV to the questions", async () => {
+    sessionStorage.setItem("mployedin:apply-auto-cv", "job1");
+    me.cvUrl = "https://cdn/cvs/profile.pdf";
+    open();
+    await screen.findByRole("radio", { name: /Profile CV/ });
+    expect(navigateWithPageLoad).not.toHaveBeenCalled();
   });
 });

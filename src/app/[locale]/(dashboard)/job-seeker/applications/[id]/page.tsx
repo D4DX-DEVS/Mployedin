@@ -10,6 +10,7 @@ import {
   Banknote,
   Calendar,
   ExternalLink,
+  FileText,
   Gauge,
   Lightbulb,
   LogOut,
@@ -20,7 +21,7 @@ import {
   Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/shared/StatusBadge";
+import { SeekerStatusBadge } from "@/components/features/job-seeker/SeekerStatusBadge";
 import { userInitials } from "@/components/shared/UserAvatar";
 import { cn } from "@/lib/utils";
 import { formatApplicationDate, formatApplicationSalary } from "@/lib/jobSeeker/applicationFormat";
@@ -44,6 +45,8 @@ interface ApplicationDetail {
   appliedAt: string;
   viewedByEmployerAt?: string;
   coverLetter?: string;
+  screeningRequestedAt?: string;
+  screeningAnsweredAt?: string;
   screeningAnswers?: { questionId?: string; questionLabel: string; answer: unknown }[];
   documents?: { name: string; url: string; type: string }[];
   statusHistory: { status: string; changedAt: string; note?: string }[];
@@ -140,9 +143,9 @@ export default function ApplicationDetailPage() {
             <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{jobTitle}</h1>
             <p className="text-sm text-muted-foreground">{employer?.companyName ?? t("company")}</p>
             {/* Phones: the status sits under the company so the title keeps the row. */}
-            <StatusBadge status={app.status} size="md" className="mt-1.5 sm:hidden" />
+            <SeekerStatusBadge status={app.status} size="md" className="mt-1.5 sm:hidden" />
           </div>
-          <StatusBadge status={app.status} size="md" className="max-sm:hidden" />
+          <SeekerStatusBadge status={app.status} size="md" className="max-sm:hidden" />
         </div>
 
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
@@ -208,6 +211,23 @@ export default function ApplicationDetailPage() {
 
           {(app.backgroundChecks?.length ?? 0) > 0 && (
             <BackgroundCheckNotice checks={app.backgroundChecks ?? []} companyName={employer?.companyName ?? t("company")} />
+          )}
+
+          {app.screeningRequestedAt && !app.screeningAnsweredAt && (
+            <section className="rounded-2xl border border-blue-200/60 bg-blue-50/50 p-4 dark:border-blue-900/30 dark:bg-blue-950/20">
+              <div className="flex items-start gap-3">
+                <FileText className="size-5 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-blue-900 dark:text-blue-100">{t("answerScreening")}</h3>
+                  <p className="mt-1 text-sm text-blue-800 dark:text-blue-200">{t("answerScreeningDesc")}</p>
+                  <Button asChild size="sm" className="mt-3" variant="default">
+                    <Link href={`/${locale}/job-seeker/applications/${app._id}/screening-answers`}>
+                      {t("answerNow")}
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </section>
           )}
 
           {interviews.length > 0 && (
@@ -304,16 +324,15 @@ function NextStepCallout({ step, locale }: { step: NextStepKey; locale: string }
     switch (step) {
       case "applied": return t("next.applied");
       case "applied_viewed": return t("next.applied_viewed");
-      case "shortlisted": return t("next.shortlisted");
-      case "interview_scheduled": return t("next.interview_scheduled");
-      case "selected": return t("next.selected");
+      case "in_review": return t("next.in_review");
+      case "interview": return t("next.interview");
       case "offer": return t("next.offer");
       case "hired": return t("next.hired");
-      case "rejected": return t("next.rejected");
+      case "not_selected": return t("next.not_selected");
       case "withdrawn": return t("next.withdrawn");
     }
   })();
-  const closed = step === "rejected" || step === "withdrawn";
+  const closed = step === "not_selected" || step === "withdrawn";
   return (
     <section
       className={cn(
@@ -326,7 +345,7 @@ function NextStepCallout({ step, locale }: { step: NextStepKey; locale: string }
       <div className="min-w-0">
         <h2 id="next-step-heading" className="text-sm font-semibold">{t("nextTitle")}</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">{text}</p>
-        {step === "rejected" && (
+        {step === "not_selected" && (
           <Link href={`/${locale}/job-seeker/jobs`} className="mt-2 inline-flex text-sm font-medium text-primary hover:underline">
             {t("findJobs")}
           </Link>

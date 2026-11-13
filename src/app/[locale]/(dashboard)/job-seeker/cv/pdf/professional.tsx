@@ -4,6 +4,7 @@ import { formatDateValue, getColumnOrder } from "../types";
 import type { SectionKey } from "../types";
 import { KeepWithFirst, PdfContactBar, RichPdfText, dateRange, pdfScale, tint, type PdfTemplateProps } from "./shared";
 import { BandPhoto, GRAY, SectionTitlePdf, capitalize, sectionGap, standardFonts } from "./standard-sections";
+import { headerAlignOf, nameSizeOf, PdfSkillList, usePdfLayout } from "./pdf-layout";
 
 /* ═══════════════════════════════════════
    PROFESSIONAL PDF — mirrors ProfessionalTemplate:
@@ -13,10 +14,13 @@ import { BandPhoto, GRAY, SectionTitlePdf, capitalize, sectionGap, standardFonts
 
 export function ProfessionalPDF(props: PdfTemplateProps) {
   const { data, styles: s, primary, light, labels, df, pageSize, formatting } = props;
+  const { layout } = usePdfLayout();
   const scale = pdfScale(s);
   const fonts = standardFonts(props);
   const gap = sectionGap(props);
   const title = (label: string) => <SectionTitlePdf label={label} primary={primary} bold={fonts.bold} />;
+  const headerAlign = headerAlignOf(formatting, "left");
+  const contactAlign = (headerAlign === "center" ? "center" : "start") as "start" | "center";
 
   const main: Partial<Record<SectionKey, React.ReactNode>> = {
     experience: data.experience.length > 0 ? (
@@ -55,11 +59,7 @@ export function ProfessionalPDF(props: PdfTemplateProps) {
     skills: data.skills.length > 0 ? (
       <View wrap={false}>
         {title(labels.coreCompetencies)}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
-          {data.skills.map((sk, i) => (
-            <Text key={i} style={{ fontSize: 7.5 * scale, color: primary, backgroundColor: light, borderRadius: 2, paddingHorizontal: 5, paddingVertical: 1.5 }}>{sk}</Text>
-          ))}
-        </View>
+        <PdfSkillList skills={data.skills} chip={(sk) => <Text style={{ fontSize: 7.5 * scale, color: primary, backgroundColor: light, borderRadius: 2, paddingHorizontal: 5, paddingVertical: 1.5 }}>{sk}</Text>} fontSize={7.5 * scale} color={primary} templateDefault="chips" />
       </View>
     ) : null,
     education: data.education.length > 0 ? (
@@ -98,9 +98,9 @@ export function ProfessionalPDF(props: PdfTemplateProps) {
       <View style={{ flexDirection: "row", alignItems: "center", gap: 16, paddingHorizontal: 20, paddingVertical: 16, backgroundColor: primary }}>
         <BandPhoto photo={data.photo} name={data.fullName} size={68 * scale} ring={tint(primary, 0.3)} primary={primary} bold={fonts.bold} initialFallback />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: fonts.bold, fontSize: 20 * scale, color: "#ffffff", lineHeight: 1.2 }}>{data.fullName || labels.yourName}</Text>
-          {data.headline ? <Text style={{ fontSize: 9.5 * scale, color: tint(primary, 0.15), marginTop: 2 }}>{data.headline}</Text> : null}
-          <PdfContactBar data={data} scale={scale} color={tint(primary, 0.15)} style={{ marginTop: 5 }} />
+          <Text style={{ fontFamily: fonts.bold, fontSize: nameSizeOf(formatting, 20), color: "#ffffff", lineHeight: 1.2, textAlign: headerAlign }}>{data.fullName || labels.yourName}</Text>
+          {data.headline ? <Text style={{ fontSize: 9.5 * scale, color: tint(primary, 0.15), marginTop: 2, textAlign: layout.textAlign === "justify" ? "left" : layout.textAlign }}>{data.headline}</Text> : null}
+          <PdfContactBar data={data} scale={scale} color={tint(primary, 0.15)} align={contactAlign} style={{ marginTop: 5 }} />
         </View>
       </View>
 

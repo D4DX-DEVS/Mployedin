@@ -327,9 +327,12 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background chip-pad">
-            <Wifi className="w-4 h-4 text-muted-foreground shrink-0" />
-            <div className="flex gap-1">
+          {/* A three-way switch: every choice sits in its own outlined cell, so
+              it reads as a control even before one is picked. As bare words in
+              a box the unpicked state looked like plain text. */}
+          <div className="flex items-center gap-2">
+            <Wifi className="w-4 h-4 text-muted-foreground shrink-0 max-sm:hidden" aria-hidden="true" />
+            <div role="group" aria-label={t("workModeLabel")} className="grid w-full grid-cols-3 gap-1 rounded-xl border border-border/70 bg-muted/50 p-1 sm:w-auto">
               {WORK_MODES.map((mode) => (
                 <button
                   key={mode.value}
@@ -344,11 +347,12 @@ export function Step1BasicInfo({ onSuggestionsLoaded }: Step1BasicInfoProps) {
                       setValue("location.remoteCountries", [], { shouldValidate: false });
                     }
                   }}
+                  aria-pressed={workMode === mode.value}
                   className={cn(
-                    "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                    "min-h-9 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     workMode === mode.value
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted"
+                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                      : "border-border/70 bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
                   )}
                 >
                   {t(`workModes.${mode.value}`)}

@@ -205,7 +205,7 @@ export default function AdminUserImpersonatePage() {
         className="workspace-panel-surface rounded-2xl border-b-0"
         onClear={search ? () => setSearch("") : undefined}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
       </InlineFilterBar>
 
       <PhoneRecordList

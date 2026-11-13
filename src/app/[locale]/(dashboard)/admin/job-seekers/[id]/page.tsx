@@ -11,6 +11,8 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { ProfileDetailSkeleton } from "@/components/ui/loading/ProfileDetailSkeleton";
 import { JobSeekerExpandedRow, type ExpandedSeeker } from "../_components/JobSeekerExpandedRow";
+import { SeekerApplicationsCard } from "@/components/shared/SeekerApplicationsCard";
+import type { SeekerApplicationRow } from "@/lib/jobseekers/hiringStatus";
 
 interface DetailSeeker extends ExpandedSeeker {
   status?: string;
@@ -33,6 +35,7 @@ export default function AdminJobSeekerDetailPage() {
   const [seeker, setSeeker] = useState<DetailSeeker | null>(null);
   const [state, setState] = useState<LoadState>("loading");
   const [viewCv, setViewCv] = useState(false);
+  const [applications, setApplications] = useState<SeekerApplicationRow[]>([]);
 
   const load = useCallback(async () => {
     setState("loading");
@@ -40,8 +43,9 @@ export default function AdminJobSeekerDetailPage() {
       const res = await fetch(`/api/job-seekers/${id}`);
       if (res.status === 404 || res.status === 400) { setState("notFound"); return; }
       if (!res.ok) { setState("error"); return; }
-      const data = (await res.json()) as { jobSeeker: DetailSeeker };
+      const data = (await res.json()) as { jobSeeker: DetailSeeker; applications?: SeekerApplicationRow[] };
       setSeeker(data.jobSeeker);
+      setApplications(Array.isArray(data.applications) ? data.applications : []);
       setState("ready");
     } catch {
       setState("error");
@@ -92,6 +96,9 @@ export default function AdminJobSeekerDetailPage() {
               </div>
             </div>
           </header>
+
+          {/* Where they stand on Mployedin: every application and its latest status (client rollout row 4). */}
+          <SeekerApplicationsCard applications={applications} className="mt-4 rounded-xl border border-border bg-card p-4" />
 
           <JobSeekerExpandedRow
             seeker={seeker}

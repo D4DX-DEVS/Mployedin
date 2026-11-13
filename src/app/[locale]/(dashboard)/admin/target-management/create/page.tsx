@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
-  ArrowLeft, Users, CalendarDays, Target, Loader2, ChevronDown, ChevronRight,
+  ArrowLeft, Users, CalendarDays, Loader2, ChevronDown, ChevronRight,
   Save, SlidersHorizontal, Search, X,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -273,10 +273,7 @@ export default function CreateTargetProfilePage() {
       <div className="workspace-glass-panel rounded-2xl panel-body">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            {/* PageHeader already shows the page icon; on a phone this second tile sat alone on its own row. */}
-            <div className="workspace-tone-sky rounded-xl p-2.5 max-sm:hidden">
-              <Target className="h-5 w-5" />
-            </div>
+            {/* PageHeader already draws the page icon; do not add a second tile. */}
             <PageHeader title={t("createTitle")} description={t("createDescription")} />
           </div>
           <div>

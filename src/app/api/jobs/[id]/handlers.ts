@@ -1,3 +1,4 @@
+import { stampLanguagesConfirmed } from "@/lib/jobs/requirementLanguages";
 import { NextRequest, NextResponse } from "next/server";
 import type { AuthContext } from "@/lib/auth/withAuth";
 import { Error as MongooseError } from "mongoose";
@@ -115,6 +116,9 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
 const SCORING_FIELDS = [
   "title", "requirements", "location", "workMode", "salary",
   "screeningQuestions", "screeningKnockouts",
+  // Education, experience "in what", licences and languages are read from
+  // the qualification lines too; the hire type sets the standard weights.
+  "qualifications", "hireType",
   // The job's industry is read from these (lib/matching/industry.ts).
   "description", "tags",
 ] as const;
@@ -194,7 +198,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     "salary", "status", "expiresAt", "tags", "vacancies",
     "maxApplicants", "showSalary", "visibility", "discloseCompany", "screeningQuestions",
     "employmentType", "workMode", "duration", "responsibilities",
-    "qualifications", "benefits", "learningOutcomes",
+    "qualifications", "benefits", "learningOutcomes", "hireType",
   ];
   const adminFields = ["featuredUntil"];
 
@@ -225,7 +229,10 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     const current = typeof (job as { toObject?: unknown }).toObject === "function"
       ? (job as unknown as { toObject: () => { requirements?: Record<string, unknown> } }).toObject().requirements
       : (job as { requirements?: Record<string, unknown> }).requirements;
-    updateData.requirements = { ...(current ?? {}), ...(updateData.requirements as Record<string, unknown>) };
+    updateData.requirements = {
+      ...(current ?? {}),
+      ...stampLanguagesConfirmed(updateData.requirements as Record<string, unknown>),
+    };
   }
 
   Object.assign(job, updateData);

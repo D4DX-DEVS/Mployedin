@@ -1,7 +1,6 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { StatusBadge } from "@/components/shared/StatusBadge";
 import { cn } from "@/lib/utils";
 import { applicationNumberLocale, formatApplicationDate } from "@/lib/jobSeeker/applicationFormat";
 import type { TimelineEvent } from "@/lib/jobSeeker/applicationTimeline";
@@ -19,14 +18,13 @@ export function ApplicationTimeline({ events }: { events: TimelineEvent[] }) {
     if (event.kind === "viewed") return t("events.viewed");
     switch (event.status) {
       case "applied": return t("events.applied");
-      case "shortlisted": return t("events.shortlisted");
-      case "interview_scheduled": return t("events.interview_scheduled");
-      case "selected": return t("events.selected");
+      case "in_review": return t("events.in_review");
+      case "interview": return t("events.interview");
       case "offer": return t("events.offer");
       case "hired": return t("events.hired");
-      case "rejected": return t("events.rejected");
+      case "not_selected": return t("events.not_selected");
       case "withdrawn": return t("events.withdrawn");
-      default: return <StatusBadge status={event.status ?? ""} />;
+      default: return t("events.applied");
     }
   };
 

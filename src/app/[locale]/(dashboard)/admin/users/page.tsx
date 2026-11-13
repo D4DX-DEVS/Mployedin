@@ -332,17 +332,31 @@ export default function AdminUsersPage() {
     });
     if (!ok) return;
 
-    const res = await fetch("/api/admin/users", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user._id, permanent: true }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      toast.error(err.error || t("toastFailedDeleteUser"));
+    // Deleting cascades through jobs, applications and more, and can take
+    // several seconds; the row used to sit there unchanged the whole time and
+    // read as "delete did nothing" (rollout re-check 2026-11-13). Hide it now
+    // and say it is being deleted; it comes back if the delete fails.
+    const pending = toast.loading(t("toastDeletingUser", { name }));
+    setUsers((rows) => rows.filter((row) => row._id !== user._id));
+    let res: Response;
+    try {
+      res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user._id, permanent: true }),
+      });
+    } catch {
+      toast.error(t("toastFailedDeleteUser"), { id: pending });
+      fetchUsers();
       return;
     }
-    toast.success(t("toastUserDeleted", { name }));
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error || t("toastFailedDeleteUser"), { id: pending });
+      fetchUsers();
+      return;
+    }
+    toast.success(t("toastUserDeleted", { name }), { id: pending });
     // A deleted row must not stay in the bulk selection, or the next bulk
     // action runs against an id that no longer exists.
     setSelected((ids) => ids.filter((id) => id !== user._id));
@@ -410,7 +424,8 @@ export default function AdminUsersPage() {
       return true;
     }
     const err = await res.json().catch(() => ({}));
-    toast.error(err.error || t("toastFailedUpdateUser"));
+    // An agent switched on before confirming their email (lib/auth/agentApproval.ts).
+    toast.error(err.code === "AGENT_EMAIL_NOT_VERIFIED" ? tf("agentEmailNotVerified") : err.error || t("toastFailedUpdateUser"));
     return false;
   }
 
@@ -471,9 +486,12 @@ export default function AdminUsersPage() {
       const data = await res.json() as {
         affected: number;
         total: number;
-        results: Array<{ userId: string; status: "updated" | "skipped" | "error"; reason?: string }>;
+        results: Array<{ userId: string; status: "updated" | "skipped" | "error"; reason?: string; code?: string }>;
       };
-      const failed = data.results.filter((r) => r.status !== "updated");
+      // An agent skipped for an unconfirmed email gets translated copy.
+      const failed = data.results
+        .filter((r) => r.status !== "updated")
+        .map((r) => (r.code === "AGENT_EMAIL_NOT_VERIFIED" ? { ...r, reason: tf("agentEmailNotVerified") } : r));
       if (failed.length === 0) {
         toast.success(t("toastBulkUpdated", { affected: data.affected, total: data.total }));
       } else if (data.affected > 0) {
@@ -715,7 +733,6 @@ export default function AdminUsersPage() {
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
           // Phones: share the line with Filters instead of wrapping under it.
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}

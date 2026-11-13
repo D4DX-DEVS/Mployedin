@@ -305,7 +305,7 @@ export default function SuperAgentExhibitionsPage() {
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
         >
-          <InlineFilterSearch value={filters.search} onChange={(v) => applyFilter("search", v)} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+          <InlineFilterSearch value={filters.search} onChange={(v) => applyFilter("search", v)} placeholder={t("searchPlaceholder")} />
           <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
           {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
           <div className="contents max-sm:hidden">

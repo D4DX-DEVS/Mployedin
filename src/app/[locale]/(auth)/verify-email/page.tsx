@@ -7,13 +7,16 @@ import { signOut, useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, XCircle, Loader2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
+import { CheckCircle, Loader2, Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { safeCallbackPath, withCallback } from "@/lib/routing/callbackUrl";
-import { postSignInPath } from "@/lib/auth/roleHome";
 import { logoutCleanup } from "@/lib/consent/logoutCleanup";
 import { resetSignOutInProgress } from "@/lib/consent/deviceStorage";
+import { CodePasswordField, LinkPasswordStep, linkPasswordErrorKey } from "@/components/features/auth/LinkPasswordStep";
+import { SuccessCTA } from "./_components/SuccessCTA";
+import { VerifyFailed } from "./_components/VerifyFailed";
 
-type Status = "idle" | "verifying" | "success" | "error" | "no-token";
+// "password": the link needs the account's password (lib/auth/passwordHolder.ts).
+type Status = "idle" | "verifying" | "success" | "error" | "no-token" | "password";
 
 function maskEmail(email: string) {
   const [localPart, domain] = email.split("@");
@@ -22,44 +25,10 @@ function maskEmail(email: string) {
   return `${visibleLocal}${"•".repeat(Math.max(3, localPart.length - visibleLocal.length))}@${domain}`;
 }
 
-/**
- * The verified-state CTA. A visitor who is already signed in (the usual case:
- * register signs a job seeker straight in) goes to their dashboard — sending
- * them to /login went nowhere, since the login page bounces a live session.
- */
-function SuccessCTA({ callback, locale, pending }: { callback: string | null; locale: string; pending: boolean }) {
-  const { data: session } = useSession();
-  const t = useTranslations("verifyEmail");
-  const user = session?.user as { role?: string; isOnboarded?: boolean } | undefined;
-
-  const href = user?.role
-    ? withCallback(postSignInPath(locale, user.role, user.isOnboarded !== false), callback)
-    : withCallback(`/${locale}/login`, callback);
-
-  // Until the session knows the address is verified, the dashboard would bounce
-  // straight back here — hold the button for that moment.
-  if (pending) {
-    return (
-      <Button size="lg" disabled aria-busy="true" className="w-full max-w-xs">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        {t("continueToDashboard")}
-      </Button>
-    );
-  }
-
-  // A plain <a>, not <Link>: sign-in navigated to the dashboard and the proxy
-  // redirected here, and the client router keeps that redirect for ~5 minutes.
-  // A client-side navigation lands straight back on this page without asking
-  // the server. Loading the page from the server uses the refreshed session.
-  return (
-    <Button size="lg" asChild className="w-full max-w-xs">
-      <a href={href}>{user?.role ? t("continueToDashboard") : t("continueToSignIn")}</a>
-    </Button>
-  );
-}
 
 export default function VerifyEmailPage() {
   const t = useTranslations("verifyEmail");
+  const tp = useTranslations("linkPassword");
   const searchParams = useSearchParams();
   const { locale } = useParams<{ locale: string }>();
   const { status: sessionStatus, update: updateSession } = useSession();
@@ -85,6 +54,13 @@ export default function VerifyEmailPage() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState("");
   const [linkError, setLinkError] = useState("");
+  const [linkPasswordBusy, setLinkPasswordBusy] = useState(false);
+  const [linkPasswordError, setLinkPasswordError] = useState("");
+  // Not signed in as this account: the code needs its password too. Shown up
+  // front with no session; after a refusal when another account is signed in.
+  const [codePassword, setCodePassword] = useState("");
+  const [codeNeedsPassword, setCodeNeedsPassword] = useState(false);
+  const showCodePassword = sessionStatus === "unauthenticated" || codeNeedsPassword;
 
   // Guard token verification to run exactly once per token (ref persists across
   // updateSession re-renders that would otherwise cause the effect to re-fire)
@@ -212,12 +188,18 @@ export default function VerifyEmailPage() {
       const res = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otp: code, email: emailParam }),
+        body: JSON.stringify({ otp: code, email: emailParam, ...(codePassword ? { password: codePassword } : {}) }),
       });
       const data = await res.json();
+      const passwordKey = linkPasswordErrorKey(data.code);
       if (res.ok) {
         setSessionStale(true);
         setStatus("success");
+      } else if (passwordKey) {
+        setCodeNeedsPassword(true);
+        setOtpError(tp(passwordKey));
+      } else if (data.code === "CODE_LOCKED") {
+        setOtpError(t("codeLocked"));
       } else {
         setOtpError(data.error ?? t("otpInvalidError"));
       }
@@ -226,7 +208,44 @@ export default function VerifyEmailPage() {
     } finally {
       setVerifyingOtp(false);
     }
-  }, [otp, emailParam, t]);
+  }, [otp, emailParam, codePassword, t, tp]);
+
+  // The link again, with the password the page asked for.
+  const submitLinkPassword = useCallback(async (password: string) => {
+    if (!token) return;
+    if (!password) {
+      setLinkPasswordError(tp("emptyError"));
+      return;
+    }
+    setLinkPasswordBusy(true);
+    setLinkPasswordError("");
+    try {
+      const res = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      });
+      const data = await res.json();
+      const passwordKey = linkPasswordErrorKey(data.code);
+      if (res.ok) {
+        setSessionStale(true);
+        setStatus("success");
+      } else if (passwordKey) {
+        setLinkPasswordError(tp(passwordKey));
+      } else if (emailParam) {
+        // Expired or used in the meantime: same way out as a failed link.
+        setLinkError(data.error ?? t("linkErrorFallback"));
+        setStatus("no-token");
+      } else {
+        setStatus("error");
+        setMessage(data.error ?? t("verificationFailedFallback"));
+      }
+    } catch {
+      setLinkPasswordError(t("networkError"));
+    } finally {
+      setLinkPasswordBusy(false);
+    }
+  }, [token, emailParam, t, tp]);
 
   useEffect(() => {
     if (!token) return;
@@ -246,6 +265,9 @@ export default function VerifyEmailPage() {
         if (res.ok) {
           setSessionStale(true);
           setStatus("success");
+        } else if (data.code === "PASSWORD_REQUIRED") {
+          // Opened where the account is not signed in: ask for its password.
+          setStatus("password");
         } else {
           // Link failed (expired/already used). If we know the email — link
           // URLs carry &email= — drop the user into the code-entry view so they
@@ -291,6 +313,17 @@ export default function VerifyEmailPage() {
         </div>
       )}
 
+      {status === "password" && (
+        <LinkPasswordStep
+          purpose="verify"
+          locale={locale ?? "en"}
+          email={emailParam ?? undefined}
+          busy={linkPasswordBusy}
+          error={linkPasswordError}
+          onSubmit={(password) => void submitLinkPassword(password)}
+        />
+      )}
+
       {/* Success */}
       {status === "success" && (
         <div className="flex flex-col items-center gap-6 py-6 text-center">
@@ -308,30 +341,8 @@ export default function VerifyEmailPage() {
       )}
 
       {/* Error */}
-      {status === "error" && (
-        <div className="flex flex-col items-center gap-6 py-6 text-center">
-          <div className="h-14 w-14 rounded-full bg-destructive/10 flex items-center justify-center">
-            <XCircle className="h-7 w-7 text-destructive" />
-          </div>
-          <div className="space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight">{t("verificationFailedTitle")}</h1>
-            <p className="text-base text-muted-foreground font-light">
-              {message || t("linkUsedError")}
-            </p>
-          </div>
-          <div className="w-full max-w-xs space-y-3">
-            <Button size="lg" asChild variant="outline" className="w-full">
-              <Link href={withCallback(`/${locale ?? "en"}/login`, callback)}>{t("backToSignIn")}</Link>
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              {t("needHelp")}{" "}
-              <Link href={`/${locale ?? "en"}/contact`} className="text-primary hover:underline">
-                {t("contactSupport")}
-              </Link>
-            </p>
-          </div>
-        </div>
-      )}
+
+      {status === "error" && <VerifyFailed message={message} locale={locale} callback={callback} />}
 
       {/* No token — waiting for email */}
       {status === "no-token" && (
@@ -395,6 +406,17 @@ export default function VerifyEmailPage() {
                 className="h-12 pl-9 text-center text-lg tracking-[0.5em] font-semibold"
               />
             </div>
+            {showCodePassword && (
+              <CodePasswordField
+                email={emailParam ?? undefined}
+                value={codePassword}
+                disabled={verifyingOtp}
+                onChange={(value) => {
+                  setCodePassword(value);
+                  setOtpError("");
+                }}
+              />
+            )}
             {otpError && (
               <p role="alert" className="text-sm text-destructive text-center">{otpError}</p>
             )}

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreRing, matchBandLabel } from "@/components/features/employer/candidates/ScoreRing";
 import { RequirementsBadge } from "@/components/features/employer/applications/RequirementsChecklist";
+import { RequirementReport } from "@/components/features/matching/RequirementReport";
 
 export interface CompareCandidatesDialogProps {
   open: boolean;
@@ -26,7 +27,7 @@ const BREAKDOWN_ROWS = [
   // scored it); older rows carry location / salary. Absent ones drop out.
   { key: "role", labelKey: "roleFit" },
   { key: "experience", labelKey: "breakdownExperience" },
-  { key: "education", labelKey: "education" },
+  { key: "education", labelKey: "breakdownQualifications" },
   { key: "location", labelKey: "breakdownLocation" },
   { key: "salary", labelKey: "breakdownSalary" },
 ] as const;
@@ -142,6 +143,13 @@ function CandidateColumn({ row, common, t, tBand }: { row: CompareCandidate; com
           ))}
         </dl>
       )}
+
+      {row.requirementReport?.items?.length ? (
+        <div className="space-y-2 border-t border-border pt-3">
+          <p className="text-xs text-muted-foreground">{t("requirementReportTitle")}</p>
+          <RequirementReport report={row.requirementReport} audience="employer" compact />
+        </div>
+      ) : null}
 
       <Fact label={t("yearsOfExperience")} value={`${candidate.yearsOfExperience} ${t("yearsAbbr")}`} />
 

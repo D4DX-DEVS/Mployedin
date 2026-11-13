@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { ArrowRight, CalendarClock, CalendarX, CheckCircle2, MapPin, PhoneCall, XCircle } from "lucide-react";
+import { CalendarClock, CalendarX, CheckCircle2, MapPin, PhoneCall, XCircle } from "lucide-react";
 import { formatListDate, formatTime } from "@/lib/ui/intlFormat";
 import { cn } from "@/lib/utils";
 import { LeadActionsMenu, type LeadActionHandlers, type LeadActionState } from "./LeadActionsMenu";
@@ -22,8 +22,8 @@ interface LeadCardProps {
 }
 
 /**
- * A board card answers "who is this and what happens next", and has one main
- * action, Open Lead. Everything else is in the ⋮ menu (owner's brief,
+ * A board card answers "who is this and what happens next". Pressing it opens
+ * the lead; everything else is in the ⋮ menu (owner's brief,
  * 2026-10-02: the old card's three tiny icons said nothing).
  */
 export function LeadCard({ lead, stage, exhibitionName, actions, state, t, locale }: LeadCardProps) {
@@ -31,8 +31,8 @@ export function LeadCard({ lead, stage, exhibitionName, actions, state, t, local
   const place = [lead.country, lead.industry].filter(Boolean).join(" · ");
 
   return (
-    <div className="group rounded-xl border border-border/60 bg-background p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors hover:border-border">
-      <h4 className="truncate text-sm font-semibold leading-tight text-foreground" title={lead.companyName}>
+    <div className="group relative rounded-xl border border-border/60 bg-background p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors hover:border-border">
+      <h4 className="truncate pe-9 text-sm font-semibold leading-tight text-foreground" title={lead.companyName}>
         {lead.companyName}
       </h4>
       <p className="mt-0.5 truncate text-xs text-muted-foreground">{lead.contactPerson}</p>
@@ -63,23 +63,16 @@ export function LeadCard({ lead, stage, exhibitionName, actions, state, t, local
       {/* Buttons keep their pointer and key events to themselves: the card is
           the drag handle, and Enter on a focused button must press it, not
           pick the card up. */}
+      {/* The whole card opens the lead (DraggableLeadCard); a full-width
+          Open lead button on every card made nine leads 1,900px tall. Stage
+          moves and the rest sit in ⋯. Its events stay its own: the card is
+          the drag handle. */}
       <div
-        className="mt-2.5 flex items-center gap-1.5"
+        className="absolute end-1.5 top-1.5"
         onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          type="button"
-          onClick={() => actions.open(lead)}
-          className={cn(
-            "inline-flex h-11 min-w-0 flex-1 items-center sm:h-9 justify-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-            stage.bgColor, stage.borderColor, stage.color,
-          )}
-        >
-          <span className="truncate">{t("openLead")}</span>
-          <ArrowRight className="h-3.5 w-3.5 shrink-0 rtl:rotate-180" aria-hidden="true" />
-        </button>
         <LeadActionsMenu lead={lead} actions={actions} state={state} t={t} />
       </div>
     </div>

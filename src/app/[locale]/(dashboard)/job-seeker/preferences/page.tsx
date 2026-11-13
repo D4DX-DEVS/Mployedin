@@ -3,9 +3,8 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateSeekerProfile, readSeekerProfile } from "@/hooks/useSeekerCache";
-import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
+import { ProfileHubShell } from "@/components/features/job-seeker/ProfileHubShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -20,15 +19,10 @@ import {
   Loader2,
   CheckCircle2,
   Sparkles,
-  TrendingUp,
-  Zap,
   Building2,
-  ChevronRight,
   Globe,
   Shuffle,
 } from "lucide-react";
-import { formatLocalizedLocation } from "@/lib/i18n/locations";
-import { userInitials } from "@/components/shared/UserAvatar";
 import {
   preferencesFromProfile,
   validatePreferences,
@@ -122,63 +116,6 @@ function getSalaryPresets(currency: string) {
   );
 }
 
-interface MatchTip {
-  text: string;
-  points: number;
-}
-
-function computeMatchScore(prefs: PreferencesData, translate?: (key: string, values?: Record<string, string | number>) => string): {
-  score: number;
-  tips: MatchTip[];
-} {
-  const tip = (key: string, values?: Record<string, string | number>) => translate?.(`tips.${key}`, values) ?? key;
-  const tips: MatchTip[] = [];
-  let score = 0;
-
-  if (prefs.preferredRoles.length >= 1) {
-    score += 25;
-    if (prefs.preferredRoles.length >= 3) score += 10;
-    else tips.push({ text: tip("addMoreRoles", { count: 3 - prefs.preferredRoles.length }), points: 10 });
-  } else {
-    tips.push({ text: tip("addPreferredRole"), points: 35 });
-  }
-
-  if (prefs.preferredCountries.length >= 1) {
-    score += 20;
-  } else {
-    tips.push({ text: tip("addLocations"), points: 20 });
-  }
-
-  // One end of the range is a full answer: the top chip ("₹150k+") saves no
-  // maximum on purpose, and the matcher reads whichever end is set. Asking for
-  // "both" could never be satisfied from that chip.
-  if (prefs.preferredSalary.min > 0 || prefs.preferredSalary.max > 0) {
-    score += 20;
-  } else {
-    tips.push({ text: tip("setSalary"), points: 20 });
-  }
-
-  // "Any" is an answer, not a gap — the matcher reads it as no restriction and
-  // the card shows it selected, so a tip asking for a job type contradicted the
-  // page and could not be cleared by clicking "Any".
-  score += 15;
-
-  if (prefs.availabilityStatus && prefs.availabilityStatus !== "not_available") {
-    score += 10;
-  }
-
-  return { score: Math.min(score, 100), tips: tips.slice(0, 3) };
-}
-
-interface RecommendedJob {
-  _id: string;
-  title: string;
-  matchScore?: number;
-  location?: { country?: string; city?: string; isRemote?: boolean };
-  salary?: { min?: number; max?: number; currency?: string };
-  employerId?: { companyName?: string; logo?: string };
-}
-
 // ─── Section Card ─────────────────────────────────────────────────────────────
 
 function Section({
@@ -219,130 +156,7 @@ function Section({
 
 // ─── Match Score Card ─────────────────────────────────────────────────────────
 
-function MatchScoreCard({
-  prefs,
-  prevScore,
-}: {
-  prefs: PreferencesData;
-  prevScore: number | null;
-}) {
-  const t = useTranslations("jobSeekerExtra.preferences");
-  const numberLocale = useLocale() === "ar" ? "ar-SA" : "en-US";
-  const { score, tips } = useMemo(() => computeMatchScore(prefs, t), [prefs, t]);
-  const scoreColor =
-    score >= 70 ? "text-green-600" : score >= 40 ? "text-amber-600" : "text-rose-500";
-  const barColor =
-    score >= 70 ? "bg-green-500" : score >= 40 ? "bg-amber-500" : "bg-rose-500";
-  const delta = prevScore !== null ? score - prevScore : null;
-
-  return (
-    <div className="min-w-0 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card shadow-sm panel-body">
-      <div className="flex min-w-0 flex-col items-start gap-4 min-[420px]:flex-row min-[420px]:justify-between">
-        <div className="min-w-0 flex items-center gap-3">
-          <div className="rounded-xl bg-primary/10 p-2.5 text-primary shrink-0">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">{t("matchTitle")}</p>
-            <p className="text-xs text-muted-foreground">
-              {t("matchDescription")}
-            </p>
-          </div>
-        </div>
-        <div className="flex max-w-full shrink-0 flex-wrap items-baseline gap-1.5">
-          <span className={`text-3xl font-bold tabular-nums ${scoreColor}`}>
-            {score.toLocaleString(numberLocale)}%
-          </span>
-          {delta !== null && delta !== 0 && (
-            <span
-              className={`text-xs font-medium ${delta > 0 ? "text-green-600" : "text-rose-500"}`}
-            >
-              {delta > 0 ? `+${delta.toLocaleString(numberLocale)}` : delta.toLocaleString(numberLocale)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Progress bar */}
-      <div className="mt-4 h-2 w-full rounded-full bg-muted overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ease-out ${barColor}`}
-          style={{ width: `${score}%` }}
-        />
-      </div>
-
-      {/* Tips */}
-      {tips.length > 0 && (
-        <div className="mt-3 space-y-1.5">
-          {tips.map((tip, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 shrink-0 text-primary" />
-              <span>
-                {tip.text}{" "}
-                <span className="font-medium text-primary">+{tip.points}%</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {score === 100 && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 text-xs font-medium text-green-700 chip-pad">
-          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-          {t("optimized")}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Recommended Job Card ─────────────────────────────────────────────────────
-
-function RecommendedJobCard({ job }: { job: RecommendedJob }) {
-  const t = useTranslations("jobSeekerExtra.preferences");
-  const locale = useLocale();
-  const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
-  const location = job.location?.isRemote
-    ? t("remote")
-    : formatLocalizedLocation(job.location, locale, { remoteLabel: t("remote"), fallback: "—" });
-  const salary =
-    job.salary?.min && job.salary?.max
-      ? `${job.salary.currency ?? "USD"} ${(job.salary.min / 1000).toFixed(0)}k–${(job.salary.max / 1000).toFixed(0)}k`
-      : null;
-
-  return (
-    <Link
-      href={`/${locale}/job-seeker/jobs/${job._id}`}
-      className="flex items-center gap-3 rounded-lg border border-border bg-card p-3.5 hover:border-primary/30 hover:shadow-sm transition-all"
-    >
-      <div className="h-9 w-9 rounded-full bg-primary/10 text-xs font-semibold text-primary flex items-center justify-center shrink-0 overflow-hidden">
-        {job.employerId?.logo ? (
-           
-          <img
-            src={job.employerId.logo}
-            alt={job.employerId.companyName ?? ""}
-            className="h-full w-full bg-card object-contain p-1"
-          />
-        ) : (
-          userInitials(job.employerId?.companyName ?? "?")
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{job.title}</p>
-        <p className="text-xs text-muted-foreground truncate">
-          {job.employerId?.companyName ?? t("companyFallback")} · {location}
-          {salary && ` · ${salary}`}
-        </p>
-      </div>
-      {typeof job.matchScore === "number" && (
-        <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
-          {t("matchPercent", { score: job.matchScore.toLocaleString(numberLocale) })}
-        </span>
-      )}
-      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 rtl:rotate-180" aria-hidden="true" />
-    </Link>
-  );
-}
 
 /** Shortens a pasted entry so the message stays one line. */
 function clip(value: string | undefined, max = 40): string {
@@ -363,6 +177,7 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 
 export default function JobPreferencesPage() {
   const t = useTranslations("jobSeekerExtra.preferences");
+  const locale = useLocale();
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
@@ -384,9 +199,6 @@ export default function JobPreferencesPage() {
     availabilityStatus: "immediately",
     noticePeriod: 0,
   });
-  const [prevScore, setPrevScore] = useState<number | null>(null);
-  const [recommendedJobs, setRecommendedJobs] = useState<RecommendedJob[]>([]);
-  const [jobsLoading, setJobsLoading] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const DRAFT_KEY = "job-prefs-draft";
 
@@ -429,27 +241,9 @@ export default function JobPreferencesPage() {
     }
   }, [queryClient]);
 
-  const loadRecommendedJobs = useCallback(async () => {
-    setJobsLoading(true);
-    try {
-      // The top of the Jobs page's list — strong matches first, then the
-      // closest others. The admin's match bar gates the job emails only; with
-      // it here, a seeker with no strong match saw an empty panel however
-      // complete their preferences were.
-      const res = await fetch("/api/jobs/recommended?limit=3&sort=match");
-      if (res.ok) {
-        const data = await res.json();
-        setRecommendedJobs((data.jobs ?? []).slice(0, 3));
-      }
-    } finally {
-      setJobsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     loadPreferences();
-    loadRecommendedJobs();
-  }, [loadPreferences, loadRecommendedJobs]);
+  }, [loadPreferences]);
 
   // Once a save has flagged fields, re-check as the seeker edits so each
   // message clears the moment its field is fixed.
@@ -489,7 +283,6 @@ export default function JobPreferencesPage() {
       return;
     }
     setSaving(true);
-    const currentScore = computeMatchScore(savedPrefs ?? prefs).score;
     try {
       const res = await fetch("/api/job-seeker/profile", {
         method: "PATCH",
@@ -498,15 +291,12 @@ export default function JobPreferencesPage() {
       });
       if (res.ok) {
         setFieldErrors({});
-        setPrevScore(currentScore);
         setSavedPrefs({ ...prefs });
         sessionStorage.removeItem(DRAFT_KEY);
         void invalidateSeekerProfile(queryClient);
         setSaveState("saved");
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => setSaveState("idle"), 3000);
-        // Refresh recommendations after saving
-        loadRecommendedJobs();
       } else {
         // validateBody answers 400 with the failing paths; name those fields.
         const body = res.status === 400 ? await res.json().catch(() => null) : null;
@@ -522,31 +312,22 @@ export default function JobPreferencesPage() {
   // ── Skeleton ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="page-container">
-        <div className="max-w-3xl mx-auto w-full space-y-5">
+      <ProfileHubShell locale={locale}>
+        <div className="w-full space-y-5" aria-busy="true">
           <div className="h-28 rounded-xl bg-muted animate-pulse" />
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-40 rounded-xl bg-muted animate-pulse" />
           ))}
         </div>
-      </div>
+      </ProfileHubShell>
     );
   }
 
   const activelyLooking = prefs.availabilityStatus !== "not_available";
 
   return (
-    <div className="page-container">
-      <PageHeader
-        title={t("title")}
-        description={t("description")}
-        backHref="/job-seeker/profile"
-      />
-
-      <div className="mx-auto grid w-full min-w-0 max-w-3xl grid-cols-[minmax(0,1fr)] gap-4 sm:gap-6">
-        {/* ── Match Score Card ──────────────────────────────────────────── */}
-        <MatchScoreCard prefs={prefs} prevScore={prevScore} />
-
+    <ProfileHubShell locale={locale}>
+      <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-4 sm:gap-6">
         {/* ── Preferred Roles ───────────────────────────────────────────── */}
         <Section
           icon={<Target className="h-4 w-4" />}
@@ -583,6 +364,18 @@ export default function JobPreferencesPage() {
             max={10}
           />
           <FieldError id="pref-locations-error" message={errorText(fieldErrors.preferredCountries)} />
+          {/* Employers see this answer on your profile (rollout row 18). */}
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/50 px-4 py-3">
+            <div className="min-w-0 space-y-0.5">
+              <p id="pref-relocation-label" className="text-sm font-medium leading-none">{t("openToRelocation")}</p>
+              <p className="text-xs text-muted-foreground">{t("openToRelocationDescription")}</p>
+            </div>
+            <Switch
+              aria-labelledby="pref-relocation-label"
+              checked={prefs.openToRelocation === true}
+              onCheckedChange={(v) => setPrefs((p) => ({ ...p, openToRelocation: v }))}
+            />
+          </div>
         </Section>
 
         {/* ── Salary Expectations ───────────────────────────────────────── */}
@@ -843,48 +636,7 @@ export default function JobPreferencesPage() {
           </Button>
         </div>
 
-        {/* ── Recommended Jobs Preview ──────────────────────────────────── */}
-        <div className="rounded-xl border border-border bg-card shadow-sm panel-body">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="rounded-lg bg-primary/10 p-1.5 text-primary">
-                <Zap className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">{t("jobsTitle")}</p>
-                <p className="text-xs text-muted-foreground">{t("jobsDescription")}</p>
-              </div>
-            </div>
-          </div>
-
-          {jobsLoading ? (
-            <div className="space-y-2.5">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 rounded-lg bg-muted animate-pulse" />
-              ))}
-            </div>
-          ) : recommendedJobs.length > 0 ? (
-            <div className="space-y-2">
-              {recommendedJobs.map((job) => (
-                <RecommendedJobCard key={job._id} job={job} />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2 py-6 text-center">
-              <Building2 className="h-8 w-8 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">
-                {/* An empty pool with roles and countries set means no open job
-                    in those countries, not unfinished preferences. */}
-                {t(
-                  savedPrefs.preferredRoles.length > 0 && savedPrefs.preferredCountries.length > 0
-                    ? "noOpenJobs"
-                    : "noMatches",
-                )}
-              </p>
-            </div>
-          )}
-        </div>
       </div>
-    </div>
+    </ProfileHubShell>
   );
 }

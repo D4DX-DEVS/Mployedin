@@ -13,6 +13,8 @@ import { PosterOverlay } from "./PosterOverlay";
 import { usePosterCredits } from "@/hooks/usePosterCredits";
 import { useConfirm } from "@/hooks/useConfirm";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { RowActions } from "@/components/shared/RowActions";
+import { PaginationControls } from "@/components/shared/PaginationControls";
 import type { PosterType, PosterLayout, ShowFields, PosterStyleOverrides } from "@/lib/composer/types";
 
 interface PosterItem {
@@ -40,25 +42,15 @@ interface PosterItem {
 
 const SHOW_ALL: ShowFields = { salary: true, location: true, experience: true, skills: true };
 
-// Numbered pager with first/last always shown and an ellipsis around the current page.
-// e.g. page 6 of 20 → [1, "…", 5, 6, 7, "…", 20].
-function getPageWindow(current: number, total: number): (number | "…")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const out: (number | "…")[] = [1];
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-  if (start > 2) out.push("…");
-  for (let n = start; n <= end; n++) out.push(n);
-  if (end < total - 1) out.push("…");
-  out.push(total);
-  return out;
-}
+// A 4-wide grid: page sizes that fill whole rows.
+const POSTER_PAGE_SIZES = [12, 24, 48] as const;
 
 export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; embedded?: boolean } = {}) {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("myPosters");
+  const tCommon = useTranslations("common");
   const queryClient = useQueryClient();
   const { credits } = usePosterCredits();
   const { confirm, ConfirmDialogNode } = useConfirm();
@@ -117,11 +109,10 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
               <CreditsBadge credits={credits} />
               <Link
                 href={`/${locale}/employer/jobs`}
-                aria-label={t("createCta")}
                 className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow transition-colors hover:bg-primary/90 sm:px-4"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
-                <span className="hidden sm:inline">{t("createCta")}</span>
+                {t("createCta")}
               </Link>
             </>
           }
@@ -136,9 +127,9 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
           ))}
         </div>
       ) : !data?.posters?.length ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-            <Image className="w-8 h-8 text-muted-foreground" />
+        <div className={`flex flex-col items-center justify-center text-center ${embedded ? "py-6" : "py-12"}`}>
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+            <Image className="h-6 w-6 text-muted-foreground" />
           </div>
           <h2 className="heading-subsection font-semibold">{t("emptyTitle")}</h2>
           <p className="text-sm text-muted-foreground mt-1">
@@ -205,52 +196,20 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
                         <Image className="w-8 h-8 text-muted-foreground" />
                       </div>
                     )}
-                    {/* Hover actions — always shown on touch screens of any size
-                        (no hover there: invisible buttons still took taps), and
-                        whenever keyboard focus is anywhere on the card. */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      {poster.shareSlug && (
-                        <a
-                          href={buildPosterShareUrl(poster.shareSlug)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label={t("viewPosterLabel", { job: poster.jobId?.title || t("untitledJob") })}
-                          className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-white/30"
-                        >
-                          <ExternalLink className="w-4 h-4 text-white" aria-hidden="true" />
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const ok = await confirm({
-                            message: t("deleteConfirm"),
-                            variant: "destructive",
-                          });
-                          if (ok) deleteMutation.mutate(poster._id);
-                        }}
-                        aria-label={t("deleteLabel")}
-                        className="pointer-events-auto p-2 rounded-full bg-white/20 hover:bg-red-500/50"
-                      >
-                        <Trash2 className="w-4 h-4 text-white" aria-hidden="true" />
-                      </button>
-                    </div>
                   </div>
 
                   {/* Info */}
-                  <div className="p-3 space-y-1.5 pointer-events-none">
-                    <p className="text-sm font-medium truncate">
+                  <div className="pointer-events-none space-y-1.5 p-3">
+                    <p className="line-clamp-2 break-words text-sm font-medium">
                       {poster.jobId?.title || t("untitledJob")}
                     </p>
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       <span className="capitalize">{poster.type.replace("-", " ")}</span>
-                      <span>•</span>
+                      <span aria-hidden="true">·</span>
                       <span className="capitalize">{poster.style}</span>
                     </div>
                     {/* Analytics */}
-                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground pt-1 border-t">
+                    <div className="flex items-center gap-3 border-t pt-1 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-0.5">
                         <Eye className="w-3 h-3" /> {poster.analytics.views}
                       </span>
@@ -262,64 +221,44 @@ export function MyPostersPage({ jobId, embedded = false }: { jobId?: string; emb
                       </span>
                     </div>
                   </div>
+                  {/* Actions sit under the artwork with their words. As icons laid
+                      over every poster (always on, on touch screens) they dimmed
+                      the artwork and a bare bin sat one slip from the open link. */}
+                  <div className="relative z-10 flex items-center justify-between gap-2 border-t px-3 py-2">
+                    <RowActions
+                      name={poster.jobId?.title || t("untitledJob")}
+                      labelsFrom="always"
+                      className="w-full justify-between"
+                      quick={[
+                        ...(poster.shareSlug ? [{ key: "view", label: tCommon("view"), icon: ExternalLink, href: buildPosterShareUrl(poster.shareSlug), external: true }] : []),
+                        {
+                          key: "delete",
+                          label: tCommon("delete"),
+                          icon: Trash2,
+                          iconOnly: true,
+                          destructive: true,
+                          onSelect: async () => {
+                            if (await confirm({ message: t("deleteConfirm"), variant: "destructive" })) deleteMutation.mutate(poster._id);
+                          },
+                        },
+                      ]}
+                    />
+                  </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Pagination: page-size selector + numbered pages */}
-          <div className="flex flex-col-reverse items-center justify-between gap-3 pt-4 sm:flex-row">
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              {t("perPage")}
-              <select
-                value={limit}
-                onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-                className="rounded-md border bg-background px-2 py-1 text-sm"
-              >
-                {[12, 24, 48].map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </label>
-
-            {data.pagination.pages > 1 && (
-              <div className="flex flex-wrap items-center justify-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={page <= 1}
-                  onClick={() => setPage(Math.max(1, page - 1))}
-                  className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
-                >
-                  {t("previous")}
-                </button>
-                {getPageWindow(page, data.pagination.pages).map((n, i) =>
-                  n === "…" ? (
-                    <span key={`gap-${i}`} className="px-2 text-sm text-muted-foreground">…</span>
-                  ) : (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setPage(n as number)}
-                      aria-current={n === page ? "page" : undefined}
-                      className={`min-w-[2rem] px-2.5 py-1.5 rounded-md border text-sm ${
-                        n === page ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ),
-                )}
-                <button
-                  type="button"
-                  disabled={page >= data.pagination.pages}
-                  onClick={() => setPage(Math.min(data.pagination.pages, page + 1))}
-                  className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50"
-                >
-                  {t("next")}
-                </button>
-              </div>
-            )}
-          </div>
+          {/* The shared page bar, like every other list (it was a third, hand-built style). */}
+          <PaginationControls
+            page={page}
+            totalPages={data.pagination.pages}
+            total={data.pagination.total}
+            limit={limit}
+            sizeOptions={POSTER_PAGE_SIZES}
+            onPageChange={setPage}
+            onLimitChange={(next) => { setLimit(next); setPage(1); }}
+          />
         </>
       )}
     </div>

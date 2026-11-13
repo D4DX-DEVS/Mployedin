@@ -192,12 +192,13 @@ export default function JobOverviewPage() {
           <h2 id="job-facts-heading" className="heading-section mb-3 font-semibold text-foreground">{t("factsHeading")}</h2>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-4 lg:grid-cols-2">
             {facts.map(({ key, label, value, hint, Icon }) => (
-              <div key={key} className="min-w-0 rounded-xl bg-secondary/50 px-3 py-2">
+              <div key={key} className={`min-w-0 rounded-xl bg-secondary/50 px-3 py-2 ${key === "salary" ? "col-span-2" : ""}`}>
                 <dt className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
                   <Icon className="h-3 w-3" aria-hidden /> {label}
                 </dt>
                 <dd className="min-w-0">
-                  <span className="block truncate text-sm font-semibold tabular-nums text-foreground" title={value}>{value}</span>
+                  {/* Wraps: "12,000–18,000 AED / month" lost its currency to an ellipsis in a half-width tile. */}
+                  <span className="block break-words text-sm font-semibold tabular-nums text-foreground">{value}</span>
                   {hint ? <span className="block truncate text-xs text-muted-foreground" title={hint}>{hint}</span> : null}
                 </dd>
               </div>

@@ -129,7 +129,21 @@ describe("GET /api/applications — search scope by role", () => {
     expect(body.statusCounts).toEqual({
       all: 0, applied: 0, shortlisted: 0, interview_scheduled: 0, selected: 0,
       offer: 0, hired: 0, rejected: 0, withdrawn: 0,
+      // The seeker's grouped tabs.
+      interview: 0, closed: 0,
     });
+  });
+
+  it.each([
+    ["interview", ["interview_scheduled", "selected"]],
+    ["offer", ["offer", "hired"]],
+    ["closed", ["rejected", "withdrawn"]],
+  ])("a seeker's %s tab lists every stage it groups", async (tab, statuses) => {
+    role = "job_seeker";
+    await list(`status=${tab}`);
+
+    expect(queries).toHaveLength(1);
+    expect(queries[0].status).toEqual({ $in: statuses });
   });
 
   it("a seeker's search still matches the job title", async () => {

@@ -1,7 +1,7 @@
 import type { UserRole } from "@/models/User";
 import type { ICompanyUserPermissions, PermissionFlag } from "@/lib/permissions/companyRoles";
 import type { IconName } from "./iconRegistry";
-import { ADMIN_REPORT_TABS, SUPER_AGENT_REPORT_TABS } from "./reportRoutes";
+import { ADMIN_REPORT_TABS, AGENT_PERFORMANCE_PATHS, SUPER_AGENT_REPORT_TABS } from "./reportRoutes";
 
 /** Resources in the system */
 export type Resource = string;
@@ -987,6 +987,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             title: "Performance",
             titleAr: "الأداء",
             href: p("/agent/reports"),
+            // The report tabs light this row too; they used to light Home.
+            activePaths: [...AGENT_PERFORMANCE_PATHS.map((path) => p(path)), p("/agent/targets")],
             icon: "BarChart2",
             description: "Activity, targets & commission analytics",
             descriptionAr: "النشاط والأهداف وتحليلات العمولات",
@@ -1081,6 +1083,9 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             title: "Jobs",
             titleAr: "الوظائف",
             href: p("/employer/jobs"),
+            // Templates and posters are reached from Jobs and have no row of
+            // their own; without this the rail lit up Home on both.
+            activePaths: [p("/employer/job-templates"), p("/employer/my-posters")],
             companyFunction: "canCreateJobs",
             icon: "Briefcase",
             description: "Post, edit and publish roles",
@@ -1094,6 +1099,8 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             title: "Hiring",
             titleAr: "التوظيف",
             href: p("/employer/applications"),
+            // Reached from Interviews; they belong to Hiring, not Home.
+            activePaths: [p("/employer/scorecards"), p("/employer/assessments"), p("/employer/calendar")],
             icon: "FileText",
             description: "Every candidate, applied to hired",
             descriptionAr: "كل مرشح من التقديم حتى التعيين",
@@ -1475,12 +1482,12 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "إدارة مهاراتك والتحقق منها",
           },
           {
-            title: "Documents",
-            titleAr: "المستندات",
+            title: "CV & Documents",
+            titleAr: "السيرة الذاتية والمستندات",
             href: p("/job-seeker/documents"),
             icon: "FolderOpen",
-            description: "Certificates and supporting files",
-            descriptionAr: "الشهادات والملفات الداعمة",
+            description: "Your CVs, the one sent when you apply, and certificates",
+            descriptionAr: "سيرك الذاتية، والسيرة التي تُرسل عند التقديم، والشهادات",
           },
           {
             title: "Personal Details",
@@ -1505,20 +1512,55 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
         labelAr: "النمو والحساب",
         items: [
           {
-            title: "My Subscription",
-            titleAr: "اشتراكي",
-            href: p("/job-seeker/subscription"),
-            icon: "Crown",
-            description: "Plan, usage and invoices",
-            descriptionAr: "الخطة والاستخدام والفواتير",
-          },
-          {
             title: "Settings",
             titleAr: "الإعدادات",
             href: p("/job-seeker/settings"),
             icon: "Settings",
-            description: "Account preferences",
-            descriptionAr: "تفضيلات الحساب",
+            description: "Notifications, privacy, interviews and account",
+            descriptionAr: "الإشعارات والخصوصية والمقابلات والحساب",
+          },
+          // The tabs of the one Settings page. Each is its own route (e-mail
+          // footers link /settings/notifications), listed here so the tab row
+          // and the command palette read one source.
+          {
+            title: "Notifications",
+            titleAr: "الإشعارات",
+            href: p("/job-seeker/settings/notifications"),
+            icon: "Bell",
+            description: "Which emails, WhatsApp messages and alerts you get",
+            descriptionAr: "رسائل البريد وواتساب والتنبيهات التي تصلك",
+          },
+          {
+            title: "Privacy & data",
+            titleAr: "الخصوصية والبيانات",
+            href: p("/job-seeker/settings/privacy"),
+            icon: "ShieldCheck",
+            description: "Who can find you, your data and consents",
+            descriptionAr: "من يمكنه العثور عليك، بياناتك وموافقاتك",
+          },
+          {
+            title: "Interview availability",
+            titleAr: "مواعيد المقابلات",
+            href: p("/job-seeker/settings/interviews"),
+            icon: "CalendarDays",
+            description: "When employers can book interviews with you",
+            descriptionAr: "متى يمكن لأصحاب العمل حجز مقابلات معك",
+          },
+          {
+            title: "Account",
+            titleAr: "الحساب",
+            href: p("/job-seeker/settings/account"),
+            icon: "UserCog",
+            description: "Email, password and connected apps",
+            descriptionAr: "البريد الإلكتروني وكلمة المرور والتطبيقات المتصلة",
+          },
+          {
+            title: "Plan & billing",
+            titleAr: "الخطة والفواتير",
+            href: p("/job-seeker/subscription"),
+            icon: "Crown",
+            description: "Plan, usage and invoices",
+            descriptionAr: "الخطة والاستخدام والفواتير",
           },
         ],
       },

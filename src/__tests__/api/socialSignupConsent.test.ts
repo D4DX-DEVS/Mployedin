@@ -80,6 +80,12 @@ jest.mock("@/lib/security/rateLimit", () => ({ __esModule: true, checkRateLimit:
 jest.mock("@/lib/referrals/attachJobSeeker", () => ({ __esModule: true, attachJobSeekerReferral: jest.fn() }));
 jest.mock("@/lib/subscription/autoAssign", () => ({ __esModule: true, autoAssignDefaultPlan: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/gdpr/consent", () => ({ __esModule: true, recordRegistrationConsents: (...a: unknown[]) => mockRecordConsents(...a) }));
+// Its own behaviour is pinned in lib/unprovenPassword.test.ts.
+const mockDropUnprovenPassword = jest.fn();
+jest.mock("@/lib/auth/unprovenPassword", () => ({
+  __esModule: true,
+  dropUnprovenPassword: (...a: unknown[]) => mockDropUnprovenPassword(...a),
+}));
 
 import { authConfig } from "@/lib/auth/config";
 import { SIGNUP_CONSENT_COOKIE, encodeSignupConsent, parseSignupConsent } from "@/lib/auth/signupConsent";
@@ -103,6 +109,7 @@ beforeEach(() => {
   mockUserFindOne.mockResolvedValue(null);
   mockUserCreate.mockResolvedValue(user());
   mockRecordConsents.mockResolvedValue(undefined);
+  mockDropUnprovenPassword.mockResolvedValue(false);
 });
 
 describe("Google (Firebase) sign-up", () => {
@@ -179,6 +186,53 @@ describe("Google (Firebase) sign-in marks the e-mail verified", () => {
     mockUserFindOne.mockResolvedValue(user({ role: "agent", isEmailVerified: false, isActive: false }));
 
     await expect(firebase.authorize({ idToken: "tok" }, request)).rejects.toMatchObject({ code: "account_inactive" });
+  });
+});
+
+describe("a password nobody proved the mailbox for (Google)", () => {
+  // Someone can put a password of their own on another person's address; the
+  // account stays unverified. Google proves who owns the mailbox, so that
+  // password must not survive the sign-in that verifies the account.
+  const findByIdAndUpdate = () => (jest.requireMock("@/models/User") as { default: { findByIdAndUpdate: jest.Mock } }).default.findByIdAndUpdate;
+
+  it("is dropped before Google marks an unverified account verified", async () => {
+    mockUserFindOne.mockResolvedValue(user({ role: "employer", isEmailVerified: false }));
+    const order: string[] = [];
+    mockDropUnprovenPassword.mockImplementation(async () => {
+      order.push("drop");
+      return true;
+    });
+    findByIdAndUpdate().mockImplementationOnce(async () => {
+      order.push("verify");
+      return {};
+    });
+
+    await firebase.authorize({ idToken: "tok" }, request);
+
+    expect(mockDropUnprovenPassword).toHaveBeenCalledWith("user-1", { provider: "firebase-google", role: "employer" });
+    expect(order).toEqual(["drop", "verify"]);
+  });
+
+  it("stays when Google itself has not verified the e-mail", async () => {
+    mockVerifyIdToken.mockResolvedValue({ email: EMAIL, email_verified: false, name: "New Person" });
+    mockUserFindOne.mockResolvedValue(user({ isEmailVerified: false }));
+
+    await firebase.authorize({ idToken: "tok" }, request);
+
+    expect(mockDropUnprovenPassword).not.toHaveBeenCalled();
+  });
+
+  it("is not looked for on a verified account, a new one, or a refused sign-in", async () => {
+    mockUserFindOne.mockResolvedValue(user({ isEmailVerified: true }));
+    await firebase.authorize({ idToken: "tok" }, request);
+
+    mockUserFindOne.mockResolvedValue(null);
+    await firebase.authorize({ idToken: "tok", termsAccepted: "true" }, request);
+
+    mockUserFindOne.mockResolvedValue(user({ isEmailVerified: false, isActive: false }));
+    await expect(firebase.authorize({ idToken: "tok" }, request)).rejects.toMatchObject({ code: "account_inactive" });
+
+    expect(mockDropUnprovenPassword).not.toHaveBeenCalled();
   });
 });
 
@@ -302,6 +356,61 @@ describe("LinkedIn / Apple account lookup (jwt callback)", () => {
     await expect(signInWith(undefined, "apple")).resolves.toBeNull();
     expect(mockUserFindOne).not.toHaveBeenCalled();
     expect(mockUserCreate).not.toHaveBeenCalled();
+  });
+
+  describe("a password nobody proved the mailbox for", () => {
+    it("is dropped when LinkedIn links to an unverified account", async () => {
+      mockUserFindOne.mockResolvedValue(user({ role: "employer", isEmailVerified: false }));
+
+      await signInWith(EMAIL, "linkedin");
+
+      expect(mockDropUnprovenPassword).toHaveBeenCalledWith("user-1", { provider: "linkedin", role: "employer" });
+    });
+
+    it("is dropped when Apple verifies an account it was already linked to", async () => {
+      mockUserFindOne.mockResolvedValue(user({ appleSub: "sub-1", isEmailVerified: false }));
+
+      await signInWith(EMAIL, "apple");
+
+      expect(mockDropUnprovenPassword).toHaveBeenCalledWith("user-1", { provider: "apple", role: "job_seeker" });
+    });
+
+    it("counts the owner's sign-in from after the removal, so it is not ended with the rest", async () => {
+      // The sign-in time is stamped before the account is looked up. A
+      // removal that lands a second later would otherwise end this session too.
+      mockUserFindOne.mockResolvedValue(user({ isEmailVerified: false }));
+      const start = Date.now();
+      let elapsed = 0;
+      const clock = jest.spyOn(Date, "now").mockImplementation(() => start + elapsed);
+      mockDropUnprovenPassword.mockImplementation(async () => {
+        elapsed = 3000;
+        return true;
+      });
+
+      const token = await signInWith(EMAIL, "linkedin");
+      clock.mockRestore();
+
+      expect(token).toMatchObject({ authAt: Math.floor((start + 3000) / 1000) });
+    });
+
+    it("stays on an account that was already verified, linked or not", async () => {
+      mockUserFindOne.mockResolvedValue(user({ isEmailVerified: true }));
+      await signInWith(EMAIL, "linkedin");
+      mockUserFindOne.mockResolvedValue(user({ appleSub: "sub-1", isEmailVerified: true }));
+      await signInWith(EMAIL, "apple");
+
+      expect(mockDropUnprovenPassword).not.toHaveBeenCalled();
+    });
+
+    it("is not looked for on an account this sign-in created, or an inactive one", async () => {
+      cookieJar = { [SIGNUP_CONSENT_COOKIE]: encodeSignupConsent("accepted") };
+      await signInWith(EMAIL, "linkedin");
+
+      mockUserFindOne.mockResolvedValue(user({ isEmailVerified: false, isActive: false }));
+      await expect(signInWith(EMAIL, "linkedin")).resolves.toBeNull();
+
+      expect(mockDropUnprovenPassword).not.toHaveBeenCalled();
+    });
   });
 
   it("a duplicate-key race signs into the account that won", async () => {

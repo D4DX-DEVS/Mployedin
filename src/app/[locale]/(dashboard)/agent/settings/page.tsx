@@ -29,6 +29,8 @@ import {
   currencyForCountry,
 } from "@/lib/currency";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
+import { OverflowTabs } from "@/components/shared/OverflowTabs";
+import { cn } from "@/lib/utils";
 import { AssignedRegionBadge } from "@/components/shared/AssignedRegionBadge";
 import { AssignedRegionFields, type SupervisingSuperAgent } from "@/components/features/settings/AssignedRegionFields";
 import type { AssignedRegion } from "@/lib/agents/assignedRegion";
@@ -130,7 +132,13 @@ function SaveFeedback({ saving, saved, hasChanges, onSave, label }: {
 }) {
   const t = useTranslations("agentSettings");
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+    // With unsaved changes, Save pins to the bottom of the scroll area below
+    // lg so it stays in reach; with none it sits at the end of the section
+    // instead of a greyed-out bar covering the fields.
+    <div className={cn(
+      "flex flex-col gap-3 sm:flex-row sm:items-center",
+      hasChanges && "sticky-action-bar rounded-xl border border-border/70 bg-background/95 p-2 shadow-sm backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none",
+    )}>
       <Button type="button" onClick={onSave} disabled={saving || !hasChanges} size="sm" className="gap-2 w-full sm:w-auto">
         <Save className="w-4 h-4" />
         {saving ? t("save.saving") : label ?? t("save.default")}
@@ -1470,8 +1478,17 @@ export default function AgentSettingsPage() {
       {/* Sidebar + Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
 
+        {/* Below lg: one chip row, sections that do not fit under More. */}
+        <OverflowTabs
+          className="lg:hidden"
+          ariaLabel={t("hero.title")}
+          value={activeTab}
+          onChange={setActiveTab}
+          items={NAV_ITEMS.map((item) => ({ key: item.key, label: t(`nav.${item.key}.label`), icon: item.icon }))}
+        />
+
         {/* Left Navigation */}
-        <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-1.5 lg:mx-0 lg:sticky lg:top-4 lg:self-start">
+        <nav className="hidden lg:flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-1.5 lg:mx-0 lg:sticky lg:top-4 lg:self-start">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.key;

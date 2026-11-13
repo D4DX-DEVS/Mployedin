@@ -531,7 +531,7 @@ describe("EmployerCandidatesPage", () => {
     });
     pendingMatches.get("user-2")?.reject(new Error("rate limited"));
 
-    await waitFor(() => expect(screen.getByText("Scored 1 candidate(s). 1 candidate(s) could not be scored.")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Scored 1 candidate. 1 candidate could not be scored.")).toBeInTheDocument());
     expect(screen.getByRole("button", { name: /run ai match/i })).toBeEnabled();
     // The combined "91% AI match" phrase now only appears inside the detail
     // dialog; the compact row shows the score via ScoreRing, whose "91%" is

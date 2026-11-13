@@ -386,7 +386,7 @@ async function patchHandler(
       currency: invoice.currency,
       status: "paid",
       paidAt: invoice.paidAt?.toISOString(),
-    });
+    }, { employerId: invoice.employerId });
   }
 
   await logActivity({

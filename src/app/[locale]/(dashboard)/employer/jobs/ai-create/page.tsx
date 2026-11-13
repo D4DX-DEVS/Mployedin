@@ -373,7 +373,12 @@ export default function EmployerAIJobCreatePage() {
   const detectedLanguageLabel = getDetectedLanguageLabel(detectedLanguage, t);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // The greeting alone must not move the page: on phones the chat is part of
+    // the page scroll, and scrolling to its end on open hid the title and cut
+    // the greeting. "nearest" also leaves the page alone when the newest
+    // message is already in view.
+    if (messages.length <= 1) return;
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages]);
 
   // Restore the persisted session after mount (client-only; sessionStorage
@@ -857,19 +862,22 @@ export default function EmployerAIJobCreatePage() {
         actions={
           <Link
             href={target.withEmployer(`${target.jobsHref}/new?mode=manual`)}
-            aria-label={t("jobCreator.manualJobForm")}
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-background/80 px-3 text-sm font-semibold text-foreground transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
           >
             <FileText className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden sm:inline">{t("jobCreator.manualJobForm")}</span>
+            {t("jobCreator.manualJobForm")}
           </Link>
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(500px,1fr)]">
+      {/* Below lg the chat is part of the page: it grows with the conversation
+          and the message box sticks above the tab bar. As a fixed 500px box it
+          scrolled inside the page with its own scroll bar, and the preview was
+          squeezed into a third of an 820px tablet. Two panes start at lg. */}
+      <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-3 lg:grid-rows-[minmax(500px,1fr)]">
         {/* Chat panel */}
-        <div className="md:col-span-2 flex flex-col card-base h-[500px] lg:h-auto lg:min-h-0">
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex flex-col card-base lg:col-span-2 lg:min-h-0">
+          <div className="flex-1 space-y-3 p-4 lg:overflow-y-auto">
             {messages.map((msg, i) => (
               <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "assistant" && (
@@ -976,9 +984,9 @@ export default function EmployerAIJobCreatePage() {
                 </div>
               </div>
             )}
-            <div ref={bottomRef} />
+            <div ref={bottomRef} className="scroll-mb-48 lg:scroll-mb-0" />
           </div>
-          <div className="border-t bg-background/95 p-3 space-y-2">
+          <div className="sticky-action-bar space-y-2 rounded-b-[inherit] border-t bg-background/95 p-3 backdrop-blur lg:static">
             <div className="space-y-3">
               <Textarea
                 ref={textareaRef}
@@ -1163,7 +1171,7 @@ export default function EmployerAIJobCreatePage() {
                 </div>
               )}
             </div>
-            <div className="min-h-5" aria-live="polite" aria-atomic="true">
+            <div className="sm:min-h-5" aria-live="polite" aria-atomic="true">
               {voiceError ? (
                 <p role="alert" className="text-xs text-destructive">
                   {voiceError}

@@ -29,6 +29,7 @@ export const REGISTRY: RegistryItem[] = [
   { name: "mployedin_remember_email", kind: "localStorage", category: "necessary", basis: "user-action", party: "first", duration: "until removed", owner: "auth", purposeKey: "rememberEmail" },
   { name: "job-ai-*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "employer", purposeKey: "taskState" },
   { name: "job-draft-*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "employer", purposeKey: "jobDraft" },
+  { name: "mployedin:apply-auto-cv", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "seeker", purposeKey: "taskState" },
   { name: "job-prefs-draft", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "seeker", purposeKey: "taskState" },
   { name: "employer-candidate-matching-session-v1", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "employer", purposeKey: "taskState" },
   { name: "ai-thread-*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "ai", purposeKey: "taskState" },

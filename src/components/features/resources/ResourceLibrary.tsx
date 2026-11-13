@@ -146,7 +146,7 @@ export function ResourceLibrary({ manage, reloadKey = 0, onSummary }: ResourceLi
         onClear={filtered ? clearFilters : undefined}
         clearLabel={t("clear")}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect id="resources-category" className={INLINE_FILTER_CONTROL} options={categoryOptions} value={category} onValueChange={withPageReset(setCategory)} placeholder={t("filterCategory")} ariaLabel={t("filterCategory")} />

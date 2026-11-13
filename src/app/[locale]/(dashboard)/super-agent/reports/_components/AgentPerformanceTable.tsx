@@ -62,7 +62,7 @@ export function AgentPerformanceTable({ rows, currency }: AgentPerformanceTableP
   return (
     <div className="space-y-3">
       <InlineFilterBar onExportCsv={handleExportCsv} onExportExcel={handleExportExcel}>
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchAgents")} className="max-sm:basis-0" />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchAgents")} />
       </InlineFilterBar>
 
       {visible.length === 0 ? (

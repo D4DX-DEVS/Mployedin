@@ -4,6 +4,7 @@ import type { SectionKey } from "../types";
 import { formatDateValue } from "../types";
 import { KeepWithFirst, PdfContactBar, RichPdfText, dateRange, orderedSections, pdfScale, type PdfTemplateProps } from "./shared";
 import { GRAY, SectionTitlePdf, capitalize, sectionGap, standardFonts } from "./standard-sections";
+import { headerAlignOf, nameSizeOf, PdfSkillList, usePdfLayout } from "./pdf-layout";
 
 /* ═══════════════════════════════════════
    CLASSIC PDF — mirrors ClassicTemplate:
@@ -12,10 +13,13 @@ import { GRAY, SectionTitlePdf, capitalize, sectionGap, standardFonts } from "./
 
 export function ClassicPDF(props: PdfTemplateProps) {
   const { data, styles: s, primary, light, labels, df, pageSize, formatting } = props;
+  const { layout } = usePdfLayout();
   const scale = pdfScale(s);
   const fonts = standardFonts(props);
   const title = (label: string) => <SectionTitlePdf label={label} primary={primary} bold={fonts.bold} />;
   const date = { fontSize: 7.5 * scale, color: GRAY.g500 };
+  const headerAlign = headerAlignOf(formatting, "left");
+  const contactAlign = (headerAlign === "center" ? "center" : "start") as "start" | "center";
 
   const sections: Record<SectionKey, React.ReactNode> = {
     experience: data.experience.length > 0 ? (
@@ -55,11 +59,7 @@ export function ClassicPDF(props: PdfTemplateProps) {
     skills: data.skills.length > 0 ? (
       <View wrap={false}>
         {title(labels.skills)}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
-          {data.skills.map((sk, i) => (
-            <Text key={i} style={{ fontSize: 8 * scale, color: GRAY.g700, backgroundColor: light, borderRadius: 2, paddingHorizontal: 5, paddingVertical: 1.5 }}>{sk}</Text>
-          ))}
-        </View>
+        <PdfSkillList skills={data.skills} chip={(sk) => <Text style={{ fontSize: 8 * scale, color: GRAY.g700, backgroundColor: light, borderRadius: 2, paddingHorizontal: 5, paddingVertical: 1.5 }}>{sk}</Text>} fontSize={8 * scale} color={GRAY.g700} templateDefault="chips" />
       </View>
     ) : null,
     projects: data.projects?.length > 0 ? (
@@ -102,10 +102,10 @@ export function ClassicPDF(props: PdfTemplateProps) {
 
   return (
     <Page size={pageSize} style={{ ...s.page, fontSize: 8 * scale }}>
-      <View style={{ paddingBottom: 9, marginBottom: 12, borderBottomWidth: 2, borderBottomColor: primary }}>
-        <Text style={{ fontFamily: fonts.bold, fontSize: 20 * scale, color: GRAY.g900, lineHeight: 1.2 }}>{data.fullName || labels.yourName}</Text>
-        {data.headline ? <Text style={{ fontSize: 9 * scale, color: GRAY.g600, marginTop: 2 }}>{data.headline}</Text> : null}
-        <PdfContactBar data={data} scale={scale} color={GRAY.g500} style={{ marginTop: 6 }} />
+      <View style={{ paddingBottom: 9, marginBottom: 12, borderBottomWidth: 2, borderBottomColor: primary, alignItems: headerAlign === "center" ? "center" : "flex-start" }}>
+        <Text style={{ fontFamily: fonts.bold, fontSize: nameSizeOf(formatting, 20), color: GRAY.g900, lineHeight: 1.2, textAlign: headerAlign }}>{data.fullName || labels.yourName}</Text>
+        {data.headline ? <Text style={{ fontSize: 9 * scale, color: GRAY.g600, marginTop: 2, textAlign: layout.textAlign === "justify" ? "left" : layout.textAlign }}>{data.headline}</Text> : null}
+        <PdfContactBar data={data} scale={scale} color={GRAY.g500} align={contactAlign} style={{ marginTop: 6 }} />
       </View>
       <View style={{ gap: sectionGap(props) }}>
         {orderedSections(formatting, sections)}

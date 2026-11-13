@@ -52,7 +52,10 @@ export function InlineFilterSearch({ value, onChange, placeholder, label, icon, 
   // its controls to their bottom edge, so the selects beside it still line up
   // with the box, not the label.
   return (
-    <div className={cn("min-w-0 flex-[2_1_14rem]", className)}>
+    // Phones: search takes the whole first line; Filters, the selects and
+    // Export share the next one. Beside worded buttons it was left ~90px
+    // ("Search job s").
+    <div className={cn("min-w-0 flex-[2_1_14rem] max-sm:basis-full", className)}>
       <label htmlFor={id} className="mb-1 block truncate text-xs font-medium text-muted-foreground">
         {label ?? t("search")}
       </label>
@@ -147,8 +150,11 @@ export function InlineFilterBar({
     <div className={cn("panel-head flex-col items-stretch gap-2", className)}>
       {/* items-end: the search box carries a label above it, so controls align
           on their bottom edge to sit level with the box. */}
-      <div className="flex items-end gap-2">
-        <div className="flex min-w-0 flex-1 flex-wrap items-end gap-2">
+      {/* Phones: one wrapping line for everything (the filter group dissolves
+          into it), so the search can own a full row and Export sits at the end
+          of the next. From sm: filters on the left, Clear/Export pinned right. */}
+      <div className="flex flex-wrap items-end gap-2 sm:flex-nowrap">
+        <div className="flex min-w-0 flex-1 flex-wrap items-end gap-2 max-sm:contents">
           {children}
           {more && (
             <Button
@@ -175,7 +181,7 @@ export function InlineFilterBar({
         </div>
 
         {(onClear || hasExport) && (
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 max-sm:ms-auto">
             {onClear && (
               <Button
                 type="button"
@@ -183,20 +189,20 @@ export function InlineFilterBar({
                 size="sm"
                 onClick={onClear}
                 data-filter-clear=""
-                aria-label={clearLabel ?? t("clear")}
                 className="h-11 gap-1.5 px-2.5 text-xs text-muted-foreground sm:h-9"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span className="max-sm:hidden">{clearLabel ?? t("clear")}</span>
+                {/* Phones keep the word and drop the icon: a button says what it
+                    does at every width, and the word is the narrower of the two. */}
+                <RotateCcw className="h-3.5 w-3.5 max-sm:hidden" aria-hidden="true" />
+                <span>{clearLabel ?? t("clear")}</span>
               </Button>
             )}
             {hasExport && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  {/* Label hidden on phones, so name the trigger explicitly. */}
-                  <Button variant="outline" size="sm" aria-label={t("export")} className="h-11 w-11 gap-1.5 rounded-lg p-0 sm:h-9 sm:w-auto sm:px-3">
-                    <Download className="h-3.5 w-3.5" />
-                    <span className="max-sm:hidden">{t("export")}</span>
+                  <Button variant="outline" size="sm" className="h-11 gap-1.5 rounded-lg px-3 sm:h-9">
+                    <Download className="h-3.5 w-3.5 max-sm:hidden" aria-hidden="true" />
+                    <span>{t("export")}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-40">

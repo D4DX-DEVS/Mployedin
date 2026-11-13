@@ -28,7 +28,6 @@ const NotificationBell = dynamic(
     import("@/components/shared/NotificationBell").then((m) => m.NotificationBell),
   { ssr: false }
 );
-import PublicFooter from "@/components/shared/PublicFooter";
 import { MAIN_CONTENT_ID } from "@/components/shared/SkipToContent";
 import { UserProfileDropdown } from "@/components/shared/UserProfileDropdown";
 import { AccessibilityPanel } from "@/components/shared/AccessibilityPanel";
@@ -37,6 +36,7 @@ import { WorkspaceBottomNav } from "@/components/shared/WorkspaceBottomNav";
 import { JobSeekerTopNav, JobSeekerBottomNav } from "@/components/shared/JobSeekerTopNav";
 import { TenantViewBanner } from "@/components/features/tenant/TenantViewBanner";
 import { TemporaryPasswordNotice } from "@/components/shared/TemporaryPasswordNotice";
+import { AnnouncementStrip } from "@/components/shared/AnnouncementStrip";
 import type { NavGroup, NavItem } from "@/lib/nav/menuConfig";
 import { getIcon } from "@/lib/nav/iconRegistry";
 import { PageNavIconProvider } from "@/components/shared/PageNavIcon";
@@ -223,6 +223,8 @@ export function DashboardShell({
             locale={tenantViewData.locale}
           />
         )}
+        {/* Portal announcements strip */}
+        <AnnouncementStrip locale={locale} />
         {/* Topbar */}
         <header className={`dashboard-topbar border-b border-border/40 bg-background z-30 sticky top-0 transition-all ${usesModernWorkspaceShell ? "dashboard-topbar-workspace h-14 sm:h-16" : "h-14 sm:h-16"}`}>
           <div className="flex h-full items-center gap-1.5 px-3 sm:gap-2 sm:px-4 md:gap-3 lg:px-6">
@@ -291,21 +293,22 @@ export function DashboardShell({
                       each page already renders in its own header. Creating on a
                       wide screen goes through the page action or ⌘K; phones keep
                       the raised Create in the tab bar below. */}
-                  {/* Phones: the Copilot opens from the top bar. The floating
-                      button covered card actions and pagination on every list;
-                      CSS hides it wherever this launcher is present. Employer
-                      keeps its floating button (frozen reference layout). */}
-                  {!(userRole === "employer" || hasEmployerNavigation) && (
-                    <button
-                      type="button"
-                      data-copilot-launcher=""
-                      onClick={() => window.dispatchEvent(new Event("mployedin:open-copilot"))}
-                      aria-label={tCopilot("openCopilot")}
-                      className="flex h-11 w-11 items-center justify-center rounded-lg text-primary transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
-                    >
-                      <Sparkles className="h-5 w-5" aria-hidden="true" />
-                    </button>
-                  )}
+                  {/* The Copilot opens from the top bar for every role at every
+                      width. The floating button covered card actions, footnotes
+                      and pagination; CSS hides it wherever this launcher is
+                      present. Wide screens show the word beside the icon. */}
+                  <button
+                    type="button"
+                    data-copilot-launcher=""
+                    onClick={() => window.dispatchEvent(new Event("mployedin:open-copilot"))}
+                    aria-label={tCopilot("openCopilot")}
+                    className="flex h-11 min-w-11 items-center justify-center gap-2 rounded-lg text-primary transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:border lg:border-primary/30 lg:bg-primary/5 lg:px-3"
+                  >
+                    <Sparkles className="h-5 w-5" aria-hidden="true" />
+                    <span className="hidden text-sm font-semibold lg:inline" aria-hidden="true">
+                      {tCopilot("launcherLabel")}
+                    </span>
+                  </button>
                   {dashboardRoot && (
                     <MessagesIndicator navGroups={navGroups} rootHref={`/${locale}${dashboardRoot}`} />
                   )}
@@ -339,7 +342,7 @@ export function DashboardShell({
         {/* Page content */}
           {isJobSeeker ? (
             <>
-              <main id={MAIN_CONTENT_ID} data-workspace="staff" className="dashboard-main isolate flex-1 bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
+              <main id={MAIN_CONTENT_ID} data-workspace="staff" className="dashboard-main isolate flex-1 bg-background pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">
                 <PageNavIconProvider icon={pageNavIcon}>{children}</PageNavIconProvider>
               </main>
               <JobSeekerBottomNav locale={locale} navGroups={navGroups} counts={navCounts} />
@@ -347,7 +350,7 @@ export function DashboardShell({
           ) : (
             // `relative` keeps absolute descendants (sr-only labels) inside this
             // scroller; without it they anchor to <body> and stretch the page.
-            <main id={MAIN_CONTENT_ID} data-workspace={hasEmployerNavigation || userRole === "employer" ? "employer" : "staff"} className={`dashboard-main relative isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-16 lg:pb-0" : ""}`}>
+            <main id={MAIN_CONTENT_ID} data-workspace={hasEmployerNavigation || userRole === "employer" ? "employer" : "staff"} className={`dashboard-main relative isolate min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background ${usesModernWorkspaceShell ? "dashboard-main-workspace" : ""} ${bottomNavTabs.length > 0 ? "pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0" : ""}`}>
               <PageNavIconProvider icon={pageNavIcon}>{children}</PageNavIconProvider>
             </main>
           )}

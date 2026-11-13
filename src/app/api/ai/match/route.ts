@@ -211,6 +211,8 @@ Provide brief qualitative feedback ONLY (no scoring). Return a JSON object (no m
     // requirements checklist instead of as a percentage.
     breakdown: parts,
     requirementsStatus: match.requirementsStatus,
+    // Each job requirement against the candidate: has / partly / does not have / needs checking.
+    requirementReport: match.requirementReport,
     qualifications: match.qualifications,
     matchedSkills: match.matchedSkills,
     missingSkills: match.missingSkills,

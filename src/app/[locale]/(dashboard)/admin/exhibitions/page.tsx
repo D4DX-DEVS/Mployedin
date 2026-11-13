@@ -627,7 +627,7 @@ export default function AdminExhibitionsPage() {
           </>
         )}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchRequestsAgentsEvents")} className="max-sm:basis-0" />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchRequestsAgentsEvents")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           {!boardView && (

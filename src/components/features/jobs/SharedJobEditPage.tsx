@@ -29,6 +29,14 @@ import type { CountryOption } from "@/hooks/useCountrySearch";
 import { useTranslations } from "next-intl";
 import { containsMarkup } from "@/lib/validators/plainText";
 import { changedFields } from "@/lib/jobs/changedFields";
+import { educationLevel as readEducationLevel } from "@/lib/matching/educationLevel";
+import {
+  EMPTY_REQUIREMENT_EXTRAS,
+  RequirementExtrasFields,
+  requirementExtrasFromJob,
+  requirementExtrasPayload,
+  type RequirementExtras,
+} from "./RequirementExtrasFields";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { useFieldHighlight } from "@/hooks/useFieldHighlight";
 import { KnockoutEditor, hasKnockoutProblem } from "@/components/features/employer/job-form/KnockoutEditor";
@@ -98,6 +106,8 @@ interface FormData {
     remoteCountries?: string[];
   };
   requirements: { skills: string[]; preferredSkills: string[]; experienceMin: number; experienceMax: number };
+  /** Education level, experience "in what", licences, languages, kind of hire. */
+  extras: RequirementExtras;
   salary: { min: number; max: number; currency: string; period: string; isNegotiable: boolean };
   expiresAt: string;
   tags: string[];
@@ -122,19 +132,15 @@ interface SharedJobEditPageProps {
 }
 
 // ─── Salary formatter ─────────────────────────────────────────────
-function formatSalary(value: number, currency: string, period: string): string {
-  if (!value) return "—";
-  const sym = CURRENCY_SYMBOLS[currency] ?? currency + " ";
-  // When period is LPA, user enters value directly in lakhs (e.g. 35 = 35L)
-  if (period === "lpa") {
-    return `${sym}${value % 1 === 0 ? value : value.toFixed(1)}L`;
-  }
-  if (currency === "INR" && value >= 100000) {
-    const l = value / 100000;
-    return `${sym}${l % 1 === 0 ? l : l.toFixed(1)}L`;
-  }
-  if (value >= 1000) return `${sym}${(value / 1000).toFixed(0)}K`;
-  return `${sym}${formatCount(value)}`;
+// Currency code once, then whole numbers: "AED 12,000 – 18,000". The earlier
+// symbol + rounded "K" printed an Arabic symbol inside the number ("12د.إK")
+// and hid the real figure candidates see.
+function formatSalaryRange(min: number, max: number, currency: string, period: string): string {
+  // LPA: the value is entered in lakhs already (35 = 35L).
+  const amount = (value: number) => (period === "lpa"
+    ? `${value % 1 === 0 ? value : value.toFixed(1)}L`
+    : formatCount(value) ?? String(value));
+  return `${currency} ${min > 0 ? amount(min) : "—"} – ${max > 0 ? amount(max) : "—"}`;
 }
 
 // ─── Section card ─────────────────────────────────────────────────
@@ -144,6 +150,7 @@ function Section({
   subtitle,
   children,
   field,
+  anchor,
 }: {
   icon: React.ElementType;
   title: string;
@@ -151,9 +158,11 @@ function Section({
   children: React.ReactNode;
   /** Target name for ?highlight= deep links (see useFieldHighlight). */
   field?: string;
+  /** Element id the section links at the top of the page jump to. */
+  anchor?: string;
 }) {
   return (
-    <div data-field={field} className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+    <div id={anchor} data-field={field} className="scroll-mt-4 rounded-2xl border border-border/60 bg-card overflow-hidden">
       <div className="flex items-center gap-3 border-b border-border/40 bg-muted/30 panel-head">
         <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
           <Icon className="w-3.5 h-3.5 text-primary" />
@@ -276,6 +285,7 @@ function EditListSection({
  * edits (audit FUNC-017).
  */
 function buildJobPayload(form: FormData): Record<string, unknown> {
+  const extrasPayload = requirementExtrasPayload(form.extras);
   const normalizedQuestions = form.screeningQuestions.reduce<Array<ScreeningQuestion & { order: number }>>((acc, question) => {
     const label = question.label.trim();
     const placeholder = question.placeholder.trim();
@@ -298,7 +308,10 @@ function buildJobPayload(form: FormData): Record<string, unknown> {
     title: form.title.trim(),
     description: form.description.trim(),
     category: form.category || undefined,
-    requirements: form.requirements,
+    // One `requirements` object, merged server-side, so a save never drops
+    // the keys this page does not show (education text, nationality, AI skills).
+    requirements: { ...form.requirements, ...extrasPayload.requirements },
+    hireType: extrasPayload.hireType,
     salary: {
       min: form.salary.min,
       max: form.salary.max,
@@ -348,6 +361,7 @@ export function SharedJobEditPage({
 }: SharedJobEditPageProps) {
   const t = useTranslations("employerJobEdit");
   const tAts = useTranslations("employerAts");
+  const tExtras = useTranslations("jobRequirementExtras");
   const router = useRouter();
   // Setup-guide steps deep-link here with ?highlight=requirements|salary.
   useFieldHighlight();
@@ -358,6 +372,7 @@ export function SharedJobEditPage({
     category: "",
     location: { country: "", city: "", isRemote: false, remoteCountries: [] },
     requirements: { skills: [], preferredSkills: [], experienceMin: 0, experienceMax: 5 },
+    extras: EMPTY_REQUIREMENT_EXTRAS,
     salary: { min: 0, max: 0, currency: "USD", period: "monthly", isNegotiable: false },
     expiresAt: "",
     tags: [],
@@ -461,6 +476,7 @@ export function SharedJobEditPage({
       };
     }
 
+    const storedExtras = requirementExtrasFromJob(job as unknown as Parameters<typeof requirementExtrasFromJob>[0]);
     const loaded: FormData = {
       title: job.title ?? "",
       description: (job as unknown as { description?: string }).description ?? "",
@@ -472,6 +488,7 @@ export function SharedJobEditPage({
         experienceMin: (job.requirements as unknown as { experienceMin?: number })?.experienceMin ?? 0,
         experienceMax: (job.requirements as unknown as { experienceMax?: number })?.experienceMax ?? 5,
       },
+      extras: storedExtras,
       salary: {
         min: (job.salary as unknown as { min?: number })?.min ?? 0,
         max: (job.salary as unknown as { max?: number })?.max ?? 0,
@@ -503,7 +520,12 @@ export function SharedJobEditPage({
         ...(typeof q.minValue === "number" ? { minValue: q.minValue } : {}),
       })),
     };
-    setForm(loaded);
+    // A job posted before the education picker: start it on the level its
+    // education text names. The baseline keeps the stored (empty) value, so
+    // the first save writes the level the employer has now seen.
+    const educationText = (job.requirements as unknown as { education?: string })?.education ?? "";
+    const textLevel = storedExtras.educationLevel === null ? readEducationLevel(educationText) : 0;
+    setForm(textLevel > 0 ? { ...loaded, extras: { ...storedExtras, educationLevel: textLevel } } : loaded);
     loadedPayloadRef.current = buildJobPayload(loaded);
 
     if (loc.country) setCountryQuery(loc.country);
@@ -585,7 +607,7 @@ export function SharedJobEditPage({
     setField(field, form[field].filter((_, i) => i !== index));
   }
 
-  function validate(forPublish = false): boolean {
+  function validate(forPublish = false, publishing = false): boolean {
     const errors: FieldErrors = {};
     if (!form.title.trim()) errors.title = t("errorTitleRequired");
     else if (form.title.trim().length < 5) errors.title = t("errorTitleLength");
@@ -602,6 +624,10 @@ export function SharedJobEditPage({
     if (!form.description.trim()) errors.description = t("errorDescRequired");
     else if (form.description.trim().length < 20) errors.description = t("errorDescLength");
     if (forPublish && !form.location.country) errors.country = t("errorCountry");
+    // Required when publishing (D10): a level, or "No minimum". A job already
+    // live before the picker existed can still be saved without it — its
+    // education text and qualification lines are read instead.
+    if (publishing && form.extras.educationLevel === null) errors.education = tExtras("education.required");
     if (form.salary.max > 0 && form.salary.max < form.salary.min) errors.salary = t("errorSalary");
     // A deal-breaker with nothing that qualifies would be refused by the API;
     // the question card already says what is missing.
@@ -615,7 +641,7 @@ export function SharedJobEditPage({
 
   const submit = useCallback(async (publish: boolean) => {
     // Only a draft may be saved incomplete; the server checks anything else in full.
-    if (!validate(publish || !isDraft)) return;
+    if (!validate(publish || !isDraft, publish)) return;
     setSubmitState(publish ? "publishing" : "saving");
     setGlobalError("");
 
@@ -677,6 +703,7 @@ export function SharedJobEditPage({
 
   const sym = CURRENCY_SYMBOLS[form.salary.currency] ?? form.salary.currency + " ";
   const isSubmitting = submitState === "saving" || submitState === "publishing";
+  const periodWord = form.salary.period === "lpa" ? "LPA" : form.salary.period === "yearly" ? t("periodYear") : t("periodMonth");
 
   return (
     <JobAssistantProvider assistant={assistant} quickActions={assistantQuickActions}>
@@ -703,7 +730,7 @@ export function SharedJobEditPage({
             wrapped buttons to 11px text, which made these three mixed sizes. */}
         <div className="flex flex-wrap gap-2 flex-shrink-0 max-sm:grid max-sm:w-full max-sm:grid-cols-2 max-sm:[&>*]:min-w-0 max-sm:[&>*:first-child:nth-last-child(3)]:col-span-2 max-sm:[&>*:only-child]:col-span-2">
           <JobAssistantOpenButton />
-          <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[110px] max-sm:min-h-11">
+          <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[110px] max-sm:hidden">
             {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("saving")}</>
               : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />{t("saved")}</>
               : submitState === "error" ? <><AlertCircle className="w-3.5 h-3.5 me-1.5 text-destructive" />{t("error")}</>
@@ -711,7 +738,7 @@ export function SharedJobEditPage({
           </Button>
           {!isLive && (
             <Button type="button" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(true)}
-              className="min-w-[130px] max-sm:min-h-11 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-sm">
+              className="min-w-[130px] max-sm:hidden bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white shadow-sm">
               {submitState === "publishing" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("publishing")}</>
                 : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
             </Button>
@@ -734,12 +761,34 @@ export function SharedJobEditPage({
         className="mb-5"
       />
 
+      {/* Jump links: the form is one long page (about 4,300px on a phone), so
+          the sections are one tap away instead of a long scroll. */}
+      <nav aria-label={t("title")} className="mb-4 flex flex-wrap gap-1.5">
+        {([
+          ["edit-basics", t("basics")],
+          ["edit-location", t("locationSection")],
+          ["edit-description", t("descriptionSection")],
+          ["edit-requirements", t("requirementsSection")],
+          ["edit-pay", t("compensationSection")],
+          ["edit-screening", t("screeningSection")],
+        ] as const).map(([anchor, label]) => (
+          <button
+            key={anchor}
+            type="button"
+            onClick={() => document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="inline-flex min-h-11 items-center rounded-full bg-muted px-3.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 sm:min-h-9"
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-3 sm:gap-5">
         {/* ── Left: form ──────────────────────────────────────── */}
         <div className="space-y-5">
 
           {/* ① Job Basics */}
-          <Section icon={Briefcase} title={t("basics")} subtitle={t("basicsDesc")}>
+          <Section anchor="edit-basics" icon={Briefcase} title={t("basics")} subtitle={t("basicsDesc")}>
             <Field label={t("jobTitle")} required error={fieldErrors.title} hint={t("hintTitle")} htmlFor="job-title">
               <Input
                 id="job-title"
@@ -792,7 +841,7 @@ export function SharedJobEditPage({
           </Section>
 
           {/* ② Location */}
-          <Section icon={MapPin} title={t("locationSection")} subtitle={t("locationDesc")}>
+          <Section anchor="edit-location" icon={MapPin} title={t("locationSection")} subtitle={t("locationDesc")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label={t("country")} error={fieldErrors.country} hint={t("hintCountry")} htmlFor="country-input">
                 <div ref={countryRef} className="relative">
@@ -950,7 +999,7 @@ export function SharedJobEditPage({
           </Section>
 
           {/* ③ Job Description */}
-          <Section icon={Globe} title={t("descriptionSection")} subtitle={t("descriptionDesc")}>
+          <Section anchor="edit-description" icon={Globe} title={t("descriptionSection")} subtitle={t("descriptionDesc")}>
             <Field label={t("descriptionField")} required error={fieldErrors.description} htmlFor="description-textarea">
               <Textarea
                 id="description-textarea"
@@ -971,7 +1020,7 @@ export function SharedJobEditPage({
           </Section>
 
           {/* ④ Requirements */}
-          <Section icon={Users} title={t("requirementsSection")} subtitle={t("requirementsDesc")} field="requirements">
+          <Section anchor="edit-requirements" icon={Users} title={t("requirementsSection")} subtitle={t("requirementsDesc")} field="requirements">
             <Field label={t("requiredSkills")} hint={t("hintSkills")}>
               <div className="flex gap-2">
                 <Input aria-label={t("requiredSkills")} placeholder={t("placeholderRequired")} value={skillInput}
@@ -987,7 +1036,7 @@ export function SharedJobEditPage({
                   {form.requirements.skills.map((s) => (
                     <Badge key={s} variant="secondary" className="gap-1 text-xs">
                       {s}
-                      <button type="button" onClick={() => removeSkill(s)} className="hover:text-destructive ml-0.5" aria-label={`Remove ${s}`}><X className="w-3 h-3" aria-hidden="true" /></button>
+                      <button type="button" onClick={() => removeSkill(s)} className="tap-target-box min-h-0! min-w-0! hover:text-destructive ms-0.5" aria-label={`Remove ${s}`}><X className="w-3 h-3" aria-hidden="true" /></button>
                     </Badge>
                   ))}
                 </div>
@@ -1008,7 +1057,7 @@ export function SharedJobEditPage({
                   {form.requirements.preferredSkills.map((s) => (
                     <Badge key={s} variant="outline" className="gap-1 text-xs border-dashed">
                       {s}
-                      <button type="button" onClick={() => removePreferredSkill(s)} className="hover:text-destructive ml-0.5" aria-label={`Remove ${s}`}><X className="w-3 h-3" aria-hidden="true" /></button>
+                      <button type="button" onClick={() => removePreferredSkill(s)} className="tap-target-box min-h-0! min-w-0! hover:text-destructive ms-0.5" aria-label={`Remove ${s}`}><X className="w-3 h-3" aria-hidden="true" /></button>
                     </Badge>
                   ))}
                 </div>
@@ -1028,6 +1077,17 @@ export function SharedJobEditPage({
                   onChange={(e) => setField("requirements", { ...form.requirements, experienceMax: Number(e.target.value) })} />
               </Field>
             </div>
+            <RequirementExtrasFields
+              className="mt-2"
+              value={form.extras}
+              onChange={(next) => {
+                setField("extras", next);
+                if (next.educationLevel !== null) {
+                  setFieldErrors((prev) => { const n = { ...prev }; delete n.education; return n; });
+                }
+              }}
+              educationError={fieldErrors.education}
+            />
           </Section>
 
           {/* ④b Key Responsibilities (optional) */}
@@ -1079,7 +1139,7 @@ export function SharedJobEditPage({
           />
 
           {/* ⑤ Compensation */}
-          <Section icon={DollarSign} title={t("compensationSection")} subtitle={t("compensationDesc")} field="salary">
+          <Section anchor="edit-pay" icon={DollarSign} title={t("compensationSection")} subtitle={t("compensationDesc")} field="salary">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field label={t("minSalary")} error={fieldErrors.salary}>
                 <div className="relative">
@@ -1129,10 +1189,8 @@ export function SharedJobEditPage({
               <div className="rounded-lg bg-emerald-50 border border-emerald-200 text-sm chip-pad">
                 <span className="text-muted-foreground text-xs">{t("salaryPreview")} </span>
                 <span className="font-semibold text-emerald-700">
-                  {form.salary.min > 0 ? formatSalary(form.salary.min, form.salary.currency, form.salary.period) : "—"}
-                  {" – "}
-                  {form.salary.max > 0 ? formatSalary(form.salary.max, form.salary.currency, form.salary.period) : "—"}
-                  <span className="font-normal text-xs ms-1">{t("perPeriod", { period: form.salary.period === "lpa" ? "LPA" : form.salary.period })}</span>
+                  {formatSalaryRange(form.salary.min, form.salary.max, form.salary.currency, form.salary.period)}
+                  <span className="font-normal text-xs ms-1">{t("perPeriod", { period: periodWord })}</span>
                 </span>
                 {form.salary.isNegotiable && <span className="text-xs text-muted-foreground ms-2">({t("negotiableYes")})</span>}
               </div>
@@ -1156,7 +1214,7 @@ export function SharedJobEditPage({
                   {form.tags.map((tag) => (
                     <Badge key={tag} variant="outline" className="gap-1 text-xs">
                       {tag}
-                      <button type="button" onClick={() => removeTag(tag)} className="hover:text-destructive ml-0.5" aria-label={`Remove ${tag}`}><X className="w-3 h-3" aria-hidden="true" /></button>
+                      <button type="button" onClick={() => removeTag(tag)} className="tap-target-box min-h-0! min-w-0! hover:text-destructive ms-0.5" aria-label={`Remove ${tag}`}><X className="w-3 h-3" aria-hidden="true" /></button>
                     </Badge>
                   ))}
                 </div>
@@ -1165,7 +1223,7 @@ export function SharedJobEditPage({
           </Section>
 
           {/* ⑥b Screening Questions */}
-          <Section icon={ClipboardList} title={t("screeningSection")} subtitle={t("screeningDesc")}>
+          <Section anchor="edit-screening" icon={ClipboardList} title={t("screeningSection")} subtitle={t("screeningDesc")}>
             {form.screeningQuestions.map((q, qIdx) => (
               <div key={q.id} className="rounded-xl border border-border/60 bg-muted/10 space-y-3 card-pad">
                 <div className="flex items-start gap-2">
@@ -1388,9 +1446,10 @@ export function SharedJobEditPage({
             </div>
           )}
 
-          {/* Bottom CTAs. Wraps on phones: Save draft + Publish + Cancel are
-              wider than 343px, and without wrap Publish ran off the edge. */}
-          <div className="flex flex-wrap gap-3 pb-8 max-sm:[&>*]:flex-1">
+          {/* Save and Publish stay in reach in a bottom bar (the page is ~4,300px
+              on a phone and they used to exist only at its two ends). Phones
+              drop Cancel here (the back link does that) so the two fit one row. */}
+          <div className="sticky-action-bar flex flex-wrap gap-3 rounded-xl border border-border/70 bg-background/95 p-3 shadow-sm backdrop-blur max-sm:[&>*]:flex-1">
             <Button type="button" variant="outline" disabled={isSubmitting || submitState === "saved"} onClick={() => submit(false)} className="min-w-[120px] max-sm:min-h-11">
               {submitState === "saving" ? <><Loader2 className="w-3.5 h-3.5 me-1.5 animate-spin" />{t("saving")}</>
                 : submitState === "saved" ? <><CheckCircle2 className="w-3.5 h-3.5 me-1.5 text-emerald-500" />{t("saved")}</>
@@ -1403,7 +1462,7 @@ export function SharedJobEditPage({
                   : <><Rocket className="w-3.5 h-3.5 me-1.5" />{t("publish")}</>}
               </Button>
             )}
-            <Button type="button" variant="ghost" onClick={() => router.push(backHref)} className="max-sm:min-h-11">
+            <Button type="button" variant="ghost" onClick={() => router.push(backHref)} className="max-sm:hidden">
               {t("cancel")}
             </Button>
           </div>
@@ -1437,11 +1496,9 @@ export function SharedJobEditPage({
                   <div className="flex items-center gap-1.5 text-sm">
                     <DollarSign className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
                     <span className="font-semibold text-emerald-700">
-                      {form.salary.min > 0 ? formatSalary(form.salary.min, form.salary.currency, form.salary.period) : "—"}
-                      {" – "}
-                      {form.salary.max > 0 ? formatSalary(form.salary.max, form.salary.currency, form.salary.period) : "—"}
+                      {formatSalaryRange(form.salary.min, form.salary.max, form.salary.currency, form.salary.period)}
                     </span>
-                    <span className="text-xs text-muted-foreground">{t("perPeriod", { period: form.salary.period === "lpa" ? "LPA" : form.salary.period })}</span>
+                    <span className="text-xs text-muted-foreground">{t("perPeriod", { period: periodWord })}</span>
                   </div>
                 )}
                 <div className="flex flex-wrap gap-1.5">

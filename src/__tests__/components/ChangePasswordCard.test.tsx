@@ -15,6 +15,10 @@ jest.mock("@/lib/security/csrf-client", () => ({
 }));
 const toastSuccess = jest.fn();
 jest.mock("sonner", () => ({ toast: { success: (...a: unknown[]) => toastSuccess(...a), error: jest.fn() } }));
+const signOutMock = jest.fn(async (..._a: unknown[]) => undefined);
+jest.mock("next-auth/react", () => ({ signOut: (...a: unknown[]) => signOutMock(...a) }));
+const logoutCleanupMock = jest.fn(async () => undefined);
+jest.mock("@/lib/consent/logoutCleanup", () => ({ logoutCleanup: () => logoutCleanupMock() }));
 
 import { ChangePasswordCard } from "@/components/features/settings/ChangePasswordCard";
 
@@ -40,6 +44,7 @@ describe("ChangePasswordCard", () => {
   beforeEach(() => {
     csrfFetchMock.mockReset();
     toastSuccess.mockReset();
+    signOutMock.mockClear();
   });
 
   // Settings pages wrap each tab in their own <form>; a nested one submits the page.
@@ -83,5 +88,24 @@ describe("ChangePasswordCard", () => {
     fill("Old!Password1", GOOD, GOOD);
     await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("Your password has been changed."));
     expect(screen.queryByLabelText(/^Current password/)).toBeNull();
+  });
+
+  it("signs out when the server ended every session, this one included", async () => {
+    // The route sets the account's session cut-off: the cookie here is dead.
+    // Clearing it sends the owner to the login page, which says why.
+    csrfFetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true, signedOut: true }) });
+    const { fill } = setup();
+    fill("Old!Password1", GOOD, GOOD);
+    await waitFor(() => expect(signOutMock).toHaveBeenCalledWith({ callbackUrl: "/en/login?reason=password-changed" }));
+    // The device is cleared first, as on every sign-out (signout-clears-device).
+    expect(logoutCleanupMock.mock.invocationCallOrder[0]).toBeLessThan(signOutMock.mock.invocationCallOrder[0]);
+  });
+
+  it("stays signed in when the server did not end the session", async () => {
+    csrfFetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true }) });
+    const { fill } = setup();
+    fill("Old!Password1", GOOD, GOOD);
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalled());
+    expect(signOutMock).not.toHaveBeenCalled();
   });
 });

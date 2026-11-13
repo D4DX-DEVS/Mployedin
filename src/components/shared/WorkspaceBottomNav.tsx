@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { Menu, type LucideProps } from "lucide-react";
 import type { FC } from "react";
 import { cn } from "@/lib/utils";
-import { BottomNavItem, BOTTOM_BAR_CLASS } from "@/components/shared/BottomNavItem";
+import { BottomNavItem, BOTTOM_BAR_CLASS, BOTTOM_BAR_STYLE } from "@/components/shared/BottomNavItem";
 
 export interface BottomNavTab {
   key: string;
@@ -81,7 +81,7 @@ export function WorkspaceBottomNav({ locale, tabs, onOpenMenu, menuLabel, ariaLa
       // CookieConsent measures this bar and sits on top of it.
       data-bottom-nav=""
       className={cn(BOTTOM_BAR_CLASS, "z-40")}
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      style={BOTTOM_BAR_STYLE}
       aria-label={ariaLabel}
     >
       <div className="relative flex items-stretch justify-around px-1">

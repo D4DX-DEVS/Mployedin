@@ -207,7 +207,7 @@ export function TargetReportList({ people, year, locale }: { people: TargetPerso
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPdf}
           >
-            <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPeople")} className="max-sm:basis-0" />
+            <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPeople")} />
             <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
             <div className="contents max-sm:hidden">
               <Select value={role} onValueChange={(value) => setRole(value as RoleFilter)}>

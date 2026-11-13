@@ -631,7 +631,7 @@ export default function AgentExhibitionsPage() {
 
   const requestActions = (item: ExhibitionRequest): { quick: RowAction[]; menu: RowAction[] } => {
   const quick: RowAction[] = [
-    { key: "view", label: t("viewDetails"), icon: Eye, iconOnly: true, onSelect: () => setDetailItem(item) },
+    { key: "view", label: t("viewDetails"), icon: Eye, onSelect: () => setDetailItem(item) },
   ];
   const menu: RowAction[] = [
     { key: "copy", label: t("duplicateRequest"), icon: Copy, onSelect: () => handleDuplicate(item) },
@@ -678,7 +678,7 @@ export default function AgentExhibitionsPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); resetPage(); }} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); resetPage(); }} placeholder={t("searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect
@@ -729,53 +729,30 @@ export default function AgentExhibitionsPage() {
       </PhoneFilterSheet>
 
       <PhoneRecordList
-        className="sm:hidden"
+        className="p-3 sm:hidden"
         label={t("title")}
         loading={loading}
         empty={<EmptyState title={t("noRequests")} icon={Inbox} />}
         items={items.map((item) => {
           const { quick, menu } = requestActions(item);
+          const dateStr = item.eventStartDate
+            ? `${formatListDate(item.eventStartDate, locale)}${item.eventEndDate ? ` – ${formatListDate(item.eventEndDate, locale)}` : ""}`
+            : undefined;
           return {
             key: item._id,
-            title: (
-              <button type="button" onClick={() => setDetailItem(item)} className="!min-h-0 text-start hover:text-primary hover:underline">
-                {item.eventName}
-              </button>
-            ),
-            subtitle: item.description || undefined,
+            href: undefined,
+            title: item.eventName,
+            subtitle: placeText(item) || undefined,
             trailing: (
               <Badge className={`${STATUS_COLORS[item.status] ?? STATUS_COLORS.draft} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>
                 {statusLabel(item.status)}
               </Badge>
             ),
+            facts: [
+              dateStr,
+              formatCurrency(item.estimatedBudget, item.budgetCurrency),
+            ],
             actions: <RowActions name={item.eventName} quick={quick} menu={menu} />,
-            meta: (
-              <>
-                {/* No dates yet: skip the line rather than an icon beside a dash. */}
-                {item.eventStartDate ? (
-                  <p className="flex min-w-0 items-center gap-1">
-                    <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="truncate">
-                      {formatListDate(item.eventStartDate, locale)}{item.eventEndDate ? ` – ${formatListDate(item.eventEndDate, locale)}` : ""}
-                      {item.eventEndDate ? ` · ${t("dayCount", { count: dayCount(item.eventStartDate, item.eventEndDate) })}` : ""}
-                    </span>
-                  </p>
-                ) : null}
-                <p className="flex min-w-0 items-center gap-1">
-                  <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{placeText(item) || t("notSpecified")}</span>
-                </p>
-                <p className="font-medium text-foreground">{t("tableHeaderBudget")}: {formatCurrency(item.estimatedBudget, item.budgetCurrency)}</p>
-              </>
-            ),
-            badges: (
-              <>
-                <Badge variant="outline" className="rounded-md border-primary/20 bg-primary/5 px-2 py-0.5 text-[11px] font-medium">
-                  {labelFor(eventCategories, item.eventCategory)}
-                </Badge>
-                <Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold`}>{priorityLabel(item.priority)}</Badge>
-              </>
-            ),
           };
         })}
       />
@@ -786,12 +763,12 @@ export default function AgentExhibitionsPage() {
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeaderEvent")}</TableHead>
-                <TableHead className="hidden md:table-cell">{t("tableHeaderCategory")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("tableHeaderCategory")}</TableHead>
                 <TableHead className="hidden lg:table-cell">{t("tableHeaderLocation")}</TableHead>
                 <TableHead>{t("tableHeaderDates")}</TableHead>
-                <TableHead className="hidden sm:table-cell">{t("tableHeaderBudget")}</TableHead>
+                <TableHead>{t("tableHeaderBudget")}</TableHead>
                 <TableHead>{t("tableHeaderStatus")}</TableHead>
-                <TableHead className="hidden md:table-cell">{t("tableHeaderPriority")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("tableHeaderPriority")}</TableHead>
                 <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -804,12 +781,12 @@ export default function AgentExhibitionsPage() {
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>{t("tableHeaderEvent")}</TableHead>
-                <TableHead className="hidden md:table-cell">{t("tableHeaderCategory")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("tableHeaderCategory")}</TableHead>
                 <TableHead className="hidden lg:table-cell">{t("tableHeaderLocation")}</TableHead>
                 <TableHead>{t("tableHeaderDates")}</TableHead>
-                <TableHead className="hidden sm:table-cell">{t("tableHeaderBudget")}</TableHead>
+                <TableHead>{t("tableHeaderBudget")}</TableHead>
                 <TableHead>{t("tableHeaderStatus")}</TableHead>
-                <TableHead className="hidden md:table-cell">{t("tableHeaderPriority")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("tableHeaderPriority")}</TableHead>
                 <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -827,12 +804,12 @@ export default function AgentExhibitionsPage() {
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{t("tableHeaderEvent")}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t("tableHeaderCategory")}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t("tableHeaderCategory")}</TableHead>
                   <TableHead className="hidden lg:table-cell">{t("tableHeaderLocation")}</TableHead>
                   <TableHead>{t("tableHeaderDates")}</TableHead>
-                  <TableHead className="hidden sm:table-cell">{t("tableHeaderBudget")}</TableHead>
+                  <TableHead>{t("tableHeaderBudget")}</TableHead>
                   <TableHead>{t("tableHeaderStatus")}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t("tableHeaderPriority")}</TableHead>
+                  <TableHead className="hidden lg:table-cell">{t("tableHeaderPriority")}</TableHead>
                   <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -847,7 +824,7 @@ export default function AgentExhibitionsPage() {
                         </button>
                         {item.description && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.description}</p>}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
+                      <TableCell className="hidden lg:table-cell">
                         <Badge variant="outline" className="rounded-md border-primary/20 bg-primary/5 text-xs font-medium">
                           {labelFor(eventCategories, item.eventCategory)}
                         </Badge>
@@ -861,13 +838,13 @@ export default function AgentExhibitionsPage() {
                         <p className="text-xs font-medium">{formatListDate(item.eventStartDate, locale)}{item.eventEndDate ? ` – ${formatListDate(item.eventEndDate, locale)}` : ""}</p>
                         {item.eventEndDate && <p className="mt-0.5 text-[11px] text-muted-foreground">{t("dayCount", { count: dayCount(item.eventStartDate, item.eventEndDate) })}</p>}
                       </TableCell>
-                      <TableCell className="hidden whitespace-nowrap font-medium sm:table-cell">{formatCurrency(item.estimatedBudget, item.budgetCurrency)}</TableCell>
+                      <TableCell className="whitespace-nowrap font-medium">{formatCurrency(item.estimatedBudget, item.budgetCurrency)}</TableCell>
                       <TableCell>
                         <Badge className={`${STATUS_COLORS[item.status] ?? STATUS_COLORS.draft} rounded-md px-2.5 py-0.5 text-[11px] font-semibold`}>
                           {statusLabel(item.status)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
+                      <TableCell className="hidden lg:table-cell">
                         <Badge className={`${PRIORITY_COLORS[item.priority] ?? PRIORITY_COLORS.medium} rounded-md px-2 py-0.5 text-[11px] font-semibold`}>{priorityLabel(item.priority)}</Badge>
                       </TableCell>
                       <TableCell className="text-right">

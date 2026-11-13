@@ -1,4 +1,40 @@
 {
+  "linkPassword": {
+    "verifyHelpCode": "Job seekers can also log in with a code we email them.",
+    "codeLoginLink": "Log in with a code",
+    "stillStuck": "Still stuck?",
+    "contactSupport": "Contact support",
+    "passwordLabel": "Password",
+    "emptyError": "Enter your password.",
+    "wrongPassword": "That password isn't right.",
+    "tooManyAttempts": "Too many tries. Wait a few minutes and try again.",
+    "checking": "Checking…",
+    "verifyTitle": "Enter your password to confirm",
+    "verifyBody": "You're not signed in to this account on this device. Enter its password to finish confirming your email.",
+    "verifySubmit": "Confirm email",
+    "helpTitle": "Don't know this password?",
+    "verifyHelpIgnore": "If you didn't create an account on MPLOYEDIN, ignore the email. Nothing changes.",
+    "verifyHelpReset": "If the account is yours, reset the password instead. That confirms your email too.",
+    "resetLink": "Reset password",
+    "changeTitle": "Enter your password to confirm the change",
+    "changeBody": "You're not signed in to this account on this device. Enter the password of the account that asked for this change.",
+    "changeSubmit": "Confirm change",
+    "changeHelpIgnore": "If you didn't ask to change an email address, ignore the email. Nothing changes.",
+    "codePasswordLabel": "Your password",
+    "codePasswordHint": "Needed because you're not signed in on this device."
+  },
+  "setPassword": {
+    "reauth": "For your security, a password can only be set within 15 minutes of logging in. Log out, log in again, then set it.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "save": "Save password",
+    "cancel": "Not now",
+    "saved": "Password saved. You can now log in with your email and password.",
+    "mismatch": "The passwords don't match.",
+    "alreadySet": "This account already has a password. To change it, use Change password in Settings.",
+    "tooMany": "Too many attempts. Try again in an hour.",
+    "failed": "We couldn't save your password. Try again."
+  },
   "savedJobs": {
     "title": "Saved jobs",
     "description": "Jobs you bookmarked to come back to.",
@@ -30,9 +66,11 @@
     "common": "This password is too common. Choose another one."
   },
   "changePasswordCard": {
+    "setDescription": "This account has no password yet: you log in with an email code, or with Google, Apple or LinkedIn. Set one to also log in with your email and password. We email you when it is set.",
+    "setOpen": "Set a password",
     "eyebrow": "Security",
     "title": "Password",
-    "description": "Change the password you sign in with. We email you whenever it changes.",
+    "description": "Change the password you sign in with. We email you whenever it changes, and sign you out on every device, this one too.",
     "open": "Change password",
     "currentPassword": "Current password",
     "newPassword": "New password",
@@ -107,6 +145,26 @@
     "candidates": "Candidates"
   },
   "auth": {
+    "passwordChangedSignIn": "Your password was changed, so you were signed out on every device. Sign in with your new password.",
+    "codeLoginLink": "Log in with an email code instead",
+    "codeLoginTitle": "Log in with an email code",
+    "codeLoginHint": "For job seekers. We email you a 6-digit code, so you need no password.",
+    "codeLoginSend": "Email me a code",
+    "codeLoginSent": "If a job seeker account uses {email}, we've sent it a 6-digit code. The code works for 10 minutes.",
+    "codeLoginCodeLabel": "6-digit code",
+    "codeLoginCodeRequired": "Enter the 6-digit code from the email.",
+    "codeLoginVerify": "Log in",
+    "codeLoginResend": "Send a new code",
+    "codeLoginResendIn": "Send a new code in {seconds}s",
+    "codeLoginChangeEmail": "Use a different email",
+    "codeLoginBack": "Back to password login",
+    "codeLoginInvalid": "That code isn't right or has expired. Check it, or ask for a new one.",
+    "codeLoginNoAccount": "There is no account for this email yet.",
+    "codeLoginRegister": "Create an account",
+    "codeLoginRateLimited": "Too many attempts. Please try again later.",
+    "codeLoginEmailFailed": "We couldn't send the email. Please try again.",
+    "codeLoginCaptchaFailed": "We couldn't confirm you're not a bot. Please try again.",
+    "codeLoginFailed": "We couldn't log you in. Please try again.",
     "signupConsentNeeded": "Your account wasn't created. Accept the Terms of Service and Privacy Policy to sign up.",
     "signupConsentCancel": "Cancel",
     "signupConsentContinue": "Create account",
@@ -549,6 +607,7 @@
     "superAgentWorkspace": "Super agent workspace",
     "currency": "Currency",
     "a11yFormProgress": "Form progress",
+    "stepNextUp": "Next: {label}",
     "youreOffline": "You're Offline",
     "offlineDescription": "It looks like you've lost your internet connection. Please check your network settings and try again.",
     "unknownCandidate": "Unknown candidate",
@@ -592,8 +651,8 @@
       "cityTypeToSearch": "Type at least 2 letters",
       "cityNoMatch": "No city matches. Try another spelling.",
       "citySearching": "Searching…",
-      "hint": "Agents who cover your area can see your profile and help you find work. A hidden profile stays hidden.",
-      "notSet": "Add your area so agents near you can help you find work.",
+      "hint": "We use this to show you jobs and support near you.",
+      "notSet": "Add where you live so we can show you jobs and support near you.",
       "add": "Add area",
       "change": "Change",
       "dialogDescription": "Pick the city you live in. If it isn't listed, pick your region.",
@@ -606,9 +665,18 @@
       "regionNoMatch": "No region matches",
       "cityNotListed": "My city isn't listed",
       "pickCityInstead": "Pick a city instead",
-      "regionHint": "Agents who cover your whole region can see your profile and help you find work. A hidden profile stays hidden.",
+      "regionHint": "We use this to show you jobs and support in your region.",
       "required": "Pick your city, or your region if your city isn't listed.",
-      "prefilled": "We filled this in from your details. Change it if it isn't right."
+      "prefilled": "We filled this in from your details. Change it if it isn't right.",
+      "promptTitle": "Where are you based?",
+      "promptDescription": "Pick your city, or your region if your city isn't listed.",
+      "notNow": "Not now",
+      "prefilledFromProfile": "Filled in from your profile. Check it and save."
+    },
+    "industryChips": {
+      "label": "Industries",
+      "showAll": "Show all ({count} more)",
+      "showFewer": "Show fewer"
     }
   },
   "table": {
@@ -821,6 +889,8 @@
       "applied": "Applied",
       "easyApply": "Easy Apply",
       "applyWithCv": "Apply with CV",
+      "activelyHiring": "Actively hiring",
+      "open": "Open",
       "time": {
         "justNow": "Just now",
         "hoursAgo": "{value}h ago",
@@ -849,7 +919,7 @@
       "title": "Confirm your application",
       "matchSummary": "You're a {score}% match for this role.",
       "skillsNeeded": "Skills needed",
-      "missingHint": "{count} skill(s) you haven't listed yet — you can still apply.",
+      "missingHint": "{count, plural, one {# skill} other {# skills}} you haven't listed yet — you can still apply.",
       "noSkills": "This role lists no specific skills. You can apply directly.",
       "profileNote": "Your profile and saved CV will be sent to the employer.",
       "cancel": "Cancel",
@@ -865,15 +935,28 @@
       "next": "Next",
       "submit": "Submit application",
       "submitting": "Submitting…",
+      "education": {
+        "title": "Your education",
+        "asks": "This job asks for: {asked}. Your profile doesn't show a qualification yet, so the employer would see it as \"needs checking\".",
+        "levelLabel": "Your highest qualification",
+        "levelPlaceholder": "Choose your highest qualification",
+        "fieldLabel": "Field of study",
+        "fieldPlaceholder": "e.g. Computer Science, Nursing, Commerce",
+        "optional": "optional",
+        "skipHint": "We add this to your profile. You can skip it and apply anyway.",
+        "skip": "Skip",
+        "saveFailed": "We couldn't save your education. Try again, or skip this step."
+      },
       "cv": {
         "heading": "Resume",
         "subtitle": "Choose the CV to send with this application.",
         "builtCvHint": "Made from your profile, in the design you saved in the CV builder.",
         "uploadCv": "Upload a different CV",
         "uploading": "Uploading…",
-        "noCv": "No CV on file yet — upload one to continue.",
-        "buildCV": "Build your CV",
-        "uploadDocuments": "Upload documents"
+        "autoCv": "Your Mployedin CV",
+        "autoCvHint": "Made from your profile details when you apply.",
+        "previewCv": "Preview or edit it",
+        "uploadOwnCv": "Upload your own CV instead"
       },
       "skills": {
         "heading": "Confirm your skills",
@@ -913,7 +996,7 @@
         "applyFailed": "We couldn't apply. Please try again.",
         "planLimitReached": "You've reached your plan's application limit. Upgrade your plan to continue applying.",
         "jobClosed": "This job is no longer taking applications.",
-        "selectCv": "Please select or upload a CV first.",
+        "selectCv": "Add your CV to apply. Upload one, or choose a saved CV.",
         "builtCvFailed": "We couldn't prepare your Mployedin CV. Choose another CV or try again.",
         "documentNotFound": "That CV is no longer in your documents. Choose your CV again, then submit.",
         "unsupportedFile": "That file type isn't supported. Upload a PDF, a Word .docx file or an image (JPG, PNG, WebP). Older .doc files need to be saved as .docx or PDF first.",
@@ -1118,14 +1201,9 @@
     "title": "My Applications",
     "status": {
       "all": "All",
-      "applied": "Applied",
-      "shortlisted": "Shortlisted",
-      "interview_scheduled": "Interview",
-      "selected": "Selected",
+      "interview": "Interview",
       "offer": "Offer",
-      "hired": "Hired",
-      "rejected": "Rejected",
-      "withdrawn": "Withdrawn"
+      "closed": "Closed"
     },
     "searchLabel": "Search applications",
     "searchPlaceholder": "Search by job title or company...",
@@ -1200,7 +1278,10 @@
     },
     "withdraw": "Withdraw",
     "showSummary": "Show summary for {job}",
-    "hideSummary": "Hide summary for {job}"
+    "hideSummary": "Hide summary for {job}",
+    "answerScreening": "Answer Screening Questions",
+    "answerScreeningDesc": "The employer has sent you screening questions to help them get to know you better. Please answer them at your earliest convenience.",
+    "answerNow": "Answer Now"
   },
   "jobSeekerCalendar": {
     "title": "My Calendar",
@@ -1548,8 +1629,8 @@
       "saving": "Saving…",
       "present": "Present",
       "myDocuments": "My Documents",
-      "empty": "No documents uploaded yet",
-      "emptyDescription": "Upload your CV, certificates, and other documents above",
+      "empty": "No certificates or other documents yet",
+      "emptyDescription": "Add degree, course or professional certificates above. Your CVs are listed under My CVs.",
       "view": "View document",
       "remove": "Remove document",
       "documentFallback": "Document",
@@ -1584,7 +1665,36 @@
       "cvRead": "Read — employers' match scores use this CV",
       "cvReading": "We're reading this CV. This usually takes a minute.",
       "cvUnreadable": "We couldn't read this file. Upload a PDF or Word file with selectable text.",
-      "profileCvUnreadable": "We couldn't read the CV on your profile, so employers are matching you on your profile details only. Upload a PDF or Word file with selectable text."
+      "profileCvUnreadable": "We couldn't read the CV on your profile, so employers are matching you on your profile details only. Upload a PDF or Word file with selectable text.",
+      "myCvs": {
+        "title": "My CVs",
+        "description": "The one marked \"Sent when you apply\" goes with every application, unless you pick another while applying.",
+        "sentBadge": "Sent when you apply",
+        "sendThis": "Send this one",
+        "chosen": "This CV now goes with your applications.",
+        "chooseFailed": "We couldn't change the CV sent. Try again.",
+        "rename": "Rename",
+        "renameLabel": "CV name",
+        "renameNamed": "Rename {name}",
+        "viewNamed": "View {name}",
+        "removeNamed": "Remove {name}",
+        "save": "Save",
+        "cancel": "Cancel",
+        "renamed": "CV renamed.",
+        "renameFailed": "We couldn't rename this CV. Try again.",
+        "copyOf": "Same file as {name}, uploaded twice",
+        "removeCopy": "Remove the copy",
+        "uploadedDetail": "Uploaded {date} · {size} KB",
+        "builtDetail": "Made with the CV builder, from your profile",
+        "profileDetail": "Your main CV, read into your profile",
+        "build": "Build a CV",
+        "editBuilt": "Edit built CV",
+        "empty": "No CVs yet. Upload one below, or build one from your profile.",
+        "uploadCv": "Upload a CV"
+      },
+      "certificatesTitle": "Certificates & other documents",
+      "certificatesDescription": "Degree, course and professional certificates employers may ask for",
+      "addDocument": "Add a document"
     },
     "experience": {
       "title": "Work Experience",
@@ -1677,7 +1787,7 @@
       "jobsDescription": "Based on your current setup",
       "noMatches": "No matches yet — complete your preferences to unlock recommendations.",
       "tips": {
-        "addMoreRoles": "Add {count} more role(s)",
+        "addMoreRoles": "Add {count, plural, one {# more role} other {# more roles}}",
         "addPreferredRole": "Add at least one preferred role",
         "addLocations": "Add preferred locations",
         "setBothSalary": "Set both min & max salary",
@@ -1697,7 +1807,9 @@
         "salaryOrder": "The minimum can't be higher than the maximum.",
         "noticeRange": "Enter a whole number of days from 0 to {max}.",
         "invalid": "Check this field and try again."
-      }
+      },
+      "openToRelocation": "Open to relocating",
+      "openToRelocationDescription": "Willing to move to another city or country for the right job. Employers see this on your profile."
     },
     "personalDetails": {
       "documentTitle": "Personal Details · MPLOYEDIN",
@@ -1805,7 +1917,10 @@
         "uploadToAutofill": "Upload CV to auto-fill",
         "showAll": "Show all ({count})",
         "showLess": "Show less",
-        "readMore": "Read more"
+        "readMore": "Read more",
+        "editInCvBuilder": "Add or edit in CV builder",
+        "editSkills": "Edit skills",
+        "editInPersonalDetails": "Edit in Personal details"
       },
       "languagesSection": {
         "title": "Languages & Links",
@@ -1934,7 +2049,12 @@
         "removePhoto": "We couldn't remove your photo. Please try again.",
         "saveFailed": "We couldn't save your changes. Please try again.",
         "summaryFailed": "We couldn't generate a summary. Please try again."
-      }
+      },
+      "navLabel": "Profile sections",
+      "visibilityChangeLink": "Change in Privacy settings",
+      "analyseSkillGap": "Analyse skill gap",
+      "thingsLeft": "{count, plural, one {# thing left to reach 100%} other {# things left to reach 100%}}",
+      "degreeInField": "{degree} in {field}"
     },
     "settings": {
       "back": "Back",
@@ -2026,7 +2146,11 @@
         "interviewNotificationsDescription": "Reminders and updates about scheduled interviews.",
         "advancedTitle": "Notification delivery",
         "advancedDescription": "Choose email, in-app or WhatsApp per alert, set your daily digest time, or unsubscribe."
-      }
+      },
+      "pageTitle": "Settings",
+      "pageDescription": "Notifications, privacy, interviews and your account",
+      "navLabel": "Settings sections",
+      "loadFailed": "We couldn't load your interview hours. Refresh to try again."
     },
     "smartWelcome": {
       "resumeUploadedSuccessfully": "Resume uploaded successfully",
@@ -2163,6 +2287,7 @@
       "download": "Download",
       "saving": "Saving...",
       "addToProfile": "Add to Profile",
+      "savedToProfile": "Saved to Profile",
       "tips": "Tips",
       "reorder": "Drag to reorder",
       "removeExperience": "Remove experience",
@@ -2204,7 +2329,9 @@
       "minimize": "Minimize",
       "expand": "Expand",
       "hide": "Hide preview",
-      "show": "Show preview"
+      "show": "Show preview",
+      "pageBreak": "Page {n}",
+      "updating": "Updating…"
     },
     "messages": {
       "importSuccess": "CV imported successfully! Review and edit the fields below.",
@@ -2378,6 +2505,59 @@
       },
       "badges": {
         "photo": "Photo"
+      },
+      "layout": {
+        "title": "Layout",
+        "hint": "Shown the same way in the preview and the downloaded PDF.",
+        "headerAlign": "Header alignment",
+        "headerAligns": {
+          "auto": "Template default",
+          "left": "Left",
+          "center": "Centred"
+        },
+        "textAlign": "Text alignment",
+        "textAligns": {
+          "left": "Left",
+          "justify": "Justified"
+        },
+        "headingStyle": "Section headings",
+        "headingStyles": {
+          "auto": "Template default",
+          "underline": "Underlined",
+          "plain": "Plain",
+          "band": "Colour band"
+        },
+        "skillsStyle": "Skills",
+        "skillsStyles": {
+          "auto": "Template default",
+          "chips": "Chips",
+          "comma": "Comma list",
+          "columns": "Bullet columns"
+        },
+        "nameSize": "Name size",
+        "nameSizes": {
+          "small": "Small",
+          "medium": "Medium",
+          "large": "Large"
+        },
+        "bulletStyle": "Bullets",
+        "bulletStyles": {
+          "dot": "• Dot",
+          "dash": "– Dash",
+          "arrow": "› Arrow"
+        },
+        "datePosition": "Dates",
+        "datePositions": {
+          "auto": "Template default",
+          "right": "On the right",
+          "below": "Under the title"
+        },
+        "photoShape": "Photo shape",
+        "photoShapes": {
+          "circle": "Circle",
+          "rounded": "Rounded",
+          "square": "Square"
+        }
       }
     },
     "richText": {
@@ -2504,11 +2684,11 @@
       "urgent": "Urgent",
       "medium": "Medium",
       "suggestion": "Suggestion",
-      "respondToOfferTitle": "Respond to {count} pending offer(s)",
+      "respondToOfferTitle": "Respond to {count, plural, one {# pending offer} other {# pending offers}}",
       "respondToOfferDescription": "Review and respond to job offers awaiting your decision.",
-      "interviewTitle": "Prepare for {count} upcoming interview(s)",
+      "interviewTitle": "Prepare for {count, plural, one {# upcoming interview} other {# upcoming interviews}}",
       "interviewDescription": "Review the schedule and prepare focused questions before the conversation.",
-      "checkMessagesTitle": "Check {count} unread message(s)",
+      "checkMessagesTitle": "Check {count, plural, one {# unread message} other {# unread messages}}",
       "checkMessagesDescription": "Review new messages from employers and recruiters.",
       "trackApplicationsTitle": "Check your application progress",
       "trackApplicationsDescription": "Review status changes and follow up on applications that need your attention.",
@@ -2569,6 +2749,9 @@
       "emptyTitle": "No recommendations yet",
       "emptyBody": "Finish your profile and preferences to unlock stronger job suggestions.",
       "emptyCta": "Set preferences",
+      "setupTitle": "Tell us what job you want",
+      "setupBody": "Add the roles you're looking for and where you want to work. We'll then show the jobs that match you here.",
+      "setupCta": "Set my preferences",
       "browseJobsCta": "Browse all jobs",
       "strongOnlyTitle": "No strong matches right now",
       "strongOnlyBody": "We only recommend jobs that are a {threshold}% match or better. Your closest match right now is {best}%.",
@@ -2740,6 +2923,39 @@
     },
     "encouragement": {
       "cta": "Explore jobs"
+    },
+    "header": {
+      "addDetails": "{count, plural, one {Add # detail for better matches} other {Add # details for better matches}}"
+    },
+    "tiles": {
+      "active": "Active applications",
+      "interviewing": "In interviews",
+      "offers": "Offers",
+      "of": "of {total}"
+    },
+    "updates": {
+      "title": "Application updates",
+      "description": "What changed on your applications, newest first.",
+      "viewAllCount": "All {count}",
+      "status": {
+        "applied": "Applied: {title}",
+        "in_review": "In review: {title}",
+        "interview": "Interview: {title}",
+        "offer": "Offer: {title}",
+        "hired": "You're hired: {title}",
+        "not_selected": "Not selected: {title}",
+        "withdrawn": "Withdrawn: {title}"
+      }
+    },
+    "cvCard": {
+      "title": "CV sent when you apply",
+      "myCvs": "My CVs",
+      "profileDetail": "Your main CV, read into your profile",
+      "builtDetail": "Made with the CV builder",
+      "uploadedDetail": "Uploaded {date}",
+      "change": "Change",
+      "none": "You have no CV yet. Add one so employers can see it.",
+      "add": "Add a CV"
     }
   },
   "ai": {
@@ -2791,7 +3007,11 @@
       "inputPlaceholder": "Describe the role, location, skills, and optional salary or openings...",
       "draftReady": "Draft details are ready to review in the form.",
       "examplesTitle": "Or start from an example:",
-      "examples": { "teacher": "Science teacher in Kuwait City, 5+ years, onsite, KWD 800 a month", "sales": "Sales executive in Dubai, 2 years experience, 3 openings", "developer": "Senior React developer, remote, Node and React" },
+      "examples": {
+        "teacher": "Science teacher in Kuwait City, 5+ years, onsite, KWD 800 a month",
+        "sales": "Sales executive in Dubai, 2 years experience, 3 openings",
+        "developer": "Senior React developer, remote, Node and React"
+      },
       "voiceLanguageShort": "Voice:",
       "writingDraft": "Filling in the job details…",
       "draftReadyPanel": "Draft ready. Review it in Job Preview",
@@ -2806,7 +3026,7 @@
       "toastExtractFailed": "Could not extract job details from the file. Please try again.",
       "toastNoJobs": "No jobs could be detected in the uploaded file.",
       "toastProcessFailed": "We couldn't complete this action while processing the upload.",
-      "toastExtracted": "Extracted {count} job(s) from the file.",
+      "toastExtracted": "Extracted {count, plural, one {# job} other {# jobs}} from the file.",
       "untitledJob": "Untitled job",
       "uploadExtractedOne": "Uploaded poster detected as: {title}. Review the draft in the panel on the right →",
       "uploadExtractedMany": "Uploaded file contains {count} jobs. Pick which ones to keep below.",
@@ -4126,20 +4346,20 @@
       "notifying": "Notifying…",
       "notified": "Notified",
       "notifyHint": "Let these candidates know you're reviewing their application",
-      "notifySuccess": "Notified {count} candidate(s)",
+      "notifySuccess": "Notified {count, plural, one {# candidate} other {# candidates}}",
       "notifyNone": "No new candidates to notify in this band",
       "notifyError": "Couldn't send notifications. Please try again."
     },
     "draftExtractions": {
       "cardTitle": "Resume AI extraction",
       "cardSubtitle": "Pick up where you left off — your extracted jobs are saved.",
-      "bannerTitle": "You have {count} unfinished AI extraction draft(s)",
+      "bannerTitle": "You have {count, plural, one {# unfinished AI extraction draft} other {# unfinished AI extraction drafts}}",
       "continue": "Continue",
       "jobsRemaining": "{remaining} of {total} jobs left to post",
       "remaining": "{count} remaining",
       "discardAriaLabel": "Discard this extraction draft",
       "discardConfirmTitle": "Discard extraction draft?",
-      "discardConfirmMessage": "You'll permanently lose {fileName} with {remaining} job(s) still to post. This can't be undone.",
+      "discardConfirmMessage": "You'll permanently lose {fileName} with {remaining, plural, one {# job} other {# jobs}} still to post. This can't be undone.",
       "discardConfirmAction": "Discard",
       "discardSuccess": "Extraction draft discarded.",
       "discardFailed": "Couldn't discard the draft. Please try again."
@@ -4155,7 +4375,7 @@
     "draftJobs": {
       "cardTitle": "Continue editing",
       "cardSubtitle": "Pick up the job you were working on.",
-      "bannerTitle": "You have {count} job draft(s) in progress",
+      "bannerTitle": "You have {count, plural, one {# job draft} other {# job drafts}} in progress",
       "continue": "Continue",
       "continueEditing": "Continue editing",
       "lastEdited": "last edited",
@@ -4169,7 +4389,7 @@
     "aiChatDrafts": {
       "cardTitle": "Resume AI chat",
       "cardSubtitle": "Continue the conversation that was drafting your job.",
-      "bannerTitle": "You have {count} AI chat draft(s) to resume",
+      "bannerTitle": "You have {count, plural, one {# AI chat draft} other {# AI chat drafts}} to resume",
       "continue": "Resume",
       "continueChat": "Continue chat",
       "messageCount": "{count, plural, one {# message} other {# messages}}",
@@ -4702,8 +4922,8 @@
     "jobNoLongerAvailable": "The previously selected job is no longer available. Choose another published role to continue.",
     "noCandidatesToScore": "There are no candidates on this page to score yet.",
     "aiMatchError": "AI matching could not score candidates right now. Try again in a moment.",
-    "scoredWithFails": "Scored {success} candidate(s). {failed} candidate(s) could not be scored.",
-    "scoredSuccess": "Scored {success} candidate(s) and ranked the page by AI match.",
+    "scoredWithFails": "Scored {success, plural, one {# candidate} other {# candidates}}. {failed, plural, one {# candidate} other {# candidates}} could not be scored.",
+    "scoredSuccess": "Scored {success, plural, one {# candidate} other {# candidates}} and ranked the page by AI match.",
     "chooseJobBeforeScreening": "Choose a published job before running AI screening.",
     "screeningFailed": "AI screening failed. Try again later.",
     "aiScreenedToast": "AI screened {total} candidates for {jobTitle}",
@@ -4725,7 +4945,7 @@
     "workflowStep3Title": "Save strong profiles to the review list",
     "workflowStep3Desc": "Keep the best matches together so you can open profiles, CVs, or message candidates.",
     "workflowDoneLabel": "Next step",
-    "workflowDoneTitle": "{count} candidate(s) saved for review",
+    "workflowDoneTitle": "{count, plural, one {# candidate} other {# candidates}} saved for review",
     "workflowDoneDesc": "Use the saved list to review CVs and profiles, or message candidates directly from this page.",
     "detailEmptyTitle": "Select a candidate",
     "detailEmptyHint": "Pick someone from the list to preview their full profile here.",
@@ -4749,6 +4969,9 @@
     "languageAxis": "Language",
     "notProvided": "Not provided",
     "immediateStart": "Immediate",
+    "relocationLabel": "Relocation",
+    "relocationOpen": "Open to relocating",
+    "relocationNo": "Not open to relocating",
     "noticeDaysValue": "{days} days",
     "close": "Close",
     "matchLabel": "Match",
@@ -5137,6 +5360,8 @@
     "sortNewest": "Newest first",
     "sortOldest": "Oldest first",
     "sortScore": "Highest match",
+    "requirementReportTitle": "Against this job's requirements",
+    "sortBestFit": "Best fit (must-haves first)",
     "sortScoreLow": "Lowest match",
     "latestPosting": "Latest",
     "filters": "Filters",
@@ -5147,6 +5372,8 @@
     "roleMatchSkills": "Role, Match, Skills",
     "actions": "Actions",
     "detailedView": "Detailed View",
+    "reviewShort": "Review",
+    "cvShort": "CV",
     "applied": "Applied",
     "shortlisted": "Shortlisted",
     "shortlistedOnwards": "Shortlisted or later",
@@ -5155,6 +5382,7 @@
     "hired": "Hired",
     "rejected": "Rejected",
     "withdrawn": "Withdrawn",
+    "withdrawnByCandidate": "Withdrawn by candidate",
     "otherRole": "other role",
     "match": "match",
     "matchExcellent": "Excellent",
@@ -5189,6 +5417,13 @@
     "interviewScheduledToast": "Interview scheduled",
     "interviewScheduleFailed": "Couldn't schedule interview",
     "interviewAlreadyScheduled": "This candidate already has an interview scheduled for this job. Reschedule it or add a next round from the Interviews tab.",
+    "sendScreening": "Send screening questions",
+    "screeningConfirm": "Send this job's screening questions to {count, plural, one {# candidate} other {# candidates}}? Anyone who already answered them is skipped.",
+    "screeningSent": "Screening questions sent to {count, plural, one {# candidate} other {# candidates}}",
+    "screeningSentWithSkipped": "Sent to {sent} · {skipped} skipped (already answered)",
+    "screeningAllSkipped": "All candidates have already answered the screening questions.",
+    "screeningError": "Couldn't send screening questions. Try again.",
+    "screeningNoQuestions": "This job has no screening questions.",
     "noResumeUploaded": "No resume uploaded yet.",
     "openFullTimeline": "Open full timeline",
     "timelineHint": "Review the full activity history and stage changes for this candidate.",
@@ -5437,6 +5672,7 @@
     "scoresRefreshed": "{count, plural, =0 {Scores are up to date} one {# score updated} other {# scores updated}}",
     "scoresRefreshFailed": "We couldn't update the scores. Try again.",
     "rescoringScores": "Updating scores…",
+    "breakdownQualifications": "Qualifications",
     "breakdownCv": "CV",
     "breakdownNotProvided": "Not provided",
     "breakdownCvRead": "Read",
@@ -5467,7 +5703,10 @@
     "scoreMaxLabel": "Maximum AI score",
     "experienceMinLabel": "Minimum years of experience",
     "experienceMaxLabel": "Maximum years of experience",
-    "offerPeriodLabel": "Pay period"
+    "offerPeriodLabel": "Pay period",
+    "screeningSend": "Send",
+    "screeningSending": "Sending…",
+    "sendScreeningShort": "Questions"
   },
   "employerAnalytics": {
     "title": "Analytics Command Center",
@@ -6848,7 +7087,7 @@
   "agentSettings": {
     "hero": {
       "title": "Settings",
-      "description": "Manage your agent workspace configuration: profile, regional preferences, commission rates, notification channels, availability, and account security."
+      "description": "Profile, region, commission, notifications, availability and security."
     },
     "nav": {
       "profile": {
@@ -7235,7 +7474,7 @@
     "descriptionWithPending": "{activeCount, plural, one {# active member} other {# active members}} · {pendingCount, plural, one {# pending invite} other {# pending invites}}",
     "pending": "Pending",
     "selectAtLeastOneRole": "Please select at least one role",
-    "jobCount": "{count} job(s)",
+    "jobCount": "{count, plural, one {# job} other {# jobs}}",
     "searchPlaceholder": "Search by name, email, or role...",
     "editJobAccess": "Edit job access",
     "deactivateMember": "Deactivate member",
@@ -7332,6 +7571,10 @@
     }
   },
   "employerActivity": {
+    "colWho": "Who",
+    "colWhat": "What",
+    "colWhen": "When",
+    "colWhere": "Where",
     "title": "Activity History",
     "description": "See all actions performed on your account by agents, super agents, and admins.",
     "filterByAction": "Filter by action",
@@ -7373,7 +7616,9 @@
     "onThisPage": "on this page"
   },
   "employerInterviews": {
-    "priorRounds": "{count} earlier round(s)",
+    "interviewCount": "{count, plural, one {# interview} other {# interviews}}",
+    "searchPlaceholder": "Search by candidate or job",
+    "priorRounds": "{count, plural, one {# earlier round} other {# earlier rounds}}",
     "title": "Interview workspace",
     "description": "Keep interview momentum visible across every candidate touchpoint.",
     "subtitle": "Review upcoming sessions, reschedules, and completions in one focused view.",
@@ -7578,6 +7823,7 @@
     "jobFilterLabel": "Job"
   },
   "employerBackgroundChecks": {
+    "referenceCount": "{count, plural, one {# reference} other {# references}}",
     "agentLabel": "Agent",
     "searchPlaceholder": "Search by candidate name...",
     "title": "Background Checks",
@@ -7738,6 +7984,28 @@
     "progress": "Onboarding progress",
     "tasksDone": "{done} of {total} tasks done",
     "tasks": "Tasks",
+    "tasksHint": "Your team's own checklist. The candidate does not see it.",
+    "addDocumentTitle": "Add a document",
+    "docModeRequest": "Ask the candidate",
+    "docModeReference": "Keep a link on file",
+    "docStage": {
+      "waiting": "Waiting for candidate",
+      "review": "Ready to review",
+      "approved": "Approved"
+    },
+    "waitingFile": "Not uploaded yet",
+    "waitingSignature": "Uploaded, signature still needed",
+    "viewFile": "Open",
+    "askAgain": "Ask again",
+    "askAgainTitle": "Ask for a new copy",
+    "askAgainDescription": "\"{document}\" goes back to the candidate, and the file they sent is removed. Tell them what needs to change.",
+    "askAgainReasonLabel": "What needs to change?",
+    "askAgainReasonPlaceholder": "For example: the scan is cut off at the bottom.",
+    "askAgainConfirm": "Send back",
+    "askedAgainNote": "You asked for a new copy: {note}",
+    "documentSentBack": "Sent back to the candidate.",
+    "saved": "Saved",
+    "cancel": "Cancel",
     "noTasks": "No tasks yet. Add your own or start from the default template.",
     "addTask": "Add task",
     "addTaskPlaceholder": "Add an onboarding task…",
@@ -7805,11 +8073,25 @@
     "yourEmployer": "Your employer",
     "startDate": "Starts {date}",
     "welcomeMessage": "Welcome to {company}! We're excited to have you join the team. Please complete any requested items below.",
-    "progress": "Onboarding progress",
-    "tasksDone": "{done} of {total} steps done",
+    "progress": "Your documents",
+    "tasksDone": "{done} of {total} sent",
+    "card_action": "Action needed",
+    "card_waiting": "Waiting for employer",
+    "card_approved": "Documents approved",
+    "stage_upload": "To upload",
+    "stage_sign": "To sign",
+    "stage_review": "In review",
+    "stage_approved": "Approved",
+    "inReviewTitle": "Sent to {company}",
+    "inReviewHint": "{company} is checking these. You'll get a notification when they're approved, or if a new copy is needed.",
+    "approvedTitle": "Approved",
+    "replaceFile": "Replace file",
+    "sentBackTitle": "{company} asked for a new copy:",
+    "uploadThenSign": "Upload the file first, then sign it.",
+    "uploadSuccessSign": "File uploaded. Sign it to send it.",
     "probationEnds": "Probation period ends {date}",
     "actionNeeded": "Action needed",
-    "noActionDocs": "Nothing to upload right now. You're all set!",
+    "noActionDocs": "The employer hasn't asked for any documents. You'll get a notification if they do.",
     "sharedWithYou": "Shared with you",
     "download": "Download",
     "view": "View",
@@ -7829,10 +8111,12 @@
     "signNamePlaceholder": "Your full legal name",
     "signConfirm": "Sign",
     "cancel": "Cancel",
-    "uploadSuccess": "Document uploaded.",
+    "uploadSuccess": "Sent to {company}. You'll be notified once they've checked it.",
     "uploadFailed": "Upload failed. Please try again.",
-    "signSuccess": "Document signed.",
-    "signFailed": "Signing failed. Please try again."
+    "signSuccess": "Signed and sent to {company}.",
+    "signFailed": "Signing failed. Please try again.",
+    "nothingRequested": "Nothing to do yet",
+    "onboardingAt": "Onboarding at {company}"
   },
   "employerCommTemplates": {
     "title": "Communication Templates",
@@ -8130,6 +8414,7 @@
         "freelance": "Freelance",
         "walk_in": "Walk-in"
       },
+      "workModeLabel": "Work arrangement",
       "workModes": {
         "onsite": "On-site",
         "hybrid": "Hybrid",
@@ -8290,8 +8575,8 @@
       "minimumYears": "Minimum (years)",
       "maximumYears": "Maximum (years)",
       "candidateFitRange": "Candidate fit range",
-      "education": "Minimum Education",
-      "educationHint": "Optional. The minimum education or qualification expected for this role.",
+      "education": "Education wording on the advert",
+      "educationHint": "Optional. Shown on the job page as you write it, e.g. a specific university or grade.",
       "educationPlaceholder": "e.g. Bachelor's degree in Computer Science",
       "validation": {
         "experienceRange": "Enter whole years from 0 to 50",
@@ -8524,7 +8809,7 @@
   "employerScorecards": {
     "reviewInterviews": "Review interviews",
     "title": "Interview Scorecards",
-    "totalScorecards": "{count} total scorecards",
+    "totalScorecards": "{count, plural, one {# scorecard} other {# scorecards}} in total",
     "loadingFeedbackTrends": "Loading feedback trends…",
     "feedbackTrends": "Feedback trends will appear here once you have scorecards.",
     "totalEvaluations": "Total Evaluations",
@@ -9335,7 +9620,8 @@
     "quietHoursDesc": "Pause non-critical notifications during these hours",
     "from": "From",
     "to": "To",
-    "changedElsewhere": "Your notification settings changed in another place. We reloaded the latest ones, so please review them and save again."
+    "changedElsewhere": "Your notification settings changed in another place. We reloaded the latest ones, so please review them and save again.",
+    "columnOn": "On"
   },
   "notificationsPage": {
     "enablePush": "Enable push notifications",
@@ -9434,7 +9720,7 @@
     "stageChangedBody": "An application for \"{jobTitle}\" moved to {status}.",
     "stageChangedNamedBody": "{candidateName}'s application for \"{jobTitle}\" moved to {status}.",
     "bulkActionTitle": "Bulk application update",
-    "bulkActionBody": "{count} application(s) were updated via bulk action: {action}.",
+    "bulkActionBody": "{count, plural, one {# application} other {# applications}} were updated via bulk action: {action}.",
     "adminSupportTicketTitle": "Support ticket assigned",
     "adminSupportTicketBody": "{seekerName} opened a support ticket and it was assigned to you.",
     "adminEmployerRegisteredTitle": "New employer registered",
@@ -9500,7 +9786,9 @@
     "upgradeApprovedTitle": "Your plan was changed",
     "upgradeApprovedBody": "You're now on {toPlanName}.",
     "upgradeDeclinedTitle": "Plan request not approved",
-    "upgradeDeclinedBody": "Your request to move to {toPlanName} was not approved. Contact us if you have questions."
+    "upgradeDeclinedBody": "Your request to move to {toPlanName} was not approved. Contact us if you have questions.",
+    "screeningRequestTitle": "Screening questions for {jobTitle}",
+    "screeningRequestBody": "The employer sent you a few questions about your application. Answer them so they can move you forward."
   },
   "publicPages": {
     "jobsTitle": "Find Jobs",
@@ -9702,7 +9990,7 @@
     "sent": "Sent",
     "opened": "Opened",
     "clicked": "Clicked",
-    "stepCount": "{count} steps",
+    "stepCount": "{count, plural, one {# step} other {# steps}}",
     "noSequences": "No email sequences yet. Create one to nurture candidates automatically.",
     "loadError": "We couldn't load email sequences",
     "nameRequired": "Sequence name is required",
@@ -9950,6 +10238,8 @@
     "postAJob": "Post a job"
   },
   "employerAssessments": {
+    "questionCount": "{count, plural, one {# question} other {# questions}}",
+    "attemptCount": "{count, plural, one {# attempt} other {# attempts}}",
     "title": "Skill Assessments",
     "description": "Create tests to evaluate candidate skills",
     "createAssessment": "Create Assessment",
@@ -10079,9 +10369,9 @@
     "meetLinkInvalid": "Enter a meeting link like meet.google.com/abc-defg-hij, or leave it blank.",
     "locationPlaceholder": "Office address…",
     "hybridHint": "Add both a meeting link and a location for hybrid interviews.",
-    "scheduleFor": "Schedule for {count} Candidate(s)",
+    "scheduleFor": "Schedule for {count, plural, one {# candidate} other {# candidates}}",
     "scheduling": "Scheduling…",
-    "scheduledSuccess": "Scheduled for {success} candidate(s). {failed} failed.",
+    "scheduledSuccess": "Scheduled for {success, plural, one {# candidate} other {# candidates}}. {failed} failed.",
     "scheduleFailed": "We couldn't schedule these interviews. Check the details and try again.",
     "notification": "Candidates will receive automatic notifications with all details.",
     "pickDate": "Pick a date",
@@ -10130,7 +10420,7 @@
   },
   "employerActivityLogs": {
     "title": "Team Activity Logs",
-    "description": "{activities} activities tracked across {members} team member(s)",
+    "description": "{activities} activities tracked across {members, plural, one {# team member} other {# team members}}",
     "backToTeam": "Back to Team",
     "docTitle": "Team Activity Logs · MPLOYEDIN",
     "teamMembers": "Team Members",
@@ -10222,7 +10512,10 @@
     "matchBreakdown": "Match Breakdown",
     "applicationsShort": "Applied",
     "showAllSkills": "Show all {count} skills",
-    "showFewerSkills": "Show fewer skills"
+    "showFewerSkills": "Show fewer skills",
+    "relocation": "Relocation",
+    "relocationOpen": "Open to relocating",
+    "relocationNo": "Not open to relocating"
   },
   "employerAiExtract": {
     "title": "AI Job Extractor",
@@ -10249,12 +10542,12 @@
     "posted": "Posted",
     "toastInvalidType": "Invalid file type. Please upload a PDF, image, or DOCX file.",
     "toastTooLarge": "File too large. Maximum 10MB.",
-    "toastExtracted": "Extracted {count} job(s) from the document!",
+    "toastExtracted": "Extracted {count, plural, one {# job} other {# jobs}} from the document!",
     "toastExtractFailed": "We couldn't extract job details",
     "toastProcessFailed": "We couldn't process the file. Please try again.",
     "toastSelectOne": "Please select at least one job to post",
-    "toastPosted": "Successfully posted {count} job(s)!",
-    "toastPostFailed": "{count} job(s) failed to post.",
+    "toastPosted": "Successfully posted {count, plural, one {# job} other {# jobs}}!",
+    "toastPostFailed": "{count, plural, one {# job} other {# jobs}} failed to post.",
     "toastSinglePostFailed": "We couldn't post \"{title}\": {error}",
     "unknownError": "Unknown error",
     "failed": "Failed",
@@ -10440,6 +10733,8 @@
     "lpa": "LPA (Lakhs Per Annum)",
     "salaryPreview": "Candidates will see:",
     "perPeriod": "/ {period}",
+    "periodMonth": "month",
+    "periodYear": "year",
     "negotiableYes": "Yes, negotiable",
     "fixedSalary": "Fixed salary",
     "responsibilities": "Key Responsibilities",
@@ -10496,7 +10791,7 @@
   },
   "employerPanel": {
     "title": "Hiring Panel Review",
-    "description": "{count} evaluator(s) submitted scorecards",
+    "description": "{count, plural, one {# evaluator} other {# evaluators}} submitted scorecards",
     "loading": "Loading evaluations...",
     "docTitle": "Hiring Panel · MPLOYEDIN",
     "strongYes": "Strong Yes",
@@ -10537,7 +10832,7 @@
     "description": "View your invoices, track payments, and download billing documents.",
     "searchPlaceholder": "Search invoices…",
     "employerBilling": "Employer Billing",
-    "invoiceCount": "{count} invoices",
+    "invoiceCount": "{count, plural, one {# invoice} other {# invoices}}",
     "totalBilled": "Total Billed",
     "totalPaid": "Total Paid",
     "outstandingBalance": "Outstanding Balance",
@@ -10565,9 +10860,9 @@
     "overdueStatus": "Overdue",
     "invoiceNumber": "Invoice {number}",
     "fullyPaid": "Fully Paid",
-    "overdueBy": "Overdue by {days} day(s)",
+    "overdueBy": "Overdue by {days, plural, one {# day} other {# days}}",
     "dueToday": "Due today",
-    "dueIn": "Due in {days} day(s)",
+    "dueIn": "Due in {days, plural, one {# day} other {# days}}",
     "outstanding": "— {amount} outstanding",
     "summaryTotal": "Total",
     "summaryPaid": "Paid",
@@ -11337,7 +11632,7 @@
     "deleteConfirmMessage": "The plan “{name}” will be removed for good. This cannot be undone. Only plans with no subscriptions can be deleted — otherwise leave the plan deactivated.",
     "deleteConfirmAction": "Delete permanently",
     "deleteBlockedDefault": "Default plans cannot be deleted",
-    "deleteBlockedInUse": "{count} subscription(s) reference this plan — it can only stay deactivated",
+    "deleteBlockedInUse": "{count, plural, one {# subscription} other {# subscriptions}} reference this plan — it can only stay deactivated",
     "applyToExistingLabel": "Move current subscribers to these terms",
     "applyToExistingHelp": "Subscriptions keep the plan terms they were created with, and renewal invoices are billed from those frozen terms. Turn this on to rewrite them for everyone currently on this plan — it re-prices live customers.",
     "snapshotResynced": "{count, plural, one {# subscription updated to the new plan terms} other {# subscriptions updated to the new plan terms}}",
@@ -11380,10 +11675,30 @@
     "image": "Image",
     "order": "Order",
     "banners": "Banners",
-    "manageBanners": "Manage homepage banner slider images",
+    "manageBanners": "Landing page slides and in-app announcements",
     "searchBannerTitle": "Search banner title…",
     "visibility": "Visibility",
-    "allStatuses": "All statuses"
+    "allStatuses": "All statuses",
+    "placement": "Placement",
+    "landingCarousel": "Landing carousel",
+    "inAppAnnouncement": "In-app announcement",
+    "audienceRoles": "Show to",
+    "everyone": "Everyone",
+    "adminsOnly": "Admins",
+    "superAgentsOnly": "Super agents",
+    "agentsOnly": "Agents",
+    "employersOnly": "Employers",
+    "jobSeekersOnly": "Job seekers",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "style": "Style",
+    "styleInfo": "Info",
+    "styleSuccess": "Success",
+    "styleWarning": "Warning",
+    "dismissible": "Dismissible",
+    "placementIndicator": "Shows on: {placement}",
+    "placementAudience": "{placement} (roles: {roles})",
+    "imageHint": "Needed for the landing page carousel. Leave empty for an in-app announcement."
   },
   "adminCmsStaticPages": {
     "slugLabel": "Slug",
@@ -12927,6 +13242,7 @@
     "deleteButtonLabel": "Delete workflow template"
   },
   "adminAgents": {
+    "activateAwaitingEmail": "Activate (waiting for email confirmation)",
     "adminWorkspace": "Admin workspace",
     "agents": "Agents",
     "heroDescription": "Manage recruitment agents and their assigned regions.",
@@ -13419,8 +13735,8 @@
     "requestMovedTo": "Request moved to {status}",
     "failedToUpdateRequest": "We couldn't update request",
     "selectAtLeastOneRequest": "Select at least one request first",
-    "rejectSelectedRequests": "Reject {count} selected request(s)?",
-    "bulkActionsCompleted": "{count} request(s) updated",
+    "rejectSelectedRequests": "Reject {count, plural, one {# selected request} other {# selected requests}}?",
+    "bulkActionsCompleted": "{count, plural, one {# request} other {# requests}} updated",
     "bulkActionFailed": "Bulk action failed",
     "couldNotLoadExhibitionRequests": "Could not load exhibition requests",
     "requestIdHeader": "Request ID",
@@ -13647,6 +13963,7 @@
     "downloadCvsButton": "Download CVs",
     "filterLabelSkills": "Skills",
     "filterLabelLocation": "Location",
+    "filterLabelIndustry": "Industry",
     "filterLabelAvailability": "Availability",
     "filterLabelJobType": "Job Type",
     "filterLabelSort": "Sort By",
@@ -13667,6 +13984,7 @@
     "tableHeaderProfession": "Profession",
     "tableHeaderEducation": "Education",
     "tableHeaderNationality": "Nationality",
+    "tableHeaderIndustry": "Industry",
     "tableHeaderSkills": "Skills",
     "tableHeaderExp": "Exp",
     "tableHeaderProfilePercent": "Profile complete",
@@ -13715,6 +14033,7 @@
     "editFieldNationality": "Nationality",
     "editFieldLocation": "Location",
     "editFieldSummary": "Summary",
+    "editFieldIndustry": "Industry",
     "editModalTitle": "Edit Job Seeker",
     "actionReactivateTitle": "Reactivate",
     "exportHeaderCurrentRole": "Current Role",
@@ -13733,7 +14052,7 @@
     "exportColumnHeaderLanguages": "Languages",
     "exportColumnHeaderCertifications": "Certifications",
     "exportColumnHeaderHasCv": "CV",
-    "bulkCvDownloadConfirmMessage": "Download the matching CVs (up to 50) as one ZIP file with a candidate details sheet?",
+    "bulkCvDownloadConfirmMessage": "Download the CVs of the first 50 people in this list, in the order shown, as one ZIP file with a candidate details sheet?",
     "bulkCvExcelSheetHeaderName": "Name",
     "bulkCvExcelSheetHeaderEmail": "Email",
     "bulkCvExcelSheetHeaderNationality": "Nationality",
@@ -13784,7 +14103,9 @@
     "exportHeaderReferredBy": "Referred by",
     "backToList": "Back to job seekers",
     "openProfile": "Open profile of {name}",
-    "profileNotFound": "We couldn't find this job seeker. They may have been removed."
+    "profileNotFound": "We couldn't find this job seeker. They may have been removed.",
+    "industriesChipsLabel": "Industries",
+    "failedToLoadIndustries": "We couldn't load industries. Try again."
   },
   "adminReports": {
     "reportsAndAnalytics": "Platform Report",
@@ -13840,7 +14161,8 @@
     "jobHealthTitle": "Job health",
     "jobHealthActive": "Active jobs",
     "jobHealthReceiving": "Receiving applications",
-    "jobHealthNone": "No applications"
+    "jobHealthNone": "No applications",
+    "industriesChipsLabel": "Industries"
   },
   "adminSettingsNotifications": {
     "adminWorkspaceLabel": "Admin workspace",
@@ -14115,7 +14437,7 @@
     "tableHeaderActions": "Actions",
     "noAgentsFound": "No super agents found",
     "noAgentsAvailable": "No agents available",
-    "agentsSelectedCount": "{count} agent(s) selected",
+    "agentsSelectedCount": "{count, plural, one {# agent} other {# agents}} selected",
     "agentsBadge": "{count, plural, one {# agent} other {# agents}}",
     "editTooltip": "Edit",
     "deactivateTooltip": "Deactivate",
@@ -14239,7 +14561,7 @@
     "exportTitle": "Users",
     "toastFailedLoadUsers": "We couldn't load users. Please try again.",
     "toastFailedUpdateUser": "We couldn't update this user. Please try again.",
-    "toastBulkUpdated": "{affected}/{total} user(s) updated",
+    "toastBulkUpdated": "{affected}/{total, plural, one {# user} other {# users}} updated",
     "toastBulkPartialUpdated": "{affected}/{total} updated, {failed} skipped: {reasons}",
     "toastBulkNoUpdates": "No users updated: {reasons}",
     "toastPermissionsUpdated": "Permissions updated",
@@ -14300,7 +14622,8 @@
     "createAgentElsewhere": "Agents are set up on the Agents page, where you choose their super agent and area.",
     "createSuperAgentElsewhere": "Super agents are set up on the Super Agents page, where you choose their territory and agents.",
     "continueOnAgentsPage": "Continue on Agents page",
-    "continueOnSuperAgentsPage": "Continue on Super Agents page"
+    "continueOnSuperAgentsPage": "Continue on Super Agents page",
+    "toastDeletingUser": "Deleting {name}…"
   },
   "superAgentSettings": {
     "profilePhoto": "Profile photo",
@@ -14968,7 +15291,7 @@
     "kpiPlacements": "Placements",
     "kpiPlacementsHelper": "Confirmed job placements",
     "kpiReferralSignups": "Referral Signups",
-    "kpiReferralSignupsHelper": "{count} active link(s)",
+    "kpiReferralSignupsHelper": "{count, plural, one {# active link} other {# active links}}",
     "profileEyebrow": "Profile",
     "profileTitle": "Agent Information",
     "timezoneLabe": "Timezone",
@@ -14996,7 +15319,7 @@
     "noLeadsYet": "No leads yet.",
     "referralEyebrow": "Referrals",
     "referralTitle": "Referral Links",
-    "referralDescription": "{signups} employer signups from {count} link(s)",
+    "referralDescription": "{signups} employer signups from {count, plural, one {# link} other {# links}}",
     "tableColumnCode": "Code",
     "tableColumnLabel": "Label",
     "tableColumnUsed": "Used",
@@ -15485,7 +15808,8 @@
         "any": "Any"
       }
     },
-    "filterAvailability": "Availability"
+    "filterAvailability": "Availability",
+    "industriesChipsLabel": "Industries"
   },
   "superAgentReports": {
     "teamPerformanceSummary": "Team performance summary",
@@ -15700,7 +16024,7 @@
     "exportHeaderFollowUp": "Follow Up",
     "exportHeaderCreated": "Created",
     "exportFilename": "agent-leads",
-    "pageTitle": "Employer Lead Management",
+    "pageTitle": "Leads",
     "scoringFailed": "Scoring failed",
     "failedToScoreLead": "We couldn't score lead",
     "leadScored": "Lead scored: {temperature} ({score}/100)",
@@ -16226,6 +16550,7 @@
     "filterHiringStatus": "Hiring status",
     "hiringStatusLabel": "Hiring status",
     "hiringStatusAny": "Any hiring status",
+    "industriesChipsLabel": "Industries",
     "viewAllShort": "All"
   },
   "agentEmployers": {
@@ -16350,6 +16675,8 @@
     "tableHeaderCurrency": "Currency",
     "tableHeaderStartDate": "Start Date",
     "noPlacementsYet": "No placements yet",
+    "noPlacementsDescription": "A placement appears when a candidate accepts an offer.",
+    "viewOffers": "View Offers",
     "statusAllStatuses": "All Statuses",
     "statusPending": "Pending",
     "statusOffer": "Offer",
@@ -16842,6 +17169,7 @@
   },
   "agentChat": {
     "agentWorkspaceBadge": "Agent workspace",
+    "messagesTitle": "Messages",
     "teamChannelsHeading": "Team Channels",
     "teamChannelsDescription": "Coordinate with agents, employers, and supervisors from the same modern workspace while keeping each conversation in its own channel.",
     "presenceLabel": "Presence",
@@ -16870,7 +17198,9 @@
     "commissionsCount": "{count} commissions",
     "monthlyBreakdown": "Monthly Breakdown",
     "byType": "By Type",
-    "noData": "No data"
+    "noData": "No data",
+    "noEarningsYet": "No earnings yet",
+    "commissionReportEmptyHint": "Your earnings will appear here once you make your first placement and it's paid out."
   },
   "onboarding": {
     "stepBasicDetails": "Basic details",
@@ -16971,6 +17301,8 @@
     "educationDetails": "Education details",
     "educationDetailsDesc": "These details help recruiters identify your background",
     "highestQualification": "Highest qualification",
+    "perMonth": "per month",
+    "monthlySalaryPlaceholder": "Eg. 8,000",
     "course": "Course",
     "coursePlaceholder": "Eg. B.Tech (type and press Enter or pick below)",
     "confirm": "Confirm",
@@ -17005,6 +17337,7 @@
     "universityRequired": "Please enter a university or institution name"
   },
   "verifyEmail": {
+    "codeLocked": "This code was entered wrong too many times. Use the link in the email, or ask for a new code.",
     "resendSuccess": "Verification email sent! Check your inbox.",
     "resendFailure": "We couldn't resend. Please try again later.",
     "networkError": "Network error. Please try again.",
@@ -17217,6 +17550,181 @@
     "countriesSalaries": "Salaries by Country",
     "jobsCount": "{count} jobs"
   },
+  "jobRequirementExtras": {
+    "optional": "optional",
+    "add": "Add",
+    "remove": "Remove {name}",
+    "importance": {
+      "must": "Must-have",
+      "nice": "Nice to have"
+    },
+    "hireType": {
+      "label": "What matters most for this hire?",
+      "hint": "Sets how applicants are ranked until you choose your own weights.",
+      "none": "Balanced (standard ranking)",
+      "experienced": "Proven experience in the role",
+      "skills": "Specific skills",
+      "qualification": "A qualification or licence",
+      "entry": "Entry level / freshers"
+    },
+    "education": {
+      "label": "Minimum education",
+      "hint": "Required. Choose \"No minimum\" if any education will do. Higher qualifications always count.",
+      "placeholder": "Choose the minimum education",
+      "required": "Choose the minimum education, or \"No minimum\"",
+      "importanceLabel": "How important is the education level",
+      "levels": {
+        "0": "No minimum",
+        "1": "School (10th / 12th)",
+        "2": "Diploma / ITI",
+        "3": "Bachelor's degree",
+        "4": "Master's degree",
+        "5": "Doctorate"
+      },
+      "fieldLabel": "Field of study",
+      "fieldPlaceholder": "e.g. Computer Science or a related field",
+      "essentialLabel": "The field itself is essential",
+      "essentialHint": "A degree in another field won't count. Leave this off if a related or any field is fine."
+    },
+    "experienceIn": {
+      "label": "Experience in what?",
+      "hint": "What the years above should be in. Candidates are checked on the years they spent on it, not only their total.",
+      "placeholder": "e.g. MERN stack development, GCC freight forwarding"
+    },
+    "credentials": {
+      "label": "Licences & certificates",
+      "hint": "e.g. a valid driving licence, a DHA licence, PMP. Press Enter to add each one.",
+      "placeholder": "e.g. Valid UAE driving licence",
+      "importanceLabel": "How important is {name}"
+    },
+    "languages": {
+      "label": "Languages",
+      "hint": "Languages the person must speak. Press Enter to add each one.",
+      "placeholder": "e.g. English, Arabic",
+      "importanceLabel": "How important are the languages"
+    }
+  },
+  "requirementReport": {
+    "none": "This job states no requirements to check.",
+    "mustHave": "Must-have",
+    "equivalent": "equivalent",
+    "notSetForJob": "Not set for this job",
+    "mustHaveSummary": "{has} of {total} must-haves met",
+    "mustHaveSummaryPartly": "{has} of {total} must-haves met, {partial} partly",
+    "counts": "{has} has · {partial} partly · {missing} missing · {verify} to check",
+    "kind": {
+      "education": "Education",
+      "experience": "Experience",
+      "skill": "Required skills",
+      "preferred_skill": "Nice-to-have skills",
+      "credential": "Licences & certificates",
+      "language": "Languages",
+      "visa": "Visa & residence"
+    },
+    "status": {
+      "employer": {
+        "partly": "Partly meets the must-haves",
+        "met": "Meets all must-haves",
+        "unverified": "Must-haves need checking",
+        "not_met": "Misses a must-have"
+      },
+      "seeker": {
+        "partly": "You partly meet the must-haves",
+        "met": "You meet every must-have",
+        "unverified": "Some must-haves aren't on your profile",
+        "not_met": "You miss a must-have"
+      }
+    },
+    "verdict": {
+      "employer": {
+        "has": "Has",
+        "partial": "Partly",
+        "missing": "Does not have",
+        "verify": "Needs checking",
+        "info": "Not required"
+      },
+      "seeker": {
+        "has": "You have this",
+        "partial": "Partly",
+        "missing": "Missing",
+        "verify": "Not on your profile",
+        "info": "Not required"
+      }
+    },
+    "education": {
+      "employer": {
+        "none": "No qualification on the profile.",
+        "held": "Holds: {actual}",
+        "higher": "Holds a higher qualification: {actual}",
+        "related": "Holds a related field: {actual}",
+        "fieldNotStated": "Holds: {actual} (field of study not stated)",
+        "differentField": "Holds the level, in a different field: {actual}",
+        "lower": "Highest held is lower: {actual}",
+        "info": "Holds: {actual}",
+        "infoNone": "No qualification on the profile"
+      },
+      "seeker": {
+        "none": "Your profile lists no qualification. Add it to count here.",
+        "held": "You hold: {actual}",
+        "higher": "You hold a higher qualification: {actual}",
+        "related": "Your field is related: {actual}",
+        "fieldNotStated": "You hold: {actual}. Add your field of study to be sure.",
+        "differentField": "Your degree is in a different field: {actual}",
+        "lower": "Your highest is lower: {actual}",
+        "info": "Your education: {actual} — this job sets no minimum",
+        "infoNone": "Your profile lists no qualification — this job sets no minimum"
+      }
+    },
+    "experience": {
+      "employer": {
+        "unknown": "The profile doesn't say how much experience they have.",
+        "relevant": "{relevant, plural, one {# year} other {# years}} relevant of {total, plural, one {# year} other {# years}} in total ({roles})",
+        "total": "{total, plural, one {# year} other {# years}} in total; no role matches the subject",
+        "needsEndDate": "{years, plural, one {# year} other {# years}} confirmed. {roles} has no end date, so its length isn't counted."
+      },
+      "seeker": {
+        "unknown": "Your profile doesn't say how much experience you have.",
+        "relevant": "You have {relevant, plural, one {# relevant year} other {# relevant years}} of {total, plural, one {# year} other {# years}} in total ({roles})",
+        "total": "You have {total, plural, one {# year} other {# years}} in total; no role on your profile matches this",
+        "needsEndDate": "Your dated jobs add up to {years, plural, one {# year} other {# years}}. {roles} has no end date. Add one, or mark it as a current job, so it counts."
+      }
+    },
+    "skill": {
+      "employer": {
+        "has": "On the profile or CV",
+        "missing": "Not on the profile or CV"
+      },
+      "seeker": {
+        "has": "On your profile or CV",
+        "missing": "Not on your profile or CV"
+      }
+    },
+    "credential": {
+      "employer": {
+        "listed": "Listed on the profile: {quote}",
+        "cv": "Named in the CV: \"{quote}\"",
+        "none": "Not mentioned. Ask the candidate."
+      },
+      "seeker": {
+        "listed": "On your profile: {quote}",
+        "cv": "In your CV: \"{quote}\"",
+        "none": "Not on your profile. Add it under certifications if you have it."
+      }
+    },
+    "language": {
+      "employer": {
+        "all": "Speaks all of them",
+        "some": "Speaks {have}; not listed: {missing}",
+        "none": "No languages on the profile."
+      },
+      "seeker": {
+        "all": "You speak all of them",
+        "some": "You speak {have}; not on your profile: {missing}",
+        "none": "Your profile lists no languages."
+      }
+    },
+    "visa": "Stated by the employer; check with the candidate."
+  },
   "jobSeekerJobDetail": {
     "jobDetail": "Job detail",
     "notAvailableClosed": "This job is no longer accepting applications.",
@@ -17266,14 +17774,21 @@
       "eyebrow": "Your match",
       "score": "{score}% match",
       "howItWorks": "How this score is worked out",
+      "askedTitle": "Skills this job asks for",
       "skills": "Skills",
       "role": "Role fit",
       "experience": "Experience",
+      "education": "Education",
+      "credentials": "Licences & certificates",
+      "languages": "Languages",
+      "requirementsHeading": "This job's requirements against your profile",
+      "noGaps": "Your profile covers everything this job asks for.",
+      "mustHaveNote": "We only email you a job when every must-have shows as met on your profile. You can still apply to this one.",
       "weight": "counts for {weight}%",
       "aiUp": "AI review added {points, plural, one {# point} other {# points}}.",
       "aiDown": "AI review took off {points, plural, one {# point} other {# points}}.",
-      "skillsUnknown": "This job lists no skills, so the skills part is an estimate.",
-      "gatesNote": "Location, salary and work mode don't add points. They decide whether we recommend a job to you.",
+      "skillsUnknown": "This job lists no skills, so skills are left out of this score.",
+      "gatesNote": "Location, salary and work mode don't add points. They decide whether we recommend a job to you. Education and experience never hide a job; they change the score.",
       "notRecommended": "Not recommended to you: {reason}.",
       "reasons": {
         "country": "the job is outside your preferred countries",
@@ -17317,6 +17832,8 @@
     "requirements": "Requirements",
     "negotiable": "Negotiable",
     "fromSalaryPerMonth": "From {currency} {min} / month",
+    "fixedSalaryPerMonth": "{currency} {amount} / month",
+    "salaryNegotiable": "{amount} / month · negotiable",
     "salaryRangePerMonth": "{currency} {min} – {max} / month",
     "jobSearch": "Job Search",
     "stickyApply": "Easy Apply",
@@ -17391,24 +17908,22 @@
     "events": {
       "applied": "You applied",
       "viewed": "The employer viewed your application",
-      "shortlisted": "The employer shortlisted you",
-      "interview_scheduled": "Moved to interviews",
-      "selected": "The employer selected you",
+      "in_review": "The employer is reviewing your application",
+      "interview": "Moved to interviews",
       "offer": "You received an offer",
       "hired": "You were hired",
-      "rejected": "The employer didn't move forward",
+      "not_selected": "The employer didn't move forward",
       "withdrawn": "You withdrew your application"
     },
     "nextTitle": "What happens next",
     "next": {
       "applied": "The employer hasn't opened your application yet. We'll let you know when they view it or move you forward.",
       "applied_viewed": "The employer has seen your application. We'll let you know when they move you forward.",
-      "shortlisted": "You're on the employer's shortlist. They may contact you to arrange an interview.",
-      "interview_scheduled": "Check your interview details below and let the employer know whether you can attend.",
-      "selected": "The employer has selected you. We'll let you know as soon as they send an offer.",
+      "in_review": "The employer is reviewing your application. We'll let you know if they invite you to an interview.",
+      "interview": "You're at the interview stage. Check any interview details below and reply to invitations. We'll let you know when the employer decides.",
       "offer": "Review the offer below and accept or decline it before it expires.",
       "hired": "Congratulations on your new role. Your onboarding steps are on the Onboarding page.",
-      "rejected": "The employer has decided not to move forward this time. New jobs that match your profile are on the Jobs page.",
+      "not_selected": "The employer has decided not to move forward this time. New jobs that match your profile are on the Jobs page.",
       "withdrawn": "You withdrew this application. While the job is open, you can apply again from the job page."
     },
     "sentTitle": "What you sent",
@@ -17797,8 +18312,18 @@
     "no": "No",
     "unknown": "Unknown status"
   },
+  "seekerStatus": {
+    "applied": "Applied",
+    "in_review": "In review",
+    "interview": "Interview",
+    "offer": "Offer",
+    "hired": "Hired",
+    "not_selected": "Not selected",
+    "withdrawn": "Withdrawn"
+  },
   "resumeViewerModal": {
     "downloadCv": "Download CV",
+    "requirements": "Against this job's requirements",
     "resumeReadability": "Resume Readability",
     "readabilityHint": "How reliably we could auto-read this CV into structured data.",
     "more": "More",
@@ -18504,6 +19029,10 @@
     "networkError": "Network error"
   },
   "easyApply": {
+    "uploadCv": "Upload a CV",
+    "loginNextTimeTitle": "How to log in next time",
+    "loginNextTimeBody": "Your account has no password yet. On the login page, choose \"Log in with an email code\" and we'll send a code to {email}. Or set a password now.",
+    "setPasswordAction": "Set a password",
     "signupConsentNeeded": "Your account wasn't created. Accept the Terms of Service and Privacy Policy to apply.",
     "loading": "Loading…",
     "quickApplyTitle": "Apply in seconds",
@@ -18524,7 +19053,6 @@
     "profileCvLabel": "Profile CV",
     "builtCv": "CV built on Mployedin",
     "builtCvHint": "Made from your profile, in the design you saved in the CV builder.",
-    "noCvOnFile": "No CV on file yet — upload one below.",
     "uploading": "Uploading…",
     "uploadDifferentCv": "Upload a different CV",
     "additionalDocuments": "Additional Documents",
@@ -18565,9 +19093,12 @@
       "popupBlocked": "Your browser blocked the Google sign-in popup. Try using email instead.",
       "captchaFailed": "We couldn't confirm you're not a bot. Please try again.",
       "captchaUnavailable": "The bot check is temporarily unavailable. Please try again in a moment.",
-      "nameRequired": "Please enter your full name"
+      "nameRequired": "Please enter your full name",
+      "cvRequired": "Add a CV to apply: upload yours, or add your details and we'll make one."
     },
-    "continueWithEmail": "Continue with email",
+    "continueWithEmail": "Apply now with email",
+    "haveAccount": "Already have an account?",
+    "logInToApply": "Log in to apply",
     "sendCode": "Send code",
     "verify": "Verify",
     "enterCode": "Enter the code",
@@ -18597,20 +19128,26 @@
     "applyNow": "Apply",
     "changeCv": "Change",
     "authDialogTitle": "Log in to apply",
-    "authDialogHint": "Log in with Google or your email. New here? We'll create your account, and you can add your CV later.",
+    "authDialogHint": "Log in with Google or your email. No CV saved with us yet? A few quick questions will make one.",
     "authDialogHintCv": "Log in with Google or your email. We'll read {file} and fill in your profile.",
     "orDivider": "or",
     "backToOptions": "Back to login options",
     "applyWithCv": "Apply with CV",
-    "applyWithoutCv": "Apply without CV",
     "cvDialogTitle": "Add your CV",
     "cvDialogHint": "Our AI reads your CV and fills in your profile, so there are no long forms.",
     "cvFormats": "PDF or Word",
     "aiBadge": "AI",
     "chooseHowToApply": "Choose how you want to apply.",
-    "recommended": "Recommended",
     "applyWithCvDesc": "Our AI reads your CV and fills in your profile for you.",
-    "applyWithoutCvDesc": "Fill in your details yourself. You can add your CV later."
+    "uploadCvToApply": "Upload your CV to apply",
+    "applyWithoutCv": "Apply without CV",
+    "applyWithoutCvDesc": "Answer a few quick questions. We'll make your Mployedin CV from them.",
+    "recommended": "Recommended",
+    "addDetailsForCv": "No CV? Add your details and we'll make one",
+    "autoCv": "Your Mployedin CV",
+    "autoCvHint": "Made from your profile details when you apply.",
+    "previewCv": "Preview or edit it",
+    "uploadOwnCv": "Upload your own CV instead"
   },
   "socialShare": {
     "shareJob": "Share this job",
@@ -18618,7 +19155,33 @@
     "linkCopied": "Link copied!",
     "failedCopy": "We couldn't copy link",
     "copyLink": "Copy link",
-    "linkCopiedToClipboard": "Link copied to clipboard"
+    "linkCopiedToClipboard": "Link copied to clipboard",
+    "messageHeadline": "We're hiring: {title}",
+    "messageSkills": "Skills: {skills}",
+    "messageApply": "Apply here: {url}",
+    "editMessage": "Edit message…",
+    "editMessageTitle": "Edit the share message",
+    "editMessageHint": "This text goes to WhatsApp and X. LinkedIn and Facebook share the link only — copy the message and paste it there.",
+    "editMessageCount": "{count} / {max} characters",
+    "resetMessage": "Reset",
+    "copyMessage": "Copy message",
+    "messageCopied": "Message copied",
+    "sendOnWhatsApp": "Send on WhatsApp",
+    "salaryNegotiable": "Salary: negotiable",
+    "salaryFigure": "Salary: {amount}",
+    "employment": {
+      "full_time": "Full-time",
+      "part_time": "Part-time",
+      "contract": "Contract",
+      "internship": "Internship",
+      "freelance": "Freelance"
+    },
+    "workMode": {
+      "onsite": "On-site",
+      "hybrid": "Hybrid",
+      "remote": "Remote"
+    },
+    "salaryFigureNegotiable": "Salary: {amount} (negotiable)"
   },
   "errorBoundary": {
     "title": "We couldn't load this page",
@@ -18665,6 +19228,7 @@
   "copilot": {
     "title": "MPLOYEDIN Copilot",
     "openCopilot": "Open Copilot",
+    "launcherLabel": "Copilot",
     "assistant": "AI Assistant",
     "greeting": "Hi! I'm your Copilot.",
     "howCanIHelp": "Ask me to find, check, or do something — I'll show you what I'm about to do before anything changes.",
@@ -19029,6 +19593,7 @@
   },
   "jobCard": {
     "company": "Company",
+    "salaryNegotiable": "{amount} · negotiable",
     "companyLogo": "{company} logo",
     "viewCompany": "View {company}",
     "matchPercent": "{score}% match",
@@ -19291,6 +19856,7 @@
     "matchesHeading": "Suitable profiles for this job"
   },
   "formErrors": {
+    "agentEmailNotVerified": "This agent hasn't confirmed their email address yet. You can approve them once they have.",
     "fallback": "We couldn't save your changes. Nothing was changed. Review the fields and try again.",
     "network": "We couldn't reach the server. Check your connection and try again.",
     "permission": "You don't have permission to do this.",
@@ -19359,7 +19925,8 @@
     "contextApplications": "{total, plural, one {# application} other {# applications}} · {active} active",
     "contextInterviews": "{upcoming} upcoming · {past} past",
     "contextOffers": "{pending} pending · {accepted} accepted",
-    "contextOnboarding": "{count, plural, =0 {Nothing in progress} one {# onboarding in progress} other {# onboardings in progress}}"
+    "contextOnboarding": "{count, plural, =0 {Nothing in progress} one {# onboarding in progress} other {# onboardings in progress}}",
+    "jobsNavLabel": "Jobs views"
   },
   "teamJoin": {
     "title": "Join your team",
@@ -19418,6 +19985,7 @@
     "dismiss": "Dismiss"
   },
   "employerAts": {
+    "otherDetails": "Other details",
     "requirements": "Requirements",
     "status": {
       "met": "Must-haves met",
@@ -19425,7 +19993,7 @@
       "unverified": "Must-have not stated"
     },
     "statusHint": {
-      "met": "Has every must-have this job sets: minimum experience, required qualification, hiring countries for a remote job and deal-breaker answers (within a year or one level counts). Skills aren't checked here; they're in the match score.",
+      "met": "Has every must-have this job sets: minimum experience, required qualification, licences and languages marked must-have, hiring countries for a remote job and deal-breaker answers (within a year or one level counts). Skills aren't checked here; they're in the match score.",
       "not_met": "Misses at least one must-have: minimum experience, required qualification, hiring country or a deal-breaker answer. Left out of Shortlist Top, whatever the match score.",
       "unverified": "No must-have failed, but the candidate hasn't stated something one needs (such as their experience), so it couldn't be checked."
     },
@@ -19446,10 +20014,14 @@
       "work_mode": "Work mode",
       "languages": "Languages",
       "screening": "Screening answer",
+      "credential": "Licence / certificate",
       "cv": "CV"
     },
     "detail": {
       "experience": "Asks {required}+ years · has {actual}",
+      "experienceIn": "Asks {required}+ years in {subject} · has {actual} relevant",
+      "credentialFound": "Found: {actual}",
+      "credentialNone": "Not on the profile or CV — ask the candidate",
       "education": "Asks {required} · has {actual}",
       "skills": "Has {actual} of {required}",
       "industryYears": "Job's industry: {required} · {actual} years in it",
@@ -19981,7 +20553,12 @@
       "title": "What the job asks for, checked",
       "summary": "{has} of {total} found on the profile",
       "note": "Checked by comparing the profile's skills, roles, education and CV with each line. A guide, not a verdict.",
-      "verdict": { "has": "Has", "partial": "Partly", "missing": "Doesn't have", "unknown": "Can't tell" },
+      "verdict": {
+        "has": "Has",
+        "partial": "Partly",
+        "missing": "Doesn't have",
+        "unknown": "Can't tell"
+      },
       "detail": {
         "education": "Asks {required} · has {actual}",
         "educationNone": "Asks {required} · no education on the profile",
@@ -20016,10 +20593,11 @@
       "skills": "Skills",
       "role": "Role",
       "experience": "Experience",
-      "education": "Education",
+      "education": "Qualifications",
       "industry": "Industry"
     },
     "yearsExperience": "{count, plural, one {# year} other {# years}} experience",
+    "noExperienceYet": "No work experience yet",
     "experienceNotStated": "Experience not stated",
     "latestRole": "{title} at {company}",
     "hasSkills": "Has",
@@ -20747,6 +21325,8 @@
     "agentReportOf": "Report of {name}",
     "agentReportTitle": "My Profit Report",
     "agentTitle": "My Profit Target",
+    "reportEmptyTitle": "No report yet",
+    "reportEmptyDescription": "Your profit report will appear here once a target is assigned and profit is recorded.",
     "allRegions": "All regions",
     "allRisk": "All risk",
     "allSizes": "All sizes",
@@ -20780,6 +21360,7 @@
     "colUpdate": "Update",
     "completed": "Completed",
     "contactSupervisor": "Contact your supervisor for target assignments",
+    "targetAssignedBySupervisor": "Your supervisor assigns profit targets. Once assigned, you'll see your target and track your progress here.",
     "createDescription": "Set each supervisor's annual profit target and how it is spread over the months",
     "createProfilesToSeeRankings": "Create target profiles to see rankings",
     "createTargetsCount": "Create Targets ({count})",
@@ -21041,7 +21622,7 @@
       "jobDraft": "Keeping a job post draft in this tab",
       "noticeDismissed": "Remembering a notice you closed, in this tab",
       "firebase": "Google sign-in, only after you choose it",
-      "recaptcha": "Spam protection by Google reCAPTCHA, only when you send a protected form (asking for an apply code, or the contact form)",
+      "recaptcha": "Spam protection by Google reCAPTCHA, only when you send a protected form (asking for an apply code or a login code, or the contact form)",
       "offline": "The installed app and notifications, only after you turn them on",
       "files": "Showing your uploaded files and images",
       "locale": "Your language",
@@ -21170,6 +21751,7 @@
     }
   },
   "planBilling": {
+    "compareWith": "Compare your plan with",
     "title": "Plan & billing",
     "description": "What you're on, what you've used, and what else is available.",
     "yourPlan": "Your plan",
@@ -21661,12 +22243,33 @@
         "resolved": "Gap closed"
       }
     }
+  },
+  "portalAnnouncements": {
+    "dismiss": "Dismiss",
+    "count": "{current} of {total}",
+    "next": "Next announcement"
+  },
+  "screeningQuestions": {
+    "title": "Screening questions for {jobTitle}",
+    "description": "Answer these questions to help the employer get to know you better.",
+    "error": "Error",
+    "errorFetching": "We couldn't load the screening questions. Try refreshing the page.",
+    "errorSubmitting": "We couldn't save your answers. Try again.",
+    "notFound": "Screening questions not found.",
+    "noQuestions": "No screening questions",
+    "noQuestionsMsg": "This job doesn't have any screening questions yet.",
+    "alreadyAnswered": "You've already answered the screening questions",
+    "answeredOn": "Answered on {date}",
+    "submit": "Submit answers",
+    "submitting": "Submitting…",
+    "yes": "Yes",
+    "no": "No",
+    "nothingToAnswerTitle": "No questions to answer",
+    "nothingToAnswerBody": "The employer hasn't sent you any questions for this application. We'll let you know if they do.",
+    "chooseOption": "Choose an answer",
+    "answerRequired": "Answer this question.",
+    "answerAllRequired": "Answer every question marked *.",
+    "answerAtLeastOne": "Answer at least one question.",
+    "submitted": "Answers sent to the employer."
   }
 }
-
-
-
-
-
-
-

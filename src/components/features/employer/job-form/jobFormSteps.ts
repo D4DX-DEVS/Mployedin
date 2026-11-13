@@ -13,7 +13,7 @@ export const STEP_FIELDS: Record<number, (keyof JobFormValues)[]> = {
   1: ["title", "category", "employmentType", "duration", "location", "workMode", "employerId", "agentId"],
   // Three steps since 2026-11-11 (owner): details + requirements share a
   // page, and screening questions sit under pay and settings.
-  2: ["description", "responsibilities", "qualifications", "benefits", "learningOutcomes", "requirements"],
+  2: ["description", "responsibilities", "qualifications", "benefits", "learningOutcomes", "requirements", "hireType"],
   3: ["salary", "vacancies", "showSalary", "discloseCompany", "maxApplicants", "expiresAt", "visibility", "tags", "matchingWeights", "workflowTemplateId", "screeningQuestions"],
 };
 

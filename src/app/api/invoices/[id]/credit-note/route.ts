@@ -121,7 +121,7 @@ async function postHandler(
     creditNoteNumber,
     amount: body.amount,
     currency: invoice.currency,
-  });
+  }, { employerId: invoice.employerId });
 
   return NextResponse.json({
     creditNote,

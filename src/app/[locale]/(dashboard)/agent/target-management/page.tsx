@@ -91,7 +91,7 @@ export default function AgentTargetManagementPage() {
     return query ? leaderboard.filter((entry) => entry.assigneeName.toLowerCase().includes(query)) : leaderboard;
   }, [leaderboard, search]);
 
-  const noTarget = <TargetEmptyState title={t("noTargetAssigned")} description={t("contactSupervisor")} />;
+  const noTarget = <TargetEmptyState title={t("noTargetAssigned")} description={t("targetAssignedBySupervisor")} />;
 
   return (
     <div className="page-container">
@@ -102,29 +102,31 @@ export default function AgentTargetManagementPage() {
         actions={<div className="max-sm:[&_button]:w-24"><TargetYearSelect value={year} onChange={setYear} label={t("yearLabel")} years={years} /></div>}
       />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex rounded-xl border border-border/60 bg-card p-0.5 max-sm:grid max-sm:w-full max-sm:grid-cols-3" role="tablist" aria-label={t("tabsLabel")}>
-          {TABS.map(({ key, icon: Icon }) => (
-            <Button
-              key={key}
-              role="tab"
-              aria-selected={tab === key}
-              variant={tab === key ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setTab(key)}
-              className="gap-1.5 rounded-lg max-sm:min-h-11 max-sm:px-2"
-            >
-              <Icon className="h-3.5 w-3.5" /> {t(`tab_${key}`)}
-            </Button>
-          ))}
-        </div>
-        {myRank && (
-          <div className="workspace-glass-panel chip-pad ms-auto inline-flex items-center gap-2 rounded-full text-xs font-semibold">
-            <Trophy className="h-3.5 w-3.5 text-primary" />
-            {t("rankOfTotal", { rank: myRank.rank, total: totalParticipants })}
+      {profile && (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex rounded-xl border border-border/60 bg-card p-0.5 max-sm:grid max-sm:w-full max-sm:grid-cols-3" role="tablist" aria-label={t("tabsLabel")}>
+            {TABS.map(({ key, icon: Icon }) => (
+              <Button
+                key={key}
+                role="tab"
+                aria-selected={tab === key}
+                variant={tab === key ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setTab(key)}
+                className="gap-1.5 rounded-lg max-sm:min-h-11 max-sm:px-2"
+              >
+                <Icon className="h-3.5 w-3.5" /> {t(`tab_${key}`)}
+              </Button>
+            ))}
           </div>
-        )}
-      </div>
+          {myRank && (
+            <div className="workspace-glass-panel chip-pad ms-auto inline-flex items-center gap-2 rounded-full text-xs font-semibold">
+              <Trophy className="h-3.5 w-3.5 text-primary" />
+              {t("rankOfTotal", { rank: myRank.rank, total: totalParticipants })}
+            </div>
+          )}
+        </div>
+      )}
 
       {own.isError && !own.data && tab !== "leaderboard" ? (
         <ErrorState title={t("failedToLoadTargets")} onRetry={() => { void own.refetch(); }} retryLabel={t("retry")} />

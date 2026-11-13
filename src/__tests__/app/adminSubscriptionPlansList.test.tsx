@@ -108,7 +108,7 @@ describe("admin subscription plans list", () => {
     expect(screen.queryByRole("menuitem", { name: "Deactivate" })).not.toBeInTheDocument();
     // Radix blocks the click with pointer-events CSS, which jsdom does not
     // apply, so the disabled state is asserted rather than clicked.
-    const blocked = screen.getByRole("menuitem", { name: /3 subscription\(s\) reference this plan/ });
+    const blocked = screen.getByRole("menuitem", { name: /3 subscriptions reference this plan/ });
     expect(blocked).toHaveAttribute("aria-disabled", "true");
   });
 

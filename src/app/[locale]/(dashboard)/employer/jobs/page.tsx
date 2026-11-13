@@ -142,13 +142,16 @@ export default function EmployerJobsPage() {
   const jobs = data?.jobs ?? [];
   const total = data?.pagination?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
-  const hasActiveFilters = statusFilter !== "all"
-    || workModeFilter !== "all"
-    || salaryVisibilityFilter !== "all"
-    || sortByFilter !== "default"
-    || Boolean(search.trim())
-    || Boolean(locationFilter.trim())
-    || Boolean(skillsFilter.trim());
+  // Filters set inside the panel (search has its own box), shown as a count on the button.
+  const panelFilterCount = [
+    statusFilter !== "all",
+    workModeFilter !== "all",
+    salaryVisibilityFilter !== "all",
+    sortByFilter !== "default",
+    Boolean(locationFilter.trim()),
+    Boolean(skillsFilter.trim()),
+  ].filter(Boolean).length;
+  const hasActiveFilters = panelFilterCount > 0 || Boolean(search.trim());
 
   const updateStatus = useUpdateJobStatus();
   const cloneJob = useCloneJob();
@@ -390,7 +393,7 @@ export default function EmployerJobsPage() {
                 className="gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-4"
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">{t("postAJob")}</span>
+                {t("postAJob")}
               </Button>
             ) : null}
           </>
@@ -412,10 +415,11 @@ export default function EmployerJobsPage() {
       />
 
       {/* ── List toolbar — search, Filters and Export sit with the list ──
-          No select here, so the search shares the phone row with the buttons. */}
+          Phones: search owns its row; Filters and Export sit under it with
+          their words (two bare icons told nobody what they did). */}
       <div className="workspace-toolbar">
         <SearchField
-          className="workspace-toolbar-search basis-0 sm:basis-64"
+          className="workspace-toolbar-search sm:basis-64"
           placeholder={t("searchJobsPlaceholder")}
           value={search}
           onValueChange={setSearch}
@@ -427,12 +431,15 @@ export default function EmployerJobsPage() {
           onClick={() => setFiltersOpen((v) => !v)}
           aria-expanded={filtersOpen}
           aria-controls="employer-job-filters"
-          aria-label={t("filters")}
-          className={`h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4 ${filtersOpen ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
+          className={`h-11 gap-2 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4 ${filtersOpen ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
         >
-          <SlidersHorizontal className="h-4 w-4 sm:me-2" aria-hidden="true" />
-          <span className="hidden sm:inline">{t("filters")}</span>
-          {hasActiveFilters && <span className="ms-1.5 inline-flex h-2 w-2 rounded-full bg-primary" aria-hidden="true" />}
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+          {t("filters")}
+          {panelFilterCount > 0 && (
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold leading-none text-primary-foreground">
+              {panelFilterCount}
+            </span>
+          )}
         </Button>
         {jobs.length > 0 && (
           <TableToolbar
@@ -697,20 +704,22 @@ export default function EmployerJobsPage() {
                   </div>
                 </div>
 
-                <dl aria-label={t("jobMetricsLabel")} className="mt-4 grid grid-cols-3 divide-x divide-border/70 rounded-xl bg-secondary/50 py-2 rtl:divide-x-reverse">
+                {/* Phones: the three numbers on one text line. As a boxed strip they
+                    made every card ~280px, so ten jobs took 3,200px of scrolling. */}
+                <dl aria-label={t("jobMetricsLabel")} className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 ps-13 sm:mt-4 sm:grid sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-border/70 sm:rounded-xl sm:bg-secondary/50 sm:py-2 sm:ps-0 sm:rtl:divide-x-reverse">
                   {[
                     { label: t("viewsStat"), value: formatCount(job.views) ?? "0" },
                     { label: t("applicantsStat"), value: formatCount(applicants) },
                     { label: t("statOpeningsLabel"), value: formatCount((job.vacancies ?? 0)) },
                   ].map((metric) => (
-                    <div key={metric.label} className="min-w-0 px-2 text-center">
+                    <div key={metric.label} className="flex min-w-0 flex-row-reverse items-baseline gap-1 sm:block sm:px-2 sm:text-center">
                       <dd className="text-sm font-semibold tabular-nums text-foreground">{metric.value}</dd>
-                      <dt className="truncate text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">{metric.label}</dt>
+                      <dt className="text-xs font-medium text-muted-foreground sm:truncate sm:text-[11px] sm:uppercase sm:tracking-[0.08em]">{metric.label}</dt>
                     </div>
                   ))}
                 </dl>
 
-                <div className="mt-3 flex items-center gap-2 border-t border-border/70 pt-3">
+                <div className="mt-2.5 flex items-center gap-2 border-t border-border/70 pt-2.5 sm:mt-3 sm:pt-3">
                   {primaryAction.href ? (
                     <Button asChild className="min-h-11 min-w-0 flex-1 justify-between rounded-xl px-3 text-sm font-semibold">
                       <Link href={primaryAction.href} aria-label={primaryActionAria}>

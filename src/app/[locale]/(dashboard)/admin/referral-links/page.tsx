@@ -218,7 +218,6 @@ export default function AdminReferralLinksPage() {
           value={search}
           onChange={(v) => { setSearch(v); resetPage(); }}
           placeholder={t("searchPlaceholder")}
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">

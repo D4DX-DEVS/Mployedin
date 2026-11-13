@@ -42,6 +42,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (!doc.requestedFromCandidate || !doc.requiresSignature) {
     return NextResponse.json({ error: "This document does not require your signature" }, { status: 400 });
   }
+  if (doc.status === "approved") {
+    return NextResponse.json({ error: "This document is already approved." }, { status: 409 });
+  }
+  // The signature is for a file: there must be one to sign.
+  if (!doc.url) {
+    return NextResponse.json({ error: "Upload the document before signing it." }, { status: 400 });
+  }
 
   doc.signature = {
     fullName: body.signatureName,
@@ -71,7 +78,9 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     }).catch(() => { /* non-blocking */ });
   }
 
-  return NextResponse.json({ onboarding: checklist });
+  // Only a confirmation: the checklist also holds the employer's own tasks and
+  // private notes, which are not the candidate's to read. The page refetches.
+  return NextResponse.json({ success: true });
 }
 
 export const PATCH = withAuth(patchHandler, { resource: "onboarding", action: "update" });

@@ -9,6 +9,8 @@
 import crypto from "crypto";
 import { connectDB } from "@/lib/db/mongoose";
 import Webhook from "@/models/Webhook";
+import User from "@/models/User";
+import Employer from "@/models/Employer";
 import type { WebhookEvent, IWebhook } from "@/models/Webhook";
 import logger from "@/lib/logger";
 import { safeFetch } from "@/lib/security/ssrf";
@@ -20,32 +22,99 @@ interface WebhookPayload {
 }
 
 /**
- * Dispatch a webhook event to all matching active webhooks.
+ * Who an event is about.
+ *
+ * `employerId` is the company whose data the payload carries. Leave it out for
+ * events that belong to no single company (or whose owner is not an employer):
+ * those go to platform webhooks only.
+ */
+export interface WebhookScope {
+  employerId?: string | { toString(): string } | null;
+}
+
+/**
+ * Events an employer-owned webhook is never sent, whatever the scope.
+ * Commissions are what the platform pays its agents — not the employer's data.
+ */
+const PLATFORM_ONLY_PREFIXES = ["commission."] as const;
+
+function isPlatformOnly(event: WebhookEvent): boolean {
+  return PLATFORM_ONLY_PREFIXES.some((prefix) => event.startsWith(prefix));
+}
+
+/**
+ * Dispatch a webhook event to the webhooks allowed to see it.
  * Non-blocking — errors are caught and logged, never thrown to caller.
+ *
+ * Pass `scope.employerId` whenever the payload is about one company; without
+ * it only admin-created (platform) webhooks are called.
  */
 export function dispatchWebhook(
   event: WebhookEvent,
   data: Record<string, unknown>,
+  scope: WebhookScope = {},
 ): void {
   // Fire-and-forget
-  dispatchAsync(event, data).catch((err) => {
+  deliverWebhookEvent(event, data, scope).catch((err) => {
     logger.error({ err, webhookEvent: event }, "Webhook dispatch failed");
   });
 }
 
-async function dispatchAsync(
+/**
+ * Keep only the webhooks that may receive this event.
+ *
+ * A row stores `createdBy` and nothing else about its owner, so ownership is
+ * worked out here, on every dispatch, rather than from a stored field:
+ *  - creator is an admin  -> platform webhook, receives everything;
+ *  - anyone else          -> belongs to the employer that user owns, and only
+ *                            receives events scoped to that same employer.
+ * Default-deny: a creator with no employer, or who no longer exists, gets
+ * nothing. Deriving it live means rows created before this check existed are
+ * scoped without a data migration, and a demoted admin loses platform reach.
+ */
+async function filterByOwner(
+  webhooks: IWebhook[],
+  event: WebhookEvent,
+  scope: WebhookScope,
+): Promise<IWebhook[]> {
+  const creatorIds = [...new Set(webhooks.map((w) => String(w.createdBy)))];
+
+  const [users, employers] = await Promise.all([
+    User.find({ _id: { $in: creatorIds } }).select("role").lean<{ _id: unknown; role?: string }[]>(),
+    Employer.find({ userId: { $in: creatorIds } }).select("userId").lean<{ _id: unknown; userId: unknown }[]>(),
+  ]);
+
+  const adminIds = new Set(users.filter((u) => u.role === "admin").map((u) => String(u._id)));
+  const employerByUser = new Map(employers.map((e) => [String(e.userId), String(e._id)]));
+
+  const eventEmployerId = scope.employerId ? String(scope.employerId) : null;
+  const employerMayReceive = eventEmployerId !== null && !isPlatformOnly(event);
+
+  return webhooks.filter((webhook) => {
+    const creator = String(webhook.createdBy);
+    if (adminIds.has(creator)) return true;
+    return employerMayReceive && employerByUser.get(creator) === eventEmployerId;
+  });
+}
+
+/** Awaitable form of {@link dispatchWebhook}. Exported for tests. */
+export async function deliverWebhookEvent(
   event: WebhookEvent,
   data: Record<string, unknown>,
+  scope: WebhookScope = {},
 ): Promise<void> {
   await connectDB();
 
-  const webhooks = await Webhook.find({
+  const subscribed: IWebhook[] = await Webhook.find({
     events: event,
     isActive: true,
   })
     .select("+secret")
     .lean();
 
+  if (subscribed.length === 0) return;
+
+  const webhooks = await filterByOwner(subscribed, event, scope);
   if (webhooks.length === 0) return;
 
   const payload: WebhookPayload = {

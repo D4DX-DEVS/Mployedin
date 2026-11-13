@@ -517,6 +517,8 @@ export interface CompareCandidate {
   matchBreakdown: { skills?: number; role?: number; experience?: number; education?: number; location?: number; salary?: number } | null;
   /** Requirements checklist roll-up; null before the ATS scoring has run. */
   requirementsStatus?: "met" | "not_met" | "unverified" | null;
+  /** Each job requirement: has / partly / does not have / needs checking. */
+  requirementReport?: import("@/lib/matching/requirementReport").RequirementReport | null;
   /** Whether the job set any must-have; null when the checklist isn't known. */
   hasMustHaves?: boolean | null;
   candidate: {
@@ -546,5 +548,32 @@ export function useCompareApplications(ids: string[]) {return useQuery<CompareRe
     },
     enabled: ids.length >= 2,
     staleTime: 30 * 1000,
+  });
+}
+
+export interface BulkScreeningResult {
+  sent: number;
+  skipped: number;
+  errors: string[];
+  total: number;
+}
+
+/** Send screening questions to selected applications */
+export function useBulkScreening() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (applicationIds: string[]) => {
+      const res = await fetch("/api/applications/bulk-screening", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicationIds }),
+      });
+      if (!res.ok) throw new Error("Failed to send screening questions");
+      return res.json() as Promise<BulkScreeningResult>;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: applicationKeys.lists() });
+      qc.invalidateQueries({ queryKey: jobHiringSummaryKeys.all });
+    },
   });
 }

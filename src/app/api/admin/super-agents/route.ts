@@ -403,6 +403,15 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
 
+  // This route edits super agents only. It writes the account's active flag
+  // and makes a profile for whatever id it is given, so it could switch on an
+  // agent nobody approved (lib/auth/agentApproval.ts) or turn any account's
+  // profile into a super agent's.
+  const target = (await User.findById(userId).select("role").lean()) as { role?: string } | null;
+  if (target?.role !== "super_agent") {
+    return NextResponse.json({ error: "Super agent not found" }, { status: 404 });
+  }
+
   if (agentIds?.length) {
     const current = await SuperAgent.findOne({ userId }).select("_id").lean();
     const takenError = await agentsOwnedElsewhere(agentIds, current?._id ?? null);

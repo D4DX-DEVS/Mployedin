@@ -76,7 +76,7 @@ export function pickCurrentExperience<T extends DatedJob>(jobs: T[]): T | undefi
 }
 
 /** Qualification levels, highest first — the values of the form's chips. */
-const LEVEL_RANK = ["doctorate", "masters", "graduation", "12th", "10th", "below_10th"];
+const LEVEL_RANK = ["doctorate", "masters", "graduation", "diploma", "12th", "10th", "below_10th"];
 
 /**
  * The qualification the form's single education block should show: the

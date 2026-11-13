@@ -74,6 +74,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, message: GENERIC_SUCCESS });
   }
 
+  // Every new code brings five fresh guesses (verify-email), and the arrival
+  // request mints one whenever none is live, so an address gets at most five
+  // new codes a day, whichever way they are asked for.
+  const { allowed: addressAllowed } = await checkRateLimit(`resend-verify-acct:${user._id.toString()}`, {
+    limit: 5,
+    windowSec: 24 * 60 * 60,
+    prefix: "rsndvacct",
+    failClosed: true,
+  });
+  if (!addressAllowed) {
+    return NextResponse.json(
+      { error: "This address has had too many new codes today. Use the link in the latest email, or try again tomorrow." },
+      { status: 429 },
+    );
+  }
+
   // Generate new token
   const rawToken = crypto.randomBytes(32).toString("hex");
   const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -86,6 +102,7 @@ export async function POST(req: NextRequest) {
   user.emailVerificationToken = hashedToken;
   user.emailVerificationOtp = hashedOtp;
   user.emailVerificationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  user.emailVerificationAttempts = 0;
   await user.save();
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

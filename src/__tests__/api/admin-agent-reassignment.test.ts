@@ -42,7 +42,11 @@ const superAgentFindByIdLean = jest.fn().mockResolvedValue(null);
 
 jest.mock("@/models/User", () => ({
   __esModule: true,
-  default: { findByIdAndUpdate: jest.fn().mockResolvedValue({}) },
+  default: {
+    findByIdAndUpdate: jest.fn().mockResolvedValue({}),
+    // PATCH edits agents only (agentApprovalNeedsVerifiedEmail.test.ts).
+    findById: jest.fn(() => ({ select: () => ({ lean: () => Promise.resolve({ role: "agent", isActive: true }) }) })),
+  },
 }));
 
 jest.mock("@/models/Agent", () => ({

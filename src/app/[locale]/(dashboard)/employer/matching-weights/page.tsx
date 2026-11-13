@@ -126,7 +126,7 @@ export default function EmployerMatchingWeightsPage() {
         actions={
           /* One row. Phones use a shorter label rather than a squeezed pill —
              the full text in a flex-1 button spilled outside its own pill. */
-          <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2 [&>button]:min-w-0 [&>button]:whitespace-nowrap [&>button]:px-2 [&>button]:text-xs sm:[&>button]:px-3 sm:[&>button]:text-sm [&_svg]:shrink-0">
+          <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2 [&>button]:min-w-0 [&>button]:whitespace-nowrap [&>button]:px-3 [&>button]:text-sm [&_svg]:shrink-0">
             <Button
               variant="outline"
               size="sm"
@@ -143,8 +143,7 @@ export default function EmployerMatchingWeightsPage() {
               className="gap-1.5 rounded-xl border-border"
             >
               <Copy className="h-4 w-4" />
-              <span className="sm:hidden">{t("saveAsTemplateShort")}</span>
-              <span className="hidden sm:inline">{t("saveAsTemplate")}</span>
+              {t("saveAsTemplate")}
             </Button>
           </div>
         }
@@ -254,7 +253,8 @@ export default function EmployerMatchingWeightsPage() {
             />
           ))}
 
-          <div className="flex flex-wrap items-center gap-3 border-t border-border/60 pt-2">
+          {/* Stays in reach under the sliders instead of a full scroll below them. */}
+          <div className="sticky-action-bar flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-background/95 p-2 backdrop-blur">
             <Button
               onClick={handleSave}
               disabled={saveWeights.isPending || !isTotalValid}
@@ -270,7 +270,7 @@ export default function EmployerMatchingWeightsPage() {
             >
               <RotateCcw className="h-4 w-4" /> {t("resetDefaults")}
             </Button>
-            <p className="text-sm text-muted-foreground">{t("keepStrongest")}</p>
+            <p className="text-sm text-muted-foreground max-sm:hidden">{t("keepStrongest")}</p>
           </div>
         </section>
 

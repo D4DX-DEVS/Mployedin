@@ -7,7 +7,9 @@ import {
   skillsOverlap,
   getMatchedSkills,
   getMatchedJobSkills,
+  hasScoringEvidence,
   jobProfileFromDoc,
+  seekerProfileFromDoc,
 } from "@/lib/matchScore";
 
 describe("calculateMatchScore", () => {
@@ -547,5 +549,28 @@ describe("location scoring — real preference data is messy", () => {
 
   it("still scores an unrelated country at zero", () => {
     expect(scoreFor(["oman"], "india")).toBeLessThan(scoreFor(["oman"], "oman"));
+  });
+});
+
+describe("hasScoringEvidence", () => {
+  // A brand-new account (email code, no CV) scored 29% against every job: the
+  // number was three neutral defaults, not a reading of the person.
+  const blank = seekerProfileFromDoc({});
+
+  it("is false for a profile that states nothing the score is made of", () => {
+    expect(hasScoringEvidence(blank)).toBe(false);
+  });
+
+  it("is true once any scored part is stated", () => {
+    expect(hasScoringEvidence({ ...blank, skills: ["React"] })).toBe(true);
+    expect(hasScoringEvidence({ ...blank, cvText: "Five years of payroll work" })).toBe(true);
+    expect(hasScoringEvidence({ ...blank, preferredRoles: ["accountant"] })).toBe(true);
+    expect(hasScoringEvidence(seekerProfileFromDoc({ workStatus: "fresher" }))).toBe(true);
+  });
+
+  it("ignores what the score does not read: country, pay and education", () => {
+    expect(
+      hasScoringEvidence({ ...blank, locations: ["india"], location: "india", salaryExpectation: 5000, educationLevel: 3 }),
+    ).toBe(false);
   });
 });

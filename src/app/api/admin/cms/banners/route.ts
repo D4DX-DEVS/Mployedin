@@ -13,7 +13,7 @@ const SORT_FIELDS = ["createdAt", "title", "sortOrder"] as const;
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
-async function getHandler(req: NextRequest, ctx: AuthCtx) {
+async function getHandler(req: NextRequest, _ctx: AuthCtx) {
   await connectDB();
 
   const { searchParams } = new URL(req.url);
@@ -50,7 +50,24 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
   const body = await validateBody(req, bannerCreateSchema);
 
-  const { title, titleAr, subtitle, subtitleAr, image, linkUrl, linkText, linkTextAr, sortOrder, isActive } = body;
+  const {
+    title,
+    titleAr,
+    subtitle,
+    subtitleAr,
+    image,
+    linkUrl,
+    linkText,
+    linkTextAr,
+    sortOrder,
+    isActive,
+    placement,
+    audienceRoles,
+    startDate,
+    endDate,
+    style,
+    dismissible,
+  } = body;
   if (!image) {
     return NextResponse.json({ error: "Banner image URL is required" }, { status: 400 });
   }
@@ -66,6 +83,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     linkTextAr: (linkTextAr ?? "").trim(),
     sortOrder: sortOrder ?? 0,
     isActive: isActive !== false,
+    placement: placement ?? ["landing-carousel"],
+    audienceRoles: audienceRoles ?? ["all"],
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+    style: style ?? "info",
+    dismissible: dismissible ?? false,
   });
 
   await logActivity({

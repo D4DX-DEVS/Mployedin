@@ -161,9 +161,10 @@ export function SearchableSelect({
           title={selectedLabel ?? placeholder}
           disabled={disabled}
           className={cn(
-            // Phones fit three of these on one filter row, so the trigger gives
-            // up padding and type size rather than truncating its label.
-            "flex h-9 w-full min-w-0 items-center gap-1 rounded-lg border border-border/60 bg-background px-2 py-1 text-[11px] shadow-sm shadow-black/[0.04] transition-all duration-200 hover:border-border focus:outline-none focus:ring-1 focus:ring-ring/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-50",
+            // One type size for every field at every width (2026-11-12): at 11px
+            // on phones a dropdown read visibly smaller than the typed input
+            // beside it. A long label truncates and shows whole on hover/in the list.
+            "flex h-9 w-full min-w-0 items-center gap-1.5 rounded-lg border border-border/60 bg-background px-2.5 py-1 text-sm shadow-sm shadow-black/[0.04] transition-all duration-200 hover:border-border focus:outline-none focus:ring-1 focus:ring-ring/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-50",
             "sm:h-10 sm:gap-2 sm:px-3 sm:py-2 sm:text-sm",
             className
           )}

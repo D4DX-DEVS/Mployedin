@@ -1,3 +1,5 @@
+import { industryFilterCondition, foldIndustryCounts, industryMasterNames } from "@/lib/jobseekers/industryCanonical.server";
+import { canonicalIndustry } from "@/lib/jobseekers/industryCanonical";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
@@ -54,6 +56,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const country = url.searchParams.get("country") ?? "";
   const experienceMin = url.searchParams.get("experienceMin") ?? "";
   const availability = url.searchParams.get("availability") ?? "";
+  const industry = url.searchParams.get("industry") ?? "";
   // ?view=area: only seekers whose own area is in the territory, the same tab
   // agents have ("In my area").
   const areaOnly = url.searchParams.get("view") === "area";
@@ -182,14 +185,19 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   const availabilityFilter = AVAILABILITY_FILTERS[availability];
   if (availabilityFilter !== undefined) conditions.push({ availabilityStatus: availabilityFilter });
 
+  // Every stored spelling of the chosen master industry (industryCanonical.ts).
+  if (industry) conditions.push(await industryFilterCondition(industry));
+
   const filter: Record<string, unknown> = conditions.length > 0 ? { $and: conditions } : {};
 
-  const [items, total, statsRows] = await Promise.all([
+  const wantIndustryCounts = url.searchParams.get("industryCounts") === "1";
+
+  const [items, total, statsRows, industryCountsResult] = await Promise.all([
     JobSeeker.find(filter)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .select("country currentLocation headline experience totalExperienceYears profileCompleteness skills referral userId createdAt regionCityId regionStateId profileVisibility badges agentId")
+      .select("country currentLocation headline experience totalExperienceYears profileCompleteness skills referral userId createdAt regionCityId regionStateId profileVisibility badges agentId industry")
       .populate("userId", "name email isActive")
       .lean(),
     JobSeeker.countDocuments(filter),
@@ -222,6 +230,14 @@ async function handler(req: NextRequest, ctx: AuthContext) {
         },
       },
     ]),
+    // Industry counts: same scope filter, no pagination; folded onto master names below.
+    wantIndustryCounts
+      ? JobSeeker.aggregate<{ industry: string | null; count: number }>([
+        { $match: filter },
+        { $group: { _id: "$industry", count: { $sum: 1 } } },
+        { $project: { _id: 0, industry: "$_id", count: 1 } },
+      ])
+      : Promise.resolve([] as Array<{ industry: string | null; count: number }>),
   ]);
 
   /* Collect distinct countries for facets */
@@ -244,6 +260,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     { role: ctx.role === "admin" ? "admin" : "super_agent", selfSuperAgentId },
   );
 
+  // The Industry column names the master industry, as the chips do.
+  const masterIndustries = await industryMasterNames();
   const mapped = decorated.map((s: Record<string, unknown>) => {
     const user = s.userId as Record<string, unknown> | null;
     /* Every field below is spelled the way the collection spells it. Four of
@@ -258,6 +276,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       location: s.currentLocation ?? "",
       currentJobTitle: currentRole(s.experience as SeekerExperience[] | undefined, s.headline as string | undefined),
       experienceYears: s.totalExperienceYears ?? 0,
+      industry: canonicalIndustry(s.industry as string | undefined, masterIndustries) ?? (s.industry as string | undefined),
       profileCompletion: s.profileCompleteness ?? 0,
       skills: (s.skills as string[])?.slice(0, 10) ?? [],
       createdAt: s.createdAt,
@@ -295,6 +314,7 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       avgCompletion: scopeTotal > 0 ? Math.round((scopeStats.completionSum ?? 0) / scopeTotal) : 0,
       withExperience: scopeStats?.experienced ?? 0,
     },
+    ...(industryCountsResult.length > 0 ? { industryCounts: await foldIndustryCounts(industryCountsResult) } : {}),
   });
 }
 

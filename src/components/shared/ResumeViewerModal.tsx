@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAtsCheck, type AtsReport } from "@/hooks/useCandidates";
+import { RequirementReport } from "@/components/features/matching/RequirementReport";
+import type { RequirementReport as RequirementReportData } from "@/lib/matching/requirementReport";
 
 interface CandidateInfo {
   role?: string;
@@ -36,6 +38,8 @@ interface ResumeViewerModalProps {
   candidate?: CandidateInfo;
   aiMatchScore?: number;
   matchBreakdown?: MatchBreakdown;
+  /** Each job requirement against this candidate (lib/matching/requirementReport.ts). */
+  requirementReport?: RequirementReportData;
   strengths?: string[];
   gaps?: string[];
   onStatusChange?: (status: string) => void;
@@ -198,6 +202,7 @@ export function ResumeViewerModal({
   candidate,
   aiMatchScore,
   matchBreakdown,
+  requirementReport,
   strengths,
   gaps,
   onStatusChange,
@@ -603,6 +608,14 @@ export function ResumeViewerModal({
                         {matchBreakdown.location != null && <ScoreBar label="Location" value={matchBreakdown.location} />}
                       </div>
                     )}
+
+                    {/* Each job requirement: has / partly / does not have / needs checking */}
+                    {requirementReport?.items?.length ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-foreground">{t("requirements")}</p>
+                        <RequirementReport report={requirementReport} audience="employer" compact />
+                      </div>
+                    ) : null}
 
                     {/* Strengths */}
                     {strengths && strengths.length > 0 && (

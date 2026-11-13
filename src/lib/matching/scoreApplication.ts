@@ -29,7 +29,7 @@ export const APPLICANT_JOB_FIELDS =
   `${JOB_MATCH_FIELDS} description tags workflow screeningQuestions screeningKnockouts matchingWeights`;
 
 /** Every JobSeeker path the applicant score reads. */
-export const APPLICANT_SEEKER_FIELDS = `${SEEKER_MATCH_FIELDS} userId languages industry cv.originalUrl`;
+export const APPLICANT_SEEKER_FIELDS = `${SEEKER_MATCH_FIELDS} userId industry cv.originalUrl`;
 
 type Lean = Record<string, unknown>;
 
@@ -92,6 +92,8 @@ export async function computeApplicantMatch(input: ApplicantScoreInput): Promise
   });
 }
 
+const MUST_HAVE_RANK: Record<ApplicantMatch["requirementsStatus"], number> = { met: 3, unverified: 2, not_met: 1 };
+
 /** The Application fields a score writes — one $set, so no field is ever left behind. */
 export function applicantMatchUpdate(match: ApplicantMatch): Record<string, unknown> {
   return {
@@ -105,6 +107,10 @@ export function applicantMatchUpdate(match: ApplicantMatch): Record<string, unkn
     missingSkills: match.missingSkills,
     qualifications: match.qualifications,
     requirementsStatus: match.requirementsStatus,
+    requirementReport: match.requirementReport,
+    // "Best fit" sorts on this, then the score (D18). The employer's checklist
+    // roll-up decides, since it also counts deal-breaker screening answers.
+    mustHaveRank: MUST_HAVE_RANK[match.requirementsStatus],
     weightsApplied: match.weightsApplied,
     scoredAt: new Date(),
   };

@@ -26,6 +26,7 @@ export function StepIndicator({
   stepLabel,
 }: StepIndicatorProps) {
   const t = useTranslations("common");
+  const nextStep = steps[steps.findIndex((step) => step.id === currentStep) + 1];
   return (
     <nav aria-label={t("a11yFormProgress")}>
       {/* Phones: one row. The current step shows its name; the others shrink
@@ -95,6 +96,10 @@ export function StepIndicator({
           );
         })}
       </ol>
+      {/* Phones show the other steps as bare numbers; say what comes next in words. */}
+      {nextStep ? (
+        <p className="mt-2 text-xs text-muted-foreground sm:hidden">{t("stepNextUp", { label: nextStep.label })}</p>
+      ) : null}
     </nav>
   );
 }

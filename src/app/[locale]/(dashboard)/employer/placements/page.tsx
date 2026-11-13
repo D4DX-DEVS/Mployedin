@@ -190,7 +190,13 @@ export default function EmployerPlacementsPage() {
             cell into a labelled block, which made one placement fill the screen. */}
         {/* The empty state lived only in the desktop table, so a phone with no
             placements got a blank panel and no next step. */}
-        {placements.length === 0 ? (
+        {loading ? (
+          <ul className="space-y-2 px-3 pt-3 sm:hidden" aria-hidden="true">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <li key={i} className="h-16 animate-pulse rounded-xl border border-border/60 bg-background/70" />
+            ))}
+          </ul>
+        ) : placements.length === 0 ? (
           <div className="mx-4 mt-3 flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/70 px-4 py-10 text-center sm:hidden">
             <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-status-applied-bg text-status-applied">
               <Inbox className="h-5 w-5" />
@@ -202,7 +208,7 @@ export default function EmployerPlacementsPage() {
           </div>
         ) : null}
 
-        <ul className="mt-3 space-y-1.5 px-4 sm:hidden">
+        <ul className="mt-3 space-y-2 px-3 pb-3 sm:hidden">
           {placements.map((placement) => {
             const isOpen = expandedPlacementId === placement._id;
             return (
@@ -211,13 +217,13 @@ export default function EmployerPlacementsPage() {
                   type="button"
                   onClick={() => setExpandedPlacementId(isOpen ? null : placement._id)}
                   aria-expanded={isOpen}
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-start"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold text-foreground">
+                    <p className="truncate text-sm font-semibold text-foreground">
                       {placement.candidateName ?? t("candidateFallback")}
                     </p>
-                    <p className="truncate text-[11px] text-muted-foreground">
+                    <p className="truncate text-xs text-muted-foreground">
                       {placement.jobTitle ?? t("untitledRole")}
                     </p>
                   </div>
@@ -226,8 +232,8 @@ export default function EmployerPlacementsPage() {
                 </button>
 
                 {isOpen && (
-                  <div className="border-t border-border/60 px-2.5 py-2 text-[11px]">
-                    <dl className="grid grid-cols-2 gap-x-2 gap-y-1">
+                  <div className="border-t border-border/60 px-3 py-2.5 text-xs">
+                    <dl className="grid grid-cols-2 gap-x-2 gap-y-1.5">
                       <dt className="text-muted-foreground">{t("startDate")}</dt>
                       <dd className="text-end text-foreground">{formatDate(placement.startDate)}</dd>
                       <dt className="text-muted-foreground">{t("salary")}</dt>
@@ -240,10 +246,10 @@ export default function EmployerPlacementsPage() {
                       </span>
                     ) : null}
                     <div className="mt-2 flex gap-2">
-                      <Button asChild variant="outline" size="dense" className="flex-1 rounded-lg text-[11px] font-semibold">
+                      <Button asChild variant="outline" size="dense" className="min-h-11 flex-1 rounded-lg text-xs font-semibold">
                         <Link href={`/${locale}/employer/placements/${placement._id}`}>{t("viewDetails")}</Link>
                       </Button>
-                      <Button asChild variant="outline" size="dense" className="flex-1 rounded-lg text-[11px] font-semibold">
+                      <Button asChild variant="outline" size="dense" className="min-h-11 flex-1 rounded-lg text-xs font-semibold">
                         <Link href={`/${locale}/employer/placements/${placement._id}/onboarding`}>
                           <ClipboardList className="me-1 h-3.5 w-3.5" />
                           {t("onboardingColumn")}
@@ -257,16 +263,20 @@ export default function EmployerPlacementsPage() {
           })}
         </ul>
 
-        <div className="overflow-x-auto">
+        {/* From sm only: phones have the list above. Left visible, the shared
+            table stacked into cards under it and every placement showed twice.
+            Tablets (sm–lg) drop Start date and Salary so the actions stay on
+            screen; both are on the placement page. */}
+        <div className="hidden overflow-x-auto sm:block">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="min-w-[220px]">{t("candidate")}</TableHead>
-                <TableHead className="min-w-[220px]">{t("position")}</TableHead>
-                <TableHead>
+                <TableHead className="lg:min-w-[220px]">{t("candidate")}</TableHead>
+                <TableHead className="lg:min-w-[220px]">{t("position")}</TableHead>
+                <TableHead className="hidden lg:table-cell">
                   <SortableTableHeader label={t("startDate")} active={sortBy === "startDate"} order={sortOrder} onClick={() => sortByColumn("startDate")} />
                 </TableHead>
-                <TableHead>
+                <TableHead className="hidden lg:table-cell">
                   <SortableTableHeader label={t("salary")} active={sortBy === "salary"} order={sortOrder} onClick={() => sortByColumn("salary")} />
                 </TableHead>
                 <TableHead>{t("status")}</TableHead>
@@ -303,8 +313,8 @@ export default function EmployerPlacementsPage() {
                       ) : null}
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{formatDate(placement.startDate)}</TableCell>
-                  <TableCell className="font-medium text-foreground">{formatSalary(placement)}</TableCell>
+                  <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground lg:table-cell">{formatDate(placement.startDate)}</TableCell>
+                  <TableCell className="hidden whitespace-nowrap font-medium text-foreground lg:table-cell">{formatSalary(placement)}</TableCell>
                   <TableCell><StatusBadge status={placement.status} /></TableCell>
                   <TableCell className="text-right">
                     <RowActions

@@ -60,6 +60,8 @@ interface Agent {
   email: string;
   avatar?: string;
   isActive: boolean;
+  /** Approval waits for it (lib/auth/agentApproval.ts). */
+  isEmailVerified?: boolean;
   createdAt: string;
   agentProfile: AgentProfile | null;
 }
@@ -244,10 +246,11 @@ export default function AdminAgentsPage() {
         toast.success(tr("toastAgentActivated"));
         fetchAgents();
       } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || tr("toastFailedActivateAgent"));
+        // Translated copy (an unconfirmed email has its own), never the API's English.
+        const { message } = await formErrorFromResponse(res, { t: tf, locale });
+        toast.error(message);
       }
-    } catch (error) {
+    } catch {
       toast.error(tr("toastFailedActivateAgent"));
     }
   };
@@ -445,11 +448,14 @@ export default function AdminAgentsPage() {
           destructive: true,
         });
       } else {
+        // The API refuses it too (lib/auth/agentApproval.ts); this says why first.
+        const awaitingEmail = agent.isEmailVerified !== true;
         menu.push({
           key: "activate",
-          label: tr("activate"),
+          label: awaitingEmail ? tr("activateAwaitingEmail") : tr("activate"),
           icon: CheckCircle2,
           onSelect: () => handleActivate(agent._id),
+          disabled: awaitingEmail,
         });
       }
       menu.push({
@@ -510,7 +516,6 @@ export default function AdminAgentsPage() {
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={tr("searchAgentPlaceholder")}
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">

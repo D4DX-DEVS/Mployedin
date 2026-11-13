@@ -84,6 +84,8 @@ jest.mock("@/models/User", () => ({
     findByIdAndUpdate: jest.fn(async () => ({})),
     findByIdAndDelete: jest.fn(async () => ({})),
     find: jest.fn(() => lean([])),
+    // PATCH edits super agents only (agentApprovalNeedsVerifiedEmail.test.ts).
+    findById: jest.fn(() => ({ select: () => lean({ role: "super_agent" }) })),
   },
 }));
 

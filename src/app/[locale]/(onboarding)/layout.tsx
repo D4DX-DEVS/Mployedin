@@ -21,10 +21,13 @@ export default async function OnboardingLayout({
   const { locale } = await params;
 
   // Defense in depth behind the middleware (onboarding is not a public route):
-  // never render the onboarding flow for anonymous visitors.
+  // never render the onboarding flow for anonymous visitors. A null session
+  // here usually means a cookie the server ended (sign-out, a password changed
+  // elsewhere) that still decrypts at the edge: /login would bounce it straight
+  // back, so the cookie is cleared first, as the dashboard layout does.
   const session = await auth();
   if (!session?.user) {
-    redirect(`/${locale}/login`);
+    redirect(`/api/auth/clear-stale-session?locale=${encodeURIComponent(locale)}`);
   }
 
   const messages = await getMessages();

@@ -1,5 +1,6 @@
 "use client";
 
+import { IndustryChips } from "@/components/shared/IndustryChips";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { toast } from "sonner";
@@ -63,6 +64,7 @@ interface JobSeekerItem {
   premium?: boolean;
   /** The team agent behind a seeker who did not come through a referral link. */
   agent?: { name: string; via: "added" | "assigned" };
+  industry?: string;
 }
 
 /** Which job seekers the list shows (`?view=`), as on the agent's page. */
@@ -77,9 +79,10 @@ interface Filters {
   premium: string;
   /** "all" | a team agent's Agent id */
   agent: string;
+  industry: string;
 }
 
-const INITIAL_FILTERS: Filters = { search: "", country: "all", experienceMin: "all", availability: "all", premium: "all", agent: "all" };
+const INITIAL_FILTERS: Filters = { search: "", country: "all", experienceMin: "all", availability: "all", premium: "all", agent: "all", industry: "" };
 
 // These will be constructed inside component with i18n
 // const EXPERIENCE_OPTIONS = [...]
@@ -99,8 +102,11 @@ export default function SuperAgentJobSeekersPage() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [countryOptions, setCountryOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: t("allCountries") }]);
+  const [jobCategoryOptions, setJobCategoryOptions] = useState<{ value: string; label: string }[]>([{ value: "", label: t("allIndustries") ?? "All Industries" }]);
   const [totalStats, setTotalStats] = useState({ total: 0, active: 0, avgCompletion: 0, withExperience: 0, premium: 0 });
   const [teamAgents, setTeamAgents] = useState<{ id: string; name: string }[]>([]);
+  // Industry counts aggregated from the filtered scope
+  const [industryCounts, setIndustryCounts] = useState<Array<{ industry: string; count: number }>>([]);
   // Phones: search on the bar, the five dropdowns behind Filter; rows as
   // compact cards with role / profile / date folded into one line.
   const isPhone = useMediaQuery(PHONE_QUERY);
@@ -122,6 +128,26 @@ export default function SuperAgentJobSeekersPage() {
     lastView.current = view;
     resetPage();
   }, [view, resetPage]);
+
+  // Fetch industries
+  useEffect(() => {
+    const fetchIndustries = async () => {
+      try {
+        const res = await fetch("/api/admin/job-attributes/industries");
+        if (res.ok) {
+          const data = await res.json();
+          const industries = (data.items ?? []).map((ind: any) => ({
+            value: ind.name,
+            label: ind.name,
+          }));
+          setJobCategoryOptions([{ value: "", label: t("allIndustries") ?? "All Industries" }, ...industries]);
+        }
+      } catch (error) {
+        // Fall back to just the "All Industries" option
+      }
+    };
+    fetchIndustries();
+  }, [t]);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const viewHref = (next: string) => {
@@ -168,10 +194,12 @@ export default function SuperAgentJobSeekersPage() {
     setLoadFailed(false);
     try {
       const params = pagination.paginationParams();
+      params.set("industryCounts", "1");
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (filters.country !== "all") params.set("country", filters.country);
       if (filters.experienceMin !== "all") params.set("experienceMin", filters.experienceMin);
       if (filters.availability !== "all") params.set("availability", filters.availability);
+      if (filters.industry) params.set("industry", filters.industry);
       if (view === "area") params.set("view", "area");
       if (filters.premium === "premium") params.set("premium", "1");
       if (filters.agent !== "all") params.set("agent", filters.agent);
@@ -186,6 +214,7 @@ export default function SuperAgentJobSeekersPage() {
         if (data.stats) setTotalStats(data.stats);
         setAreaAssigned(data.areaAssigned !== false);
         if (data.agents) setTeamAgents(data.agents);
+        if (data.industryCounts) setIndustryCounts(data.industryCounts);
         if (data.countries) {
           setCountryOptions([
             { value: "all", label: t("allCountries") },
@@ -206,7 +235,7 @@ export default function SuperAgentJobSeekersPage() {
     } finally {
       if (latest()) setLoading(false);
     }
-  }, [debouncedSearch, filters.country, filters.experienceMin, filters.availability, filters.premium, filters.agent, view, pagination.page, pagination.limit]);
+  }, [debouncedSearch, filters.country, filters.experienceMin, filters.availability, filters.industry, filters.premium, filters.agent, view, pagination.page, pagination.limit, t]);
 
   useEffect(() => { fetchSeekers(); }, [fetchSeekers]);
 
@@ -234,6 +263,7 @@ export default function SuperAgentJobSeekersPage() {
     { header: tc("email"), key: "email" },
     { header: tc("location"), key: "location", formatter: (_v, row) => [row.location, row.country].filter(Boolean).join(", ") },
     { header: t("currentRole"), key: "currentJobTitle" },
+    { header: tc("industry"), key: "industry" },
     { header: tc("experience"), key: "experienceYears", formatter: (_v, row) => row.experienceYears ? String(row.experienceYears) : "" },
     { header: t("profile"), key: "profileCompletion", formatter: (_v, row) => `${row.profileCompletion ?? 0}%` },
     { header: tc("date"), key: "createdAt", formatter: (_v, row) => formatListDate(row.createdAt) },
@@ -275,6 +305,14 @@ export default function SuperAgentJobSeekersPage() {
             className={INLINE_FILTER_CONTROL}
           />
           <SearchableSelect
+            options={jobCategoryOptions}
+            value={filters.industry}
+            onValueChange={(v) => updateFilter("industry", v)}
+            placeholder={t("allIndustries") ?? "All Industries"}
+            ariaLabel={t("filterLabelIndustry") ?? "Industry"}
+            className={INLINE_FILTER_CONTROL}
+          />
+          <SearchableSelect
             options={premiumOptions}
             value={filters.premium}
             onValueChange={(v) => updateFilter("premium", v)}
@@ -294,7 +332,7 @@ export default function SuperAgentJobSeekersPage() {
   );
   const dropdownActiveCount = [
     filters.country !== "all", filters.experienceMin !== "all", filters.availability !== "all",
-    filters.premium !== "all", filters.agent !== "all",
+    filters.industry, filters.premium !== "all", filters.agent !== "all",
   ].filter(Boolean).length;
 
   return (
@@ -343,7 +381,6 @@ export default function SuperAgentJobSeekersPage() {
           value={filters.search}
           onChange={(v) => updateFilter("search", v)}
           placeholder={t("searchPlaceholder")}
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={dropdownActiveCount} onClick={() => setFilterSheetOpen(true)} />
         {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
@@ -391,6 +428,16 @@ export default function SuperAgentJobSeekersPage() {
             className={SHEET_CONTROL}
           />
         </FilterField>
+        <FilterField label={t("filterLabelIndustry") ?? "Industry"} htmlFor="sa-seekers-sheet-industry">
+          <SearchableSelect
+            id="sa-seekers-sheet-industry"
+            options={jobCategoryOptions}
+            value={filters.industry}
+            onValueChange={(v) => updateFilter("industry", v)}
+            placeholder={t("allIndustries") ?? "All Industries"}
+            className={SHEET_CONTROL}
+          />
+        </FilterField>
         <FilterField label={t("premium.filterLabel")} htmlFor="sa-seekers-sheet-premium">
           <SearchableSelect
             id="sa-seekers-sheet-premium"
@@ -422,6 +469,14 @@ export default function SuperAgentJobSeekersPage() {
           <ErrorState onRetry={() => fetchSeekers()} />
         ) : (
         <>
+        {/* Seekers per industry; a chip filters the list (rollout rows 14/17). */}
+        <div className="mb-4 sm:mb-6">
+          <IndustryChips
+            counts={industryCounts}
+            selected={filters.industry ?? ""}
+            onSelect={(next) => updateFilter("industry", next)}
+          />
+        </div>
         <PhoneRecordList
           className="sm:hidden"
           label={t("pageTitle")}
@@ -466,6 +521,11 @@ export default function SuperAgentJobSeekersPage() {
                       <span className="truncate">{[s.location, s.country].filter(Boolean).join(", ")}</span>
                     </p>
                   )}
+                  {s.industry && (
+                    <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                      <span className="truncate">{s.industry}</span>
+                    </p>
+                  )}
                 </>
               ),
               badges: (s.premium || s.referralSummary || s.agent || s.inArea) ? (
@@ -508,6 +568,7 @@ export default function SuperAgentJobSeekersPage() {
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="min-w-[180px]">{tc("name")}</TableHead>
                 <TableHead>{t("currentRole")}</TableHead>
+                <TableHead>{tc("industry")}</TableHead>
                 <TableHead>{t("profile")}</TableHead>
                 <TableHead>{tc("date")}</TableHead>
                 <TableHead className="text-right">{tc("actions")}</TableHead>
@@ -515,10 +576,10 @@ export default function SuperAgentJobSeekersPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableBodySkeleton rows={5} cols={4} />
+                <TableBodySkeleton rows={5} cols={5} />
               ) : seekers.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={4} className="py-12">
+                  <TableCell colSpan={5} className="py-12">
                     {view === "area" && !filters.search && filters.country === "all" && filters.experienceMin === "all" && filters.availability === "all" && filters.premium === "all" && filters.agent === "all" ? (
                       <EmptyState
                         title={areaAssigned ? t("area.emptyTitle") : t("area.noRegionTitle")}
@@ -620,6 +681,11 @@ export default function SuperAgentJobSeekersPage() {
                         <span className="shrink-0 text-xs text-muted-foreground">· {s.experienceYears} {t("yearsAbbr")}</span>
                       ) : null}
                     </span>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground" data-mobile-hidden>
+                    {s.industry ? (
+                      <span className="inline-block rounded-md bg-muted px-2 py-1 font-medium">{s.industry}</span>
+                    ) : "—"}
                   </TableCell>
                   <TableCell data-mobile-hidden>
                     <div className="flex items-center gap-2">

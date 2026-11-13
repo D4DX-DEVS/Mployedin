@@ -117,6 +117,20 @@ export async function POST(req: NextRequest) {
       return settle(startedAt, NextResponse.json({ sent: true }, { status: 200 }));
     }
 
+    // No name came with the request: it is the login page, which signs a
+    // seeker in and never makes an account. With no account there is nothing
+    // to sign into, so nothing is stored or sent — and the answer stays the
+    // same as every other masked branch.
+    if (!existing && !body.name) {
+      logActivity({
+        action: "otp.rejected",
+        resource: "auth",
+        ipAddress: ip,
+        meta: { email: normalizedEmail, reason: "no_account_for_login_code" },
+      });
+      return settle(startedAt, NextResponse.json({ sent: true }, { status: 200 }));
+    }
+
     const otp = crypto.randomInt(100000, 1000000).toString();
     const expiresAt = new Date(Date.now() + PENDING_SIGNIN_TTL_MS);
 
@@ -130,7 +144,8 @@ export async function POST(req: NextRequest) {
         attempts: 0,
         requestIp: ip,
         expiresAt,
-        name: body.name,
+        // Only used when the code creates an account (the apply form).
+        ...(body.name ? { name: body.name } : {}),
       },
     };
     try {
@@ -147,7 +162,7 @@ export async function POST(req: NextRequest) {
     // never the email's local part.
     const sendResult = await sendEmail({
       to: normalizedEmail,
-      ...EmailTemplates.verifyEmailOtpQuickApply(otp, existing?.name ?? body.name),
+      ...EmailTemplates.verifyEmailOtpQuickApply(otp, existing?.name ?? body.name ?? ""),
       source: "quick-apply",
       category: "system",
     }).catch((err) => {

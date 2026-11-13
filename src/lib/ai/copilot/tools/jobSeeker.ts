@@ -21,6 +21,7 @@ import { claimSeekerFiles } from "@/lib/cv/fileClaims";
 import { applicationSnapshotFlags } from "@/lib/applications/referralSnapshot";
 import { inngest } from "@/lib/inngest/client";
 import logger from "@/lib/logger";
+import { seekerStageOf } from "@/lib/jobSeeker/seekerStatus";
 
 const CV_TEXT_LIMIT = 2500;
 
@@ -204,7 +205,9 @@ export const recommendedJobsTool: CopilotTool<{ limit?: number }> = {
         company: displayCompanyName(j as { discloseCompany?: boolean }, (j.employerId as { companyName?: string } | null)?.companyName),
         location: jobLocation(j),
         salary: jobSalary(j),
-        matchScore: j.matchScore,
+        // No figure for a profile with nothing to score: it would be the same
+        // neutral default on every row.
+        ...(pool.scoresUnsupported ? {} : { matchScore: j.matchScore }),
         strongMatch: j.recommended,
         matchedSkills: j.matchedSkills.slice(0, 4),
         url: seekerJobUrl(ctx, String(j._id)),
@@ -259,10 +262,12 @@ export const myApplicationsTool: CopilotTool<{ status?: string; limit?: number }
       .lean();
     const rows = apps.map((a) => ({
       title: (a.jobId as unknown as { title?: string } | null)?.title ?? "Unknown job",
-      status: a.status,
+      // The seeker's step, not the employer's stage (In review, not Shortlisted).
+      status: seekerStageOf(a.status) ?? a.status,
       appliedAt: a.appliedAt,
-      // The seeker's own number, not an employer's re-weighted ranking.
-      matchScore: a.seekerMatchScore ?? a.aiMatchScore,
+      // The seeker's own number, not an employer's re-weighted ranking; none
+      // when the application was scored on a profile with nothing to read.
+      ...(a.seekerMatchScore === null ? {} : { matchScore: a.seekerMatchScore ?? a.aiMatchScore }),
     }));
     return { ok: true, message: `You have ${rows.length} application(s) matching this filter.`, data: rows };
   },
@@ -284,7 +289,7 @@ export const applyToJobTool: CopilotTool<{ jobId: string; coverLetter?: string }
     await connectDB();
     if (!isValidObjectId(args.jobId)) return { ok: false, message: "That doesn't look like a valid job ID." };
     const seeker = await JobSeeker.findOne({ userId: ctx.userId })
-      .select("_id documents cv.originalUrl isAgentReferred badges")
+      .select("_id documents cv.originalUrl preferredCvId isAgentReferred badges")
       .lean();
     if (!seeker) return { ok: false, message: "No job seeker profile found for this account." };
 
@@ -322,6 +327,10 @@ export const applyToJobTool: CopilotTool<{ jobId: string; coverLetter?: string }
 
     // The seeker's CV, held while the application is saved (lib/cv/fileClaims.ts).
     const applicationCv = defaultApplicationCv(seeker as { documents?: { name: string; url: string; category?: string; type?: string; builtHash?: string }[]; cv?: { originalUrl?: string } });
+    // Every application carries a CV: with none on file, nothing is sent.
+    if (applicationCv.length === 0) {
+      return { ok: false, message: "You need a CV on file before I can apply for you. Upload one or build one on My CVs, then ask me again." };
+    }
     if ((await claimSeekerFiles(seeker._id, applicationCv.map((d) => d.url))).length > 0) {
       return { ok: false, message: "Your CV changed while I was applying. Please ask me again." };
     }

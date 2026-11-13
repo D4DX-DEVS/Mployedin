@@ -9,7 +9,8 @@ import { createHash, randomUUID } from "crypto";
 import { cvStatusesFor, registerCvDocument } from "@/lib/cv/cvDocuments";
 import { removeSeekerDocuments } from "@/lib/cv/fileClaims";
 import { limitCvUpload } from "@/lib/cv/uploadLimit";
-import { CV_UPLOAD_MIME_TYPES } from "@/lib/applications/cvChoice";
+import { BUILT_CV_KEY, CV_UPLOAD_MIME_TYPES, PROFILE_CV_KEY, uploadedResumes } from "@/lib/applications/cvChoice";
+import { z } from "zod";
 import logger from "@/lib/logger";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
@@ -48,8 +49,8 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
   }
 
   await connectDB();
-  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id documents cv.originalUrl").lean();
-  if (!seeker) return NextResponse.json({ documents: [], profileCv: null });
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id documents cv.originalUrl preferredCvId cvDesign").lean();
+  if (!seeker) return NextResponse.json({ documents: [], profileCv: null, preferredCvId: null, hasBuiltCv: false });
 
   // Whether each resume — and the profile CV — has been read. A file with no
   // record yet predates CV reading and is waiting for the backfill.
@@ -63,6 +64,9 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
   return NextResponse.json({
     documents: docs.map((d) => (d.category === "resume" ? { ...d, cvStatus: statusOf(d.url) } : d)),
     profileCv: profileUrl ? { cvStatus: statusOf(profileUrl) } : null,
+    // My CVs: which CV the seeker chose to send, and whether a built one exists.
+    preferredCvId: (seeker as { preferredCvId?: string | null }).preferredCvId ?? null,
+    hasBuiltCv: Boolean((seeker as { cvDesign?: unknown }).cvDesign),
   });
 }
 
@@ -192,6 +196,78 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   return NextResponse.json({ document: category === "resume" ? { ...doc, cvStatus: "uploaded" } : doc });
 }
 
+const patchSchema = z.union([
+  // Rename an uploaded document (its file keeps its name in storage).
+  z.object({ id: z.string().min(1).max(100), name: z.string().trim().min(1).max(120) }).strict(),
+  // Choose the CV sent with applications; null goes back to the default order.
+  z.object({ preferredCvId: z.string().min(1).max(100).nullable() }).strict(),
+]);
+
+// PATCH /api/job-seeker/documents — rename a document, or choose the CV sent
+async function patchHandler(req: NextRequest, ctx: { userId: string; role: string; locale: string }) {
+  if (ctx.role !== "job_seeker") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const parsed = patchSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+
+  await connectDB();
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId })
+    .select("_id documents cv.originalUrl cvDesign preferredCvId")
+    .lean<{
+      _id: unknown;
+      documents?: Array<{ id: string; name: string; url: string; category?: string; builtHash?: string }>;
+      cv?: { originalUrl?: string };
+      cvDesign?: unknown;
+      preferredCvId?: string | null;
+    }>();
+  if (!seeker) {
+    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+  }
+
+  if ("name" in parsed.data) {
+    const { id, name } = parsed.data;
+    const doc = seeker.documents?.find((d) => d.id === id);
+    // The stored built CV is named by the builder, not by the seeker.
+    if (!doc || doc.builtHash) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
+    }
+    await JobSeeker.updateOne({ _id: seeker._id, "documents.id": id }, { $set: { "documents.$.name": name } });
+    await logActivity({
+      ...actorFromCtx(ctx),
+      action: "job_seeker.rename_document",
+      resource: "job_seekers",
+      resourceId: ctx.userId,
+      changes: { before: { name: doc.name }, after: { name } },
+      req,
+    });
+    return NextResponse.json({ document: { ...doc, name } });
+  }
+
+  const preferred = parsed.data.preferredCvId;
+  const valid =
+    preferred === null ||
+    (preferred === PROFILE_CV_KEY && !!seeker.cv?.originalUrl) ||
+    (preferred === BUILT_CV_KEY && !!seeker.cvDesign) ||
+    uploadedResumes(seeker.documents).some((d) => d.id === preferred);
+  if (!valid) {
+    return NextResponse.json({ error: "CV not found" }, { status: 404 });
+  }
+  await JobSeeker.updateOne({ _id: seeker._id }, { $set: { preferredCvId: preferred } });
+  await logActivity({
+    ...actorFromCtx(ctx),
+    action: "job_seeker.choose_application_cv",
+    resource: "job_seekers",
+    resourceId: ctx.userId,
+    changes: { before: { preferredCvId: seeker.preferredCvId ?? null }, after: { preferredCvId: preferred } },
+    req,
+  });
+  return NextResponse.json({ preferredCvId: preferred });
+}
+
 // DELETE /api/job-seeker/documents?id=xxx — remove a document
 async function deleteHandler(req: NextRequest, ctx: { userId: string; role: string; locale: string }) {
   if (ctx.role !== "job_seeker") {
@@ -219,6 +295,8 @@ async function deleteHandler(req: NextRequest, ctx: { userId: string; role: stri
   // sent with it (the employer keeps what they received) or is being saved
   // with it in another tab right now (lib/cv/fileClaims.ts).
   await removeSeekerDocuments(seeker._id, [id]);
+  // A removed CV can no longer be the one sent; the default order takes over.
+  await JobSeeker.updateOne({ _id: seeker._id, preferredCvId: id }, { $set: { preferredCvId: null } });
 
   await logActivity({
     ...actorFromCtx(ctx),
@@ -234,4 +312,5 @@ async function deleteHandler(req: NextRequest, ctx: { userId: string; role: stri
 
 export const GET = withAuth(getHandler);
 export const POST = withAuth(postHandler);
+export const PATCH = withAuth(patchHandler);
 export const DELETE = withAuth(deleteHandler);

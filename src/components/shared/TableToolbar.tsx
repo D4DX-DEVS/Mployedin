@@ -108,11 +108,12 @@ export function TableToolbar({
   const exportMenu = hasExport ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {/* The label is hidden below `sm`, so name the trigger explicitly or
-            the phone layout is an unnamed icon button. */}
-        <Button variant="outline" size="sm" aria-label={t("export")} className="h-11 w-11 justify-center gap-1.5 rounded-xl p-0 sm:w-auto sm:px-3">
+        {/* Worded at every width: a bare download arrow on phones did not say
+            what it exported (2026-11-12 screen review). The admin phone toolbar
+            still collapses it to the icon through its own rule in globals.css. */}
+        <Button variant="outline" size="sm" aria-label={t("export")} className="h-11 justify-center gap-1.5 rounded-xl px-3">
           <Download className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{t("export")}</span>
+          <span>{t("export")}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-40">
@@ -165,7 +166,11 @@ export function TableToolbar({
           )}
 
           <div className="flex w-full flex-col gap-2 xl:w-auto xl:min-w-[320px] xl:items-end">
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:justify-end [&_.toolbar-search-field]:min-w-0 [&_.toolbar-search-field]:flex-1 sm:[&_.toolbar-search-field]:flex-none">
+            {/* Phones: search takes the whole first line and the buttons share
+                the next. Beside worded Filters and Export it was left about
+                90px ("Search job s"). The admin shell keeps its own one-row
+                rule in globals.css, which outranks this. */}
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 xl:justify-end [&_.toolbar-search-field]:min-w-0 [&_.toolbar-search-field]:flex-[1_1_100%] sm:[&_.toolbar-search-field]:flex-none">
               {searchControl}
               {filterContent && (
                 <Button

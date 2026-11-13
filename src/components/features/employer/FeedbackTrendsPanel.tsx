@@ -175,8 +175,32 @@ export function FeedbackTrendsPanel() {
             <TrendingUp className="w-4 h-4 text-primary" />
             {t("monthlyScoreTrends")}
           </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+          {/* Phones: one card per month with all five scores. The table was
+              folded by the shared phone-table layout into a card that showed
+              only "Count 1" and hid every score. */}
+          <ul className="space-y-2.5 sm:hidden">
+            {data.trends.map((row) => (
+              <li key={row.month} className="rounded-xl border border-border/60 p-3">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-sm font-semibold">{row.month}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("count")}: {row.count.toLocaleString(numberLocale)} · {t("overall")}{" "}
+                    <span className="font-bold text-foreground">{row.overall.toFixed(1)}</span>
+                  </span>
+                </div>
+                <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  {DIMENSION_KEYS.map((key) => (
+                    <div key={key} className="flex items-center justify-between gap-2">
+                      <dt className="min-w-0 truncate text-muted-foreground">{t(`dimensions.${key}`)}</dt>
+                      <dd className="font-semibold tabular-nums">{row[key].toFixed(1)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
+            <table data-mobile-table="scroll" className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
                   <th className="text-start py-2 pe-3">{t("month")}</th>
@@ -212,17 +236,22 @@ export function FeedbackTrendsPanel() {
       {data.distribution.length > 0 && (
         <div className="rounded-xl border border-border/50 bg-card panel-body">
           <h3 className="heading-label font-semibold mb-3">{t("scoreDistribution")}</h3>
-          <div className="flex items-end gap-2 h-24">
+          <div className="flex h-28 items-stretch gap-2">
             {data.distribution.map((b) => {
               const maxCount = Math.max(...data.distribution.map((d) => d.count), 1);
               const heightPct = Math.max(8, (b.count / maxCount) * 100);
+              // The bar sits in its own stretch box: as a direct child of the
+              // column its percentage height had nothing to resolve against,
+              // so every bar drew at 0px and only the number showed.
               return (
-                <div key={b.range} className="flex-1 flex flex-col items-center gap-1">
+                <div key={b.range} className="flex h-full min-w-0 flex-1 flex-col items-center gap-1">
                   <span className="text-xs font-semibold">{b.count.toLocaleString(numberLocale)}</span>
-                  <div
-                    className="w-full rounded-t-md bg-primary/80 transition-all"
-                    style={{ height: `${heightPct}%` }}
-                  />
+                  <div className="flex min-h-0 w-full flex-1 items-end">
+                    <div
+                      className={`w-full rounded-t-md transition-all ${b.count > 0 ? "bg-primary/80" : "bg-muted"}`}
+                      style={{ height: `${b.count > 0 ? heightPct : 4}%` }}
+                    />
+                  </div>
                   <span className="text-[11px] text-muted-foreground">{b.range}</span>
                 </div>
               );

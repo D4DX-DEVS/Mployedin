@@ -7,7 +7,11 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { X, Send, Loader2, Sparkles, RotateCcw, Check, History, Trash2, Paperclip } from "lucide-react";
+import {
+  X, Send, Loader2, Sparkles, SquarePen, Check, History, Trash2, Paperclip,
+  BarChart3, Briefcase, Search, Target, FileText, ClipboardList, UserPlus, TrendingUp, FilePen, CircleHelp, Clock,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -18,7 +22,7 @@ import { ToolProposalCard } from "./ToolProposalCard";
 import { CopilotViewCard } from "./CopilotViewCard";
 import { loadChats, persistChats, removeLegacyChats, type SavedChat } from "./chatStorage";
 import { sameOriginPath } from "./links";
-import { roleFromPathname } from "./suggestionRole";
+import { roleFromPathname, type SuggestionRole } from "./suggestionRole";
 import { COPILOT_EXECUTED_EVENT, COPILOT_LEAD_DRAFT_EVENT, COPILOT_LEAD_DRAFT_KEY } from "./events";
 import type { CopilotStreamFrame, TranscriptItem } from "./types";
 import { formatDate } from "@/lib/ui/intlFormat";
@@ -108,20 +112,30 @@ const POSTER_FAILURE_KEYS: Record<LeadPosterFailure, string> = {
  * while a busy dev server lost /favicon.ico) is retried once; if that fails
  * too, the assistant icon takes its place instead of a broken-image glyph.
  */
-function CopilotMark() {
+function CopilotMark({ small = false }: { small?: boolean }) {
   const [failures, setFailures] = useState(0);
-  if (failures > 1) return <Sparkles className="h-6 w-6 text-primary" aria-hidden />;
+  if (failures > 1) return <Sparkles className={cn("text-primary", small ? "h-4 w-4" : "h-6 w-6")} aria-hidden />;
   return (
     <img
       key={failures}
       src={failures === 0 ? "/favicon.ico" : "/favicon.ico?retry=1"}
       alt=""
-      className="h-8 w-8"
+      className={small ? "h-5 w-5" : "h-8 w-8"}
       draggable={false}
       onError={() => setFailures((n) => n + 1)}
     />
   );
 }
+
+/** Leading icon per suggestion chip, in the order of `copilot.suggestions.<role>1..3`. */
+const SUGGESTION_ICONS: Record<SuggestionRole, [LucideIcon, LucideIcon, LucideIcon]> = {
+  employer: [BarChart3, Briefcase, Search],
+  jobSeeker: [Target, FileText, Search],
+  agent: [ClipboardList, UserPlus, Search],
+  superAgent: [TrendingUp, ClipboardList, UserPlus],
+  admin: [BarChart3, Search, FilePen],
+  default: [CircleHelp, Search, Clock],
+};
 
 interface CopilotProps {
   className?: string;
@@ -617,7 +631,7 @@ export function Copilot({ className }: CopilotProps) {
 
   const suggestions = useMemo(() => {
     const role = roleFromPathname(pathname);
-    return [1, 2, 3].map((i) => t(`suggestions.${role}${i}`));
+    return SUGGESTION_ICONS[role].map((Icon, i) => ({ Icon, text: t(`suggestions.${role}${i + 1}`) }));
   }, [pathname, t]);
   // Leads belong to agents: only they get the poster attach button.
   const canAttachPoster = roleFromPathname(pathname) === "agent";
@@ -638,8 +652,8 @@ export function Copilot({ className }: CopilotProps) {
       {/* Header */}
       <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Sparkles className="h-4 w-4" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
+            <CopilotMark small />
           </div>
           <span className="text-sm font-semibold">{t("title")}</span>
         </div>
@@ -655,7 +669,7 @@ export function Copilot({ className }: CopilotProps) {
             <History className="h-3.5 w-3.5" />
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 max-sm:h-11 max-sm:w-11" onClick={resetChat} title={t("newChat")} aria-label={t("newChat")}>
-            <RotateCcw className="h-3.5 w-3.5" />
+            <SquarePen className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="ghost"
@@ -718,14 +732,15 @@ export function Copilot({ className }: CopilotProps) {
             <p className="text-sm font-medium text-foreground">{t("greeting")}</p>
             <p className="text-xs">{t("howCanIHelp")}</p>
             <div className="mt-3 flex w-full flex-col gap-1.5">
-              {suggestions.map((s) => (
+              {suggestions.map(({ Icon, text }) => (
                 <button
-                  key={s}
+                  key={text}
                   type="button"
-                  onClick={() => sendMessage(s)}
-                  className="rounded-lg border border-border bg-muted/40 text-start text-xs text-foreground transition-colors hover:bg-muted chip-pad"
+                  onClick={() => sendMessage(text)}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 text-start text-xs text-foreground transition-colors hover:bg-muted chip-pad"
                 >
-                  {s}
+                  <Icon className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                  <span>{text}</span>
                 </button>
               ))}
             </div>
@@ -823,7 +838,8 @@ export function Copilot({ className }: CopilotProps) {
             {t("thinking")}
           </div>
         )}
-        <div ref={bottomRef} />
+        {/* Only with messages: its space-y margin pushed the full-height empty state into a scrollbar. */}
+        {(showHistory || hasMessages) && <div ref={bottomRef} />}
       </div>
 
       {/* Input */}

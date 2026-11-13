@@ -73,7 +73,8 @@ it("lists each check with its candidate, employer, status and replies", async ()
   await within(table).findByText("Asha Menon");
   expect(fetchMock).toHaveBeenCalledWith("/api/background-checks?page=1&limit=20");
   expect(within(table).getByText("Accountant")).toBeInTheDocument();
-  expect(within(table).getByText("Acme")).toBeInTheDocument();
+  // Below lg the employer rides under the name; from lg it has its own column.
+  expect(within(table).getAllByText("Acme").length).toBeGreaterThan(0);
   expect(within(table).getByText("In progress")).toBeInTheDocument();
   expect(within(table).getByText("1 of 2 references replied")).toBeInTheDocument();
   expect(paginationState.updateTotal).toHaveBeenCalledWith(1);

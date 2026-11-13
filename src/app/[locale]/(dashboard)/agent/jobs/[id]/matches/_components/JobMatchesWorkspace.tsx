@@ -18,6 +18,12 @@ export function JobMatchesWorkspace({ locale, jobId }: JobMatchesWorkspaceProps)
 
   return (
     <div className="page-container">
+      <Link
+        href={jobHref}
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden /> {t("backToJob")}
+      </Link>
       <JobMatches
         jobId={jobId}
         role="agent"
@@ -33,14 +39,6 @@ export function JobMatchesWorkspace({ locale, jobId }: JobMatchesWorkspaceProps)
             title={t("title")}
             context={data?.job.title ?? " "}
             status={refreshing ? t("refreshing") : undefined}
-            actions={
-              <Link href={jobHref}>
-                <Button variant="outline" className="min-h-11 gap-2 rounded-xl">
-                  <ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />
-                  <span className="hidden sm:inline">{t("backToJob")}</span>
-                </Button>
-              </Link>
-            }
           />
         )}
       />

@@ -15,13 +15,22 @@ jest.mock("@/lib/auth/withAuth", () => ({
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
 
 const flagged = new Set<string>();
+const withPassword = new Set<string>();
 const findById = jest.fn();
 jest.mock("@/models/User", () => ({
   __esModule: true,
   default: {
     findById: (id: string) => {
       findById(id);
-      return { select: () => ({ lean: () => Promise.resolve(flagged.has(id) ? { tempPasswordIssuedAt: new Date() } : {}) }) };
+      return {
+        select: () => ({
+          lean: () =>
+            Promise.resolve({
+              ...(flagged.has(id) ? { tempPasswordIssuedAt: new Date() } : {}),
+              ...(withPassword.has(id) ? { passwordHash: "bcrypt-hash" } : {}),
+            }),
+        }),
+      };
     },
   },
 }));
@@ -36,6 +45,7 @@ async function status(ctx: Record<string, unknown>) {
 
 beforeEach(() => {
   flagged.clear();
+  withPassword.clear();
   findById.mockClear();
 });
 
@@ -58,4 +68,30 @@ it("never shows an employer's notice to staff in tenant view", async () => {
   flagged.add("owner");
   expect(await status({ userId: "owner", tenantView: { actorId: "admin", actorRole: "admin", employerId: "e" } })).toBe(false);
   expect(findById).not.toHaveBeenCalled();
+});
+
+describe("hasPassword", () => {
+  // An account made by an e-mail code or by Google has no password; the apply
+  // page and Settings offer to set one only when this is false.
+  async function body(ctx: Record<string, unknown>) {
+    currentCtx = { role: "job_seeker", locale: "en", ...ctx };
+    const res = await GET(new NextRequest("http://localhost/api/user/password-status"), {} as never);
+    return res.json();
+  }
+
+  it("is false for an account with no password, and never returns the hash", async () => {
+    const data = await body({ userId: "seeker" });
+    expect(data).toEqual({ temporaryPassword: false, hasPassword: false });
+  });
+
+  it("is true once a password is set", async () => {
+    withPassword.add("seeker");
+    const data = await body({ userId: "seeker" });
+    expect(data).toEqual({ temporaryPassword: false, hasPassword: true });
+  });
+
+  it("never offers staff in tenant view a password for the employer", async () => {
+    const data = await body({ userId: "owner", tenantView: { actorId: "admin", actorRole: "admin", employerId: "e" } });
+    expect(data.hasPassword).toBe(true);
+  });
 });

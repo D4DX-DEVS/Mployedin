@@ -258,6 +258,63 @@ describe("POST /api/mcp/token security", () => {
     expect(res.status).toBe(200);
   });
 
+  describe("an authorization code approved before a password change", () => {
+    // The code lives about a minute. A thief signed in with the old password
+    // could approve a connector, the owner change the password, and the code
+    // still be swapped for a fresh 90-day grant: the refresh and tool-call
+    // checks compare grants with passwordChangedAt, the code exchange did not.
+    const verifier = "c".repeat(43);
+    const changedAt = new Date("2026-11-12T12:00:00Z");
+    function code(createdAt: Date) {
+      authCodeModel.findOne.mockReturnValue(leanResult({
+        _id: "code-id",
+        clientId: "mcpc_pwd",
+        userId: "user-id",
+        role: "job_seeker",
+        redirectUri: "https://chatgpt.com/connector/oauth/callback",
+        resource: "http://localhost:3000",
+        codeChallenge: s256(verifier),
+        scopes: ["read:reports"],
+        expiresAt: new Date(Date.now() + 60_000),
+        createdAt,
+      }));
+      userModel.findById.mockReturnValue(userResult({ role: "job_seeker", isActive: true, passwordChangedAt: changedAt }));
+      authCodeModel.findOneAndUpdate.mockReturnValue(leanResult({ _id: "code-id" }));
+    }
+    const exchange = () => POST(formRequest({
+      grant_type: "authorization_code",
+      code: "mcpac_example",
+      redirect_uri: "https://chatgpt.com/connector/oauth/callback",
+      client_id: "mcpc_pwd",
+      code_verifier: verifier,
+      resource: "http://localhost:3000",
+    }));
+
+    it("is refused and mints nothing", async () => {
+      code(new Date(changedAt.getTime() - 1_000));
+      const res = await exchange();
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toMatchObject({ error: "invalid_grant" });
+      expect(tokenModel.create).not.toHaveBeenCalled();
+      const projection = userModel.findById.mock.results[0].value.select.mock.calls[0][0] as string;
+      expect(projection.split(" ")).toContain("passwordChangedAt");
+    });
+
+    it("is refused when it carries no approval time", async () => {
+      code(undefined as unknown as Date);
+      const res = await exchange();
+      expect(res.status).toBe(400);
+      expect(tokenModel.create).not.toHaveBeenCalled();
+    });
+
+    it("is not refused for that when approved after the change", async () => {
+      code(new Date(changedAt.getTime() + 1_000));
+      const res = await exchange();
+      expect(res.status).toBe(200);
+      expect(tokenModel.create).toHaveBeenCalled();
+    });
+  });
+
   it("rate-limits token calls per client so one app cannot hammer the endpoint", async () => {
     const statuses: number[] = [];
     for (let i = 0; i < 21; i += 1) {

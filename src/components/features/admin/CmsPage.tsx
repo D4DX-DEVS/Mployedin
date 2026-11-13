@@ -191,6 +191,24 @@ export default function CmsPage({
     else if (payload.isActive !== undefined) payload.isActive = payload.isActive === "true";
     if (payload.sortOrder !== undefined) payload.sortOrder = parseInt(String(payload.sortOrder)) || 0;
     if (payload.rating !== undefined) payload.rating = parseInt(String(payload.rating)) || 5;
+    // Handle banner-specific fields
+    if (payload.placement !== undefined && typeof payload.placement === "string") {
+      try {
+        payload.placement = JSON.parse(payload.placement);
+      } catch {
+        payload.placement = ["landing-carousel"];
+      }
+    }
+    if (payload.audienceRoles !== undefined && typeof payload.audienceRoles === "string") {
+      try {
+        payload.audienceRoles = JSON.parse(payload.audienceRoles);
+      } catch {
+        payload.audienceRoles = ["all"];
+      }
+    }
+    if (payload.dismissible !== undefined) payload.dismissible = payload.dismissible === "true";
+    if (payload.startDate === "") delete payload.startDate;
+    if (payload.endDate === "") delete payload.endDate;
     return payload;
   };
 
@@ -253,7 +271,13 @@ export default function CmsPage({
   const toStringRecord = (item: Record<string, unknown>): Record<string, string> => {
     const record: Record<string, string> = {};
     for (const [k, v] of Object.entries(item)) {
-      record[k] = v === null || v === undefined ? "" : String(v);
+      if (v === null || v === undefined) {
+        record[k] = "";
+      } else if (Array.isArray(v)) {
+        record[k] = JSON.stringify(v);
+      } else {
+        record[k] = String(v);
+      }
     }
     return record;
   };
@@ -454,7 +478,6 @@ export default function CmsPage({
             filterFields.find((f) => f.type === "search")?.placeholder ??
             t("searchFallback", { title: title.toLowerCase() })
           }
-          className="max-sm:basis-0"
         />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">

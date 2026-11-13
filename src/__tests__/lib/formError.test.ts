@@ -34,6 +34,22 @@ describe("formErrorFromResponse", () => {
     expect(isFormError(err)).toBe(true);
   });
 
+  it("a refusal code with copy of its own wins over the status", async () => {
+    // An agent approved before confirming their email (lib/auth/agentApproval.ts):
+    // 422 would otherwise read "check these fields", and the agent forms map
+    // 409 to "email already in use".
+    const err = await formErrorFromResponse(
+      response(422, { error: "This agent has not confirmed their email address yet.", code: "AGENT_EMAIL_NOT_VERIFIED" }),
+      { t, locale: "en", fieldLabels: fields, conflict: t("emailInUse") },
+    );
+    expect(err.message).toBe(en.agentEmailNotVerified);
+  });
+
+  it("an unknown code falls back to the status copy", async () => {
+    const err = await formErrorFromResponse(response(404, { code: "SOMETHING_ELSE" }), { t, locale: "en" });
+    expect(err.message).toBe(t("notFound"));
+  });
+
   it("409 uses the caller's specific copy when given", async () => {
     const err = await formErrorFromResponse(response(409, { error: "Email already in use" }), { t, locale: "en", conflict: t("emailInUse") });
     expect(err.message).toBe("This email is already used by another account. Use a different email.");

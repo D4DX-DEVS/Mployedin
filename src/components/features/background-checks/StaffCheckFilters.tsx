@@ -187,9 +187,11 @@ export function StaffCheckFilterBar({ overview, values, onChange, onClear, activ
   return (
     <>
       <InlineFilterBar onClear={active ? onClear : undefined} clearLabel={t("clearFilters")} className="px-0 pt-0">
-        <InlineFilterSearch value={values.q} onChange={(q) => onChange({ q })} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
-        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
-        <div className="contents max-sm:hidden">
+        <InlineFilterSearch value={values.q} onChange={(q) => onChange({ q })} placeholder={t("searchPlaceholder")} />
+        {/* Phones and tablets: search plus one Filters button with a count.
+            Five selects filled two rows at 820px; they return from lg. */}
+        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} className="sm:inline-flex lg:hidden" />
+        <div className="contents max-lg:hidden">
           <SearchableSelect
             id="staff-bg-employer"
             ariaLabel={t("employerLabel")}

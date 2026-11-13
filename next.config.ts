@@ -57,6 +57,14 @@ const nextConfig: NextConfig = {
   },
 
   experimental: {
+    // Client router cache. Next 15+ dropped the dynamic default from 30s to 0s,
+    // so every tab switch re-ran the server page and flashed loading.tsx again.
+    // Revisits within 60s now paint instantly; router.refresh() and server
+    // actions still invalidate, and React Query keeps its own 5-min cache.
+    staleTimes: {
+      dynamic: 60,
+      static: 300,
+    },
     // Tree-shake barrel exports from heavy icon/UI packages — cuts initial JS by ~30-40 %
     optimizePackageImports: [
       "lucide-react",

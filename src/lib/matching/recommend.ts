@@ -10,7 +10,7 @@
  *
  *   stage 0  retrieval   caller supplies candidates (already-applied excluded)
  *   stage 1  eligibility hard gate, both-sides-stated rule   -> eligibility.ts
- *   stage 2  relevance   skills / role / experience          -> relevance.ts
+ *   stage 2  relevance   skills / role / experience / education (+ licences, languages) -> relevance.ts
  *   stage 3  AI adjust   Jev, per pair within 10 of the bar   -> ai/jev.ts
  *   stage 4  threshold   SystemConfig.matching.minScore
  *
@@ -28,7 +28,7 @@ import logger from "@/lib/logger";
 import { displayCompanyName } from "@/lib/jobs/companyDisclosure";
 import { seekerProfileFromDoc, jobProfileFromDoc, type SeekerProfile, type JobProfile } from "@/lib/matchScore";
 import { checkEligibility, type IneligibleReason } from "@/lib/matching/eligibility";
-import { calculateRelevance, type RelevanceBreakdown } from "@/lib/matching/relevance";
+import { calculateRelevance, hasIdentifiableRequirement, type RelevanceBreakdown } from "@/lib/matching/relevance";
 // Type only: importing the Mongo-backed cache at runtime would drag Mongoose
 // into every consumer, including unit tests of this orchestrator. Callers load
 // vectors via prepareSkillVectors() in skillVectors.ts and pass them in.
@@ -93,6 +93,10 @@ export function hasKnownLocation(seeker: SeekerProfile): boolean {
 
 export interface RecommendationResult {
   jobs: RecommendedJob[];
+  /** Jobs over the floor held back because a must-have is missing or unverified (D16). */
+  heldBackOnMustHaves?: number;
+  /** Jobs over the floor held back because they ask for nothing beyond a title (D20). */
+  heldBackNoRequirements?: number;
   /** Everything that scored, above and below the floor — for diagnostics. */
   considered: number;
   /** Counts per gate, so we can see which constraint starves which seeker. */
@@ -109,8 +113,8 @@ export interface RecommendationResult {
  * Work out what is actually holding this seeker back.
  *
  * Profile gaps come first, because they are the only thing the seeker can fix
- * today and because they dominate the arithmetic: skills are 60% of the score,
- * so a seeker with none has a ceiling of 40 and can never clear a threshold
+ * today and because they dominate the arithmetic: skills are 40 of the 100
+ * core points (RELEVANCE_POINTS), so a seeker with none can never clear a threshold
  * anywhere near 80 no matter what the job board does.
  */
 export function diagnoseLimitingFactor(
@@ -137,9 +141,9 @@ export function diagnoseLimitingFactor(
   )[0];
   if (worstGate && (worstGate[1] ?? 0) > scoredCount) return worstGate[0] as IneligibleReason;
 
-  // Plenty was eligible, so the ceiling is the profile. Skills are 60% of the
-  // score: with none stated, and no CV to fall back on, the best reachable
-  // total is 40 — no job can ever clear a threshold near 80.
+  // Plenty was eligible, so the ceiling is the profile. Skills are 40 of the
+  // 100 core points: with none stated, and no CV to fall back on, the best
+  // reachable total is 60 — no job can ever clear a threshold near 80.
   if ((seeker.skills ?? []).length === 0 && !(seeker.cvText ?? "").trim()) return "no_skills";
   if ((seeker.preferredRoles ?? []).length === 0) return "no_roles";
 
@@ -468,7 +472,7 @@ export async function recommendJobsFor(
   // No country means no recommendation — before any scoring, so nothing is
   // spent on Jev for a list that will not be sent.
   if (!hasKnownLocation(seeker)) {
-    return { jobs: [], considered: 0, rejected, bestScore: 0, threshold, aiUsed: false, limitingFactor: "no_location" };
+    return { jobs: [], heldBackOnMustHaves: 0, heldBackNoRequirements: 0, considered: 0, rejected, bestScore: 0, threshold, aiUsed: false, limitingFactor: "no_location" };
   }
 
   // ── stages 1 + 2 ───────────────────────────────────────────────────────
@@ -511,10 +515,20 @@ export async function recommendJobsFor(
 
   // ── stage 4 ────────────────────────────────────────────────────────────
   const bestScore = Math.max(bestDeterministic, scored[0]?.score ?? 0);
-  const jobs = scored.filter((j) => j.score >= threshold).slice(0, limit);
+  // Mail and auto-apply only send a job whose must-haves are met (D16): a
+  // must-have the seeker lacks, or one nothing shows either way, holds the job
+  // back however high the score. The job stays visible in the app.
+  // Nor a job that asks for nothing beyond its title (D20): there is nothing
+  // to say the seeker fits it.
+  const cleared = scored.filter((j) => j.score >= threshold);
+  const identifiable = cleared.filter((j) => hasIdentifiableRequirement(j.profile));
+  const mustHavesMet = identifiable.filter((j) => j.breakdown.mustHaveStatus === "met");
+  const jobs = mustHavesMet.slice(0, limit);
 
   return {
     jobs,
+    heldBackOnMustHaves: identifiable.length - mustHavesMet.length,
+    heldBackNoRequirements: cleared.length - identifiable.length,
     considered: scored.length,
     rejected,
     bestScore,

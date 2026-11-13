@@ -140,7 +140,7 @@ export function AssignedTasksWorkspace({ audience }: { audience: "super_agent" |
       />
 
       <InlineFilterBar className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none" onClear={filtered ? clearAll : undefined}>
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} className="max-sm:basis-0" />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect

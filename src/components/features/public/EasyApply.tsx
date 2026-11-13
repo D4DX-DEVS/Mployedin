@@ -10,6 +10,7 @@ import { getGoogleIdToken, preloadGoogleSignIn } from "@/lib/firebase/googleSign
 import { GooglePopupBlockedError } from "@/lib/firebase/googlePopupBlocked";
 import { GoogleWindowNotice, GOOGLE_WINDOW_NOTICE_ID } from "@/components/features/auth/GoogleWindowNotice";
 import { navigateWithPageLoad } from "@/lib/browser/navigateWithPageLoad";
+import { tabStorage } from "@/lib/consent/tabStorage";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import {
   BUILT_CV_KEY,
@@ -23,7 +24,7 @@ import { useCvPdfLabels } from "@/app/[locale]/(dashboard)/job-seeker/cv/use-cv-
 import { isInAppBrowser, inAppBrowserName } from "@/lib/browser/inAppBrowser";
 import { getCaptchaToken } from "@/lib/browser/captcha";
 import { CaptchaNotice } from "@/components/shared/CaptchaNotice";
-import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2, Check, Mail, Sparkles, ChevronRight, UserRound } from "lucide-react";
+import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2, Check, Mail, Sparkles, ChevronRight, UserRound, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { applyErrorKey } from "@/lib/applications/applyErrors";
 import { useJobShareReferral } from "@/lib/referrals/useJobShareReferral";
 import { clearPendingReferral } from "@/lib/referrals/pendingReferral";
+import { ApplyLoginNextTime } from "@/components/features/public/ApplyLoginNextTime";
 
 export interface EasyApplyScreeningQuestion {
   id: string;
@@ -96,6 +98,13 @@ interface CvExtractResponse {
 
 // Sentinel keys for the CV selector
 const NO_CV_KEY = "__none__";
+/**
+ * Set (to the job id) when a visitor picks "Apply without CV". Session storage,
+ * because a Google sign-in reloads the page. Once signed in, a seeker with no
+ * CV who has not given their details yet is taken to onboarding, which brings
+ * them back here; the Mployedin CV made from those details is then sent.
+ */
+const AUTO_CV_FLAG = "mployedin:apply-auto-cv";
 
 /**
  * The consent dialog sits outside the flow below, which returns a different
@@ -178,12 +187,21 @@ function EasyApplyFlow({
   const [portfolioUrl, setPortfolioUrl] = useState("");
   const [uploadingCv, setUploadingCv] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  // Easy Apply pressed with no CV: every application carries one, so the CV
+  // field is marked and brought into view instead of sending it.
+  const [cvMissing, setCvMissing] = useState(false);
   const cvInputRef = useRef<HTMLInputElement>(null);
+  const cvCardRef = useRef<HTMLDivElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const confirmationRef = useRef<HTMLDivElement>(null);
 
   const role = (session?.user as { role?: string })?.role;
   const isJobSeeker = role === "job_seeker";
+  // Onboarding done: the profile holds enough to make a Mployedin CV from.
+  const isOnboarded = (session?.user as { isOnboarded?: boolean } | undefined)?.isOnboarded === true;
+  // Read by the profile load, which is not re-run when the session changes.
+  const isOnboardedRef = useRef(isOnboarded);
+  isOnboardedRef.current = isOnboarded;
 
   const sortedQuestions = [...screeningQuestions].sort((a, b) => a.order - b.order);
   const hasQuestions = sortedQuestions.length > 0;
@@ -240,7 +258,9 @@ function EasyApplyFlow({
           setDocuments(docs);
           // The same CV is preselected on every apply screen (cvChoice.ts).
           setSelectedCvKey(
-            defaultCvKey({ documents: docs, hasProfileCv: !!js.cvUrl, hasBuiltCv: js.hasBuiltCv === true }) || NO_CV_KEY,
+            defaultCvKey({ documents: docs, hasProfileCv: !!js.cvUrl, hasBuiltCv: js.hasBuiltCv === true, preferredId: js.preferredCvId })
+              // No CV of their own: the Mployedin CV made from their details (offerAutoCv).
+              || (isOnboardedRef.current ? BUILT_CV_KEY : NO_CV_KEY),
           );
           // Pre-fill portfolio from social links if present
           const portfolio = (js.socialLinks ?? []).find((l: { label: string; url: string }) =>
@@ -252,6 +272,32 @@ function EasyApplyFlow({
       .catch(() => {/* silently ignore */})
       .finally(() => setFetchingProfile(false));
   }, [isJobSeeker, profile, session?.user?.email, session?.user?.name]);
+
+  // A seeker with no CV of their own still applies with one: the Mployedin CV,
+  // made from the details they gave in onboarding (rendered on submit).
+  const ownCvCount = (profile?.cvUrl ? 1 : 0) + (profile?.hasBuiltCv ? 1 : 0) + uploadedResumes(documents).length;
+  const offerAutoCv = !!profile && ownCvCount === 0 && isOnboarded;
+  useEffect(() => {
+    if (offerAutoCv) setSelectedCvKey((key) => (key === NO_CV_KEY ? BUILT_CV_KEY : key));
+  }, [offerAutoCv]);
+
+  // Onboarding, then back to this job. A full page load, so the server sees
+  // the session as it is now.
+  const goToOnboarding = useCallback(() => {
+    const back = window.location.pathname + window.location.search;
+    navigateWithPageLoad(`/${locale}/onboarding?callbackUrl=${encodeURIComponent(back)}`);
+  }, [locale]);
+
+  // Signed in through "Apply without CV": with no CV and no details yet, go
+  // straight to the questions that make one. Read once, then cleared, so
+  // "Complete later" lands back on this form instead of looping.
+  useEffect(() => {
+    if (!profile) return;
+    // Blocked storage reads as unflagged: the form offers the same step.
+    const flagged = tabStorage.get(AUTO_CV_FLAG) === jobId;
+    tabStorage.set(AUTO_CV_FLAG, "");
+    if (flagged && !isOnboarded && ownCvCount === 0) goToOnboarding();
+  }, [profile, isOnboarded, ownCvCount, jobId, goToOnboarding]);
 
   // Copy the current job URL — offered when an in-app browser blocks Google sign-in
   // so the visitor can paste the link into a real browser.
@@ -697,11 +743,12 @@ function EasyApplyFlow({
       setAuthDialogOpen(true);
     }
 
-    // Apply without CV: straight to log-in, dropping any CV picked earlier, so
-    // the visitor lands on the apply form.
+    // Apply without CV: log in, then a few questions make the Mployedin CV the
+    // application carries (AUTO_CV_FLAG). A CV picked earlier is dropped.
     function openAuthWithoutCv() {
       setAnonCvFile(null);
       setAnonError("");
+      tabStorage.set(AUTO_CV_FLAG, jobId);
       setDialogStep("auth");
       setAuthDialogOpen(true);
     }
@@ -1011,6 +1058,17 @@ function EasyApplyFlow({
                         <Mail className="h-4 w-4" aria-hidden="true" />
                         {t("continueWithEmail")}
                       </Button>
+                      {/* People with an account (password or code) sign in on the
+                          login page and land back on this job to apply (rollout row 40). */}
+                      <p className="text-center text-xs text-muted-foreground">
+                        {t("haveAccount")}{" "}
+                        <Link
+                          href={`/${locale}/login?callbackUrl=${encodeURIComponent(`/${locale}/jobs/${jobId}`)}`}
+                          className="font-medium text-primary underline-offset-2 hover:underline"
+                        >
+                          {t("logInToApply")}
+                        </Link>
+                      </p>
                     </>
                   )}
                 </>
@@ -1035,6 +1093,7 @@ function EasyApplyFlow({
 
   if (applied) {
     return (
+      <div className="w-full space-y-3">
       <div
         ref={confirmationRef}
         className="space-y-3 w-full rounded-3xl border border-green-500/30 bg-green-500/10 card-pad"
@@ -1072,6 +1131,12 @@ function EasyApplyFlow({
         <p className="text-center text-xs text-muted-foreground">
           {t("profileCompletionOptional")}
         </p>
+      </div>
+
+      {/* An account made by an e-mail code has no password: say how to get
+          back in, and offer to set one. A sibling of the status card, not a
+          child: a form inside a live region is read out on every keystroke. */}
+      {session.user?.email && <ApplyLoginNextTime email={session.user.email} />}
       </div>
     );
   }
@@ -1141,7 +1206,10 @@ function EasyApplyFlow({
     setUploadingCv(true);
     try {
       const doc = await uploadDocument(file, "resume");
-      if (doc) setSelectedCvKey(doc.id);
+      if (doc) {
+        setSelectedCvKey(doc.id);
+        setCvMissing(false);
+      }
     } finally {
       setUploadingCv(false);
     }
@@ -1163,6 +1231,14 @@ function EasyApplyFlow({
 
   async function handleApply() {
     setError("");
+
+    // No CV: every application carries one. Mark the CV field and bring it
+    // into view, where the upload is one tap away.
+    if (selectedCvKey === NO_CV_KEY) {
+      setCvMissing(true);
+      cvCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
 
     if (hasQuestions && !validateAnswers()) return;
 
@@ -1226,12 +1302,14 @@ function EasyApplyFlow({
           known === "planLimitReached" ? t("errors.planLimitReached")
             : known === "jobClosed" ? t("errors.jobClosed")
               : known === "documentNotFound" ? t("errors.documentNotFound")
-                : data?.error ?? t("errors.applyFailed"),
+                : known === "cvRequired" ? t("errors.cvRequired")
+                  : data?.error ?? t("errors.applyFailed"),
         );
         // The chosen CV was deleted or replaced since the page loaded: reload
         // the seeker's CVs (the profile effect runs again) so the list and the
         // preselected one are what is there now.
         if (known === "documentNotFound") setProfile(null);
+        if (known === "cvRequired") setCvMissing(true);
         return;
       }
       setApplied(true);
@@ -1249,6 +1327,7 @@ function EasyApplyFlow({
   const otherDocs = documents.filter((d) => d.category !== "resume");
   const hasProfileCv = !!profile?.cvUrl;
   const hasBuiltCv = profile?.hasBuiltCv === true;
+  const hasAnyCv = hasProfileCv || hasBuiltCv || resumeDocs.length > 0 || offerAutoCv;
 
   return (
     <div className="space-y-4">
@@ -1283,81 +1362,118 @@ function EasyApplyFlow({
         </div>
       )}
 
-      {/* CV / Resume — choose saved or upload a modified version */}
-      {profile && (
-        <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/10 card-pad">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {t("profileCv")}
+      {/* CV / Resume — required: every application carries one. Shown even
+          when the profile could not be loaded, so the CV can still be added. */}
+      <div
+        ref={cvCardRef}
+        className={`space-y-2 rounded-3xl border bg-muted/10 card-pad ${cvMissing ? "border-destructive/60" : "border-border/70"}`}
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {t("profileCv")} <span className="text-destructive" aria-hidden="true">*</span>
+        </p>
+        {hasAnyCv ? (
+          <>
+            <div className="space-y-1.5">
+              {hasProfileCv && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="cv-choice"
+                    checked={selectedCvKey === PROFILE_CV_KEY}
+                    onChange={() => setSelectedCvKey(PROFILE_CV_KEY)}
+                    className="accent-primary"
+                  />
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                  {t("profileCvLabel")}
+                </label>
+              )}
+              {(hasBuiltCv || offerAutoCv) && (
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="cv-choice"
+                    checked={selectedCvKey === BUILT_CV_KEY}
+                    onChange={() => setSelectedCvKey(BUILT_CV_KEY)}
+                    className="mt-0.5 accent-primary"
+                  />
+                  <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span>
+                    {offerAutoCv ? t("autoCv") : t("builtCv")}
+                    <span className="block text-xs text-muted-foreground">{offerAutoCv ? t("autoCvHint") : t("builtCvHint")}</span>
+                    {offerAutoCv && (
+                      // A new tab, so this form and its answers stay put.
+                      <a
+                        href={`/${locale}/job-seeker/cv`}
+                        target="_blank"
+                        rel="noopener"
+                        className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                      >
+                        <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                        {t("previewCv")}
+                      </a>
+                    )}
+                  </span>
+                </label>
+              )}
+              {resumeDocs.map((d) => (
+                <label key={d.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="cv-choice"
+                    checked={selectedCvKey === d.id}
+                    onChange={() => setSelectedCvKey(d.id)}
+                    className="accent-primary"
+                  />
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="truncate"><bdi>{d.name}</bdi></span>
+                </label>
+              ))}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={uploadingCv}
+              onClick={() => cvInputRef.current?.click()}
+              className="h-8 gap-1.5 rounded-xl text-xs"
+            >
+              {uploadingCv ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              {uploadingCv ? t("uploading") : offerAutoCv ? t("uploadOwnCv") : t("uploadDifferentCv")}
+            </Button>
+          </>
+        ) : (
+          <>
+            {/* No CV yet: the upload is the field itself, not a small button. */}
+            <button
+              type="button"
+              disabled={uploadingCv}
+              onClick={() => cvInputRef.current?.click()}
+              aria-describedby={cvMissing ? "easy-apply-cv-required" : undefined}
+              className="flex w-full flex-col items-center gap-1.5 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 px-4 py-5 text-center transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+            >
+              {uploadingCv
+                ? <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden="true" />
+                : <Upload className="h-5 w-5 text-primary" aria-hidden="true" />}
+              <span className="text-sm font-semibold text-foreground">{uploadingCv ? t("uploading") : t("uploadCvToApply")}</span>
+              <span className="text-xs text-muted-foreground">{t("cvFormats")}</span>
+            </button>
+            {/* Or the details onboarding asks for, which make the Mployedin CV. */}
+            <button
+              type="button"
+              onClick={goToOnboarding}
+              className="flex w-full items-center justify-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline"
+            >
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("addDetailsForCv")}
+            </button>
+          </>
+        )}
+        {cvMissing && (
+          <p id="easy-apply-cv-required" role="alert" className="text-xs text-destructive">
+            {t("errors.cvRequired")}
           </p>
-          <div className="space-y-1.5">
-            {hasProfileCv && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="cv-choice"
-                  checked={selectedCvKey === PROFILE_CV_KEY}
-                  onChange={() => setSelectedCvKey(PROFILE_CV_KEY)}
-                  className="accent-primary"
-                />
-                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                {t("profileCvLabel")}
-              </label>
-            )}
-            {hasBuiltCv && (
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="cv-choice"
-                  checked={selectedCvKey === BUILT_CV_KEY}
-                  onChange={() => setSelectedCvKey(BUILT_CV_KEY)}
-                  className="mt-0.5 accent-primary"
-                />
-                <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span>
-                  {t("builtCv")}
-                  <span className="block text-xs text-muted-foreground">{t("builtCvHint")}</span>
-                </span>
-              </label>
-            )}
-            {resumeDocs.map((d) => (
-              <label key={d.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="cv-choice"
-                  checked={selectedCvKey === d.id}
-                  onChange={() => setSelectedCvKey(d.id)}
-                  className="accent-primary"
-                />
-                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="truncate"><bdi>{d.name}</bdi></span>
-              </label>
-            ))}
-            {!hasProfileCv && !hasBuiltCv && resumeDocs.length === 0 && (
-              <p className="flex items-center gap-1 text-xs text-muted-foreground/70">
-                <FileText className="h-3 w-3" /> {t("noCvOnFile")}
-              </p>
-            )}
-          </div>
-          <input
-            ref={cvInputRef}
-            type="file"
-            accept={CV_UPLOAD_ACCEPT}
-            className="hidden"
-            onChange={handleCvUpload}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={uploadingCv}
-            onClick={() => cvInputRef.current?.click()}
-            className="h-8 gap-1.5 rounded-xl text-xs"
-          >
-            {uploadingCv ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-            {uploadingCv ? t("uploading") : t("uploadDifferentCv")}
-          </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Additional documents (certificates, portfolio files, etc.) */}
       {profile && (
@@ -1579,7 +1695,7 @@ function EasyApplyFlow({
       </div>
 
       <Button size="lg"
-        onClick={handleApply}
+        onClick={() => void handleApply()}
         disabled={loading}
         className="w-full rounded-2xl text-base font-medium gap-2"
       >
@@ -1598,6 +1714,16 @@ function EasyApplyFlow({
       <p className="text-center text-xs text-muted-foreground">
         {t("profileAutoAttached")}
       </p>
+
+      {/* Opened from the CV field, which shows even without a loaded profile. */}
+      <input
+        ref={cvInputRef}
+        type="file"
+        accept={CV_UPLOAD_ACCEPT}
+        className="hidden"
+        onChange={handleCvUpload}
+      />
+
     </div>
   );
 }
