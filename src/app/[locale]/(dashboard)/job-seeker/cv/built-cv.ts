@@ -32,6 +32,7 @@ export interface SeekerProfileData {
   nationality?: string | null;
   currentLocation?: string | null;
   summary?: string | null;
+  headline?: string | null;
   avatar?: string | null;
   socialLinks?: unknown;
   skills?: unknown[];
@@ -66,10 +67,11 @@ export function cvFormFromProfile(profile: SeekerProfileData, prev: CVForm): CVF
   const links = splitProfileLinks(cleanSocialLinks(profile.socialLinks));
   return {
     ...prev,
-    phone: profile.phone ?? prev.phone,
+    phone: profile.phone || prev.phone,
     nationality: profile.nationality ?? prev.nationality,
     currentLocation: profile.currentLocation ?? prev.currentLocation,
-    headline: profile.summary ?? prev.headline,
+    // Onboarding writes a one-line headline, not a summary; use it until one exists.
+    headline: profile.summary || profile.headline || prev.headline,
     photo: profile.avatar ?? prev.photo,
     linkedin: links.linkedin ?? prev.linkedin,
     portfolio: links.portfolio ?? prev.portfolio,

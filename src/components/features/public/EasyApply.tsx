@@ -159,6 +159,17 @@ function EasyApplyFlow({
   const [anonOtpResendCountdown, setAnonOtpResendCountdown] = useState(0);
   // Google / e-mail sign-in opens in a dialog on the first Apply click.
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  // The Terms prompt replaces the sign-in dialog while it is up instead of
+  // stacking on top of it; the sign-in dialog comes back if it is cancelled.
+  const [consentAsking, setConsentAsking] = useState(false);
+  const askConsentInPlace = async () => {
+    setConsentAsking(true);
+    try {
+      return await askSignupConsent();
+    } finally {
+      setConsentAsking(false);
+    }
+  };
   const [dialogStep, setDialogStep] = useState<"cv" | "auth">("auth");
 
   // Profile confirmation after extraction. Only the three editable fields and the
@@ -283,9 +294,11 @@ function EasyApplyFlow({
 
   // Onboarding, then back to this job. A full page load, so the server sees
   // the session as it is now.
-  const goToOnboarding = useCallback(() => {
+  // `buildCv`: they chose "Apply without CV", so onboarding opens the AI CV
+  // builder straight away instead of leaving them to find it.
+  const goToOnboarding = useCallback((buildCv = false) => {
     const back = window.location.pathname + window.location.search;
-    navigateWithPageLoad(`/${locale}/onboarding?callbackUrl=${encodeURIComponent(back)}`);
+    navigateWithPageLoad(`/${locale}/onboarding?callbackUrl=${encodeURIComponent(back)}${buildCv ? "&cv=build" : ""}`);
   }, [locale]);
 
   // Signed in through "Apply without CV": with no CV and no details yet, go
@@ -296,7 +309,7 @@ function EasyApplyFlow({
     // Blocked storage reads as unflagged: the form offers the same step.
     const flagged = tabStorage.get(AUTO_CV_FLAG) === jobId;
     tabStorage.set(AUTO_CV_FLAG, "");
-    if (flagged && !isOnboarded && ownCvCount === 0) goToOnboarding();
+    if (flagged && !isOnboarded && ownCvCount === 0) goToOnboarding(true);
   }, [profile, isOnboarded, ownCvCount, jobId, goToOnboarding]);
 
   // Copy the current job URL — offered when an in-app browser blocks Google sign-in
@@ -493,7 +506,7 @@ function EasyApplyFlow({
       const idToken = await getGoogleIdToken();
       let res = await signIn("firebase", { idToken, ...referralCredentials(), redirect: false });
       if ((res as { code?: string } | undefined)?.code === CONSENT_REQUIRED_CODE) {
-        if (!(await askSignupConsent())) {
+        if (!(await askConsentInPlace())) {
           setAnonError(t("signupConsentNeeded"));
           setAnonPhase("idle");
           return;
@@ -618,7 +631,7 @@ function EasyApplyFlow({
       // A code that would make a new account waits for the Terms & Privacy
       // tick; the same code is sent again once it is given.
       if ((res as { code?: string } | undefined)?.code === CONSENT_REQUIRED_CODE) {
-        if (!(await askSignupConsent())) {
+        if (!(await askConsentInPlace())) {
           setAnonError(t("signupConsentNeeded"));
           setAnonPhase("idle");
           return;
@@ -986,7 +999,7 @@ function EasyApplyFlow({
         </div>
 
         <Dialog
-          open={authDialogOpen}
+          open={authDialogOpen && !consentAsking}
           onOpenChange={(open) => {
             // Mid sign-in the dialog stays: closing it would hide the progress.
             if (!open && busy) return;
@@ -1460,7 +1473,7 @@ function EasyApplyFlow({
             {/* Or the details onboarding asks for, which make the Mployedin CV. */}
             <button
               type="button"
-              onClick={goToOnboarding}
+              onClick={() => goToOnboarding(true)}
               className="flex w-full items-center justify-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline"
             >
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />

@@ -20,6 +20,8 @@ interface JobMatch {
   mustHaveStatus?: "met" | "unverified" | "not_met";
   aiAdjustment?: number;
   skillsUnknown?: boolean;
+  /** What Role fit was read from. */
+  roleBasis?: { kind: "wanted" | "past"; title: string } | { kind: "none" | "unknown" };
 }
 
 const PARTS = ["skills", "role", "experience", "education", "credentials", "languages"] as const;
@@ -132,6 +134,13 @@ export function JobMatchCard({ jobId, asked }: { jobId: string; asked?: AskedSki
   };
 
   const ai = data.aiAdjustment ?? 0;
+  // "Role fit 90%" said nothing about where the 90 came from.
+  const basis = data.roleBasis;
+  const roleNote = !basis
+    ? null
+    : basis.kind === "past" || basis.kind === "wanted"
+      ? t(`roleBasis.${basis.kind}`, { title: basis.title })
+      : t(`roleBasis.${basis.kind}`);
 
   return (
     <section id="job-match" className="card-base scroll-mt-20 rounded-xl sm:rounded-3xl panel-body" aria-labelledby="job-match-heading">
@@ -192,15 +201,18 @@ export function JobMatchCard({ jobId, asked }: { jobId: string; asked?: AskedSki
                     <dd className="tabular-nums font-medium text-foreground">{formatCount(value, undefined, locale)}%</dd>
                   </div>
                   <Progress value={value} className="mt-1.5 h-1.5" aria-label={t(part)} />
+                  {part === "role" && roleNote && <p className="mt-1 text-xs text-muted-foreground">{roleNote}</p>}
                 </div>
               );
             })}
           </dl>
 
-          {report && (
+          {/* The gaps are listed above already; here only what is met, so no
+              row is printed twice. */}
+          {report && report.items.some((item) => item.verdict === "has") && (
             <div className="mt-5">
               <p className="mb-3 text-sm font-medium text-foreground">{t("requirementsHeading")}</p>
-              <RequirementReport report={report} audience="seeker" summary={false} />
+              <RequirementReport report={report} audience="seeker" rows="met" summary={false} />
             </div>
           )}
 
@@ -212,6 +224,11 @@ export function JobMatchCard({ jobId, asked }: { jobId: string; asked?: AskedSki
           )}
           {data.skillsUnknown && (
             <p className="mt-2 text-xs text-muted-foreground">{t("skillsUnknown")}</p>
+          )}
+          {/* Education is scored only when the job asks for it; say so, or
+              its absence reads as a missing row. */}
+          {data.shares && data.shares.education === undefined && (
+            <p className="mt-2 text-xs text-muted-foreground">{t("educationNotScored")}</p>
           )}
           <p className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />

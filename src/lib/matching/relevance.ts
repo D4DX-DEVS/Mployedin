@@ -39,6 +39,8 @@ export interface RelevanceBreakdown {
   overall: number;
   skills: number;
   role: number;
+  /** What Role fit was read from; optional for breakdowns built elsewhere. */
+  roleBasis?: RoleBasis;
   experience: number;
   /** 0–100; null when the job sets no education requirement (not scored). */
   education: number | null;
@@ -259,30 +261,45 @@ const ROLE_DONE_BEFORE = 0.9;
  * Past titles use `sharesRole`, so a shared generic noun ("engineer",
  * "developer") is not a match.
  */
-function roleScore(seeker: SeekerProfile, job: JobProfile): number {
+function roleScore(seeker: SeekerProfile, job: JobProfile): { score: number; basis: RoleBasis } {
   const title = (job.title ?? "").toLowerCase().trim();
-  if (!title) return 0.5;
-  const pastTitles = (seeker.roleHistory ?? []).map((r) => r.title).filter((t) => t?.trim());
-  const didIt = pastTitles.length > 0 && sharesRole(title, pastTitles) ? ROLE_DONE_BEFORE : 0;
+  if (!title) return { score: 0.5, basis: { kind: "unknown" } };
+  const pastTitles = (seeker.roleHistory ?? []).map((r) => r.title).filter((t): t is string => Boolean(t?.trim()));
+  // The past job that counted, so the seeker can be told which one.
+  const pastMatch = pastTitles.find((t) => sharesRole(title, [t]));
+  const didIt = pastMatch ? ROLE_DONE_BEFORE : 0;
   const wanted = preferredRoleScore(seeker.preferredRoles ?? [], title);
   // Neutral only when the seeker told us nothing at all: no wanted role, no
   // past job. A work history that is unrelated to the job is an answer.
-  if (wanted === null) return pastTitles.length === 0 ? 0.5 : Math.max(didIt, ROLE_NO_RELATION);
-  return Math.max(wanted, didIt);
+  if (wanted === null && pastTitles.length === 0) return { score: 0.5, basis: { kind: "unknown" } };
+  const wantedScore = wanted?.score ?? 0;
+  if (pastMatch && didIt >= wantedScore) return { score: didIt, basis: { kind: "past", title: pastMatch } };
+  if (wanted && wanted.score > ROLE_NO_RELATION) {
+    return { score: wanted.score, basis: { kind: "wanted", title: wanted.role } };
+  }
+  return { score: ROLE_NO_RELATION, basis: { kind: "none" } };
 }
+
+/**
+ * Why Role fit has its value, for the seeker: a role they want, a past job of
+ * the same kind, nothing in common, or nothing on the profile to go on.
+ */
+export type RoleBasis =
+  | { kind: "wanted" | "past"; title: string }
+  | { kind: "none" | "unknown" };
 
 /** Nothing in common between the job title and the seeker's roles. */
 const ROLE_NO_RELATION = 0.15;
 
 /** The preferred-role match alone; `null` when the seeker named no role. */
-function preferredRoleScore(roles: readonly string[], title: string): number | null {
+function preferredRoleScore(roles: readonly string[], title: string): { score: number; role: string } | null {
   if (roles.length === 0) return null;
 
   for (const role of roles) {
     const r = role.toLowerCase().trim();
     if (!r) continue;
-    if (title === r) return 1;
-    if (title.includes(r) || r.includes(title)) return 0.9;
+    if (title === r) return { score: 1, role };
+    if (title.includes(r) || r.includes(title)) return { score: 0.9, role };
   }
 
   // Partial overlap on the significant words: "Senior QA Engineer" against a
@@ -291,9 +308,9 @@ function preferredRoleScore(roles: readonly string[], title: string): number | n
   const titleWords = new Set(title.split(/\W+/).filter((w) => w.length > 2 && !stop.has(w)));
   for (const role of roles) {
     const words = role.toLowerCase().split(/\W+/).filter((w) => w.length > 2 && !stop.has(w));
-    if (words.some((w) => titleWords.has(w))) return 0.6;
+    if (words.some((w) => titleWords.has(w))) return { score: 0.6, role };
   }
-  return ROLE_NO_RELATION;
+  return { score: ROLE_NO_RELATION, role: "" };
 }
 
 /**
@@ -373,7 +390,7 @@ export function calculateRelevance(
   const preferredMatched = own.preferred.filter((skill) => creditOf(skill) >= SKILL_CREDIT_NEAR);
   const preferredMissing = own.preferred.filter((skill) => creditOf(skill) < SKILL_CREDIT_NEAR);
 
-  const role = roleScore(seeker, job);
+  const { score: role, basis: roleBasis } = roleScore(seeker, job);
   // Education, experience "in what", licences, languages — read against the
   // job's own requirements (requirementParts.ts). Experience uses its mark,
   // which counts relevant years when the employer named the subject.
@@ -403,6 +420,7 @@ export function calculateRelevance(
     overall: Math.round((earned / inPlay) * 100),
     skills: Math.round(skillsFraction * 100),
     role: Math.round(role * 100),
+    roleBasis,
     experience: Math.round(experience * 100),
     education: education === null ? null : Math.round(education * 100),
     credentials: evaluation.credentialsMark,

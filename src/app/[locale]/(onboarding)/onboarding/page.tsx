@@ -17,7 +17,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { safeCallbackPath } from "@/lib/routing/callbackUrl";
 import { countryKeyFromLocationText } from "@/lib/i18n/locations";
 import { PhoneInput } from "@/components/shared/PhoneInput";
-import { SeekerAreaField, hasSeekerArea, type SeekerAreaValue } from "@/components/features/job-seeker/SeekerAreaField";
+import { SeekerAreaField, areaCountryName, hasSeekerArea, type SeekerAreaValue } from "@/components/features/job-seeker/SeekerAreaField";
+import { OnboardingCvBuilder, type CvBuilderResult } from "@/components/features/job-seeker/OnboardingCvBuilder";
+import { builtCvFromProfile } from "@/lib/onboarding/builtCvFromProfile";
+import { QUALIFICATION_OPTIONS } from "@/lib/onboarding/qualifications";
 import { FALLBACK_PHONE_COUNTRIES } from "@/lib/phone/countries";
 import {
   areaFromCv,
@@ -195,17 +198,6 @@ const INDUSTRY_OPTIONS = [
   "Construction", "Hospitality", "Media / Entertainment",
 ];
 
-const QUALIFICATION_OPTIONS = [
-  { value: "doctorate", label: "Doctorate/PhD" },
-  { value: "masters", label: "Masters/Post-Graduation" },
-  // Two choices since 2026-11-12 (D5): one "Graduation/Diploma" chip let a
-  // diploma holder read as a graduate to every job asking for a degree.
-  { value: "graduation", label: "Graduation (Bachelor's)" },
-  { value: "diploma", label: "Diploma / ITI" },
-  { value: "12th", label: "12th" },
-  { value: "10th", label: "10th" },
-  { value: "below_10th", label: "Below 10th" },
-];
 
 /**
  * Split a stored E.164 number back into the dial-code select and the national
@@ -403,6 +395,12 @@ export default function JobSeekerOnboardingPage() {
   const [aiImportError, setAiImportError] = useState("");
   const [cvParsing, setCvParsing] = useState(false);
   const [cvParsed, setCvParsed] = useState(false);
+  // "Build my CV" for seekers with no CV file: the guided builder saves the
+  // CV to the profile and its answers fill the steps below.
+  const [cvBuilderOpen, setCvBuilderOpen] = useState(false);
+  const [profileFetched, setProfileFetched] = useState(false);
+  const [builtCv, setBuiltCv] = useState<CvBuilderResult | null>(null);
+  const [savedRoles, setSavedRoles] = useState<string[]>([]);
   /** Set when a CV import finishes, so the skip effect runs against fresh state. */
   const [pendingCvSkip, setPendingCvSkip] = useState(false);
   const [cvParseError, setCvParseError] = useState("");
@@ -497,6 +495,16 @@ export default function JobSeekerOnboardingPage() {
         .then((data) => {
           if (!data?.profile) return;
           const p = data.profile;
+
+          // A CV built here earlier survives a reload: show it as ready, and
+          // let Edit reopen it filled in rather than build it from scratch.
+          setSavedRoles(Array.isArray(p.preferredRoles) ? p.preferredRoles : []);
+          const restoredCv = builtCvFromProfile(p);
+          if (restoredCv) {
+            setBuiltCv((cur) => cur ?? restoredCv);
+            // The builder asked it; step 0 may not have been saved yet.
+            if (!p.workStatus) setStep0((prev) => ({ ...prev, workStatus: prev.workStatus || (restoredCv.fresher ? "fresher" : "experienced") }));
+          }
 
           // Pre-fill step0
           const storedPhone = splitPhone(p.phone ?? "");
@@ -614,7 +622,8 @@ export default function JobSeekerOnboardingPage() {
         })
         .catch(() => {
           // Profile not found — that's fine for credentials users
-        });
+        })
+        .finally(() => setProfileFetched(true));
     }
    
   }, [session, userName]);
@@ -927,6 +936,56 @@ export default function JobSeekerOnboardingPage() {
     discoverable: null,
   });
 
+  // AI headline: written from what the seeker entered in steps 1–2 when they
+  // reach the last step. An empty box is filled with the first one; they can
+  // edit it, pick another, or ask for new ones.
+  const [headlineIdeas, setHeadlineIdeas] = useState<string[]>([]);
+  const [headlineLoading, setHeadlineLoading] = useState(false);
+  const headlineAsked = useRef(false);
+  const suggestHeadlines = useCallback(async (fillEmpty: boolean) => {
+    setHeadlineLoading(true);
+    try {
+      const res = await csrfFetch("/api/ai/headline-suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobTitle: step0.workStatus === "fresher" ? "" : step1.jobTitle || step1.jobRole,
+          targetRole: builtCv?.targetRole ?? "",
+          experienceYears: step1.experienceYears,
+          skills: step1.skills,
+          industry: step1.industry,
+          course: step2.course,
+          specialization: step2.specialization,
+          fresher: step0.workStatus === "fresher",
+        }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { headlines?: string[] };
+      const ideas = data.headlines ?? [];
+      setHeadlineIdeas(ideas);
+      if (fillEmpty && ideas[0]) setStep3((p) => (p.headline.trim() ? p : { ...p, headline: ideas[0] }));
+    } catch {
+      /* the seeker can still type their own */
+    } finally {
+      setHeadlineLoading(false);
+    }
+  }, [builtCv?.targetRole, step0.workStatus, step1.jobTitle, step1.jobRole, step1.experienceYears, step1.skills, step1.industry, step2.course, step2.specialization]);
+  useEffect(() => {
+    if (step !== 3 || headlineAsked.current) return;
+    headlineAsked.current = true;
+    void suggestHeadlines(true);
+  }, [step, suggestHeadlines]);
+
+  // Preferred work locations start with where they live (from step 1 or the
+  // CV builder), so the last step isn't asking for it again. Still editable.
+  const locationsSeeded = useRef(false);
+  useEffect(() => {
+    if (step !== 3 || locationsSeeded.current) return;
+    locationsSeeded.current = true;
+    const home = area.city?.name ?? area.region?.name;
+    if (home) setStep3((p) => (p.preferredLocations.length ? p : { ...p, preferredLocations: [home] }));
+  }, [step, area.city?.name, area.region?.name]);
+
   // Scroll to top whenever step changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -998,6 +1057,59 @@ export default function JobSeekerOnboardingPage() {
   const canAdvance = useCallback((): boolean => stepSatisfied(step), [stepSatisfied, step]);
 
   // ── Save helpers ─────────────────────────────────────────────────────────
+  const applyBuiltCv = (cv: CvBuilderResult) => {
+    setBuiltCv(cv);
+    setStep0((p) => ({ ...p, workStatus: cv.fresher ? "fresher" : "experienced" }));
+    const dated = cv.jobs.map((j) => ({
+      startDate: j.start ? `${j.start}-01` : undefined,
+      endDate: !j.current && j.end ? `${j.end}-01` : undefined,
+      isCurrent: j.current,
+    }));
+    const latest = cv.jobs.find((j) => j.current) ?? cv.jobs[0];
+    const total = cv.jobs.length ? totalExperience(undefined, dated) : null;
+    setStep1((p) => ({
+      ...p,
+      skills: cv.skills.length ? cv.skills.slice(0, 30) : p.skills,
+      ...(latest && {
+        isCurrentlyEmployed: latest.current,
+        jobTitle: latest.title || p.jobTitle,
+        companyName: latest.organisation || p.companyName,
+        ...(latest.start && { startYear: latest.start.slice(0, 4), startMonth: latest.start.slice(5, 7) }),
+      }),
+      ...(total && { experienceYears: String(total.years), experienceMonths: String(total.months) }),
+    }));
+    // The education step asks for the highest qualification: answer it from the CV.
+    const rank = (level: string) => {
+      const i = QUALIFICATION_OPTIONS.findIndex((q) => q.value === level);
+      return i < 0 ? 99 : i;
+    };
+    const top = [...cv.education].filter((e) => e.level).sort((x, y) => rank(x.level) - rank(y.level))[0];
+    if (top) {
+      wizardEntryIds.current.education = undefined;
+      setStep2((p) => ({
+        ...p,
+        qualification: top.level,
+        course: top.course || p.course,
+        specialization: top.field || p.specialization,
+        university: top.institution || p.university,
+        startYear: top.startYear || p.startYear,
+        passingYear: top.studying ? p.passingYear : top.endYear || p.passingYear,
+      }));
+      if (top.course) setCourseConfirmed(true);
+      if (top.field) setSpecConfirmed(true);
+    }
+  };
+
+  // Arrived from a job's "Apply without CV": open the AI CV builder at once,
+  // once the saved profile is read (a CV built earlier is not built again).
+  const wantsCvBuilder = searchParams.get("cv") === "build";
+  const builderOffered = useRef(false);
+  useEffect(() => {
+    if (!wantsCvBuilder || builderOffered.current || !profileFetched) return;
+    builderOffered.current = true;
+    if (!builtCv && !cvParsed) setCvBuilderOpen(true);
+  }, [wantsCvBuilder, profileFetched, builtCv, cvParsed]);
+
   const saveStep = async (payload: Record<string, unknown>) => {
     const res = await fetch("/api/job-seekers/profile", {
       method: "PATCH",
@@ -1096,6 +1208,9 @@ export default function JobSeekerOnboardingPage() {
         await updateSession({ name: step0.name });
       }
       setStep((s) => s + 1);
+      // A CV built here (or uploaded) answers the next steps: walk past the
+      // ones it filled in instead of asking them again.
+      if (builtCv || cvParsed) setPendingCvSkip(true);
     } catch (err) {
       setSaveError((err as Error).message);
     } finally {
@@ -1225,7 +1340,7 @@ export default function JobSeekerOnboardingPage() {
         </div>
       </div>
 
-      <div className="flex flex-1 max-w-5xl mx-auto w-full px-4 py-10 gap-8">
+      <div className="flex flex-1 max-w-5xl mx-auto w-full px-0 sm:px-4 py-0 sm:py-10 gap-8">
         {/* ── Left Sidebar Stepper ── */}
         <aside className="w-56 shrink-0 hidden md:block">
           <div className="relative">
@@ -1259,7 +1374,8 @@ export default function JobSeekerOnboardingPage() {
 
         {/* ── Main Card ── */}
         <div className="flex-1">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          {/* Phones: the card is the page — the extra frame squeezed every field. */}
+          <div className="bg-white min-h-full sm:min-h-0 sm:rounded-2xl sm:shadow-sm sm:border sm:border-gray-100 px-4 py-6 sm:p-8">
             {/* Mobile step indicator */}
             <div className="md:hidden mb-6 flex items-center gap-2">
               {STEPS.map((_, i) => (
@@ -1409,10 +1525,10 @@ export default function JobSeekerOnboardingPage() {
                 {/* Work status */}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-800">{t("workStatus")} <span className="text-red-500">*</span></Label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[
-                      { value: "experienced", icon: <Briefcase className="w-8 h-8 text-gray-400" />, title: t("iExperienced"), sub: t("iExperiencedDesc") },
-                      { value: "fresher", icon: <GraduationCap className="w-8 h-8 text-gray-400" />, title: t("iAFresher"), sub: t("iAFresherDesc") },
+                      { value: "experienced", icon: <Briefcase className="w-7 h-7 sm:w-8 sm:h-8 text-gray-400" />, title: t("iExperienced"), sub: t("iExperiencedDesc") },
+                      { value: "fresher", icon: <GraduationCap className="w-7 h-7 sm:w-8 sm:h-8 text-gray-400" />, title: t("iAFresher"), sub: t("iAFresherDesc") },
                     ].map(({ value, icon, title, sub }) => (
                       <button
                         key={value}
@@ -1430,42 +1546,79 @@ export default function JobSeekerOnboardingPage() {
                   </div>
                 </div>
 
-                {/* Resume upload (shown after work status chosen) */}
-                {step0.workStatus && (
-                  <div className="field">
-                    <Label className="text-sm font-medium text-gray-800">{t("resume")}</Label>
-                    <div className="flex items-center gap-3">
-                      <label className="cursor-pointer">
-                        <input
-                          type="file"
-                          accept=".pdf,.docx"
-                          className="sr-only"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0] ?? null;
-                            setStep0((p) => ({ ...p, resumeFile: file }));
-                            if (file) handleCvParse(file);
-                          }}
-                        />
-                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors">
-                          {cvParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                          {cvParsing ? t("parsing") : step0.resumeFile ? step0.resumeFile.name.slice(0, 20) + "…" : t("uploadResume")}
-                        </span>
-                      </label>
-                      <span className="text-xs text-gray-500">{t("resumeFormats")}</span>
-                    </div>
-                    {cvParsed && (
-                      <p className="text-xs text-green-600 flex items-center gap-1">
-                        <CheckCircle className="w-3.5 h-3.5" /> {t("resumeParsedSuccess")}
+                {/* Your CV: upload one, or build one here with AI — two equal choices.
+                    Shown before a work status is picked: the builder asks it itself. */}
+                {(
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-gray-800">{t("cvChoiceTitle")}</Label>
+                    <p className="text-xs text-gray-500">{t("cvChoiceHint")}</p>
+                    {cvParsed ? (
+                      <p className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 text-sm font-medium text-green-800 card-pad">
+                        <CheckCircle className="w-4 h-4 shrink-0" /> {t("resumeParsedSuccess")}
                       </p>
+                    ) : builtCv ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-green-200 bg-green-50 card-pad">
+                        <p className="flex items-center gap-2 text-sm font-medium text-green-800">
+                          <CheckCircle className="w-4 h-4 shrink-0" /> {t("cvBuiltReady")}
+                        </p>
+                        <button type="button" onClick={() => setCvBuilderOpen(true)} className="min-h-11 text-sm font-semibold text-blue-700 hover:underline">
+                          {t("cvBuiltEdit")}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => setCvBuilderOpen(true)}
+                          disabled={cvParsing}
+                          className="group relative flex flex-col items-start gap-2 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 p-4 text-start text-white shadow-md transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:opacity-60"
+                        >
+                          <span className="flex w-full items-center justify-between gap-2">
+                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15"><Sparkles className="w-5 h-5" /></span>
+                            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium">{t("noCvBuildBadge")}</span>
+                          </span>
+                          <span className="text-base font-semibold">{t("noCvBuildTitle")}</span>
+                          <span className="text-sm text-blue-50">{t("noCvBuildDesc")}</span>
+                        </button>
+                        <label className={`flex cursor-pointer flex-col items-start gap-2 rounded-2xl border-2 border-dashed border-orange-300 bg-orange-50/50 p-4 transition-colors hover:border-orange-500 hover:bg-orange-50 focus-within:ring-2 focus-within:ring-orange-400 ${cvParsing ? "pointer-events-none opacity-70" : ""}`}>
+                          <input
+                            type="file"
+                            accept=".pdf,.docx"
+                            className="sr-only"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] ?? null;
+                              setStep0((p) => ({ ...p, resumeFile: file }));
+                              if (file) handleCvParse(file);
+                            }}
+                          />
+                          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500 text-white">
+                            {cvParsing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                          </span>
+                          <span className="text-base font-semibold text-gray-900">{cvParsing ? t("parsing") : t("uploadMyCv")}</span>
+                          <span className="text-sm text-gray-600">{t("uploadMyCvDesc")}</span>
+                        </label>
+                      </div>
                     )}
-                    {cvParseError && (
-                      <p className="text-xs text-red-500">{cvParseError}</p>
-                    )}
-                    {!cvParsed && !cvParseError && (
-                      <p className="text-xs text-gray-500">{t("uploadResumeToAutoFill")}</p>
-                    )}
+                    {cvParseError && <p className="text-xs text-red-500">{cvParseError}</p>}
                   </div>
                 )}
+                <OnboardingCvBuilder
+                  open={cvBuilderOpen}
+                  onOpenChange={setCvBuilderOpen}
+                  identity={{
+                    name: step0.name,
+                    email: userEmail,
+                    phone: step0.phone ? `${step0.countryCode} ${step0.phone}` : "",
+                    location: [area.city?.name ?? area.region?.name, area.countryCode ? areaCountryName(area.countryCode, locale ?? "en") : ""].filter(Boolean).join(", "),
+                    photo: (session?.user?.image as string | undefined) ?? "",
+                  }}
+                  workStatus={step0.workStatus}
+                  area={areaValue}
+                  onAreaChange={changeArea}
+                  initial={builtCv}
+                  existingRoles={savedRoles}
+                  onDone={applyBuiltCv}
+                />
 
                 {/* Marketing consent */}
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -1958,13 +2111,19 @@ export default function JobSeekerOnboardingPage() {
                     placeholder={t("headlinePlaceholder")}
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 text-sm text-gray-800 focus:outline-none focus:border-blue-500 resize-none"
                   />
-                  {/* Suggestion */}
-                  {(step1.jobTitle || step2.course) && !step3.headline && (
+                  {headlineLoading && !headlineIdeas.length && (
+                    <p className="flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t("headlineWriting")}</p>
+                  )}
+                  {headlineIdeas.length > 0 && (
                     <div className="space-y-1">
-                      <p className="text-xs text-gray-500">{t("suggestions")}</p>
-                      {[
-                        `${step1.jobTitle || "Professional"}${step2.course ? ` with ${step2.course}` : ""}${step2.specialization ? ` in ${step2.specialization}` : ""}`,
-                      ].map((s) => (
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-gray-500">{t("headlineIdeas")}</p>
+                        <button type="button" onClick={() => void suggestHeadlines(false)} disabled={headlineLoading}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline disabled:opacity-50">
+                          {headlineLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} {t("headlineMoreIdeas")}
+                        </button>
+                      </div>
+                      {headlineIdeas.filter((s) => s !== step3.headline).map((s) => (
                         <button
                           key={s}
                           type="button"
@@ -1983,6 +2142,7 @@ export default function JobSeekerOnboardingPage() {
                   <Label htmlFor="ob-preferredLocations" className="text-sm font-medium text-gray-800">{t("preferredLocations")} <span className="text-gray-400 font-normal">{t("maximum10")}</span></Label>
                   <TagAutocomplete id="ob-preferredLocations"
                     type="locations"
+                    country={area.countryCode}
                     value={step3.preferredLocations}
                     onChange={(next) => setStep3((p) => ({ ...p, preferredLocations: next }))}
                     placeholder={t("locationsPlaceholder")}

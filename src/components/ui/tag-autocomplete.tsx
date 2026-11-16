@@ -16,7 +16,7 @@ import type { TaxonomyType } from "@/lib/taxonomy/seeds";
  * "React" and pressing Enter at once used to add "JavaScript", the first
  * suggestion for "Jav…".
  */
-function useTaxonomySearch(type: TaxonomyType, query: string, debounceMs = 200) {
+function useTaxonomySearch(type: TaxonomyType, query: string, debounceMs = 200, country = "") {
   const [result, setResult] = React.useState<{ query: string; items: string[] }>({ query: "", items: [] });
   const [loading, setLoading] = React.useState(false);
 
@@ -27,7 +27,7 @@ function useTaxonomySearch(type: TaxonomyType, query: string, debounceMs = 200) 
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/taxonomy?type=${encodeURIComponent(type)}&q=${encodeURIComponent(query)}&limit=12`,
+          `/api/taxonomy?type=${encodeURIComponent(type)}&q=${encodeURIComponent(query)}&limit=12${country ? `&country=${encodeURIComponent(country)}` : ""}`,
           { signal: controller.signal }
         );
         if (!res.ok) return;
@@ -45,7 +45,7 @@ function useTaxonomySearch(type: TaxonomyType, query: string, debounceMs = 200) 
       controller.abort();
       clearTimeout(handle);
     };
-  }, [type, query, debounceMs]);
+  }, [type, query, debounceMs, country]);
 
   return { items: result.items, loading, fresh: result.query === query };
 }
@@ -122,6 +122,8 @@ interface TagAutocompleteProps {
   id?: string;
   /** Accessible name when no <label htmlFor={id}> points at the input. */
   ariaLabel?: string;
+  /** ISO alpha-2 home country; "locations" then lists that country's places first. */
+  country?: string;
 }
 
 /**
@@ -138,12 +140,13 @@ export function TagAutocomplete({
   className,
   id,
   ariaLabel,
+  country = "",
 }: TagAutocompleteProps) {
   const t = useTranslations("common");
   const [input, setInput] = React.useState("");
   const [open, setOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(-1);
-  const { items, loading, fresh } = useTaxonomySearch(type, input);
+  const { items, loading, fresh } = useTaxonomySearch(type, input, 200, country);
   const { ref: containerRef, panelRef } = useOutsideClick(() => setOpen(false));
 
   const lowerValue = value.map((v) => v.toLowerCase());
