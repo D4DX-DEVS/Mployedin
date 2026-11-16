@@ -20,6 +20,8 @@ jest.mock("@/models/Application", () => ({
 jest.mock("@/models/DiversityResponse", () => ({ __esModule: true, default: { deleteMany: (...a: unknown[]) => diversityDelete(...a) } }));
 jest.mock("@/models/BackgroundCheck", () => ({ __esModule: true, default: { deleteMany: (...a: unknown[]) => checksDelete(...a) } }));
 jest.mock("@/lib/gdpr/erasure", () => ({ ERASED_APPLICATION_FIELDS: ["coverLetter", "screeningAnswers", "employerNotes"] }));
+const scrubApplicationTraces = jest.fn();
+jest.mock("@/lib/gdpr/hiringTraces", () => ({ scrubApplicationTraces: (...a: unknown[]) => scrubApplicationTraces(...a) }));
 
 import { anonymiseExpiredApplications, retentionCutoff } from "@/lib/gdpr/applicationRetention";
 
@@ -33,6 +35,7 @@ beforeEach(() => {
   appUpdateMany.mockResolvedValue({ modifiedCount: 2 });
   diversityDelete.mockResolvedValue({ deletedCount: 1 });
   checksDelete.mockResolvedValue({ deletedCount: 0 });
+  scrubApplicationTraces.mockResolvedValue(undefined);
 });
 
 it("counts 24 months back from today", () => {
@@ -65,6 +68,8 @@ it("clears what was written, the attached documents, diversity answers and check
   );
   expect(diversityDelete).toHaveBeenCalledWith({ applicationId: { $in: ["a1", "a2"] } });
   expect(checksDelete).toHaveBeenCalledWith({ applicationId: { $in: ["a1", "a2"] } });
+  // Status-history notes (a rejection reason is copied there) and CV quotes in the requirement check.
+  expect(scrubApplicationTraces).toHaveBeenCalledWith({ _id: { $in: ["a1", "a2"] } });
   expect(result).toEqual({ anonymised: 2, diversityDeleted: 1, checksDeleted: 0 });
 });
 

@@ -15,6 +15,7 @@ import { isOwnR2Address } from "@/lib/storage/storageConfig";
 import { mirrorLogErase } from "@/lib/logs/logStore";
 import { eraseMatchVectors } from "@/lib/matching/vectorStore";
 import { eraseSearchVector } from "@/lib/ai/searchVectors";
+import { eraseEmailLog, eraseSeekerHiringTraces, scrubApplicationTraces } from "@/lib/gdpr/hiringTraces";
 
 /**
  * The WhatsApp part of an erasure, shared by the admin erasure below and the
@@ -147,6 +148,8 @@ export const ERASED_APPLICATION_FIELDS = [
   "matchGaps",
   "behaviorSignals",
   "automatedDecision.reviewNote",
+  // Quotes from the CV behind each requirement verdict (the per-row quotes: scrubApplicationTraces).
+  "requirementReport",
 ] as const;
 
 /**
@@ -154,7 +157,8 @@ export const ERASED_APPLICATION_FIELDS = [
  * category data), background checks (with referees' details), saved jobs, who
  * viewed the profile, and talent-pool memberships. Interviews, scorecards, offers
  * and placements stay as the employer's hiring and commission records, linked
- * only to the erased profile. [LEGAL] solicitor confirms that split.
+ * only to the erased profile, with the text that names or describes the person
+ * cleared from them (lib/gdpr/hiringTraces). [LEGAL] solicitor confirms that split.
  */
 async function eraseSeekerRelatedRecords(seekerRef: unknown, userId: string, applicationIds: unknown[]): Promise<void> {
   const seekerId = seekerRef as Types.ObjectId;
@@ -206,13 +210,13 @@ export async function eraseUserPersonalData(userId: string): Promise<{ anonymize
         deletedAt: new Date(),
       },
       $unset: Object.fromEntries(ERASED_ACCOUNT_SECRETS.map((field) => [field, 1])),
-    }).select("avatar").lean<{ avatar?: string | null } | null>(),
+    }).select("avatar name email").lean<{ avatar?: string | null; name?: string; email?: string } | null>(),
     // Every profile field but the ids (seekerErasureUnset). findOneAndUpdate
     // returns the PRE-update doc, so `seekerBefore` still carries cv.originalUrl
     // for the storage hard-delete below.
     JobSeeker.findOneAndUpdate({ userId }, { $unset: seekerErasureUnset() })
-      .select("cv documents")
-      .lean<{ _id?: unknown; cv?: { originalUrl?: string }; documents?: { url?: string }[] } | null>(),
+      .select("cv documents fullName")
+      .lean<{ _id?: unknown; fullName?: string; cv?: { originalUrl?: string }; documents?: { url?: string }[] } | null>(),
     // Delete notifications
     Notification.deleteMany({ userId }),
   ]);
@@ -220,6 +224,8 @@ export async function eraseUserPersonalData(userId: string): Promise<{ anonymize
   // Their name, IP address and user agent on the consent rows. Not caught: a failure fails the erasure, and the
   // request stays in progress for the admin to retry (every step here is safe to run twice).
   await anonymiseConsentLogs(userId);
+  // Every role: the delivery log of what we emailed them, found by account and by the address read above.
+  await eraseEmailLog(userId, userBefore?.email);
 
   // Messages the user wrote, and their name on other people's conversation lists.
   try {
@@ -250,7 +256,18 @@ export async function eraseUserPersonalData(userId: string): Promise<{ anonymize
         $unset: Object.fromEntries(ERASED_APPLICATION_FIELDS.map((field) => [field, 1])),
       },
     );
+    await scrubApplicationTraces({ jobSeekerId: seekerBefore._id });
     await eraseSeekerRelatedRecords(seekerBefore._id, userId, applications.map((a) => a._id));
+    // Their name and words in hiring records that stay (interviews, offers, notifications…). Not caught, like the
+    // consent step: a failure leaves the request in progress for the admin to retry.
+    fileUrls.push(...(await eraseSeekerHiringTraces({
+      userId,
+      seekerId: seekerBefore._id,
+      applicationIds: applications.map((a) => a._id),
+      names: [userBefore?.name, seekerBefore.fullName].filter((n): n is string => Boolean(n)),
+      email: userBefore?.email,
+      anonymizedEmail,
+    })));
   }
   const { deleteFile } = await import("@/lib/storage/spaces");
   for (const url of new Set(fileUrls.filter((u): u is string => Boolean(u)))) {

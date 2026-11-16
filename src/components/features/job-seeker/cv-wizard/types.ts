@@ -54,6 +54,9 @@ export interface CvBuilderResult {
   otherLinks: BuiltLink[];
   summary: string;
   templateId: string;
+  /** Total work experience as the seeker gave it ("" = not said). Onboarding's Employment step asks this. */
+  experienceYears: string;
+  experienceMonths: string;
 }
 
 /** Who the CV is for — from the account and onboarding's first step. */

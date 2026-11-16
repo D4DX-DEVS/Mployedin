@@ -29,12 +29,20 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PhoneInput } from "@/components/shared/PhoneInput";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { applyErrorKey } from "@/lib/applications/applyErrors";
 import { useJobShareReferral } from "@/lib/referrals/useJobShareReferral";
 import { clearPendingReferral } from "@/lib/referrals/pendingReferral";
+import type { SeekerAreaValue } from "@/components/features/job-seeker/SeekerAreaField";
+import { areaFromProfileLocation } from "@/components/features/job-seeker/SeekerAreaPrompt";
+import dynamic from "next/dynamic";
+import type { CvReadSummary, CvReviewValues } from "./CvReviewDialog";
+import { cvDesignFor, cvEditsBody } from "./cvReviewEdits";
+import type { SeekerProfileData } from "@/app/[locale]/(dashboard)/job-seeker/cv/built-cv";
+
+// The review window carries the CV templates: loaded only once a CV was read.
+const CvReviewDialog = dynamic(() => import("./CvReviewDialog"), { ssr: false });
 import { ApplyLoginNextTime } from "@/components/features/public/ApplyLoginNextTime";
 
 export interface EasyApplyScreeningQuestion {
@@ -70,6 +78,8 @@ interface JobSeekerProfile {
   skills?: string[];
   documents?: ProfileDocument[];
   cvUrl?: string | null;
+  /** The profile CV's file name, when its upload was recorded. */
+  cvFileName?: string | null;
   /** The seeker saved a CV in the builder, so it can be sent from here. */
   hasBuiltCv?: boolean;
   socialLinks?: { label: string; url: string }[];
@@ -80,6 +90,7 @@ interface ExtractedProfileData {
   email?: string;
   phone?: string;
   headline?: string;
+  currentLocation?: string;
   skills?: Array<{ name: string; level?: string; yearsOfExperience?: number }>;
   experience?: unknown[];
   education?: unknown[];
@@ -94,6 +105,101 @@ interface CvExtractResponse {
   extracted: ExtractedProfileData;
   profileCompleteness: number;
   cvUrl: string | null;
+}
+
+const HEADLINE_MAX = 120;
+
+/**
+ * A one-line headline for the confirm step: the account's own headline when it
+ * has one (an existing account must not lose it), else an AI suggestion from
+ * the CV's latest job and skills. Never the CV summary paragraph.
+ */
+async function shortHeadline(cv: ExtractedProfileData): Promise<string> {
+  try {
+    const res = await fetch("/api/job-seeker/profile");
+    const own = res.ok ? ((await res.json()) as { headline?: string }).headline?.trim() : "";
+    if (own && own.length <= HEADLINE_MAX) return own;
+  } catch { /* fall through to a suggestion */ }
+  const jobTitle = ((cv.experience?.[0] ?? {}) as { jobTitle?: string }).jobTitle?.slice(0, 120) ?? "";
+  // The reader usually returns {name}, sometimes a bare string.
+  const skills = (cv.skills ?? [])
+    .map((s: unknown) => (typeof s === "string" ? s : (s as { name?: string } | null)?.name ?? "").slice(0, 60))
+    .filter(Boolean)
+    .slice(0, 15);
+  if (!jobTitle && !skills.length) return "";
+  try {
+    const res = await csrfFetch("/api/ai/headline-suggest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobTitle, skills }),
+    });
+    const data = res.ok ? ((await res.json()) as { headlines?: string[] }) : null;
+    const first = data?.headlines?.[0]?.trim();
+    if (first) return first.slice(0, HEADLINE_MAX);
+  } catch { /* the seeker can type one */ }
+  return "";
+}
+
+/** What the CV reader found, in the few figures the confirm step lists. */
+function summarizeCvRead(cv: ExtractedProfileData): CvReadSummary {
+  const skills = (cv.skills ?? [])
+    .map((s: unknown) => (typeof s === "string" ? s : (s as { name?: string } | null)?.name ?? "").trim())
+    .filter(Boolean);
+  const roles = (cv.experience ?? [])
+    .map((e) => {
+      const job = (e ?? {}) as { jobTitle?: string; company?: string };
+      const title = job.jobTitle?.trim() ?? "";
+      const company = job.company?.trim() ?? "";
+      return title && company ? `${title} · ${company}` : title || company;
+    })
+    .filter(Boolean);
+  return {
+    skills,
+    roles,
+    educationCount: cv.education?.length ?? 0,
+    languageCount: cv.languages?.length ?? 0,
+    certificationCount: cv.certifications?.length ?? 0,
+    projectCount: cv.projects?.length ?? 0,
+  };
+}
+
+/** The latest one or two job titles on the CV, as the roles to look for. */
+function rolesFromCv(cv: ExtractedProfileData): string[] {
+  const titles = (cv.experience ?? [])
+    .map((e) => ((e ?? {}) as { jobTitle?: string }).jobTitle?.trim() ?? "")
+    .filter((title) => title && title.length <= 100);
+  return [...new Set(titles)].slice(0, 2);
+}
+
+/** Currency a salary is usually stated in, by the country the seeker lives in. */
+const CURRENCY_BY_COUNTRY: Record<string, string> = {
+  IN: "INR", AE: "AED", SA: "SAR", QA: "QAR", KW: "KWD", OM: "OMR", BH: "BHD", GB: "GBP",
+  DE: "EUR", FR: "EUR", IE: "EUR", NL: "EUR", ES: "EUR", IT: "EUR",
+};
+
+function countryName(code: string): string {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+function listOf(text: string, max: number): string[] {
+  return [...new Set(text.split(",").map((v) => v.trim()).filter((v) => v && v.length <= 100))].slice(0, max);
+}
+
+/** The Job Preferences save from the review window; null when there is nothing to save. */
+function preferencesBody(v: { roles: string; countries: string; salary: string; currency: string; noticeDays: string }): Record<string, unknown> | null {
+  const body: Record<string, unknown> = {};
+  const roles = listOf(v.roles, 5);
+  const countries = listOf(v.countries, 5);
+  const salary = Number(v.salary);
+  if (roles.length) body.preferredRoles = roles;
+  if (countries.length) body.preferredCountries = countries;
+  if (Number.isFinite(salary) && salary > 0) body.preferredSalary = { min: Math.round(salary), currency: v.currency };
+  if (v.noticeDays !== "") body.noticePeriod = Number(v.noticeDays);
+  return Object.keys(body).length ? body : null;
 }
 
 // Sentinel keys for the CV selector
@@ -180,6 +286,50 @@ function EasyApplyFlow({
   const [confirmName, setConfirmName] = useState("");
   const [confirmPhone, setConfirmPhone] = useState("");
   const [confirmHeadline, setConfirmHeadline] = useState("");
+  // What the CV gave the new profile, shown on the confirm step so the seeker
+  // sees how much was read, not only the three fields they can edit.
+  const [cvReadSummary, setCvReadSummary] = useState<CvReadSummary | null>(null);
+  // Where they live, asked here with the rest so the seeker app does not ask
+  // again on the next page ("Where are you based?"). Pre-picked from the CV.
+  // The jobs they want next, pre-filled from the latest job on the CV and
+  // saved as their Job Preferences roles (what Home recommends from).
+  const [confirmRoles, setConfirmRoles] = useState("");
+  const [confirmArea, setConfirmArea] = useState<SeekerAreaValue>({ countryCode: "", city: null, region: null });
+  // Preferences the CV implies (countries) and what no CV says (salary, notice).
+  const [confirmCountries, setConfirmCountries] = useState("");
+  const [confirmSalary, setConfirmSalary] = useState("");
+  const [confirmCurrency, setConfirmCurrency] = useState("USD");
+  const [confirmNotice, setConfirmNotice] = useState("");
+  const [confirmDiscoverable, setConfirmDiscoverable] = useState(false);
+  // The profile as stored after the read: what the CV preview is made from.
+  const [reviewProfile, setReviewProfile] = useState<SeekerProfileData | null>(null);
+  // The same, with the seeker's edits from the window's "Edit details" view.
+  const [reviewDraft, setReviewDraft] = useState<SeekerProfileData | null>(null);
+  const [cvReading, setCvReading] = useState(false);
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const reviewValues: CvReviewValues = {
+    name: confirmName, phone: confirmPhone, headline: confirmHeadline, roles: confirmRoles,
+    countries: confirmCountries, area: confirmArea, salary: confirmSalary, currency: confirmCurrency, noticeDays: confirmNotice,
+    discoverable: confirmDiscoverable,
+  };
+  // Fields the seeker has changed in the window: the CV read leaves those alone.
+  // (Not "non-empty": the name starts as the Google account's, which the CV's replaces.)
+  const touchedReview = useRef(new Set<keyof CvReviewValues>());
+  // The design of the Mployedin CV, chosen in the window and saved with it.
+  const [reviewTemplate, setReviewTemplate] = useState("classic");
+  const changeReview = (next: Partial<CvReviewValues>) => {
+    for (const key of Object.keys(next) as (keyof CvReviewValues)[]) touchedReview.current.add(key);
+    if (next.name !== undefined) setConfirmName(next.name);
+    if (next.phone !== undefined) setConfirmPhone(next.phone);
+    if (next.headline !== undefined) setConfirmHeadline(next.headline);
+    if (next.roles !== undefined) setConfirmRoles(next.roles);
+    if (next.countries !== undefined) setConfirmCountries(next.countries);
+    if (next.area !== undefined) setConfirmArea(next.area);
+    if (next.salary !== undefined) setConfirmSalary(next.salary);
+    if (next.currency !== undefined) setConfirmCurrency(next.currency);
+    if (next.noticeDays !== undefined) setConfirmNotice(next.noticeDays);
+    if (next.discoverable !== undefined) setConfirmDiscoverable(next.discoverable);
+  };
 
   const [profile, setProfile] = useState<JobSeekerProfile | null>(null);
   const [coverLetter, setCoverLetter] = useState("");
@@ -263,6 +413,7 @@ function EasyApplyFlow({
             skills: js.skills ?? [],
             documents: docs,
             cvUrl: js.cvUrl ?? null,
+            cvFileName: js.cvFileName ?? null,
             hasBuiltCv: js.hasBuiltCv === true,
             socialLinks: js.socialLinks ?? [],
           });
@@ -283,6 +434,16 @@ function EasyApplyFlow({
       .catch(() => {/* silently ignore */})
       .finally(() => setFetchingProfile(false));
   }, [isJobSeeker, profile, session?.user?.email, session?.user?.name]);
+
+  // Signed in, CV already read, but the review window was never saved (the
+  // page was reloaded or left mid-way): open it again. Otherwise the half-made
+  // account sat on the apply form, and its CV link led to onboarding.
+  const resumedReview = useRef(false);
+  useEffect(() => {
+    if (resumedReview.current || !isJobSeeker || isOnboarded || !profile?.cvUrl || anonPhase !== "idle") return;
+    resumedReview.current = true;
+    void resumeReview();
+  }, [isJobSeeker, isOnboarded, profile?.cvUrl, anonPhase]);
 
   // A seeker with no CV of their own still applies with one: the Mployedin CV,
   // made from the details they gave in onboarding (rendered on submit).
@@ -387,37 +548,12 @@ function EasyApplyFlow({
       }
 
       if (anonCvFile) {
-        setAnonPhase("extract");
-        try {
-          const fd = new FormData();
-          fd.append("cv", anonCvFile);
-          const extractRes = await csrfFetch("/api/ai/cv-extract", { method: "POST", body: fd });
-          if (!extractRes.ok) {
-            // Extraction failed
-            setExtractionFailed(true);
-            // Still upload the CV as a document
-            await uploadDocumentForAnon(anonCvFile);
-            setAnonPhase("confirm");
-            return;
-          }
-          const extractData: CvExtractResponse = await extractRes.json();
-          if (extractData.success) {
-            setProfileCompleteness(extractData.profileCompleteness);
-            setConfirmName(extractData.extracted.fullName ?? "");
-            setConfirmPhone(extractData.extracted.phone ?? "");
-            setConfirmHeadline(extractData.extracted.headline ?? "");
-            setAnonPhase("confirm");
-          } else {
-            setExtractionFailed(true);
-            await uploadDocumentForAnon(anonCvFile);
-            setAnonPhase("confirm");
-          }
-        } catch {
-          // Extraction failed
-          setExtractionFailed(true);
-          await uploadDocumentForAnon(anonCvFile);
-          setAnonPhase("confirm");
-        }
+        // The review window opens now; the CV is read meanwhile (about half a
+        // minute), so the seeker answers what a CV never says instead of waiting.
+        setConfirmName((v) => v || fresh?.user?.name || "");
+        setCvReading(true);
+        setAnonPhase("confirm");
+        void readCvInBackground(anonCvFile);
       } else {
         // No CV file — go straight to applying
         await update();
@@ -426,6 +562,92 @@ function EasyApplyFlow({
       setAnonError(t("errors.applyFailed"));
       setAnonPhase("idle");
     }
+  }
+
+  // Reads the CV into the new profile while the review window is open. What
+  // it finds fills only the fields the seeker has not typed into yet.
+  async function readCvInBackground(file: File) {
+    const keep = (field: keyof CvReviewValues, found: string) => (current: string) =>
+      (touchedReview.current.has(field) || !found ? current : found);
+    try {
+      const fd = new FormData();
+      fd.append("cv", file);
+      const extractRes = await csrfFetch("/api/ai/cv-extract", { method: "POST", body: fd });
+      const extractData = extractRes.ok ? ((await extractRes.json()) as CvExtractResponse) : null;
+      if (!extractData?.success) throw new Error("not read");
+      const cv = extractData.extracted;
+      setProfileCompleteness(extractData.profileCompleteness);
+      setConfirmName(keep("name", cv.fullName ?? ""));
+      setConfirmPhone(keep("phone", cv.phone ?? ""));
+      setCvReadSummary(summarizeCvRead(cv));
+      setConfirmRoles(keep("roles", rolesFromCv(cv).join(", ")));
+      // The city lookup and the headline suggestion (an AI call) fill in when
+      // they arrive; the window unlocks as soon as the CV and profile are in.
+      void areaFromProfileLocation(cv.currentLocation, cv.phone)
+        .then((area) => {
+          if (!area) return;
+          setConfirmArea((current) => (touchedReview.current.has("area") ? current : area));
+          // Where they live is where they look, unless they say otherwise.
+          if (area.countryCode) {
+            setConfirmCountries(keep("countries", countryName(area.countryCode)));
+            setConfirmCurrency(CURRENCY_BY_COUNTRY[area.countryCode] ?? "USD");
+          }
+        })
+        .catch(() => { /* the seeker picks it */ });
+      // The reader's "headline" is the CV's 1-2 sentence summary, already
+      // saved as the profile summary. The headline is one short line: keep
+      // the one the account has, else suggest one from the CV.
+      void shortHeadline(cv)
+        .then((headline) => setConfirmHeadline(keep("headline", headline)))
+        .catch(() => { /* the seeker can type one */ });
+      await loadReviewProfile();
+    } catch {
+      setExtractionFailed(true);
+      // Still keep the file, as a document on the profile.
+      await uploadDocumentForAnon(file);
+    } finally {
+      setCvReading(false);
+    }
+  }
+
+  // The review window again, filled from what the CV read stored.
+  async function resumeReview() {
+    try {
+      const res = await fetch("/api/job-seeker/profile");
+      if (!res.ok) return;
+      const p = (await res.json()) as SeekerProfileData & {
+        fullName?: string; profileCompleteness?: number; preferredRoles?: string[]; preferredCountries?: string[];
+      };
+      setReviewProfile(p);
+      setReviewDraft(p);
+      setProfileCompleteness(p.profileCompleteness ?? null);
+      setConfirmName(p.fullName || session?.user?.name || "");
+      setConfirmPhone(p.phone || "");
+      setConfirmHeadline(p.headline || "");
+      const read = { skills: p.skills, experience: p.experience, education: p.education, languages: p.languages, certifications: p.certifications, projects: p.projects } as ExtractedProfileData;
+      setCvReadSummary(summarizeCvRead(read));
+      if (!p.headline) void shortHeadline(read).then((h) => setConfirmHeadline((typed) => typed || h));
+      setConfirmRoles((p.preferredRoles?.length ? p.preferredRoles : rolesFromCv(read)).join(", "));
+      const area = await areaFromProfileLocation(p.currentLocation ?? undefined, p.phone ?? undefined).catch(() => null);
+      if (area) setConfirmArea(area);
+      const code = area?.countryCode;
+      const saved = (p.preferredCountries ?? []).map((c) => (c.length === 2 ? countryName(c.toUpperCase()) : c));
+      setConfirmCountries(saved.length ? saved.join(", ") : code ? countryName(code) : "");
+      if (code) setConfirmCurrency(CURRENCY_BY_COUNTRY[code] ?? "USD");
+      setAnonPhase("confirm");
+    } catch { /* the apply form stays; onboarding is still one click away */ }
+  }
+
+  // The stored profile, for the CV preview in the review window.
+  async function loadReviewProfile() {
+    try {
+      const res = await fetch("/api/job-seeker/profile");
+      if (res.ok) {
+        const stored = (await res.json()) as SeekerProfileData;
+        setReviewProfile(stored);
+        setReviewDraft(stored);
+      }
+    } catch { /* the preview keeps its placeholder; the form still works */ }
   }
 
   // Upload CV file as a document for anonymous users
@@ -443,9 +665,14 @@ function EasyApplyFlow({
   // Handle profile confirmation and profile PATCH
   async function handleAnonProfileConfirm() {
     setAnonError("");
-    let leaving = false;
+    setReviewSaving(true);
     try {
-      const patchBody: Record<string, unknown> = { onboardingComplete: true };
+      // Visibility is always written: the schema default is "visible", so an
+      // unanswered profile would be findable without the seeker having said yes.
+      const patchBody: Record<string, unknown> = {
+        onboardingComplete: true,
+        profileVisibility: confirmDiscoverable ? "visible" : "hidden",
+      };
       if (confirmName && confirmName.trim().length > 0) {
         patchBody.name = confirmName.trim();
       }
@@ -455,6 +682,8 @@ function EasyApplyFlow({
       if (confirmHeadline && confirmHeadline.trim().length > 0) {
         patchBody.headline = confirmHeadline.trim();
       }
+      if (confirmArea.city) patchBody.cityId = confirmArea.city.id;
+      else if (confirmArea.region) patchBody.stateId = confirmArea.region.id;
 
       const res = await csrfFetch("/api/job-seekers/profile", {
         method: "PATCH",
@@ -468,27 +697,54 @@ function EasyApplyFlow({
         return;
       }
 
+      // Job Preferences live on the other profile endpoint. Best-effort: the
+      // seeker can set them in Job Preferences if this one save fails.
+      // The CV's own content, when they fixed it in the window, goes with them.
+      const prefs = preferencesBody({ roles: confirmRoles, countries: confirmCountries, salary: confirmSalary, currency: confirmCurrency, noticeDays: confirmNotice });
+      const cvEdits = cvEditsBody(reviewDraft, reviewProfile);
+      // The design they picked for the Mployedin CV (only once the CV was read).
+      const design = reviewProfile ? { cvDesign: cvDesignFor(reviewTemplate) } : null;
+      if (prefs || cvEdits || design) {
+        let saved = false;
+        try {
+          const prefsRes = await csrfFetch("/api/job-seeker/profile", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...prefs, ...cvEdits, ...design }),
+          });
+          saved = prefsRes.ok;
+        } catch { /* judged below */ }
+        // Fixes they made to the CV must not be dropped silently; preferences
+        // alone can be set again in Job Preferences.
+        if (!saved && cvEdits) {
+          setAnonError(t("errors.cvEditsNotSaved"));
+          return;
+        }
+      }
+
       // Drop the cached profile so the apply form re-reads it. Without this the
       // CV panel still shows the pre-sign-in snapshot and claims "No CV on file"
       // even though the parse (or the fallback upload) just stored one.
       setProfile(null);
 
-      // The CV and the profile are saved on the server, so nothing held in memory
-      // is lost by loading the page again. After a Google sign-in that is what
-      // drops Firebase's hidden Google iframe and window.gapi. It happens only
-      // here, after the save succeeded: a failure above keeps the form.
-      if (signedInWithGoogle.current) {
-        leaving = true;
-        leaveForSignedInPage();
-        return;
-      }
+      // The save above marked the profile onboarded; the session must hear it,
+      // or the form keeps treating the seeker as new and never offers the
+      // Mployedin CV made from what the CV gave. The server re-reads the flag.
+      await update({ isOnboarded: true });
 
-      // Refresh the JWT/session so the component re-renders into the apply form.
-      await update();
+      // Now a signed-up, onboarded seeker: this job opens inside the seeker app
+      // (their menu, home, applications), not the public site. Everything is
+      // saved, so a page load loses nothing; after a Google sign-in it also drops
+      // Firebase's hidden Google iframe and window.gapi. Only after the save
+      // succeeded: a failure above keeps the form.
+      setLeavingPage(true);
+      navigateWithPageLoad(`/${locale}/job-seeker/jobs/${encodeURIComponent(jobId)}`);
+      return;
     } catch {
       setAnonError(t("errors.applyFailed"));
     } finally {
-      if (!leaving) setAnonPhase("idle");
+      // A failed save keeps the window open with its message, answers intact.
+      setReviewSaving(false);
     }
   }
 
@@ -665,82 +921,33 @@ function EasyApplyFlow({
   // parsed from their CV nor the message explaining that parsing had failed.
   if (anonPhase === "confirm") {
     return (
-        <div className="space-y-4 rounded-3xl border border-border/70 bg-muted/10 card-pad">
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              {extractionFailed
-                ? t("errors.couldNotExtract")
-                : t("foundYourDetails")}
-            </p>
-            {!extractionFailed && profileCompleteness && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t("profileComplete", { percent: Math.round(profileCompleteness) })}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-3">
-            {anonOtpSent && (
-              <div className="rounded-xl bg-blue-50 border border-blue-200 p-3">
-                <p className="text-xs text-blue-900">{t("emailConfirmMsg", { email: anonEmail })}</p>
-              </div>
-            )}
-
-            <div className="field">
-              <Label htmlFor="confirm-name" className="text-xs font-medium text-foreground">
-                {t("name")}
-              </Label>
-              <Input
-                id="confirm-name"
-                type="text"
-                value={confirmName}
-                onChange={(e) => setConfirmName(e.target.value)}
-                placeholder={t("enterName")}
-                className="rounded-xl"
-                maxLength={200}
-              />
-            </div>
-
-            <PhoneInput
-              id="confirm-phone"
-              label={t("phone")}
-              value={confirmPhone}
-              onChange={setConfirmPhone}
-              placeholder={t("enterPhone")}
-            />
-
-            <div className="field">
-              <Label htmlFor="confirm-headline" className="text-xs font-medium text-foreground">
-                {t("headline")}
-              </Label>
-              <textarea
-                id="confirm-headline"
-                value={confirmHeadline}
-                onChange={(e) => setConfirmHeadline(e.target.value)}
-                placeholder={t("enterHeadline")}
-                className="textarea-field min-h-[80px] w-full rounded-xl border border-border bg-background text-sm chip-pad"
-                maxLength={500}
-                rows={3}
-              />
-            </div>
-          </div>
-
-          {anonError && <p className="text-center text-xs text-destructive">{anonError}</p>}
-
-          <Button
-            size="lg"
-            onClick={handleAnonProfileConfirm}
-            disabled={anonPhase !== "confirm" || leavingPage}
-            className="w-full rounded-2xl text-base font-medium gap-2"
-          >
-            {anonPhase !== "confirm" || leavingPage ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Check className="h-4 w-4" />
-            )}
-            {t("looksGood")}
-          </Button>
-      </div>
+      <>
+        {/* Behind the review window: where things stand, if it is moved aside. */}
+        <div role="status" className="flex flex-col items-center gap-2 rounded-3xl border border-border/70 bg-muted/10 card-pad text-center">
+          <Check className="h-5 w-5 text-primary" aria-hidden="true" />
+          <p className="text-sm font-semibold text-foreground">{t("reviewPanelNote")}</p>
+        </div>
+        <CvReviewDialog
+          open
+          fileName={anonCvFile?.name ?? profile?.cvFileName ?? undefined}
+          email={anonEmail || undefined}
+          profile={reviewDraft}
+          onProfileChange={setReviewDraft}
+          reading={cvReading}
+          templateId={reviewTemplate}
+          onTemplateChange={setReviewTemplate}
+          summary={extractionFailed ? null : cvReadSummary}
+          extractionFailed={extractionFailed}
+          completeness={profileCompleteness}
+          values={reviewValues}
+          onChange={changeReview}
+          headlineMax={HEADLINE_MAX}
+          error={anonError}
+          saving={reviewSaving || leavingPage}
+          emailNote={anonOtpSent ? t("emailConfirmMsg", { email: anonEmail }) : undefined}
+          onConfirm={handleAnonProfileConfirm}
+        />
+      </>
     );
   }
 
@@ -1396,11 +1603,23 @@ function EasyApplyFlow({
                     onChange={() => setSelectedCvKey(PROFILE_CV_KEY)}
                     className="accent-primary"
                   />
-                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                  {t("profileCvLabel")}
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 truncate">
+                    <bdi>{profile?.cvFileName || t("profileCvLabel")}</bdi>
+                  </span>
+                  {/* A new tab, so this form and its answers stay put. */}
+                  <a
+                    href={`/${locale}/job-seeker/cv`}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                  >
+                    <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t("viewCv")}
+                  </a>
                 </label>
               )}
-              {(hasBuiltCv || offerAutoCv) && (
+              {(hasBuiltCv || offerAutoCv || isOnboarded) && (
                 <label className="flex items-start gap-2 text-sm">
                   <input
                     type="radio"
@@ -1411,9 +1630,9 @@ function EasyApplyFlow({
                   />
                   <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <span>
-                    {offerAutoCv ? t("autoCv") : t("builtCv")}
-                    <span className="block text-xs text-muted-foreground">{offerAutoCv ? t("autoCvHint") : t("builtCvHint")}</span>
-                    {offerAutoCv && (
+                    {hasBuiltCv ? t("builtCv") : t("autoCv")}
+                    <span className="block text-xs text-muted-foreground">{hasBuiltCv ? t("builtCvHint") : t("autoCvHint")}</span>
+                    {!hasBuiltCv && (
                       // A new tab, so this form and its answers stay put.
                       <a
                         href={`/${locale}/job-seeker/cv`}
@@ -1872,3 +2091,4 @@ function OrDivider({ label }: { label: string }) {
     </div>
   );
 }
+

@@ -89,6 +89,8 @@ jest.mock("@/models/TalentPool", () => ({ __esModule: true, default: { updateMan
 jest.mock("@/lib/matching/vectorStore", () => ({ eraseMatchVectors: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/ai/searchVectors", () => ({ eraseSearchVector: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/logs/logStore", () => ({ mirrorLogErase: jest.fn().mockResolvedValue(undefined) }));
+// The hiring-record traces have their own suite (hiringTraces.test.ts).
+jest.mock("@/lib/gdpr/hiringTraces", () => ({ eraseEmailLog: jest.fn().mockResolvedValue(undefined), eraseSeekerHiringTraces: jest.fn().mockResolvedValue([]), scrubApplicationTraces: jest.fn().mockResolvedValue(undefined) }));
 
 import { eraseUserPersonalData } from "@/lib/gdpr/erasure";
 

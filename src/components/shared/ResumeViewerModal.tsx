@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 import {
   X, Download, FileText, ZoomIn, ZoomOut, RotateCw,
   MapPin, Briefcase, Star, XCircle, Calendar, Brain,
@@ -192,6 +193,12 @@ function AtsPanel({ jobSeekerId, jobId }: { jobSeekerId: string; jobId: string }
   );
 }
 
+// The Mployedin CV side carries the PDF renderer: loaded only when opened.
+const MployedinCvView = dynamic(() => import("./MployedinCvView"), { ssr: false });
+
+/** A seeker's CV served by /api/employers/candidates/<id>/cv — the one that has a Mployedin CV beside it. */
+const CANDIDATE_CV_URL = /^\/api\/employers\/candidates\/([a-f\d]{24})\/cv(?:[?#]|$)/i;
+
 export function ResumeViewerModal({
   url,
   fileName,
@@ -225,6 +232,10 @@ export function ResumeViewerModal({
   const [imgFailed, setImgFailed] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  // Every role that opens a seeker's CV can also see it as the Mployedin CV,
+  // made from their profile. The file opens first, as before.
+  const candidateCvId = CANDIDATE_CV_URL.exec(url)?.[1] ?? null;
+  const [cvSource, setCvSource] = useState<"file" | "built">("file");
 
   const displayName = fileName ?? (candidateName ? `${candidateName}'s CV` : "Resume");
   const hasRightPanel = !!(candidate || aiMatchScore != null || jobSeekerId);
@@ -436,12 +447,36 @@ export function ResumeViewerModal({
           </div>
         )}
 
+        {/* ── Which CV: the file, or the Mployedin CV made from the profile ── */}
+        {candidateCvId && (
+          <div className={`flex items-center gap-2 border-b bg-background px-3 py-2 sm:px-5 ${hasRightPanel && mobilePane === "profile" ? "hidden sm:flex" : ""}`}>
+            <div role="group" aria-label={t("cvSourceLabel")} className="inline-flex rounded-lg border border-border/70 bg-muted/40 p-0.5">
+              {(["file", "built"] as const).map((source) => (
+                <button
+                  key={source}
+                  type="button"
+                  aria-pressed={cvSource === source}
+                  onClick={() => setCvSource(source)}
+                  className={`min-h-9 rounded-md px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${cvSource === source ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {source === "file" ? t("cvSourceFile") : t("cvSourceBuilt")}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Body ─────────────────────────────────────────────────────────── */}
         <div className="flex flex-1 overflow-hidden">
 
           {/* CV Viewer — padded, light bg. Hidden on phones while the profile pane is open. */}
           <div className={`flex-1 overflow-auto bg-gray-50 p-3 sm:p-4 ${hasRightPanel && mobilePane === "profile" ? "hidden sm:block" : ""}`}>
-            {isPdf ? (
+            {candidateCvId && cvSource === "built" ? (
+              <MployedinCvView
+                url={`/api/employers/candidates/${candidateCvId}/cv?kind=built`}
+                fileName={`${candidateName || "CV"} - Mployedin CV.pdf`}
+              />
+            ) : isPdf ? (
               previewFailed ? (
                 <div className="flex flex-col items-center justify-center min-h-full gap-3 text-center px-6">
                   <FileText className="w-10 h-10 text-muted-foreground/60" />

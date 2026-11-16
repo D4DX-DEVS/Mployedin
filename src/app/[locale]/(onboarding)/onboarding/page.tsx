@@ -20,6 +20,7 @@ import { PhoneInput } from "@/components/shared/PhoneInput";
 import { SeekerAreaField, areaCountryName, hasSeekerArea, type SeekerAreaValue } from "@/components/features/job-seeker/SeekerAreaField";
 import { OnboardingCvBuilder, type CvBuilderResult } from "@/components/features/job-seeker/OnboardingCvBuilder";
 import { builtCvFromProfile } from "@/lib/onboarding/builtCvFromProfile";
+import { currencyForCountry } from "@/lib/currency";
 import { QUALIFICATION_OPTIONS } from "@/lib/onboarding/qualifications";
 import { FALLBACK_PHONE_COUNTRIES } from "@/lib/phone/countries";
 import {
@@ -198,6 +199,9 @@ const INDUSTRY_OPTIONS = [
   "Construction", "Hospitality", "Media / Entertainment",
 ];
 
+
+/** Currencies the salary pickers offer. */
+const SALARY_CURRENCIES = ["AED", "SAR", "USD", "EUR", "GBP", "INR", "QAR", "KWD", "OMR", "BHD"];
 
 /**
  * Split a stored E.164 number back into the dial-code select and the national
@@ -460,6 +464,9 @@ export default function JobSeekerOnboardingPage() {
     const found = areaFromCv({ location, phoneCountry: phone?.country, dialCode: phone?.dialCode });
     if (!found || hasSeekerArea(areaRef.current)) return;
     setArea((prev) => (prev.countryCode ? prev : { countryCode: found.countryCode, city: null, region: null }));
+    // No number typed yet: its code follows the country (India → +91), not the +971 default.
+    const dial = FALLBACK_PHONE_COUNTRIES.find((c) => c.code === found.countryCode)?.dialCode;
+    if (dial && !phone?.dialCode) setStep0((prev) => (prev.phone ? prev : { ...prev, countryCode: dial }));
     const match = await findCatalogueArea(found.countryCode, found.places);
     const now = areaRef.current;
     if (!match || hasSeekerArea(now) || (now.countryCode && now.countryCode !== found.countryCode)) return;
@@ -505,6 +512,15 @@ export default function JobSeekerOnboardingPage() {
             // The builder asked it; step 0 may not have been saved yet.
             if (!p.workStatus) setStep0((prev) => ({ ...prev, workStatus: prev.workStatus || (restoredCv.fresher ? "fresher" : "experienced") }));
           }
+          // A CV sent with a job application was read then. Say so and answer
+          // from it, rather than offer to upload or build one again: jobs on it
+          // make them experienced, none a fresher (they can still switch).
+          const cvJobs: CareerJob[] = Array.isArray(p.experience) ? p.experience : [];
+          if (!restoredCv && p.cv?.originalUrl && p.cvExtractedByAI) {
+            setCvParsed(true);
+            if (!p.workStatus) setStep0((prev) => ({ ...prev, workStatus: prev.workStatus || (cvJobs.length ? "experienced" : "fresher") }));
+          }
+          const cvTotal = !p.totalExperienceYears && !p.totalExperienceMonths && cvJobs.length ? totalExperience(undefined, cvJobs) : null;
 
           // Pre-fill step0
           const storedPhone = splitPhone(p.phone ?? "");
@@ -553,8 +569,8 @@ export default function JobSeekerOnboardingPage() {
             // brand-new profile is indistinguishable from someone who answered
             // "0 years". Restoring that 0 would pre-answer the one field this
             // step actually enforces.
-            experienceYears: p.totalExperienceYears ? String(p.totalExperienceYears) : prev.experienceYears,
-            experienceMonths: p.totalExperienceMonths ? String(p.totalExperienceMonths) : prev.experienceMonths,
+            experienceYears: p.totalExperienceYears ? String(p.totalExperienceYears) : cvTotal ? String(cvTotal.years) : prev.experienceYears,
+            experienceMonths: p.totalExperienceMonths ? String(p.totalExperienceMonths) : cvTotal ? String(cvTotal.months) : prev.experienceMonths,
             skills: p.skills?.length ? p.skills : prev.skills,
             industry: p.industry || prev.industry,
             department: p.careerProfile?.department || prev.department,
@@ -936,6 +952,16 @@ export default function JobSeekerOnboardingPage() {
     discoverable: null,
   });
 
+  // Salary currency follows where they live (India → INR), until they type an
+  // amount or pick a currency themselves. Every seeker used to start on AED.
+  useEffect(() => {
+    if (!area.countryCode) return;
+    const code = currencyForCountry(area.countryCode).code;
+    if (!SALARY_CURRENCIES.includes(code)) return;
+    setStep1((p) => (p.annualSalary ? p : { ...p, salaryCurrency: code }));
+    setStep3((p) => (p.preferredSalary ? p : { ...p, salaryCurrency: code }));
+  }, [area.countryCode]);
+
   // AI headline: written from what the seeker entered in steps 1–2 when they
   // reach the last step. An empty box is filled with the first one; they can
   // edit it, pick another, or ask for new ones.
@@ -1066,7 +1092,9 @@ export default function JobSeekerOnboardingPage() {
       isCurrent: j.current,
     }));
     const latest = cv.jobs.find((j) => j.current) ?? cv.jobs[0];
-    const total = cv.jobs.length ? totalExperience(undefined, dated) : null;
+    // What they said wins; dates only fill in when they gave none.
+    const said = cv.experienceYears !== "" ? { years: Number(cv.experienceYears), months: Number(cv.experienceMonths || 0) } : null;
+    const total = cv.fresher ? null : said ?? (cv.jobs.length ? totalExperience(undefined, dated) : null);
     setStep1((p) => ({
       ...p,
       skills: cv.skills.length ? cv.skills.slice(0, 30) : p.skills,
@@ -1269,8 +1297,12 @@ export default function JobSeekerOnboardingPage() {
     try {
       // Derive preferred countries from the selected locations
       const derivedCountries: string[] = [];
+      // Their own city names no country ("Dubai"), but it is in their home country.
+      const homePlace = (area.city?.name ?? area.region?.name ?? "").toLowerCase();
+      const homeCountry = area.countryCode ? countryKeyFromLocationText(areaCountryName(area.countryCode, "en")) : null;
       for (const location of step3.preferredLocations) {
-        const country = countryKeyFromLocationText(location);
+        const country = countryKeyFromLocationText(location)
+          ?? (homePlace && location.trim().toLowerCase() === homePlace ? homeCountry : null);
         if (country && !derivedCountries.includes(country)) {
           derivedCountries.push(country);
         }
@@ -1551,7 +1583,7 @@ export default function JobSeekerOnboardingPage() {
                 {(
                   <div className="space-y-2">
                     <Label className="text-sm font-medium text-gray-800">{t("cvChoiceTitle")}</Label>
-                    <p className="text-xs text-gray-500">{t("cvChoiceHint")}</p>
+                    {!cvParsed && !builtCv && <p className="text-xs text-gray-500">{t("cvChoiceHint")}</p>}
                     {cvParsed ? (
                       <p className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 text-sm font-medium text-green-800 card-pad">
                         <CheckCircle className="w-4 h-4 shrink-0" /> {t("resumeParsedSuccess")}
@@ -1770,7 +1802,7 @@ export default function JobSeekerOnboardingPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {["AED", "SAR", "USD", "EUR", "GBP", "INR", "QAR", "KWD", "OMR", "BHD"].map((c) => (
+                            {SALARY_CURRENCIES.map((c) => (
                               <SelectItem key={c} value={c}>{c}</SelectItem>
                             ))}
                           </SelectContent>
@@ -2159,7 +2191,7 @@ export default function JobSeekerOnboardingPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {["AED", "SAR", "USD", "EUR", "GBP", "INR", "QAR", "KWD"].map((c) => (
+                        {SALARY_CURRENCIES.map((c) => (
                           <SelectItem key={c} value={c}>{c}</SelectItem>
                         ))}
                       </SelectContent>

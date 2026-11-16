@@ -20,6 +20,7 @@ import Job from "@/models/Job";
 import DiversityResponse from "@/models/DiversityResponse";
 import BackgroundCheck from "@/models/BackgroundCheck";
 import { ERASED_APPLICATION_FIELDS } from "@/lib/gdpr/erasure";
+import { scrubApplicationTraces } from "@/lib/gdpr/hiringTraces";
 
 export const APPLICATION_RETENTION_MONTHS = 24;
 /** Applications anonymised per run; the daily cron works through any backlog. */
@@ -69,6 +70,8 @@ export async function anonymiseExpiredApplications(now: Date = new Date(), batch
     ),
     DiversityResponse.deleteMany({ applicationId: { $in: ids } }),
     BackgroundCheck.deleteMany({ applicationId: { $in: ids } }),
+    // Status-history notes and CV quotes in the requirement check.
+    scrubApplicationTraces({ _id: { $in: ids } }),
   ]);
 
   return {

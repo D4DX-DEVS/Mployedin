@@ -19,6 +19,8 @@ const built: CvBuilderResult = {
   otherLinks: [{ label: "GitHub", url: "github.com/arun" }, { label: "Bad", url: "not a link" }],
   summary: "Commerce graduate.",
   templateId: "modern",
+  experienceYears: "",
+  experienceMonths: "",
 };
 
 describe("builderProfilePayload", () => {

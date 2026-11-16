@@ -15,7 +15,7 @@ import { AI_TOKEN_LIMITS } from "@/lib/ai/sanitize";
 import { generateText, GEMINI_MODELS } from "@/lib/ai/gemini";
 import { EmptyOcrError, ocrDocument } from "@/lib/ai/visionOcr";
 import { cleanContact } from "@/lib/cv/contactValidation";
-import { uploadBuffer } from "@/lib/storage/spaces";
+import { deleteFile, uploadBuffer } from "@/lib/storage/spaces";
 import mammoth from "mammoth";
 import { createHash } from "crypto";
 import logger from "@/lib/logger";
@@ -23,6 +23,9 @@ import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
 import { cleanSocialLinks } from "@/lib/jobSeeker/socialLinks";
 import { extractResumeText } from "@/lib/ats/analyzeCv";
 import { saveReadCv } from "@/lib/cv/cvDocuments";
+import { totalExperience } from "@/lib/jobseekers/experience";
+import { areaFromCv, pickCurrentExperience, splitCvPhone } from "@/lib/onboarding/cvPrefill";
+import { countryKeyFromLocationText } from "@/lib/i18n/locations";
 import { ensureIndustryClassified } from "@/lib/jobseekers/ensureIndustryClassified";
 import CvDocument from "@/models/CvDocument";
 import {
@@ -81,6 +84,11 @@ async function handlePOST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
+    // How long each step took, logged once at the end (CV reads felt slow).
+    const startedAt = Date.now();
+    const took: Record<string, number> = {};
+    const mark = (step: string, since: number) => { took[step] = Date.now() - since; };
+
     // Validate file: size, MIME whitelist, and magic bytes
     const bytes = await file.arrayBuffer();
     const validationError = validateUploadedFile(file, "cv", bytes);
@@ -89,7 +97,10 @@ async function handlePOST(req: NextRequest) {
     }
 
     // Malware scan before the file is sent to the AI model (fail-closed).
+    const scanStart = Date.now();
     const scan = await scanForMalware(bytes);
+    mark("scan", scanStart);
+    const textStart = Date.now();
     if (!scan.clean) {
       return NextResponse.json({ error: scan.reason }, { status: 422 });
     }
@@ -179,21 +190,62 @@ async function handlePOST(req: NextRequest) {
       }
     }
 
+    mark("text", textStart);
+
+    // The file goes to storage while the AI reads it, rather than after: the two
+    // do not depend on each other. Not for "preview", which stores nothing. If
+    // the read fails, the stored copy is removed again. Only once the file is
+    // known to hold text: a blank scan is refused above with nothing stored.
+    const uploadStart = Date.now();
+    const uploadPromise: Promise<string | null> = previewOnly
+      ? Promise.resolve(null)
+      : uploadBuffer(Buffer.from(bytes), {
+          folder: "cvs",
+          fileName: file.name,
+          contentType: mimeType,
+          private: true, // CVs are private PII — never public-read; serve via presigned URL
+          skipMalwareScan: true, // already scanned above
+        }).then(
+          (uploaded) => { mark("upload", uploadStart); return uploaded.url; },
+          () => {
+            // Non-fatal — extraction data still saved even if file upload fails
+            logger.warn("[CV Extract] File upload to Spaces failed — continuing without storing URL");
+            return null;
+          },
+        );
+    const dropUpload = () => {
+      void uploadPromise.then((url) => (url ? deleteFile(url) : undefined)).catch(() => undefined);
+    };
+
     // One parse call for every file type, on the best text there is.
     const sourceText = layerText.length >= MIN_TEXT_LAYER_CHARS ? layerText : ocrText || layerText;
-    const text = (await generateText(
+    const aiStart = Date.now();
+    let text: string;
+    try {
+      text = (await generateText(
       `${prompt}\n\nCV text:\n${sourceText}`,
       GEMINI_MODELS.flash,
       AI_TOKEN_LIMITS.cv_extract,
       true
     )).trim();
+    } catch (err) {
+      dropUpload();
+      throw err;
+    }
+    mark("ai", aiStart);
 
     // Strip markdown code fences if present
     const jsonStr = text.startsWith("`")
       ? text.replace(/```json?\n?/g, "").replace(/```\s*$/g, "").trim()
       : text;
 
-    const extracted = JSON.parse(jsonStr);
+    let extracted;
+    try {
+      extracted = JSON.parse(jsonStr);
+    } catch (err) {
+      dropUpload();
+      throw err;
+    }
 
     // Contact details are checked before anything shows or stores them. A
     // value that fails is dropped for the seeker to fill in, never guessed.
@@ -261,6 +313,7 @@ async function handlePOST(req: NextRequest) {
       ...(Array.isArray(extracted.socialLinks) ? extracted.socialLinks : []),
     ]);
 
+    const cvTotal = mappedExperience.length ? totalExperience(extracted.totalExperienceYears, mappedExperience) : null;
     const updateData = {
       ...(extracted.fullName && { fullName: extracted.fullName }),
       ...(extracted.headline && { summary: extracted.headline }),
@@ -268,6 +321,9 @@ async function handlePOST(req: NextRequest) {
       ...(extracted.currentLocation && { currentLocation: extracted.currentLocation }),
       ...(mappedSkills.length && { skills: mappedSkills }),
       ...(mappedExperience.length && { experience: mappedExperience }),
+      // What the CV states ("6+ years"), else its dated jobs added up: onboarding
+      // asks this, and a CV that answers it must not be asked again.
+      ...(cvTotal && { totalExperienceYears: cvTotal.years, totalExperienceMonths: cvTotal.months }),
       ...(mappedEducation.length && { education: mappedEducation }),
       ...(mappedLanguages.length && { languages: mappedLanguages }),
       ...(extracted.certifications?.length && { certifications: extracted.certifications }),
@@ -282,19 +338,25 @@ async function handlePOST(req: NextRequest) {
       await User.findByIdAndUpdate(userId, { name: extracted.fullName }, { runValidators: true });
     }
 
+    // The CV's phone, as "+<code><number>", for an account that has none — so
+    // onboarding and the apply form show it instead of asking. Only a number
+    // whose country can be told (written with its code, or read in the
+    // country the CV names); a number the seeker typed is never replaced.
+    const cvPhone = splitCvPhone(extracted.phone, areaFromCv({ location: extracted.currentLocation })?.countryCode);
+    if (cvPhone?.dialCode && cvPhone.phone.length >= 6) {
+      await User.updateOne(
+        { _id: userId, $or: [{ phone: { $exists: false } }, { phone: null }, { phone: "" }] },
+        { $set: { phone: `${cvPhone.dialCode}${cvPhone.phone}` } },
+      );
+    }
+
     // Persist the content hash so an identical re-upload is detected as duplicate.
     (updateData as Record<string, unknown>)["cv.contentHash"] = contentHash;
 
-    // Upload CV file to Spaces and store real URL
-    try {
-      const uploaded = await uploadBuffer(Buffer.from(bytes), {
-        folder: "cvs",
-        fileName: file.name,
-        contentType: mimeType,
-        private: true, // CVs are private PII — never public-read; serve via presigned URL
-        skipMalwareScan: true, // already scanned above
-      });
-      (updateData as Record<string, unknown>)["cv.originalUrl"] = uploaded.url;
+    // The stored file (its upload started before the AI read the CV).
+    const uploadedUrl = await uploadPromise;
+    if (uploadedUrl) {
+      (updateData as Record<string, unknown>)["cv.originalUrl"] = uploadedUrl;
       (updateData as Record<string, unknown>)["cv.parsedAt"] = new Date();
       // New CV file → old ATS analysis is stale; clear it so the next check re-parses.
       (updateData as Record<string, unknown>)["cv.atsScore"] = null;
@@ -302,9 +364,6 @@ async function handlePOST(req: NextRequest) {
       (updateData as Record<string, unknown>)["cv.atsAnalyzedAt"] = null;
       // This file's text — the matcher's CV evidence (it used to be wiped here).
       (updateData as Record<string, unknown>)["cv.rawText"] = cvText;
-    } catch {
-      // Non-fatal — extraction data still saved even if file upload fails
-      logger.warn("[CV Extract] File upload to Spaces failed — continuing without storing URL");
     }
 
     const seeker = await JobSeeker.findOneAndUpdate(
@@ -312,6 +371,19 @@ async function handlePOST(req: NextRequest) {
       { $set: updateData },
       { upsert: true, returnDocument: "after" }
     );
+
+    // Preferences, for an account that has none: a seeker who applies with a
+    // CV is marked onboarded and never reaches the step that asks them, so
+    // job matching and alerts had nothing to go on. The job they hold now and
+    // where they live; each is only filled while empty, never overwritten.
+    const wantedRole = pickCurrentExperience(mappedExperience)?.jobTitle?.trim();
+    const homeTown = String(extracted.currentLocation ?? "").split(",")[0]?.trim();
+    const homeCountry = countryKeyFromLocationText(extracted.currentLocation);
+    const prefs: Record<string, string[]> = {};
+    if (wantedRole && !seeker?.preferredRoles?.length) prefs.preferredRoles = [wantedRole.slice(0, 120)];
+    if (homeTown && !seeker?.preferredLocations?.length) prefs.preferredLocations = [homeTown.slice(0, 120)];
+    if (homeCountry && !seeker?.preferredCountries?.length) prefs.preferredCountries = [homeCountry];
+    if (Object.keys(prefs).length) await JobSeeker.updateOne({ userId }, { $set: prefs });
 
     // Record the reading, so the ATS scores applications on this CV without
     // paying to read it a second time.
@@ -355,6 +427,9 @@ async function handlePOST(req: NextRequest) {
       },
       req,
     });
+
+    took.total = Date.now() - startedAt;
+    logger.info({ ms: took, scan: Boolean(ocrText) }, "[CV Extract] timings");
 
     return NextResponse.json({
       success: true,

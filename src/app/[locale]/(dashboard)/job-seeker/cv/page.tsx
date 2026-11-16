@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Autocomplete, TagAutocomplete } from "@/components/ui/tag-autocomplete";
 import type { TaxonomyType } from "@/lib/taxonomy/seeds";
@@ -91,6 +92,8 @@ export default function CVBuilderPage() {
   // Desktop only: give the editor / template gallery the full width. Remembered per browser
   // while preferences are allowed (prefStorage), for the tab only after an objection.
   const [previewHidden, setPreviewHidden] = useState(false);
+  // Below lg the side preview is not shown: it opens full screen instead.
+  const [phonePreviewOpen, setPhonePreviewOpen] = useState(false);
   useEffect(() => {
     setPreviewHidden(prefStorage.getWithLegacy(PREVIEW_HIDDEN_KEY, LEGACY_CV_PREVIEW_HIDDEN_KEY) === "1");
   }, []);
@@ -980,16 +983,48 @@ export default function CVBuilderPage() {
           </Tabs>
 
           {/* Action Bar */}
-          <div className="sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t pt-4 pb-2 mt-6 flex flex-col sm:flex-row gap-3">
-            <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="gap-2 flex-1">
-              {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} {t("actions.downloadPdf")}
+          {/* Above the app's floating bottom menu on phones and tablets (it sat
+              under it, half hidden); one row, so it takes one line of the screen. */}
+          <div className="sticky bottom-[4.75rem] lg:bottom-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t pt-3 pb-2 mt-6 flex flex-row gap-2 sm:gap-3">
+            <Button variant="outline" onClick={() => setPhonePreviewOpen(true)} aria-label={t("preview.show")} className="gap-1.5 shrink-0 px-3 lg:hidden">
+              <Eye className="w-4 h-4" aria-hidden="true" /> <span className="hidden sm:inline">{t("preview.show")}</span>
             </Button>
-            <Button variant="outline" onClick={handleSaveToProfile} disabled={saving || isSaved} className="gap-2 flex-1 sm:flex-none sm:min-w-[160px]">
+            <Button onClick={handleDownloadPDF} disabled={pdfLoading} className="gap-2 flex-1 min-w-[6.5rem]">
+              {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              <span className="truncate"><span className="sm:hidden">{t("actions.download")}</span><span className="hidden sm:inline">{t("actions.downloadPdf")}</span></span>
+            </Button>
+            <Button variant="outline" onClick={handleSaveToProfile} disabled={saving || isSaved} className="gap-2 min-w-0 sm:flex-none sm:min-w-[160px]">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : isSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              {saving ? t("actions.saving") : isSaved ? t("actions.savedToProfile") : t("actions.addToProfile")}
+              <span className="truncate">{saving ? t("actions.saving") : isSaved ? t("actions.savedToProfile") : t("actions.addToProfile")}</span>
             </Button>
           </div>
         </div>
+
+        {/* Phones and tablets: the same pages, full screen. */}
+        <Dialog open={phonePreviewOpen} onOpenChange={setPhonePreviewOpen}>
+          <DialogContent mobileSheet={false} className="flex max-h-[92vh] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 lg:hidden">
+            <DialogHeader className="border-b px-4 py-3 text-start">
+              <DialogTitle className="text-base">{t("preview.resume")}</DialogTitle>
+            </DialogHeader>
+            <div className="min-h-0 flex-1 overflow-y-auto bg-muted/50 p-3">
+              {phonePreviewOpen && (
+                <PdfPagesPreview
+                  data={previewForm}
+                  templateId={selectedTemplate}
+                  formatting={formatting}
+                  labels={cvPdfLabels}
+                  pageLabel={(n) => t("preview.pageBreak", { n })}
+                  updatingLabel={t("preview.updating")}
+                  fallback={
+                    <PagedPreview formatting={formatting} bleed={selectedTemplate === "modern"} pageLabel={(n) => t("preview.pageBreak", { n })}>
+                      <TemplateRenderer templateId={selectedTemplate} data={previewForm} formatting={formatting} />
+                    </PagedPreview>
+                  }
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* ────── RIGHT: LIVE PREVIEW PANEL ────── */}
         <div
