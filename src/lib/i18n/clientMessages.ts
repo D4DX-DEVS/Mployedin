@@ -33,7 +33,7 @@ export const CLIENT_NAMESPACES = {
     "forgotPasswordPage", "formErrors", "interviewResponse", "linkPassword", "mcpAuthorize", "passwordRequirements", "resetPassword",
     "teamJoin", "verifyEmail",
   ],
-  onboarding: ["a11y", "common", "footer", "onboarding"],
+  onboarding: ["a11y", "common", "footer", "onboarding", "cvWizard", "cvBuilderPage.monthPicker", "cvBuilderPage.previewSections", "cvBuilderPage.templatePicker.templates"],
   poster: ["posterShareView"],
 } as const satisfies Record<string, readonly string[]>;
 

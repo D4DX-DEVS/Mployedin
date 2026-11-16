@@ -45,20 +45,24 @@ export async function GET(req: NextRequest) {
   }
 
   const lowerQ = q.toLowerCase();
+  // ISO alpha-2 of the seeker's own country, used to rank "locations".
+  const homeCountry = /^[A-Za-z]{2}$/.test(searchParams.get("country") ?? "") ? searchParams.get("country")!.toUpperCase() : "";
 
   // ── DB results (best-effort; never let a sparse/missing collection break search) ──
   let dbItems: string[] = [];
   try {
     await connectDB();
-    dbItems = await fetchFromDb(type, q, limit);
+    dbItems = await fetchFromDb(type, q, limit, homeCountry);
   } catch {
     dbItems = [];
   }
 
   // ── Curated seeds filtered by query ──
-  const seeds = TAXONOMY_SEEDS[type].filter((s) =>
-    lowerQ ? s.toLowerCase().includes(lowerQ) : true
-  );
+  // An empty locations box for a seeker with a home country shows only that
+  // country's places — the curated list is Gulf cities, wrong for Bahrain or India.
+  const seeds = type === "locations" && homeCountry && !lowerQ && dbItems.length
+    ? []
+    : TAXONOMY_SEEDS[type].filter((s) => (lowerQ ? s.toLowerCase().includes(lowerQ) : true));
 
   // ── Merge, de-duplicate case-insensitively, prioritise prefix matches ──
   // Roles lead with the curated list: live job titles are whatever employers
@@ -88,7 +92,7 @@ export async function GET(req: NextRequest) {
   );
 }
 
-async function fetchFromDb(type: TaxonomyType, q: string, limit: number): Promise<string[]> {
+async function fetchFromDb(type: TaxonomyType, q: string, limit: number, homeCountry = ""): Promise<string[]> {
   const regex = q ? { $regex: escapeRegex(q), $options: "i" } : undefined;
   const nameFilter = regex ? { name: regex, isActive: true } : { isActive: true };
 
@@ -132,11 +136,32 @@ async function fetchFromDb(type: TaxonomyType, q: string, limit: number): Promis
     case "locations": {
       const { default: City } = await import("@/models/City");
       const { default: Country } = await import("@/models/Country");
-      const [cities, countries] = await Promise.all([
+      const { default: State } = await import("@/models/State");
+      // Home country first: its own name, states/provinces and cities lead,
+      // then the rest of the world. States are searchable too (Kerala, Tamil Nadu).
+      const home = homeCountry
+        ? await Country.findOne({ code: homeCountry, isActive: true }).select("_id name").lean()
+        : null;
+      const homeItems: string[] = [];
+      if (home) {
+        const homeStates = await State.find({ countryId: home._id, isActive: true }).select("_id name").lean();
+        const homeStateIds = homeStates.map((st) => st._id);
+        const homeCities = await City.find({ ...nameFilter, stateId: { $in: homeStateIds } })
+          .select("name").sort({ sortOrder: 1, name: 1 }).limit(limit).lean();
+        const matches = (n: string) => !q || n.toLowerCase().includes(q.toLowerCase());
+        if (matches(home.name)) homeItems.push(home.name);
+        homeItems.push(...homeCities.map((d) => d.name));
+        homeItems.push(...homeStates.filter((st) => matches(st.name)).map((st) => st.name));
+        // Empty box: only the home country's places, not the world A–Z.
+        if (!regex) return homeItems;
+      }
+      const [cities, states, countries] = await Promise.all([
         City.find(nameFilter).select("name").sort({ sortOrder: 1, name: 1 }).limit(limit).lean(),
+        regex ? State.find(nameFilter).select("name").sort({ sortOrder: 1, name: 1 }).limit(limit).lean() : Promise.resolve([]),
         Country.find(nameFilter).select("name").sort({ sortOrder: 1, name: 1 }).limit(limit).lean(),
       ]);
-      return [...cities.map((d) => d.name), ...countries.map((d) => d.name)];
+      // Countries before cities when typing: "Bah" should offer Bahrain itself.
+      return [...homeItems, ...countries.map((d) => d.name), ...states.map((d) => d.name), ...cities.map((d) => d.name)];
     }
     case "roles": {
       // No dedicated roles model — distinct titles of jobs on the public board

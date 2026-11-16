@@ -32,7 +32,10 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx) {
     );
   }
 
-  return NextResponse.json(profile, {
+  // The phone lives on the account (onboarding saves it there); the CV builder
+  // and other profile readers expect it with the profile.
+  const user = await User.findById(ctx.userId).select("phone").lean<{ phone?: string }>();
+  return NextResponse.json({ ...profile, phone: user?.phone ?? null }, {
     headers: { "Cache-Control": "no-store, max-age=0" },
   });
 }

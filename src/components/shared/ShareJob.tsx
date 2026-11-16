@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Share2, Link2, Check, X } from "lucide-react";
+import { Share2, Link2, Check, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 interface ShareJobProps {
@@ -54,6 +55,11 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
   const t = useTranslations("shareJob");
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [canNativeShare, setCanNativeShare] = useState(false);
+
+  useEffect(() => {
+    setCanNativeShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
+  }, []);
 
   const jobUrl = buildPublicJobUrl(locale, jobId);
   const shareText = `${jobTitle} at ${companyName} — Apply now on MPLOYEDIN`;
@@ -61,10 +67,8 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
   const handleCopyLink = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(jobUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
+      // Fallback for older browsers / non-secure origins
       const textarea = document.createElement("textarea");
       textarea.value = jobUrl;
       textarea.style.position = "fixed";
@@ -73,182 +77,118 @@ export function ShareJob({ jobId, jobTitle, companyName, locale, variant = "full
       textarea.select();
       document.execCommand("copy");
       document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }, [jobUrl]);
 
-  const shareWhatsApp = useCallback(() => {
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${jobUrl}`)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-  }, [shareText, jobUrl]);
+  const openWindow = (url: string, features = "noopener,noreferrer") => {
+    window.open(url, "_blank", features);
+    setOpen(false);
+  };
 
-  const shareLinkedIn = useCallback(() => {
-    window.open(
+  const shareWhatsApp = () =>
+    openWindow(`https://wa.me/?text=${encodeURIComponent(`${shareText}
+${jobUrl}`)}`);
+  const shareLinkedIn = () =>
+    openWindow(
       `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`,
-      "_blank",
       "noopener,noreferrer,width=600,height=500",
     );
-  }, [jobUrl]);
-
-  const shareX = useCallback(() => {
-    window.open(
+  const shareX = () =>
+    openWindow(
       `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(jobUrl)}`,
-      "_blank",
       "noopener,noreferrer,width=600,height=400",
     );
-  }, [shareText, jobUrl]);
-
-  const handleNativeShare = useCallback(async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: shareText, url: jobUrl });
-      } catch {
-        // User cancelled — ignore
-      }
-    } else {
-      setOpen((v) => !v);
+  const handleNativeShare = async () => {
+    setOpen(false);
+    try {
+      await navigator.share({ title: shareText, url: jobUrl });
+    } catch {
+      // User cancelled — ignore
     }
-  }, [shareText, jobUrl]);
+  };
 
-  if (variant === "icon") {
-    return (
-      <div className="relative">
-        <button
-          type="button"
-          onClick={handleNativeShare}
-          className={cn(
-            "inline-flex items-center justify-center rounded-xl border border-border bg-secondary/80 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground chip-pad",
-            className,
-          )}
-          aria-label={t("share")}
-          title={t("share")}
-        >
-          <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-
-        {open && (
-          <>
-            {/* Backdrop */}
-            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-            <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border bg-popover shadow-lg chip-pad">
-              <ShareOptions
-                t={t}
-                onWhatsApp={shareWhatsApp}
-                onLinkedIn={shareLinkedIn}
-                onX={shareX}
-                onCopyLink={handleCopyLink}
-                copied={copied}
-                onClose={() => setOpen(false)}
-              />
-            </div>
-          </>
+  const trigger =
+    variant === "icon" ? (
+      <button
+        type="button"
+        className={cn(
+          "inline-flex items-center justify-center rounded-xl border border-border bg-secondary/80 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground chip-pad",
+          className,
         )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleNativeShare}
-        className="gap-2 rounded-xl"
+        aria-label={t("share")}
+        title={t("share")}
       >
-        <Share2 className="h-4 w-4" />
+        <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+    ) : (
+      <Button variant="outline" size="sm" className="gap-2 rounded-xl">
+        <Share2 className="h-4 w-4" aria-hidden="true" />
         {t("share")}
       </Button>
+    );
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-2xl border border-border bg-popover shadow-xl chip-pad">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-semibold text-foreground">{t("shareThisJob")}</span>
-              <button
-                onClick={() => setOpen(false)}
-                className="rounded-lg p-1 text-muted-foreground hover:bg-accent"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <ShareOptions
-              t={t}
-              onWhatsApp={shareWhatsApp}
-              onLinkedIn={shareLinkedIn}
-              onX={shareX}
-              onCopyLink={handleCopyLink}
-              copied={copied}
-              onClose={() => setOpen(false)}
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      {/* Portalled + collision-aware: the old absolute panel was clipped by the
+          job hero card (overflow-hidden), which hid Copy link at the bottom. */}
+      <PopoverContent align="end" className="w-72 p-3">
+        <p className="mb-2 px-1 text-sm font-semibold text-foreground">{t("shareThisJob")}</p>
+
+        <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-1 ps-3">
+          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" dir="ltr" title={jobUrl}>
+            {jobUrl}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant={copied ? "outline" : "default"}
+            onClick={handleCopyLink}
+            className="h-8 shrink-0 gap-1.5 rounded-md px-2.5"
+            aria-live="polite"
+          >
+            {copied ? (
+              <>
+                <Check className="h-4 w-4 text-green-600" aria-hidden="true" />
+                {t("linkCopied")}
+              </>
+            ) : (
+              <>
+                <Link2 className="h-4 w-4" aria-hidden="true" />
+                {t("copyLink")}
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="flex flex-col gap-0.5">
+          <ShareRow icon={<span className="text-green-600">{WHATSAPP_ICON}</span>} label={t("whatsApp")} onClick={shareWhatsApp} />
+          <ShareRow icon={<span className="text-blue-700">{LINKEDIN_ICON}</span>} label={t("linkedIn")} onClick={shareLinkedIn} />
+          <ShareRow icon={<span className="text-foreground">{X_ICON}</span>} label={t("xTwitter")} onClick={shareX} />
+          {canNativeShare && (
+            <ShareRow
+              icon={<MoreHorizontal className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
+              label={t("moreOptions")}
+              onClick={handleNativeShare}
             />
-          </div>
-        </>
-      )}
-    </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
-function ShareOptions({
-  t,
-  onWhatsApp,
-  onLinkedIn,
-  onX,
-  onCopyLink,
-  copied,
-  onClose,
-}: {
-  t: ReturnType<typeof useTranslations>;
-  onWhatsApp: () => void;
-  onLinkedIn: () => void;
-  onX: () => void;
-  onCopyLink: () => void;
-  copied: boolean;
-  onClose: () => void;
-}) {
+function ShareRow({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
   return (
-    <div className="flex flex-col gap-1">
-      <button
-        onClick={() => { onWhatsApp(); onClose(); }}
-        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
-      >
-        <span className="text-green-600">{WHATSAPP_ICON}</span>
-        {t("whatsApp")}
-      </button>
-      <button
-        onClick={() => { onLinkedIn(); onClose(); }}
-        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
-      >
-        <span className="text-blue-700">{LINKEDIN_ICON}</span>
-        {t("linkedIn")}
-      </button>
-      <button
-        onClick={() => { onX(); onClose(); }}
-        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
-      >
-        <span className="text-foreground">{X_ICON}</span>
-        {t("xTwitter")}
-      </button>
-      <div className="my-1 border-t border-border" />
-      <button
-        onClick={onCopyLink}
-        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
-      >
-        {copied ? (
-          <>
-            <Check className="h-4 w-4 text-green-600" />
-            <span className="text-green-600">{t("linkCopied")}</span>
-          </>
-        ) : (
-          <>
-            <Link2 className="h-4 w-4 text-muted-foreground" />
-            {t("copyLink")}
-          </>
-        )}
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-start text-sm text-foreground transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
+    >
+      {icon}
+      {label}
+    </button>
   );
 }

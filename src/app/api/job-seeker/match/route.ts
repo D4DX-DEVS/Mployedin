@@ -74,6 +74,8 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
       Object.keys(shares).map((part) => [part, pair.breakdown[part as keyof typeof pair.breakdown]]),
     ),
     shares,
+    // What Role fit was read from, so the card can say "You've worked as …".
+    ...(pair.breakdown.roleBasis ? { roleBasis: pair.breakdown.roleBasis } : {}),
     mustHaveStatus: pair.breakdown.mustHaveStatus,
     report: reportFromBreakdown(pair.breakdown, toCandidateJob(job as unknown as Record<string, unknown>).profile.requirements),
     // The AI review moves the deterministic score by at most ±10 points.

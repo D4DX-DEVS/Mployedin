@@ -37,8 +37,10 @@ interface Props {
    * "gaps": only the rows that are not fully met (partly / missing / not on
    * the profile) — what the seeker can act on. Nothing to list is not an
    * error there: the summary line alone is the answer.
+   * "met": only the rows fully met — for a view that already lists the gaps
+   * above it, so the same row is not printed twice.
    */
-  rows?: "all" | "gaps";
+  rows?: "all" | "gaps" | "met";
   /** The must-have badge and counts above the rows. Off where a parent already shows them. */
   summary?: boolean;
   className?: string;
@@ -57,11 +59,15 @@ export function RequirementReport({ report, audience, compact = false, rows = "a
   // "Not set for this job" rows are for the employer's eye (what the candidate
   // holds, unasked); to the seeker they say nothing they can use.
   const visible =
-    rows === "gaps" ? reportGaps(report) : report.items.filter((item) => audience === "employer" || item.verdict !== "info");
+    rows === "gaps"
+      ? reportGaps(report)
+      : rows === "met"
+        ? report.items.filter((item) => item.verdict === "has")
+        : report.items.filter((item) => audience === "employer" || item.verdict !== "info");
   const groups = KIND_ORDER.map((kind) => ({ kind, items: visible.filter((i) => i.kind === kind) })).filter(
     (g) => g.items.length > 0,
   );
-  if (groups.length === 0 && rows !== "gaps") {
+  if (groups.length === 0 && rows === "all") {
     return <p className={cn("text-sm text-muted-foreground", className)}>{t("none")}</p>;
   }
 
@@ -166,7 +172,7 @@ function CompactRow({ item, audience }: { item: ReportItem; audience: Props["aud
     <li className="flex items-start gap-1.5 text-xs">
       <Icon className={cn("mt-0.5 size-3.5 shrink-0", tone)} aria-hidden="true" />
       <span className="min-w-0 flex-1 break-words text-foreground">{requiredText(item, t)}</span>
-      <span className={cn("shrink-0 font-medium", tone)}>{t(`verdict.${audience}.${item.verdict}`)}</span>
+      <span className={cn("shrink-0 font-medium", tone)}>{verdictText(item, audience, t)}</span>
     </li>
   );
 }
@@ -189,7 +195,7 @@ function Row({ item, audience }: { item: ReportItem; audience: Props["audience"]
       </div>
       <span className={cn("inline-flex shrink-0 items-center gap-1 self-start rounded-full border px-2 py-0.5 text-xs font-medium", className)}>
         <Icon className="size-3.5" aria-hidden="true" />
-        {t(`verdict.${audience}.${item.verdict}`)}
+        {verdictText(item, audience, t)}
         {item.equivalent && item.verdict === "has" ? ` · ${t("equivalent")}` : ""}
       </span>
     </li>
@@ -197,6 +203,19 @@ function Row({ item, audience }: { item: ReportItem; audience: Props["audience"]
 }
 
 type T = ReturnType<typeof useTranslations<"requirementReport">>;
+
+/**
+ * The verdict chip. Experience the profile does show, but can't yet count
+ * (a job with no end date), is "Not confirmed yet" — "Not on your profile"
+ * told a seeker with 1.9 years listed that they had listed nothing.
+ */
+function verdictText(item: ReportItem, audience: Props["audience"], t: T): string {
+  const totalYears = item.detail?.totalYears;
+  if (item.kind === "experience" && item.verdict === "verify" && totalYears !== null && totalYears !== undefined) {
+    return t(`verdict.${audience}.unconfirmed`);
+  }
+  return t(`verdict.${audience}.${item.verdict}`);
+}
 
 /** The job's words; a row the job did not ask for says so. */
 function requiredText(item: ReportItem, t: T): string {

@@ -195,8 +195,11 @@ describe("public EasyApply — a seeker with no CV", () => {
     open();
     await waitFor(() => expect(navigateWithPageLoad).toHaveBeenCalledTimes(1));
     const target = (navigateWithPageLoad as jest.Mock).mock.calls[0][0] as string;
-    expect(target).toMatch(/^\/en\/onboarding\?callbackUrl=/);
-    expect(decodeURIComponent(target.split("callbackUrl=")[1])).toBe(window.location.pathname + window.location.search);
+    const url = new URL(target, "http://x");
+    expect(url.pathname).toBe("/en/onboarding");
+    expect(url.searchParams.get("callbackUrl")).toBe(window.location.pathname + window.location.search);
+    // Onboarding opens the AI CV builder straight away.
+    expect(url.searchParams.get("cv")).toBe("build");
     // Read once: "Complete later" lands back on the form, not in a loop.
     expect(sessionStorage.getItem("mployedin:apply-auto-cv")).toBeFalsy();
   });
