@@ -26,6 +26,8 @@ export interface ParsedCvEducation {
   degree: string;
   field: string;
   institution: string;
+  /** The year they started, when the CV gives it ("2016 – 2019"). */
+  startYear?: number;
   graduationDate?: Date;
   grade: string;
 }
@@ -109,6 +111,12 @@ const LEVEL: Record<string, LanguageProficiency> = {
 };
 
 /** The model's JSON (or a stored reading) in one strict shape. Never throws. */
+/** A plausible year from "2016", "2016-06" or 2016; undefined otherwise. */
+function cvYear(value: unknown): number | undefined {
+  const year = Number(String(value ?? "").match(/\b(19|20)\d{2}\b/)?.[0]);
+  return year >= 1950 && year <= 2100 ? year : undefined;
+}
+
 export function normalizeParsedCv(raw: unknown): ParsedCv {
   const obj = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
 
@@ -149,6 +157,7 @@ export function normalizeParsedCv(raw: unknown): ParsedCv {
         degree: str(e.degree, 200),
         field: str(e.field, 200),
         institution: str(e.institution, 200),
+        startYear: cvYear(e.from ?? e.startYear),
         graduationDate: cvDate(e.to ?? e.graduationDate),
         grade: str(e.grade, 60),
       };

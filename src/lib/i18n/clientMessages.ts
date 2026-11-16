@@ -24,6 +24,10 @@ export const CLIENT_NAMESPACES = {
     // they built on Mployedin from the public job page (EasyApply). Two
     // sub-trees, not the whole builder namespace.
     "cvBuilderPage.previewSections", "cvBuilderPage.proficiency",
+    // The month fields in the CV review window's "Edit details" (EasyApply).
+    "cvBuilderPage.monthPicker",
+    // The design names under the review window's template choice.
+    "cvBuilderPage.templatePicker.templates",
     // The "set a password" form on the apply-success card (EasyApply): an
     // account made by an e-mail code has none.
     "formErrors", "passwordRequirements", "setPassword",

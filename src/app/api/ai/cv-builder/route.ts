@@ -65,6 +65,8 @@ const entry = z.object({
 });
 const LEVELS = ["doctorate", "masters", "graduation", "diploma", "12th", "10th", "below_10th"] as const;
 const extracted = z.object({
+  /** Total time worked, only when they said it ("1 year" → 1, "6 months" → 0.5). */
+  totalYears: z.union([z.number(), z.string()]).catch("").transform((v) => { const n = Number(v); return v !== "" && Number.isFinite(n) && n >= 0 && n <= 50 ? Math.round(n * 12) : null; }),
   targetRole: txt(120),
   summary: txt(1000),
   jobs: z.array(entry.catch({ title: "", organisation: "", start: "", end: "", current: false, description: "" })).max(10).catch([]),
@@ -109,9 +111,10 @@ Rules:
 - Write everything in clear professional English; fix spelling.
 - jobs = paid work only. projects = college projects, internships, volunteering, personal projects.
 - Each job / project "description": 2-5 CV bullet lines from what they said they did, each starting "• " with an action verb, no first person, joined by "\n".
-- Dates: "YYYY-MM" when they gave a month, "YYYY" when only a year, else "". current=true only if they say they still do it.
+- Dates: "YYYY-MM" when they gave a month, "YYYY" when only a year, else "". If they only say how long ("1 year", "6 months") leave start and end "" — never work dates out. current=true only if they say they still do it.
 - education.level: one of doctorate, masters, graduation (bachelor's), diploma (incl. ITI / polytechnic), 12th (higher secondary / plus two / A-level), 10th, below_10th. One entry per school or college they mention, highest first.
 - languages proficiency: basic | conversational | professional | native.
+- totalYears: total time they say they have worked, in years ("1 year" → 1, "6 months" → 0.5, "2 years 3 months" → 2.25); "" if they did not say.
 - targetRole: the job they say they want; else the job that best fits what they wrote.
 - summary: 2-3 sentences, starting with who they are as a noun phrase, no "I", only their facts.
 ${b.fresher ? "- They said they are a fresher / student." : ""}
@@ -122,7 +125,7 @@ ${clean(b.text)}
 """
 
 Return ONLY JSON, no markdown, exactly this shape:
-{"targetRole":"","summary":"","jobs":[{"title":"","organisation":"","start":"","end":"","current":false,"description":""}],"projects":[{"title":"","organisation":"","start":"","end":"","current":false,"description":""}],"education":[{"level":"","course":"","field":"","institution":"","startYear":"","endYear":"","studying":false,"grade":""}],"skills":[""],"languages":[{"language":"","proficiency":""}],"certificates":[{"name":"","issuer":"","year":""}],"links":[{"label":"","url":""}]}`;
+{"totalYears":"","targetRole":"","summary":"","jobs":[{"title":"","organisation":"","start":"","end":"","current":false,"description":""}],"projects":[{"title":"","organisation":"","start":"","end":"","current":false,"description":""}],"education":[{"level":"","course":"","field":"","institution":"","startYear":"","endYear":"","studying":false,"grade":""}],"skills":[""],"languages":[{"language":"","proficiency":""}],"certificates":[{"name":"","issuer":"","year":""}],"links":[{"label":"","url":""}]}`;
       const out = (await generateText(prompt, GEMINI_MODELS.flash, 2500)).replace(/```json\n?|```/g, "").trim();
       const start = out.indexOf("{");
       const end = out.lastIndexOf("}");
@@ -135,9 +138,24 @@ Return ONLY JSON, no markdown, exactly this shape:
       const data = extracted.parse(raw);
       // One "• " bullet per line, whatever the model did with the dots.
       const bullets = (text: string) => text.split(/\n+|\s+•\s+/).map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim()).filter(Boolean).map((l) => `• ${l}`).join("\n");
-      const withBullets = <T extends { description: string }>(list: T[]) => list.map((e) => ({ ...e, description: bullets(e.description) }));
+      // Models fill in dates from "worked 1 year". Keep a date only when its year
+      // is in what the seeker wrote, and "still there" only when they said so.
+      const said = b.text;
+      const saidCurrent = /(currently|still|now|present|since|working at|work at|i work)/i.test(said);
+      const realDate = (ym: string) => (ym && said.includes(ym.slice(0, 4)) ? ym : "");
+      const withBullets = <T extends { description: string; start: string; end: string; current: boolean }>(list: T[]) =>
+        list.map((e) => ({
+          ...e,
+          description: bullets(e.description),
+          start: realDate(e.start),
+          end: realDate(e.end),
+          current: e.current && saidCurrent,
+        }));
       return NextResponse.json({
         ...data,
+        totalYears: undefined,
+        experienceYears: data.totalYears === null ? "" : String(Math.floor(data.totalYears / 12)),
+        experienceMonths: data.totalYears === null ? "" : String(data.totalYears % 12),
         jobs: withBullets(data.jobs.filter((j) => j.title)),
         projects: withBullets(data.projects.filter((j) => j.title)),
         education: data.education.filter((e) => e.course || e.institution || e.level),

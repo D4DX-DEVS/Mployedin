@@ -81,13 +81,13 @@ describe("hasPassword", () => {
 
   it("is false for an account with no password, and never returns the hash", async () => {
     const data = await body({ userId: "seeker" });
-    expect(data).toEqual({ temporaryPassword: false, hasPassword: false });
+    expect(data).toEqual({ temporaryPassword: false, hasPassword: false, signInWith: "credentials" });
   });
 
   it("is true once a password is set", async () => {
     withPassword.add("seeker");
     const data = await body({ userId: "seeker" });
-    expect(data).toEqual({ temporaryPassword: false, hasPassword: true });
+    expect(data).toEqual({ temporaryPassword: false, hasPassword: true, signInWith: "credentials" });
   });
 
   it("never offers staff in tenant view a password for the employer", async () => {

@@ -45,7 +45,12 @@ jest.mock("@/lib/cv/cvDocuments", () => ({
 }));
 
 const limitCvUpload = jest.fn();
-jest.mock("@/lib/cv/uploadLimit", () => ({ limitCvUpload: (...a: unknown[]) => limitCvUpload(...a) }));
+// GET /api/job-seeker/me looks up the profile CV's file name (no record here).
+jest.mock("@/models/CvDocument", () => ({
+  __esModule: true,
+  default: { findOne: () => ({ select: () => ({ lean: async () => null }) }) },
+}));
+jest.mock("@/lib/cv/uploadLimit",() => ({ limitCvUpload: (...a: unknown[]) => limitCvUpload(...a) }));
 
 let seekerDoc: Record<string, unknown>;
 const seekerUpdateOne = jest.fn().mockResolvedValue({ modifiedCount: 1 });

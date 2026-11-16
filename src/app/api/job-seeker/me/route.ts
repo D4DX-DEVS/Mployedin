@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
+import CvDocument from "@/models/CvDocument";
 
 // GET /api/job-seeker/me — lightweight profile for the apply flow
 async function getHandler(_req: NextRequest, ctx: { userId: string; role: string; locale: string }) {
@@ -27,6 +28,16 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
     ...(d.builtHash ? { builtHash: d.builtHash } : {}),
   }));
 
+  // The profile CV's own file name, so the apply form can show which file it
+  // is ("Ilyas_CV.pdf") instead of a bare "Profile CV".
+  const cvUrl = seeker.cv?.originalUrl ?? null;
+  // Best-effort: the name is only shown, so a failed lookup must not fail the form.
+  const cvFile = cvUrl
+    ? await Promise.resolve()
+        .then(() => CvDocument.findOne({ jobSeekerId: seeker._id, fileUrl: cvUrl }).select("fileName").lean<{ fileName?: string }>())
+        .catch(() => null)
+    : null;
+
   return NextResponse.json(
     {
       jobSeeker: {
@@ -34,7 +45,8 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
         phone: seeker.phone ?? "",
         skills: seeker.skills ?? [],
         documents,
-        cvUrl: seeker.cv?.originalUrl ?? null,
+        cvUrl,
+        cvFileName: cvFile?.fileName ?? null,
         // The builder saves its design with the profile, so a saved design
         // means there is a built CV to offer.
         hasBuiltCv: !!seeker.cvDesign,

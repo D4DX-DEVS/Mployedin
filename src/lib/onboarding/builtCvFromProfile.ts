@@ -137,6 +137,8 @@ export interface BuilderProfileFields {
   certifications?: string[] | null;
   socialLinks?: unknown;
   cvDesign?: { templateId?: string } | null;
+  totalExperienceYears?: number | null;
+  totalExperienceMonths?: number | null;
 }
 
 const toJob = (e: Record<string, unknown>, title: string, organisation: string): BuiltJob => ({
@@ -207,5 +209,7 @@ export function builtCvFromProfile(p: BuilderProfileFields | null | undefined): 
     otherLinks: links.filter((l) => !["linkedin", "portfolio", "website"].includes(l.label.toLowerCase())),
     summary,
     templateId,
+    experienceYears: p.totalExperienceYears ? String(p.totalExperienceYears) : "",
+    experienceMonths: p.totalExperienceMonths ? String(p.totalExperienceMonths) : "",
   };
 }

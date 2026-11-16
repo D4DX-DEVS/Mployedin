@@ -11,6 +11,11 @@ import { downloadBuffer } from "@/lib/storage/spaces";
 import { guessMime } from "@/lib/storage/mime";
 import { canStaffAccessSeeker, type SeekerOwnership } from "@/lib/jobSeeker/staffAccess";
 import { servedApplicationCvUrl } from "@/lib/applications/sentCv";
+import User from "@/models/User";
+
+/** What the Mployedin CV is drawn from: the profile, as the CV Builder saves it. */
+const BUILT_CV_FIELDS =
+  "userId fullName phone nationality currentLocation summary headline avatar socialLinks skills experience education languages certifications projects cvDesign";
 
 
 interface SeekerDoc {
@@ -35,6 +40,12 @@ interface SeekerDoc {
  * object lives on a cross-origin CDN that serves `Content-Disposition:
  * attachment`; proxying lets us force `inline` and avoids CSP frame-src /
  * CORS restrictions on the third-party domain.
+ *
+ * GET /api/employers/candidates/[id]/cv?kind=built
+ *
+ * The details the Mployedin CV is drawn from (JSON), for the viewer's
+ * "Mployedin CV" view. Same access rule as the file: it is the same person's
+ * CV in another layout, so no one sees more than the file already shows.
  *
  * The [id] param is the JobSeeker _id. An employer may view a candidate's CV
  * only if that candidate applied to one of the employer's jobs or sits in one
@@ -111,6 +122,31 @@ async function getHandler(
 
   if (!seeker) {
     return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+  }
+
+  if (req.nextUrl.searchParams.get("kind") === "built") {
+    const profile = (await JobSeeker.findById(seeker._id ?? id).select(BUILT_CV_FIELDS).lean()) as
+      | (Record<string, unknown> & { userId?: unknown; phone?: string })
+      | null;
+    if (!profile) return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+    const user = (await User.findById(profile.userId).select("name email phone").lean()) as
+      | { name?: string; email?: string; phone?: string }
+      | null;
+    const hasContent = Boolean(
+      (profile.experience as unknown[] | undefined)?.length ||
+      (profile.education as unknown[] | undefined)?.length ||
+      (profile.skills as unknown[] | undefined)?.length ||
+      profile.summary,
+    );
+    const { userId: _userId, ...cvProfile } = profile;
+    return NextResponse.json(
+      {
+        hasContent,
+        identity: { fullName: (profile.fullName as string | undefined) || user?.name || "", email: user?.email ?? "", phone: user?.phone || profile.phone || "" },
+        profile: cvProfile,
+      },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
   }
 
   let cvUrl: string | null | undefined;

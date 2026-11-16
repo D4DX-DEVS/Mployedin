@@ -27,6 +27,7 @@ const lean = (value: unknown) => ({
 
 const seekerUpdate = jest.fn((..._a: unknown[]) => lean({
   _id: SEEKER_ID,
+  fullName: "Sara Al Amin",
   cv: { originalUrl: "https://s3/cvs/cv.pdf" },
   documents: [{ url: "https://s3/documents/passport.pdf" }],
 }));
@@ -78,7 +79,7 @@ const userFindById = jest.fn((..._a: unknown[]) => lean({ phone: "971501234567",
 jest.mock("@/models/User", () => ({
   __esModule: true,
   // updateOne: eraseWhatsAppData clears the whatsapp subdocument.
-  default: { findById: (...a: unknown[]) => userFindById(...a), findByIdAndUpdate: jest.fn(() => lean(null)), updateOne: jest.fn().mockResolvedValue({}) },
+  default: { findById: (...a: unknown[]) => userFindById(...a), findByIdAndUpdate: jest.fn(() => lean({ name: "Sara A.", email: "sara@example.com" })), updateOne: jest.fn().mockResolvedValue({}) },
 }));
 jest.mock("@/models/Interview", () => ({ __esModule: true, default: { find: jest.fn() } }));
 jest.mock("@/models/ConsentLog", () => ({ __esModule: true, default: { updateMany: jest.fn().mockResolvedValue({}) } }));
@@ -99,6 +100,15 @@ jest.mock("@/models/TalentPool", () => ({ __esModule: true, default: { updateMan
 jest.mock("@/lib/matching/vectorStore", () => ({ eraseMatchVectors: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/ai/searchVectors", () => ({ eraseSearchVector: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/logs/logStore", () => ({ mirrorLogErase: jest.fn().mockResolvedValue(undefined) }));
+// The hiring-record traces have their own suite (hiringTraces.test.ts); here, that erasure calls them and deletes the files they return.
+const eraseEmailLog = jest.fn((..._a: unknown[]) => Promise.resolve(undefined));
+const eraseSeekerHiringTraces = jest.fn((..._a: unknown[]) => Promise.resolve(["https://s3/referrals/referred-cv.pdf"]));
+const scrubApplicationTraces = jest.fn((..._a: unknown[]) => Promise.resolve(undefined));
+jest.mock("@/lib/gdpr/hiringTraces", () => ({
+  eraseEmailLog: (...a: unknown[]) => eraseEmailLog(...a),
+  eraseSeekerHiringTraces: (...a: unknown[]) => eraseSeekerHiringTraces(...a),
+  scrubApplicationTraces: (...a: unknown[]) => scrubApplicationTraces(...a),
+}));
 
 describe("eraseUserPersonalData removes every uploaded file", () => {
   it("unsets the document library and application attachments and deletes their objects", async () => {
@@ -117,12 +127,26 @@ describe("eraseUserPersonalData removes every uploaded file", () => {
     expect(appUpdate.$unset).toHaveProperty("coverLetter");
     expect(appUpdate.$unset).toHaveProperty("agentNotes");
     expect(appUpdate.$unset).toHaveProperty("screeningAnswers");
+    expect(appUpdate.$unset).toHaveProperty("requirementReport");
+    expect(scrubApplicationTraces).toHaveBeenCalledWith({ jobSeekerId: SEEKER_ID });
+
+    // The hiring records that stay lose the name and words, found by the name and email read before anonymising.
+    expect(eraseSeekerHiringTraces).toHaveBeenCalledWith({
+      userId: USER_ID,
+      seekerId: SEEKER_ID,
+      applicationIds: ["app1", "app2"],
+      names: ["Sara A.", "Sara Al Amin"],
+      email: "sara@example.com",
+      anonymizedEmail: `deleted_${USER_ID}@anonymized.mployedin.com`,
+    });
+    expect(eraseEmailLog).toHaveBeenCalledWith(USER_ID, "sara@example.com");
 
     const deleted = deleteFile.mock.calls.map((c) => c[0]).sort();
     expect(deleted).toEqual([
       "https://s3/cvs/cv.pdf",
       "https://s3/documents/cover.pdf",
       "https://s3/documents/passport.pdf",
+      "https://s3/referrals/referred-cv.pdf",
     ]);
     expect(deleteCvRecordsOfSeeker).toHaveBeenCalledWith(SEEKER_ID);
 

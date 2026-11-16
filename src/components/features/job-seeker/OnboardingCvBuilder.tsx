@@ -6,6 +6,7 @@ import { Briefcase, GraduationCap, Loader2, Plus, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Autocomplete, TagAutocomplete } from "@/components/ui/tag-autocomplete";
 import { csrfFetch } from "@/lib/security/csrf-client";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ type Extracted = Omit<CvBuilderResult, "fresher" | "templateId" | "linkedin" | "
 const blankDraft = (fresher: boolean): CvBuilderResult => ({
   targetRole: "", fresher, jobs: [emptyJob()], projects: [emptyJob()], education: [], skills: [], languages: [],
   certificates: [], linkedin: "", portfolio: "", otherLinks: [], summary: "", templateId: "classic",
+  experienceYears: "", experienceMonths: "",
 });
 
 async function askAi<T>(body: Record<string, unknown>): Promise<{ data: T | null; error: string }> {
@@ -157,6 +159,8 @@ export function OnboardingCvBuilder({ open, onOpenChange, identity, workStatus, 
       portfolio: portfolio || d.portfolio,
       otherLinks: data.links.filter((l) => l.url !== linkedin && l.url !== portfolio),
       summary: data.summary || d.summary,
+      experienceYears: data.experienceYears || d.experienceYears,
+      experienceMonths: data.experienceMonths || d.experienceMonths,
     }));
     setAiFilled(true);
     setStepIndex(1);
@@ -229,7 +233,7 @@ export function OnboardingCvBuilder({ open, onOpenChange, identity, workStatus, 
   const linksOk = !linkProblem("LinkedIn", draft.linkedin) && !linkProblem("Portfolio", draft.portfolio)
     && draft.otherLinks.every((l) => !linkProblem(l.label, l.url));
   const canNext =
-    key === "about" ? draft.targetRole.trim().length > 1
+    key === "about" ? draft.targetRole.trim().length > 1 && (draft.fresher || draft.experienceYears !== "")
     : key === "work" ? filled(draft.jobs).length > 0
     : key === "extras" ? linksOk
     : true;
@@ -347,6 +351,25 @@ export function OnboardingCvBuilder({ open, onOpenChange, identity, workStatus, 
                   ))}
                 </div>
               </div>
+              {!draft.fresher && (
+                <div className="space-y-2">
+                  <Label htmlFor="cvw-exp-years">{t("about.totalExp")}</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={draft.experienceYears} onValueChange={(v) => patch({ experienceYears: v })}>
+                      <SelectTrigger id="cvw-exp-years" className="h-11"><SelectValue placeholder={t("about.years")} /></SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        {Array.from({ length: 41 }, (_, n) => String(n)).map((n) => <SelectItem key={n} value={n}>{t("about.yearsN", { n: Number(n) })}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select value={draft.experienceMonths} onValueChange={(v) => patch({ experienceMonths: v })}>
+                      <SelectTrigger aria-label={t("about.months")} className="h-11"><SelectValue placeholder={t("about.months")} /></SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        {Array.from({ length: 12 }, (_, n) => String(n)).map((n) => <SelectItem key={n} value={n}>{t("about.monthsN", { n: Number(n) })}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>{t("about.location")}</Label>
                 <SeekerAreaField value={area} onChange={onAreaChange} showHint={false} container={container} modal />

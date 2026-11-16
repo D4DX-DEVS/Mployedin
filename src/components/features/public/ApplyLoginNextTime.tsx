@@ -35,8 +35,11 @@ export function ApplyLoginNextTime({ email }: ApplyLoginNextTimeProps) {
     Promise.resolve()
       .then(() => fetch("/api/user/password-status"))
       .then((res) => (res?.ok ? res.json() : null))
-      .then((data: { hasPassword?: boolean } | null) => {
-        if (active && data?.hasPassword === false) setNeedsPassword(true);
+      // A Google / LinkedIn / Apple account logs back in the same way, so the
+      // "no password yet" notice only reads as an alarm to them.
+      .then((data: { hasPassword?: boolean; signInWith?: string } | null) => {
+        const social = Boolean(data?.signInWith && data.signInWith !== "credentials");
+        if (active && data?.hasPassword === false && !social) setNeedsPassword(true);
       })
       .catch(() => {/* optional: applying is already done */});
     return () => {

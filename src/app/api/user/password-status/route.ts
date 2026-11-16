@@ -24,11 +24,13 @@ async function handler(_req: NextRequest, ctx: AuthContext) {
   if (ctx.tenantView) return NextResponse.json({ temporaryPassword: false, hasPassword: true });
   await connectDB();
   const user = await User.findById(ctx.member?.actorId ?? ctx.userId)
-    .select("tempPasswordIssuedAt +passwordHash")
+    .select("tempPasswordIssuedAt authProvider +passwordHash")
     .lean();
   return NextResponse.json({
     temporaryPassword: Boolean(user?.tempPasswordIssuedAt),
     hasPassword: Boolean(user?.passwordHash),
+    /** "google" | "linkedin" | "apple" for a social account, which logs in that way. */
+    signInWith: user?.authProvider ?? "credentials",
   });
 }
 

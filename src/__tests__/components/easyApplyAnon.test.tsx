@@ -673,7 +673,7 @@ describe("EasyApply Anonymous Card", () => {
           const cv = new File(["cv"], "cv.pdf", { type: "application/pdf" });
           fireEvent.change(document.querySelector("input[type=file]") as HTMLInputElement, { target: { files: [cv] } });
           fireEvent.click(googleButton());
-          return screen.findByRole("button", { name: "looksGood" });
+          return screen.findByRole("button", { name: "reviewSave" });
         }
 
         it("loads the job page again once the profile has been saved", async () => {
@@ -685,11 +685,69 @@ describe("EasyApply Anonymous Card", () => {
           fireEvent.click(confirm);
 
           await waitFor(() => expect(navigateWithPageLoad).toHaveBeenCalledTimes(1));
-          expect(navigateWithPageLoad).toHaveBeenCalledWith(window.location.pathname + window.location.search);
+          // Signed up and onboarded: the job opens inside the seeker app.
+          expect(navigateWithPageLoad).toHaveBeenCalledWith("/en/job-seeker/jobs/test-job-id");
           const [url, init] = csrfFetch.mock.calls[1];
           expect(url).toBe("/api/job-seekers/profile");
           expect(init.method).toBe("PATCH");
-          expect(update).not.toHaveBeenCalled();
+          // Being findable by employers is consent: unticked means hidden, and
+          // it is always written (the schema default would be "visible").
+          expect(JSON.parse(init.body).profileVisibility).toBe("hidden");
+          // Only to re-read the onboarded flag (the server reads it from the DB),
+          // so the reloaded form offers the Mployedin CV; never a re-render.
+          expect(update).toHaveBeenCalledTimes(1);
+          expect(update).toHaveBeenCalledWith({ isOnboarded: true });
+        });
+
+        it("opens the review window at once and keeps Save off until the CV has been read", async () => {
+          csrfFetch.mockReset();
+          let finishReading: (v: unknown) => void = () => undefined;
+          csrfFetch.mockReturnValueOnce(new Promise((resolve) => { finishReading = resolve; }));
+          (useSession as jest.Mock).mockReturnValue({ data: null, status: "unauthenticated", update: jest.fn() });
+          (global.fetch as unknown as jest.Mock).mockResolvedValue({ ok: false, json: async () => null });
+          renderCard();
+          const cv = new File(["cv"], "cv.pdf", { type: "application/pdf" });
+          fireEvent.change(document.querySelector("input[type=file]") as HTMLInputElement, { target: { files: [cv] } });
+          fireEvent.click(googleButton());
+
+          const save = await screen.findByRole("button", { name: "reviewSave" });
+          expect(save).toBeDisabled();
+          expect(screen.getByText("reviewReadingTitle")).toBeInTheDocument();
+          // Typed while the CV is read: the read must not overwrite it.
+          fireEvent.change(screen.getByLabelText("name"), { target: { value: "Typed Name" } });
+
+          finishReading({ ok: true, json: async () => ({ success: true, extracted: { fullName: "From CV" }, profileCompleteness: 40 }) });
+
+          await waitFor(() => expect(screen.getByRole("button", { name: "reviewSave" })).toBeEnabled());
+          expect(screen.getByLabelText("name")).toHaveValue("Typed Name");
+        });
+
+        it("saves the job preferences the CV gave, without asking for them again", async () => {
+          csrfFetch.mockReset();
+          csrfFetch.mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({
+              success: true,
+              extracted: { fullName: "Test Person", experience: [{ jobTitle: "MERN Stack Developer" }, { jobTitle: "Full Stack Intern" }] },
+              profileCompleteness: 60,
+            }),
+          });
+          (useSession as jest.Mock).mockReturnValue({ data: null, status: "unauthenticated", update: jest.fn() });
+          (global.fetch as unknown as jest.Mock).mockResolvedValue({ ok: false, json: async () => null });
+          renderCard();
+          const cv = new File(["cv"], "cv.pdf", { type: "application/pdf" });
+          fireEvent.change(document.querySelector("input[type=file]") as HTMLInputElement, { target: { files: [cv] } });
+          fireEvent.click(googleButton());
+          const confirm = await screen.findByRole("button", { name: "reviewSave" });
+          expect(screen.getByLabelText("wantedRoles")).toHaveValue("MERN Stack Developer, Full Stack Intern");
+          csrfFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+          csrfFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+
+          fireEvent.click(confirm);
+
+          await waitFor(() => expect(navigateWithPageLoad).toHaveBeenCalled());
+          const prefs = csrfFetch.mock.calls.find(([u]: [string]) => u === "/api/job-seeker/profile");
+          expect(JSON.parse(prefs[1].body)).toEqual({ preferredRoles: ["MERN Stack Developer", "Full Stack Intern"] });
         });
 
         it("keeps the button busy while the page loads, so it cannot be pressed twice", async () => {
@@ -699,7 +757,7 @@ describe("EasyApply Anonymous Card", () => {
           fireEvent.click(confirm);
 
           await waitFor(() => expect(navigateWithPageLoad).toHaveBeenCalledTimes(1));
-          expect(screen.getByRole("button", { name: "looksGood" })).toBeDisabled();
+          expect(screen.getByRole("button", { name: "reviewSave" })).toBeDisabled();
         });
 
         // The card goes back to its start (the error is shown there); nothing is loaded again.
@@ -711,7 +769,8 @@ describe("EasyApply Anonymous Card", () => {
 
           expect(await screen.findByText("Phone number is not valid")).toBeInTheDocument();
           expect(navigateWithPageLoad).not.toHaveBeenCalled();
-          expect(googleButton()).toBeEnabled();
+          // The review window stays, answers intact, so the save can be tried again.
+          await waitFor(() => expect(screen.getByRole("button", { name: "reviewSave" })).toBeEnabled());
         });
 
         it("does not leave when the save request itself fails, and says so", async () => {
@@ -722,7 +781,8 @@ describe("EasyApply Anonymous Card", () => {
 
           expect(await screen.findByText("We couldn't apply. Please try again.")).toBeInTheDocument();
           expect(navigateWithPageLoad).not.toHaveBeenCalled();
-          expect(googleButton()).toBeEnabled();
+          // The review window stays, answers intact, so the save can be tried again.
+          await waitFor(() => expect(screen.getByRole("button", { name: "reviewSave" })).toBeEnabled());
         });
       });
 
@@ -748,18 +808,18 @@ describe("EasyApply Anonymous Card", () => {
         return { csrfFetch, user };
       }
 
-      it("a sign-in with an emailed code, with a CV, does not leave through a page load (no Google iframe to drop)", async () => {
+      it("a sign-in with an emailed code, with a CV, also opens the job in the seeker app once saved", async () => {
         const update = jest.fn();
         const { user } = await verifyEmailCodeWithCv(update, [
           { ok: true, json: async () => ({ success: true, extracted: {}, profileCompleteness: 10 }) },
           { ok: true, json: async () => ({}) },
         ]);
-        const confirm = await screen.findByRole("button", { name: "looksGood" });
+        const confirm = await screen.findByRole("button", { name: "reviewSave" });
 
         await user.click(confirm);
 
-        await waitFor(() => expect(update).toHaveBeenCalled());
-        expect(navigateWithPageLoad).not.toHaveBeenCalled();
+        await waitFor(() => expect(navigateWithPageLoad).toHaveBeenCalledWith("/en/job-seeker/jobs/test-job-id"));
+        expect(update).toHaveBeenCalledWith({ isOnboarded: true });
         expect(getGoogleIdToken).not.toHaveBeenCalled();
       });
 
@@ -784,7 +844,7 @@ describe("EasyApply Anonymous Card", () => {
           expect(navigateWithPageLoad).toHaveBeenCalledWith(window.location.pathname + window.location.search);
           expect(csrfFetch).not.toHaveBeenCalled();
           expect(update).not.toHaveBeenCalled();
-          expect(screen.queryByRole("button", { name: "looksGood" })).toBeNull();
+          expect(screen.queryByRole("button", { name: "reviewSave" })).toBeNull();
         });
 
         it("an employer who signs in with an emailed code instead just refreshes the session (no Google iframe to drop)", async () => {
