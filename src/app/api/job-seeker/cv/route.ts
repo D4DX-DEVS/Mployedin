@@ -3,7 +3,7 @@ import { createHash } from "crypto";
 import connectDB from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
-import { uploadFile } from "@/lib/storage/spaces";
+import { uploadFile, getPresignedUrl, urlToKey } from "@/lib/storage/spaces";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { validateUploadedFile } from "@/lib/security/file-validation";
 import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
@@ -103,3 +103,28 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
 }
 
 export const POST = withAuth(postHandler);
+
+// GET /api/job-seeker/cv — open the seeker's own uploaded CV file (the one
+// they sent), not the Mployedin-built CV. Short-lived signed link, owner only.
+async function getHandler(_req: NextRequest, ctx: { userId: string; role: string }) {
+  if (ctx.role !== "job_seeker") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  await connectDB();
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("cv.originalUrl").lean<{ cv?: { originalUrl?: string | null } }>();
+  const fileUrl = seeker?.cv?.originalUrl;
+  if (!fileUrl) {
+    return NextResponse.json({ error: "No CV uploaded" }, { status: 404 });
+  }
+  let signed: string;
+  try {
+    signed = await getPresignedUrl(urlToKey(fileUrl), 300);
+  } catch {
+    return NextResponse.json({ error: "Could not open your CV" }, { status: 502 });
+  }
+  const res = NextResponse.redirect(signed, 302);
+  res.headers.set("Cache-Control", "private, no-store");
+  return res;
+}
+
+export const GET = withAuth(getHandler);

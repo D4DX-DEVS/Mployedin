@@ -8,6 +8,8 @@ import Conversation from "@/models/Conversation";
 import ExhibitionRequest from "@/models/ExhibitionRequest";
 import GdprRequest from "@/models/GdprRequest";
 import Invoice from "@/models/Invoice";
+import AgentTask, { CLOSED_TASK_STATUSES } from "@/models/AgentTask";
+import mongoose from "mongoose";
 import Subscription from "@/models/Subscription";
 import SubscriptionPlan from "@/models/SubscriptionPlan";
 import { ADMIN_QUEUE, buildAdminQueue, type AdminQueueId, type AdminQueueItem } from "./actionQueue";
@@ -20,7 +22,14 @@ import {
   subscriptionsEndingFilter,
 } from "./queueFilters";
 
-type Counter = () => Promise<number>;
+/** The admin looking at the dashboard; only the task rows depend on who it is. */
+type Counter = (userId: string) => Promise<number>;
+
+/** Tasks this admin gave, or that were routed through them — the "Me" view of Tasks I gave. */
+const givenByMe = (userId: string) => {
+  const me = new mongoose.Types.ObjectId(userId);
+  return { $or: [{ "assignedBy.userId": me }, { managedBy: me }] };
+};
 
 const COUNTERS: Record<AdminQueueId, Counter> = {
   "exhibitions-submitted": () => ExhibitionRequest.countDocuments({ status: "submitted" }),
@@ -44,6 +53,12 @@ const COUNTERS: Record<AdminQueueId, Counter> = {
   "applications-awaiting-review": () => countApplicationsAwaitingReview(),
   // Shares one aggregate with the Job health card's "low volume" row.
   "jobs-without-applications": async () => (await getJobDemandBuckets()).none,
+  // Same filters as the Tasks page each row opens.
+  "task-reports-waiting": (userId) => AgentTask.countDocuments({ ...givenByMe(userId), reviewStatus: "awaiting_review" }),
+  "given-tasks-overdue": (userId) =>
+    AgentTask.countDocuments({ ...givenByMe(userId), status: { $nin: CLOSED_TASK_STATUSES }, dueDate: { $ne: null, $lt: new Date() } }),
+  "my-tasks-overdue": (userId) =>
+    AgentTask.countDocuments({ userId: new mongoose.Types.ObjectId(userId), status: { $nin: CLOSED_TASK_STATUSES }, dueDate: { $ne: null, $lt: new Date() } }),
 };
 
 /**
@@ -52,10 +67,10 @@ const COUNTERS: Record<AdminQueueId, Counter> = {
  * custom-permission admin neither sees nor pays for them. A counter that fails
  * drops its row rather than blanking the dashboard.
  */
-export async function getAdminActionQueue(can: (resource: Resource) => boolean): Promise<AdminQueueItem[]> {
+export async function getAdminActionQueue(can: (resource: Resource) => boolean, userId: string): Promise<AdminQueueItem[]> {
   await connectDB();
   const permitted = ADMIN_QUEUE.filter((definition) => can(definition.resource));
-  const results = await Promise.allSettled(permitted.map((definition) => COUNTERS[definition.id]()));
+  const results = await Promise.allSettled(permitted.map((definition) => COUNTERS[definition.id](userId)));
 
   const counts: Partial<Record<AdminQueueId, number>> = {};
   permitted.forEach((definition, index) => {

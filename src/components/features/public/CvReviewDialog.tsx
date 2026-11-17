@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, Eye, FileText, Loader2, Pencil } from "lucide-react";
+import { Check, FileText, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhoneInput } from "@/components/shared/PhoneInput";
 import { SeekerAreaField, type SeekerAreaValue } from "@/components/features/job-seeker/SeekerAreaField";
-import { TemplateThumbnail } from "@/app/[locale]/(dashboard)/job-seeker/cv/template-thumbnail";
-import { DEFAULT_FORMATTING } from "@/app/[locale]/(dashboard)/job-seeker/cv/types";
-import { EMPTY_CV_FORM, cvFormFromProfile, type SeekerProfileData } from "@/app/[locale]/(dashboard)/job-seeker/cv/built-cv";
+import type { SeekerProfileData } from "@/app/[locale]/(dashboard)/job-seeker/cv/built-cv";
 import { CvReviewEditor } from "./CvReviewEditor";
-import { REVIEW_TEMPLATES } from "./cvReviewEdits";
+import { CvReviewAssistant } from "./CvReviewAssistant";
 
 /**
  * After a new seeker's CV is read on a shared job link: the CV as employers
@@ -77,33 +75,20 @@ interface CvReviewDialogProps {
 
 export const SALARY_CURRENCIES = ["INR", "AED", "SAR", "QAR", "KWD", "OMR", "BHD", "GBP", "EUR", "USD"];
 const NOTICE_OPTIONS = ["0", "15", "30", "60", "90"];
-const SUMMARY_SKILLS_SHOWN = 8;
 
 export default function CvReviewDialog(props: CvReviewDialogProps) {
-  const { open, fileName, email, profile, onProfileChange, reading, templateId, onTemplateChange, summary, extractionFailed, completeness, values, onChange, headlineMax, error, saving, emailNote, onConfirm } = props;
+  const { open, fileName, profile, onProfileChange, reading, extractionFailed, completeness, values, onChange, headlineMax, error, saving, emailNote, onConfirm } = props;
   const t = useTranslations("easyApply");
-  const tt = useTranslations("cvBuilderPage.templatePicker.templates");
-  // Phones: the form first, the CV one tap away; side by side from lg.
   // Phones show one side at a time: the details to fill, or the CV itself.
-  // The CV first when it is ready; the details while it is still being read.
-  const [phoneTab, setPhoneTab] = useState<"details" | "cv">(reading ? "details" : "cv");
-  // The CV pane: the preview, or its content as fields to fix.
-  const [cvView, setCvView] = useState<"preview" | "edit">("preview");
-
-  const cv = useMemo(() => {
-    if (!profile) return null;
-    return cvFormFromProfile(
-      { ...profile, headline: values.headline || profile.headline, phone: values.phone || profile.phone },
-      { ...EMPTY_CV_FORM, fullName: values.name, email: email ?? "", phone: values.phone },
-    );
-  }, [profile, values.name, values.phone, values.headline, email]);
-
+  // Details first (left from lg); what was read from the CV beside them.
+  const [phoneTab, setPhoneTab] = useState<"details" | "cv">("details");
   return (
     // Not dismissible: closing it would leave a half-made account. The one way
     // on is the button, which saves; every field can be changed later.
     <Dialog open={open} onOpenChange={() => undefined}>
       <DialogContent
         hideClose
+        data-cv-review=""
         mobileSheet={false}
         className="flex max-h-[92vh] w-[calc(100vw-2rem)] max-w-6xl flex-col gap-0 overflow-hidden p-0"
       >
@@ -125,7 +110,7 @@ export default function CvReviewDialog(props: CvReviewDialogProps) {
         </DialogHeader>
 
         <div role="group" aria-label={t("reviewTitle")} className="grid grid-cols-2 gap-1 border-b border-border/70 bg-muted/40 p-1.5 lg:hidden">
-          {(["cv", "details"] as const).map((tab) => (
+          {(["details", "cv"] as const).map((tab) => (
             <button key={tab} type="button" aria-pressed={phoneTab === tab} onClick={() => setPhoneTab(tab)}
               className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${phoneTab === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`}>
               {tab === "cv" ? <FileText className="size-4" aria-hidden="true" /> : <Pencil className="size-4" aria-hidden="true" />}
@@ -135,68 +120,31 @@ export default function CvReviewDialog(props: CvReviewDialogProps) {
         </div>
 
         {/* One column on phones (min-w-0 keeps wide chips and textareas inside it); two from lg. */}
-        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto overflow-x-hidden lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden">
+        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto overflow-x-hidden lg:grid-cols-[420px_minmax(0,1fr)] lg:overflow-hidden">
           {/* The CV, as employers will see it */}
-          <section aria-labelledby="cv-review-preview" className={`${phoneTab === "cv" ? "block" : "hidden"} min-h-0 min-w-0 border-border/70 bg-muted/40 lg:block lg:overflow-y-auto lg:border-e`}>
+          <section aria-labelledby="cv-review-preview" className={`${phoneTab === "cv" ? "block" : "hidden"} min-h-0 min-w-0 border-border/70 bg-muted/40 lg:order-2 lg:block lg:overflow-y-auto lg:border-s`}>
             <div className="space-y-3 p-4 sm:p-6">
               <h3 id="cv-review-preview" className="hidden text-sm font-semibold text-foreground lg:block">{t("reviewCvHeading")}</h3>
               <p className="text-xs text-muted-foreground">{t("reviewCvHint")}</p>
               {reading ? (
                 <CvReadingProgress />
-              ) : (
+              ) : profile ? (
+                // Their own CV stays the one they send: no Mployedin CV preview
+                // here, only what was read, as fields to confirm or fix.
                 <>
-                  {profile && (
-                    <div role="group" aria-label={t("reviewCvHeading")} className="inline-flex rounded-xl border border-border/70 bg-background p-1">
-                      {(["preview", "edit"] as const).map((view) => (
-                        <button key={view} type="button" aria-pressed={cvView === view} onClick={() => setCvView(view)}
-                          className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${cvView === view ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                          {view === "preview" ? <Eye className="size-3.5" aria-hidden="true" /> : <Pencil className="size-3.5" aria-hidden="true" />}
-                          {view === "preview" ? t("reviewViewPreview") : t("reviewViewEdit")}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {cvView === "edit" && profile ? (
-                    <CvReviewEditor profile={profile} onChange={onProfileChange} />
-                  ) : (
-                    <>
-                      {summary && <CvReadSummaryList summary={summary} />}
-                      {cv && (
-                        <div className="space-y-1.5">
-                          <p className="text-xs font-semibold text-foreground">{t("reviewDesign")}</p>
-                          <div className="grid grid-cols-4 gap-2">
-                            {REVIEW_TEMPLATES.map((id) => {
-                              const on = templateId === id;
-                              return (
-                                <button key={id} type="button" aria-pressed={on} onClick={() => onTemplateChange(id)}
-                                  className={`overflow-hidden rounded-lg border-2 bg-white text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? "border-primary" : "border-border hover:border-primary/40"}`}>
-                                  <TemplateThumbnail templateId={id} data={cv} formatting={DEFAULT_FORMATTING} />
-                                  <span className="flex items-center gap-1 border-t px-1.5 py-1 text-[11px] font-medium text-foreground">
-                                    {on && <Check className="size-3 shrink-0 text-primary" aria-hidden="true" />}
-                                    <span className="truncate">{tt(`${id}.name`)}</span>
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                      {cv ? (
-                        <TemplateThumbnail templateId={templateId} data={cv} formatting={DEFAULT_FORMATTING} fit="document" className="bg-white shadow-sm" />
-                      ) : (
-                        <div className="flex h-64 items-center justify-center rounded-xl bg-background">
-                          <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
-                        </div>
-                      )}
-                    </>
-                  )}
+                  <CvReviewAssistant profile={profile} onChange={onProfileChange} />
+                  <CvReviewEditor profile={profile} onChange={onProfileChange} />
                 </>
+              ) : (
+                <div className="flex h-64 items-center justify-center rounded-xl bg-background">
+                  <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
+                </div>
               )}
             </div>
           </section>
 
           {/* What to check, and what the CV didn't say */}
-          <div className={`${phoneTab === "details" ? "block" : "hidden"} min-h-0 min-w-0 space-y-6 px-4 py-5 sm:px-6 lg:block lg:overflow-y-auto`}>
+          <div className={`${phoneTab === "details" ? "block" : "hidden"} min-h-0 min-w-0 space-y-6 px-4 py-5 sm:px-6 lg:order-1 lg:block lg:overflow-y-auto`}>
             {emailNote && (
               <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">{emailNote}</p>
             )}
@@ -300,36 +248,6 @@ export default function CvReviewDialog(props: CvReviewDialogProps) {
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/** What the CV reader saved to the new profile, in a few figures. */
-function CvReadSummaryList({ summary }: { summary: CvReadSummary }) {
-  const t = useTranslations("easyApply");
-  const counts = [
-    { key: "cvReadRoles", count: summary.roles.length },
-    { key: "cvReadEducation", count: summary.educationCount },
-    { key: "cvReadLanguages", count: summary.languageCount },
-    { key: "cvReadCertifications", count: summary.certificationCount },
-    { key: "cvReadProjects", count: summary.projectCount },
-  ].filter((c) => c.count > 0);
-  if (summary.skills.length === 0 && counts.length === 0) return null;
-  const extraSkills = summary.skills.length - SUMMARY_SKILLS_SHOWN;
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-semibold text-foreground">{t("cvReadTitle")}</p>
-      {summary.skills.length > 0 && (
-        <ul className="flex flex-wrap gap-1" aria-label={t("cvReadSkills", { count: summary.skills.length })}>
-          {summary.skills.slice(0, SUMMARY_SKILLS_SHOWN).map((s) => (
-            <li key={s} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"><bdi>{s}</bdi></li>
-          ))}
-          {extraSkills > 0 && <li className="px-1 py-0.5 text-xs text-muted-foreground">{t("cvReadMoreSkills", { count: extraSkills })}</li>}
-        </ul>
-      )}
-      {counts.length > 0 && (
-        <p className="text-xs text-muted-foreground">{counts.map((c) => t(c.key, { count: c.count })).join(" · ")}</p>
-      )}
-    </div>
   );
 }
 

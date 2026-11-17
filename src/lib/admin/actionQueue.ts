@@ -15,7 +15,7 @@ import type { Resource } from "@/types/user";
  * and the link table can be unit-tested without Mongoose.
  */
 
-export type AdminQueueGroup = "decisions" | "finance" | "compliance" | "recruitment";
+export type AdminQueueGroup = "decisions" | "tasks" | "finance" | "compliance" | "recruitment";
 
 /**
  * critical — money or a legal clock is at stake; warning — needs a decision or
@@ -40,7 +40,10 @@ export type AdminQueueId =
   | "support-tickets"
   | "contact-unread"
   | "applications-awaiting-review"
-  | "jobs-without-applications";
+  | "jobs-without-applications"
+  | "task-reports-waiting"
+  | "given-tasks-overdue"
+  | "my-tasks-overdue";
 
 export interface AdminQueueDefinition {
   id: AdminQueueId;
@@ -53,7 +56,7 @@ export interface AdminQueueDefinition {
 }
 
 /** Render order: groups in this order, rows in this order within a group. */
-export const ADMIN_QUEUE_GROUPS: readonly AdminQueueGroup[] = ["decisions", "finance", "compliance", "recruitment"];
+export const ADMIN_QUEUE_GROUPS: readonly AdminQueueGroup[] = ["decisions", "tasks", "finance", "compliance", "recruitment"];
 
 export const ADMIN_QUEUE: readonly AdminQueueDefinition[] = [
   // Decisions only an admin can take.
@@ -67,6 +70,11 @@ export const ADMIN_QUEUE: readonly AdminQueueDefinition[] = [
   { id: "company-reviews-pending", group: "decisions", resource: "employers", path: "/admin/cms/company-reviews?status=pending", level: "warning" },
   // With no default plan, new sign-ups of that role get no plan at all.
   { id: "default-plans-missing", group: "decisions", resource: "subscriptions", path: "/admin/subscription-plans", level: "critical" },
+
+  // This admin's own tasks: reports on tasks they gave, and what is late.
+  { id: "task-reports-waiting", group: "tasks", resource: "tasks", path: "/admin/tasks?tab=gave&review=awaiting_review", level: "warning" },
+  { id: "given-tasks-overdue", group: "tasks", resource: "tasks", path: "/admin/tasks?tab=gave&status=overdue", level: "warning" },
+  { id: "my-tasks-overdue", group: "tasks", resource: "tasks", path: "/admin/tasks?due=overdue", level: "warning" },
 
   // Money owed, claimed or contested.
   { id: "invoices-overdue", group: "finance", resource: "invoices", path: "/admin/invoices?status=overdue", level: "critical" },

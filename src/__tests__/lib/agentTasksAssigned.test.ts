@@ -55,8 +55,11 @@ jest.mock("@/models/AgentTask", () => ({
     },
     findOne: (...a: unknown[]) => ({ lean: async () => taskFindOne(...a) }),
     findOneAndUpdate: (...a: unknown[]) => ({ lean: async () => taskUpdate(...a) }),
+    aggregate: (...a: unknown[]) => taskAggregate(...a),
+    countDocuments: async () => 0,
   },
 }));
+const taskAggregate = jest.fn(async (..._a: unknown[]) => [] as unknown[]);
 
 const mongoose = jest.requireActual("mongoose") as typeof import("mongoose");
 const oid = (s: string) => new mongoose.Types.ObjectId(s);
@@ -273,9 +276,9 @@ describe("submitAssignedTask", () => {
 });
 
 describe("assignedTaskHistory", () => {
-  it("hides a task outside the super agent's team", async () => {
+  it("hides a task another super agent gave, once the agent is outside this team", async () => {
     teamOf([OTHER_AGENT_USER]);
-    taskFindById.mockResolvedValue(awaiting(SA_USER));
+    taskFindById.mockResolvedValue(awaiting("650000000000000000000099"));
     const { assignedTaskHistory } = await import("@/lib/agentTasks/assigned");
     await expect(assignedTaskHistory(sa, TASK_ID)).rejects.toMatchObject({ status: 404 });
   });
@@ -290,11 +293,16 @@ describe("assignedTaskHistory", () => {
 });
 
 describe("listAssignedTasks", () => {
-  it("returns nothing when a super agent filters by an agent outside their team", async () => {
+  it("an agent filter narrows inside what the super agent may see, never widens it", async () => {
     teamOf([TEAM_AGENT_USER]);
-    const { listAssignedTasks } = await import("@/lib/agentTasks/assigned");
+    const { listAssignedTasks } = await import("@/lib/agentTasks/assignedList");
     const out = await listAssignedTasks(sa, { agentUserId: OTHER_AGENT_USER, page: 1, limit: 20 });
     expect(out.items).toEqual([]);
     expect(out.total).toBe(0);
+    const match = (taskAggregate.mock.calls[0][0] as Array<{ $match?: Record<string, unknown> }>)[0].$match!;
+    // Still bound to "they gave it, or the agent is on their team".
+    expect(JSON.stringify(match)).toContain(SA_USER);
+    expect(JSON.stringify(match)).toContain(TEAM_AGENT_USER);
+    expect(String(match.userId)).toBe(OTHER_AGENT_USER);
   });
 });

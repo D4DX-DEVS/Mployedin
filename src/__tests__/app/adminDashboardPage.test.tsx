@@ -156,7 +156,7 @@ const recent: RecentEvent[] = [
 ];
 
 const allowAll = () => true;
-const ctx = (can: (resource: Resource) => boolean = allowAll): SectionContext => ({ can, period, locale: "en" });
+const ctx = (can: (resource: Resource) => boolean = allowAll): SectionContext => ({ can, period, locale: "en", userId: "64b0000000000000000000a0" });
 const only = (...resources: Resource[]) => (resource: Resource) => resources.includes(resource);
 
 async function show(section: Promise<ReactElement | null>) {

@@ -6,7 +6,15 @@ import Job from "@/models/Job";
 import JobSeeker from "@/models/JobSeeker";
 import User from "@/models/User";
 import type { IAgentTaskLinks } from "@/models/AgentTask";
-import { agentCanSeeEmployer, getAgentEmployerIds, getAgentSeekerArea } from "@/lib/auth/agentRestrictions";
+import {
+  agentCanSeeEmployer,
+  getAgentEmployerIds,
+  getAgentSeekerArea,
+  getSuperAgentEmployerIds,
+  getSuperAgentScope,
+  getSuperAgentTerritory,
+} from "@/lib/auth/agentRestrictions";
+import SuperAgent from "@/models/SuperAgent";
 import { seekerRegionMatch } from "@/lib/auth/regionMatch";
 import { canStaffAccessSeeker, type SeekerOwnership } from "@/lib/jobSeeker/staffAccess";
 import { escapeRegex, isValidObjectId } from "@/lib/security/sanitize";
@@ -21,7 +29,9 @@ import { TaskError } from "./taskError";
  *  - job: a live job of one of those employers, or one the agent posted
  *  - candidate: a seeker canStaffAccessSeeker lets them view, or anyone who
  *    applied to one of those jobs
- * Admin (who may also keep agent tasks) sees everything.
+ * A super agent linking records to their own task gets their book instead:
+ * employers getSuperAgentEmployerIds returns, those employers' jobs, and the
+ * seekers their Job Seekers list shows. Admin sees everything.
  */
 
 type Ctx = { userId: string; role: string };
@@ -67,6 +77,12 @@ const oid = (id: string): Id => new mongoose.Types.ObjectId(id);
 /** Jobs the agent may see — the same filter /api/applications scopes by. `null` = no limit (admin). */
 async function agentJobFilter(ctx: Ctx): Promise<Record<string, unknown> | null> {
   if (ctx.role === "admin") return null;
+  if (ctx.role === "super_agent") {
+    const employerIds = await getSuperAgentEmployerIds(ctx.userId);
+    // Default-deny: an empty book means no jobs, never every job.
+    if (employerIds.length === 0) return { _id: { $in: [] } };
+    return { deletedAt: null, employerId: { $in: employerIds } };
+  }
   const [agent, employerIds] = await Promise.all([
     Agent.findOne({ userId: ctx.userId }).select("_id").lean<{ _id: Id } | null>(),
     getAgentEmployerIds(ctx.userId),
@@ -133,7 +149,7 @@ export async function validateTaskLinks(
     employerId = employerId ?? jobEmployer;
   }
 
-  if (employerId && !jobId && ctx.role !== "admin" && !(await agentCanSeeEmployer(ctx.userId, employerId))) {
+  if (employerId && !jobId && ctx.role !== "admin" && !(await canSeeEmployer(ctx, employerId))) {
     throw new TaskError(403, refuse.employer);
   }
   if (employerId && ctx.role === "admin" && !(await Employer.exists({ _id: employerId }))) {
@@ -156,6 +172,15 @@ export async function validateTaskLinks(
     ...(jobId ? { jobId: oid(jobId) } : {}),
     ...(employerId ? { employerId: oid(employerId) } : {}),
   };
+}
+
+/** Whether a non-admin may link this employer: the agent rule, or the super agent's book. */
+async function canSeeEmployer(ctx: Ctx, employerId: string): Promise<boolean> {
+  if (ctx.role === "super_agent") {
+    const ids = await getSuperAgentEmployerIds(ctx.userId);
+    return ids.some((id) => String(id) === employerId);
+  }
+  return agentCanSeeEmployer(ctx.userId, employerId);
 }
 
 async function appliedToVisibleJob(ctx: Ctx, candidateId: string, jobId?: string): Promise<boolean> {
@@ -251,7 +276,11 @@ export async function searchTaskLinkOptions(
   const jobId = within.jobId && isValidObjectId(within.jobId) ? within.jobId : undefined;
 
   if (type === "employer") {
-    const visible = ctx.role === "admin" ? null : await getAgentEmployerIds(ctx.userId);
+    const visible = ctx.role === "admin"
+      ? null
+      : ctx.role === "super_agent"
+        ? await getSuperAgentEmployerIds(ctx.userId)
+        : await getAgentEmployerIds(ctx.userId);
     if (visible && visible.length === 0) return [];
     const rows = await Employer.find({
       roleArchivedAt: null,
@@ -354,6 +383,7 @@ async function candidateScope(ctx: Ctx, jobId?: string): Promise<Record<string, 
     return applicantIds.length ? { _id: { $in: applicantIds } } : null;
   }
   if (ctx.role === "admin") return { roleArchivedAt: null };
+  if (ctx.role === "super_agent") return superAgentCandidateScope(ctx);
 
   const agent = await Agent.findOne({ userId: ctx.userId })
     .select("_id assignedJobSeekerIds assignedCityIds assignedStateIds superAgentId")
@@ -374,6 +404,29 @@ async function candidateScope(ctx: Ctx, jobId?: string): Promise<Record<string, 
   if (areaMatch) or.push({ ...areaMatch, roleArchivedAt: null });
   if (applicantIds.length) or.push({ _id: { $in: applicantIds } });
   return { $or: or };
+}
+
+/**
+ * The seekers a super agent's Job Seekers list shows (owned or referred by
+ * their team, referred by them, or visible in their territory), plus
+ * applicants to their book's jobs. Same rule as GET /api/job-seekers.
+ */
+async function superAgentCandidateScope(ctx: Ctx): Promise<Record<string, unknown> | null> {
+  const [scope, sa, jobIds] = await Promise.all([
+    getSuperAgentScope(ctx.userId),
+    SuperAgent.findOne({ userId: ctx.userId }).select("_id").lean<{ _id: Id } | null>(),
+    visibleJobIds(ctx),
+  ]);
+  const team = scope?.effectiveAgentIds ?? [];
+  const territory = await getSuperAgentTerritory(ctx.userId, scope);
+  const areaMatch = territory ? seekerRegionMatch(territory) : null;
+  const applicantIds = jobIds?.length ? await Application.distinct("jobSeekerId", { jobId: { $in: jobIds } }) : [];
+  const or: Record<string, unknown>[] = [];
+  if (team.length) or.push({ agentId: { $in: team } }, { "referral.agentId": { $in: team } });
+  if (sa?._id) or.push({ "referral.superAgentId": sa._id });
+  if (areaMatch) or.push({ ...areaMatch, roleArchivedAt: null });
+  if (applicantIds.length) or.push({ _id: { $in: applicantIds } });
+  return or.length ? { $or: or } : null;
 }
 
 /** What the Copilot names when it links a task: free text, matched like the pickers search. */

@@ -437,6 +437,7 @@ export default function AdminEmployersPage() {
       {ConfirmDialogNode}
 
       <PageHero
+        compact
         compactMetrics
         compactOnMobile
         icon={Building2}
@@ -451,6 +452,8 @@ export default function AdminEmployersPage() {
         metrics={[
           {
             label: t("metricTotal"),
+            // Phones: one word, so the strip stays one line tall.
+            shortLabel: t("metricTotalShort"),
             value: loading ? "—" : total,
             note: t("metricTotalNote"),
             icon: Building2,
@@ -619,18 +622,22 @@ export default function AdminEmployersPage() {
                     </span>
                   </p>
                 )}
-                <p className={cn("truncate", !emp.region?.superAgents.length && "text-amber-700")}>
-                  {emp.region?.superAgents.length
-                    ? t("regionSuperAgents", { names: emp.region.superAgents.map((s) => s.name).join(", ") })
-                    : emp.region ? t("regionUncovered") : t("regionMissing")}
-                </p>
+                {/* Coverage and join date share one line (2026-11-17: two lines
+                    made every phone card ~40px taller than it needed to be). */}
                 <p className="flex min-w-0 items-center gap-1">
+                  <span className={cn("min-w-0 truncate", !emp.region?.superAgents.length && "text-amber-700")}>
+                    {emp.region?.superAgents.length
+                      ? t("regionSuperAgents", { names: emp.region.superAgents.map((s) => s.name).join(", ") })
+                      : emp.region ? t("regionUncovered") : t("regionMissing")}
+                  </span>
+                  <span aria-hidden="true" className="shrink-0 px-0.5">·</span>
                   <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{formatListDate(new Date(emp.createdAt), locale)}</span>
+                  <span className="shrink-0">{formatListDate(new Date(emp.createdAt), locale)}</span>
                 </p>
               </>
             ),
-            badges: emp.domainVerified || !emp.assignedAgent ? (
+            // "No agent" only when there is no Assign agent button below to say it.
+            badges: emp.domainVerified || (!emp.assignedAgent && !canManageRows) ? (
               <>
                 {emp.domainVerified && (
                   <Badge className="gap-1 rounded-full border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
@@ -638,7 +645,7 @@ export default function AdminEmployersPage() {
                     {t("verifiedBadge")}
                   </Badge>
                 )}
-                {!emp.assignedAgent && (
+                {!emp.assignedAgent && !canManageRows && (
                   <Badge variant="outline" className="gap-1.5 rounded-full border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800">
                     <UserRoundX className="h-3 w-3" />
                     {t("noAgentBadge")}

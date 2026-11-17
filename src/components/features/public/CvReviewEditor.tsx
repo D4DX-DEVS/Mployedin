@@ -58,11 +58,6 @@ export function CvReviewEditor({ profile, onChange }: CvReviewEditorProps) {
           onChange={(e) => onChange({ ...profile, summary: e.target.value })} />
       </div>
 
-      <div className="field">
-        <Label htmlFor="review-skills" className="text-xs font-medium text-foreground">{t("skills")}</Label>
-        <TagAutocomplete id="review-skills" type="skills" max={MAX_SKILLS} value={skillNames(profile.skills)}
-          onChange={(skills) => onChange({ ...profile, skills })} placeholder={t("skillsPlaceholder")} />
-      </div>
 
       <section aria-labelledby="review-jobs" className="space-y-2">
         <h4 id="review-jobs" className="text-sm font-semibold text-foreground">{t("jobs")}</h4>
@@ -152,6 +147,11 @@ export function CvReviewEditor({ profile, onChange }: CvReviewEditorProps) {
           <Plus className="size-4" aria-hidden="true" /> {t("addEducation")}
         </Button>
       </section>
+      <div className="field">
+        <Label htmlFor="review-skills" className="text-xs font-medium text-foreground">{t("skills")}</Label>
+        <TagAutocomplete id="review-skills" type="skills" max={MAX_SKILLS} value={skillNames(profile.skills)}
+          onChange={(skills) => onChange({ ...profile, skills })} placeholder={t("skillsPlaceholder")} />
+      </div>
     </div>
   );
 }

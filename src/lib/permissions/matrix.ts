@@ -38,7 +38,8 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     ai_cv: ["read"],
     ai_match: ["read"],
     ai_assistant: ["read"],
-    tasks: ["read", "update"],
+    // Their own to-dos, and tasks they give super agents and agents.
+    tasks: ["create", "read", "update", "delete"],
     job_attributes: ["create", "read", "update", "delete"],
     location_data: ["create", "read", "update", "delete"],
     cms: ["create", "read", "update", "delete"],
@@ -74,6 +75,8 @@ const PERMISSIONS: Record<UserRole, Partial<PermissionMap>> = {
     notifications: ["read"],
     reports: ["read", "export"],
     ai_assistant: ["read"],
+    // Their own to-dos, and tasks they give their agents.
+    tasks: ["create", "read", "update", "delete"],
     subscriptions: ["create", "read", "update"],
     // "update" is what PATCH /api/exhibitions/[id] guards on, and that route is
     // the only implementation of the super-agent review flow (status transitions,

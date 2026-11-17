@@ -145,8 +145,8 @@ export default function AdminReferralLinksPage() {
   const headerMetrics: readonly DashboardHeaderMetric[] = [
     { label: t("totalLinks"), value: serverTotal, icon: Link2, iconSurfaceClassName: "bg-blue-50", iconClassName: "text-blue-600" },
     { label: t("activeLinks"), value: activeLinks, icon: Check, iconSurfaceClassName: "bg-emerald-50", iconClassName: "text-emerald-600" },
-    { label: t("totalRegistrations"), value: totalRegistrations, icon: Building2, iconSurfaceClassName: "bg-indigo-50", iconClassName: "text-indigo-600" },
-    { label: t("avgRegistrationsPerLink"), value: serverTotal > 0 ? (totalRegistrations / serverTotal).toFixed(1) : "0", icon: TrendingUp, iconSurfaceClassName: "bg-amber-50", iconClassName: "text-amber-600" },
+    { label: t("totalRegistrations"), shortLabel: t("totalRegistrationsShort"), value: totalRegistrations, icon: Building2, iconSurfaceClassName: "bg-indigo-50", iconClassName: "text-indigo-600" },
+    { label: t("avgRegistrationsPerLink"), shortLabel: t("avgRegistrationsPerLinkShort"), value: serverTotal > 0 ? (totalRegistrations / serverTotal).toFixed(1) : "0", icon: TrendingUp, iconSurfaceClassName: "bg-amber-50", iconClassName: "text-amber-600" },
   ];
 
   const exportColumns: ExportColumn<ReferralLinkItem>[] = [

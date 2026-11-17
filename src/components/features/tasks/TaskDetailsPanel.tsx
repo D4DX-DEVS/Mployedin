@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { CheckCircle2, ClipboardCheck, FileText, History, Loader2, MessageSquareText, Undo2 } from "lucide-react";
+import { CalendarClock, CheckCircle2, ClipboardCheck, FileText, History, Loader2, MessageSquareText, Undo2, UserRoundPen, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +32,14 @@ export interface TaskDetails {
   /** Names of the records the task is about, when it was linked to any. */
   links?: { candidate?: string; job?: string; employer?: string };
   canReview: boolean;
+  /** May withdraw / reassign / edit / review (giver, routed-through on team, or admin). Missing = true (older callers). */
+  canAct?: boolean;
+  agentUserId?: string;
+  assigneeRole?: "agent" | "super_agent" | "admin";
+  /** False when the person was deactivated. */
+  assigneeActive?: boolean;
+  reviewRequired?: boolean;
+  groupId?: string;
 }
 
 const PRIORITY_CLASS: Record<TaskDetails["priority"], string> = {
@@ -59,12 +67,16 @@ export function TaskSection({ icon: Icon, title, children }: { icon: typeof File
  * table too, for submissions that don't need the full read.
  */
 export function TaskDetailsPanel({
-  task, apiBase, onClose, onReviewed,
+  task, apiBase, onClose, onReviewed, onWithdraw, onReassign, onChangeDue,
 }: {
   task: TaskDetails | null;
   apiBase: string;
   onClose: () => void;
   onReviewed: () => void;
+  /** Giver actions, shown on an open task this caller may act on. */
+  onWithdraw?: (task: TaskDetails) => void;
+  onReassign?: (task: TaskDetails) => void;
+  onChangeDue?: (task: TaskDetails) => void;
 }) {
   const t = useTranslations("assignedTasks");
   const tl = useTranslations("agentTasks");
@@ -116,6 +128,9 @@ export function TaskDetailsPanel({
             </DialogHeader>
 
             <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+              {task.canAct === false && (
+                <p className="rounded-xl border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">{t("viewOnlyNote")}</p>
+              )}
               <div className="space-y-2">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <p className="min-w-0 break-words text-lg font-semibold text-foreground">{task.title}</p>
@@ -125,7 +140,15 @@ export function TaskDetailsPanel({
                 </div>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
                   <dt className="text-muted-foreground">{t("detailsAssignedTo")}</dt>
-                  <dd className="text-foreground">{task.agentName || "—"}</dd>
+                  <dd className="text-foreground">
+                    {task.agentName || "—"}
+                    {task.assigneeRole === "super_agent" && <span className="text-muted-foreground"> · {t("roleSuperAgent")}</span>}
+                    {task.assigneeActive === false && (
+                      <span className="ms-1.5 inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">{t("personDeactivated")}</span>
+                    )}
+                  </dd>
+                  <dt className="text-muted-foreground">{t("detailsReview")}</dt>
+                  <dd className="text-foreground">{task.reviewRequired === false ? t("reviewOff") : t("reviewOn")}</dd>
                   <dt className="text-muted-foreground">{t("columnAssignedBy")}</dt>
                   <dd className="text-foreground">
                     {task.assignedByName || "—"}
@@ -198,6 +221,26 @@ export function TaskDetailsPanel({
               </TaskSection>
             </div>
 
+            {task.canAct !== false && !["completed", "failed", "cancelled"].includes(task.status) && (onWithdraw || onReassign || onChangeDue) && (
+              <div className="flex flex-wrap justify-end gap-2 border-t px-5 py-3">
+                {onChangeDue && (
+                  <Button variant="outline" size="sm" className="min-h-9" onClick={() => onChangeDue(task)}>
+                    <CalendarClock className="me-1.5 h-4 w-4" aria-hidden="true" />{t("dueAction")}
+                  </Button>
+                )}
+                {onReassign && (
+                  <Button variant="outline" size="sm" className="min-h-9" onClick={() => onReassign(task)}>
+                    <UserRoundPen className="me-1.5 h-4 w-4" aria-hidden="true" />{t("reassignAction")}
+                  </Button>
+                )}
+                {onWithdraw && (
+                  <Button variant="outline" size="sm" className="min-h-9 text-destructive" onClick={() => onWithdraw(task)}>
+                    <XCircle className="me-1.5 h-4 w-4" aria-hidden="true" />{t("withdrawAction")}
+                  </Button>
+                )}
+              </div>
+            )}
+
             {task.canReview && (
               <DialogFooter className="flex-col gap-3 border-t px-5 py-4 sm:flex-col sm:space-x-0">
                 <div className="w-full space-y-1.5">
@@ -222,7 +265,7 @@ export function TaskDetailsPanel({
                     {saving === "approve"
                       ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" />
                       : <CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden="true" />}
-                    {t("approveAction")}
+                    {task.status === "failed" ? t("acceptFailureAction") : t("approveAction")}
                   </Button>
                 </div>
               </DialogFooter>

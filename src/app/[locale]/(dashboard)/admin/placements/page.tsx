@@ -396,10 +396,10 @@ export default function AdminPlacementsPage() {
           </Button>
         )}
         metrics={[
-          { label: t("totalPlacements"), value: total, note: t("allTime"), icon: Users, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg" },
+          { label: t("totalPlacements"), shortLabel: t("totalPlacementsShort"), value: total, note: t("allTime"), icon: Users, iconClassName: "text-status-applied", iconSurfaceClassName: "bg-status-applied-bg" },
           { label: t("pendingVisa"), value: pendingVisa, note: t("awaitingApproval"), icon: Clock, iconClassName: "text-status-shortlisted", iconSurfaceClassName: "bg-status-shortlisted-bg" },
-          { label: t("unpaidCommission"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg" },
-          { label: t("totalSalaryValue"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
+          { label: t("unpaidCommission"), shortLabel: t("unpaidCommissionShort"), value: unpaidCommissions, note: t("needsCollection"), icon: DollarSign, iconClassName: "text-red-500", iconSurfaceClassName: "bg-status-rejected-bg" },
+          { label: t("totalSalaryValue"), shortLabel: t("totalSalaryValueShort"), value: formatSalaryValue(totalValue), note: Object.keys(salaryByCurrency).length > 0 ? Object.entries(salaryByCurrency).slice(0, 2).map(([c, v]) => `${formatSalaryValue(v)} ${c}`).join(t("currencyBreakdownSeparator")) : t("noData"), icon: TrendingUp, iconClassName: "text-status-selected", iconSurfaceClassName: "bg-status-selected-bg" },
         ]}
         compactOnMobile
       >

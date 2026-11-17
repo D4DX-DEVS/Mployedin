@@ -341,8 +341,8 @@ export default function SuperAgentPlacementsPage() {
   // the first placement row — three bands of chrome above the actual list.
   const kpis = [
     { label: t("kpiPlacements"), value: total, note: t("kpiPlacementsHelper"), icon: Trophy },
-    { label: t("kpiUpcomingStarts"), value: totals.upcomingStarts, note: t("kpiUpcomingStartsHelper"), icon: CalendarClock },
-    { label: t("kpiCommissionPaid"), value: totals.commissionPaid, note: t("kpiCommissionPaidHelper"), icon: DollarSign },
+    { label: t("kpiUpcomingStarts"), shortLabel: t("kpiUpcomingStartsShort"), value: totals.upcomingStarts, note: t("kpiUpcomingStartsHelper"), icon: CalendarClock },
+    { label: t("kpiCommissionPaid"), shortLabel: t("kpiCommissionPaidShort"), value: totals.commissionPaid, note: t("kpiCommissionPaidHelper"), icon: DollarSign },
     { label: t("kpiEmployers"), value: totals.employers, note: t("kpiEmployersHelper"), icon: Users2 },
   ];
 

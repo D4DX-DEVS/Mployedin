@@ -150,7 +150,7 @@ describe("super-agent rail", () => {
 
   it("is grouped by the work, not one fourteen-entry Overview", () => {
     expect(roots.map((item) => item.title)).toEqual([
-      "Dashboard", "Team", "Hiring", "Finance", "Reports", "Agent Tasks", "Exhibitions", "Messages",
+      "Dashboard", "Team", "Hiring", "Finance", "Reports", "Tasks", "Exhibitions", "Messages",
     ]);
     expect(roots.find((item) => item.title === "Overview")).toBeUndefined();
   });
@@ -214,7 +214,7 @@ describe("super-agent phone drawer", () => {
   const hrefs = drawer.flatMap((item) => [item.href, ...(item.children ?? []).map((child) => child.href)]);
 
   it("keeps every rail group the bottom tabs do not cover", () => {
-    expect(titles).toEqual(["Team", "Hiring", "Finance", "Reports", "Agent Tasks", "Exhibitions", "Messages"]);
+    expect(titles).toEqual(["Team", "Hiring", "Finance", "Reports", "Tasks", "Exhibitions", "Messages"]);
   });
 
   it("lists the pages the old drawer dropped", () => {

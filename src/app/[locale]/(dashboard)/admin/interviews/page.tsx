@@ -454,10 +454,13 @@ export default function AdminInterviewOversightPage() {
             variant={showInsights ? "default" : "outline"}
             onClick={() => setShowInsights(!showInsights)}
             size="lg"
-            className="h-10 gap-2 rounded-xl border-0 px-4"
+            aria-label={t("aiInsights")}
+            title={t("aiInsights")}
+            // Phones: icon only, so it sits beside the title (2026-11-17).
+            className="h-10 gap-2 rounded-xl border-0 px-4 max-sm:w-10 max-sm:px-0"
           >
-            <Sparkles className="h-4 w-4" />
-            {t("aiInsights")}
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            <span className="max-sm:sr-only">{t("aiInsights")}</span>
           </Button>
         )}
         metrics={[

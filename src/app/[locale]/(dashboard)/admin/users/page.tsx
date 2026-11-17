@@ -819,27 +819,31 @@ export default function AdminUsersPage() {
                   {user.isActive ? t("active") : t("inactive")}
                 </Badge>
               ),
-              actions: <RowActions name={user.name || user.email} {...rowActionsFor(user)} />,
+              // The role picker shares the footer row with edit/more (2026-11-17):
+              // on a line of its own it left the footer two lonely buttons.
+              // `me-auto` holds it at the start; the footer is justify-end.
+              actions: (
+                <div className="flex w-full min-w-0 items-center gap-2">
+                  <div className="me-auto min-w-0">{rolePicker(user)}</div>
+                  <RowActions name={user.name || user.email} {...rowActionsFor(user)} />
+                </div>
+              ),
               meta: (
-                <>
-                  <p className="flex min-w-0 items-center gap-1">
+                <p className="flex min-w-0 flex-wrap items-center gap-x-1">
+                  <span className="flex min-w-0 items-center gap-1">
                     <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
                     <span className="truncate">{t("exportHeaderLastLogin")}: {lastLogin ?? t("never")}</span>
-                  </p>
-                  <p className="flex min-w-0 items-center gap-1">
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span className="flex min-w-0 items-center gap-1">
                     <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
                     <span className="truncate">{t("joinedTableHeader")}: {joined}</span>
-                  </p>
-                </>
+                  </span>
+                </p>
               ),
-              badges: (
-                <>
-                  {rolePicker(user)}
-                  {user.permissionMode === "custom" && (
-                    <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-600">{t("customPermissions")}</Badge>
-                  )}
-                </>
-              ),
+              badges: user.permissionMode === "custom" ? (
+                <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-600">{t("customPermissions")}</Badge>
+              ) : undefined,
             };
           })}
         />

@@ -70,6 +70,8 @@ export function Sidebar({
         return superAgentCounts.pendingCommissionApprovals;
       case "overdueTasks":
         return agentCounts.overdueTasks;
+      case "taskInbox":
+        return effectiveRole === "admin" ? adminCounts.taskInbox : superAgentCounts.taskInbox;
       case "dueFollowUps":
         return agentCounts.dueFollowUps;
       default:

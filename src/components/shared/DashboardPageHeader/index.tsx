@@ -243,12 +243,14 @@ export function DashboardPageHeader({
                       "Total Applications" rendered as "Total Applica…" on phones, which said nothing. */}
                   <p data-header-metric-label="" className={cn(
                     // break-words: "Avg Registrations/Link" has no break point and overflowed its cell.
-                    "line-clamp-2 break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
+                    // Phones drop the 0.14em tracking: on 11px capitals it pushed two-word
+                    // labels ("Total Registrations") onto a second line (2026-11-17).
+                    "line-clamp-2 break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground max-sm:tracking-normal",
                     // Label reads under the value on compact phones, and loses the
                     // 0.14em tracking that would push it past an 83px column.
                     metricCompact && "order-2 tracking-normal sm:order-none sm:tracking-[0.14em]"
                   )}>
-                    {metric.shortLabel && metricCompact ? (
+                    {metric.shortLabel ? (
                       <>
                         <span className="sm:hidden">{metric.shortLabel}</span>
                         <span className="hidden sm:inline">{metric.label}</span>

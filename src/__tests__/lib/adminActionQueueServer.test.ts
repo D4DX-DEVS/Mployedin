@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { getAdminActionQueue } from "@/lib/admin/actionQueue.server";
 import { PAYMENT_NOTICE_PENDING_FILTER, subscriptionsEndingFilter } from "@/lib/admin/queueFilters";
 import type { Resource } from "@/types/user";
@@ -11,7 +14,9 @@ const counts = {
   conversation: jest.fn(),
   contact: jest.fn(),
   review: jest.fn(),
+  task: jest.fn(),
 };
+const ADMIN = "64b0000000000000000000a0";
 const defaultPlanRoles = jest.fn();
 const demandBuckets = jest.fn();
 
@@ -24,6 +29,11 @@ jest.mock("@/models/GdprRequest", () => ({ __esModule: true, default: { countDoc
 jest.mock("@/models/Subscription", () => ({ __esModule: true, default: { countDocuments: (q: unknown) => counts.subscription(q) } }));
 jest.mock("@/models/Conversation", () => ({ __esModule: true, default: { countDocuments: (q: unknown) => counts.conversation(q) } }));
 jest.mock("@/models/ContactSubmission", () => ({ __esModule: true, default: { countDocuments: (q: unknown) => counts.contact(q) } }));
+jest.mock("@/models/AgentTask", () => ({
+  __esModule: true,
+  CLOSED_TASK_STATUSES: ["completed", "failed", "cancelled"],
+  default: { countDocuments: (q: unknown) => counts.task(q) },
+}));
 jest.mock("@/models/CompanyReview", () => ({ __esModule: true, default: { countDocuments: (q: unknown) => counts.review(q) } }));
 jest.mock("@/models/SubscriptionPlan", () => ({
   __esModule: true,
@@ -43,7 +53,7 @@ describe("getAdminActionQueue", () => {
 
   it("never queries a resource the admin cannot read", async () => {
     const allowed = new Set<Resource>(["jobs", "applications"]);
-    const items = await getAdminActionQueue((resource) => allowed.has(resource));
+    const items = await getAdminActionQueue((resource) => allowed.has(resource), ADMIN);
 
     expect(counts.invoice).not.toHaveBeenCalled();
     expect(counts.exhibition).not.toHaveBeenCalled();
@@ -55,7 +65,7 @@ describe("getAdminActionQueue", () => {
     counts.invoice.mockImplementation(async (query: Record<string, unknown>) =>
       JSON.stringify(query) === JSON.stringify(PAYMENT_NOTICE_PENDING_FILTER) ? 2 : 0,
     );
-    const items = await getAdminActionQueue(() => true);
+    const items = await getAdminActionQueue(() => true, ADMIN);
     expect(items.find((item) => item.id === "payment-notices")?.count).toBe(2);
     expect(counts.exhibition).toHaveBeenCalledWith({ status: "approved" });
   });
@@ -63,7 +73,7 @@ describe("getAdminActionQueue", () => {
   it("drops a row whose counter fails instead of failing the dashboard", async () => {
     counts.gdpr.mockRejectedValue(new Error("boom"));
     counts.commission.mockResolvedValue(3);
-    const items = await getAdminActionQueue(() => true);
+    const items = await getAdminActionQueue(() => true, ADMIN);
     expect(items.map((item) => item.id)).toContain("commissions-pending");
     expect(items.map((item) => item.id)).not.toContain("gdpr-pending");
   });
@@ -78,7 +88,7 @@ describe("new queue items", () => {
 
   it("counts company reviews waiting for moderation", async () => {
     counts.review.mockResolvedValue(3);
-    const items = await getAdminActionQueue(() => true);
+    const items = await getAdminActionQueue(() => true, ADMIN);
     expect(counts.review).toHaveBeenCalledWith({ status: "pending" });
     expect(items.find((item) => item.id === "company-reviews-pending")).toMatchObject({
       count: 3,
@@ -88,7 +98,7 @@ describe("new queue items", () => {
 
   it("counts each subscribing role that has no active default plan", async () => {
     defaultPlanRoles.mockResolvedValue(["employer"]);
-    const items = await getAdminActionQueue(() => true);
+    const items = await getAdminActionQueue(() => true, ADMIN);
     expect(defaultPlanRoles).toHaveBeenCalledWith("targetRole", {
       isActive: true,
       isDefault: true,
@@ -99,8 +109,36 @@ describe("new queue items", () => {
 
   it("takes jobs without applications from the shared demand buckets", async () => {
     demandBuckets.mockResolvedValue({ none: 43, low: 22 });
-    const items = await getAdminActionQueue(() => true);
+    const items = await getAdminActionQueue(() => true, ADMIN);
     expect(items.find((item) => item.id === "jobs-without-applications")?.count).toBe(43);
+  });
+});
+
+describe("task rows", () => {
+  beforeEach(() => {
+    Object.values(counts).forEach((mock) => mock.mockReset().mockResolvedValue(0));
+    defaultPlanRoles.mockReset().mockResolvedValue(["employer", "job_seeker"]);
+    demandBuckets.mockReset().mockResolvedValue({ none: 0, low: 0 });
+  });
+
+  it("counts this admin's waiting reports, overdue given tasks and own overdue tasks", async () => {
+    counts.task.mockImplementation(async (q: Record<string, unknown>) =>
+      q.reviewStatus === "awaiting_review" ? 2 : q.userId ? 1 : 4);
+    const items = await getAdminActionQueue(() => true, ADMIN);
+    const tasks = items.filter((item) => item.group === "tasks");
+    expect(tasks.map((item) => [item.id, item.count, item.path])).toEqual([
+      ["task-reports-waiting", 2, "/admin/tasks?tab=gave&review=awaiting_review"],
+      ["given-tasks-overdue", 4, "/admin/tasks?tab=gave&status=overdue"],
+      ["my-tasks-overdue", 1, "/admin/tasks?due=overdue"],
+    ]);
+    // Only tasks this admin gave or that were routed through them.
+    const waiting = counts.task.mock.calls.map((c) => c[0] as Record<string, unknown>).find((q) => q.reviewStatus);
+    expect(JSON.stringify(waiting?.$or)).toContain(ADMIN);
+  });
+
+  it("skips the task rows for an admin without task access", async () => {
+    await getAdminActionQueue((resource) => resource !== "tasks", ADMIN);
+    expect(counts.task).not.toHaveBeenCalled();
   });
 });
 

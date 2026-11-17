@@ -9,6 +9,8 @@ export interface AdminActionCounts {
   unreadContactSubmissions: number;
   /** Active webhooks whose last delivery failed. */
   failingWebhooks: number;
+  /** Task reports waiting for this admin's review. */
+  taskInbox: number;
 }
 
 const EMPTY: AdminActionCounts = {
@@ -16,6 +18,7 @@ const EMPTY: AdminActionCounts = {
   assignedSupportTickets: 0,
   unreadContactSubmissions: 0,
   failingWebhooks: 0,
+  taskInbox: 0,
 };
 
 /**

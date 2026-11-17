@@ -1609,7 +1609,7 @@ function EasyApplyFlow({
                   </span>
                   {/* A new tab, so this form and its answers stay put. */}
                   <a
-                    href={`/${locale}/job-seeker/cv`}
+                    href="/api/job-seeker/cv"
                     target="_blank"
                     rel="noopener"
                     className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"

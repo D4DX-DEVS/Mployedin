@@ -52,11 +52,14 @@ export function InlineFilterSearch({ value, onChange, placeholder, label, icon, 
   // its controls to their bottom edge, so the selects beside it still line up
   // with the box, not the label.
   return (
-    // Phones: search takes the whole first line; Filters, the selects and
-    // Export share the next one. Beside worded buttons it was left ~90px
-    // ("Search job s").
-    <div className={cn("min-w-0 flex-[2_1_14rem] max-sm:basis-full", className)}>
-      <label htmlFor={id} className="mb-1 block truncate text-xs font-medium text-muted-foreground">
+    // Phones: search fills the first line beside the icon-only Filters
+    // button (2026-11-17); anything wider (Export, worded buttons) wraps to
+    // the next line instead of squeezing the box ("Search job s").
+    <div className={cn("min-w-0 flex-[2_1_14rem]", className)}>
+      {/* Phones: the label is screen-reader only; the magnifier and the
+          placeholder already say "search", and the visible word cost the row
+          a line of its own (2026-11-17). */}
+      <label htmlFor={id} className="mb-1 block truncate text-xs font-medium text-muted-foreground max-sm:sr-only">
         {label ?? t("search")}
       </label>
       <div className="relative">
@@ -200,9 +203,18 @@ export function InlineFilterBar({
             {hasExport && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-11 gap-1.5 rounded-lg px-3 sm:h-9">
-                    <Download className="h-3.5 w-3.5 max-sm:hidden" aria-hidden="true" />
-                    <span>{t("export")}</span>
+                  {/* Phones: icon-only square like the Filters button, so search +
+                      Filters + Export share one line. Worded, it wrapped onto a
+                      line of its own under the search (2026-11-17). */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label={t("export")}
+                    title={t("export")}
+                    className="h-11 gap-1.5 rounded-lg px-3 max-sm:w-11 max-sm:p-0 sm:h-9"
+                  >
+                    <Download className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
+                    <span className="max-sm:sr-only">{t("export")}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-40">

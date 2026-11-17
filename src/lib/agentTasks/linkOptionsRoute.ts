@@ -5,6 +5,7 @@ import { searchTaskLinkOptions } from "./links";
 import { taskLinkTypeSchema } from "@/lib/validators/agent-tasks";
 import { assigneeLinkCtx, assigneeScope } from "./assigned";
 import { isValidObjectId } from "@/lib/security/sanitize";
+import User from "@/models/User";
 
 /**
  * GET ?type=candidate|job|employer&q=&jobId=&employerId=
@@ -29,12 +30,18 @@ async function getHandler(req: NextRequest, ctx: AuthContext) {
       return NextResponse.json({ error: "Invalid agent" }, { status: 400 });
     }
     await connectDB();
-    const scope = await assigneeScope(ctx);
-    if (scope !== "all" && !scope.some((id) => String(id) === forAgent)) {
-      return NextResponse.json({ error: "That agent isn't in your team" }, { status: 403 });
+    // Admin giving a task to a super agent: search as that super agent.
+    const forSuperAgent = ctx.role === "admin" && Boolean(await User.exists({ _id: forAgent, role: "super_agent" }));
+    if (forSuperAgent) {
+      searchCtx = assigneeLinkCtx(forAgent, "super_agent");
+    } else {
+      const scope = await assigneeScope(ctx);
+      if (scope !== "all" && !scope.some((id) => String(id) === forAgent)) {
+        return NextResponse.json({ error: "That agent isn't in your team" }, { status: 403 });
+      }
+      searchCtx = assigneeLinkCtx(forAgent);
     }
-    searchCtx = assigneeLinkCtx(forAgent);
-  } else if (ctx.role !== "agent" && ctx.role !== "admin") {
+  } else if (ctx.role !== "agent" && ctx.role !== "admin" && ctx.role !== "super_agent") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const type = taskLinkTypeSchema.safeParse(url.searchParams.get("type"));

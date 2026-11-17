@@ -16,6 +16,8 @@ export type NavBadgeKey =
   | "pendingExhibitionReviews"
   | "pendingCommissionApprovals"
   | "overdueTasks"
+  /** Admin / super agent Tasks: given to them and still open, plus reports waiting for their review. */
+  | "taskInbox"
   | "dueFollowUps";
 
 export interface NavItem {
@@ -196,12 +198,13 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
                 groupAr: "القوى العاملة",
               },
               {
-                title: "Agent Tasks",
-                titleAr: "مهام الوكلاء",
-                href: p("/admin/agent-tasks"),
+                title: "Tasks",
+                titleAr: "المهام",
+                href: p("/admin/tasks"),
                 icon: "CheckSquare",
-                description: "Assign & review agent tasks",
-                descriptionAr: "تعيين ومراجعة مهام الوكلاء",
+                badgeKey: "taskInbox",
+                description: "Your own tasks, and tasks you gave agents",
+                descriptionAr: "مهامك الخاصة والمهام التي أسندتها للوكلاء",
                 group: "Workforce",
                 groupAr: "القوى العاملة",
               },
@@ -759,12 +762,13 @@ function buildNav(locale: string): Record<UserRole, NavGroup[]> {
             descriptionAr: "الفريق والأهداف والعمولات والسوق",
           },
           {
-            title: "Agent Tasks",
-            titleAr: "مهام الوكلاء",
+            title: "Tasks",
+            titleAr: "المهام",
             href: p("/super-agent/tasks"),
             icon: "CheckSquare",
-            description: "Assign & review team tasks",
-            descriptionAr: "تعيين ومراجعة مهام الفريق",
+            badgeKey: "taskInbox",
+            description: "Your own tasks, and tasks you gave your team",
+            descriptionAr: "مهامك الخاصة والمهام التي أسندتها لفريقك",
           },
           {
             title: "Exhibitions",

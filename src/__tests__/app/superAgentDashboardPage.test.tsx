@@ -15,6 +15,8 @@ jest.mock("next/navigation", () => ({
   redirect: (url: string) => redirectMock(url),
 }));
 
+// The task summary cards fetch on the client (React Query); this tests the server layout.
+jest.mock("@/components/features/tasks/TaskSummaryCards", () => ({ TaskSummaryCards: () => null }));
 jest.mock("@/lib/db/mongoose", () => ({
   connectDB: jest.fn().mockResolvedValue(undefined),
 }));

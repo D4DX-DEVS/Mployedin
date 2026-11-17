@@ -119,17 +119,33 @@ export function PhoneRecordList({ items, loading, empty, className, label, compa
               </div>
             </div>
 
+            {/* Meta lines flow side by side and wrap only when they do not fit
+                (2026-11-17): one fact per line made every phone card a column
+                of half-empty rows ("No region set" / "Oct 21, 2026"). */}
             {item.meta && (
-              <div className={cn("mt-1 space-y-0.5 text-muted-foreground", compact ? "text-[11px]" : "text-xs", hasLeading && UNDER_TITLE)}>{item.meta}</div>
+              // `!flex-nowrap`: the admin shell makes every flex row wrap
+              // (globals.css), which split an icon from its text here.
+              <div className={cn("mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-muted-foreground [&>*]:max-w-full [&>.flex]:!flex-nowrap", compact ? "text-[11px]" : "text-xs", hasLeading && UNDER_TITLE)}>{item.meta}</div>
             )}
 
-            {item.badges && (
+            {/* With a footer, badges ride at its start instead of a row of their
+                own; the footer wraps them above the buttons when both don't fit. */}
+            {item.badges && !item.actions && (
               <div className={cn("relative z-10 flex flex-wrap items-center text-[11px]", compact ? "mt-1.5 gap-1" : "mt-2 gap-1.5", hasLeading && UNDER_TITLE)}>
                 {item.badges}
               </div>
             )}
 
-            {item.stats && item.stats.length > 0 && (
+            {/* One figure reads as a single line, label then value, instead of a
+                two-line box (admin commissions, 2026-11-17). */}
+            {item.stats && item.stats.length === 1 && !item.actions && (
+              <dl className="mt-2 flex items-baseline justify-between gap-2 rounded-lg bg-muted/40 px-3 py-1.5">
+                <dt className="truncate text-[11px] text-muted-foreground">{item.stats[0].label}</dt>
+                <dd className="shrink-0 text-sm font-semibold tabular-nums text-foreground">{item.stats[0].value}</dd>
+              </dl>
+            )}
+
+            {item.stats && item.stats.length > 1 && (
               <dl
                 className={cn(
                   "mt-2.5 grid divide-x divide-border/60 rounded-lg bg-muted/40 py-1.5 text-center rtl:divide-x-reverse",
@@ -157,6 +173,19 @@ export function PhoneRecordList({ items, loading, empty, className, label, compa
                 "phone-record-actions relative z-10 flex min-w-0 flex-wrap items-center justify-end gap-2 border-t border-border/60 [&>*]:max-w-full [&>div]:flex-wrap [&>div]:justify-end [&>span]:flex-wrap [&>span]:justify-end",
                 compact ? "mt-1.5 pt-1.5 [&_button]:!min-h-9 [&_button]:!text-xs [&_a]:!min-h-9" : "mt-2.5 pt-2.5",
               )}>
+                {(item.badges || item.stats?.length === 1) && (
+                  <span data-phone-card-badges="" className="me-auto flex min-w-0 flex-wrap items-center gap-1.5 text-[11px]">
+                    {/* A lone figure rides here too: "Commission 0%" beside the
+                        buttons, not a boxed row above them. */}
+                    {item.stats?.length === 1 && (
+                      <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+                        <span className="text-muted-foreground">{item.stats[0].label}</span>
+                        <span className="text-sm font-semibold tabular-nums text-foreground">{item.stats[0].value}</span>
+                      </span>
+                    )}
+                    {item.badges}
+                  </span>
+                )}
                 {item.actions}
               </div>
             )}

@@ -17,7 +17,7 @@ jest.mock("next/link", () => ({
   ),
 }));
 
-import { TaskLinkChips } from "@/app/[locale]/(dashboard)/agent/tasks/_components/TaskLinkChips";
+import { TaskLinkChips } from "@/components/features/tasks/TaskLinkChips";
 
 describe("TaskLinkChips employer contact menu", () => {
   it("shows the profile email and phone with message, email, call, WhatsApp and jobs actions", async () => {

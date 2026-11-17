@@ -31,15 +31,17 @@ export function PhoneFiltersButton({ activeCount, onClick, className }: PhoneFil
       data-phone-filters=""
       aria-label={activeCount > 0 ? t("filtersOn", { count: activeCount }) : t("filters")}
       className={cn(
-        "h-11 shrink-0 gap-1.5 rounded-lg px-3 text-sm sm:hidden",
+        // Icon-only square so it shares the search box's line on phones
+        // (owner, 2026-11-17: the worded button took a line of its own).
+        // The name stays in aria-label; the count rides the corner.
+        "relative h-11 w-11 min-h-11 shrink-0 rounded-lg p-0 sm:hidden sm:h-11",
         activeCount > 0 && "border-primary/30 bg-primary/10 text-primary hover:bg-primary/15",
         className,
       )}
     >
       <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-      <span className="max-[359px]:sr-only">{t("filters")}</span>
       {activeCount > 0 && (
-        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">
+        <span aria-hidden="true" className="absolute -end-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">
           {activeCount}
         </span>
       )}

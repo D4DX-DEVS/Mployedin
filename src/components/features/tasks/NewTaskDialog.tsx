@@ -18,18 +18,25 @@ interface NewTaskDialogProps {
   categoryOptions: { value: string; label: string }[];
   priorityOptions: { value: string; label: string }[];
   onCreated: () => void;
+  /** The caller's own task list API (agent, super agent or admin). */
+  apiBase?: string;
+  /** Where the record pickers search: the caller's own reach. */
+  linkOptionsEndpoint?: string;
 }
 
 const EMPTY = { title: "", description: "", priority: "medium", category: "follow_up", dueDate: "" };
 
 /**
- * The agent's New task dialog, on the shared StepFormDialog frame: step 1 is
+ * The New task dialog for anyone's own list (agent, super agent, admin), on the shared StepFormDialog frame: step 1 is
  * what the task says, step 2 the candidate, job and/or employer it is about
  * (picked from the records the agent works with; the task row then links
  * straight to them). Two short steps instead of one form that scrolled.
  * Closing it discards the draft.
  */
-export function NewTaskDialog({ open, onOpenChange, categoryOptions, priorityOptions, onCreated }: NewTaskDialogProps) {
+export function NewTaskDialog({
+  open, onOpenChange, categoryOptions, priorityOptions, onCreated,
+  apiBase = "/api/agent/tasks", linkOptionsEndpoint = "/api/agent/tasks/link-options",
+}: NewTaskDialogProps) {
   const t = useTranslations("agentTasks");
   const tc = useTranslations("common");
   const [form, setForm] = useState(EMPTY);
@@ -65,7 +72,7 @@ export function NewTaskDialog({ open, onOpenChange, categoryOptions, priorityOpt
   // Portalled to the body (modal, so it still scrolls and takes clicks inside
   // the dialog): rendered inside the step frame, a list near the foot was
   // clipped by the frame's overflow.
-  const pickerProps = { loadingMessage: tc("searching"), modal: true };
+  const pickerProps = { loadingMessage: tc("searching"), modal: true, endpoint: linkOptionsEndpoint };
 
   // BUG-12: name the field failure instead of a generic "Validation failed".
   const validateTask = () =>
@@ -75,7 +82,7 @@ export function NewTaskDialog({ open, onOpenChange, categoryOptions, priorityOpt
     setError("");
     setSaving(true);
     try {
-      const res = await csrfFetch("/api/agent/tasks", {
+      const res = await csrfFetch(apiBase, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -151,7 +158,7 @@ export function NewTaskDialog({ open, onOpenChange, categoryOptions, priorityOpt
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="new-task-due">{t("columnDueDate")}</Label>
-        <DateTimePicker mode="date" value={form.dueDate} onChange={(v) => setForm((p) => ({ ...p, dueDate: v }))} />
+        <DateTimePicker mode="date" minDate={new Date()} value={form.dueDate} onChange={(v) => setForm((p) => ({ ...p, dueDate: v }))} />
       </div>
     </>
   );

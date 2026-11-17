@@ -183,6 +183,13 @@ export const subscriptionReminderCron = makeScheduledCron({
   path: "/api/cron/subscription-reminder",
 });
 
+export const taskRemindersCron = makeScheduledCron({
+  id: "scheduled-task-reminders",
+  name: "Task Reminders — due tomorrow / overdue (07:00)",
+  cron: "0 7 * * *",
+  path: "/api/cron/task-reminders",
+});
+
 /** All scheduled cron functions, for registration in the Inngest serve route. */
 export const scheduledCronFunctions = [
   interviewRemindersCron,
@@ -199,4 +206,5 @@ export const scheduledCronFunctions = [
   slaAlertsCron,
   strongCandidateAlertsCron,
   subscriptionReminderCron,
+  taskRemindersCron,
 ];

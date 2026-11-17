@@ -9,11 +9,14 @@ import { formatDateTime } from "@/lib/ui/intlFormat";
 import type { AgentTaskStatus } from "./TaskStatusDialog";
 
 interface HistoryItem {
-  action: "created" | "assigned" | "status" | "submitted" | "approved" | "returned";
+  action: "created" | "assigned" | "status" | "submitted" | "approved" | "returned"
+    | "withdrawn" | "reassigned" | "due_changed" | "review_switch";
   from?: AgentTaskStatus;
   to?: AgentTaskStatus;
   note?: string;
   byName: string;
+  fromName?: string;
+  toName?: string;
   at: string;
 }
 
@@ -24,6 +27,10 @@ const DOT: Record<HistoryItem["action"], string> = {
   submitted: "bg-amber-500",
   approved: "bg-emerald-500",
   returned: "bg-amber-600",
+  withdrawn: "bg-zinc-400",
+  reassigned: "bg-indigo-500",
+  due_changed: "bg-slate-500",
+  review_switch: "bg-slate-500",
 };
 
 /**
@@ -56,6 +63,7 @@ export function TaskHistoryTimeline({ url }: { url: string }) {
     s === "in_progress" ? t("statusInProgress")
     : s === "completed" ? t("statusCompleted")
     : s === "failed" ? t("statusFailed")
+    : s === "cancelled" ? t("statusWithdrawn")
     : t("statusPending");
 
   const line = (item: HistoryItem) => {
@@ -66,6 +74,10 @@ export function TaskHistoryTimeline({ url }: { url: string }) {
       case "submitted": return t("historySubmitted", { to: statusLabel(item.to) });
       case "approved": return t("historyApproved", { to: statusLabel(item.to) });
       case "returned": return t("historyReturned");
+      case "withdrawn": return t("historyWithdrawn");
+      case "reassigned": return t("historyReassigned", { from: item.fromName || "—", to: item.toName || "—" });
+      case "due_changed": return t("historyDueChanged");
+      case "review_switch": return t("historyReviewSwitch");
     }
   };
 

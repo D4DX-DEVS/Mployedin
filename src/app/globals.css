@@ -1915,19 +1915,20 @@ input::placeholder {
    button floor, so each chip in Preferences / Personal details rendered ~50px
    tall and wide. The chip keeps its size; the x keeps a 44px hit area through
    an overlay instead. Scoped to the seeker frame (employer pages unchanged).
-   Unlayered, so it beats the layered 44px rule. */
+   Unlayered, so it beats the layered 44px rule. The CV review window on the
+   public job page (data-cv-review) gets the same chips. */
 @media (max-width: 639px) {
-  .job-seeker-route-content [data-tag-remove] {
+  :is(.job-seeker-route-content, [data-cv-review]) [data-tag-remove] {
     position: relative;
     min-height: 0;
     min-width: 0;
   }
   /* The chips share a line with the 44px text input; centre them instead of
      stretching them to its height. */
-  .job-seeker-route-content :has(> span > [data-tag-remove]) {
+  :is(.job-seeker-route-content, [data-cv-review]) :has(> span > [data-tag-remove]) {
     align-items: center;
   }
-  .job-seeker-route-content [data-tag-remove]::after {
+  :is(.job-seeker-route-content, [data-cv-review]) [data-tag-remove]::after {
     content: "";
     position: absolute;
     top: 50%;
@@ -2348,6 +2349,21 @@ body:has([data-copilot-launcher]) .copilot-fab-button {
      z-90, above the panel's z-70) would cover the message box and Send. */
   body:has(.copilot-panel) [data-bottom-nav] {
     display: none;
+  }
+}
+
+/* Expand button in the Copilot header: a wide, full-height panel from under
+   the top bar (4rem) down to the dock. Phones are full-screen already. */
+@media (min-width: 640px) {
+  .copilot-panel.copilot-panel-expanded {
+    width: min(560px, calc(100vw - 2rem));
+    height: calc(100dvh - 4rem - 4.5rem - env(safe-area-inset-bottom) - 0.5rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .copilot-panel.copilot-panel-expanded {
+    height: calc(100dvh - 5.5rem);
   }
 }
 
@@ -5076,7 +5092,9 @@ table.workspace-list-table tbody tr:focus-visible {
 @media (max-width: 639px) {
   /* Only a wrapper holding a text button spans the row; a lone icon button
      stays at the end instead of being stranded at the start. */
-  .phone-record-actions > :is(div, span):has(> :is(button, a):not([data-icon-only]):not([aria-haspopup="menu"]):not(.h-10.w-10):not(.h-9.w-9):not(.h-8.w-8)) { width: 100%; }
+  /* Not when the card's badges ride at the footer's start (PhoneRecordList,
+     2026-11-17): a full-width button row pushed them onto a line of their own. */
+  .phone-record-actions:not(:has(> [data-phone-card-badges])) > :is(div, span):has(> :is(button, a):not([data-icon-only]):not([aria-haspopup="menu"]):not(.h-10.w-10):not(.h-9.w-9):not(.h-8.w-8)) { width: 100%; }
   .phone-record-actions > :is(button, a),
   .phone-record-actions > * > :is(button, a) {
     flex: 1 1 auto;

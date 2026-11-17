@@ -5,6 +5,7 @@ import Conversation from "@/models/Conversation";
 import ContactSubmission from "@/models/ContactSubmission";
 import Webhook from "@/models/Webhook";
 import { OPEN_SUPPORT_TICKET_FILTER } from "@/lib/admin/queueFilters";
+import { taskInboxCount } from "@/lib/agentTasks/inbox";
 
 /**
  * GET /api/admin/action-counts — what is waiting on this admin right now.
@@ -26,7 +27,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
 
   await connectDB();
 
-  const [openSupportTickets, assignedSupportTickets, unreadContactSubmissions, failingWebhooks] =
+  const [openSupportTickets, assignedSupportTickets, unreadContactSubmissions, failingWebhooks, taskInbox] =
     await Promise.all([
       Conversation.countDocuments(OPEN_SUPPORT_TICKET_FILTER),
       // Tickets this particular admin owns. The badge shows the queue total, but
@@ -34,6 +35,8 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
       Conversation.countDocuments({ ...OPEN_SUPPORT_TICKET_FILTER, "customerCare.assignedTo": ctx.userId }),
       ContactSubmission.countDocuments({ isRead: false }),
       Webhook.countDocuments({ isActive: true, lastStatus: "failed" }),
+      // Reports waiting for this admin's review (Tasks nav badge).
+      taskInboxCount(ctx),
     ]);
 
   return NextResponse.json({
@@ -41,6 +44,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     assignedSupportTickets,
     unreadContactSubmissions,
     failingWebhooks,
+    taskInbox,
   });
 }, { resource: "users", action: "read" });
 
