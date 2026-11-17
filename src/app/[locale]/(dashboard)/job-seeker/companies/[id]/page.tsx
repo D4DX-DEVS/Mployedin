@@ -11,6 +11,7 @@ import RelativeDate from "@/components/shared/RelativeDate";
 import { connectDB } from "@/lib/db/mongoose";
 import Employer from "@/models/Employer";
 import Job from "@/models/Job";
+import { formatSalary, type SalaryTranslate } from "@/lib/ui/salaryDisplay";
 import { formatCount } from "@/lib/ui/intlFormat";
 
 interface PageProps {
@@ -53,6 +54,7 @@ interface EmployerJob {
     min?: number;
     max?: number;
     currency?: string;
+    period?: string;
   };
   requirements?: {
     experienceMin?: number;
@@ -76,15 +78,9 @@ function normalizeExternalUrl(url?: string) {
   return `https://${url}`;
 }
 
-function salaryLabel(salary?: EmployerJob["salary"], salaryFromLabel?: string) {
-  if (!salary?.min && !salary?.max) return null;
-  if (salary.min && salary.max) {
-    return `${salary.currency ?? "AED"} ${formatCount(salary.min)} - ${formatCount(salary.max)}`;
-  }
-  if (salary.min) {
-    return `${salaryFromLabel || "From"} ${salary.currency ?? "AED"} ${formatCount(salary.min)}`;
-  }
-  return null;
+function salaryLabel(salary: EmployerJob["salary"], tSalary: SalaryTranslate) {
+  // The job's own period, as on the job page; this printed none at all.
+  return formatSalary(salary, tSalary, (n) => formatCount(n));
 }
 
 function employerLocation(employer: EmployerProfile, locationFlexibleLabel?: string) {
@@ -152,6 +148,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function JobSeekerCompanyPage({ params }: PageProps) {
   const { locale, id } = await params;
   const t = await getTranslations("jobSeekerCompanyDetail");
+  const tSalary = (await getTranslations("salaryDisplay")) as unknown as SalaryTranslate;
   const tn = await getTranslations("nav");
   const profile = await getEmployerProfile(id);
 
@@ -280,7 +277,7 @@ export default async function JobSeekerCompanyPage({ params }: PageProps) {
                 {activeJobs.length > 0 ? (
                   <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
                     {activeJobs.map((job) => {
-                      const salary = salaryLabel(job.salary, t("salaryFrom"));
+                      const salary = salaryLabel(job.salary, tSalary);
                       const locationLabel = job.location?.isRemote
                         ? t("remote")
                         : [job.location?.city, job.location?.country].filter(Boolean).join(", ") || t("locationFlexible");

@@ -26,6 +26,7 @@ import { ApplicationUpdates } from "./ApplicationUpdates";
 import { CvSentCard } from "./CvSentCard";
 import type { AppliedJobSnippet, DashboardStats, HomeResume } from "./homeData";
 import { JobSummaryCard } from "@/components/features/job-seeker/JobSummaryCard";
+import { GateReasonBadge } from "@/components/features/job-seeker/GateReasonBadge";
 import { SaveJobButton } from "@/components/features/job-seeker/saved/SaveJobButton";
 import { useSavedJobIds } from "@/components/features/job-seeker/saved/useSavedJobs";
 
@@ -52,11 +53,13 @@ type FeedJob = {
   matchScore: number;
   /** At or above the admin threshold — the jobs the digest email would send. */
   recommended?: boolean;
+  /** The hard gate this job fails, when it fails one. */
+  ineligibleReason?: string;
   employmentType?: string;
   skills?: string[];
   matchedSkills?: string[];
   location?: { city?: string; country?: string; isRemote?: boolean };
-  salary?: { min?: number; max?: number; currency?: string };
+  salary?: { min?: number; max?: number; currency?: string; period?: string };
   employerId?: { _id?: string; companyName?: string; logo?: string } | null;
 };
 
@@ -598,6 +601,7 @@ export function JobSeekerHomePage({
                         ? { _id: job.employerId._id, name: job.employerId.companyName, logo: job.employerId.logo }
                         : null,
                     }}
+                    statusSlot={job.ineligibleReason ? <GateReasonBadge reason={job.ineligibleReason} /> : undefined}
                     bookmark={<SaveJobButton jobId={job._id} />}
                     actions={
                       <>

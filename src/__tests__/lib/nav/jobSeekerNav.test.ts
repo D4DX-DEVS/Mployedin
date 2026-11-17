@@ -27,6 +27,7 @@ const NOT_IN_MENU = new Set([
   "/job-seeker/companies/[id]",
   "/job-seeker/applications/[id]",
   "/job-seeker/applications/[id]/feedback",
+  "/job-seeker/applications/[id]/screening-answers",
   // Folded into Interviews as a view toggle.
   "/job-seeker/calendar",
   // Delivery channels / digest / unsubscribe. Not a menu entry: it is linked

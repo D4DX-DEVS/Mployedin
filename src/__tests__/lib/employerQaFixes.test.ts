@@ -64,7 +64,7 @@ const baseForm = {
   location: { country: "AE", city: "Dubai", isRemote: false },
   description: "We are hiring a backend engineer to build and run our APIs.",
   // Required since 2026-11-12 (D10): a level, or 0 for "No minimum".
-  requirements: { skills: [], preferredSkills: [], experienceMin: 2, experienceMax: 8, educationLevel: 0 },
+  requirements: { skills: ["Node.js"], preferredSkills: [], experienceMin: 2, experienceMax: 8, educationLevel: 0 },
   salary: { min: 5000, max: 9000, currency: "USD", isNegotiable: false, period: "monthly" },
 };
 
@@ -120,6 +120,7 @@ describe("jobCreateSchema (server)", () => {
     title: "Senior Backend Engineer",
     description: "We are hiring a backend engineer to build and run our APIs.",
     location: { country: "AE", city: "Dubai", isRemote: false },
+    requirements: { skills: ["Node.js"] },
   };
 
   it("rejects a numeric-only city", () => {

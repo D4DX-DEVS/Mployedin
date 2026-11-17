@@ -46,7 +46,7 @@ describe.each(Object.keys(GROUP_ENTRIES) as ClientMessageGroup[])("%s group", (g
 
 it("hands a group only the sub-tree it lists, not the namespace around it", () => {
   const picked = pickMessages(en as never, "public") as Record<string, Record<string, unknown>>;
-  expect(Object.keys(picked.cvBuilderPage).sort()).toEqual(["previewSections", "proficiency"]);
+  expect(Object.keys(picked.cvBuilderPage).sort()).toEqual(["monthPicker", "previewSections", "proficiency", "templatePicker"]);
   expect(picked.cvBuilderPage.previewSections).toEqual((en.cvBuilderPage as Record<string, unknown>).previewSections);
   expect(picked.easyApply).toBe(en.easyApply);
 });

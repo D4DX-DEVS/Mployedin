@@ -19,7 +19,7 @@ export const CLIENT_NAMESPACES = {
   public: [
     // common: the Dialog close label (the sign-up consent dialog in EasyApply).
     "a11y", "auth", "calendar", "common", "companyReviews", "easyApply", "errorBoundary", "footer",
-    "landing", "nav", "publicJobDetail", "salaryExplorer", "similarJobs", "socialShare",
+    "landing", "nav", "publicJobDetail", "salaryDisplay", "salaryExplorer", "similarJobs", "socialShare",
     // The headings a CV PDF is printed with: a signed-in seeker can send the CV
     // they built on Mployedin from the public job page (EasyApply). Two
     // sub-trees, not the whole builder namespace.

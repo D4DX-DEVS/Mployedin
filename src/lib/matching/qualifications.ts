@@ -24,7 +24,7 @@
 import type { SeekerProfile, JobProfile } from "@/lib/matchScore";
 import { workModePenalty } from "@/lib/matchScore";
 import { countryKey } from "@/lib/i18n/locations";
-import { expectationInJobCurrency, monthlySalaryMidpoint } from "@/lib/matching/eligibility";
+import { expectationInJobCurrency, monthlySalaryCeiling } from "@/lib/matching/eligibility";
 import type { RelevanceBreakdown } from "@/lib/matching/relevance";
 import { SALARY_TOLERANCE } from "@/lib/matching/constants";
 import { describeKnockout, evaluateKnockout, type KnockoutRule } from "@/lib/matching/knockouts";
@@ -216,22 +216,32 @@ function locationCheck(seeker: SeekerProfile, job: JobProfile, locality?: Locali
 
 function salaryCheck(seeker: SeekerProfile, job: JobProfile): QualificationCheck | null {
   if (!(seeker.salaryExpectation > 0)) return null;
-  const mid = monthlySalaryMidpoint(job);
-  if (!(mid > 0)) return null;
-  const expected = expectationInJobCurrency(seeker, job);
+  // Same comparison as the salary gate (eligibility.ts): the most the job pays
+  // against the least the seeker will take, so "not met" here is exactly the
+  // case the gate drops.
+  const ceiling = monthlySalaryCeiling(job);
+  if (!(ceiling > 0)) return null;
+  const floorAsked = seeker.salaryFloor ?? seeker.salaryExpectation;
+  const expected = expectationInJobCurrency(seeker, job, floorAsked);
   if (expected == null) return null;
   const seekerCur = (seeker.salaryCurrency ?? "").toUpperCase().trim();
   const jobCur = (job.salaryCurrency ?? "").toUpperCase().trim();
   const status: QualificationStatus =
-    expected <= mid ? "met" : mid >= expected * SALARY_TOLERANCE ? "partial" : "not_met";
+    expected <= ceiling ? "met" : ceiling >= expected * SALARY_TOLERANCE ? "partial" : "not_met";
   const cur = jobCur || seekerCur;
   const money = (n: number, c = cur) => `${c ? `${c} ` : ""}${Math.round(n)}`;
   // Converted: show the figure in the job's currency and what the seeker typed.
   const converted = Boolean(seekerCur && jobCur && seekerCur !== jobCur);
   const actual = converted
-    ? `≈ ${money(expected)} (${money(seeker.salaryExpectation, seekerCur)})`
+    ? `≈ ${money(expected)} (${money(floorAsked, seekerCur)})`
     : money(expected);
-  return { key: "salary", status, hard: false, required: money(mid), actual };
+  // The job's own range, as advertised (monthly): its top decides the status.
+  const perYear = job.salaryPeriod === "yearly" || job.salaryPeriod === "lpa";
+  const bottom = job.salaryMin > 0 ? job.salaryMin * (job.salaryPeriod === "lpa" && job.salaryMin < 1000 ? 100_000 : 1) / (perYear ? 12 : 1) : 0;
+  const required = bottom > 0 && Math.round(bottom) !== Math.round(ceiling)
+    ? `${money(bottom)}–${Math.round(ceiling)}`
+    : money(ceiling);
+  return { key: "salary", status, hard: false, required, actual };
 }
 
 function workModeCheck(seeker: SeekerProfile, job: JobProfile): QualificationCheck | null {

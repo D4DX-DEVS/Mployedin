@@ -91,6 +91,7 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
     // Once per prefilled text: a level the poster picks is never overwritten.
   }, [educationText]);
   const educationError = errors.requirements?.educationLevel ? tExtras("education.required") : null;
+  const skillsError = errors.requirements?.skills && rawSkills.length === 0 ? t("skillsRequired") : null;
 
   // Bridge between string[] (form) and Skill[] (SkillsChips)
   const skillObjects: Skill[] = rawSkills.map((name) => ({ name }));
@@ -167,15 +168,22 @@ export function Step3Requirements({ suggestedSkills = [] }: Step3RequirementsPro
             </Badge>
           </div>
 
-          <SkillsChips
-            label=""
-            value={skillObjects}
-            onChange={handleSkillsChange}
-            maxSkills={30}
-            showLevels={false}
-            enableAISuggest={false}
-            placeholder={t("requiredSkillsPlaceholder")}
-          />
+          <div id="job-required-skills" aria-invalid={skillsError ? true : undefined} aria-describedby={skillsError ? "job-required-skills-error" : undefined}>
+            <SkillsChips
+              label=""
+              value={skillObjects}
+              onChange={handleSkillsChange}
+              maxSkills={30}
+              showLevels={false}
+              enableAISuggest={false}
+              placeholder={t("requiredSkillsPlaceholder")}
+            />
+          </div>
+          {skillsError && (
+            <p id="job-required-skills-error" role="alert" className="text-xs text-destructive">
+              {skillsError}
+            </p>
+          )}
 
           {quickAddChips.length > 0 && (
             <div className="space-y-2 rounded-xl border border-dashed border-primary/30 bg-primary/[0.03] chip-pad">

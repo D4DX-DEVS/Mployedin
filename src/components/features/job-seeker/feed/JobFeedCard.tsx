@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShareJob } from "@/components/shared/ShareJob";
 import { SaveJobButton } from "@/components/features/job-seeker/saved/SaveJobButton";
 import { JobSummaryCard, type JobSummary } from "@/components/features/job-seeker/JobSummaryCard";
+import { GateReasonBadge } from "@/components/features/job-seeker/GateReasonBadge";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,8 @@ export interface FeedJob {
   matchedSkills?: string[];
   /** Set by the engine: eligible and at or above the admin threshold. Absent in search results. */
   recommended?: boolean;
+  /** The hard gate this job fails, when it fails one (it then sorts lower). */
+  ineligibleReason?: string;
   views?: number;
   uniqueViews?: number;
 }
@@ -109,8 +112,11 @@ export const JobFeedCard = memo(function JobFeedCard({
       showMatchScore={showMatchScore}
       statusSlot={
         // At most one status pill: two optional pills stacked meant a card grew
-        // a row its neighbour did not have.
-        urgent ? (
+        // a row its neighbour did not have. A failed gate comes first: it is
+        // why this job sits below lower-scored ones.
+        job.ineligibleReason && showMatchScore ? (
+          <GateReasonBadge reason={job.ineligibleReason} />
+        ) : urgent ? (
           <Badge variant="destructive" dot className="py-0 text-[11px]">
             {t("urgent")}
           </Badge>

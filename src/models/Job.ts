@@ -21,6 +21,8 @@ export interface IJobRequirements {
   aiPreferredSkills?: string[];
   /** When the extraction last ran, so a backfill can skip what it has done. */
   aiSkillsAt?: Date;
+  /** Last extraction attempt that found nothing (short description, provider down); retried after a day. */
+  aiSkillsCheckedAt?: Date;
   experienceMin: number;
   experienceMax: number;
   education?: string;
@@ -253,6 +255,7 @@ const JobSchema = new Schema<IJob>(
       aiSkills: [String],
       aiPreferredSkills: [String],
       aiSkillsAt: Date,
+      aiSkillsCheckedAt: Date,
       experienceMin: { type: Number, default: 0 },
       experienceMax: { type: Number, default: 30 },
       education: String,
@@ -291,8 +294,10 @@ const JobSchema = new Schema<IJob>(
     benefitsAr: [String],
     learningOutcomes: [String],
     salary: {
-      min: Number,
-      max: Number,
+      // The API validator already refuses a negative figure; a job saved past
+      // it (import, script) read "-100–9,000 AED" on the seeker's card.
+      min: { type: Number, min: 0 },
+      max: { type: Number, min: 0 },
       currency: { type: String, default: "AED" },
       isNegotiable: { type: Boolean, default: false },
       period: { type: String, enum: ["monthly", "yearly", "lpa"], default: "monthly" },

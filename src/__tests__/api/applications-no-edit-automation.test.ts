@@ -14,6 +14,7 @@ const APP_ID = "64b000000000000000000003";
 
 const notifyRejected = jest.fn().mockResolvedValue(undefined);
 const notifyStatusChange = jest.fn().mockResolvedValue(undefined);
+const notifyInterviewSelected = jest.fn().mockResolvedValue(undefined);
 
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/audit/log", () => ({
@@ -23,7 +24,7 @@ jest.mock("@/lib/audit/log", () => ({
 jest.mock("@/lib/logger", () => ({ __esModule: true, default: { error: jest.fn(), info: jest.fn(), warn: jest.fn() } }));
 jest.mock("@/lib/notifications/trigger", () => ({
   notify: jest.fn().mockResolvedValue(undefined),
-  notifyInterviewSelected: jest.fn().mockResolvedValue(undefined),
+  notifyInterviewSelected: (...args: unknown[]) => notifyInterviewSelected(...args),
   notifyOfferMade: jest.fn().mockResolvedValue(undefined),
   notifyRejected: (...args: unknown[]) => notifyRejected(...args),
   notifyStatusChange: (...args: unknown[]) => notifyStatusChange(...args),
@@ -94,6 +95,7 @@ describe("PATCH /api/applications/[id] never automates", () => {
     saveMock.mockClear();
     notifyRejected.mockClear();
     notifyStatusChange.mockClear();
+    notifyInterviewSelected.mockClear();
     jobWorkflow = undefined;
     employerWorkflow = undefined;
   });
@@ -119,15 +121,25 @@ describe("PATCH /api/applications/[id] never automates", () => {
   });
 
   it("candidate notifications follow the resolved notifyOnStageChange rule (job over employer)", async () => {
+    // Shortlisted is silent for the seeker since 2026-11-13 (seekerStatus), so
+    // the rule is checked on a move that does notify: selected for interview.
     employerWorkflow = { settings: { notifyOnStageChange: true } };
     jobWorkflow = { customizedAt: new Date(), settings: { notifyOnStageChange: false } };
+    application = makeApplication("shortlisted", 90);
+    await patch({ status: "interview_scheduled" });
+    expect(notifyInterviewSelected).not.toHaveBeenCalled();
+
+    jobWorkflow = undefined;
+    application = makeApplication("shortlisted", 90);
+    await patch({ status: "interview_scheduled" });
+    expect(notifyInterviewSelected).toHaveBeenCalledTimes(1);
+  });
+
+  it("shortlisting is silent for the candidate", async () => {
+    employerWorkflow = { settings: { notifyOnStageChange: true } };
     application = makeApplication("applied", 90);
     await patch({ status: "shortlisted" });
     expect(notifyStatusChange).not.toHaveBeenCalled();
-
-    jobWorkflow = undefined;
-    application = makeApplication("applied", 90);
-    await patch({ status: "shortlisted" });
-    expect(notifyStatusChange).toHaveBeenCalledTimes(1);
+    expect(notifyInterviewSelected).not.toHaveBeenCalled();
   });
 });

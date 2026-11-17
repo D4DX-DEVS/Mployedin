@@ -39,6 +39,8 @@ export const REGISTRY: RegistryItem[] = [
   { name: "copilot:lead-draft", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "ai", purposeKey: "taskState" },
   { name: "poster-edit:*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "employer", purposeKey: "taskState" },
   { name: "mployedin:temp-password-notice-dismissed:*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "auth", purposeKey: "noticeDismissed" },
+  { name: "mployedin.seekerAreaPrompt.dismissed", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "seeker", purposeKey: "noticeDismissed" },
+  { name: "mployedin:dismissed-announcements", kind: "localStorage", category: "necessary", basis: "user-action", party: "first", duration: "until removed", owner: "ui", purposeKey: "noticeDismissed" },
   // user-action third parties (load only after a click)
   { name: "firebaseLocalStorageDb", kind: "indexedDB", category: "necessary", basis: "user-action", party: "third", duration: "none (held in memory only)", owner: "auth", purposeKey: "firebase", legal: "pending" },
   { name: "firebase-heartbeat-database", kind: "indexedDB", category: "necessary", basis: "user-action", party: "third", duration: "deleted on the next full page load", owner: "auth", purposeKey: "firebase", legal: "pending" },

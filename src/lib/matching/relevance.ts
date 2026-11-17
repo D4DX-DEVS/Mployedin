@@ -37,6 +37,12 @@ import { sharesRole } from "@/lib/matching/roleMatch";
 export interface RelevanceBreakdown {
   /** 0–100, the number shown to the seeker. */
   overall: number;
+  /**
+   * 0–100: how far experience / education / licences / languages counted —
+   * 100 when role or skills show the job is this person's kind of work, lower
+   * when they do not (see `relatedness`). Optional for breakdowns built elsewhere.
+   */
+  relatedness?: number;
   skills: number;
   role: number;
   /** What Role fit was read from; optional for breakdowns built elsewhere. */
@@ -302,15 +308,44 @@ function preferredRoleScore(roles: readonly string[], title: string): { score: n
     if (title.includes(r) || r.includes(title)) return { score: 0.9, role };
   }
 
-  // Partial overlap on the significant words: "Senior QA Engineer" against a
-  // seeker targeting "Test Engineer" should not read the same as no relation.
-  const stop = new Set(["senior", "junior", "lead", "the", "and", "of", "a", "an"]);
-  const titleWords = new Set(title.split(/\W+/).filter((w) => w.length > 2 && !stop.has(w)));
+  // Partial overlap on the words that say what the work is: "Senior QA
+  // Engineer" against a seeker targeting "QA Tester" should not read the same
+  // as no relation. Same rule as past titles (sharesRole): a generic noun alone
+  // is no match — it used to put an accountant wanting "Accounts Executive" at
+  // 75% on "Medical Executive", and a teacher wanting "PGT Physics" at 75% on
+  // "PGT – Accountancy" (QA 2026-11-17).
   for (const role of roles) {
-    const words = role.toLowerCase().split(/\W+/).filter((w) => w.length > 2 && !stop.has(w));
-    if (words.some((w) => titleWords.has(w))) return { score: 0.6, role };
+    if (role.trim() && sharesRole(title, [role])) return { score: 0.6, role };
   }
   return { score: ROLE_NO_RELATION, role: "" };
+}
+
+/**
+ * Role fit or skill coverage at which a job counts as fully related: from here
+ * on, meeting its experience / education / licence / language asks counts in
+ * full. "Wanted" partial-word role matches (0.6) and past roles (0.9) clear it.
+ */
+export const RELATED_ENOUGH = 0.5;
+
+/**
+ * 0–1: how far the job's other requirements may count, from the evidence that
+ * it is this person's kind of work — a related role, or the skills it asks for.
+ *
+ * Neutral (1) when there is no evidence either way: the seeker named no role
+ * and has no job history, and the job lists no skills. Scaling then would
+ * punish an empty profile, which hasScoringEvidence already handles.
+ */
+export function relatedness(
+  role: number,
+  roleBasis: RoleBasis,
+  skillsUnknown: boolean,
+  skillsFraction: number,
+): number {
+  const roleKnown = roleBasis.kind !== "unknown";
+  if (!roleKnown && skillsUnknown) return 1;
+  const roleEvidence = roleKnown && role > ROLE_NO_RELATION ? role : 0;
+  const skillEvidence = skillsUnknown ? 0 : skillsFraction;
+  return Math.min(1, Math.max(roleEvidence, skillEvidence) / RELATED_ENOUGH);
 }
 
 /**
@@ -402,22 +437,31 @@ export function calculateRelevance(
   // that is scored (25, needs verification), never treated as not asked.
   const education = evaluation.education ? evaluation.education.mark / 100 : null;
 
+  // Experience, education, licences and languages say whether the person
+  // meets THIS job's bar; they say nothing about whether it is their kind of
+  // work. Counted in full, a MERN developer read 41% on "Operations Head"
+  // (skills 0, role none, experience and education met) and 47% on any job
+  // that listed no skills (QA 2026-11-17). They now count only as far as role
+  // or skills show the job is related.
+  const related = relatedness(role, roleBasis, skillsUnknown, skillsFraction);
+
   // Points earned over points in play (D7/D8/D12): skills drop out when the job
   // lists none; licences and languages join only when the job states them.
   const parts: Array<[RelevancePart, number]> = [
     ["role", role],
-    ["experience", experience],
+    ["experience", experience * related],
   ];
-  if (education !== null) parts.push(["education", education]);
+  if (education !== null) parts.push(["education", education * related]);
   if (!skillsUnknown) parts.push(["skills", skillsFraction]);
-  if (evaluation.credentialsMark !== null) parts.push(["credentials", evaluation.credentialsMark / 100]);
-  if (evaluation.languages) parts.push(["languages", evaluation.languages.mark / 100]);
+  if (evaluation.credentialsMark !== null) parts.push(["credentials", (evaluation.credentialsMark / 100) * related]);
+  if (evaluation.languages) parts.push(["languages", (evaluation.languages.mark / 100) * related]);
   const inPlay = parts.reduce((sum, [part]) => sum + RELEVANCE_POINTS[part], 0);
   const earned = parts.reduce((sum, [part, value]) => sum + RELEVANCE_POINTS[part] * value, 0);
   const shares = sharesOf(parts.map(([part]) => part), inPlay);
 
   return {
     overall: Math.round((earned / inPlay) * 100),
+    relatedness: Math.round(related * 100),
     skills: Math.round(skillsFraction * 100),
     role: Math.round(role * 100),
     roleBasis,

@@ -104,6 +104,18 @@ const requirementsSchema = z
     { message: "experienceMax must be >= experienceMin" }
   );
 
+/**
+ * A live job names at least one required skill (owner, 2026-11-17). Skills are
+ * the largest part of the match score; a job posted with none is scored on its
+ * title alone and, once the description is too short for AI extraction, sinks
+ * for every seeker outside that exact title. Drafts may still be saved without.
+ */
+export const SKILLS_REQUIRED_MESSAGE = "Add at least one required skill";
+
+function hasRequiredSkill(requirements: { skills?: string[] } | undefined): boolean {
+  return (requirements?.skills ?? []).some((skill) => skill.trim().length > 0);
+}
+
 export const jobCreateSchema = z.object({
   title: jobTitleSchema,
   description: z.string().min(20).max(5000).trim(),
@@ -137,6 +149,10 @@ export const jobCreateSchema = z.object({
   extractionDraftIndex: z.number().int().min(0).max(199).optional(),
   // A workflow template the poster picked. Absent/null = matched from the job's details.
   workflowTemplateId: commonSchemas.objectId.nullable().optional(),
+}).superRefine((job, ctx) => {
+  if (job.status !== "draft" && !hasRequiredSkill(job.requirements)) {
+    ctx.addIssue({ code: "custom", message: SKILLS_REQUIRED_MESSAGE, path: ["requirements", "skills"] });
+  }
 });
 
 export const jobUpdateSchema = z.object({
@@ -165,4 +181,11 @@ export const jobUpdateSchema = z.object({
   screeningQuestions: z.array(screeningQuestionSchema).max(20).optional(),
   // Picked in the job form while the job is still a draft (publish goes through PATCH).
   workflowTemplateId: commonSchemas.objectId.nullable().optional(),
+}).superRefine((job, ctx) => {
+  // Publishing (or saving a live job) with its skills cleared. A PATCH that
+  // leaves requirements alone, or a draft save, is not checked here.
+  const live = job.status === "active" || job.status === undefined;
+  if (live && job.requirements?.skills !== undefined && !hasRequiredSkill(job.requirements)) {
+    ctx.addIssue({ code: "custom", message: SKILLS_REQUIRED_MESSAGE, path: ["requirements", "skills"] });
+  }
 });

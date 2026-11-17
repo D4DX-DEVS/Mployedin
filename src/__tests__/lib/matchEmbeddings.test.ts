@@ -45,7 +45,7 @@ jest.mock("@/models/Job", () => ({
   default: { find: jest.fn(() => chain(jobDocs)), updateOne: (...a: unknown[]) => jobUpdate(...(a as [])) },
 }));
 
-import { refreshMatchEmbeddings } from "@/lib/matching/matchEmbeddings";
+import { fillMissingJobSkills, refreshMatchEmbeddings } from "@/lib/matching/matchEmbeddings";
 import { seekerMatchText, jobMatchText } from "@/lib/matching/matchText";
 import { MATCH_EMBEDDING_DIMS } from "@/lib/ai/openRouterEmbeddings";
 
@@ -154,5 +154,30 @@ describe("refreshMatchEmbeddings", () => {
     expect(out.embedded).toBe(1);
     expect(embedForMatching).not.toHaveBeenCalled();
     expect(seekerUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("fillMissingJobSkills (runs without MATCH_EMBEDDINGS)", () => {
+  it("stores extracted skills, and stamps a job that yields none so it waits a day", async () => {
+    jobDocs = [
+      { _id: "j1", title: "Accountant", description: "x".repeat(100), requirements: {} },
+      { _id: "j2", title: "Helper", description: "short", requirements: {} },
+    ];
+    extractJobSkills
+      .mockResolvedValueOnce({ skills: ["Tally", "GST"], preferred: [] })
+      .mockResolvedValueOnce({ skills: [], preferred: [] });
+
+    expect(await fillMissingJobSkills(20)).toEqual({ scanned: 2, extracted: 1 });
+    expect(jobUpdate).toHaveBeenCalledWith(
+      { _id: "j1" },
+      { $set: expect.objectContaining({ "requirements.aiSkills": ["Tally", "GST"] }) },
+      { timestamps: false },
+    );
+    expect(jobUpdate).toHaveBeenCalledWith(
+      { _id: "j2" },
+      { $set: { "requirements.aiSkillsCheckedAt": expect.any(Date) } },
+      { timestamps: false },
+    );
+    expect(embedForMatching).not.toHaveBeenCalled();
   });
 });

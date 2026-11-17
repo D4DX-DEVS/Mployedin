@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { MapPin, Briefcase } from "lucide-react";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { formatSalary, type SalaryTranslate } from "@/lib/ui/salaryDisplay";
 import { cn } from "@/lib/utils";
 import { getLocalizedCountryName } from "@/lib/i18n/locations";
 
@@ -12,7 +13,7 @@ interface SimilarJob {
   _id: string;
   title: string;
   location?: { city?: string; country?: string; isRemote?: boolean };
-  salary?: { min?: number; max?: number; currency?: string };
+  salary?: { min?: number; max?: number; currency?: string; period?: string };
   requirements?: { skills?: string[] };
   employerId?: { companyName?: string };
   overlap: number;
@@ -32,6 +33,8 @@ export function SimilarJobs({
   isPublic?: boolean;
 }) {
   const t = useTranslations("similarJobs");
+  const tSalary = useTranslations("salaryDisplay") as unknown as SalaryTranslate;
+  const salaryText = (job: SimilarJob) => formatSalary(job.salary, tSalary, (n) => formatCount(n));
   const shell = cn("@container/similar space-y-4", className ?? "mt-8 border-t border-border pt-8");
 
   const { data, isLoading } = useQuery<{ jobs: SimilarJob[] }>({
@@ -88,10 +91,9 @@ export function SimilarJobs({
                   : getLocalizedCountryName(job.location?.country, locale) || "—"}
               </span>
               {/* `min && max` printed a bare "0" when the minimum was 0. */}
-              {typeof job.salary?.min === "number" && (job.salary.max ?? 0) > 0 && (
+              {salaryText(job) && (
                 <span className="inline-flex rounded-full border border-border/60 bg-muted/20 px-2.5 py-1">
-                  {job.salary.currency ?? "AED"}{" "}
-                  {formatCount(job.salary.min)}–{formatCount(job.salary.max!)}
+                  {salaryText(job)}
                 </span>
               )}
             </div>

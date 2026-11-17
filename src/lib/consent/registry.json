@@ -210,6 +210,26 @@
     "purposeKey": "noticeDismissed"
   },
   {
+    "name": "mployedin.seekerAreaPrompt.dismissed",
+    "kind": "sessionStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "tab",
+    "owner": "seeker",
+    "purposeKey": "noticeDismissed"
+  },
+  {
+    "name": "mployedin:dismissed-announcements",
+    "kind": "localStorage",
+    "category": "necessary",
+    "basis": "user-action",
+    "party": "first",
+    "duration": "until removed",
+    "owner": "ui",
+    "purposeKey": "noticeDismissed"
+  },
+  {
     "name": "firebaseLocalStorageDb",
     "kind": "indexedDB",
     "category": "necessary",

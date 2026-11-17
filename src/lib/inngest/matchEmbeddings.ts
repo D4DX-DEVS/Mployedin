@@ -1,5 +1,5 @@
 import { inngest } from "@/lib/inngest/client";
-import { refreshMatchEmbeddings } from "@/lib/matching/matchEmbeddings";
+import { fillMissingJobSkills, refreshMatchEmbeddings } from "@/lib/matching/matchEmbeddings";
 import { pruneDepartedVectors } from "@/lib/matching/vectorDepartures";
 import { vectorSyncEnabled } from "@/lib/matching/vectorStore";
 
@@ -49,5 +49,29 @@ export const refreshMatchEmbeddingsCron = inngest.createFunction(
       refreshMatchEmbeddings("seeker", { ...LIVE_SEEKERS, matchTextHash: { $exists: false } }, { limit: MISSING_PER_RUN }),
     );
     return { changedJobs, missingJobs, changedSeekers, missingSeekers, departed };
+  },
+);
+
+/** Jobs per run for skill extraction: one text call each. */
+const SKILLS_PER_RUN = 20;
+
+/**
+ * Fills AI skills for live jobs posted with none. Runs whether or not
+ * MATCH_EMBEDDINGS is on: extraction needs only the text model, and without it
+ * those jobs are scored on their title alone.
+ */
+export const fillMissingJobSkillsCron = inngest.createFunction(
+  {
+    id: "fill-missing-job-skills",
+    name: "Job skills — extract for jobs with none (every 15 min)",
+    retries: 1,
+    concurrency: { limit: 1 },
+    triggers: [{ cron: "*/15 * * * *" }],
+  },
+  async ({ step }) => {
+    // The text model is OpenRouter or Google direct (lib/ai/gemini.ts).
+    const hasTextKey = Boolean(process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY);
+    if (!hasTextKey) return { skipped: "no text-model key" };
+    return step.run("fill-skills", () => fillMissingJobSkills(SKILLS_PER_RUN));
   },
 );

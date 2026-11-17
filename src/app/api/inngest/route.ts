@@ -10,7 +10,7 @@ import { aiScreenApplication } from "@/lib/inngest/aiScreenApplication";
 import { rescoreJobApplicants } from "@/lib/inngest/rescoreJobApplicants";
 import { processCvDocumentFunction } from "@/lib/inngest/processCvDocument";
 import { jevFillFunction } from "@/lib/inngest/jevFill";
-import { refreshMatchEmbeddingsCron } from "@/lib/inngest/matchEmbeddings";
+import { fillMissingJobSkillsCron, refreshMatchEmbeddingsCron } from "@/lib/inngest/matchEmbeddings";
 import { emailSequenceSenderCron } from "@/lib/inngest/emailSequenceSender";
 import { extractionDraftExpiryCron } from "@/lib/inngest/extractionDraftExpiry";
 import { applicationRetentionCron } from "@/lib/inngest/applicationRetention";
@@ -43,6 +43,7 @@ export const { GET, POST, PUT } = serve({
     jevFillFunction,
     // Keeps job and seeker matching vectors fresh (off until MATCH_EMBEDDINGS=on).
     refreshMatchEmbeddingsCron,
+    fillMissingJobSkillsCron,
     emailSequenceSenderCron,
     // Expires abandoned AI extraction drafts after their 7-day window.
     extractionDraftExpiryCron,

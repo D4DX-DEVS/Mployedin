@@ -51,6 +51,7 @@ describe("jobCreateSchema", () => {
   const validJob = {
     title: "Software Engineer",
     description: "Build and maintain web applications with modern tools.",
+    requirements: { skills: ["TypeScript"] },
   };
 
   test("validates minimal valid job", () => {
