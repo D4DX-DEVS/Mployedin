@@ -65,6 +65,48 @@ async function addSkills(job: Doc): Promise<boolean> {
   return true;
 }
 
+/** A job whose description gave no skills is tried again after this long. */
+const SKILL_RETRY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Fill AI skills for live jobs whose employer listed none.
+ *
+ * This used to run only inside `refreshMatchEmbeddings`, which is off until
+ * MATCH_EMBEDDINGS=on — so on every environment without vectors, a job posted
+ * with no skills kept none, scored on title alone and, since relatedness
+ * (relevance.ts, 2026-11-17), sank for everyone outside its exact title.
+ * Extraction needs only the text model, so it runs on its own.
+ *
+ * One text call per job, at most `limit` per run. A job that yields nothing
+ * is stamped `aiSkillsCheckedAt` and left alone for a day.
+ */
+export async function fillMissingJobSkills(limit: number): Promise<{ scanned: number; extracted: number }> {
+  await connectDB();
+  const retryBefore = new Date(Date.now() - SKILL_RETRY_MS);
+  const jobs = (await Job.find({
+    status: "active",
+    deletedAt: null,
+    "requirements.aiSkillsAt": { $exists: false },
+    $and: [
+      { $or: [{ "requirements.skills": { $exists: false } }, { "requirements.skills": { $size: 0 } }] },
+      { $or: [{ "requirements.aiSkillsCheckedAt": { $exists: false } }, { "requirements.aiSkillsCheckedAt": { $lt: retryBefore } }] },
+    ],
+  })
+    .select("title description requirements")
+    .limit(limit)
+    .lean()) as unknown as Doc[];
+
+  let extracted = 0;
+  for (const job of jobs) {
+    if (await addSkills(job)) {
+      extracted++;
+    } else {
+      await Job.updateOne({ _id: job._id }, { $set: { "requirements.aiSkillsCheckedAt": new Date() } }, { timestamps: false });
+    }
+  }
+  return { scanned: jobs.length, extracted };
+}
+
 /**
  * A document can come back into the pool with the same text (a paused job
  * reopened, a seeker un-archived), or have missed an earlier Vectorize write.

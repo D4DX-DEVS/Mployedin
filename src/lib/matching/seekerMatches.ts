@@ -74,6 +74,11 @@ export interface MatchFields {
   matchedSkills: string[];
   /** Clears every hard gate (country, pay, experience, ...). */
   eligible: boolean;
+  /**
+   * The gate that failed, when one did. A card says it, because the job sits
+   * below lower-scored ones (sortScore) and the percentage alone cannot say why.
+   */
+  ineligibleReason?: IneligibleReason;
   /** Eligible and at or above the threshold: what "Recommended for you" lists. */
   recommended: boolean;
   /**
@@ -171,6 +176,7 @@ export async function scoreSeekerPool<T extends Record<string, unknown>>(
       matchScore: pair.score,
       matchedSkills: pair.breakdown.matchedSkills,
       eligible: pair.eligible,
+      ...(!pair.eligible && pair.reason ? { ineligibleReason: pair.reason } : {}),
       recommended,
       sortScore: pair.eligible ? pair.score : Math.max(0, pair.score - IRRELEVANT_SORT_PENALTY),
     };

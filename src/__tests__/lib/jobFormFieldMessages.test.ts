@@ -14,7 +14,7 @@ const baseForm = {
   location: { country: "AE", city: "Dubai", isRemote: false },
   description: "We are hiring a backend engineer to build and run our APIs.",
   // Required since 2026-11-12 (D10): a level, or 0 for "No minimum".
-  requirements: { skills: [], preferredSkills: [], experienceMin: 2, experienceMax: 8, educationLevel: 0 },
+  requirements: { skills: ["Node.js"], preferredSkills: [], experienceMin: 2, experienceMax: 8, educationLevel: 0 },
   salary: { min: 5000, max: 9000, currency: "USD", isNegotiable: false, period: "monthly" },
 };
 
@@ -89,6 +89,7 @@ describe("server job schemas", () => {
   const serverBase = {
     title: "Senior Backend Engineer",
     description: "We are hiring a backend engineer to build and run our APIs.",
+    requirements: { skills: ["Node.js"] },
   };
 
   it("refuses a markup title on create and on edit", () => {
@@ -99,5 +100,35 @@ describe("server job schemas", () => {
   it("still accepts plain titles, with or without an update title", () => {
     expect(jobCreateSchema.safeParse({ ...serverBase, title: "C++ Developer < 5 yrs" }).success).toBe(true);
     expect(jobUpdateSchema.safeParse({ description: serverBase.description }).success).toBe(true);
+  });
+});
+
+describe("a live job needs at least one required skill (owner, 2026-11-17)", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { jobCreateSchema, jobUpdateSchema, SKILLS_REQUIRED_MESSAGE } = require("@/lib/validators/jobs") as typeof import("@/lib/validators/jobs");
+  const server = {
+    title: "Senior Backend Engineer",
+    description: "We are hiring a backend engineer to build and run our APIs.",
+  };
+  const skillIssue = (r: { success: boolean; error?: { issues: Array<{ path: PropertyKey[]; message: string }> } }) =>
+    r.error?.issues.find((i) => i.path.join(".") === "requirements.skills")?.message;
+
+  it("the form refuses no skills, or only blank ones, with the shared message", () => {
+    expect(issueAt({ ...baseForm, requirements: { ...baseForm.requirements, skills: [] } }, "requirements.skills")?.message)
+      .toBe("Add at least one required skill");
+    expect(issueAt({ ...baseForm, requirements: { ...baseForm.requirements, skills: ["  "] } }, "requirements.skills")).toBeDefined();
+  });
+
+  it("the API refuses publishing without a skill but still saves a draft", () => {
+    expect(skillIssue(jobCreateSchema.safeParse({ ...server, status: "active" }))).toBe(SKILLS_REQUIRED_MESSAGE);
+    expect(skillIssue(jobCreateSchema.safeParse(server))).toBe(SKILLS_REQUIRED_MESSAGE);
+    expect(jobCreateSchema.safeParse({ ...server, status: "draft" }).success).toBe(true);
+  });
+
+  it("an edit is checked only when it clears the skills of a live job", () => {
+    expect(jobUpdateSchema.safeParse({ status: "paused" }).success).toBe(true);
+    expect(jobUpdateSchema.safeParse({ title: "Lead Backend Engineer" }).success).toBe(true);
+    expect(jobUpdateSchema.safeParse({ status: "draft", requirements: { skills: [] } }).success).toBe(true);
+    expect(skillIssue(jobUpdateSchema.safeParse({ status: "active", requirements: { skills: [] } }))).toBe(SKILLS_REQUIRED_MESSAGE);
   });
 });

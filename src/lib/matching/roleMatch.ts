@@ -23,6 +23,9 @@ const GENERIC_ROLE_WORDS = new Set([
   "engineer", "engineering", "developer", "development", "manager", "management", "technician",
   "analyst", "consultant", "administrator", "coordinator", "supervisor", "operator", "representative",
   "worker", "professional", "expert", "designer", "teacher", "agent",
+  // Indian school grades (post-graduate / trained graduate / primary teacher):
+  // "PGT Physics" and "PGT Accountancy" share only the grade.
+  "pgt", "tgt", "prt",
 ]);
 
 /** Significant words of a title; two-letter acronyms (QA, IT, HR) count. */

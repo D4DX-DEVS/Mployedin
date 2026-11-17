@@ -22,7 +22,7 @@ const respond = (area: unknown) =>
 it("asks for an area when none is set", async () => {
   respond(null);
   render(<SeekerAreaCard />);
-  expect(await screen.findByText("Add your area so agents near you can help you find work.")).toBeInTheDocument();
+  expect(await screen.findByText("Add where you live so we can show you jobs and support near you.")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Add area" })).toBeEnabled();
 });
 

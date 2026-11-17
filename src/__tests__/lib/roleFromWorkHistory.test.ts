@@ -86,8 +86,10 @@ describe("role fit from work history", () => {
   it("no longer reads a blank job as 69% for anyone", () => {
     const vlsi = seeker({ roleHistory: [{ title: "VLSI Design Engineer", years: 3 }] });
     const blank = job("PGT – Accountancy");
-    // Role 15 of 25 points and experience full: (3.75 + 15) / 40.
-    expect(calculateRelevance(vlsi, blank).overall).toBe(47);
+    // Role 15 of 25 points; experience met but the job is unrelated
+    // (relatedness 0), so it adds nothing: 3.75 / 40. It read 47 until
+    // 2026-11-17, when meeting an unrelated job's bar still counted in full.
+    expect(calculateRelevance(vlsi, blank).overall).toBe(9);
     expect(calculateRelevance(seeker(), blank).overall).toBe(69);
   });
 

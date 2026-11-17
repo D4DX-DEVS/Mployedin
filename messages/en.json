@@ -8562,6 +8562,7 @@
       "experienceBadge": "{min}-{max} yrs",
       "requiredSkills": "Required Skills",
       "requiredSkillsHint": "Add the skills candidates truly need on day one. Use 5 to 8 strong signals where possible.",
+      "skillsRequired": "Add at least one required skill. Seekers are matched on skills first.",
       "requiredSkillsPlaceholder": "Type a skill and press Enter (e.g. React, Python)",
       "suggestedFromAi": "Suggested from AI",
       "clickToAdd": "Click to add",
@@ -17809,6 +17810,7 @@
       "aiDown": "AI review took off {points, plural, one {# point} other {# points}}.",
       "skillsUnknown": "This job lists no skills, so skills are left out of this score.",
       "educationNotScored": "This job sets no education requirement, so education isn't scored.",
+      "relatednessNote": "This job isn't close to the roles you want, your past jobs or your skills, so meeting its experience and education asks counts for less.",
       "gatesNote": "Location, salary and work mode don't add points. They decide whether we recommend a job to you. Education and experience never hide a job; they change the score.",
       "notRecommended": "Not recommended to you: {reason}.",
       "reasons": {
@@ -22544,5 +22546,22 @@
       "title": "Check your CV",
       "hint": "This is the CV employers will see. Fix the summary, pick a design, then save."
     }
+  },
+  "salaryDisplay": {
+    "monthly": "{amount} / month",
+    "yearly": "{amount} / year",
+    "lpa": "{amount} LPA",
+    "from": "From {amount}"
+  },
+  "jobGate": {
+    "country": "Outside your countries",
+    "work_mode": "Not your work mode",
+    "salary": "Below your pay",
+    "experience": "Needs more experience",
+    "education": "Needs a higher qualification",
+    "experience_unknown": "Add your experience",
+    "education_unknown": "Add your education",
+    "other": "Outside your preferences",
+    "hint": "Shown lower in the list: {reason}."
   }
 }

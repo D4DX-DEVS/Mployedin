@@ -193,6 +193,12 @@ export const jobFormSchema = z.object({
     .refine((r) => r.educationLevel !== null && r.educationLevel !== undefined, {
       message: "Choose the minimum education, or No minimum",
       path: ["educationLevel"],
+    })
+    // Same rule as the API (lib/validators/jobs.ts SKILLS_REQUIRED_MESSAGE):
+    // needed to move past this step or publish; a draft may be saved without.
+    .refine((r) => r.skills.some((skill) => skill.trim().length > 0), {
+      message: "Add at least one required skill",
+      path: ["skills"],
     }),
 
   /** The kind of hire; sets the standard ranking weights. Null = balanced. */

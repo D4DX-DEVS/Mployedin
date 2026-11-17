@@ -40,6 +40,12 @@ export interface SeekerProfile {
    */
   experienceKnown?: boolean;
   salaryExpectation: number; // monthly mid-point of preferred salary range, 0 disables salary component
+  /**
+   * Monthly bottom of the preferred range (the mid-point when only one end is
+   * given). The salary gate compares this with the most a job pays; absent on
+   * a hand-built profile, which then falls back to salaryExpectation.
+   */
+  salaryFloor?: number;
   /** ISO currency code of salaryExpectation (e.g. "USD", "INR"). "" if unknown. */
   salaryCurrency?: string;
   /** Preferred job type: "remote" | "hybrid" | "onsite" | "any" */
@@ -729,6 +735,8 @@ export function seekerProfileFromDoc(seeker: {
     salMin > 0 && salMax > 0 ? (salMin + salMax) / 2 : salMin + salMax,
     seeker.preferredSalary?.currency,
   );
+  // The least they said they would take — what the salary gate compares.
+  const salaryFloor = salMin > 0 ? monthlyExpectation(salMin, seeker.preferredSalary?.currency) : salaryExpectation;
 
   // Where the seeker wants to work: the countries they chose, or — when they
   // chose none — the country they live in, read off their current location.
@@ -748,6 +756,7 @@ export function seekerProfileFromDoc(seeker: {
     experienceYears: Math.round(experienceYears * 10) / 10,
     experienceKnown,
     salaryExpectation,
+    salaryFloor,
     salaryCurrency: seeker.preferredSalary?.currency ?? "",
     jobType: seeker.preferredJobType ?? "any",
     preferredRoles: (seeker.preferredRoles ?? []).map((r) => r.toLowerCase()),

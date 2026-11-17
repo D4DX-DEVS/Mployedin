@@ -65,6 +65,19 @@ export function monthlySalaryMidpoint(job: JobProfile): number {
 }
 
 /**
+ * Monthly-equivalent top of a job's advertised pay (its single figure when only
+ * one end is stated), or 0 when not stated.
+ */
+export function monthlySalaryCeiling(job: JobProfile): number {
+  const top = job.salaryMax > 0 ? job.salaryMax : job.salaryMin;
+  if (!(top > 0)) return 0;
+  let value = top;
+  if (job.salaryPeriod === "lpa" && value < 1000) value *= 100_000;
+  const perYear = job.salaryPeriod === "yearly" || job.salaryPeriod === "lpa";
+  return perYear ? value / 12 : value;
+}
+
+/**
  * The seeker's monthly pay expectation in the job's currency, or `null` when
  * the two cannot be compared.
  *
@@ -76,13 +89,17 @@ export function monthlySalaryMidpoint(job: JobProfile): number {
  * 1:1, and a wrong rate must never hide a job. The rates are approximate, which
  * SALARY_TOLERANCE's 20% slack absorbs.
  */
-export function expectationInJobCurrency(seeker: SeekerProfile, job: JobProfile): number | null {
-  if (!(seeker.salaryExpectation > 0)) return null;
+export function expectationInJobCurrency(
+  seeker: SeekerProfile,
+  job: JobProfile,
+  amount: number = seeker.salaryExpectation,
+): number | null {
+  if (!(amount > 0)) return null;
   const seekerCur = (seeker.salaryCurrency ?? "").toUpperCase().trim();
   const jobCur = (job.salaryCurrency ?? "").toUpperCase().trim();
-  if (!seekerCur || !jobCur || seekerCur === jobCur) return seeker.salaryExpectation;
+  if (!seekerCur || !jobCur || seekerCur === jobCur) return amount;
   if (!(seekerCur in AED_EXCHANGE_RATES) || !(jobCur in AED_EXCHANGE_RATES)) return null;
-  return convertCurrency(seeker.salaryExpectation, seekerCur, jobCur);
+  return convertCurrency(amount, seekerCur, jobCur);
 }
 
 /**
@@ -162,11 +179,14 @@ export function checkEligibility(seeker: SeekerProfile, job: JobProfile): Eligib
 
   // ── Salary ─────────────────────────────────────────────────────────────
   // Both sides stated a figure, in currencies we can compare (converted when
-  // they differ), and the job pays materially less than the seeker asked for.
-  const expected = expectationInJobCurrency(seeker, job);
-  if (expected != null) {
-    const mid = monthlySalaryMidpoint(job);
-    if (mid > 0 && mid < expected * SALARY_TOLERANCE) {
+  // they differ), and even the most the job pays is materially less than the
+  // least the seeker will take. Until 2026-11-17 this compared the two
+  // mid-points, so ranges that overlapped still failed: a 40–80K job was
+  // hidden from someone asking 70–110K.
+  const floor = expectationInJobCurrency(seeker, job, seeker.salaryFloor ?? seeker.salaryExpectation);
+  if (floor != null) {
+    const ceiling = monthlySalaryCeiling(job);
+    if (ceiling > 0 && ceiling < floor * SALARY_TOLERANCE) {
       return { eligible: false, reason: "salary" };
     }
   }

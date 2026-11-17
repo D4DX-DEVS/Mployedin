@@ -19,6 +19,7 @@ import { ShareJob } from "@/components/shared/ShareJob";
 import { SaveJobButton } from "@/components/features/job-seeker/saved/SaveJobButton";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { formatSalary, type SalaryInput, type SalaryTranslate } from "@/lib/ui/salaryDisplay";
 import { closesInDays, isPastClosingDate } from "@/lib/jobs/expiry";
 
 interface PageProps {
@@ -68,20 +69,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 
 function salaryLabel(
-  salary: { min?: number; max?: number; currency?: string; isNegotiable?: boolean } | null,
-  t: Awaited<ReturnType<typeof getTranslations>>
+  salary: (SalaryInput & { isNegotiable?: boolean }) | null,
+  t: Awaited<ReturnType<typeof getTranslations>>,
+  tSalary: SalaryTranslate,
 ) {
   if (!salary) return null;
-  if (salary.isNegotiable) return t("negotiable");
-  if (salary.min && salary.max)
-    return t("salaryRangePerMonth", {
-      currency: salary.currency ?? "AED",
-      min: formatCount(salary.min),
-      max: formatCount(salary.max),
-    });
-  if (salary.min)
-    return t("fromSalaryPerMonth", { currency: salary.currency ?? "AED", min: formatCount(salary.min) });
-  return null;
+  // The job's own period: this said "/ month" for yearly and LPA jobs too.
+  const figure = formatSalary(salary, tSalary, (n) => formatCount(n));
+  // Negotiable keeps the figure, as on the card and the public job page.
+  if (salary.isNegotiable) return figure ? `${figure} · ${t("negotiable")}` : t("negotiable");
+  return figure;
 }
 
 function renderJobDescription(text: string) {
@@ -122,6 +119,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
   const tc = await getTranslations("common");
   // Phone-only labels reuse existing strings from sibling namespaces.
   const tCard = await getTranslations("jobCard");
+  const tSalary = (await getTranslations("salaryDisplay")) as unknown as SalaryTranslate;
   const tAgentJobs = await getTranslations("agentJobs");
   const tFeed = await getTranslations("jobFeed.sidebar");
   const tPrefs = await getTranslations("jobSeekerExtra.preferences");
@@ -167,7 +165,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
     responseTimeDays = (emp as unknown as { responseTimeCommitment?: number })?.responseTimeCommitment ?? null;
   }
 
-  const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0], t) : null;
+  const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0], t, tSalary) : null;
   const daysLeft = closesInDays(job.expiresAt as Date | null);
   const locationLabel = job.location?.isRemote
     ? t("remote")

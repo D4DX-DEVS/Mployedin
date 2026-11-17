@@ -16,6 +16,13 @@
  */
 import { NextRequest } from "next/server";
 
+// The seeker lists read the Industries master (industryCanonical.server.ts);
+// unmocked, its query waits on a database that never connects and the test
+// times out.
+jest.mock("@/models/Industry", () => ({
+  __esModule: true,
+  default: { find: () => ({ select: () => ({ lean: async () => [] }) }) },
+}));
 jest.mock("@/lib/db/mongoose", () => ({
   connectDB: jest.fn().mockResolvedValue(undefined),
 }));

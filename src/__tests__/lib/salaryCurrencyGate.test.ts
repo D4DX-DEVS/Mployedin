@@ -151,7 +151,7 @@ describe("employer salary row across currencies", () => {
   it("shows the converted figure beside what the seeker typed", () => {
     const row = salaryRow(seeker(), job({ salaryMin: 200_000, salaryMax: 220_000 }));
     expect(row?.status).toBe("met");
-    expect(row?.required).toBe("INR 210000");
+    expect(row?.required).toBe("INR 200000–220000");
     expect(row?.actual).toBe("≈ INR 205020 (AED 9000)");
   });
 
@@ -161,5 +161,19 @@ describe("employer salary row across currencies", () => {
 
   it("has no salary row when the currency cannot be converted", () => {
     expect(salaryRow(seeker(), job({ salaryCurrency: "XYZ", salaryMin: 1, salaryMax: 1 }))).toBeUndefined();
+  });
+});
+
+describe("salary gate compares the job's top with the seeker's minimum (QA 2026-11-17)", () => {
+  it("keeps a job whose range overlaps the seeker's", () => {
+    const s = { ...seekerProfileFromDoc({ preferredSalary: { min: 70_000, max: 110_000, currency: "INR" }, preferredCountries: ["India"] }) };
+    const j = job({ salaryMin: 40_000, salaryMax: 80_000, salaryCurrency: "INR" });
+    expect(checkEligibility(s, j).eligible).toBe(true);
+  });
+
+  it("still drops a job whose top is well under the seeker's minimum", () => {
+    const s = { ...seekerProfileFromDoc({ preferredSalary: { min: 70_000, max: 110_000, currency: "INR" }, preferredCountries: ["India"] }) };
+    const j = job({ salaryMin: 20_000, salaryMax: 40_000, salaryCurrency: "INR" });
+    expect(checkEligibility(s, j)).toEqual({ eligible: false, reason: "salary" });
   });
 });

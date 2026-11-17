@@ -20,6 +20,8 @@ interface JobMatch {
   mustHaveStatus?: "met" | "unverified" | "not_met";
   aiAdjustment?: number;
   skillsUnknown?: boolean;
+  /** 0–100: how far experience / education counted (lib/matching/relevance.ts relatedness). */
+  relatedness?: number;
   /** What Role fit was read from. */
   roleBasis?: { kind: "wanted" | "past"; title: string } | { kind: "none" | "unknown" };
 }
@@ -224,6 +226,11 @@ export function JobMatchCard({ jobId, asked }: { jobId: string; asked?: AskedSki
           )}
           {data.skillsUnknown && (
             <p className="mt-2 text-xs text-muted-foreground">{t("skillsUnknown")}</p>
+          )}
+          {/* Each part's bar shows the seeker's own mark; without this a full
+              experience bar beside a 5% score reads as a bug. */}
+          {data.relatedness !== undefined && data.relatedness < 100 && (
+            <p className="mt-2 text-xs text-muted-foreground">{t("relatednessNote")}</p>
           )}
           {/* Education is scored only when the job asks for it; say so, or
               its absence reads as a missing row. */}

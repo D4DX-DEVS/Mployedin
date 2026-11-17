@@ -1,5 +1,6 @@
 "use client";
 
+import { formatSalary, type SalaryInput, type SalaryTranslate } from "@/lib/ui/salaryDisplay";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -34,7 +35,7 @@ export interface JobSummary {
   matchScore?: number;
   employmentType?: string;
   location?: { city?: string; country?: string; isRemote?: boolean } | null;
-  salary?: { min?: number; max?: number; currency?: string; isNegotiable?: boolean } | null;
+  salary?: { min?: number; max?: number; currency?: string; isNegotiable?: boolean; period?: string } | null;
   skills?: string[];
   /** Skills the seeker already has — rendered first and marked. */
   matchedSkills?: string[];
@@ -122,18 +123,20 @@ export function relativeTimeParts(iso: string): {
   return { key: "monthsAgo", value: Math.max(1, Math.floor(days / 30)) };
 }
 
+/**
+ * The card's pay figure with its period ("50K–80K INR / month", "8–18 LPA").
+ * Compact numbers keep the one-line meta row short.
+ */
 export function formatSalaryRange(
-  salary: { min?: number; max?: number; currency?: string } | null | undefined,
-  numberLocale: string
+  salary: SalaryInput | null | undefined,
+  numberLocale: string,
+  t: SalaryTranslate,
 ) {
-  if (!salary?.min || !salary?.max || !salary.currency) return null;
   const fmt = (n: number) =>
     n >= 1000
       ? new Intl.NumberFormat(numberLocale, { notation: "compact", maximumFractionDigits: 1 }).format(n)
-      : n.toLocaleString(numberLocale);
-  // One figure when the range is a single amount ("800 KWD", not "800–800 KWD").
-  if (salary.min === salary.max) return `${fmt(salary.min)} ${salary.currency}`;
-  return `${fmt(salary.min)}–${fmt(salary.max)} ${salary.currency}`;
+      : n.toLocaleString(numberLocale, { maximumFractionDigits: 1 });
+  return formatSalary(salary, t, fmt);
 }
 
 /** Employment types the Job model accepts. Anything else renders no chip. */
@@ -156,13 +159,14 @@ export function JobSummaryCard({
   className,
 }: JobSummaryCardProps) {
   const t = useTranslations("jobCard");
+  const tSalary = useTranslations("salaryDisplay");
   const numberLocale = locale === "ar" ? "ar-SA" : "en-US";
   const companyName = job.company?.name?.trim() || t("company");
   const companyHref = job.company?._id ? `/${locale}/job-seeker/companies/${job.company._id}` : null;
   const palette = logoPalette(companyName);
   const jobHref = `/${locale}/job-seeker/jobs/${job._id}`;
 
-  const salaryFigure = formatSalaryRange(job.salary, numberLocale);
+  const salaryFigure = formatSalaryRange(job.salary, numberLocale, tSalary);
   // Same words as the public job page: the figure, marked negotiable when it is.
   const salaryLabel = salaryFigure && job.salary?.isNegotiable ? t("salaryNegotiable", { amount: salaryFigure }) : salaryFigure;
   const employmentLabel =

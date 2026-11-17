@@ -17,6 +17,7 @@ import RelativeDate from "@/components/shared/RelativeDate";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { serializeJsonLd } from "@/lib/security/jsonLd";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { formatSalary, type SalaryInput, type SalaryTranslate } from "@/lib/ui/salaryDisplay";
 import { getLocalizedCountryName } from "@/lib/i18n/locations";
 import { closesInDays, isPastClosingDate } from "@/lib/jobs/expiry";
 
@@ -103,35 +104,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 
 function salaryLabel(
-  salary: { min?: number; max?: number; currency?: string; isNegotiable?: boolean } | null,
-  t: Awaited<ReturnType<typeof getTranslations>>
+  salary: (SalaryInput & { isNegotiable?: boolean }) | null,
+  t: Awaited<ReturnType<typeof getTranslations>>,
+  tSalary: SalaryTranslate,
 ) {
   if (!salary) return null;
+  // The job's own period: this said "/ month" for yearly and LPA jobs too.
+  const figure = formatSalary(salary, tSalary, (n) => formatCount(n));
   // A figure marked negotiable shows the figure too — the seeker's own job
   // cards print it, so hiding it here made the two pages disagree.
-  if (salary.isNegotiable && !salary.min && !salary.max) return t("negotiable");
-  if (salary.isNegotiable)
-    return t("salaryNegotiable", {
-      amount: salary.min && salary.max && salary.min !== salary.max
-        ? `${salary.currency ?? "AED"} ${formatCount(salary.min)} – ${formatCount(salary.max)}`
-        : `${salary.currency ?? "AED"} ${formatCount(salary.min || salary.max || 0)}`,
-    });
-  if (salary.min && salary.max && salary.min === salary.max)
-    return t("fixedSalaryPerMonth", { currency: salary.currency ?? "AED", amount: formatCount(salary.min) });
-  if (salary.min && salary.max)
-    return t("salaryRangePerMonth", {
-      currency: salary.currency ?? "AED",
-      min: formatCount(salary.min),
-      max: formatCount(salary.max),
-    });
-  if (salary.min)
-    return t("fromSalaryPerMonth", { currency: salary.currency ?? "AED", min: formatCount(salary.min) });
-  return null;
+  if (salary.isNegotiable) return figure ? `${figure} · ${t("negotiable")}` : t("negotiable");
+  return figure;
 }
 
 export default async function JobDetailPage({ params }: PageProps) {
   const { locale, id } = await params;
   const t = await getTranslations("publicJobDetail");
+  const tSalary = (await getTranslations("salaryDisplay")) as unknown as SalaryTranslate;
   // Employers store the industry as a key ("human_resources"); the register
   // form's list holds its label.
   const tIndustry = await getTranslations("employerRegister.industries");
@@ -161,7 +150,7 @@ export default async function JobDetailPage({ params }: PageProps) {
   // Arabic pages use the Arabic copy of a list when the employer wrote one.
   const localizedList = (en?: string[], ar?: string[]) =>
     (locale === "ar" && ar?.length ? ar : en)?.filter((s) => s?.trim()) ?? [];
-  const salary = job.showSalary !== false ?salaryLabel(job.salary as Parameters<typeof salaryLabel>[0], t) : null;
+  const salary = job.showSalary !== false ?salaryLabel(job.salary as Parameters<typeof salaryLabel>[0], t, tSalary) : null;
   const daysLeft = closesInDays(job.expiresAt as Date | null);
 
   // Map internal employment type values to schema.org equivalents
