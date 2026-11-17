@@ -3,9 +3,10 @@
  * the review state: the reviewer cares about "Awaiting review", not about
  * "completed + awaiting_review".
  */
-export type TaskState = "pending" | "in_progress" | "awaiting_review" | "approved" | "returned" | "completed" | "failed";
+export type TaskState = "pending" | "in_progress" | "awaiting_review" | "approved" | "returned" | "completed" | "failed" | "withdrawn";
 
 export function taskState(task: { status: string; reviewStatus?: string }): TaskState {
+  if (task.status === "cancelled") return "withdrawn";
   if (task.reviewStatus === "awaiting_review") return "awaiting_review";
   // An accepted failure report reads as Failed, not Approved.
   if (task.reviewStatus === "approved") return task.status === "failed" ? "failed" : "approved";
@@ -24,6 +25,7 @@ export const TASK_STATE_CLASS: Record<TaskState, string> = {
   returned: "bg-amber-100 text-amber-800",
   completed: "bg-emerald-100 text-emerald-700",
   failed: "bg-red-100 text-red-700",
+  withdrawn: "bg-zinc-100 text-zinc-600",
 };
 
 /** The `assignedTasks` key for each state; literal keys so the i18n checks see them. */
@@ -36,5 +38,6 @@ export function taskStateKey(state: TaskState) {
     case "returned": return "stateReturned" as const;
     case "completed": return "stateCompleted" as const;
     case "failed": return "stateFailed" as const;
+    case "withdrawn": return "stateWithdrawn" as const;
   }
 }

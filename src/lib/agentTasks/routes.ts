@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth, AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import { validateBody } from "@/lib/validators";
-import { assignedTaskCreateSchema, taskReviewSchema } from "@/lib/validators/agent-tasks";
-import { assignedTaskHistory, assignTask, listAssignableAgents, listAssignableSuperAgents, listAssignedTasks, reviewTask, TaskError } from "./assigned";
+import { assignedTaskCreateSchema, taskActionSchema, taskReviewSchema } from "@/lib/validators/agent-tasks";
+import { assignedTaskHistory, assignTasks, listAssignableAgents, listAssignableSuperAgents, reviewTask, TaskError } from "./assigned";
+import { listAssignedTasks } from "./assignedList";
+import { performTaskAction } from "./assignedActions";
 
 /**
  * The super-agent and admin task routes are the same handlers behind a
@@ -38,6 +40,7 @@ export function assignedTaskRoutes(role: Role) {
         reviewStatus: url.searchParams.get("review") ?? "",
         agentUserId: url.searchParams.get("agent") ?? "",
         search: url.searchParams.get("search")?.trim() ?? "",
+        giver: url.searchParams.get("giver") ?? "",
         page,
         limit,
       }),
@@ -54,8 +57,8 @@ export function assignedTaskRoutes(role: Role) {
     await connectDB();
     const body = await validateBody(req, assignedTaskCreateSchema);
     try {
-      const task = await assignTask(ctx, body);
-      return NextResponse.json({ success: true, task }, { status: 201 });
+      const tasks = await assignTasks(ctx, body);
+      return NextResponse.json({ success: true, task: tasks[0], count: tasks.length }, { status: 201 });
     } catch (err) {
       return fail(err);
     }
@@ -85,5 +88,18 @@ export function assignedTaskRoutes(role: Role) {
     }
   });
 
-  return { GET, POST, REVIEW, HISTORY };
+  /** POST /…/[id]/action — withdraw, reassign, change due date, review switch. */
+  const ACTION = withAuth(async (req: NextRequest, ctx: AuthContext, params?: Record<string, string>) => {
+    const denied = gate(ctx, role);
+    if (denied) return denied;
+    await connectDB();
+    const body = await validateBody(req, taskActionSchema);
+    try {
+      return NextResponse.json({ success: true, ...(await performTaskAction(ctx, params?.id ?? "", body)) });
+    } catch (err) {
+      return fail(err);
+    }
+  });
+
+  return { GET, POST, REVIEW, HISTORY, ACTION };
 }

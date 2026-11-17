@@ -45,6 +45,9 @@ ${instruction}
 
 Rules:
 - Only change what the request asks for. If it is a question, answer it and change nothing.
+- Work out which part the candidate means from their words and the conversation so far: "about me", "summary", "profile" or "bio" = "summary"; "skills" = "skills"; a job named by its title or employer (or "my first/last/current job") = that experience entry. A follow-up like "shorter" or "add that too" refers to the part discussed just before.
+- If you cannot tell what to change, change nothing and ask one short question in "reply".
+- "reply" must match "changes": never say you changed, refined or rewrote something unless that new text is in "changes". If asked to check or review a part, either say it is fine and change nothing, or put the improved text in "changes".
 - You may change ONLY: "summary", "skills", and the "description" of experience or project entries (by their index).
 - Never change or invent job titles, employers, dates, education, certifications or contact details.
 - Never invent metrics, employers, tools or achievements that are not in the CV. If the request needs facts you do not have, say what is missing in "reply" instead.

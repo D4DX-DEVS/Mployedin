@@ -36,6 +36,9 @@ export interface TaskHistoryItem {
   to?: AgentTaskStatus;
   note?: string;
   byName: string;
+  /** reassigned: who it moved from and to. */
+  fromName?: string;
+  toName?: string;
   at: string;
 }
 
@@ -58,7 +61,7 @@ export async function readTaskHistory(task: {
       at: task.createdAt,
     });
   }
-  const ids = [...new Set(lines.map((l) => String(l.by)))];
+  const ids = [...new Set(lines.flatMap((l) => [String(l.by), l.fromUser ? String(l.fromUser) : "", l.toUser ? String(l.toUser) : ""]).filter(Boolean))];
   const users = ids.length
     ? await User.find({ _id: { $in: ids } }).select("_id name").lean<Array<{ _id: unknown; name?: string }>>()
     : [];
@@ -70,6 +73,8 @@ export async function readTaskHistory(task: {
       to: l.to,
       note: l.note,
       byName: names.get(String(l.by)) ?? "",
+      ...(l.fromUser ? { fromName: names.get(String(l.fromUser)) ?? "" } : {}),
+      ...(l.toUser ? { toName: names.get(String(l.toUser)) ?? "" } : {}),
       at: new Date(l.at).toISOString(),
     }))
     .reverse();

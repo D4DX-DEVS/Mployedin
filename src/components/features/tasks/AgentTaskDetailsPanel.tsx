@@ -46,6 +46,8 @@ interface AgentTaskDetailsPanelProps {
   /** Only the agent's own to-dos can be deleted; assigned ones belong to whoever gave them. */
   onDelete?: () => void;
   onClose: () => void;
+  /** The owner's task API; the timeline reads `${apiBase}/${id}`. */
+  apiBase?: string;
 }
 
 /**
@@ -54,7 +56,9 @@ interface AgentTaskDetailsPanelProps {
  * acts on it), what they reported and what came back, and its activity — with
  * the status change at the foot instead of a separate history popup.
  */
-export function AgentTaskDetailsPanel({ task, locale, statusPicker, onDelete, onClose }: AgentTaskDetailsPanelProps) {
+export function AgentTaskDetailsPanel({
+  task, locale, statusPicker, onDelete, onClose, apiBase = "/api/agent/tasks",
+}: AgentTaskDetailsPanelProps) {
   const t = useTranslations("agentTasks");
   const ta = useTranslations("assignedTasks");
   const tc = useTranslations("common");
@@ -147,7 +151,7 @@ export function AgentTaskDetailsPanel({ task, locale, statusPicker, onDelete, on
               )}
 
               <TaskSection icon={History} title={ta("detailsHistory")}>
-                <TaskHistoryTimeline url={`/api/agent/tasks/${task._id}`} />
+                <TaskHistoryTimeline url={`${apiBase}/${task._id}`} />
               </TaskSection>
             </div>
 

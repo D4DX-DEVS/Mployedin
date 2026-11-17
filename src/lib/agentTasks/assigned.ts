@@ -1,27 +1,35 @@
 import mongoose from "mongoose";
-import AgentTask, { CLOSED_TASK_STATUSES, type AgentTaskReviewStatus } from "@/models/AgentTask";
-import SuperAgent from "@/models/SuperAgent";
+import AgentTask, { type AgentTaskAssigneeRole } from "@/models/AgentTask";
 import User from "@/models/User";
 import { getSuperAgentTeamAgentUserIds } from "@/lib/auth/agentRestrictions";
-import { notify } from "@/lib/notifications/trigger";
-import { escapeRegex } from "@/lib/security/sanitize";
 import { pushHistory, readTaskHistory } from "./history";
 import { TaskError } from "./taskError";
-import { resolveTaskLinks, validateTaskLinks, type ResolvedTaskLinks, type TaskLinkInput } from "./links";
+import { validateTaskLinks, type TaskLinkInput } from "./links";
+import { assigneeHome, nameOf, notifyQuietly, reviewerHome } from "./taskNotify";
 
 /**
- * Tasks a super agent or an admin gives an agent, and their review.
+ * Tasks a super agent or an admin gives someone, and their review.
  *
- * An AgentTask's `userId` is the agent's USER id; super-agent scope is held as
- * Agent PROFILE ids. Everything here converts once, in `assigneeScope`, so the
- * routes never compare the two id spaces.
+ * Who may receive one:
+ *  - admin → any active agent (directly, or "through" a super agent whose team
+ *    they are on: `managedBy`), or any active super agent (`assigneeRole`)
+ *  - super agent → agents on their team only
+ * One task can go to many people: each gets their own copy, tied by `groupId`.
  *
- * States of an assigned task:
- *   pending / in_progress            reviewStatus none | returned (agent working)
- *   completed|failed + awaiting_review  agent reported it (optional note)
- *   completed|failed + approved         reviewer accepted the report
- *   in_progress + returned              reviewer sent it back with a comment
- * Every change also lands in `history` (who, when, from → to, note).
+ * States of a given task:
+ *   pending / in_progress            reviewStatus none | returned (working)
+ *   completed|failed + awaiting_review  reported, waiting for the giver
+ *   completed|failed + approved         the giver accepted the report
+ *   in_progress + returned              sent back with a comment
+ *   completed + none                    review switched off: closed on done
+ *   cancelled                           withdrawn by the giver
+ * A reported failure always waits for the giver, even with review off.
+ *
+ * Who may act on a given task (approve, send back, withdraw, reassign, edit):
+ * admin always; a super agent if they gave it, or if it was routed through
+ * them (`managedBy`) AND the agent is still on their team. A super agent sees
+ * (view only) admin's direct tasks to their current team.
+ *
  * Personal to-dos never carry `assignedBy` and never enter review.
  */
 
@@ -38,28 +46,81 @@ export interface AssignableAgent {
   email: string;
 }
 
+type Id = mongoose.Types.ObjectId;
+const oid = (id: string): Id => new mongoose.Types.ObjectId(id);
+
 /** True when the task came from a super agent or an admin. */
 export function isAssignedTask(task: { assignedBy?: { userId?: unknown } | null } | null | undefined): boolean {
   return Boolean(task?.assignedBy?.userId);
 }
 
+/** Who a task's `userId` is; rows from before the field = agent. */
+export function assigneeRoleOf(task: { assigneeRole?: string | null }): AgentTaskAssigneeRole {
+  return task.assigneeRole === "super_agent" || task.assigneeRole === "admin" ? task.assigneeRole : "agent";
+}
+
 /**
- * The agent USER ids this caller may assign to and review. Admin: every agent
- * ("all"). Super agent: their team (getSuperAgentScope). Anyone else, or a
- * super agent with no profile: nobody — never everybody.
+ * The agent USER ids this caller may assign to. Admin: every agent ("all").
+ * Super agent: their team (getSuperAgentScope). Anyone else, or a super agent
+ * with no profile: nobody — never everybody.
  */
-export async function assigneeScope(ctx: AssignerCtx): Promise<"all" | mongoose.Types.ObjectId[]> {
+export async function assigneeScope(ctx: AssignerCtx): Promise<"all" | Id[]> {
   if (ctx.role === "admin") return "all";
   if (ctx.role !== "super_agent") return [];
   return getSuperAgentTeamAgentUserIds(ctx.userId);
 }
 
-function inScope(scope: "all" | mongoose.Types.ObjectId[], agentUserId: string): boolean {
-  return scope === "all" || scope.some((id) => String(id) === agentUserId);
+export function inScope(scope: "all" | Id[], userId: string): boolean {
+  return scope === "all" || scope.some((id) => String(id) === userId);
 }
 
 /**
- * The agents the caller can pick in "Assign task", by name. An admin assigning
+ * Which given tasks this caller can see in "Tasks I gave". Admin: all of them.
+ * Super agent: the ones they gave (wherever the agent is now), plus any given
+ * to an agent currently on their team. Anyone else: none (null).
+ */
+export async function visibleGivenFilter(ctx: AssignerCtx): Promise<{ filter: Record<string, unknown>; team: Id[] } | null> {
+  const base = { "assignedBy.userId": { $exists: true } };
+  if (ctx.role === "admin") return { filter: base, team: [] };
+  if (ctx.role !== "super_agent") return null;
+  const team = await getSuperAgentTeamAgentUserIds(ctx.userId);
+  return {
+    filter: { ...base, $or: [{ "assignedBy.userId": oid(ctx.userId) }, ...(team.length ? [{ userId: { $in: team } }] : [])] },
+    team,
+  };
+}
+
+/** May this caller act on (review, withdraw, reassign, edit) this given task? */
+export function canActOnTask(
+  ctx: AssignerCtx,
+  task: { userId?: unknown; assignedBy?: { userId?: unknown } | null; managedBy?: unknown },
+  team: readonly Id[],
+): boolean {
+  if (ctx.role === "admin") return true;
+  if (ctx.role !== "super_agent") return false;
+  if (String(task.assignedBy?.userId ?? "") === ctx.userId) return true;
+  // Routed through them: only while the agent is still on their team.
+  return String(task.managedBy ?? "") === ctx.userId && team.some((id) => String(id) === String(task.userId));
+}
+
+/** Loads a given task the caller may act on, or throws 404 / 403. */
+export async function loadActionableTask(ctx: AssignerCtx, taskId: string) {
+  if (!mongoose.isValidObjectId(taskId)) throw new TaskError(400, "Invalid task ID");
+  const visible = await visibleGivenFilter(ctx);
+  if (!visible) throw new TaskError(403, "Forbidden");
+  const task = await AgentTask.findById(taskId).lean();
+  if (!task || !isAssignedTask(task)) throw new TaskError(404, "Task not found");
+  if (!canActOnTask(ctx, task, visible.team)) {
+    const seen = ctx.role === "admin" || String(task.assignedBy?.userId) === ctx.userId
+      || visible.team.some((id) => String(id) === String(task.userId));
+    if (!seen) throw new TaskError(404, "Task not found");
+    throw new TaskError(403, "Only the person who gave this task or an admin can change it");
+  }
+  return { task, team: visible.team };
+}
+
+/**
+ * The agents the caller can pick in "Give a task", by name. An admin assigning
  * through a super agent (`viaSuperAgent`) picks from that super agent's team.
  */
 export async function listAssignableAgents(ctx: AssignerCtx, viaSuperAgent?: string): Promise<AssignableAgent[]> {
@@ -79,7 +140,7 @@ export async function listAssignableAgents(ctx: AssignerCtx, viaSuperAgent?: str
   return users.map((u) => ({ userId: String(u._id), name: u.name ?? "", email: u.email ?? "" }));
 }
 
-/** Admin only: the super agents a task can be given through, by name. */
+/** Admin only: the super agents a task can be given to (or through), by name. */
 export async function listAssignableSuperAgents(ctx: AssignerCtx): Promise<AssignableAgent[]> {
   if (ctx.role !== "admin") return [];
   const users = await User.find({ role: "super_agent", isActive: { $ne: false } })
@@ -90,288 +151,207 @@ export async function listAssignableSuperAgents(ctx: AssignerCtx): Promise<Assig
   return users.map((u) => ({ userId: String(u._id), name: u.name ?? "", email: u.email ?? "" }));
 }
 
-export interface AssignedListParams {
-  status?: string;
-  reviewStatus?: string;
-  agentUserId?: string;
-  search?: string;
-  page: number;
-  limit: number;
-}
-
-export async function listAssignedTasks(ctx: AssignerCtx, p: AssignedListParams) {
-  const scope = await assigneeScope(ctx);
-  const empty = { total: 0, page: p.page, totalPages: 1, items: [], stats: { open: 0, awaitingReview: 0, returned: 0, approved: 0 } };
-  if (scope !== "all" && scope.length === 0) return empty;
-
-  const base: Record<string, unknown> = { "assignedBy.userId": { $exists: true } };
-  if (scope !== "all") base.userId = { $in: scope };
-
-  const filter: Record<string, unknown> = { ...base };
-  // An agent filter narrows inside the scope; it can never widen it.
-  if (p.agentUserId) {
-    if (!mongoose.isValidObjectId(p.agentUserId) || !inScope(scope, p.agentUserId)) return empty;
-    filter.userId = new mongoose.Types.ObjectId(p.agentUserId);
-  }
-  if (p.status === "open") filter.status = { $nin: CLOSED_TASK_STATUSES };
-  else if (p.status === "pending" || p.status === "in_progress" || p.status === "completed" || p.status === "failed") filter.status = p.status;
-  if (p.reviewStatus === "awaiting_review" || p.reviewStatus === "approved" || p.reviewStatus === "returned") {
-    filter.reviewStatus = p.reviewStatus;
-  }
-  if (p.search) filter.title = { $regex: escapeRegex(p.search), $options: "i" };
-
-  const [rows, total, open, reviewRows] = await Promise.all([
-    AgentTask.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((p.page - 1) * p.limit)
-      .limit(p.limit)
-      .lean(),
-    AgentTask.countDocuments(filter),
-    AgentTask.countDocuments({ ...base, status: { $nin: CLOSED_TASK_STATUSES } }),
-    AgentTask.aggregate<{ _id: AgentTaskReviewStatus; count: number }>([
-      { $match: base },
-      { $group: { _id: "$reviewStatus", count: { $sum: 1 } } },
-    ]),
-  ]);
-  const byReview = Object.fromEntries(reviewRows.map((r) => [r._id, r.count]));
-
-  const userIds = [...new Set(rows.flatMap((t) => [String(t.userId), String(t.assignedBy?.userId ?? ""), String(t.reviewedBy ?? ""), String(t.managedBy ?? "")]).filter(Boolean))];
-  const users = userIds.length
-    ? await User.find({ _id: { $in: userIds } }).select("_id name").lean<Array<{ _id: unknown; name?: string }>>()
-    : [];
-  const names = new Map(users.map((u) => [String(u._id), u.name ?? ""]));
-  // Names only: the reviewer sees what the task is about; the links to open
-  // the records are the agent's (their own task list).
-  const links = await resolveTaskLinks(ctx, rows);
-
-  return {
-    total,
-    page: p.page,
-    totalPages: Math.max(Math.ceil(total / p.limit), 1),
-    stats: {
-      open,
-      awaitingReview: byReview.awaiting_review ?? 0,
-      returned: byReview.returned ?? 0,
-      approved: byReview.approved ?? 0,
-    },
-    items: rows.map((t) => ({
-      _id: String(t._id),
-      title: t.title,
-      description: t.description,
-      priority: t.priority,
-      status: t.status,
-      reviewStatus: t.reviewStatus ?? "none",
-      dueDate: t.dueDate,
-      completionNote: t.completionNote,
-      reviewComment: t.reviewComment,
-      reviewedAt: t.reviewedAt,
-      createdAt: t.createdAt,
-      agentUserId: String(t.userId),
-      agentName: names.get(String(t.userId)) ?? "",
-      assignedByName: names.get(String(t.assignedBy?.userId)) ?? "",
-      assignedByRole: t.assignedBy?.role,
-      managedByName: t.managedBy ? names.get(String(t.managedBy)) ?? "" : undefined,
-      links: linkNames(links.get(String(t._id))),
-      // Only the assigner's own super agent or an admin may review; the UI
-      // shows Approve / Send back only when this is true.
-      canReview: t.reviewStatus === "awaiting_review" && canReviewTask(ctx, t),
-    })),
-  };
-}
-
-/** Admin: any task. Super agent: the ones they assigned, or that an admin gave through them. */
-function canReviewTask(ctx: AssignerCtx, task: { assignedBy?: { userId?: unknown } | null; managedBy?: unknown }): boolean {
-  if (ctx.role === "admin") return true;
-  return ctx.role === "super_agent"
-    && (String(task.assignedBy?.userId ?? "") === ctx.userId || String(task.managedBy ?? "") === ctx.userId);
-}
-
 // Its own module so links.ts can throw it without importing this file back.
 export { TaskError };
 
-async function nameOf(userId: string): Promise<string> {
-  const u = await User.findById(userId).select("name").lean<{ name?: string }>();
-  return u?.name ?? "";
-}
-
-/** Where a notification about this task should take each side. */
-async function reviewerHome(assignerUserId: string, role: AssignerRole | undefined): Promise<string> {
-  if (role === "admin") return "/admin/agent-tasks";
-  const sa = await SuperAgent.exists({ userId: assignerUserId });
-  return sa ? "/super-agent/tasks" : "/admin/agent-tasks";
-}
-
-/** The linked records' names for the reviewer's list, or undefined when none. */
-function linkNames(resolved: ResolvedTaskLinks | undefined): { candidate?: string; job?: string; employer?: string } | undefined {
-  if (!resolved) return undefined;
-  const out = {
-    candidate: resolved.candidate?.name || undefined,
-    job: resolved.job?.title || undefined,
-    employer: resolved.employer?.name || undefined,
-  };
-  return out.candidate || out.job || out.employer ? out : undefined;
-}
-
 export interface AssignInput {
-  agentUserId: string;
+  /** Legacy single-agent form; `assigneeUserIds` wins when both are sent. */
+  agentUserId?: string;
+  assigneeUserIds?: string[];
+  assigneeRole?: "agent" | "super_agent";
   title: string;
   description?: string;
   priority: "high" | "medium" | "low";
   dueDate?: Date;
   superAgentUserId?: string;
+  reviewRequired?: boolean;
   candidateId?: string;
   jobId?: string;
   employerId?: string;
 }
 
 /**
- * Records on an assigned task are checked as the AGENT who gets it: the task
- * links straight to them, so each must be one the agent can open (client
+ * Records on a given task are checked as the person who gets it: the task
+ * links straight to them, so each must be one they can open (client
  * 2026-10-30: super agent and admin tasks could not point at a record).
  */
-export function assigneeLinkCtx(agentUserId: string): AssignerCtx {
-  return { userId: agentUserId, role: "agent" };
+export function assigneeLinkCtx(userId: string, role: AgentTaskAssigneeRole = "agent"): AssignerCtx {
+  return { userId, role };
 }
 
-export async function assignTask(ctx: AssignerCtx, input: AssignInput) {
-  if (ctx.role !== "admin" && ctx.role !== "super_agent") throw new TaskError(403, "Forbidden");
-  if (!mongoose.isValidObjectId(input.agentUserId)) throw new TaskError(400, "Choose an agent");
-  const scope = await assigneeScope(ctx);
-  if (!inScope(scope, input.agentUserId)) throw new TaskError(403, "That agent isn't in your team");
-  const agentUser = await User.findOne({ _id: input.agentUserId, role: "agent" }).select("_id name").lean<{ name?: string }>();
-  if (!agentUser) throw new TaskError(404, "Agent not found");
-
-  // Admin giving it through a super agent: they must exist, and the agent must
-  // be on their team — the super agent manages (and may review) the task.
-  const via = ctx.role === "admin" && input.superAgentUserId ? input.superAgentUserId : undefined;
-  if (via) {
-    if (!mongoose.isValidObjectId(via)) throw new TaskError(400, "Choose a super agent");
-    const sa = await User.findOne({ _id: via, role: "super_agent" }).select("_id").lean();
-    if (!sa) throw new TaskError(404, "Super agent not found");
-    const team = await getSuperAgentTeamAgentUserIds(via);
-    if (!team.some((id) => String(id) === input.agentUserId)) {
-      throw new TaskError(400, "That agent isn't in this super agent's team");
+/** Checks who the task may go to; returns their names. Throws before anything is created. */
+async function checkAssignees(ctx: AssignerCtx, role: "agent" | "super_agent", ids: string[], via?: string) {
+  if (ids.length === 0) throw new TaskError(400, "Choose who the task is for");
+  if (ids.some((id) => !mongoose.isValidObjectId(id))) throw new TaskError(400, "Choose someone from the list");
+  if (role === "super_agent") {
+    if (ctx.role !== "admin") throw new TaskError(403, "Only an admin can give tasks to super agents");
+    if (via) throw new TaskError(400, "A task for a super agent can't go through another super agent");
+  } else {
+    const scope = await assigneeScope(ctx);
+    if (ids.some((id) => !inScope(scope, id))) throw new TaskError(403, "That agent isn't in your team");
+    if (via) {
+      if (!mongoose.isValidObjectId(via)) throw new TaskError(400, "Choose a super agent");
+      const sa = await User.findOne({ _id: via, role: "super_agent" }).select("_id").lean();
+      if (!sa) throw new TaskError(404, "Super agent not found");
+      const team = await getSuperAgentTeamAgentUserIds(via);
+      if (ids.some((id) => !team.some((t) => String(t) === id))) {
+        throw new TaskError(400, "That agent isn't in this super agent's team");
+      }
     }
   }
+  const users = await Promise.all(
+    ids.map((id) => User.findOne({ _id: id, role, isActive: { $ne: false } }).select("_id name").lean<{ name?: string } | null>()),
+  );
+  if (users.some((u) => !u)) throw new TaskError(404, role === "super_agent" ? "Super agent not found" : "Agent not found");
+  return users.map((u) => u?.name ?? "");
+}
 
+/**
+ * Gives one task to one or many people: one copy each, tied by `groupId` when
+ * there are several. Nothing is created unless every person is allowed.
+ */
+export async function assignTasks(ctx: AssignerCtx, input: AssignInput) {
+  if (ctx.role !== "admin" && ctx.role !== "super_agent") throw new TaskError(403, "Forbidden");
+  const role = input.assigneeRole ?? "agent";
+  const ids = [...new Set((input.assigneeUserIds?.length ? input.assigneeUserIds : input.agentUserId ? [input.agentUserId] : []).map(String))];
+  if (ids.length > 100) throw new TaskError(400, "Pick 100 people or fewer");
+  // Admin giving it through a super agent; ignored for anyone else.
+  const via = ctx.role === "admin" && input.superAgentUserId ? input.superAgentUserId : undefined;
+  const names = await checkAssignees(ctx, role, ids, via);
+
+  // Records are checked as each person; a link only makes sense for one.
   const linkInput: TaskLinkInput = { candidateId: input.candidateId, jobId: input.jobId, employerId: input.employerId };
-  const links = await validateTaskLinks(assigneeLinkCtx(input.agentUserId), linkInput, { forAssignee: true });
+  const wantsLinks = Boolean(linkInput.candidateId || linkInput.jobId || linkInput.employerId);
+  if (wantsLinks && ids.length > 1) throw new TaskError(400, "Link records only when the task goes to one person");
+  const links = wantsLinks ? await validateTaskLinks(assigneeLinkCtx(ids[0], role), linkInput, { forAssignee: true }) : undefined;
 
-  const task = await AgentTask.create({
-    userId: new mongoose.Types.ObjectId(input.agentUserId),
+  const groupId = ids.length > 1 ? new mongoose.Types.ObjectId() : undefined;
+  const now = new Date();
+  const tasks = await Promise.all(ids.map((id) => AgentTask.create({
+    userId: oid(id),
+    assigneeRole: role,
     title: input.title,
     description: input.description,
     priority: input.priority,
     dueDate: input.dueDate,
     category: "other",
-    assignedBy: {
-      userId: new mongoose.Types.ObjectId(ctx.userId),
-      role: ctx.role as AssignerRole,
-      assignedAt: new Date(),
-    },
-    ...(via ? { managedBy: new mongoose.Types.ObjectId(via) } : {}),
+    assignedBy: { userId: oid(ctx.userId), role: ctx.role as AssignerRole, assignedAt: now },
+    ...(via ? { managedBy: oid(via) } : {}),
     ...(links ? { links } : {}),
+    ...(groupId ? { groupId } : {}),
+    reviewRequired: input.reviewRequired !== false,
     reviewStatus: "none",
-    history: [{ action: "assigned", to: "pending", by: new mongoose.Types.ObjectId(ctx.userId), at: new Date() }],
-  });
+    history: [{ action: "assigned", to: "pending", by: oid(ctx.userId), at: now }],
+  })));
 
   const assignerName = await nameOf(ctx.userId);
-  await notify({
-    userId: input.agentUserId,
+  await Promise.all(tasks.map((task, i) => notifyQuietly({
+    userId: ids[i],
     actorId: ctx.userId,
-    type: "system",
     title: "New task assigned",
     message: `${assignerName || "Your manager"} assigned you: ${task.title}`,
-    link: "/agent/tasks?kind=assigned",
+    link: assigneeHome(role),
     titleKey: "taskAssignedTitle",
     bodyKey: "taskAssignedBody",
     params: { name: assignerName, title: task.title },
     metadata: { taskId: String(task._id) },
-  }).catch(() => {});
+  })));
   if (via) {
-    await notify({
+    await notifyQuietly({
       userId: via,
       actorId: ctx.userId,
-      type: "system",
       title: "Task for your team",
-      message: `${assignerName || "An admin"} assigned ${agentUser.name || "one of your agents"}: ${task.title}`,
-      link: "/super-agent/tasks",
+      message: `${assignerName || "An admin"} assigned ${names.length === 1 ? names[0] || "one of your agents" : `${names.length} of your agents`}: ${input.title}`,
+      link: "/super-agent/tasks?tab=gave",
       titleKey: "taskViaSuperAgentTitle",
       bodyKey: "taskViaSuperAgentBody",
-      params: { name: assignerName, agent: agentUser.name ?? "", title: task.title },
-      metadata: { taskId: String(task._id) },
-    }).catch(() => {});
+      params: { name: assignerName, agent: names.length === 1 ? names[0] : String(names.length), title: input.title },
+      metadata: { taskId: String(tasks[0]._id) },
+    });
   }
+  return tasks;
+}
 
+/** One person, one task (the market-gap flow and older callers). */
+export async function assignTask(ctx: AssignerCtx, input: AssignInput) {
+  const [task] = await assignTasks(ctx, input);
   return task;
 }
 
-/** Agent reports an assigned task Completed or Failed (note optional): it goes to review. */
+/**
+ * The assignee reports a given task Completed or Failed (note optional). With
+ * review on, both go to the giver; with review off, Completed closes it and
+ * Failed still waits for the giver to decide.
+ */
 export async function submitAssignedTask(
-  agentUserId: string,
+  assigneeUserId: string,
   taskId: string,
   outcome: "completed" | "failed",
   completionNote?: string,
 ) {
-  const task = await AgentTask.findOne({ _id: taskId, userId: agentUserId }).lean();
+  const task = await AgentTask.findOne({ _id: taskId, userId: assigneeUserId }).lean();
   if (!task) throw new TaskError(404, "Task not found");
   if (!isAssignedTask(task)) throw new TaskError(400, "Only assigned tasks go to review");
+  if (task.status === "cancelled") throw new TaskError(409, "This task was withdrawn");
   if (task.reviewStatus === "awaiting_review" || task.reviewStatus === "approved") {
     throw new TaskError(409, "This task is already submitted");
   }
+  const closesDirectly = task.reviewRequired === false && outcome === "completed";
   const updated = await AgentTask.findOneAndUpdate(
-    { _id: taskId, userId: agentUserId, reviewStatus: { $nin: ["awaiting_review", "approved"] } },
+    { _id: taskId, userId: assigneeUserId, status: { $ne: "cancelled" }, reviewStatus: { $nin: ["awaiting_review", "approved"] } },
     {
-      $set: { status: outcome, reviewStatus: "awaiting_review", completionNote },
-      ...pushHistory({ action: "submitted", by: agentUserId, from: task.status, to: outcome, note: completionNote }),
+      $set: { status: outcome, reviewStatus: closesDirectly ? "none" : "awaiting_review", completionNote },
+      ...pushHistory({ action: closesDirectly ? "status" : "submitted", by: assigneeUserId, from: task.status, to: outcome, note: completionNote }),
     },
     { returnDocument: "after" },
   ).lean();
   if (!updated) throw new TaskError(409, "This task is already submitted");
 
   const assignerId = String(task.assignedBy!.userId);
-  const agentName = await nameOf(agentUserId);
-  await notify({
+  const doerName = await nameOf(assigneeUserId);
+  const message = outcome === "failed"
+    ? `${doerName || "Someone"} couldn't complete: ${task.title}`
+    : `${doerName || "Someone"} finished: ${task.title}`;
+  const home = await reviewerHome(assignerId, task.assignedBy!.role as AssignerRole);
+  await notifyQuietly({
     userId: assignerId,
-    actorId: agentUserId,
-    type: "system",
-    title: "Task ready for review",
-    message: outcome === "failed"
-      ? `${agentName || "An agent"} couldn't complete: ${task.title}`
-      : `${agentName || "An agent"} finished: ${task.title}`,
-    link: `${await reviewerHome(assignerId, task.assignedBy!.role as AssignerRole)}?review=awaiting_review`,
-    titleKey: "taskSubmittedTitle",
-    bodyKey: "taskSubmittedBody",
-    params: { name: agentName, title: task.title },
+    actorId: assigneeUserId,
+    title: closesDirectly ? "Task done" : "Task ready for review",
+    message,
+    link: closesDirectly ? home : `${home}&review=awaiting_review`,
+    titleKey: closesDirectly ? "taskDoneTitle" : "taskSubmittedTitle",
+    bodyKey: closesDirectly ? "taskDoneBody" : "taskSubmittedBody",
+    params: { name: doerName, title: task.title },
     metadata: { taskId },
-  }).catch(() => {});
+  });
   // Given through a super agent: they review it too, so they hear about it.
-  if (task.managedBy && String(task.managedBy) !== assignerId) {
-    await notify({
+  if (task.managedBy && String(task.managedBy) !== assignerId && !closesDirectly) {
+    await notifyQuietly({
       userId: String(task.managedBy),
-      actorId: agentUserId,
-      type: "system",
+      actorId: assigneeUserId,
       title: "Task ready for review",
-      message: outcome === "failed"
-        ? `${agentName || "An agent"} couldn't complete: ${task.title}`
-        : `${agentName || "An agent"} finished: ${task.title}`,
-      link: "/super-agent/tasks?review=awaiting_review",
+      message,
+      link: "/super-agent/tasks?tab=gave&review=awaiting_review",
       titleKey: "taskSubmittedTitle",
       bodyKey: "taskSubmittedBody",
-      params: { name: agentName, title: task.title },
+      params: { name: doerName, title: task.title },
       metadata: { taskId },
-    }).catch(() => {});
+    });
   }
   return updated;
 }
 
-/** An assigned task's activity, for whoever may see it in the assigned list. */
+/** A given task's activity, for whoever may see it in "Tasks I gave". */
 export async function assignedTaskHistory(ctx: AssignerCtx, taskId: string) {
   if (!mongoose.isValidObjectId(taskId)) throw new TaskError(400, "Invalid task ID");
+  const visible = await visibleGivenFilter(ctx);
+  if (!visible) throw new TaskError(404, "Task not found");
   const task = await AgentTask.findById(taskId).select("userId createdAt assignedBy managedBy history").lean();
   if (!task || !isAssignedTask(task)) throw new TaskError(404, "Task not found");
-  const scope = await assigneeScope(ctx);
-  if (!inScope(scope, String(task.userId))) throw new TaskError(404, "Task not found");
+  const sees = ctx.role === "admin"
+    || String(task.assignedBy?.userId) === ctx.userId
+    || visible.team.some((id) => String(id) === String(task.userId));
+  if (!sees) throw new TaskError(404, "Task not found");
   return readTaskHistory(task);
 }
 
@@ -381,13 +361,12 @@ export async function reviewTask(
   action: "approve" | "return",
   comment?: string,
 ) {
-  if (!mongoose.isValidObjectId(taskId)) throw new TaskError(400, "Invalid task ID");
-  const task = await AgentTask.findById(taskId).lean();
-  if (!task || !isAssignedTask(task)) throw new TaskError(404, "Task not found");
-  const scope = await assigneeScope(ctx);
-  if (!inScope(scope, String(task.userId)) || !canReviewTask(ctx, task)) {
-    throw new TaskError(403, "Only the person who assigned this task or an admin can review it");
-  }
+  const { task } = await loadActionableTask(ctx, taskId).catch((err: unknown) => {
+    if (err instanceof TaskError && err.status === 403) {
+      throw new TaskError(403, "Only the person who assigned this task or an admin can review it");
+    }
+    throw err;
+  });
   if (task.reviewStatus !== "awaiting_review") throw new TaskError(409, "This task isn't waiting for review");
   if (action === "return" && !comment?.trim()) throw new TaskError(400, "Say what needs to change");
 
@@ -396,10 +375,10 @@ export async function reviewTask(
     {
       $set: {
         reviewStatus: action === "approve" ? "approved" : "returned",
-        // Approving accepts what the agent reported (completed or failed);
-        // sending back puts the agent straight back to work on it.
+        // Approving accepts what was reported (completed or failed);
+        // sending back puts them straight back to work on it.
         status: action === "approve" ? task.status : "in_progress",
-        reviewedBy: new mongoose.Types.ObjectId(ctx.userId),
+        reviewedBy: oid(ctx.userId),
         reviewedAt: new Date(),
         reviewComment: comment?.trim() || undefined,
       },
@@ -416,19 +395,19 @@ export async function reviewTask(
   if (!updated) throw new TaskError(409, "This task isn't waiting for review");
 
   const reviewerName = await nameOf(ctx.userId);
-  await notify({
+  await notifyQuietly({
     userId: String(task.userId),
     actorId: ctx.userId,
-    type: "system",
     title: action === "approve" ? "Task approved" : "Task sent back",
     message: action === "approve"
       ? `${reviewerName || "Your reviewer"} approved: ${task.title}`
       : `${reviewerName || "Your reviewer"} sent back: ${task.title} — ${comment}`,
-    link: "/agent/tasks?kind=assigned",
+    link: assigneeHome(assigneeRoleOf(task)),
     titleKey: action === "approve" ? "taskApprovedTitle" : "taskReturnedTitle",
     bodyKey: action === "approve" ? "taskApprovedBody" : "taskReturnedBody",
     params: { name: reviewerName, title: task.title, comment: comment ?? "" },
     metadata: { taskId },
-  }).catch(() => {});
+  });
   return updated;
 }
+

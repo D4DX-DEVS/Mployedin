@@ -146,10 +146,10 @@ export default function SuperAgentApplicationsPage() {
   });
 
   const metrics = [
-    { label: t("metrics.totalApplications"), value: stats.total, icon: FileText },
+    { label: t("metrics.totalApplications"), shortLabel: t("totalApplicationsShort"), value: stats.total, icon: FileText },
     { label: t("metrics.shortlisted"), value: stats.shortlisted, icon: Star },
     { label: t("metrics.hired"), value: stats.hired, icon: CheckCircle2 },
-    { label: t("metrics.conversionRate"), value: `${stats.conversionRate}%`, icon: TrendingUp },
+    { label: t("metrics.conversionRate"), shortLabel: t("conversionRateShort"), value: `${stats.conversionRate}%`, icon: TrendingUp },
   ];
 
   // Shared by the inline bar and the phone filter sheet.

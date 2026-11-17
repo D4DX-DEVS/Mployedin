@@ -142,7 +142,7 @@ export default function SuperAgentInterviewsPage() {
   });
 
   const metricsArray = [
-    { label: t("totalInterviews"), value: stats.total, icon: Calendar },
+    { label: t("totalInterviews"), shortLabel: t("totalInterviewsShort"), value: stats.total, icon: Calendar },
     { label: t("scheduled"), value: stats.scheduled, icon: Clock },
     { label: t("completed"), value: stats.completed, icon: CheckCircle2 },
     { label: t("cancelRate"), value: `${stats.cancelRate}%`, icon: XCircle },

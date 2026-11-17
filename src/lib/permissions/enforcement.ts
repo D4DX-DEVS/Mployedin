@@ -34,7 +34,7 @@ export const ENFORCED_PERMISSIONS: Partial<Record<Resource, Action[]>> = {
   notifications: ["create", "read", "update", "delete"],
   reports: ["read", "export"],
   audit_logs: ["read"],
-  tasks: ["create", "read", "update"],
+  tasks: ["create", "read", "update", "delete"],
   job_attributes: ["create", "read", "update", "delete"],
   location_data: ["create", "read", "update", "delete"],
   cms: ["create", "read", "update", "delete"],

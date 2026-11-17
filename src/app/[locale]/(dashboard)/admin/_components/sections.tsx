@@ -27,6 +27,8 @@ export interface SectionContext {
   can: (resource: Resource) => boolean;
   period: DashboardPeriod;
   locale: string;
+  /** The signed-in admin: the queue's task rows are theirs. */
+  userId: string;
 }
 
 /**
@@ -47,13 +49,13 @@ function Failed({ id, title, t }: { id: string; title: string; t: DashboardTrans
   return <SectionError id={id} title={title} message={t("sectionError.message")} retryLabel={t("sectionError.retry")} />;
 }
 
-export async function QueueSection({ can, locale }: SectionContext) {
+export async function QueueSection({ can, locale, userId }: SectionContext) {
   const groups = permittedQueueGroups(can);
   if (groups.length === 0) return null;
   const t = await getTranslations("adminDashboard");
   // Never cached: a stale "needs action" list hides work or sends the admin to
   // records that no longer need them. The aggregates below tolerate 60s of age.
-  const result = await load("queue", () => getAdminActionQueue(can));
+  const result = await load("queue", () => getAdminActionQueue(can, userId));
   if (!result.ok) return <Failed id="admin-action-queue" title={t("queue.title")} t={t} />;
   return <AdminActionQueue items={result.data} groups={groups} locale={locale} t={t} />;
 }

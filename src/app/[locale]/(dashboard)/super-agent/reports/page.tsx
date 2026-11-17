@@ -81,10 +81,10 @@ export default function SuperAgentReportsPage() {
   const otherCurrencies = report?.otherCurrencies ?? [];
 
   const kpis = [
-    { label: t("agentsManaged"), value: report?.totalAgents ?? 0, note: t("agentsManagedHelper"), icon: Users2 },
+    { label: t("agentsManaged"), shortLabel: t("agentsManagedShort"), value: report?.totalAgents ?? 0, note: t("agentsManagedHelper"), icon: Users2 },
     { label: t("totalLeads"), value: report?.totalLeads ?? 0, note: t("totalLeadsHelper"), icon: Target },
     { label: t("placements"), value: report?.totalPlacements ?? 0, note: t("placementsHelper"), icon: BarChart3 },
-    { label: t("commissionEarned"), value: formatCurrency(report?.totalCommissions ?? 0, currency), note: t("commissionsHelper"), icon: Coins },
+    { label: t("commissionEarned"), shortLabel: t("commissionEarnedShort"), value: formatCurrency(report?.totalCommissions ?? 0, currency), note: t("commissionsHelper"), icon: Coins },
   ];
 
   return (

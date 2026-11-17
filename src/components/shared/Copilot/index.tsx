@@ -8,7 +8,7 @@ import { useLocale, useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
-  X, Send, Loader2, Sparkles, SquarePen, Check, History, Trash2, Paperclip,
+  X, Send, Loader2, Sparkles, SquarePen, Maximize2, Minimize2, Check, History, Trash2, Paperclip,
   BarChart3, Briefcase, Search, Target, FileText, ClipboardList, UserPlus, TrendingUp, FilePen, CircleHelp, Clock,
   type LucideIcon,
 } from "lucide-react";
@@ -156,6 +156,8 @@ export function Copilot({ className }: CopilotProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  // Larger panel for long answers and tables; phones are full-screen already.
+  const [expanded, setExpanded] = useState(false);
   const [savedChats, setSavedChats] = useState<SavedChat[]>([]);
   const chatIdRef = useRef(nextId());
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -646,6 +648,7 @@ export function Copilot({ className }: CopilotProps) {
       tabIndex={-1}
       className={cn(
         "copilot-panel fixed z-[70] flex h-[min(640px,calc(100dvh-5.5rem))] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl lg:h-[min(640px,calc(100vh-2rem))]",
+        expanded && "copilot-panel-expanded",
         className
       )}
     >
@@ -670,6 +673,17 @@ export function Copilot({ className }: CopilotProps) {
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 max-sm:h-11 max-sm:w-11" onClick={resetChat} title={t("newChat")} aria-label={t("newChat")}>
             <SquarePen className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 max-sm:hidden"
+            onClick={() => setExpanded((v) => !v)}
+            title={expanded ? t("collapse") : t("expand")}
+            aria-label={expanded ? t("collapse") : t("expand")}
+            aria-pressed={expanded}
+          >
+            {expanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
           </Button>
           <Button
             variant="ghost"
@@ -893,7 +907,7 @@ export function Copilot({ className }: CopilotProps) {
         <p className="mt-1.5 text-center text-[11px] text-muted-foreground">{t("disclaimer")}</p>
       </div>
     </div>
-  ), [transcript, input, isStreaming, isRtl, hasMessages, t, handleConfirm, handleCancel, handleInternalLink, suggestions, sendMessage, showHistory, savedChats,
+  ), [transcript, input, isStreaming, isRtl, hasMessages, t, handleConfirm, handleCancel, handleInternalLink, suggestions, sendMessage, showHistory, savedChats, expanded,
     canAttachPoster, readingPoster, handlePosterFile, posterPreviews, createLeadFromDraft, openDraftInForm]);
 
   if (!mounted) return null;

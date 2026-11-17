@@ -24,6 +24,7 @@ import {
   type SectionContext,
 } from "./_components/sections";
 import { AdminDashboardTabs, type DashboardTab } from "./_components/admin-dashboard-tabs";
+import { TaskSummaryCards } from "@/components/features/tasks/TaskSummaryCards";
 
 /*
  * Admin dashboard, one question per tab:
@@ -64,6 +65,7 @@ export default async function AdminDashboardPage({
   // Custom permissions can narrow an admin; every section asks the same matrix
   // the APIs behind its destination pages enforce.
   const user = session.user as unknown as {
+    id?: string;
     role?: UserRole;
     name?: string | null;
     permissionMode?: PermissionMode;
@@ -75,7 +77,7 @@ export default async function AdminDashboardPage({
       permissionMode: user.permissionMode,
       customPermissions: user.customPermissions,
     });
-  const context: SectionContext = { can, period, locale };
+  const context: SectionContext = { can, period, locale, userId: user.id ?? "" };
 
   const now = period.now;
   const updatedLabel = t("hero.updated", {
@@ -120,6 +122,7 @@ export default async function AdminDashboardPage({
             <Suspense key={`snapshot-${period.key}`} fallback={<SnapshotSkeleton label={loading(t("snapshot.title"))} />}>
               <SnapshotSection {...context} />
             </Suspense>
+            <TaskSummaryCards audience="admin" />
             <Suspense key={`funnel-${period.key}`} fallback={<FunnelSkeleton label={loading(t("funnel.title"))} />}>
               <HiringFunnelSection {...context} />
             </Suspense>

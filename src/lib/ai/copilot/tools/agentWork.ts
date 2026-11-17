@@ -69,20 +69,29 @@ function pageLocale(ctx: CopilotToolContext): string {
   return routing.locales.find((l) => l === fromPage) ?? ctx.locale;
 }
 
+/** Everyone with a My tasks list: their own to-dos and the tasks given to them. */
+const TASK_ROLES: CopilotToolContext["role"][] = ["agent", "super_agent", "admin"];
+
+/** The caller's own Tasks page. */
+export function ownTasksPath(role: string): string {
+  return role === "admin" ? "/admin/tasks" : role === "super_agent" ? "/super-agent/tasks" : "/agent/tasks";
+}
+
 const STATUS_WORD: Record<AgentTaskStatus, string> = {
   pending: "pending",
   in_progress: "in progress",
   completed: "completed",
   failed: "failed",
+  cancelled: "withdrawn",
 };
 
 export const myTasksTool: CopilotTool<{ status?: AgentTaskStatus; due?: "overdue" | "today"; limit?: number }> = {
   name: "my_tasks",
   description:
-    "List the agent's own tasks, optionally only the overdue ones or those due today. Each row carries the candidate / job / employer it is linked to, with a url to open each. Use this to get a real taskId before update_task_status.",
+    "List the user's own tasks (My tasks: their to-dos and tasks given to them), optionally only the overdue ones or those due today. Never tasks the user gave other people — that is tasks_i_gave. Each row carries the candidate / job / employer it is linked to, with a url to open each. Use this to get a real taskId before update_task_status.",
   resource: "tasks",
   action: "read",
-  roles: ["agent"],
+  roles: TASK_ROLES,
   mutates: false,
   parameters: {
     status: {
@@ -168,10 +177,10 @@ async function resolveLinks(args: CreateTaskArgs, ctx: CopilotToolContext): Prom
 export const createTaskTool: CopilotTool<CreateTaskArgs> = {
   name: "create_task",
   description:
-    "Add a task to the agent's own to-do list — use for any task, to-do, follow-up, reminder, call, meeting or document chase the agent asks for (never create_lead). It can be linked to the candidate, job and/or employer it is about (by name, title or email as the agent said it); the task then opens them directly.",
+    "Add a task to the user's own to-do list — use for any task, to-do, follow-up, reminder, call, meeting or document chase they want for themselves (never create_lead; a task for someone else is give_task). It can be linked to the candidate, job and/or employer it is about (by name, title or email as the agent said it); the task then opens them directly.",
   resource: "tasks",
   action: "create",
-  roles: ["agent"],
+  roles: TASK_ROLES,
   mutates: true,
   parameters: {
     title: { type: "string", description: "What needs doing", maxLength: 200 },
@@ -252,7 +261,7 @@ export const createTaskTool: CopilotTool<CreateTaskArgs> = {
     return {
       ok: true,
       message: `Task "${task.title}" created${linked.summary ? `, linked to ${linked.summary}` : ""}.`,
-      data: { taskId: String(task._id), url: `/${pageLocale(ctx)}/agent/tasks` },
+      data: { taskId: String(task._id), url: `/${pageLocale(ctx)}${ownTasksPath(ctx.role)}` },
     };
   },
 };
@@ -262,10 +271,10 @@ type UpdateStatusArgs = { taskId: string; status: AgentTaskStatus; note?: string
 export const updateTaskStatusTool: CopilotTool<UpdateStatusArgs> = {
   name: "update_task_status",
   description:
-    "Change the status of one of the agent's tasks — pending, in_progress, completed or failed — with an optional note. Requires a real taskId from my_tasks. A task given by a super agent or admin goes to them for review when completed or failed.",
+    "Change the status of one of the user's own tasks — pending, in_progress, completed or failed — with an optional note. Requires a real taskId from my_tasks. A given task reported failed always goes to whoever gave it; reported completed it goes to them for review unless they switched review off.",
   resource: "tasks",
   action: "update",
-  roles: ["agent"],
+  roles: TASK_ROLES,
   mutates: true,
   parameters: {
     taskId: { type: "string", description: "The task's MongoDB _id", maxLength: 32 },
@@ -278,21 +287,23 @@ export const updateTaskStatusTool: CopilotTool<UpdateStatusArgs> = {
     if (!isValidObjectId(args.taskId)) return { summary: "", blocker: "That task id is not valid. Call my_tasks for a real one." };
     await connectDB();
     const task = await AgentTask.findOne({ _id: args.taskId, userId: ctx.userId })
-      .select("title status assignedBy reviewStatus")
-      .lean<{ title: string; status: AgentTaskStatus; assignedBy?: { userId?: unknown }; reviewStatus?: string } | null>();
-    if (!task) return { summary: "", blocker: "No task with that id on the agent's list." };
+      .select("title status assignedBy reviewStatus reviewRequired")
+      .lean<{ title: string; status: AgentTaskStatus; assignedBy?: { userId?: unknown }; reviewStatus?: string; reviewRequired?: boolean } | null>();
+    if (!task) return { summary: "", blocker: "No task with that id on your list." };
+    if (task.status === "cancelled") return { summary: "", blocker: `"${task.title}" was withdrawn by whoever gave it, so it can't be changed.` };
     const assigned = Boolean(task.assignedBy?.userId);
     const closing = args.status === "completed" || args.status === "failed";
     const withReviewer = task.reviewStatus === "awaiting_review" || task.reviewStatus === "approved";
     if (assigned && withReviewer) {
-      return { summary: "", blocker: `"${task.title}" is with the agent's reviewer, so its status can't be changed now.` };
+      return { summary: "", blocker: `"${task.title}" is with whoever gave it for review, so its status can't be changed now.` };
     }
     if (task.status === args.status && !(assigned && closing)) {
       return { summary: "", blocker: `"${task.title}" is already ${STATUS_WORD[args.status]}.` };
     }
-    const forReview = assigned && closing;
+    // Review off: done closes it. A failure always goes back to the giver.
+    const forReview = assigned && (args.status === "failed" || (args.status === "completed" && task.reviewRequired !== false));
     return {
-      summary: `"${task.title}": ${STATUS_WORD[task.status]} → ${STATUS_WORD[args.status]}${forReview ? ". It was assigned to the agent, so this goes to the assigner for review." : "."}`,
+      summary: `"${task.title}": ${STATUS_WORD[task.status]} → ${STATUS_WORD[args.status]}${forReview ? ". It was given to you, so this goes to whoever gave it for review." : "."}`,
       resolvedArgs: { taskTitle: task.title, forReview },
     };
   },

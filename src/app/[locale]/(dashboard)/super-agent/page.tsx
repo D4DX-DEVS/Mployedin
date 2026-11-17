@@ -24,6 +24,7 @@ import { TeamActivityChart } from "@/components/features/super-agent/dashboard/T
 import { resolveAssignedRegions } from "@/lib/agents/assignedRegion";
 import { loadSuperAgentDashboard } from "@/lib/superAgent/dashboardData";
 import { localHourIn } from "@/lib/datetime/countryZone";
+import { TaskSummaryCards } from "@/components/features/tasks/TaskSummaryCards";
 
 /**
  * The super-agent home, answering three questions in order: what needs me,
@@ -203,6 +204,8 @@ export default async function SuperAgentDashboard({ params }: { params: Promise<
       />
 
       <SuperAgentKpiCards cards={cards} />
+
+      <TaskSummaryCards audience="super_agent" />
 
       <div className="grid items-stretch gap-3 sm:gap-4 xl:grid-cols-2">
         <div className="flex flex-col gap-3 sm:gap-4">

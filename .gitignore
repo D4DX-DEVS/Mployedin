@@ -180,3 +180,6 @@ PLAN.md
 
 # Local script output (reports, caches) — e.g. scripts/backfill-seeker-areas.mjs
 /tmp/
+
+
+.next-verify

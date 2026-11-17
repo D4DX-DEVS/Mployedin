@@ -37,6 +37,8 @@ export async function updateOwnTask(userId: string, id: string, body: OwnTaskUpd
     .select("assignedBy reviewStatus status")
     .lean<{ assignedBy?: { userId?: unknown }; reviewStatus?: string; status: AgentTaskStatus }>();
   if (!existing) throw new TaskError(404, "Task not found");
+  // Withdrawn by whoever gave it: nothing left to do on it.
+  if (existing.status === "cancelled") throw new TaskError(409, "This task was withdrawn, so it can't be changed.");
 
   if (isAssignedTask(existing)) {
     const editsContent = [body.title, body.description, body.priority, body.category, body.dueDate].some((v) => v !== undefined);

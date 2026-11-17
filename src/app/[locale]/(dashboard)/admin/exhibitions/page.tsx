@@ -533,19 +533,22 @@ export default function AdminExhibitionsPage() {
                   key={option.key}
                   size="sm"
                   variant={view === option.key ? "secondary" : "ghost"}
-                  className="h-8 rounded-lg px-2.5"
+                  // Phones: icons only, so the title keeps its row (2026-11-17).
+                  className="h-8 rounded-lg px-2.5 max-sm:w-9 max-sm:px-0"
+                  aria-label={option.label}
+                  title={option.label}
                   aria-pressed={view === option.key}
                   onClick={() => setView(option.key)}
                 >
                   <option.icon className="h-4 w-4" aria-hidden="true" />
-                  {option.label}
+                  <span className="max-sm:sr-only">{option.label}</span>
                 </Button>
               ))}
             </div>
-            <Button asChild variant="outline" className="rounded-xl border-border/70 bg-background/90">
-              <a href="exhibitions/analytics">
-                <BarChart2 className="h-4 w-4" />
-                {t("analytics")}
+            <Button asChild variant="outline" className="rounded-xl border-border/70 bg-background/90 max-sm:w-10 max-sm:px-0">
+              <a href="exhibitions/analytics" aria-label={t("analytics")} title={t("analytics")}>
+                <BarChart2 className="h-4 w-4" aria-hidden="true" />
+                <span className="max-sm:sr-only">{t("analytics")}</span>
               </a>
             </Button>
           </div>
@@ -554,10 +557,10 @@ export default function AdminExhibitionsPage() {
         // Rejected are one Status filter away. Pending Review is what an admin
         // acts on first, Finance Review next, so those two carry a tint.
         metrics={[
-          { label: t("totalRequests"), value: summary.total, icon: ClipboardCheck, iconClassName: "text-muted-foreground", iconSurfaceClassName: "bg-muted" },
-          { label: t("pendingReview"), value: summary.pendingReview, icon: Clock, iconClassName: "text-orange-600", iconSurfaceClassName: "bg-orange-100", className: "sm:bg-orange-50/70 sm:ring-1 sm:ring-inset sm:ring-orange-200" },
-          { label: t("financeReview"), value: summary.financeReview, icon: CircleDollarSign, iconClassName: "text-purple-600", iconSurfaceClassName: "bg-purple-100", className: "sm:bg-purple-50/50 sm:ring-1 sm:ring-inset sm:ring-purple-200/70" },
-          { label: t("kpiAwaitingLaunch"), value: summary.awaitingApproval, icon: ShieldAlert, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
+          { label: t("totalRequests"), shortLabel: t("totalRequestsShort"), value: summary.total, icon: ClipboardCheck, iconClassName: "text-muted-foreground", iconSurfaceClassName: "bg-muted" },
+          { label: t("pendingReview"), shortLabel: t("pendingReviewShort"), value: summary.pendingReview, icon: Clock, iconClassName: "text-orange-600", iconSurfaceClassName: "bg-orange-100", className: "sm:bg-orange-50/70 sm:ring-1 sm:ring-inset sm:ring-orange-200" },
+          { label: t("financeReview"), shortLabel: t("financeReviewShort"), value: summary.financeReview, icon: CircleDollarSign, iconClassName: "text-purple-600", iconSurfaceClassName: "bg-purple-100", className: "sm:bg-purple-50/50 sm:ring-1 sm:ring-inset sm:ring-purple-200/70" },
+          { label: t("kpiAwaitingLaunch"), shortLabel: t("kpiAwaitingLaunchShort"), value: summary.awaitingApproval, icon: ShieldAlert, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
         ]}
         footer={
           // One strip of context, not three more cards competing with the queue.

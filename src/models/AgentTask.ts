@@ -10,22 +10,39 @@ import mongoose, { Schema, type Model } from "mongoose";
  * every reader shares one definition.
  */
 export type AgentTaskPriority = "high" | "medium" | "low";
-export type AgentTaskStatus = "pending" | "in_progress" | "completed" | "failed";
+/**
+ * `cancelled` = withdrawn by whoever gave the task (or an admin). Only a giver
+ * sets it; the assignee's status picker never offers it.
+ */
+export type AgentTaskStatus = "pending" | "in_progress" | "completed" | "failed" | "cancelled";
+export const AGENT_TASK_STATUSES: AgentTaskStatus[] = ["pending", "in_progress", "completed", "failed", "cancelled"];
 
 /** Statuses that close a task: no longer open, never overdue. */
-export const CLOSED_TASK_STATUSES: AgentTaskStatus[] = ["completed", "failed"];
+export const CLOSED_TASK_STATUSES: AgentTaskStatus[] = ["completed", "failed", "cancelled"];
+
+/** Who the task's `userId` is. Missing on old rows = agent. */
+export type AgentTaskAssigneeRole = "agent" | "super_agent" | "admin";
 export type AgentTaskCategory = "follow_up" | "call" | "meeting" | "document" | "other";
 
 export type AgentTaskReviewStatus = "none" | "awaiting_review" | "approved" | "returned";
 
 /** One line of a task's activity: who changed what, when, and their optional note. */
-export type AgentTaskHistoryAction = "created" | "assigned" | "status" | "submitted" | "approved" | "returned";
+export type AgentTaskHistoryAction =
+  | "created" | "assigned" | "status" | "submitted" | "approved" | "returned"
+  | "withdrawn" | "reassigned" | "due_changed" | "review_switch";
+export const AGENT_TASK_HISTORY_ACTIONS: AgentTaskHistoryAction[] = [
+  "created", "assigned", "status", "submitted", "approved", "returned",
+  "withdrawn", "reassigned", "due_changed", "review_switch",
+];
 
 export interface IAgentTaskHistoryEntry {
   action: AgentTaskHistoryAction;
   from?: AgentTaskStatus;
   to?: AgentTaskStatus;
   note?: string;
+  /** reassigned: the person it moved from and to. */
+  fromUser?: mongoose.Types.ObjectId;
+  toUser?: mongoose.Types.ObjectId;
   by: mongoose.Types.ObjectId;
   at: Date;
 }
@@ -68,6 +85,14 @@ export interface IAgentTask {
   reviewedAt?: Date;
   reviewComment?: string;
   history?: IAgentTaskHistoryEntry[];
+  /** Who `userId` is: agent (default), super_agent (admin gave it), admin (own list). */
+  assigneeRole?: AgentTaskAssigneeRole;
+  /** One task given to several people at once: each copy carries the same id. */
+  groupId?: mongoose.Types.ObjectId;
+  /** Given tasks: whether the giver checks the work before it closes. Missing = true. */
+  reviewRequired?: boolean;
+  /** "Once" guards for the daily reminder job. */
+  remindedAt?: { dueSoon?: Date; overdue?: Date; giverOverdue?: Date };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -78,7 +103,7 @@ const AgentTaskSchema = new Schema<IAgentTask>(
     title: { type: String, required: true },
     description: String,
     priority: { type: String, enum: ["high", "medium", "low"], default: "medium" },
-    status: { type: String, enum: ["pending", "in_progress", "completed", "failed"], default: "pending" },
+    status: { type: String, enum: AGENT_TASK_STATUSES, default: "pending" },
     dueDate: Date,
     category: {
       type: String,
@@ -119,10 +144,12 @@ const AgentTaskSchema = new Schema<IAgentTask>(
       type: [
         new Schema<IAgentTaskHistoryEntry>(
           {
-            action: { type: String, enum: ["created", "assigned", "status", "submitted", "approved", "returned"], required: true },
-            from: { type: String, enum: ["pending", "in_progress", "completed", "failed"] },
-            to: { type: String, enum: ["pending", "in_progress", "completed", "failed"] },
+            action: { type: String, enum: AGENT_TASK_HISTORY_ACTIONS, required: true },
+            from: { type: String, enum: AGENT_TASK_STATUSES },
+            to: { type: String, enum: AGENT_TASK_STATUSES },
             note: String,
+            fromUser: { type: Schema.Types.ObjectId, ref: "User" },
+            toUser: { type: Schema.Types.ObjectId, ref: "User" },
             by: { type: Schema.Types.ObjectId, ref: "User", required: true },
             at: { type: Date, default: Date.now },
           },
@@ -131,12 +158,22 @@ const AgentTaskSchema = new Schema<IAgentTask>(
       ],
       default: undefined,
     },
+    assigneeRole: { type: String, enum: ["agent", "super_agent", "admin"] },
+    groupId: { type: Schema.Types.ObjectId, index: true },
+    reviewRequired: Boolean,
+    remindedAt: {
+      dueSoon: Date,
+      overdue: Date,
+      giverOverdue: Date,
+    },
   },
   { timestamps: true },
 );
 
 // The overdue count and the calendar both query by owner and due date.
 AgentTaskSchema.index({ userId: 1, dueDate: 1, status: 1 });
+// The daily reminder job scans open tasks by due date.
+AgentTaskSchema.index({ status: 1, dueDate: 1 });
 
 const AgentTask: Model<IAgentTask> =
   (mongoose.models.AgentTask as Model<IAgentTask>) ||

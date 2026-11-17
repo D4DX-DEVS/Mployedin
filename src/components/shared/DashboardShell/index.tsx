@@ -122,6 +122,7 @@ export function DashboardShell({
     pendingCommissionApprovals: superAgentCounts.pendingCommissionApprovals,
     overdueTasks: agentCounts.overdueTasks,
     dueFollowUps: agentCounts.dueFollowUps,
+    taskInbox: isAdmin ? adminCounts.taskInbox : superAgentCounts.taskInbox,
   };
   // Agent/super-agent list pages share the exact same admin-authored
   // components (PageHero, data-table-toolbar, <Table>), so they get the same

@@ -94,7 +94,24 @@ describe("update_task_status", () => {
     const { updateTaskStatusTool } = await tools();
     taskFindOne.mockResolvedValue({ ...assigned, reviewStatus: "awaiting_review" });
     const preview = await updateTaskStatusTool.preview!({ taskId: TASK, status: "in_progress" }, ctx);
-    expect(preview.blocker).toMatch(/reviewer/);
+    expect(preview.blocker).toMatch(/for review/);
+  });
+
+  it("says a done report closes the task when the giver switched review off", async () => {
+    const { updateTaskStatusTool } = await tools();
+    taskFindOne.mockResolvedValue({ ...assigned, reviewRequired: false });
+    const done = await updateTaskStatusTool.preview!({ taskId: TASK, status: "completed" }, ctx);
+    expect(done.resolvedArgs).toEqual({ taskTitle: "Call the employer", forReview: false });
+    expect(done.summary).not.toContain("review");
+    // A failure still goes back to whoever gave it.
+    const failed = await updateTaskStatusTool.preview!({ taskId: TASK, status: "failed" }, ctx);
+    expect(failed.resolvedArgs).toEqual({ taskTitle: "Call the employer", forReview: true });
+  });
+
+  it("won't show a card for a withdrawn task", async () => {
+    const { updateTaskStatusTool } = await tools();
+    taskFindOne.mockResolvedValue({ ...assigned, status: "cancelled" });
+    expect((await updateTaskStatusTool.preview!({ taskId: TASK, status: "in_progress" }, ctx)).blocker).toMatch(/withdrawn/);
   });
 
   it("won't show a card for a status the task already has", async () => {

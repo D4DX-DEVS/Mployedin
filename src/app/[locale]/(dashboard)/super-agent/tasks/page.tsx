@@ -1,8 +1,8 @@
 "use client";
 
-import { AssignedTasksWorkspace } from "@/components/features/tasks/AssignedTasksWorkspace";
+import { TasksHub } from "@/components/features/tasks/TasksHub";
 
-/** Tasks this super agent gives their team, and the review of what comes back. */
+/** Super agent Tasks: their own list, and the tasks they gave their team and its review. */
 export default function SuperAgentTasksPage() {
-  return <AssignedTasksWorkspace audience="super_agent" />;
+  return <TasksHub audience="super_agent" />;
 }

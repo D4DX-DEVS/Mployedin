@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
-export type AgentTaskStatus = "pending" | "in_progress" | "completed" | "failed";
+/** `cancelled` = withdrawn by whoever gave the task; nobody picks it from the status menu. */
+export type AgentTaskStatus = "pending" | "in_progress" | "completed" | "failed" | "cancelled";
 type BadgeKey = AgentTaskStatus | "awaiting_review";
 
 const STATUS_BADGE: Record<BadgeKey, string> = {
@@ -19,6 +20,7 @@ const STATUS_BADGE: Record<BadgeKey, string> = {
   awaiting_review: "bg-amber-100 text-amber-800",
   completed: "bg-emerald-100 text-emerald-700",
   failed: "bg-red-100 text-red-700",
+  cancelled: "bg-zinc-100 text-zinc-600",
 };
 
 /** Where the task stands. Overdue is not a status: the due date turns red instead. */
@@ -31,6 +33,7 @@ export function TaskStatusBadge({ status, reviewStatus }: { status: AgentTaskSta
     awaiting_review: t("reviewAwaiting"),
     completed: t("statusCompleted"),
     failed: t("statusFailed"),
+    cancelled: t("statusWithdrawn"),
   }[key];
   return (
     <span className={`inline-flex w-fit whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_BADGE[key]}`}>
@@ -45,6 +48,7 @@ export const STATUS_DOT: Record<AgentTaskStatus, string> = {
   in_progress: "bg-blue-500",
   completed: "bg-emerald-500",
   failed: "bg-red-500",
+  cancelled: "bg-zinc-400",
 };
 
 export interface StatusChange {
@@ -62,11 +66,13 @@ export interface StatusChange {
  * goes to the assigner for review, and the note is what they read.
  */
 export function TaskStatusDialog({
-  change, onClose, onSaved,
+  change, onClose, onSaved, apiBase = "/api/agent/tasks",
 }: {
   change: StatusChange | null;
   onClose: () => void;
   onSaved: () => void;
+  /** The owner's task API (agent, super agent or admin own list). */
+  apiBase?: string;
 }) {
   const t = useTranslations("agentTasks");
   const tc = useTranslations("common");
@@ -82,7 +88,7 @@ export function TaskStatusDialog({
     if (!change || saving) return;
     setSaving(true);
     try {
-      const res = await csrfFetch(`/api/agent/tasks/${change.id}`, {
+      const res = await csrfFetch(`${apiBase}/${change.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: change.to, note: note.trim() || undefined }),

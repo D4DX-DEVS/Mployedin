@@ -267,12 +267,23 @@ export default function AdminTerritoryPage() {
                   <UserAvatar name={row.superAgent.name} email={row.superAgent.email} src={row.superAgent.avatar} className="h-10 w-10" colorful />
                 ) : undefined,
                 title: row.name ? row.name : <span className="italic text-muted-foreground">{t("unnamedTerritory")}</span>,
-                subtitle: row.superAgent ? (
-                  row.superAgent.name
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-amber-800">
-                    <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                    {t("noSuperAgent")}
+                // Owner and agent count share one line (2026-11-17): on two lines
+                // the count sat alone under a short name.
+                subtitle: (
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    {row.superAgent ? (
+                      <span className="truncate">{row.superAgent.name}</span>
+                    ) : (
+                      <span className="inline-flex min-w-0 items-center gap-1 text-amber-800">
+                        <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{t("noSuperAgent")}</span>
+                      </span>
+                    )}
+                    <span aria-hidden="true">·</span>
+                    <span className="inline-flex shrink-0 items-center gap-1">
+                      <Users className="h-3 w-3" aria-hidden="true" />
+                      {t("columnAgents")}: <span className="tabular-nums">{row.agentCount}</span>
+                    </span>
                   </span>
                 ),
                 actions: (
@@ -280,12 +291,6 @@ export default function AdminTerritoryPage() {
                     name={row.name ?? row.superAgent?.name ?? t("unnamedTerritory")}
                     {...rowActionsFor(row)}
                   />
-                ),
-                meta: (
-                  <p className="flex items-center gap-1">
-                    <Users className="h-3 w-3" aria-hidden="true" />
-                    {t("columnAgents")}: <span className="tabular-nums">{row.agentCount}</span>
-                  </p>
                 ),
                 badges: row.regions.length > 0 ? (
                   <>

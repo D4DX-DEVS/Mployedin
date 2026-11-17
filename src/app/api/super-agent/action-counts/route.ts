@@ -6,11 +6,13 @@ import Agent from "@/models/Agent";
 import Commission from "@/models/Commission";
 import ExhibitionRequest from "@/models/ExhibitionRequest";
 import Lead from "@/models/Lead";
+import { taskInboxCount } from "@/lib/agentTasks/inbox";
 
 const EMPTY = {
   pendingExhibitionReviews: 0,
   pendingCommissionApprovals: 0,
   overdueLeadFollowUps: 0,
+  taskInbox: 0,
 };
 
 /**
@@ -45,7 +47,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     .lean();
   const agentUserIds = agentDocs.map((a) => a.userId).filter(Boolean);
 
-  const [pendingExhibitionReviews, pendingCommissionApprovals, overdueLeadFollowUps] =
+  const [pendingExhibitionReviews, pendingCommissionApprovals, overdueLeadFollowUps, taskInbox] =
     await Promise.all([
       ExhibitionRequest.countDocuments({
         agentId: { $in: agentUserIds },
@@ -60,12 +62,15 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
         followUpAt: { $lt: new Date() },
         status: { $nin: ["converted", "lost"] },
       }),
+      // Tasks admin gave them, still open, plus reports waiting for their review.
+      taskInboxCount(ctx),
     ]);
 
   return NextResponse.json({
     pendingExhibitionReviews,
     pendingCommissionApprovals,
     overdueLeadFollowUps,
+    taskInbox,
   });
 }, { resource: "exhibitions", action: "read" });
 

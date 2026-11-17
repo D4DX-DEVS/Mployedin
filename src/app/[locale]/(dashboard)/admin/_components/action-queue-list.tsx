@@ -26,6 +26,7 @@ export interface ActionQueueArea {
 
 const GROUP_DOTS: Record<AdminQueueGroup, string> = {
   decisions: "bg-rose-500",
+  tasks: "bg-blue-500",
   finance: "bg-amber-500",
   compliance: "bg-sky-500",
   recruitment: "bg-violet-500",

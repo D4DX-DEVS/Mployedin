@@ -13,6 +13,8 @@ import type { SuperAgentDashboardData } from "@/lib/superAgent/dashboardData";
 
 jest.mock("@/lib/auth/config", () => ({ auth: async () => ({ user: { id: "sa_user", name: "Super Agent" } }) }));
 jest.mock("next/navigation", () => ({ redirect: jest.fn() }));
+// The task summary cards fetch on the client (React Query); this tests the server layout.
+jest.mock("@/components/features/tasks/TaskSummaryCards", () => ({ TaskSummaryCards: () => null }));
 jest.mock("@/lib/db/mongoose", () => ({ connectDB: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("@/lib/agents/assignedRegion", () => ({
   __esModule: true,

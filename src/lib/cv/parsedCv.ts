@@ -76,6 +76,9 @@ Return a JSON object with EXACTLY this structure (no extra fields, no markdown):
 
 Rules:
 - Extract only what is clearly stated in the CV
+- Copy, do not write: keep the CV's own wording for the headline, job descriptions and project descriptions. Never embellish, upgrade titles, add adjectives ("expert", "results-driven", "specializing in"), merge or invent achievements, numbers or responsibilities
+- headline: the CV's own summary or title line, as written (trimmed to 1-2 sentences); empty string if the CV has none
+- skills: only skills the CV names (its skills section, or a tool/technology named in a job). Do not turn duties into skills. Leave "level" as "intermediate" and "yearsOfExperience" as 0 unless the CV states them
 - Use empty string for missing text fields
 - Use empty array for missing array fields
 - For dates, use "present" if the position is current

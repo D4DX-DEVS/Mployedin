@@ -24,6 +24,9 @@ const ITEM_KEYS: Record<AdminQueueId, string> = {
   "contact-unread": "contactUnread",
   "applications-awaiting-review": "applicationsAwaitingReview",
   "jobs-without-applications": "jobsWithoutApplications",
+  "task-reports-waiting": "taskReportsWaiting",
+  "given-tasks-overdue": "givenTasksOverdue",
+  "my-tasks-overdue": "myTasksOverdue",
 };
 
 const LEVELS: readonly AdminQueueLevel[] = ["critical", "warning", "upcoming"];

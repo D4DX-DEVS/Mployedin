@@ -7,12 +7,15 @@ export interface SuperAgentActionCounts {
   pendingCommissionApprovals: number;
   /** Leads in scope whose follow-up date has passed and are still in play. */
   overdueLeadFollowUps: number;
+  /** Tasks admin gave them still open, plus reports waiting for their review. */
+  taskInbox: number;
 }
 
 const EMPTY: SuperAgentActionCounts = {
   pendingExhibitionReviews: 0,
   pendingCommissionApprovals: 0,
   overdueLeadFollowUps: 0,
+  taskInbox: 0,
 };
 
 /**
