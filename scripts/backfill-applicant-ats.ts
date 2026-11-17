@@ -13,13 +13,15 @@
  *   ... --job <jobId>    only one job
  *   ... --force          re-score rows that already have a score (after a scoring
  *                        change, e.g. the requirement-aware scoring of 2026-11-12)
+ *   ... --withdrawn      score ONLY withdrawn rows (skipped otherwise); the seeker's
+ *                        My Applications still prints their score (owner, 2026-11-17)
  *
  * Cost: scoring may call Jev (OpenRouter) for pairs within 10 points of the
  * match threshold, and embed skills not yet in the vector cache (Google). The
  * dry run prints how many applications would be scored.
  *
  * Idempotent: only rows without `scoredAt` are touched (every row with --force),
- * withdrawn ones never.
+ * withdrawn ones only with --withdrawn.
  * Never changes an application's status — no auto-reject, no notifications.
  */
 
@@ -30,6 +32,7 @@ import { applicantMatchUpdate, scoreApplicationsOfJob } from "@/lib/matching/sco
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
 const FORCE = args.includes("--force");
+const WITHDRAWN = args.includes("--withdrawn");
 const jobArg = args.includes("--job") ? args[args.indexOf("--job") + 1] : undefined;
 const BATCH = 25;
 
@@ -38,9 +41,11 @@ async function main(): Promise<void> {
   if (!uri) throw new Error("MONGODB_URI is not set. Run with --env-file=.env");
   await mongoose.connect(uri);
 
+  // --withdrawn: only withdrawn rows, which the seeker still sees with a score.
+  const statusFilter = WITHDRAWN ? "withdrawn" : { $ne: "withdrawn" };
   const filter: Record<string, unknown> = FORCE
-    ? { status: { $ne: "withdrawn" } }
-    : { scoredAt: null, status: { $ne: "withdrawn" } };
+    ? { status: statusFilter }
+    : { scoredAt: null, status: statusFilter };
   if (jobArg) filter.jobId = new mongoose.Types.ObjectId(jobArg);
 
   const byJob = (await Application.aggregate([
@@ -65,7 +70,9 @@ async function main(): Promise<void> {
       if (scored.length === 0) continue;
       await Application.bulkWrite(
         scored.map(({ applicationId, match }) => ({
-          updateOne: { filter: { _id: applicationId }, update: { $set: applicantMatchUpdate(match) } },
+          // timestamps: false — a re-score is not a change the seeker or employer
+          // made; bumping updatedAt reorders "latest activity" lists.
+          updateOne: { filter: { _id: applicationId }, update: { $set: applicantMatchUpdate(match) }, timestamps: false },
         })),
       );
       written += scored.length;

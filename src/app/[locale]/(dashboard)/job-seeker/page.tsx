@@ -93,8 +93,11 @@ export default async function JobSeekerPage({
     Application.find({ jobSeekerId: seekerId })
       .select("jobId status createdAt updatedAt statusHistory.changedAt")
       .populate({ path: "jobId", select: "title employerId discloseCompany location", populate: { path: "employerId", select: "companyName logo" } })
-      // Latest change first: the home lists what changed, not what was sent.
-      .sort({ updatedAt: -1 })
+      // Latest status change first: the home lists what changed, not what was
+      // sent. Not updatedAt — a re-score or any internal write bumps that, and
+      // pushed real changes out of the 8 (2026-11-17). A descending sort on an
+      // array field uses its largest value, i.e. the newest change.
+      .sort({ "statusHistory.changedAt": -1, createdAt: -1 })
       .limit(8)
       .lean(),
   ];
