@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
+import { getEmployerOnboardingFlags } from "@/lib/settings/employerOnboarding";
 import ReferralLink from "@/models/ReferralLink";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
@@ -245,6 +246,14 @@ async function handlePost(req: NextRequest, ctx: AuthCtx) {
   const maxUses = body.maxUses;
   const audience = body.audience;
   const expiresAt = body.expiresAt ? new Date(body.expiresAt) : undefined;
+
+  // Admin → Settings → Employer onboarding: employer invite links paused.
+  if (audience !== "job_seeker" && !(await getEmployerOnboardingFlags()).employerInviteLinksEnabled) {
+    return NextResponse.json(
+      { code: "EMPLOYER_INVITES_PAUSED", error: "Employer invite links are turned off. Ask an admin." },
+      { status: 403 },
+    );
+  }
 
   // Validate expiry is in the future
   if (expiresAt && expiresAt <= new Date()) {

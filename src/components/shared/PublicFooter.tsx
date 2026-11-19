@@ -8,6 +8,7 @@ import { ArrowRight, Mail, MapPin } from "lucide-react";
 import { CookieSettingsLink } from "@/components/shared/ConsentManager/CookieSettingsLink";
 import { usePendingReferral } from "@/lib/referrals/pendingReferral";
 import { registerHrefFor } from "@/lib/referrals/url";
+import { useEmployerEntryHref } from "@/components/shared/EmployerEntryLink";
 
 type FooterVariant = "full" | "embedded";
 
@@ -75,13 +76,15 @@ export default function PublicFooter({ locale, variant = "full", showAccessibili
   useEffect(() => setMounted(true), []);
   // A shared job's ?ref= code, held in memory only, rides in the register link.
   const registerHref = registerHrefFor(locale, usePendingReferral());
+  // Sign-up while the admin allows it, otherwise our contact page.
+  const employerHref = useEmployerEntryHref(locale);
 
   const platformSection: FooterSection = {
     title: t("platform"),
     links: [
       { href: `/${locale}/jobs`, label: t("discoverJobs") },
       { href: registerHref, label: t("buildProfile") },
-      { href: `/${locale}/employer-register`, label: t("hiringSolutions") },
+      { href: employerHref, label: t("hiringSolutions") },
       { href: `/${locale}/login`, label: t("workspaceLogin") },
     ],
   };
@@ -171,7 +174,7 @@ export default function PublicFooter({ locale, variant = "full", showAccessibili
                 </Link>
                 {!isEmbedded && (
                   <Link
-                    href={`/${locale}/employer-register`}
+                    href={employerHref}
                     className="inline-flex h-11 items-center rounded-full border border-white/18 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
                   >
                     {t("forEmployers")}

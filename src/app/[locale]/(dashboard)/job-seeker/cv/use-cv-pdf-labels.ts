@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import type { CVPDFLabels } from "./pdf/shared";
+import { buildCvPdfLabels } from "@/lib/cv/buildCvPdfLabels";
 
 /**
  * The section headings a CV PDF is printed with, in the reader's language.
@@ -16,32 +17,5 @@ import type { CVPDFLabels } from "./pdf/shared";
 export function useCvPdfLabels(): CVPDFLabels {
   const t = useTranslations("cvBuilderPage.previewSections");
   const p = useTranslations("cvBuilderPage.proficiency");
-  return useMemo(
-    () => ({
-      yourName: t("yourName"),
-      present: t("present"),
-      experience: t("experience"),
-      education: t("education"),
-      grade: t("grade"),
-      skills: t("skills"),
-      projects: t("projects"),
-      languages: t("languages"),
-      certifications: t("certifications"),
-      professionalExperience: t("professionalExperience"),
-      keyProjects: t("keyProjects"),
-      coreCompetencies: t("coreCompetencies"),
-      decoratedExperience: t("decoratedExperience"),
-      decoratedEducation: t("decoratedEducation"),
-      decoratedSkills: t("decoratedSkills"),
-      decoratedProjects: t("decoratedProjects"),
-      atCompany: t("atCompany", { company: "{company}" }),
-      proficiency: {
-        basic: p("basic"),
-        conversational: p("conversational"),
-        professional: p("professional"),
-        native: p("native"),
-      },
-    }),
-    [t, p],
-  );
+  return useMemo(() => buildCvPdfLabels(t, p), [t, p]);
 }

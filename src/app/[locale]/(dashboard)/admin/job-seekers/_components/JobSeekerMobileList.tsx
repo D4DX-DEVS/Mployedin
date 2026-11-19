@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { ChevronRight, Crown } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
 import type { ReferralSummary } from "@/lib/referrals/summary";
@@ -35,6 +36,13 @@ interface JobSeekerMobileListProps<T extends MobileSeeker> {
   availabilityLabels: Record<string, string>;
   /** Row actions as one compact "…" menu; null when the viewer has none. */
   renderActions: (seeker: T) => ReactNode;
+  /** Row checkboxes, at the start of each card's header row. Omit for a list that cannot be selected. */
+  selection?: {
+    isSelected: (id: string) => boolean;
+    onToggle: (seeker: T) => void;
+    /** Accessible name of one card's checkbox, e.g. "Select Sara Ahmed". */
+    label: (name: string) => string;
+  };
 }
 
 const AVAILABILITY_TONE: Record<string, string> = {
@@ -45,6 +53,8 @@ const AVAILABILITY_TONE: Record<string, string> = {
 
 /** Indent that lines detail rows up under the name, past the 40px avatar. */
 const UNDER_NAME = "ps-[3.25rem]";
+/** The same, past the checkbox that a selectable card starts with too (44px box, 8px pulled back, 4px gap). */
+const UNDER_NAME_SELECTABLE = "ps-[5.75rem]";
 
 /**
  * Admin job seekers on phones. The generic table-to-card fallback stacked a
@@ -58,8 +68,10 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
   hrefFor,
   availabilityLabels,
   renderActions,
+  selection,
 }: JobSeekerMobileListProps<T>) {
   const tr = useTranslations("adminJobSeekers");
+  const underName = selection ? UNDER_NAME_SELECTABLE : UNDER_NAME;
 
   if (loading) {
     return (
@@ -74,7 +86,7 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
   if (seekers.length === 0) return <div className="rounded-xl border border-border/70 bg-card px-4 py-10">{empty}</div>;
 
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-2" aria-label={tr("heroTitle")}>
       {seekers.map((js) => {
         const name = js.fullName || js.userId?.name || "—";
         const email = js.email ?? js.userId?.email;
@@ -88,6 +100,16 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
           // a "…" on a line of its own wasted a third of every card.
           <li key={js._id} className="rounded-xl border border-border/70 bg-card p-3 shadow-sm">
             <div className="flex items-start gap-1">
+            {selection && (
+              // The box stays 16px; the label around it is the 44px target a thumb needs.
+              <label className="-ms-2 -mt-1 flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center">
+                <Checkbox
+                  checked={selection.isSelected(js._id)}
+                  onCheckedChange={() => selection.onToggle(js)}
+                  aria-label={selection.label(name)}
+                />
+              </label>
+            )}
             <Link
               href={hrefFor(js)}
               aria-label={tr("openProfile", { name })}
@@ -104,13 +126,13 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
             </div>
 
             {(role || degree) && (
-              <div className={`mt-1.5 text-xs ${UNDER_NAME}`}>
+              <div className={`mt-1.5 text-xs ${underName}`}>
                 {role && <p className="line-clamp-1 font-medium text-foreground/80">{role}</p>}
                 {degree && <p className="line-clamp-1 text-muted-foreground">{degree}</p>}
               </div>
             )}
 
-            <div className={`mt-2 flex flex-wrap items-center gap-1.5 text-[11px] ${UNDER_NAME}`}>
+            <div className={`mt-2 flex flex-wrap items-center gap-1.5 text-[11px] ${underName}`}>
               <StatusBadge status={js.userId?.isActive === false ? "inactive" : (js.status ?? "active")} />
               {js.badges?.includes("premium") && (
                 <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800">

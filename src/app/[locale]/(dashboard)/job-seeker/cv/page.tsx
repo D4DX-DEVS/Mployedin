@@ -42,6 +42,7 @@ import {
 import { TemplateRenderer } from "./templates";
 import { PagedPreview } from "./paged-preview";
 import { PdfPagesPreview } from "./pdf-pages-preview";
+import { EmployerViewPreview, hasUploadedCvFile } from "./EmployerViewPreview";
 import { TemplatePicker, FormattingPanel } from "./template-picker";
 import { CvAssistant } from "./cv-assistant";
 import { RichTextEditor } from "./rich-text-editor";
@@ -94,6 +95,9 @@ export default function CVBuilderPage() {
   const [previewHidden, setPreviewHidden] = useState(false);
   // Below lg the side preview is not shown: it opens full screen instead.
   const [phonePreviewOpen, setPhonePreviewOpen] = useState(false);
+  // For "Preview as employers see it": the seeker's own profile id, and whether they uploaded a CV file.
+  const [seekerId, setSeekerId] = useState<string | null>(null);
+  const [hasUploadedFile, setHasUploadedFile] = useState(false);
   useEffect(() => {
     setPreviewHidden(prefStorage.getWithLegacy(PREVIEW_HIDDEN_KEY, LEGACY_CV_PREVIEW_HIDDEN_KEY) === "1");
   }, []);
@@ -189,6 +193,8 @@ export default function CVBuilderPage() {
       // From the shared cache when fresh, so Back from Profile/Skills is instant.
       const profile = await readSeekerProfile(queryClient);
       if (profile) {
+        setSeekerId(typeof profile._id === "string" ? profile._id : null);
+        setHasUploadedFile(hasUploadedCvFile(profile));
         // The same filling the apply dialog uses to send this CV (built-cv.ts).
         setForm((prev) => cvFormFromProfile(profile, prev));
 
@@ -465,14 +471,9 @@ export default function CVBuilderPage() {
     setError("");
     setPdfLoading(true);
     try {
-      const [{ pdf }, { CVPDFDocument }] = await Promise.all([
-        import("@react-pdf/renderer"),
-        import("./cv-pdf-document"),
-      ]);
+      const { renderCvPdfBlob } = await import("@/lib/cv/renderCvPdf");
       const visibleForm = getVisibleForm(form, hiddenSections);
-      const blob = await pdf(
-        <CVPDFDocument data={visibleForm} templateId={selectedTemplate} formatting={formatting} labels={cvPdfLabels} />
-      ).toBlob();
+      const blob = await renderCvPdfBlob({ data: visibleForm, templateId: selectedTemplate, formatting, labels: cvPdfLabels });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -532,6 +533,7 @@ export default function CVBuilderPage() {
         title={t("header.title")}
         description={t("header.description")}
         backHref="/job-seeker/profile"
+        actions={<EmployerViewPreview seekerId={seekerId} hasUploadedFile={hasUploadedFile} hasUnsavedChanges={!isSaved} className="gap-2" />}
       />
 
       {error && (

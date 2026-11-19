@@ -11,8 +11,13 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import { TargetEmptyState } from "@/components/features/targets/TargetComponents";
 import { ProfitReportView } from "@/components/features/targets/ProfitReportView";
 import type { TargetReport } from "@/lib/targets/profitReport";
+import { MonthActualsCard } from "./_components/MonthActualsCard";
+import { HistoryCard } from "./_components/HistoryCard";
+import { EditTargetsDialog } from "./_components/EditTargetsDialog";
+import type { ITargetPeriod } from "@/models/TargetProfile";
 
 interface ProfileHeader {
+  _id: string;
   assigneeName: string;
   assigneeEmail: string;
   assigneeRole: string;
@@ -21,6 +26,14 @@ interface ProfileHeader {
   distributionStrategy: string;
   status: string;
   notes?: string;
+  targetType?: "profit" | "kpi3";
+  setByRole?: "admin" | "super_agent";
+  overriddenByAdmin?: boolean;
+  currency: string;
+  periods?: ITargetPeriod[];
+  jobTarget?: number;
+  conversionTarget?: number;
+  revenueTarget?: number;
 }
 
 async function getJson<T>(url: string): Promise<T | null> {
@@ -40,11 +53,18 @@ export default function AdminTargetProfileDetailPage() {
 
   const header = useQuery({
     queryKey: ["admin", "target-profile", id],
-    queryFn: async () => (await getJson<{ profile: ProfileHeader }>(`/api/admin/target-profiles/${id}`))?.profile ?? null,
+    queryFn: async () => (await getJson<{ profile: ProfileHeader; kpi?: unknown }>(`/api/admin/target-profiles/${id}`))?.profile ?? null,
   });
   const report = useQuery({
     queryKey: ["admin", "target-report", "profile", id],
     queryFn: async () => (await getJson<{ report: TargetReport }>(`/api/admin/target-report?profileId=${id}`))?.report ?? null,
+  });
+  const kpiData = useQuery({
+    queryKey: ["admin", "target-profile", id, "kpi"],
+    queryFn: async () => {
+      const res = await getJson<{ profile: ProfileHeader; kpi?: unknown }>(`/api/admin/target-profiles/${id}`);
+      return res?.kpi ?? null;
+    },
   });
 
   const back = (
@@ -56,7 +76,7 @@ export default function AdminTargetProfileDetailPage() {
     </Link>
   );
 
-  if (header.isLoading || report.isLoading) {
+  if (header.isLoading || report.isLoading || kpiData.isLoading) {
     return (
       <div className="page-container">
         <div className="h-8 w-40 animate-pulse rounded-xl bg-muted" />
@@ -65,13 +85,13 @@ export default function AdminTargetProfileDetailPage() {
     );
   }
 
-  if (header.isError || report.isError) {
+  if (header.isError || report.isError || kpiData.isError) {
     return (
       <div className="page-container">
         {back}
         <ErrorState
           title={t("failedToLoadProfile")}
-          onRetry={() => { void header.refetch(); void report.refetch(); }}
+          onRetry={() => { void header.refetch(); void report.refetch(); void kpiData.refetch(); }}
           retryLabel={t("retry")}
         />
       </div>
@@ -120,15 +140,53 @@ export default function AdminTargetProfileDetailPage() {
                 <span className="text-xs text-muted-foreground">
                   {t("strategyValue", { strategy: t(`strategy_${profile.distributionStrategy}`) })}
                 </span>
+                {profile.overriddenByAdmin ? (
+                  <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                    {t("overriddenByAdmin")}
+                  </span>
+                ) : profile.setByRole === "super_agent" ? (
+                  <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    {t("setBySuperAgent")}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    {t("setByAdmin")}
+                  </span>
+                )}
               </div>
               {profile.notes && (
                 <p className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground">{profile.notes}</p>
               )}
             </div>
           </div>
-          <StatusBadge status={profile.status} />
+          <div className="flex flex-col items-end gap-3">
+            <StatusBadge status={profile.status} />
+            {profile.targetType === "kpi3" && profile.status === "active" && (
+              <EditTargetsDialog
+                profileId={id}
+                initialData={{
+                  jobTarget: profile.jobTarget,
+                  conversionTarget: profile.conversionTarget,
+                  revenueTarget: profile.revenueTarget,
+                  setByRole: profile.setByRole,
+                }}
+              />
+            )}
+          </div>
         </div>
       </div>
+
+      {profile.targetType === "kpi3" && (
+        <div className="space-y-6">
+          <MonthActualsCard
+            kpi={kpiData.data ?? undefined}
+            periods={profile.periods}
+            currency={profile.currency}
+            year={profile.year}
+          />
+          <HistoryCard profileId={id} currency={profile.currency} />
+        </div>
+      )}
 
       <ProfitReportView
         report={report.data}

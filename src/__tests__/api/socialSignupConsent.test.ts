@@ -122,7 +122,7 @@ describe("Google (Firebase) sign-up", () => {
   it("creates the account once ticked and logs the consent with the cookie answer", async () => {
     const result = await firebase.authorize({ idToken: "tok", termsAccepted: "true", cookieChoice: "accepted" }, request);
 
-    expect(result).toMatchObject({ id: "user-1", email: EMAIL });
+    expect(result).toMatchObject({ id: "user-1", email: EMAIL, isNewAccount: true });
     expect(mockUserCreate).toHaveBeenCalledTimes(1);
     expect(mockRecordConsents).toHaveBeenCalledWith(expect.objectContaining({
       userId: "user-1",
@@ -135,7 +135,7 @@ describe("Google (Firebase) sign-up", () => {
   it("signs a returning user in without asking", async () => {
     mockUserFindOne.mockResolvedValue(user());
 
-    await expect(firebase.authorize({ idToken: "tok" }, request)).resolves.toMatchObject({ id: "user-1" });
+    await expect(firebase.authorize({ idToken: "tok" }, request)).resolves.toMatchObject({ id: "user-1", isNewAccount: false });
     expect(mockUserCreate).not.toHaveBeenCalled();
     expect(mockRecordConsents).not.toHaveBeenCalled();
   });

@@ -14,11 +14,14 @@ import { commonSchemas } from "@/lib/validators";
 import { generateInvoiceNumber } from "@/lib/subscription/invoiceNumber";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/resolveRate";
+import { commissionBase } from "@/lib/invoices/linePlacements";
+import type { DatedRate } from "@/lib/commissions/effectiveRate";
 import { createCommissionRecordsForInvoice } from "@/lib/invoices/commissionRecords";
 import { INVOICE_TERMINAL_STATUSES } from "@/lib/invoices/status";
 import { INTERNATIONAL_TAX_PRESETS } from "@/lib/invoices/taxPresets";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
+import { acquireLease, releaseLease } from "@/lib/db/lease";
 import Invoice from "@/models/Invoice";
 import Placement from "@/models/Placement";
 import Job from "@/models/Job";
@@ -56,7 +59,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // Fetch all placements with populated data
   const placements = await Placement.find({ _id: { $in: placementIds } })
     .populate("jobId", "title employerId agentId salary currency")
-    .populate("employerId", "companyName companyEmail phone address country taxId userId")
+    .populate("employerId", "companyName companyEmail phone address country taxId userId agentCommissionRates")
     .populate("agentId", "userId commissionRate superAgentId")
     .lean();
 
@@ -111,6 +114,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     const emp = placement.employerId as {
       _id?: unknown; companyName?: string; companyEmail?: string;
       phone?: string; address?: string; country?: string; taxId?: string; userId?: unknown;
+      agentCommissionRates?: DatedRate[];
     } | null;
 
     if (!emp?._id) {
@@ -118,6 +122,28 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       continue;
     }
 
+    // The existing-invoice lookup above is a snapshot: two bulk runs started
+    // together both see "not invoiced" and would each bill the job. The lease
+    // makes one of them skip; the re-check catches a run that finished between
+    // our snapshot and this point.
+    const leaseKey = `invoice:recruitment:${jobIdStr}`;
+    if (!(await acquireLease(leaseKey, 2 * 60_000))) {
+      results.push({ placementId: String(placement._id), status: "skipped", reason: "Another request is invoicing this job right now" });
+      continue;
+    }
+    const raced = await Invoice.exists({
+      category: "recruitment",
+      jobId: job._id,
+      status: { $nin: INVOICE_TERMINAL_STATUSES },
+    });
+    if (raced) {
+      invoicedJobSet.add(jobIdStr);
+      await releaseLease(leaseKey);
+      results.push({ placementId: String(placement._id), status: "skipped", reason: "Invoice already exists for this job" });
+      continue;
+    }
+
+    let invoiceCreated = false;
     try {
       // Determine amount from placement salary or job salary
       const amount = placement.salary ?? job.salary ?? 0;
@@ -161,6 +187,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         unitPrice: amount,
         amount,
         jobId: job._id,
+        placementId: placement._id,
       }];
 
       const subtotal = amount;
@@ -170,16 +197,23 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
       // Build commissions
       const employerCountry = emp.country ?? null;
+      // Commission is paid on the invoice total minus tax (owner rule, 2026-11-18); no discount or service charge here.
+      const base = commissionBase(subtotal, 0);
+      const invoiceDate = new Date();
       const commissions: Array<{
         agentId?: unknown; superAgentId?: unknown; role: "agent" | "super_agent";
         rate: number; amount: number; status: "pending"; notes: string;
       }> = [];
 
-      if (agentDoc?.commissionRate && agentDoc.commissionRate > 0) {
-        const resolved = await resolveCommissionRate(agentDoc.commissionRate, employerCountry);
-        const agentAmount = Math.round((billedTotal * resolved.rate) / 100 * 100) / 100;
+      const agentResolved = agentDoc
+        ? await resolveCommissionRate(agentDoc.commissionRate ?? 0, employerCountry, { history: emp.agentCommissionRates, on: invoiceDate })
+        : null;
+      if (agentDoc && agentResolved && agentResolved.rate > 0) {
+        const resolved = agentResolved;
+        const agentAmount = Math.round((base * resolved.rate) / 100 * 100) / 100;
         const sourceNote = resolved.source === "country_override"
-          ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
+          ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]`
+          : resolved.source === "employer_rate" ? " [Employer rate]" : "";
 
         commissions.push({
           agentId: agentDoc._id,
@@ -194,9 +228,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         }
       }
 
-      if (superAgentDoc?.overrideRate && superAgentDoc.overrideRate > 0) {
-        const resolved = await resolveOverrideRate(superAgentDoc.overrideRate, employerCountry);
-        const overrideAmount = Math.round((billedTotal * resolved.rate) / 100 * 100) / 100;
+      const saResolved = superAgentDoc
+        ? await resolveOverrideRate(superAgentDoc.overrideRate ?? 0, employerCountry, { history: superAgentDoc.overrideRateHistory, on: invoiceDate })
+        : null;
+      if (superAgentDoc && saResolved && saResolved.rate > 0) {
+        const resolved = saResolved;
+        const overrideAmount = Math.round((base * resolved.rate) / 100 * 100) / 100;
         const sourceNote = resolved.source === "country_override"
           ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
 
@@ -258,6 +295,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         internalNotes: `Bulk-generated from placement ${placement._id}`,
         createdBy: ctx.userId,
       });
+      invoiceCreated = true;
 
       // Create external commission records if issued
       if (invoiceStatus === "issued") {
@@ -294,6 +332,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       results.push({ placementId: String(placement._id), status: "error", reason: message });
+    } finally {
+      // Once the invoice exists the lookup guards the job; until then free it for a retry.
+      if (!invoiceCreated) await releaseLease(leaseKey).catch(() => undefined);
     }
   }
 

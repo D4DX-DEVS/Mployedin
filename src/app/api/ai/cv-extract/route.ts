@@ -35,6 +35,7 @@ import {
   cvTextFromParsed,
   normalizeParsedCv,
 } from "@/lib/cv/parsedCv";
+import { queueSeekerMatchWarm } from "@/lib/matching/seekerMatchWarmQueue";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -427,6 +428,8 @@ async function handlePOST(req: NextRequest) {
       },
       req,
     });
+
+    if (userId) await queueSeekerMatchWarm(userId);
 
     took.total = Date.now() - startedAt;
     logger.info({ ms: took, scan: Boolean(ocrText) }, "[CV Extract] timings");

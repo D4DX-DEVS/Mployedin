@@ -20,7 +20,19 @@ const profitAmountSchema = z
 
 const isoDateSchema = z.string().refine(isIsoDate, { message: "Use a real date as YYYY-MM-DD" });
 
-/** One period of a schedule. Bounds are whole days, both inclusive. */
+/** A non-negative integer: jobs or onboarded hires. */
+const countSchema = z.number().int().min(0);
+
+/** Invoiced revenue: finite, non-negative, at most two decimals. */
+const revenueSchema = z
+  .number()
+  .finite()
+  .min(0)
+  .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6, {
+    message: "Use at most two decimal places",
+  });
+
+/** One period of a profit schedule. Bounds are whole days, both inclusive. */
 export const targetPeriodSchema = z.object({
   label: z.string().max(60).trim().optional(),
   startDate: isoDateSchema,
@@ -28,7 +40,19 @@ export const targetPeriodSchema = z.object({
   profitTarget: profitAmountSchema,
 });
 
+/** One period of a KPI3 schedule. Bounds are whole days, both inclusive. */
+export const kpi3PeriodSchema = z.object({
+  label: z.string().max(60).trim().optional(),
+  startDate: isoDateSchema,
+  endDate: isoDateSchema,
+  profitTarget: profitAmountSchema.optional().default(0),
+  jobTarget: countSchema.optional().default(0),
+  conversionTarget: countSchema.optional().default(0),
+  revenueTarget: revenueSchema.optional().default(0),
+});
+
 const periodsSchema = z.array(targetPeriodSchema).min(1).max(MAX_PERIODS);
+const kpi3PeriodsSchema = z.array(kpi3PeriodSchema).min(1).max(MAX_PERIODS);
 
 /** A custom split, or a custom set of periods, cannot be generated: it has to be sent. */
 function requirePeriodsWhenNotGenerable(
@@ -52,16 +76,50 @@ function requirePeriodsWhenNotGenerable(
 export const targetProfileCreateSchema = z
   .object({
     assigneeId: commonSchemas.objectId,
-    assigneeRole: z.literal("super_agent"),
+    assigneeRole: z.enum(["super_agent", "agent"]).default("super_agent"),
     year: z.number().int().min(2020).max(2100),
     region: z.string().max(100).trim().optional(),
+    targetType: z.enum(["profit", "kpi3"]).default("kpi3").optional(),
 
     profitTarget: profitAmountSchema,
     currency: z.string().length(3).default("AED"),
 
+    // KPI3 yearly totals (sums of periods)
+    jobTarget: countSchema.optional(),
+    conversionTarget: countSchema.optional(),
+    revenueTarget: revenueSchema.optional(),
+
     periodType: periodTypeSchema.default("monthly"),
     distributionStrategy: strategySchema.default("equal"),
     periods: periodsSchema.optional(),
+
+    notes: z.string().max(2000).trim().optional(),
+  })
+  .superRefine((data, ctx) => requirePeriodsWhenNotGenerable(data, ctx));
+
+/* ------------------------------------------------------------------ */
+/*  Create — KPI3 target profile (3 pillars: jobs, onboarded, revenue) */
+/* ------------------------------------------------------------------ */
+
+export const kpi3ProfileCreateSchema = z
+  .object({
+    assigneeId: commonSchemas.objectId,
+    assigneeRole: z.enum(["super_agent", "agent"]),
+    year: z.number().int().min(2020).max(2100),
+    region: z.string().max(100).trim().optional(),
+
+    // Admin-only finance figure (R9)
+    profitTarget: profitAmountSchema.default(0),
+    currency: z.string().length(3).default("AED"),
+
+    // KPI3 yearly totals (sums of periods)
+    jobTarget: countSchema.optional(),
+    conversionTarget: countSchema.optional(),
+    revenueTarget: revenueSchema.optional(),
+
+    periodType: periodTypeSchema.default("monthly"),
+    distributionStrategy: strategySchema.default("equal"),
+    periods: kpi3PeriodsSchema.optional(),
 
     notes: z.string().max(2000).trim().optional(),
   })
@@ -80,6 +138,23 @@ export const targetProfileUpdateSchema = z.object({
   periods: periodsSchema.optional(),
   notes: z.string().max(2000).trim().optional(),
   status: z.enum(["active", "completed", "cancelled"]).optional(),
+  reason: z.string().max(500).trim().optional(),
+});
+
+/** Update for KPI3 profiles */
+export const kpi3ProfileUpdateSchema = z.object({
+  profitTarget: profitAmountSchema.optional(),
+  currency: z.string().length(3).optional(),
+  region: z.string().max(100).trim().optional(),
+  jobTarget: countSchema.optional(),
+  conversionTarget: countSchema.optional(),
+  revenueTarget: revenueSchema.optional(),
+  periodType: periodTypeSchema.optional(),
+  distributionStrategy: strategySchema.optional(),
+  periods: kpi3PeriodsSchema.optional(),
+  notes: z.string().max(2000).trim().optional(),
+  status: z.enum(["active", "completed", "cancelled"]).optional(),
+  reason: z.string().max(500).trim().optional(),
 });
 
 /* ------------------------------------------------------------------ */
@@ -133,11 +208,17 @@ export const targetProfileBulkTabularSchema = z.object({
     .array(
       z.object({
         assigneeId: commonSchemas.objectId,
-        profitTarget: profitAmountSchema,
+        profitTarget: profitAmountSchema.default(0),
         currency: z.string().length(3).optional(),
+        // kpi3 (default): the three yearly targets; profit stays 0 (R9).
+        targetType: z.enum(["profit", "kpi3"]).default("kpi3"),
+        jobTarget: countSchema.default(0),
+        conversionTarget: countSchema.default(0),
+        revenueTarget: revenueSchema.default(0),
         periodType: periodTypeSchema.optional(),
         distributionStrategy: strategySchema.optional(),
-        periods: periodsSchema.optional(),
+        // kpi3 periods carry each month's three figures; profit periods carry profitTarget.
+        periods: kpi3PeriodsSchema.optional(),
         notes: z.string().max(2000).trim().optional(),
       })
     )

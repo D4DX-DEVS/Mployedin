@@ -198,7 +198,7 @@ function yearsCheck(line: string, evidence: LineEvidence): QualificationLineChec
 }
 
 /** educationRank is a substring match ("iti" is in "utilities"); a line must also read as a qualification. */
-const EDUCATION_CUE = /degree|bachelor|master|diploma|graduate|phd|doctorate|b\.?\s?tech|m\.?\s?tech|b\.?\s?sc|m\.?\s?sc|\bmba\b|\bbca\b|\bmca\b|\bbba\b|b\.?\s?com|m\.?\s?com|certificate|high school|secondary|post[- ]?graduate|undergraduate/i;
+export const EDUCATION_CUE = /degree|bachelor|master|diploma|graduate|phd|doctorate|b\.?\s?tech|m\.?\s?tech|b\.?\s?sc|m\.?\s?sc|\bmba\b|\bbca\b|\bmca\b|\bbba\b|b\.?\s?com|m\.?\s?com|certificate|high school|secondary|post[- ]?graduate|undergraduate/i;
 
 function educationCheck(line: string, evidence: LineEvidence): QualificationLineCheck | null {
   if (!EDUCATION_CUE.test(line)) return null;

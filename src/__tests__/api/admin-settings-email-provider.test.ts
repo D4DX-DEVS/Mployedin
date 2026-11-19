@@ -468,3 +468,30 @@ describe("email provider settings", () => {
     });
   });
 });
+
+describe("employer onboarding switches", () => {
+  beforeEach(() => { jest.clearAllMocks(); ctxRole = "admin"; stored = baseStored(); });
+
+  it("saves the four switches an admin sends", async () => {
+    const res = await POST(post("/api/admin/settings", {
+      employerSelfRegistrationEnabled: true,
+      employerInviteLinksEnabled: false,
+      superAgentCanCreateEmployers: false,
+      agentCanCreateEmployers: true,
+    }));
+    expect(res.status).toBe(200);
+    expect(setOf(0)).toEqual(expect.objectContaining({
+      employerSelfRegistrationEnabled: true,
+      employerInviteLinksEnabled: false,
+      superAgentCanCreateEmployers: false,
+      agentCanCreateEmployers: true,
+    }));
+  });
+
+  it("refuses a non-admin", async () => {
+    ctxRole = "super_agent";
+    const res = await POST(post("/api/admin/settings", { employerSelfRegistrationEnabled: true }));
+    expect(res.status).toBe(403);
+    expect(findOneAndUpdate).not.toHaveBeenCalled();
+  });
+});

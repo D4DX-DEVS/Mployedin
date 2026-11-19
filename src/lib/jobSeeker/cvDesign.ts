@@ -31,6 +31,13 @@ export const CV_SECTION_KEYS = [
   "experience", "education", "skills", "projects", "languages", "certifications",
 ] as const;
 
+/**
+ * The one template staff-facing standardised CVs are drawn in, whatever the
+ * candidate chose for their own CV. Paired with the default formatting and
+ * the candidate's hidden sections kept (lib/cv/renderBuiltCv.ts).
+ */
+export const STAFF_CV_TEMPLATE: (typeof CV_TEMPLATE_IDS)[number] = "classic";
+
 /** A preset id ("blue") or a custom colour ("#2563eb"). */
 export const CV_THEME_COLOR_PATTERN = /^(?:[a-z]{1,20}|#[0-9a-fA-F]{6})$/;
 

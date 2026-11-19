@@ -42,6 +42,12 @@ export type PresentableLineItem = {
   quantity?: number;
   unitPrice?: number;
   amount?: number;
+  /** Hire details for linked lines (recruitment invoices only). */
+  hire?: {
+    candidateName?: string;
+    jobTitle?: string;
+    startDate?: string | Date | null;
+  };
 };
 
 /**
@@ -183,6 +189,8 @@ export type ResolvedLineItem = {
   amount: number;
   /** True when the row was derived from the invoice rather than stored on it. */
   synthesized: boolean;
+  /** The hire this line bills, when the line is linked to one. */
+  hire?: PresentableLineItem["hire"];
 };
 
 /**
@@ -199,6 +207,7 @@ export function resolveLineItems(invoice: PresentableInvoice): ResolvedLineItem[
       unitPrice: item.unitPrice ?? 0,
       amount: item.amount ?? 0,
       synthesized: false,
+      ...(item.hire ? { hire: item.hire } : {}),
     }));
   }
 

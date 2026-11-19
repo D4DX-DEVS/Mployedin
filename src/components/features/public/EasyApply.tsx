@@ -213,6 +213,44 @@ const NO_CV_KEY = "__none__";
 const AUTO_CV_FLAG = "mployedin:apply-auto-cv";
 
 /**
+ * Set (`job id|document id|time`) when someone who already has an account picks
+ * a CV on the signed-out card and signs in. That CV is kept as one of their
+ * documents and preselected on the apply form; it is never read into the
+ * profile, which would replace their name, experience and skills with the
+ * file's. An empty document id means the upload failed. Session storage,
+ * because a Google sign-in reloads the page.
+ */
+const RETURNING_CV_FLAG = "mployedin:apply-returning-cv";
+const RETURNING_CV_MAX_AGE_MS = 30 * 60 * 1000;
+
+/**
+ * Whether the account that just signed in existed before this sign-in. Only an
+ * account this sign-in created has the picked CV read into its profile.
+ *
+ * The provider says so (`isNewAccount`, set by the Google and e-mail-code
+ * sign-ins), and that answer is final: an existing account with an empty
+ * profile is still existing. Only a session without the flag (a token minted
+ * before it existed) falls back to what the profile holds.
+ */
+async function accountAlreadyInUse(fresh: { user?: unknown } | null): Promise<boolean> {
+  const user = fresh?.user as { isNewAccount?: boolean; isOnboarded?: boolean } | undefined;
+  if (typeof user?.isNewAccount === "boolean") return !user.isNewAccount;
+  if (user?.isOnboarded === true) return true;
+  try {
+    const res = await fetch("/api/job-seeker/me");
+    if (!res.ok) return false;
+    const js = (await res.json())?.jobSeeker as
+      | { cvUrl?: string | null; hasBuiltCv?: boolean; documents?: ProfileDocument[] }
+      | null
+      | undefined;
+    if (!js) return false;
+    return Boolean(js.cvUrl) || js.hasBuiltCv === true || uploadedResumes(js.documents ?? []).length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The consent dialog sits outside the flow below, which returns a different
  * card for every step: a new account from Google or an e-mail code is only
  * made once the Terms & Privacy box is ticked (lib/auth/signupConsent.ts).
@@ -351,6 +389,9 @@ function EasyApplyFlow({
   // Easy Apply pressed with no CV: every application carries one, so the CV
   // field is marked and brought into view instead of sending it.
   const [cvMissing, setCvMissing] = useState(false);
+  // An existing account signed in from the card with a CV (RETURNING_CV_FLAG).
+  // "lost": the upload of that CV failed, so they pick or upload one again.
+  const [welcomeBack, setWelcomeBack] = useState<"kept" | "lost" | null>(null);
   const cvInputRef = useRef<HTMLInputElement>(null);
   const cvCardRef = useRef<HTMLDivElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -418,9 +459,18 @@ function EasyApplyFlow({
             socialLinks: js.socialLinks ?? [],
           });
           setDocuments(docs);
+          // An existing account that just signed in with a CV picked on this
+          // card: that CV goes with this application. Read once, then cleared.
+          const [flagJob, flagDoc, flagAt] = (tabStorage.get(RETURNING_CV_FLAG) ?? "").split("|");
+          const returning = flagJob === jobId && Date.now() - Number(flagAt || 0) < RETURNING_CV_MAX_AGE_MS;
+          if (flagJob) tabStorage.set(RETURNING_CV_FLAG, "");
+          const returningDoc =
+            returning && (docs.some((d) => d.id === flagDoc) || (flagDoc === PROFILE_CV_KEY && !!js.cvUrl)) ? flagDoc : null;
+          if (returning) setWelcomeBack(returningDoc ? "kept" : "lost");
           // The same CV is preselected on every apply screen (cvChoice.ts).
           setSelectedCvKey(
-            defaultCvKey({ documents: docs, hasProfileCv: !!js.cvUrl, hasBuiltCv: js.hasBuiltCv === true, preferredId: js.preferredCvId })
+            returningDoc
+              || defaultCvKey({ documents: docs, hasProfileCv: !!js.cvUrl, hasBuiltCv: js.hasBuiltCv === true, preferredId: js.preferredCvId })
               // No CV of their own: the Mployedin CV made from their details (offerAutoCv).
               || (isOnboardedRef.current ? BUILT_CV_KEY : NO_CV_KEY),
           );
@@ -433,17 +483,18 @@ function EasyApplyFlow({
       })
       .catch(() => {/* silently ignore */})
       .finally(() => setFetchingProfile(false));
-  }, [isJobSeeker, profile, session?.user?.email, session?.user?.name]);
+  }, [isJobSeeker, profile, session?.user?.email, session?.user?.name, jobId]);
 
   // Signed in, CV already read, but the review window was never saved (the
   // page was reloaded or left mid-way): open it again. Otherwise the half-made
   // account sat on the apply form, and its CV link led to onboarding.
+  // Not for an existing account back from the card: its profile is its own.
   const resumedReview = useRef(false);
   useEffect(() => {
-    if (resumedReview.current || !isJobSeeker || isOnboarded || !profile?.cvUrl || anonPhase !== "idle") return;
+    if (resumedReview.current || welcomeBack || !isJobSeeker || isOnboarded || !profile?.cvUrl || anonPhase !== "idle") return;
     resumedReview.current = true;
     void resumeReview();
-  }, [isJobSeeker, isOnboarded, profile?.cvUrl, anonPhase]);
+  }, [isJobSeeker, isOnboarded, profile?.cvUrl, anonPhase, welcomeBack]);
 
   // A seeker with no CV of their own still applies with one: the Mployedin CV,
   // made from the details they gave in onboarding (rendered on submit).
@@ -468,10 +519,15 @@ function EasyApplyFlow({
   useEffect(() => {
     if (!profile) return;
     // Blocked storage reads as unflagged: the form offers the same step.
-    const flagged = tabStorage.get(AUTO_CV_FLAG) === jobId;
+    // Only a fresh flag counts: one left by an earlier "Apply without CV" that
+    // was abandoned must not send a later, ordinary sign-in off to onboarding.
+    // Wait for the session too, so "onboarded" is known, not just not-loaded-yet.
+    if (status !== "authenticated") return;
+    const [flagJob, flagAt] = (tabStorage.get(AUTO_CV_FLAG) ?? "").split("|");
+    const flagged = flagJob === jobId && Date.now() - Number(flagAt || 0) < 30 * 60 * 1000;
     tabStorage.set(AUTO_CV_FLAG, "");
     if (flagged && !isOnboarded && ownCvCount === 0) goToOnboarding(true);
-  }, [profile, isOnboarded, ownCvCount, jobId, goToOnboarding]);
+  }, [profile, status, isOnboarded, ownCvCount, jobId, goToOnboarding]);
 
   // Copy the current job URL — offered when an in-app browser blocks Google sign-in
   // so the visitor can paste the link into a real browser.
@@ -547,6 +603,11 @@ function EasyApplyFlow({
         return;
       }
 
+      if (anonCvFile && (await accountAlreadyInUse(fresh))) {
+        await keepCvForThisApplication(anonCvFile);
+        return;
+      }
+
       if (anonCvFile) {
         // The review window opens now; the CV is read meanwhile (about half a
         // minute), so the seeker answers what a CV never says instead of waiting.
@@ -562,6 +623,23 @@ function EasyApplyFlow({
       setAnonError(t("errors.applyFailed"));
       setAnonPhase("idle");
     }
+  }
+
+  // An existing account: the CV they picked is stored as one of their
+  // documents (the profile is left as it is) and preselected on the apply form.
+  // Written as "not kept" first: a refresh mid-upload then lands on the form
+  // with the message to pick or upload again, not silently on another CV.
+  // The same file twice (a retry, a second go) reuses the one already held.
+  async function keepCvForThisApplication(file: File) {
+    tabStorage.set(RETURNING_CV_FLAG, `${jobId}||${Date.now()}`);
+    const docId = await uploadDocumentForAnon(file, { reuseSame: true });
+    tabStorage.set(RETURNING_CV_FLAG, `${jobId}|${docId}|${Date.now()}`);
+    if (signedInWithGoogle.current) {
+      leaveForSignedInPage();
+      return;
+    }
+    setAnonPhase("idle");
+    await update();
   }
 
   // Reads the CV into the new profile while the review window is open. What
@@ -650,15 +728,22 @@ function EasyApplyFlow({
     } catch { /* the preview keeps its placeholder; the form still works */ }
   }
 
-  // Upload CV file as a document for anonymous users
-  async function uploadDocumentForAnon(file: File) {
+  // Upload CV file as a document for anonymous users. The stored document's
+  // id (PROFILE_CV_KEY when `reuseSame` found it is their Profile CV), or ""
+  // when the upload failed.
+  async function uploadDocumentForAnon(file: File, opts: { reuseSame?: boolean } = {}): Promise<string> {
     try {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("category", "resume");
-      await fetch("/api/job-seeker/documents", { method: "POST", body: fd });
+      if (opts.reuseSame) fd.append("reuseSame", "1");
+      const res = await fetch("/api/job-seeker/documents", { method: "POST", body: fd });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.profileCv === true) return PROFILE_CV_KEY;
+      return res.ok && data?.document?.id ? String(data.document.id) : "";
     } catch {
       // Best-effort — if it fails, continue anyway
+      return "";
     }
   }
 
@@ -968,7 +1053,7 @@ function EasyApplyFlow({
     function openAuthWithoutCv() {
       setAnonCvFile(null);
       setAnonError("");
-      tabStorage.set(AUTO_CV_FLAG, jobId);
+      tabStorage.set(AUTO_CV_FLAG, `${jobId}|${Date.now()}`);
       setDialogStep("auth");
       setAuthDialogOpen(true);
     }
@@ -1551,6 +1636,28 @@ function EasyApplyFlow({
 
   return (
     <div className="space-y-4">
+      {welcomeBack && (
+        <div role="status" className="space-y-1.5 rounded-3xl border border-primary/30 bg-primary/5 card-pad">
+          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <UserRound className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            {t("welcomeBackTitle")}
+          </p>
+          <p className="text-xs text-muted-foreground">{t("welcomeBackBody")}</p>
+          {welcomeBack === "lost" && (
+            <p role="alert" className="text-xs text-destructive">{t("errors.returningCvNotKept")}</p>
+          )}
+          {/* A new tab, so this form and its answers stay put. */}
+          <Link
+            href={`/${locale}/job-seeker/documents`}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+          >
+            {t("welcomeBackUpdateProfile")}
+            <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
+          </Link>
+        </div>
+      )}
       {profile && (
         <div className="space-y-2 rounded-3xl border border-border/70 bg-muted/20 shadow-[0_12px_28px_rgba(15,23,42,0.04)] card-pad">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

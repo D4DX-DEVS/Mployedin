@@ -8,6 +8,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
 import { forgetWaIdOnPhoneChange } from "@/lib/communications/whatsapp/waId";
 import { ensureIndustryClassified } from "@/lib/jobseekers/ensureIndustryClassified";
+import { queueSeekerMatchWarm } from "@/lib/matching/seekerMatchWarmQueue";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -108,6 +109,8 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     resourceId: ctx.userId,
     req,
   });
+
+  await queueSeekerMatchWarm(ctx.userId);
 
   return NextResponse.json(responseDoc);
 }

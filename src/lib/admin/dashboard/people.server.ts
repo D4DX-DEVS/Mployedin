@@ -7,6 +7,8 @@ import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
 import User from "@/models/User";
 import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
 import { targetPace } from "@/lib/targets/pace";
+import { calculateKpis, kpiOwnerKey } from "@/lib/targets/kpiCalculator";
+import { kpiPace, yearElapsedPercent } from "@/lib/targets/kpiRisk";
 import type { DashboardPeriod } from "./period";
 import { ACTIVE_JOB_FILTER, getUserRoleCounts } from "./shared.server";
 import type { AgentOperations, EmployerHealth, PeopleOverview } from "./types";
@@ -82,9 +84,27 @@ export async function getAgentOperations(period: DashboardPeriod): Promise<Agent
     Placement.countDocuments({ agentId: { $ne: null }, placedAt: { $gte: start } }),
   ]);
 
-  const enriched = profiles.length ? await enrichProfiles(profiles as unknown as Record<string, unknown>[]) : [];
+  // kpi3 targets are paced on their three pillars; profit targets on profit.
+  const kpiProfiles = profiles.filter((p) => p.targetType === "kpi3");
+  const profitProfiles = profiles.filter((p) => p.targetType !== "kpi3");
+  const year = now.getFullYear();
+  const [enriched, kpis] = await Promise.all([
+    profitProfiles.length ? enrichProfiles(profitProfiles as unknown as Record<string, unknown>[]) : [],
+    kpiProfiles.length
+      ? calculateKpis(
+          kpiProfiles.map((p) => ({ userId: String(p.assigneeId), role: p.assigneeRole, currency: p.currency ?? "AED" })),
+          year,
+        )
+      : new Map(),
+  ]);
   const targets = { behind: 0, onPace: 0, achieved: 0 };
   for (const profile of enriched) targets[targetPace(profile)] += 1;
+  const expectedProgress = yearElapsedPercent(now, year);
+  for (const profile of kpiProfiles) {
+    const owner = kpis.get(kpiOwnerKey(profile.assigneeRole, String(profile.assigneeId)));
+    const actual = owner?.totals ?? { jobs: 0, onboarded: 0, revenue: 0 };
+    targets[kpiPace({ actual, target: profile, expectedProgress })] += 1;
+  }
 
   return {
     activeAgents,

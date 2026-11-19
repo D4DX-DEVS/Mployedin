@@ -1,565 +1,328 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
-import { RowActions } from "@/components/shared/RowActions";
-import { SortableTableHeader, TableSortControl } from "@/components/shared/TableSortControl";
+import { BriefcaseBusiness, Copy, Crosshair, Download, MapPin, MoreHorizontal, Plus, UserCheck, UsersRound, Wallet } from "lucide-react";
+import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
+import { PaginationControls } from "@/components/shared/PaginationControls";
+import { TableSortControl } from "@/components/shared/TableSortControl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { csrfFetch } from "@/lib/security/csrf-client";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  CompactProgress, RiskBadge, PerformanceBadge, TargetEmptyState,
-  RankBadge, CompletionStage, IncentiveTierBadge,
-} from "@/components/features/targets/TargetComponents";
-import {
-  Plus, CircleDollarSign, Crosshair, Eye, Trash2, UsersRound, Activity, ShieldAlert, BarChart3, Download, Copy, TrendingUp, MapPin, Award, SplitSquareVertical, Pencil,
-} from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { TargetEmptyState } from "@/components/features/targets/TargetComponents";
 import { TargetYearSelect } from "@/components/features/targets/TargetYearSelect";
-import { TargetScheduleEditor } from "@/components/features/targets/TargetScheduleEditor";
 import { formatProfit } from "@/components/features/targets/profitFormat";
-import { draftFromProfile, draftIssues, withAmount, type ScheduleDraft } from "@/lib/targets/scheduleDraft";
-import type { PeriodType, SchedulePeriod } from "@/lib/targets/schedule";
+import { csrfFetch } from "@/lib/security/csrf-client";
 import { useConfirm } from "@/hooks/useConfirm";
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { PaginationControls } from "@/components/shared/PaginationControls";
-import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { TARGET_PROFILE_SORT_FIELDS, type TargetProfileSortField } from "@/lib/targets/profileSortFields";
+import { EditTargetsDialog } from "./[id]/_components/EditTargetsDialog";
+import { TargetRowsTable, type TargetListRow } from "./_components/TargetRowsTable";
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-interface EnrichedProfile {
-  _id: string;
-  assigneeId: string;
-  assigneeName: string;
-  assigneeEmail: string;
-  assigneeRole: string;
-  year: number;
-  region?: string;
-  profitTarget: number;
-  currency: string;
-  distributionStrategy: string;
-  periodType: PeriodType;
-  periods: SchedulePeriod[];
-  profitAchieved: number;
-  profitProgress: number;
-  profitPending: number;
-  riskScore: "high" | "medium" | "low";
-  incentiveTier: "none" | "bronze" | "silver" | "gold" | "platinum";
-  teamSize: number;
-  status: string;
-  notes?: string;
-}
+type Risk = "high" | "medium" | "low";
 
 interface Totals {
-  totalProfiles: number;
   supervisors: number;
   totalTeamSize: number;
-  /** Main currency only; other currencies are listed in `others`, never added in. */
-  profit: { currency: string | null; target: number; achieved: number; others: { currency: string; target: number; achieved: number }[] };
-  avgProgress: number;
-  riskBreakdown: { high: number; medium: number; low: number };
-  regions: string[];
+  riskBreakdown: Record<Risk, number>;
+  kpi?: {
+    jobs: { target: number; actual: number };
+    onboarded: { target: number; actual: number };
+    revenue: { currency: string; target: number; actual: number }[];
+  };
 }
 
-interface LeaderboardEntry {
-  rank: number;
-  _id: string;
-  assigneeId: string;
-  assigneeName: string;
-  profitProgress: number;
-  riskScore: "high" | "medium" | "low";
-}
-
-interface UnderperformerEntry {
-  _id: string;
-  assigneeName: string;
-  profitProgress: number;
-  expectedProgress: number;
-  gap: number;
-  riskScore: "high" | "medium" | "low";
-  incentiveTier: "none" | "bronze" | "silver" | "gold" | "platinum";
-}
-
-interface ReassignSupervisorOption {
-  value: string;
-  label: string;
-  email: string;
-  teamSize: number;
-}
-
-type TabView = "dashboard" | "leaderboard";
+interface ReassignOption { value: string; label: string; email: string; teamSize: number }
 
 const SORT_FIELDS: string[] = [...TARGET_PROFILE_SORT_FIELDS];
-
-/* ------------------------------------------------------------------ */
-/*  Admin Target Management Page                                       */
-/* ------------------------------------------------------------------ */
+const RISK_CHIP: Record<Risk, string> = {
+  high: "bg-status-rejected-bg text-status-rejected",
+  medium: "bg-status-shortlisted-bg text-status-shortlisted",
+  low: "bg-status-selected-bg text-status-selected",
+};
 
 export default function AdminTargetManagementPage() {
   const t = useTranslations("profitTargets");
-  const tr = useTranslations("profitReport");
-  const intlLocale = useLocale();
   const tc = useTranslations("common");
-  const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
+  const intl = useLocale();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const locale = pathname.split("/")[1] || "en";
-  const {
-    page, limit, total, totalPages,
-    setPage, setLimit, updateTotal, resetPage, paginationParams,
-  } = usePagination();
+  const { confirm, ConfirmDialogNode } = useConfirm();
+  const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage, paginationParams } = usePagination();
+
   const currentYear = new Date().getFullYear();
   const requestedYear = Number.parseInt(searchParams.get("year") ?? "", 10);
-  const initialYearFilter = Number.isFinite(requestedYear) && requestedYear > 0
-    ? requestedYear
-    : currentYear;
-
-  const [profiles, setProfiles] = useState<EnrichedProfile[]>([]);
-  const [totals, setTotals] = useState<Totals | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [yearFilter, setYearFilter] = useState(initialYearFilter);
-  const [regionFilter, setRegionFilter] = useState("");
-  const [riskFilter, setRiskFilter] = useState<"all" | "high" | "medium" | "low">("all");
-  const [completionFilter, setCompletionFilter] = useState<"all" | CompletionStage>("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [year, setYear] = useState(Number.isFinite(requestedYear) && requestedYear > 0 ? requestedYear : currentYear);
+  const [region, setRegion] = useState("");
+  const [risk, setRisk] = useState<Risk | "">("");
+  const [search, setSearch] = useState("");
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "", { allow: SORT_FIELDS });
   const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
   const order = sortOrder === "asc" ? "asc" : "desc";
-  const [tab, setTab] = useState<TabView>("dashboard");
-  const [regionOptions, setRegionOptions] = useState<string[]>([]);
-  const [reassigningId, setReassigningId] = useState<string | null>(null);
-  const [reassignAssigneeId, setReassignAssigneeId] = useState("");
-  const [reassignReason, setReassignReason] = useState("");
-  const [reassignOptions, setReassignOptions] = useState<ReassignSupervisorOption[]>([]);
-  const [reassignLoading, setReassignLoading] = useState(false);
+
+  const [rows, setRows] = useState<TargetListRow[]>([]);
+  const [totals, setTotals] = useState<Totals | null>(null);
+  const [regions, setRegions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [editing, setEditing] = useState<TargetListRow | null>(null);
   const [cloneOpen, setCloneOpen] = useState(false);
   const [cloneAdjustment, setCloneAdjustment] = useState("0");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editAmount, setEditAmount] = useState("");
-  const [editDraft, setEditDraft] = useState<ScheduleDraft | null>(null);
-  const [editNotes, setEditNotes] = useState("");
+  const [reassigning, setReassigning] = useState<TargetListRow | null>(null);
+  const [reassignTo, setReassignTo] = useState("");
+  const [reassignReason, setReassignReason] = useState("");
+  const [reassignOptions, setReassignOptions] = useState<ReassignOption[]>([]);
 
-  // Analytics
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [underperformers, setUnderperformers] = useState<UnderperformerEntry[]>([]);
-
-  useEffect(() => {
-    setYearFilter(initialYearFilter);
-  }, [initialYearFilter]);
-
-  const fetchProfiles = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = paginationParams();
-      params.set("year", String(yearFilter));
+      params.set("year", String(year));
       params.set("status", "active");
-      if (regionFilter) params.set("region", regionFilter);
-      if (riskFilter !== "all") params.set("risk", riskFilter);
-      if (completionFilter !== "all") params.set("completion", completionFilter);
-      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+      if (region) params.set("region", region);
+      if (risk) params.set("risk", risk);
+      if (search.trim()) params.set("search", search.trim());
       if (sortBy) params.set("sortBy", sortBy);
       params.set("sortOrder", order);
-      const res = await fetch(`/api/admin/target-profiles?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setProfiles(data.profiles ?? []);
-        setTotals(data.totals ?? null);
-        updateTotal(data.pagination?.total ?? 0);
-      }
+      const res = await fetch(`/api/admin/target-profiles?${params}`);
+      if (!res.ok) throw new Error(`targets ${res.status}`);
+      const data = await res.json();
+      setRows(data.profiles ?? []);
+      setTotals(data.totals ?? null);
+      updateTotal(data.pagination?.total ?? 0);
     } catch {
       toast.error(t("failedToLoadProfiles"));
     } finally {
       setLoading(false);
     }
-  }, [yearFilter, regionFilter, riskFilter, completionFilter, searchQuery, sortBy, order, page, limit, paginationParams, updateTotal]);
+     
+  }, [year, region, risk, search, sortBy, order, page, limit]);
 
-  const fetchAnalytics = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/admin/target-profiles/analytics?year=${yearFilter}`);
-      if (res.ok) {
-        const data = await res.json();
-        setLeaderboard(data.leaderboard ?? []);
-        setUnderperformers(data.underperformers ?? []);
-      }
-    } catch { /* ignore */ }
-  }, [yearFilter]);
-
-  const fetchRegions = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/admin/target-profiles/regions?year=${yearFilter}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRegionOptions(data.regions ?? []);
-      }
-    } catch { /* ignore */ }
-  }, [yearFilter]);
-
-  const fetchReassignOptions = useCallback(async () => {
-    setReassignLoading(true);
-    try {
-      const params = new URLSearchParams({
-        directory: "create-target",
-        targetYear: String(yearFilter),
-        availability: "available",
-        limit: "500",
-      });
-      const res = await fetch(`/api/admin/super-agents?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setReassignOptions((data.superAgents ?? []).map((item: {
-          _id: string;
-          name: string;
-          email: string;
-          directory?: { teamSize?: number };
-        }) => ({
-          value: item._id,
-          label: item.name,
-          email: item.email,
-          teamSize: item.directory?.teamSize ?? 0,
-        })));
-      }
-    } catch { /* ignore */ }
-    finally { setReassignLoading(false); }
-  }, [yearFilter]);
-
-  useEffect(() => { fetchProfiles(); }, [fetchProfiles]);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { resetPage(); }, [year, region, risk, search, resetPage]);
   useEffect(() => {
-    resetPage();
-  }, [yearFilter, regionFilter, riskFilter, completionFilter, searchQuery, resetPage]);
-  useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
-  useEffect(() => { fetchRegions(); }, [fetchRegions]);
-  useEffect(() => { fetchReassignOptions(); }, [fetchReassignOptions]);
+    fetch(`/api/admin/target-profiles/regions?year=${year}`)
+      .then((r) => (r.ok ? r.json() : { regions: [] }))
+      .then((d) => setRegions(d.regions ?? []))
+      .catch(() => setRegions([]));
+  }, [year]);
 
-  const filteredProfiles = profiles;
-
-  // Same toggle as admin Interviews: a new column starts ascending, the active one flips.
-  const toggleSort = (field: TargetProfileSortField) => {
+  const onSort = (field: TargetProfileSortField) => {
     setSortBy(field);
     setSortOrder(sortBy === field && order === "asc" ? "desc" : "asc");
     resetPage();
   };
-  // No sortBy = date added, the API's own order; the filter bar names it so the
-  // direction button still has something to flip.
-  const sortOptions = [
-    { value: "dateAdded", label: t("sortDateAdded") },
-    { value: "name", label: t("supervisorHeader") },
-    { value: "teamSize", label: t("teamHeader") },
-    { value: "profitTarget", label: t("targetHeader") },
-    { value: "profitAchieved", label: t("achievedHeader") },
-    { value: "profitProgress", label: t("performanceHeader") },
-    { value: "risk", label: t("riskHeader") },
-  ];
-  const sortHeader = (field: TargetProfileSortField, label: string) => (
-    <SortableTableHeader label={label} active={sortBy === field} order={order} onClick={() => toggleSort(field)} />
-  );
 
-  // Actions
-  const handleCancel = async (id: string) => {
-    const ok = await confirmDialog({ message: t("cancelConfirm"), confirmLabel: t("cancelProfile") });
+  const onRemove = async (row: TargetListRow) => {
+    const ok = await confirm({ message: t("removeConfirm", { name: row.assigneeName, year: row.year }), confirmLabel: t("removeTarget") });
     if (!ok) return;
     try {
-      const res = await csrfFetch(`/api/admin/target-profiles/${id}`, { method: "DELETE" });
-      if (res.ok) { toast.success(t("profileCancelled")); fetchProfiles(); }
-      else { const err = await res.json(); toast.error(err.error ?? t("actionFailed")); }
-    } catch { toast.error(t("failedToCancel")); }
+      const res = await csrfFetch(`/api/admin/target-profiles/${row._id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`remove ${res.status}`);
+      toast.success(t("targetRemoved"));
+      void load();
+    } catch {
+      toast.error(t("removeFailed"));
+    }
   };
 
-  const handleClone = async () => {
-    const adjustmentPct = Number(cloneAdjustment);
-    if (!Number.isFinite(adjustmentPct) || adjustmentPct < -100 || adjustmentPct > 500) {
-      toast.error(t("cloneAdjustmentInvalid"));
-      return;
-    }
+  const onRevenuePermission = async (row: TargetListRow) => {
+    const enabled = !row.canSetRevenueTargets;
     try {
-      const res = await csrfFetch(`/api/admin/target-profiles?action=clone`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceYear: yearFilter - 1,
-          targetYear: yearFilter,
-          adjustmentPct,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        toast.success(t("profilesCloned", { count: data.cloned, year: yearFilter - 1 }));
-        setCloneOpen(false);
-        fetchProfiles();
-      } else {
-        const err = await res.json();
-        toast.error(err.error ?? t("failedToClone"));
-      }
-    } catch { toast.error(t("failedToClone")); }
-  };
-
-  const openReassign = (profileId: string) => {
-    setReassigningId(profileId);
-    setReassignAssigneeId("");
-    setReassignReason("");
-  };
-
-  const closeReassign = () => {
-    setReassigningId(null);
-    setReassignAssigneeId("");
-    setReassignReason("");
-  };
-
-  const openEdit = (profile: EnrichedProfile) => {
-    setEditingId(profile._id);
-    setEditAmount(String(profile.profitTarget));
-    setEditDraft(draftFromProfile(profile));
-    setEditNotes(profile.notes ?? "");
-  };
-
-  const handleEdit = async () => {
-    if (!editingId || !editDraft || !editingTarget) return;
-    const profitTarget = Number(editAmount);
-    if (!Number.isFinite(profitTarget) || profitTarget < 0) {
-      toast.error(t("amountInvalid"));
-      return;
-    }
-    if (draftIssues(editDraft, editingTarget.year, profitTarget).length > 0) {
-      toast.error(t("scheduleInvalidToast"));
-      return;
-    }
-    try {
-      const res = await csrfFetch(`/api/admin/target-profiles/${editingId}`, {
+      const res = await csrfFetch("/api/admin/target-profiles/revenue-permission", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          profitTarget,
-          periodType: editDraft.periodType,
-          distributionStrategy: editDraft.strategy,
-          periods: editDraft.periods,
-          notes: editNotes.trim(),
-        }),
+        body: JSON.stringify({ superAgentUserId: row.assigneeId, enabled }),
       });
-      if (res.ok) {
-        toast.success(t("profileUpdated"));
-        setEditingId(null);
-        fetchProfiles();
-        fetchAnalytics();
-        return;
-      }
-      const err = await res.json();
-      toast.error(err.error ?? t("failedToUpdate"));
+      if (!res.ok) throw new Error(`permission ${res.status}`);
+      toast.success(t(enabled ? "revenueTargetPermissionEnabled" : "revenueTargetPermissionDisabled", { name: row.assigneeName }));
+      void load();
     } catch {
-      toast.error(t("failedToUpdate"));
+      toast.error(t("revenueTargetPermissionFailed"));
+    }
+  };
+
+  const openReassign = async (row: TargetListRow) => {
+    setReassigning(row);
+    setReassignTo("");
+    setReassignReason("");
+    try {
+      const params = new URLSearchParams({ directory: "create-target", targetYear: String(year), availability: "available", limit: "500" });
+      const res = await fetch(`/api/admin/super-agents?${params}`);
+      const data = res.ok ? await res.json() : { superAgents: [] };
+      setReassignOptions((data.superAgents ?? []).map((s: { _id: string; name: string; email: string; directory?: { teamSize?: number } }) => ({
+        value: s._id, label: s.name, email: s.email, teamSize: s.directory?.teamSize ?? 0,
+      })));
+    } catch {
+      setReassignOptions([]);
     }
   };
 
   const handleReassign = async () => {
-    if (!reassigningId || !reassignAssigneeId) return;
-
+    if (!reassigning || !reassignTo) return;
     try {
-      const res = await csrfFetch(`/api/admin/target-profiles/${reassigningId}/reassign`, {
+      const res = await csrfFetch(`/api/admin/target-profiles/${reassigning._id}/reassign`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          newAssigneeId: reassignAssigneeId,
-          reason: reassignReason.trim() || undefined,
-        }),
+        body: JSON.stringify({ newAssigneeId: reassignTo, reason: reassignReason.trim() || undefined }),
       });
-
-      if (res.ok) {
-        toast.success(t("profileReassigned"));
-        closeReassign();
-        fetchProfiles();
-        fetchAnalytics();
-        fetchReassignOptions();
-        return;
-      }
-
-      const err = await res.json();
-      toast.error(err.error ?? t("failedToReassign"));
+      if (!res.ok) throw new Error(`reassign ${res.status}`);
+      toast.success(t("profileReassigned"));
+      setReassigning(null);
+      void load();
     } catch {
       toast.error(t("failedToReassign"));
     }
   };
 
+  const handleClone = async () => {
+    const adjustmentPct = Number(cloneAdjustment);
+    if (!Number.isFinite(adjustmentPct) || adjustmentPct < -100 || adjustmentPct > 500) return void toast.error(t("cloneAdjustmentInvalid"));
+    try {
+      const res = await csrfFetch(`/api/admin/target-profiles?action=clone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceYear: year - 1, targetYear: year, adjustmentPct }),
+      });
+      if (!res.ok) throw new Error(`clone ${res.status}`);
+      const data = await res.json();
+      toast.success(t("profilesCloned", { count: data.cloned, year: year - 1 }));
+      setCloneOpen(false);
+      void load();
+    } catch {
+      toast.error(t("failedToClone"));
+    }
+  };
+
   const handleExport = () => {
-    const csvRows = [
-      [t("csvHeaderSupervisor"), t("csvHeaderEmail"), t("csvHeaderRegion"), t("csvHeaderTeamSize"), t("csvHeaderCurrency"), t("csvHeaderProfitTarget"), t("csvHeaderProfitAchieved"), t("csvHeaderProgressPercent"), t("csvHeaderRisk")].join(","),
-      ...filteredProfiles.map((r) =>
-        [
-          `"${r.assigneeName}"`, `"${r.assigneeEmail}"`, `"${r.region ?? ""}"`, r.teamSize,
-          r.currency ?? "AED",
-          r.profitTarget, r.profitAchieved,
-          r.profitProgress, r.riskScore,
-        ].join(",")
-      ),
+    const cell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [
+      [t("superAgentHeader"), t("csvHeaderEmail"), t("csvHeaderRegion"), t("csvHeaderCurrency"), t("jobProgressShort"), t("jobsTargetCsv"), t("conversionProgressShort"), t("onboardedTargetCsv"), t("revenueProgressShort"), t("revenueTargetCsv"), t("overallHeader"), t("riskHeader")].map(cell).join(","),
+      ...rows.map((r) => [r.assigneeName, r.assigneeEmail, r.region, r.currency, r.jobActual, r.jobTarget, r.onboardedActual, r.conversionTarget, r.revenueActual, r.revenueTarget, r.overallProgress, r.riskScore].map(cell).join(",")),
     ];
-    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `target-profiles-${yearFilter}.csv`;
+    a.download = `targets-${year}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success(t("csvExported"));
   };
 
-  const reassignTarget = profiles.find((profile) => profile._id === reassigningId) ?? null;
-  const editingTarget = profiles.find((profile) => profile._id === editingId) ?? null;
-  /* The profit total is in one currency, named by the API: plans in other
-     currencies are listed beside it and never added in. */
-  const profitAmount = (value: number, notation: "standard" | "compact" = "standard") =>
-    formatProfit(value, totals?.profit.currency, intlLocale, notation);
-  const profitRatio = (notation: "standard" | "compact") =>
-    `${profitAmount(totals?.profit.achieved ?? 0, notation)} / ${profitAmount(totals?.profit.target ?? 0, notation)}`;
-  // Phones: bare compact numbers; the currency is named in the line under the risk chips.
-  const profitRatioPhone = `${formatProfit(totals?.profit.achieved ?? 0, null, intlLocale, "compact")} / ${formatProfit(totals?.profit.target ?? 0, null, intlLocale, "compact")}`;
-
-  const completionFilterOptions = [
-    { value: "all", label: t("allStages") },
-    { value: "not_started", label: t("notStarted") },
-    { value: "in_progress", label: t("inProgress") },
-    { value: "completed", label: t("completed") },
+  const kpi = totals?.kpi;
+  const ratio = (actual: number, target: number) => t("actualOfTarget", { actual, target });
+  const mainRevenue = kpi?.revenue[0];
+  const otherRevenue = kpi?.revenue.slice(1) ?? [];
+  const regionOptions = [{ value: "", label: t("allRegions") }, ...regions.map((r) => ({ value: r, label: r }))];
+  const sortOptions = [
+    { value: "dateAdded", label: t("sortDateAdded") },
+    { value: "name", label: t("superAgentHeader") },
+    { value: "profitProgress", label: t("overallHeader") },
+    { value: "risk", label: t("riskHeader") },
   ];
-  const riskFilterOptions = [
-    { value: "all", label: t("allRisk") },
-    { value: "high", label: t("highRisk") },
-    { value: "medium", label: t("mediumRisk") },
-    { value: "low", label: t("lowRisk") },
-  ];
-  const regionFilterOptions = [
-    { value: "", label: t("allRegions") },
-    ...regionOptions.map((region) => ({ value: region, label: region })),
-  ];
-  const phoneFilterCount = (yearFilter !== currentYear ? 1 : 0) + (regionFilter ? 1 : 0)
-    + (riskFilter !== "all" ? 1 : 0) + (completionFilter !== "all" ? 1 : 0);
-  const clearToolbarFilters = () => { setYearFilter(currentYear); setRegionFilter(""); setRiskFilter("all"); setCompletionFilter("all"); };
+  const newTargetHref = `/${locale}/admin/target-management/create`;
+  const empty = (
+    <TargetEmptyState
+      title={t("noTargets")}
+      description={t("emptyStateTargetProfile")}
+      action={<Button asChild size="sm" className="mt-2 gap-2"><Link href={newTargetHref}><Plus className="size-4" /> {t("newTargetProfileButton")}</Link></Button>}
+    />
+  );
 
   return (
     <div className="page-container">
       {ConfirmDialogNode}
 
-      {/* The page heading is the shared hero, and it carries the totals. The two
-          KPI card rows that used to sit between the toolbar and the table repeated
-          these same six numbers and rendered 3-4 per row on a phone. */}
       <DashboardPageHeader
         compact
         compactOnMobile
         icon={Crosshair}
         title={t("title")}
         description={t("description")}
+        actions={
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="size-11 rounded-xl sm:size-10" aria-label={t("moreActions")}>
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={handleExport} disabled={rows.length === 0}>
+                  <Download className="size-4" /> {tc("export")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setCloneOpen(true)}>
+                  <Copy className="size-4" /> {t("copyLastYear", { year: year - 1 })}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button asChild className="min-h-11 gap-2 rounded-xl sm:min-h-10">
+              <Link href={newTargetHref}><Plus className="size-4" /> {t("newTargetProfile")}</Link>
+            </Button>
+          </div>
+        }
         metrics={[
-          { label: t("supervisorCount"), value: totals?.supervisors ?? 0, note: t("totalAgentsNote", { count: totals?.totalTeamSize ?? 0 }), icon: UsersRound, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
-          { label: t("profitMetric"), value: (
-            // A full amount pair is wider than a third of a phone screen.
-            <>
-              <span className="sm:hidden">{profitRatioPhone}</span>
-              <span className="hidden sm:inline">{profitRatio("standard")}</span>
-            </>
-          ), note: t("balanceNote", { value: profitAmount(Math.max(0, (totals?.profit.target ?? 0) - (totals?.profit.achieved ?? 0))) }), icon: CircleDollarSign, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
-          { label: t("avgAchievementMetric"), value: `${totals?.avgProgress ?? 0}%`, icon: Activity, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
-          { label: t("activeProfilesLabel"), value: totals?.totalProfiles ?? 0, icon: BarChart3, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: t("superAgentsMetric"), value: totals?.supervisors ?? 0, note: t("totalAgentsNote", { count: totals?.totalTeamSize ?? 0 }), icon: UsersRound, iconClassName: "text-sky-600", iconSurfaceClassName: "bg-sky-50" },
+          { label: t("kpiJobsAcquired"), value: ratio(kpi?.jobs.actual ?? 0, kpi?.jobs.target ?? 0), icon: BriefcaseBusiness, iconClassName: "text-indigo-600", iconSurfaceClassName: "bg-indigo-50" },
+          { label: t("kpiOnboarded"), value: ratio(kpi?.onboarded.actual ?? 0, kpi?.onboarded.target ?? 0), icon: UserCheck, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
+          {
+            label: t("kpiInvoicedRevenue"),
+            value: mainRevenue
+              ? `${formatProfit(mainRevenue.actual, mainRevenue.currency, intl, "compact")} / ${formatProfit(mainRevenue.target, mainRevenue.currency, intl, "compact")}`
+              : "—",
+            note: otherRevenue.length ? t("revenueOtherCurrencies", { currencies: otherRevenue.map((r) => r.currency).join(", ") }) : undefined,
+            icon: Wallet,
+            iconClassName: "text-violet-600",
+            iconSurfaceClassName: "bg-violet-50",
+          },
         ]}
         footer={
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t("riskOverview")}>
             <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("riskOverview")}</span>
-            <span className="chip-pad rounded-full bg-status-rejected-bg text-xs font-semibold text-status-rejected">{t("riskHighCount", { count: totals?.riskBreakdown.high ?? 0 })}</span>
-            <span className="chip-pad rounded-full bg-status-shortlisted-bg text-xs font-semibold text-status-shortlisted">{t("riskMediumCount", { count: totals?.riskBreakdown.medium ?? 0 })}</span>
-            <span className="chip-pad rounded-full bg-status-selected-bg text-xs font-semibold text-status-selected">{t("riskLowCount", { count: totals?.riskBreakdown.low ?? 0 })}</span>
-            {totals?.profit.currency && totals.profit.others.length > 0 ? (
-              <span className="text-xs text-muted-foreground" data-profit-other-currencies>
-                {t("profitOtherCurrenciesNote", {
-                  currency: totals.profit.currency,
-                  others: totals.profit.others.map((row) => row.currency).join(", "),
-                })}
-              </span>
-            ) : totals?.profit.currency ? (
-              // Wider screens show the currency in the figure itself.
-              <span className="text-xs text-muted-foreground sm:hidden" data-profit-currency>
-                {t("profitCurrencyNote", { currency: totals.profit.currency })}
-              </span>
-            ) : null}
+            {(["high", "medium", "low"] as const).map((level) => (
+              // Each chip filters the list to that risk; a second tap clears it.
+              <button
+                key={level}
+                type="button"
+                aria-pressed={risk === level}
+                onClick={() => setRisk(risk === level ? "" : level)}
+                className={`chip-pad min-h-9 rounded-full text-xs font-semibold ${RISK_CHIP[level]} ${risk === level ? "ring-2 ring-current ring-offset-1" : ""}`}
+              >
+                {t(level === "high" ? "riskHighCount" : level === "medium" ? "riskMediumCount" : "riskLowCount", { count: totals?.riskBreakdown[level] ?? 0 })}
+              </button>
+            ))}
           </div>
         }
       />
 
-      {/* Toolbar */}
       <InlineFilterBar
-        className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
-        onClear={yearFilter !== currentYear || !!regionFilter || riskFilter !== "all" || completionFilter !== "all" ? clearToolbarFilters : undefined}
+        className="workspace-panel-surface rounded-2xl max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
+        onClear={year !== currentYear || region || risk || search ? () => { setYear(currentYear); setRegion(""); setRisk(""); setSearch(""); } : undefined}
         clearLabel={t("resetFilters")}
-        moreLabel={t("advancedFilters")}
-        moreToggleClassName="max-sm:hidden"
-        moreClassName="max-sm:hidden"
-        more={(
-          <>
-            <SearchableSelect
-              options={completionFilterOptions}
-              value={completionFilter}
-              onValueChange={(value) => setCompletionFilter(value as "all" | CompletionStage)}
-              placeholder={t("stageLabel")}
-              className={INLINE_FILTER_CONTROL}
-            />
-            <SearchableSelect
-              options={riskFilterOptions}
-              value={riskFilter}
-              onValueChange={(value) => setRiskFilter(value as "all" | "high" | "medium" | "low")}
-              placeholder={t("riskLabel")}
-              className={INLINE_FILTER_CONTROL}
-            />
-          </>
-        )}
       >
-        <InlineFilterSearch
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder={t("searchSupervisors")}
-        />
-        <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
+        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchSuperAgents")} />
+        <PhoneFiltersButton activeCount={(year !== currentYear ? 1 : 0) + (region ? 1 : 0)} onClick={() => setSheetOpen(true)} />
         <div className="contents max-sm:hidden">
-          <TargetYearSelect
-            value={String(yearFilter)}
-            onChange={(value) => setYearFilter(Number.parseInt(value, 10) || currentYear)}
-            label={t("a11yYear")}
-          />
-          {regionOptions.length > 0 && (
+          <TargetYearSelect value={String(year)} onChange={(v) => setYear(Number.parseInt(v, 10) || currentYear)} label={t("a11yYear")} />
+          {regions.length > 0 && (
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <SearchableSelect
-                options={regionFilterOptions}
-                value={regionFilter}
-                onValueChange={setRegionFilter}
-                placeholder={t("regionLabel")}
-                className="h-11 w-40 rounded-xl"
-              />
+              <MapPin className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <SearchableSelect ariaLabel={t("regionLabel")} options={regionOptions} value={region} onValueChange={setRegion} placeholder={t("regionLabel")} className="h-11 w-44 rounded-xl ps-9" />
             </div>
           )}
-          <TableSortControl
-            value={sortBy || "dateAdded"}
-            onValueChange={(v) => { setSortBy(v === "dateAdded" ? "" : v); resetPage(); }}
-            options={sortOptions}
-            order={order}
-            onOrderChange={(next) => { setSortOrder(next); resetPage(); }}
-            compact
-          />
         </div>
       </InlineFilterBar>
 
-      <PhoneFilterSheet
-        open={filterSheetOpen}
-        onOpenChange={setFilterSheetOpen}
-        activeCount={phoneFilterCount}
-        onClear={clearToolbarFilters}
-      >
+      <PhoneFilterSheet open={sheetOpen} onOpenChange={setSheetOpen} activeCount={(year !== currentYear ? 1 : 0) + (region ? 1 : 0)} onClear={() => { setYear(currentYear); setRegion(""); }}>
         <FilterField label={tc("sortBy")}>
           <TableSortControl
             value={sortBy || "dateAdded"}
@@ -570,448 +333,86 @@ export default function AdminTargetManagementPage() {
             className="w-full [&_button]:h-11 [&>button:first-child]:min-w-0 [&>button:first-child]:flex-1 [&>button:last-child]:w-11"
           />
         </FilterField>
-        <FilterField label={t("yearLabel")} htmlFor="target-management-sheet-year">
-          {/* TargetYearSelect takes no className; size its trigger from here. */}
+        <FilterField label={t("yearLabel")} htmlFor="targets-sheet-year">
           <div className="[&>button]:h-11 [&>button]:w-full [&>button]:bg-card">
-            <TargetYearSelect
-              id="target-management-sheet-year"
-              showLabel={false}
-              value={String(yearFilter)}
-              onChange={(value) => setYearFilter(Number.parseInt(value, 10) || currentYear)}
-              label={t("a11yYear")}
-            />
+            <TargetYearSelect id="targets-sheet-year" showLabel={false} value={String(year)} onChange={(v) => setYear(Number.parseInt(v, 10) || currentYear)} label={t("a11yYear")} />
           </div>
         </FilterField>
-        {regionOptions.length > 0 && (
-          <FilterField label={t("regionLabel")} htmlFor="target-management-sheet-region">
-            <SearchableSelect
-              id="target-management-sheet-region"
-              options={regionFilterOptions}
-              value={regionFilter}
-              onValueChange={setRegionFilter}
-              placeholder={t("regionLabel")}
-              className={SHEET_CONTROL}
-            />
+        {regions.length > 0 && (
+          <FilterField label={t("regionLabel")} htmlFor="targets-sheet-region">
+            <SearchableSelect id="targets-sheet-region" options={regionOptions} value={region} onValueChange={setRegion} placeholder={t("regionLabel")} className={SHEET_CONTROL} />
           </FilterField>
         )}
-        <FilterField label={t("stageLabel")} htmlFor="target-management-sheet-stage">
-          <SearchableSelect
-            id="target-management-sheet-stage"
-            options={completionFilterOptions}
-            value={completionFilter}
-            onValueChange={(value) => setCompletionFilter(value as "all" | CompletionStage)}
-            placeholder={t("stageLabel")}
-            className={SHEET_CONTROL}
-          />
-        </FilterField>
-        <FilterField label={t("riskLabel")} htmlFor="target-management-sheet-risk">
-          <SearchableSelect
-            id="target-management-sheet-risk"
-            options={riskFilterOptions}
-            value={riskFilter}
-            onValueChange={(value) => setRiskFilter(value as "all" | "high" | "medium" | "low")}
-            placeholder={t("riskLabel")}
-            className={SHEET_CONTROL}
-          />
-        </FilterField>
       </PhoneFilterSheet>
 
-      {/* View switch on the left, page actions on the right. */}
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
-        {/* Phone: tabs and actions each fill their own row evenly. */}
-        <div className="flex rounded-xl border border-border/60 bg-card p-0.5 max-sm:w-full max-sm:[&>button]:flex-1">
-          <Button variant={tab === "dashboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("dashboard")} className="rounded-lg gap-1.5">
-            <BarChart3 className="h-3.5 w-3.5" /> {t("dashboardTab")}
-          </Button>
-          <Button variant={tab === "leaderboard" ? "default" : "ghost"} size="sm" onClick={() => setTab("leaderboard")} className="rounded-lg gap-1.5">
-            <Award className="h-3.5 w-3.5" /> {t("leaderboardTab")}
-          </Button>
-        </div>
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2 ms-auto max-sm:w-full">
-          <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3 max-sm:size-10" onClick={handleExport} disabled={profiles.length === 0} title={tc("export")}>
-            <Download className="h-4 w-4" /> <span className="hidden sm:inline">{tc("export")}</span>
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1 rounded-lg px-2 sm:gap-2 sm:px-3 max-sm:size-10" onClick={() => setCloneOpen((open) => !open)} aria-expanded={cloneOpen} title={t("cloneYear", { year: yearFilter - 1 })}>
-            <Copy className="h-4 w-4" /> <span className="hidden sm:inline">{t("cloneYear", { year: yearFilter - 1 })}</span>
-          </Button>
-          <Link href={`/${locale}/admin/target-management/create`} className="min-w-0 max-sm:flex-1">
-            <Button size="sm" className="gap-1 rounded-lg bg-primary px-2 max-sm:h-10 max-sm:w-full text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:gap-2 sm:px-4 sm:text-sm">
-              <Plus className="h-4 w-4 shrink-0" /> {t("newTargetProfile")}
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-
-
-      {/* ============= DASHBOARD TAB ============= */}
-      {tab === "dashboard" && (
-        <>
-          {cloneOpen && (
-            <section className="workspace-glass-panel card-pad rounded-2xl">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">{t("cloneYear", { year: yearFilter - 1 })}</p>
-                  <p className="text-xs text-muted-foreground">{t("cloneHint", { from: yearFilter - 1, to: yearFilter })}</p>
-                </div>
-                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                  {t("cloneAdjustmentLabel")}
-                  <Input
-                    type="number"
-                    min={-100}
-                    max={500}
-                    step={1}
-                    value={cloneAdjustment}
-                    onChange={(event) => setCloneAdjustment(event.target.value)}
-                    className="h-11 rounded-xl lg:w-40"
-                  />
-                </label>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="h-11 rounded-lg" onClick={() => setCloneOpen(false)}>{t("cancelButton")}</Button>
-                  <Button size="sm" className="h-11 rounded-lg" onClick={handleClone}>{t("cloneButton")}</Button>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {editingTarget && editDraft && (
-            <section className="workspace-glass-panel card-pad rounded-2xl">
-              <div className="space-y-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">{t("editTarget")}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t("editHint", { name: editingTarget.assigneeName, year: editingTarget.year })}
-                    </p>
-                  </div>
-                  <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-                    {t("profitTargetLabel", { currency: editingTarget.currency })}
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={editAmount}
-                      onChange={(event) => {
-                        setEditAmount(event.target.value);
-                        setEditDraft(withAmount(editDraft, editingTarget.year, Number(event.target.value) || 0));
-                      }}
-                      className="h-11 rounded-xl lg:w-48"
-                    />
-                  </label>
-                  <Input
-                    value={editNotes}
-                    onChange={(event) => setEditNotes(event.target.value)}
-                    placeholder={t("notesLabel")}
-                    maxLength={2000}
-                    className="h-11 rounded-xl lg:w-64"
-                  />
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="h-11 rounded-lg" onClick={() => setEditingId(null)}>{t("cancelButton")}</Button>
-                    <Button size="sm" className="h-11 rounded-lg" onClick={handleEdit}>{t("saveButton")}</Button>
-                  </div>
-                </div>
-                <TargetScheduleEditor
-                  draft={editDraft}
-                  year={editingTarget.year}
-                  profitTarget={Number(editAmount) || 0}
-                  currency={editingTarget.currency}
-                  onChange={setEditDraft}
-                />
-              </div>
-            </section>
-          )}
-
-          {reassignTarget && (
-            <section className="workspace-glass-panel card-pad rounded-2xl">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">{t("reassignTargetProfile")}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("reassignHint", { name: reassignTarget.assigneeName, year: reassignTarget.year })}
-                  </p>
-                </div>
-                <SearchableSelect
-                  options={reassignOptions.map((option) => ({
-                    value: option.value,
-                    label: `${option.label} · ${option.teamSize} agents · ${option.email}`,
-                  }))}
-                  value={reassignAssigneeId}
-                  onValueChange={setReassignAssigneeId}
-                  placeholder={reassignLoading ? t("loadingSupervisors") : t("selectSupervisor")}
-                  loading={reassignLoading}
-                  className="h-11 min-w-64 rounded-xl"
-                />
-                <Input
-                  value={reassignReason}
-                  onChange={(event) => setReassignReason(event.target.value)}
-                  placeholder={t("reasonLabel")}
-                  className="h-11 rounded-xl lg:w-64"
-                />
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="h-11 rounded-lg" onClick={closeReassign}>{t("cancelButton")}</Button>
-                  <Button size="sm" className="h-11 rounded-lg" onClick={handleReassign} disabled={!reassignAssigneeId}>{t("reassignButton")}</Button>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Main Table */}
-          {/* Region rides in the Supervisor cell (the Region filter and search
-              still cover it) so the nine columns fit the panel at desktop widths;
-              narrower screens scroll inside the panel, never the page. */}
-          <PhoneRecordList
-            className="sm:hidden"
-            label={t("supervisorHeader")}
-            loading={loading}
-            empty={
-              <TargetEmptyState
-                title={t("noTargets")}
-                description={t("emptyStateTargetProfile")}
-                action={
-                  <Link href={`/${locale}/admin/target-management/create`}>
-                    <Button size="sm" className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
-                      <Plus className="h-4 w-4" /> {t("newTargetProfileButton")}
-                    </Button>
-                  </Link>
-                }
-              />
-            }
-            items={filteredProfiles.map((row) => ({
-              key: row._id,
-              href: `/${locale}/admin/target-management/${row._id}`,
-              title: row.assigneeName,
-              subtitle: row.assigneeEmail,
-              trailing: <PerformanceBadge pct={row.profitProgress} />,
-              actions: (
-                <RowActions
-                  name={row.assigneeName}
-                  labelsFrom="wide"
-                  quick={[{ key: "view", label: t("a11yViewDetails"), icon: Eye, href: `/${locale}/admin/target-management/${row._id}` }]}
-                  menu={[
-                    { key: "edit", label: t("a11yEdit"), icon: Pencil, onSelect: () => openEdit(row) },
-                    { key: "reassign", label: t("a11yReassign"), icon: SplitSquareVertical, onSelect: () => openReassign(row._id) },
-                    { key: "cancel", label: t("a11yCancel"), icon: Trash2, onSelect: () => handleCancel(row._id), destructive: true },
-                  ]}
-                />
-              ),
-              meta: (
-                <>
-                  <CompactProgress
-                    achieved={row.profitAchieved}
-                    target={row.profitTarget}
-                    progress={row.profitProgress}
-                    currency={row.currency}
-                    className="min-w-0"
-                  />
-                  <p className="mt-1">
-                    {t("scheduleHeader")}: {tr(`period_${row.periodType}`)} · <span className="tabular-nums">{row.periods.length}</span>
-                  </p>
-                </>
-              ),
-              badges: (
-                <>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums">
-                    <UsersRound className="h-3 w-3" aria-hidden="true" /> {row.teamSize}
-                  </span>
-                  {row.region && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-                      <MapPin className="h-3 w-3" aria-hidden="true" /> {row.region}
-                    </span>
-                  )}
-                  <RiskBadge risk={row.riskScore} />
-                  <IncentiveTierBadge tier={row.incentiveTier ?? "none"} />
-                </>
-              ),
-            }))}
-          />
-          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card max-sm:hidden">
-            <Table data-mobile-table="scroll" className="sm:[&_td]:px-3 sm:[&_th]:px-3">
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead>{sortHeader("name", t("supervisorHeader"))}</TableHead>
-                  <TableHead className="text-center">{sortHeader("teamSize", t("teamHeader"))}</TableHead>
-                  <TableHead>{sortHeader("profitProgress", t("profitHeader"))}</TableHead>
-                  <TableHead>{t("scheduleHeader")}</TableHead>
-                  <TableHead>{sortHeader("profitProgress", t("performanceHeader"))}</TableHead>
-                  <TableHead>{sortHeader("risk", t("riskHeader"))}</TableHead>
-                  <TableHead className="text-end">{t("actionsHeader")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 7 }).map((_, j) => (
-                        <TableCell key={j}><div className="h-4 w-16 animate-pulse rounded bg-muted" /></TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : filteredProfiles.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-16 text-center">
-                      <TargetEmptyState
-                        title={t("noTargets")}
-                        description={t("emptyStateTargetProfile")}
-                        action={
-                          <Link href={`/${locale}/admin/target-management/create`}>
-                            <Button size="sm" className="mt-2 gap-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
-                              <Plus className="h-4 w-4" /> {t("newTargetProfileButton")}
-                            </Button>
-                          </Link>
-                        }
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredProfiles.map((row) => (
-                      <TableRow key={row._id}>
-                        <TableCell>
-                          <div className="min-w-0">
-                            <p className="font-medium">{row.assigneeName}</p>
-                            {/* Long addresses wrap (after the @ first) rather than widen the table. */}
-                            <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
-                              {row.assigneeEmail.includes("@") ? (
-                                <>{row.assigneeEmail.slice(0, row.assigneeEmail.indexOf("@") + 1)}<wbr />{row.assigneeEmail.slice(row.assigneeEmail.indexOf("@") + 1)}</>
-                              ) : row.assigneeEmail}
-                            </p>
-                            {row.region && (
-                              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-                                <MapPin className="h-3 w-3" aria-hidden="true" /> {row.region}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums">
-                            <UsersRound className="h-3 w-3" /> {row.teamSize}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <CompactProgress
-                            achieved={row.profitAchieved}
-                            target={row.profitTarget}
-                            progress={row.profitProgress}
-                            currency={row.currency}
-                            className="min-w-0"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs font-medium">
-                            {tr(`period_${row.periodType}`)}
-                            <span className="ms-1 tabular-nums text-muted-foreground">· {row.periods.length}</span>
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <PerformanceBadge pct={row.profitProgress} />
-                        </TableCell>
-                        <TableCell>
-                            <div className="flex flex-col items-start gap-1.5">
-                              <RiskBadge risk={row.riskScore} />
-                              <IncentiveTierBadge tier={row.incentiveTier ?? "none"} />
-                            </div>
-                        </TableCell>
-                        <TableCell className="text-end" onClick={(e) => e.stopPropagation()}>
-                          <RowActions
-                            name={row.assigneeName}
-                            labelsFrom="wide"
-                            quick={[{ key: "view", label: t("a11yViewDetails"), icon: Eye, href: `/${locale}/admin/target-management/${row._id}` }]}
-                            menu={[
-                              { key: "edit", label: t("a11yEdit"), icon: Pencil, onSelect: () => openEdit(row) },
-                              { key: "reassign", label: t("a11yReassign"), icon: SplitSquareVertical, onSelect: () => openReassign(row._id) },
-                              { key: "cancel", label: t("a11yCancel"), icon: Trash2, onSelect: () => handleCancel(row._id), destructive: true },
-                            ]}
-                          />
-                        </TableCell>
-                      </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+      {cloneOpen && (
+        <section className="workspace-glass-panel card-pad rounded-2xl" aria-label={t("copyLastYear", { year: year - 1 })}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{t("copyLastYear", { year: year - 1 })}</p>
+              <p className="text-xs text-muted-foreground">{t("cloneHint", { from: year - 1, to: year })}</p>
+            </div>
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+              {t("cloneAdjustmentLabel")}
+              <Input type="number" min={-100} max={500} step={1} value={cloneAdjustment} onChange={(e) => setCloneAdjustment(e.target.value)} className="h-11 rounded-xl lg:w-40" />
+            </label>
+            <div className="flex gap-2">
+              <Button variant="outline" className="h-11 rounded-lg" onClick={() => setCloneOpen(false)}>{t("cancelButton")}</Button>
+              <Button className="h-11 rounded-lg" onClick={handleClone}>{t("cloneButton")}</Button>
+            </div>
           </div>
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            limit={limit}
-            onPageChange={setPage}
-            onLimitChange={setLimit}
-          />
-
-          {/* Underperformance Alerts */}
-          {underperformers.length > 0 && (
-            <section className="space-y-3">
-              <h3 className="heading-label flex items-center gap-2 font-semibold">
-                <ShieldAlert className="h-4 w-4 text-red-500" />
-                {t("underperformanceAlerts")}
-              </h3>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {underperformers.slice(0, 6).map((u) => (
-                  <div key={u._id} className="workspace-glass-panel card-pad flex items-center gap-3 rounded-xl border-l-4 border-red-500/40">
-                    <div className="rounded-xl bg-red-500/10 p-2 text-red-600">
-                      <TrendingUp className="h-4 w-4 rotate-180" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate">{u.assigneeName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("underperformerLine", { progress: u.profitProgress, expected: u.expectedProgress, gap: u.gap })}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-start gap-1.5">
-                      <RiskBadge risk={u.riskScore} />
-                      <IncentiveTierBadge tier={u.incentiveTier ?? "none"} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </>
+        </section>
       )}
 
-      {/* ============= LEADERBOARD TAB ============= */}
-      {tab === "leaderboard" && (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-            <Table data-mobile-table="scroll">
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className="w-16 text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("rank")}</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("supervisor")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("progress")}</TableHead>
-                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">{t("risk")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leaderboard.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-16 text-center">
-                      <TargetEmptyState title={t("noLeaderboardData")} description={t("createProfilesToSeeRankings")} />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  leaderboard.map((entry) => (
-                    <TableRow key={entry._id} className={entry.rank <= 3 ? "bg-primary/[0.02]" : ""}>
-                      <TableCell className="text-center">
-                        <RankBadge rank={entry.rank} />
-                      </TableCell>
-                      <TableCell>
-                        <p className="font-medium">{entry.assigneeName}</p>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <PerformanceBadge pct={entry.profitProgress} />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center">
-                          <RiskBadge risk={entry.riskScore} />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+      {reassigning && (
+        <section className="workspace-glass-panel card-pad rounded-2xl" aria-label={t("reassignTargetProfile")}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{t("reassignTargetProfile")}</p>
+              <p className="text-xs text-muted-foreground">{t("reassignHint", { name: reassigning.assigneeName, year: reassigning.year })}</p>
+            </div>
+            <SearchableSelect
+              ariaLabel={t("selectSupervisor")}
+              options={reassignOptions.map((o) => ({ value: o.value, label: `${o.label} · ${o.email}` }))}
+              value={reassignTo}
+              onValueChange={setReassignTo}
+              placeholder={t("selectSupervisor")}
+              className="h-11 min-w-64 rounded-xl"
+            />
+            <Input value={reassignReason} onChange={(e) => setReassignReason(e.target.value)} placeholder={t("reasonLabel")} aria-label={t("reasonLabel")} className="h-11 rounded-xl lg:w-64" />
+            <div className="flex gap-2">
+              <Button variant="outline" className="h-11 rounded-lg" onClick={() => setReassigning(null)}>{t("cancelButton")}</Button>
+              <Button className="h-11 rounded-lg" onClick={handleReassign} disabled={!reassignTo}>{t("reassignButton")}</Button>
+            </div>
           </div>
-        </div>
+        </section>
+      )}
+
+      <TargetRowsTable
+        rows={rows}
+        loading={loading}
+        empty={empty}
+        sortBy={sortBy}
+        order={order}
+        onSort={onSort}
+        onEdit={setEditing}
+        onReassign={(row) => void openReassign(row)}
+        onRevenuePermission={(row) => void onRevenuePermission(row)}
+        onRemove={(row) => void onRemove(row)}
+      />
+
+      {total > 0 && (
+        <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+      )}
+
+      {editing && (
+        <EditTargetsDialog
+          open
+          onOpenChange={(open) => { if (!open) setEditing(null); }}
+          profileId={editing._id}
+          initialData={{ jobTarget: editing.jobTarget, conversionTarget: editing.conversionTarget, revenueTarget: editing.revenueTarget, setByRole: editing.setByRole, currency: editing.currency }}
+          onSuccess={() => { setEditing(null); void load(); }}
+        />
       )}
     </div>
   );

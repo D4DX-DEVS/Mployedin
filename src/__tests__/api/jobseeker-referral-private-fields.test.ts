@@ -18,6 +18,10 @@ jest.mock("@/lib/auth/withAuth", () => ({
       handler(req, { userId: "emp_user_1", role: "employer", locale: "en" }, await ctx.params),
 }));
 jest.mock("@/models/User", () => ({ __esModule: true, default: {} }));
+jest.mock("@/lib/cv/cvAccess", () => ({
+  resolveCvActor: jest.fn().mockResolvedValue({ employerId: "e1", canViewSeeker: null }),
+  employerAccessibleSeekerIds: jest.fn().mockResolvedValue(new Set()),
+}));
 
 const selects: string[] = [];
 function chain(result: unknown) {

@@ -32,6 +32,7 @@ import { isPastClosingDate } from "@/lib/jobs/expiry";
 import { SEEKER_APPLICATION_PROJECTION, seekerScoreView, stripSeekerHiddenFields } from "@/lib/applications/seekerView";
 import { applicationSnapshotFlags } from "@/lib/applications/referralSnapshot";
 import { loadAdminReferralSummaries, type ReferralSummary } from "@/lib/referrals/summary";
+import { hasBuiltCvContent } from "@/lib/cv/seekerCvAvailability";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AuthCtx = any;
@@ -577,7 +578,9 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         .populate({
           path: "jobSeekerId",
           // socialLinks: the employer's review panel shows the candidate's portfolio/profile links.
-          select: "userId fullName skills currentLocation totalExperienceYears experience availabilityStatus profileCompleteness cv.originalUrl socialLinks",
+          // summary, education and cvDesign.hiddenSections are read only to decide
+          // canBuildCv below, and are dropped before the rows are sent.
+          select: "userId fullName skills currentLocation totalExperienceYears experience availabilityStatus profileCompleteness cv.originalUrl socialLinks summary education cvDesign.hiddenSections",
           populate: { path: "userId", select: "name email avatar" },
         })
         .lean(),
@@ -586,6 +589,18 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
     fetchJobs ? loadJobPickerOptions(ctx) : Promise.resolve([] as JobPickerOption[]),
     fetchCounts && ctx.role === "employer" ? loadEmployerCounts(scopeQuery, wantsStageCounts) : Promise.resolve(null),
   ]);
+
+  // Whether each candidate's Standardised CV can be drawn (the one rule, hidden
+  // sections respected). The fields it reads leave with it, so the list payload
+  // stays what it was.
+  for (const app of applications as Array<{ jobSeekerId?: Record<string, unknown> | null }>) {
+    const seeker = app.jobSeekerId;
+    if (!seeker || typeof seeker !== "object") continue;
+    seeker.canBuildCv = hasBuiltCvContent(seeker);
+    delete seeker.summary;
+    delete seeker.education;
+    delete seeker.cvDesign;
+  }
 
   // These two need the rows, and nothing else.
   const hasRows = applications.length > 0;

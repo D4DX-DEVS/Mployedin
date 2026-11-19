@@ -9,6 +9,7 @@ import { validateBody } from "@/lib/validators";
 import { aiProfileFillSchema } from "@/lib/validators/ai";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
+import { queueSeekerMatchWarm } from "@/lib/matching/seekerMatchWarmQueue";
 
 type SectionId = "summary" | "skills" | "experience" | "education" | "languages";
 
@@ -150,6 +151,7 @@ ${sectionPrompt}`;
     const doc = updated.toObject ? updated.toObject() : updated;
     completeness = profileCompletenessScore(doc);
     await JobSeeker.updateOne({ userId: ctx.userId }, { $set: { profileCompleteness: completeness } });
+    await queueSeekerMatchWarm(ctx.userId);
   }
 
   await logActivity({

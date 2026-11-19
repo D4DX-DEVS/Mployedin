@@ -14,6 +14,7 @@ import { resetSignOutInProgress } from "@/lib/consent/deviceStorage";
 import { CodePasswordField, LinkPasswordStep, linkPasswordErrorKey } from "@/components/features/auth/LinkPasswordStep";
 import { SuccessCTA } from "./_components/SuccessCTA";
 import { VerifyFailed } from "./_components/VerifyFailed";
+import { useEmployerSignupOpen } from "@/hooks/useEmployerOnboarding";
 
 // "password": the link needs the account's password (lib/auth/passwordHolder.ts).
 type Status = "idle" | "verifying" | "success" | "error" | "no-token" | "password";
@@ -37,9 +38,12 @@ export default function VerifyEmailPage() {
   const emailFailed = searchParams.get("emailFailed") === "1";
   const registrationRole = searchParams.get("role");
   const callback = safeCallbackPath(searchParams.get("callbackUrl"), locale);
+  const employerSignupOpen = useEmployerSignupOpen();
   const changeEmailHref =
     registrationRole === "employer"
-      ? `/${locale ?? "en"}/employer-register`
+      ? employerSignupOpen
+        ? `/${locale ?? "en"}/employer-register`
+        : `/${locale ?? "en"}/contact`
       : registrationRole === "agent"
         ? `/${locale ?? "en"}/agent-register`
         : `/${locale ?? "en"}/register`;

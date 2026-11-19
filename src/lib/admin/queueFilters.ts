@@ -23,6 +23,18 @@ export const PAYMENT_NOTICE_PENDING_FILTER = {
   $nor: [{ status: { $in: [...PAYMENT_BLOCKED_INVOICE_STATUSES] } }],
 };
 
+/**
+ * Recruitment invoices with a line not yet linked to the hire it bills. Those
+ * lines are left out of revenue targets until an admin links them
+ * (POST /api/admin/invoices/[id]/link-hire). Void/cancelled/refunded/credit
+ * notes never count, so they are not work. `$nor` for the same reason as above.
+ */
+export const UNLINKED_HIRE_FILTER = {
+  category: "recruitment",
+  lineItems: { $elemMatch: { placementId: null } },
+  $nor: [{ status: { $in: ["void", "cancelled", "refunded", "credit_note"] } }],
+};
+
 /** Invoices with a billing dispute still open. */
 export const INVOICE_DISPUTE_OPEN_FILTER = {
   disputes: { $elemMatch: { status: { $in: ["open", "under_review"] } } },

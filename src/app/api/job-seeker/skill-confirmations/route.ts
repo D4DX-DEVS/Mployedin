@@ -7,6 +7,7 @@ import SkillConfirmation from "@/models/SkillConfirmation";
 import JobSeeker from "@/models/JobSeeker";
 import type { UserRole } from "@/models/User";
 import { profileCompletenessScore } from "@/lib/jobSeeker/profileCompleteness";
+import { queueSeekerMatchWarm } from "@/lib/matching/seekerMatchWarmQueue";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
 
@@ -81,6 +82,9 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       }
     }
   }
+
+  // Confirmed skills feed the match profile, so every answer re-scores the feed.
+  await queueSeekerMatchWarm(ctx.userId);
 
   const confirmation = await SkillConfirmation.findOne({
     userId: ctx.userId,

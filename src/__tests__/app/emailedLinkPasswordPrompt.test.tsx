@@ -11,6 +11,9 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 let sessionStatus: "authenticated" | "unauthenticated" = "unauthenticated";
+// Public employer sign-up open (Admin → Settings → Employer onboarding): these
+// tests cover the pages as they were before that switch existed.
+jest.mock("@/hooks/useEmployerOnboarding", () => ({ useEmployerSignupOpen: () => true }));
 jest.mock("next-auth/react", () => ({
   useSession: () => ({ data: null, status: sessionStatus, update: jest.fn(async () => null) }),
   signOut: jest.fn(),

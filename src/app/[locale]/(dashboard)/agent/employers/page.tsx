@@ -11,6 +11,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useCanCreateEmployers } from "@/hooks/useEmployerOnboarding";
 import Link from "next/link";
 import { Building2, Check, Copy, ExternalLink, Link2, Loader2, MoreVertical, Power, PowerOff, UserCheck, UserPlus } from "lucide-react";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -53,7 +54,9 @@ const VIEWS = ["assigned", "area"] as const;
 const STATUSES = ["all", "active", "inactive"] as const;
 
 export default function AgentEmployersPage() {
-  const { can } = usePermissions();
+  const { can, role } = usePermissions();
+  // Admin → Settings → Employer onboarding can turn "add employers" off for this role.
+  const canCreateEmployers = useCanCreateEmployers(role);
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("agentEmployers");
@@ -335,14 +338,16 @@ export default function AgentEmployersPage() {
         context={`${totalEmployers} ${t("employerAccounts")}`}
         actions={
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setOnboardOpen(true)}
-              aria-label={t("onboardEmployerButton")}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
-            >
-              <UserPlus className="h-4 w-4" />
-              <span>{t("onboardEmployerButton")}</span>
-            </button>
+            {canCreateEmployers && (
+              <button
+                onClick={() => setOnboardOpen(true)}
+                aria-label={t("onboardEmployerButton")}
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:px-4"
+              >
+                <UserPlus className="h-4 w-4" />
+                <span>{t("onboardEmployerButton")}</span>
+              </button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button

@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { RateChangeSchema, type IRateChange } from "./rateHistory";
 
 export interface ISAInvoiceDefaults {
   defaultCurrency?: string;
@@ -27,8 +28,12 @@ export interface ISuperAgent extends Document {
     pending: number;
     paid: number;
   };
-  overrideRate?: number; // commission override %
+  overrideRate?: number; // commission override % (current; effective-dated changes live in overrideRateHistory)
+  /** Append-only override-rate changes with their start dates. Empty = `overrideRate` applies to every invoice. */
+  overrideRateHistory?: IRateChange[];
   defaultAgentCommissionRate?: number; // default commission for agents under this SA
+  /** Admin lets this super agent set revenue targets for their agents (jobs + onboarded are always allowed). */
+  canSetRevenueTargets?: boolean;
   country?: string;
   currencyCode?: string;
   timezone?: string;
@@ -55,7 +60,9 @@ const SuperAgentSchema = new Schema<ISuperAgent>(
       paid: { type: Number, default: 0 },
     },
     overrideRate: { type: Number, default: 0 },
+    overrideRateHistory: { type: [RateChangeSchema], default: undefined },
     defaultAgentCommissionRate: { type: Number, default: 0 },
+    canSetRevenueTargets: { type: Boolean, default: false },
     country: { type: String, default: "" },
     currencyCode: { type: String, default: "AED" },
     timezone: { type: String, default: "Asia/Dubai" },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -37,6 +37,9 @@ import { SortableTableHeader, TableSortControl } from "@/components/shared/Table
 import type { ExportColumn } from "@/lib/export";
 import { formatDate, formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
+import { useRowSelection } from "@/hooks/useRowSelection";
+import { SelectionBar, ExportCvsButton } from "@/components/shared/SelectionBar";
+import { CvExportDialog } from "@/components/shared/CvExport/CvExportDialog";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -223,7 +226,9 @@ export default function AdminApplicationsPage() {
      carried no link to the person or the job it was about. The bulk endpoint
      (`/api/applications/bulk`) already authorises admin and scopes correctly —
      only the UI was missing. */
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selection = useRowSelection<Application>((app) => app._id);
+  const selectedIds = useMemo(() => selection.items.map((app) => app._id), [selection.items]);
+  const [exportOpen, setExportOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [bulkStatus, setBulkStatus] = useState("");
   // Every rejection records why — the bulk endpoint refuses one without a reason.
@@ -458,13 +463,18 @@ export default function AdminApplicationsPage() {
      Calls the same endpoint the employer workspace uses. It already permits
      admin ("employer, agent, super_agent, admin") and resolves an unscoped
      query for this role, and it has its own scope test. */
-  const allVisibleSelected = applications.length > 0 && selectedIds.length === applications.length;
-  const toggleSelectAll = () => {
-    setSelectedIds(allVisibleSelected ? [] : applications.map((app) => app._id));
-  };
-  const toggleSelected = (id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((value) => value !== id) : [...prev, id]));
-  };
+  const pageSelection = selection.pageState(applications);
+  // Export CVs: one item per ticked application, so "Original" is the CV sent
+  // with that application. An application whose candidate is gone has nothing to export.
+  const exportItems = useMemo(
+    () => selection.items.flatMap((app) => {
+      const candidate = app.jobSeekerId;
+      return candidate?._id
+        ? [{ seekerId: candidate._id, applicationId: app._id, name: candidate.fullName ?? candidate.userId?.name ?? "" }]
+        : [];
+    }),
+    [selection.items],
+  );
 
   const runBulkStatus = async () => {
     if (!bulkStatus || selectedIds.length === 0 || bulkNeedsReason) return;
@@ -492,7 +502,7 @@ export default function AdminApplicationsPage() {
       if (processed > 0 || heldInterview + noOffer === 0) toast.success(t("bulkStatusUpdated", { count: processed }));
       if (heldInterview > 0) toast.warning(t("bulkSkippedOpenInterview", { count: heldInterview }));
       if (noOffer > 0) toast.warning(t("bulkSkippedNoOffer", { count: noOffer }));
-      setSelectedIds([]);
+      selection.clear();
       setBulkStatus("");
       setBulkRejectReason("");
       fetchApplications();
@@ -888,53 +898,13 @@ export default function AdminApplicationsPage() {
             </div>
           </div>
 
-          {/* Bulk bar. Appears only with a selection, so the resting list is
-              unchanged; the endpoint behind it is the one the employer
-              workspace has always used. */}
-          {selectedIds.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-primary/5 px-3 py-2 sm:px-5 sm:py-3">
-              <span className="text-xs font-semibold text-foreground">
-                {t("selectedCount", { count: selectedIds.length })}
-              </span>
-              <SearchableSelect
-                className="h-9 w-44 rounded-lg border-border bg-card text-xs"
-                options={STATUSES.map((value) => ({ value, label: t(statusLabelKey(value)) }))}
-                value={bulkStatus}
-                onValueChange={(value) => setBulkStatus(value ?? "")}
-                placeholder={t("bulkChangeStatus")}
-              />
-              {bulkStatus === "rejected" && (
-                <Input
-                  className="h-9 w-56 rounded-lg bg-card text-xs max-sm:min-h-11"
-                  value={bulkRejectReason}
-                  onChange={(e) => setBulkRejectReason(e.target.value)}
-                  maxLength={500}
-                  placeholder={t("bulkRejectReason")}
-                  aria-label={t("bulkRejectReason")}
-                />
-              )}
-              <Button
-                size="sm"
-                className="max-sm:min-h-11"
-                disabled={!bulkStatus || bulkNeedsReason || bulkRunning}
-                onClick={() => void runBulkStatus()}
-              >
-                {bulkRunning ? <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
-                {t("bulkApply")}
-              </Button>
-              <Button variant="ghost" size="sm" className="max-sm:min-h-11" onClick={() => setSelectedIds([])}>
-                {t("clearSelection")}
-              </Button>
-            </div>
-          )}
-
           {/* Column headers */}
           <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] items-center gap-4 border-b border-border/70 bg-background/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_15rem]">
             <span className="flex items-center gap-3">
               <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center sm:min-h-0 sm:min-w-0">
                 <Checkbox
-                  checked={allVisibleSelected}
-                  onCheckedChange={toggleSelectAll}
+                  checked={pageSelection === "all" ? true : pageSelection === "some" ? "indeterminate" : false}
+                  onCheckedChange={() => selection.togglePage(applications)}
                   aria-label={t("selectAllOnPage")}
                 />
               </label>
@@ -987,8 +957,8 @@ export default function AdminApplicationsPage() {
                         selecting rows is the repeated gesture in a bulk edit. */}
                     <label className="-m-2 flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center p-2 sm:m-0 sm:min-h-0 sm:min-w-0 sm:p-0">
                       <Checkbox
-                        checked={selectedIds.includes(app._id)}
-                        onCheckedChange={() => toggleSelected(app._id)}
+                        checked={selection.isSelected(app._id)}
+                        onCheckedChange={() => selection.toggle(app)}
                         aria-label={t("selectApplication")}
                         className="shrink-0"
                       />
@@ -1144,6 +1114,46 @@ export default function AdminApplicationsPage() {
       )}
 
       <PaginationControls page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} onLimitChange={setLimit} />
+
+      {/* Bulk bar. Appears only with a selection, so the resting list is
+          unchanged; sticky at the bottom (the shared SelectionBar). The status
+          endpoint behind it is the one the employer workspace has always used;
+          Export CVs opens the shared export dialog. */}
+      <SelectionBar count={selection.count} onClear={selection.clear} className="justify-between">
+        <SearchableSelect
+          className="h-9 w-44 rounded-lg border-border bg-card text-xs"
+          options={STATUSES.map((value) => ({ value, label: t(statusLabelKey(value)) }))}
+          value={bulkStatus}
+          onValueChange={(value) => setBulkStatus(value ?? "")}
+          placeholder={t("bulkChangeStatus")}
+        />
+        {bulkStatus === "rejected" && (
+          <Input
+            className="h-9 w-56 rounded-lg bg-card text-xs max-sm:min-h-11"
+            value={bulkRejectReason}
+            onChange={(e) => setBulkRejectReason(e.target.value)}
+            maxLength={500}
+            placeholder={t("bulkRejectReason")}
+            aria-label={t("bulkRejectReason")}
+          />
+        )}
+        <Button
+          size="sm"
+          className="max-sm:min-h-11"
+          disabled={!bulkStatus || bulkNeedsReason || bulkRunning}
+          onClick={() => void runBulkStatus()}
+        >
+          {bulkRunning ? <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+          {t("bulkApply")}
+        </Button>
+        <ExportCvsButton count={exportItems.length} variant="outline" onClick={() => setExportOpen(true)} />
+      </SelectionBar>
+      <CvExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        items={exportItems}
+        onExported={selection.clear}
+      />
     </div>
   );
 }

@@ -25,6 +25,17 @@ jest.mock("@/lib/communications/email", () => ({
 jest.mock("@/lib/storage/spaces", () => ({ uploadBuffer: jest.fn() }));
 jest.mock("@/lib/auth/emailVerification", () => ({ hashOtp: () => "otp" }));
 jest.mock("@/lib/logger", () => ({ __esModule: true, default: { error: jest.fn(), info: jest.fn() } }));
+// Admin → Settings → Employer onboarding: public sign-up open for these region tests.
+const mockCheckEmployerSignup = jest.fn(async (..._a: unknown[]) => ({ allowed: true }) as { allowed: boolean; code?: string });
+jest.mock("@/lib/settings/employerSignupGate", () => ({ checkEmployerSignup: (...a: unknown[]) => mockCheckEmployerSignup(...a) }));
+jest.mock("@/lib/settings/employerOnboarding", () => ({
+  getEmployerOnboardingFlags: jest.fn(async () => ({
+    employerSelfRegistrationEnabled: true,
+    employerInviteLinksEnabled: true,
+    superAgentCanCreateEmployers: true,
+    agentCanCreateEmployers: true,
+  })),
+}));
 jest.mock("@/lib/gdpr/consent", () => ({ recordRegistrationConsents: jest.fn().mockResolvedValue(undefined) }));
 
 const userCreate = jest.fn(async () => ({ _id: { toString: () => "user-1" } }));
@@ -99,6 +110,17 @@ async function post(fields: Record<string, string>) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+});
+
+describe("employer registration — admin switch", () => {
+  it("refuses before creating anything when public employer sign-up is off and there is no invite", async () => {
+    mockCheckEmployerSignup.mockResolvedValueOnce({ allowed: false, code: "EMPLOYER_SIGNUP_CLOSED" });
+    const res = await post({ cityId: "city-dubai" });
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("EMPLOYER_SIGNUP_CLOSED");
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(employerCreate).not.toHaveBeenCalled();
+  });
 });
 
 describe("employer registration — region", () => {

@@ -5,10 +5,13 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AI_MATCH_HIGH_THRESHOLD } from "@/lib/constants";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { useRowSelection } from "@/hooks/useRowSelection";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
+import { CvExportDialog } from "@/components/shared/CvExport/CvExportDialog";
+import { ExportCvsButton, SelectionBar } from "@/components/shared/SelectionBar";
 import { SaveToPoolDialog } from "@/components/features/employer/SaveToPoolDialog";
 import { ScoreRing, matchBandLabel, matchBandTone } from "@/components/features/employer/candidates/ScoreRing";
 import { CandidateDetailPanel } from "@/components/features/employer/candidates/CandidateDetailPanel";
@@ -21,7 +24,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useCandidates, usePublishedJobs, useStartConversation, useAiMatch, useScreenCandidates, useInviteToApply } from "@/hooks/useCandidates";
-import { candidateHasCv, candidateCvHref } from "@/lib/applications/candidateCv";
+import { candidateHasCv, candidateOriginalDownloadHref, candidateViewCvHref, forApplicationOnlyViewer } from "@/lib/applications/candidateCv";
+import { usePermissions } from "@/hooks/usePermissions";
+import { mayOpenTalentPoolCv } from "@/lib/permissions/companyFunctions";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { Candidate, CandidateJob, ScreenedCandidate } from "@/hooks/useCandidates";
@@ -239,11 +244,14 @@ interface CandidateCardProps {
   hasAnyScore: boolean;
   rank: number | null;
   isInReviewList: boolean;
+  /** Ticked for the bulk actions (save to pool, export CVs): not the same as saved for review. */
+  isChecked: boolean;
   isSelected: boolean;
   onOpenCv: (candidate: Candidate) => void;
   onOpenProfile: (candidateId: string) => void;
   onStartMessage: (recipientId: string) => void;
   onToggleReviewList: (candidateId: string) => void;
+  onToggleChecked: (candidate: Candidate) => void;
   onInvite?: (candidateId: string) => void;
   onOpenInsights: () => void;
   onSaveToPool?: (candidate: Candidate) => void;
@@ -255,11 +263,13 @@ function CandidateMatchCard({
   hasAnyScore,
   rank,
   isInReviewList,
+  isChecked,
   isSelected,
   onOpenCv,
   onOpenProfile,
   onStartMessage,
   onToggleReviewList,
+  onToggleChecked,
   onInvite,
   onOpenInsights,
   onSaveToPool,
@@ -267,6 +277,10 @@ function CandidateMatchCard({
   const t = useTranslations("employerCandidates");
   const tMatch = useTranslations("employerCompliance.match");
   const tp = useTranslations("talentPool");
+  // "Original CV (Uploaded)" is named once, in the viewer's own namespace.
+  const tv = useTranslations("resumeViewerModal");
+  // The file to keep, opened in a tab: an actual download (flagged so the route counts it).
+  const originalCvHref = candidateOriginalDownloadHref(candidate);
   const currentRole = candidate.experience?.find((entry) => entry.isCurrent)?.jobTitle ?? null;
   const bandLabel = matchBandLabel(candidate.matchScore, tMatch);
   const matchedSkills = getMatchedSkills(candidate, selectedJobData);
@@ -326,8 +340,8 @@ function CandidateMatchCard({
         <span className="flex h-8 w-5 items-center justify-center" onClick={stopRowClick} onKeyDown={stopRowClick}>
           <Checkbox
             className="h-5 w-5 tap-target-box"
-            checked={isInReviewList}
-            onCheckedChange={() => onToggleReviewList(candidate._id)}
+            checked={isChecked}
+            onCheckedChange={() => onToggleChecked(candidate)}
             aria-label={t("selectCandidate", { name: candidateDisplayName })}
           />
         </span>
@@ -489,6 +503,16 @@ function CandidateMatchCard({
                   <DropdownMenuItem className="rounded-xl text-sm" onClick={() => onOpenCv(candidate)}>
                     <FileText className="mr-2 h-4 w-4" />
                     {t("viewCv")}
+                  </DropdownMenuItem>
+                ) : null}
+                {/* View CV opens the Standardised CV; this is the file the
+                    candidate sent, opened directly in a tab. */}
+                {originalCvHref ? (
+                  <DropdownMenuItem asChild className="rounded-xl text-sm">
+                    <a href={originalCvHref} target="_blank" rel="noopener noreferrer" onClick={stopRowClick}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      {tv("originalCv")}
+                    </a>
                   </DropdownMenuItem>
                 ) : null}
                 {messageRecipientId ? (
@@ -964,7 +988,12 @@ export default function EmployerCandidatesPage() {
   const [detailCandidateId, setDetailCandidateId] = useState<string | null>(null);
   const [saveToPoolCandidate, setSaveToPoolCandidate] = useState<Candidate | null>(null);
   const [bulkPoolOpen, setBulkPoolOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  // Saved-for-review (the star): kept in sessionStorage across visits.
   const [reviewListIds, setReviewListIds] = useState<Set<string>>(new Set());
+  // Ticked rows, for the bulk actions (save to pool, export CVs). Its own selection, held in
+  // memory only and kept across pages, so it never mixes with what was saved earlier.
+  const selection = useRowSelection<Candidate>((candidate) => candidate._id);
   const [matchFeedback, setMatchFeedback] = useState<MatchFeedback | null>(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -1001,7 +1030,22 @@ export default function EmployerCandidatesPage() {
   const screenMutation = useScreenCandidates();
   const inviteMutation = useInviteToApply();
 
-  const candidates = localCandidates ?? candidatesData?.candidates ?? [];
+  // Who may open a talent-pool CV: an applicant-review-only colleague opens CVs through an application only
+  // (the CV route refuses them otherwise), so a row without one is not openable for them. Candidates saved to
+  // a pool in this visit are openable now: the server's answer on the row predates the save.
+  const { session } = usePermissions();
+  const mayOpenPoolCv = mayOpenTalentPoolCv(session?.user as Parameters<typeof mayOpenTalentPoolCv>[0]);
+  const [pooledNow, setPooledNow] = useState<ReadonlySet<string>>(() => new Set());
+  const baseCandidates = localCandidates ?? candidatesData?.candidates;
+  const candidates = useMemo(
+    () =>
+      (baseCandidates ?? []).map((candidate) => {
+        const row = pooledNow.has(candidate._id) && candidate.cvAccessible === false ? { ...candidate, cvAccessible: true } : candidate;
+        return mayOpenPoolCv ? row : forApplicationOnlyViewer(row);
+      }),
+    [baseCandidates, pooledNow, mayOpenPoolCv],
+  );
+  const markPooled = (ids: string[]) => setPooledNow((prev) => new Set([...prev, ...ids]));
   const total = candidatesData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const selectedJobData: CandidateJob | undefined = jobs.find((j) => j._id === selectedJob);
@@ -1061,8 +1105,17 @@ export default function EmployerCandidatesPage() {
     ?? structuredCandidates.filter((candidate) => candidate.availabilityStatus === "immediately").length;
   const scoredCount = structuredCandidates.filter((candidate) => candidate.matchScore != null).length;
   const reviewCount = reviewListIds.size;
-  const allVisibleSelected = filteredCandidates.length > 0 && filteredCandidates.every((candidate) => reviewListIds.has(candidate._id));
-  const someVisibleSelected = filteredCandidates.some((candidate) => reviewListIds.has(candidate._id));
+  const selectedCount = selection.count;
+  // The CV export covers the whole selection, which is kept across pages. Rows are
+  // kept whole, so a candidate ticked on another page is still named. No
+  // applicationId: a talent-pool row has none, so "Original" is the profile file.
+  const exportItems = selection.items.map((candidate) => ({
+    seekerId: candidate._id,
+    name: getCandidateDisplayName(candidate),
+  }));
+  const pageSelection = selection.pageState(filteredCandidates);
+  const allVisibleSelected = pageSelection === "all";
+  const someVisibleSelected = pageSelection !== "none";
   const hasLoadError = hasJobsError || hasCandidatesError;
   const workflowStateRaw = getCandidateWorkflowState({
     hasSelectedJob: Boolean(selectedJob),
@@ -1100,7 +1153,7 @@ export default function EmployerCandidatesPage() {
 
   function openCandidateCv(candidate: Candidate) {
     // The CV sent with the application in view, else the Profile CV.
-    const cvHref = candidateCvHref(candidate);
+    const cvHref = candidateViewCvHref(candidate);
     if (!cvHref) {
       toast.error(t("cvNotAvailable"));
       return;
@@ -1139,6 +1192,7 @@ export default function EmployerCandidatesPage() {
     setScoreFilter("all");
     setDetailCandidateId(null);
     setMatchFeedback(null);
+    selection.clear(); // a different job is a different list of people
   }
 
   useEffect(() => {
@@ -1313,18 +1367,7 @@ export default function EmployerCandidatesPage() {
     toast.success(wasSaved ? t("removedFromReviewToast") : t("savedForReviewToast"));
   };
 
-  const toggleSelectAllVisible = () => {
-    setReviewListIds((prev) => {
-      const next = new Set(prev);
-      const allSelected = filteredCandidates.length > 0 && filteredCandidates.every((candidate) => next.has(candidate._id));
-      if (allSelected) {
-        filteredCandidates.forEach((candidate) => next.delete(candidate._id));
-      } else {
-        filteredCandidates.forEach((candidate) => next.add(candidate._id));
-      }
-      return next;
-    });
-  };
+  const toggleSelectAllVisible = () => selection.togglePage(filteredCandidates);
 
   const startDM = async (recipientUserId: string) => {
     try {
@@ -1475,14 +1518,18 @@ export default function EmployerCandidatesPage() {
         onOpenChange={(open) => {
           if (!open) setSaveToPoolCandidate(null);
         }}
+        onSaved={markPooled}
       />
 
       <SaveToPoolDialog
         candidateId={null}
-        candidateIds={Array.from(reviewListIds)}
+        candidateIds={selection.items.map((candidate) => candidate._id)}
         open={bulkPoolOpen}
         onOpenChange={setBulkPoolOpen}
+        onSaved={markPooled}
       />
+
+      <CvExportDialog open={exportOpen} onOpenChange={setExportOpen} items={exportItems} />
 
       {/* Pattern A (compact workspace): title row + slim metric strip. Search,
           benchmark job, filters and export live in the list toolbar below,
@@ -1923,8 +1970,8 @@ export default function EmployerCandidatesPage() {
                   onClick={toggleSelectAllVisible}
                   className="rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                 >
-                  {reviewCount > 0 ? (
-                    <span className="font-medium text-foreground">{tp("selectedCount", { count: reviewCount })}</span>
+                  {selectedCount > 0 ? (
+                    <span className="font-medium text-foreground">{tp("selectedCount", { count: selectedCount })}</span>
                   ) : (
                     <span className="whitespace-nowrap text-muted-foreground">{tp("selectAllOnPage")}</span>
                   )}
@@ -1934,13 +1981,13 @@ export default function EmployerCandidatesPage() {
           </div>
         }
         right={
-          reviewCount === 0 && !loading && total > 0 ? (
+          selectedCount === 0 && !loading && total > 0 ? (
             // From sm: on phones it squeezed "Select all on this page" onto three
             // lines, and the same total is in the summary strip above.
             <span className="text-sm tabular-nums text-muted-foreground max-sm:hidden">
               {selectedJobData ? t("listCountApplicants", { count: total }) : t("listCountTalent", { count: total })}
             </span>
-          ) : reviewCount > 0 ? (
+          ) : selectedCount > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
@@ -1948,13 +1995,13 @@ export default function EmployerCandidatesPage() {
                 onClick={() => setBulkPoolOpen(true)}
               >
                 <Layers className="mr-2 h-4 w-4" />
-                {tp("saveSelectedToPool", { count: reviewCount })}
+                {tp("saveSelectedToPool", { count: selectedCount })}
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 className="rounded-xl px-3 text-sm text-muted-foreground hover:bg-background/80"
-                onClick={() => setReviewListIds(new Set())}
+                onClick={selection.clear}
               >
                 {tp("clearSelection")}
               </Button>
@@ -1985,6 +2032,7 @@ export default function EmployerCandidatesPage() {
           {filteredCandidates.map((candidate) => {
             const rank = matchRank(candidate);
             const isInReviewList = reviewListIds.has(candidate._id);
+            const isChecked = selection.isSelected(candidate._id);
 
             return (
               <CandidateMatchCard
@@ -1994,11 +2042,13 @@ export default function EmployerCandidatesPage() {
                 hasAnyScore={hasAnyScore}
                 rank={rank}
                 isInReviewList={isInReviewList}
+                isChecked={isChecked}
                 isSelected={detailCandidateId === candidate._id}
                 onOpenCv={openCandidateCv}
                 onStartMessage={startDM}
                 onOpenProfile={(candidateId) => router.push(`/${locale}/employer/candidates/${candidateId}`)}
                 onToggleReviewList={toggleReviewList}
+                onToggleChecked={selection.toggle}
                 onInvite={inviteToApply}
                 onSaveToPool={setSaveToPoolCandidate}
                 onOpenInsights={() => setDetailCandidateId(candidate._id)}
@@ -2038,6 +2088,13 @@ export default function EmployerCandidatesPage() {
         />
       </div>
       </div>
+
+      {/* The shared bar: sticky at the bottom (above the phone's tab bar) so
+          the export stays in reach while a long list scrolls. The selection
+          actions at the top of the list are unchanged. */}
+      <SelectionBar count={selectedCount} onClear={selection.clear}>
+        <ExportCvsButton count={exportItems.length} onClick={() => setExportOpen(true)} />
+      </SelectionBar>
     </div>
   );
 }

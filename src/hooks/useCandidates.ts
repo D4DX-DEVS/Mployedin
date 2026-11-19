@@ -1,4 +1,5 @@
 import { fileExtensionOf } from "@/lib/applications/candidateCv";
+import { hasBuiltCvContent } from "@/lib/cv/seekerCvAvailability";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { csrfFetch } from "@/lib/security/csrf-client";
 
@@ -28,6 +29,14 @@ export interface Candidate {
   strengths?: string[];
   gaps?: string[];
   cv?: { originalUrl?: string; atsScore?: number };
+  /** The profile holds enough to draw the Standardised CV (hasBuiltCvContent), computed on the server for talent rows. */
+  canBuildCv?: boolean;
+  /**
+   * Talent rows: whether the CV route would serve this seeker to the employer (an application
+   * to one of their jobs or a talent pool of theirs), computed on the server. False = "View CV"
+   * would only answer "couldn't be found", so it is not offered. Unset on application rows.
+   */
+  cvAccessible?: boolean;
   /**
    * Set on a row that comes from an application (a job is selected) when a CV
    * was sent with it: "View CV" opens that file, not the Profile CV
@@ -107,6 +116,8 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
           availabilityStatus?: string;
           profileCompleteness?: number;
           cv?: { originalUrl?: string };
+          /** Decided by the applications API (hidden sections respected). */
+          canBuildCv?: boolean;
         };
         isAgentReferred?: boolean;
         isPriority?: boolean;
@@ -135,6 +146,11 @@ async function fetchCandidates(filters: CandidatesFilters): Promise<{ candidates
         isAgentReferred: app.isAgentReferred,
         isPriority: app.isPriority,
         cv: app.jobSeekerId?.cv,
+        // The applications API decides it on the server (summary, education and
+        // hidden sections included); older responses fall back to what the row carries.
+        canBuildCv: typeof app.jobSeekerId?.canBuildCv === "boolean"
+          ? app.jobSeekerId.canBuildCv
+          : hasBuiltCvContent(app.jobSeekerId),
         ...(sentCv && app._id
           ? { applicationCv: { applicationId: String(app._id), extension: fileExtensionOf(sentCv.url) } }
           : {}),

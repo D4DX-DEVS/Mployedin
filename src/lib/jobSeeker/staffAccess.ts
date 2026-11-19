@@ -1,6 +1,12 @@
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
-import { getAgentSeekerArea, getSuperAgentScope, getSuperAgentTerritory, seekerInRegion } from "@/lib/auth/agentRestrictions";
+import {
+  getAgentSeekerArea,
+  getSuperAgentScope,
+  getSuperAgentTerritory,
+  seekerInRegion,
+  type RegionInfo,
+} from "@/lib/auth/agentRestrictions";
 import type mongoose from "mongoose";
 
 /** The fields of a JobSeeker document that decide which staff member owns it. */
@@ -26,6 +32,53 @@ export type SeekerAccess = "view" | "manage";
 const same = (a: unknown, b: unknown): boolean => a != null && b != null && String(a) === String(b);
 const within = (id: unknown, ids: unknown[]): boolean => ids.some((x) => same(x, id));
 
+/** Answers canStaffAccessSeeker for one resolved staff member, seeker by seeker. */
+export type StaffSeekerAccessor = (seeker: SeekerOwnership, access?: SeekerAccess) => Promise<boolean>;
+
+/**
+ * The per-actor half of canStaffAccessSeeker, resolved once so a batch of
+ * seekers can be tested for one staff member without re-reading their scope
+ * each time: the agent's profile / the super agent's scope are read here, and
+ * the area / territory only when a seeker is not already theirs (then once,
+ * even for calls running together).
+ */
+export async function resolveStaffSeekerAccess(ctx: { userId: string; role: string }): Promise<StaffSeekerAccessor> {
+  if (ctx.role === "admin") return async () => true;
+
+  if (ctx.role === "agent") {
+    const agent = await Agent.findOne({ userId: ctx.userId })
+      .select("_id assignedJobSeekerIds assignedCityIds assignedStateIds superAgentId")
+      .lean<{
+        _id: unknown;
+        assignedJobSeekerIds?: unknown[];
+        assignedCityIds?: mongoose.Types.ObjectId[];
+        assignedStateIds?: mongoose.Types.ObjectId[];
+        superAgentId?: unknown;
+      } | null>();
+    if (!agent) return async () => false;
+    let area: Promise<RegionInfo> | undefined;
+    return async (seeker, access = "manage") => {
+      const owns =
+        same(seeker.agentId, agent._id) ||
+        same(seeker.referral?.agentId, agent._id) ||
+        within(seeker._id, agent.assignedJobSeekerIds ?? []);
+      if (owns || access !== "view" || seeker.roleArchivedAt) return owns;
+      return seekerInRegion(seeker, await (area ??= getAgentSeekerArea(agent)));
+    };
+  }
+
+  if (ctx.role === "super_agent") {
+    const rule = await superAgentSeekerRule(ctx.userId);
+    return async (seeker, access = "manage") => {
+      const owns = rule.owns(seeker);
+      if (owns || access !== "view" || seeker.roleArchivedAt) return owns;
+      return seekerInRegion(seeker, await rule.territory());
+    };
+  }
+
+  return async () => false;
+}
+
 /**
  * Whether a staff member may open or manage this seeker through
  * /api/job-seekers/[id]. It mirrors what GET /api/job-seekers lists for them —
@@ -38,41 +91,16 @@ const within = (id: unknown, ids: unknown[]): boolean => ids.some((x) => same(x,
  *  - super_agent: owned or referred by an agent in scope, or referred by them;
  *    to view, also anyone visible whose area is in their territory
  *  - anyone else: no one (self-service lives at /api/job-seeker/profile)
+ *
+ * For many seekers and one staff member, resolveStaffSeekerAccess once and
+ * ask it per seeker.
  */
 export async function canStaffAccessSeeker(
   seeker: SeekerOwnership,
   ctx: { userId: string; role: string },
   access: SeekerAccess = "manage",
 ): Promise<boolean> {
-  if (ctx.role === "admin") return true;
-
-  if (ctx.role === "agent") {
-    const agent = await Agent.findOne({ userId: ctx.userId })
-      .select("_id assignedJobSeekerIds assignedCityIds assignedStateIds superAgentId")
-      .lean<{
-        _id: unknown;
-        assignedJobSeekerIds?: unknown[];
-        assignedCityIds?: mongoose.Types.ObjectId[];
-        assignedStateIds?: mongoose.Types.ObjectId[];
-        superAgentId?: unknown;
-      } | null>();
-    if (!agent) return false;
-    const owns =
-      same(seeker.agentId, agent._id) ||
-      same(seeker.referral?.agentId, agent._id) ||
-      within(seeker._id, agent.assignedJobSeekerIds ?? []);
-    if (owns || access !== "view" || seeker.roleArchivedAt) return owns;
-    return seekerInRegion(seeker, await getAgentSeekerArea(agent));
-  }
-
-  if (ctx.role === "super_agent") {
-    const rule = await superAgentSeekerRule(ctx.userId);
-    const owns = rule.owns(seeker);
-    if (owns || access !== "view" || seeker.roleArchivedAt) return owns;
-    return seekerInRegion(seeker, await rule.territory());
-  }
-
-  return false;
+  return (await resolveStaffSeekerAccess(ctx))(seeker, access);
 }
 
 /**

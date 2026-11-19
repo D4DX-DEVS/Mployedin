@@ -29,6 +29,7 @@ import {
   normalizeParsedCv,
   type ParsedCv,
 } from "@/lib/cv/parsedCv";
+import { queueSeekerMatchWarm } from "@/lib/matching/seekerMatchWarmQueue";
 
 /** Tries per file, across queue retries, before it is marked failed. */
 export const MAX_CV_ATTEMPTS = 3;
@@ -188,15 +189,21 @@ const isBlank = (field: string) => ({ $or: [{ [field]: { $exists: false } }, { [
  * section still being empty at write time.
  */
 async function fillProfile(cv: ClaimedCv, reading: Reading): Promise<string[]> {
-  const seeker = await JobSeeker.findOne({ _id: cv.jobSeekerId, "cv.originalUrl": cv.fileUrl }).select("_id").lean();
+  const seeker = await JobSeeker.findOne({ _id: cv.jobSeekerId, "cv.originalUrl": cv.fileUrl }).select("_id userId").lean();
   if (!seeker) return [];
   const id = (seeker as { _id: unknown })._id;
+  const userId = (seeker as { userId?: unknown }).userId;
   // Every write also requires the file to still be the profile CV: the seeker
   // may replace it while this one is being read, and the old file must not
   // then fill the profile the newer one is about to.
   const stillProfileCv = { _id: id, "cv.originalUrl": cv.fileUrl };
 
   await JobSeeker.updateOne(stillProfileCv, { $set: { "cv.rawText": reading.text, "cv.parsedAt": new Date() } });
+
+  // The CV text (and the sections filled below) are part of the match
+  // profile: re-score the feed. The warm-up is debounced, so it runs once,
+  // after the fills below have landed.
+  if (userId) await queueSeekerMatchWarm(String(userId));
 
   const parsed = reading.parsed;
   if (!parsed) return [];

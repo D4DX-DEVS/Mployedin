@@ -18,6 +18,7 @@ import { generateShareablePassword } from "@/lib/security/tempPassword";
 import crypto from "crypto";
 import type { UserRole } from "@/models/User";
 import logger from "@/lib/logger";
+import { canRoleCreateEmployers } from "@/lib/settings/employerOnboarding";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
 
@@ -38,6 +39,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const id = req.nextUrl.pathname.split("/").at(-2); // /api/leads/[id]/convert
   if (!isValidObjectId(id)) {
     return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
+  }
+
+  // Admin → Settings → Employer onboarding: a lead's employer account is "adding an employer".
+  if (!(await canRoleCreateEmployers(ctx.role))) {
+    return NextResponse.json(
+      { code: "EMPLOYER_CREATE_DISABLED", error: "Adding employers is turned off for your role. Ask an admin." },
+      { status: 403 },
+    );
   }
 
   await connectDB();

@@ -296,6 +296,9 @@ export function Copilot({ className }: CopilotProps) {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        // A dialog opened from inside the panel (the shortlist's CV export) has
+        // already taken this key; closing the panel too would unmount it.
+        if (event.defaultPrevented) return;
         event.preventDefault();
         setOpen(false);
         requestAnimationFrame(() => triggerRef.current?.focus());

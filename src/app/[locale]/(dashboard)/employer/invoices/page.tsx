@@ -519,6 +519,15 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                 {items.map((li, i) => (
                   <li key={i} className="space-y-1 border-b border-border/50 pb-3 last:border-0 last:pb-0">
                     <p className="text-sm">{li.description}</p>
+                    {li.hire && (li.hire.candidateName || li.hire.jobTitle) && (
+                      <p className="text-xs text-muted-foreground">
+                        {t("lineHire", {
+                          name: li.hire.candidateName ?? "—",
+                          job: li.hire.jobTitle ?? "—",
+                        })}
+                        {li.hire.startDate ? ` · ${t("lineHireStarts", { date: formatDate(li.hire.startDate, { day: "2-digit", month: "short", year: "numeric" }) })}` : ""}
+                      </p>
+                    )}
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>{t("qtyTimesPrice", { qty: li.quantity, price: fmt(li.unitPrice) })}</span>
                       <span className="font-medium text-foreground">{fmt(li.amount)}</span>
@@ -539,7 +548,18 @@ function EmployerInvoiceDetail({ invoice, open, onClose, onRefresh }: { invoice:
                 <tbody>
                   {items.map((li, i) => (
                     <tr key={i} className="border-b border-border/50 last:border-0">
-                      <td className="py-2 pe-3">{li.description}</td>
+                      <td className="py-2 pe-3">
+                        <span>{li.description}</span>
+                        {li.hire && (li.hire.candidateName || li.hire.jobTitle) && (
+                          <p className="text-xs text-muted-foreground">
+                            {t("lineHire", {
+                              name: li.hire.candidateName ?? "—",
+                              job: li.hire.jobTitle ?? "—",
+                            })}
+                            {li.hire.startDate ? ` · ${t("lineHireStarts", { date: formatDate(li.hire.startDate, { day: "2-digit", month: "short", year: "numeric" }) })}` : ""}
+                          </p>
+                        )}
+                      </td>
                       <td className="py-2 text-right tabular-nums">{li.quantity}</td>
                       <td className="py-2 text-right tabular-nums">{fmt(li.unitPrice)}</td>
                       <td className="py-2 text-right font-medium tabular-nums">{fmt(li.amount)}</td>

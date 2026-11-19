@@ -203,7 +203,7 @@ describe("email-otp Credentials provider — authorize()", () => {
 
       const result = await authorize({ email: EMAIL, otp: CODE });
 
-      expect(result).toMatchObject({ id: "job-seeker-id", email: EMAIL, role: "job_seeker", isEmailVerified: true, isOnboarded: true });
+      expect(result).toMatchObject({ id: "job-seeker-id", email: EMAIL, role: "job_seeker", isEmailVerified: true, isOnboarded: true, isNewAccount: false });
       expect(mockUserCreate).not.toHaveBeenCalled();
       expect(mockAutoAssign).not.toHaveBeenCalled();
       // The signup flow's emailVerification* fields must be left alone.
@@ -282,7 +282,7 @@ describe("email-otp Credentials provider — authorize()", () => {
       );
       expect(mockAutoAssign).toHaveBeenCalledWith("new-id", "job_seeker");
       expect(mockLogActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "register.email_otp" }));
-      expect(result).toMatchObject({ id: "new-id", email: EMAIL, role: "job_seeker", isOnboarded: false });
+      expect(result).toMatchObject({ id: "new-id", email: EMAIL, role: "job_seeker", isOnboarded: false, isNewAccount: true });
       expect(mockRecordConsents).toHaveBeenCalledWith(expect.objectContaining({
         userId: "new-id",
         termsAccepted: true,

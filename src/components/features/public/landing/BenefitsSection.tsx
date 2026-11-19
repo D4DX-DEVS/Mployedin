@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { EmployerEntryLink } from "@/components/shared/EmployerEntryLink";
 import { ArrowRight, BadgeCheck, BarChart3, Rocket, ShieldCheck, Sparkles, Target } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -41,12 +42,19 @@ export function BenefitsSection({ locale, audience }: BenefitsSectionProps) {
             {isSeeker ? t("seekerBenefitsDescription") : t("employerBenefitsDescription")}
           </p>
         </div>
-        <Link href={isSeeker ? `/${locale}/register` : `/${locale}/employer-register`}>
-          <Button size="lg" className="w-full gap-2 rounded-xl sm:w-auto">
-            {isSeeker ? t("createProfile") : t("startHiring")}
-            <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
-          </Button>
-        </Link>
+        {(() => {
+          const button = (
+            <Button size="lg" className="w-full gap-2 rounded-xl sm:w-auto">
+              {isSeeker ? t("createProfile") : t("startHiring")}
+              <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+            </Button>
+          );
+          return isSeeker ? (
+            <Link href={`/${locale}/register`}>{button}</Link>
+          ) : (
+            <EmployerEntryLink locale={locale}>{button}</EmployerEntryLink>
+          );
+        })()}
       </div>
 
       <div className="mt-8 grid gap-4 max-sm:mt-6 max-sm:gap-3 md:grid-cols-3">

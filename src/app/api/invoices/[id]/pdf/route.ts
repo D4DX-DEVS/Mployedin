@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import { canAccessInvoice } from "@/lib/invoices/access";
 import { generateInvoicePdf } from "@/lib/invoices/generatePdf";
+import { attachLineHires } from "@/lib/invoices/lineHires";
 import { getInvoiceIssuer } from "@/lib/invoices/issuer";
 import { resolveBillToFallback } from "@/lib/invoices/billToFallback";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -88,7 +89,8 @@ async function handler(
     resolveBillToFallback(invoice),
   ]);
 
-  const pdfInvoice = { ...invoice, issuedByLabel } as Parameters<typeof generateInvoicePdf>[0];
+  const withHires = await attachLineHires(invoice as unknown as { lineItems?: [] });
+  const pdfInvoice = { ...withHires, issuedByLabel } as unknown as Parameters<typeof generateInvoicePdf>[0];
   const pdfBuffer = generateInvoicePdf(pdfInvoice, {
     viewerRole: ctx.role,
     issuer,

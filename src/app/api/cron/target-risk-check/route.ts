@@ -5,7 +5,17 @@ import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
 import Notification from "@/models/Notification";
 import User from "@/models/User";
 import { enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
-import { notifyTargetAtRisk, notifyTargetMilestone, notifyTeamTargetAtRisk } from "@/lib/notifications/trigger";
+import {
+  notifyKpiTargetAtRisk,
+  notifyTargetAtRisk,
+  notifyTargetMilestone,
+  notifyTeamKpiTargetAtRisk,
+  notifyTeamTargetAtRisk,
+} from "@/lib/notifications/trigger";
+import { calculateKpis, kpiOwnerKey } from "@/lib/targets/kpiCalculator";
+import { kpiRisk, yearElapsedPercent } from "@/lib/targets/kpiRisk";
+import Agent from "@/models/Agent";
+import SuperAgent from "@/models/SuperAgent";
 
 const BATCH_SIZE = 50;
 
@@ -43,7 +53,21 @@ export async function GET(req: NextRequest) {
     if (batch.length === 0) break;
     lastId = batch[batch.length - 1]._id;
 
-    const enrichedBatch = await enrichProfiles(batch as unknown as Record<string, unknown>[]);
+    // kpi3 targets are judged per pillar (jobs, onboarded, revenue); profit
+    // targets keep the profit-pace check below.
+    const kpiBatch = batch.filter((p) => p.targetType === "kpi3");
+    try {
+      const kpi = await checkKpiProfiles(kpiBatch as unknown as KpiProfileRow[], year, now, sevenDaysAgo);
+      processed += kpi.processed;
+      atRiskAlerted += kpi.alerted;
+      errors.push(...kpi.errors);
+    } catch (error) {
+      errors.push(`kpi batch: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+
+    const profitBatch = batch.filter((p) => p.targetType !== "kpi3");
+    if (profitBatch.length === 0) continue;
+    const enrichedBatch = await enrichProfiles(profitBatch as unknown as Record<string, unknown>[]);
 
     // The super agent who funded each at-risk agent, told alongside the agent.
     const atRiskAgents = enrichedBatch.filter((p) => p.riskScore === "high" && p.assigneeRole === "agent" && p.parentProfileId);
@@ -130,4 +154,85 @@ export async function GET(req: NextRequest) {
     milestoneAlerted,
     errors: errors.length > 0 ? errors.slice(0, 10) : undefined,
   });
+}
+
+interface KpiProfileRow {
+  _id: unknown;
+  assigneeId: unknown;
+  assigneeRole: "agent" | "super_agent";
+  currency?: string;
+  jobTarget?: number;
+  conversionTarget?: number;
+  revenueTarget?: number;
+}
+
+/** Alerts each kpi3 target behind pace (once a week), and the agent's super agent. */
+async function checkKpiProfiles(rows: KpiProfileRow[], year: number, now: Date, since: Date) {
+  const result = { processed: 0, alerted: 0, errors: [] as string[] };
+  if (rows.length === 0) return result;
+
+  const kpis = await calculateKpis(
+    rows.map((r) => ({ userId: String(r.assigneeId), role: r.assigneeRole, currency: r.currency ?? "AED" })),
+    year
+  );
+  const expectedProgress = yearElapsedPercent(now, year);
+  const atRisk = rows
+    .map((row) => {
+      const owner = kpis.get(kpiOwnerKey(row.assigneeRole, String(row.assigneeId)));
+      const risk = owner ? kpiRisk({ actual: owner.totals, target: row, expectedProgress }) : null;
+      return risk ? { row, risk } : null;
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+  result.processed = rows.length;
+  if (atRisk.length === 0) return result;
+
+  // An agent's super agent is told too (Agent.superAgentId → SuperAgent.userId).
+  const agentUserIds = atRisk.filter((a) => a.row.assigneeRole === "agent").map((a) => a.row.assigneeId);
+  const [agents, users] = await Promise.all([
+    Agent.find({ userId: { $in: agentUserIds } }).select("userId superAgentId").lean(),
+    User.find({ _id: { $in: agentUserIds } }).select("_id name").lean(),
+  ]);
+  const sas = await SuperAgent.find({ _id: { $in: agents.map((a) => a.superAgentId).filter(Boolean) } }).select("_id userId").lean();
+  const saUserById = new Map(sas.map((sa) => [String(sa._id), String(sa.userId)]));
+  const supervisorOf = new Map(agents.map((a) => [String(a.userId), saUserById.get(String(a.superAgentId))]));
+  const nameOf = new Map(users.map((u) => [String(u._id), String(u.name ?? "")]));
+
+  for (const { row, risk } of atRisk) {
+    const profileId = String(row._id);
+    const assigneeId = String(row.assigneeId);
+    try {
+      const told = await Notification.findOne({
+        userId: assigneeId,
+        type: "target_at_risk",
+        "meta.profileId": profileId,
+        createdAt: { $gte: since },
+      }).lean();
+      if (!told) {
+        await notifyKpiTargetAtRisk(assigneeId, row.assigneeRole, profileId, risk.pillar, risk.progress, risk.expectedProgress);
+        result.alerted += 1;
+      }
+      const supervisorId = row.assigneeRole === "agent" ? supervisorOf.get(assigneeId) : undefined;
+      if (supervisorId) {
+        const supervisorTold = await Notification.findOne({
+          userId: supervisorId,
+          type: "target_at_risk",
+          "meta.profileId": profileId,
+          createdAt: { $gte: since },
+        }).lean();
+        if (!supervisorTold) {
+          await notifyTeamKpiTargetAtRisk(
+            supervisorId,
+            nameOf.get(assigneeId) || "An agent",
+            profileId,
+            risk.pillar,
+            risk.progress,
+            risk.expectedProgress
+          );
+        }
+      }
+    } catch (error) {
+      result.errors.push(`${profileId}: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+  return result;
 }

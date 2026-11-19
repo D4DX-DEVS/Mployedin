@@ -14,6 +14,7 @@ import { validateBody } from "@/lib/validators";
 import { recomputeCompleteness } from "@/lib/jobSeeker/persistCompleteness";
 import { resolveSeekerArea, type SeekerAreaRegion } from "@/lib/agents/territoryCoverage";
 import { mergeEducationEntry, mergeExperienceEntry } from "@/lib/jobSeeker/wizardEntries";
+import { queueSeekerMatchWarm } from "@/lib/matching/seekerMatchWarmQueue";
 
 export const runtime = "nodejs";
 
@@ -300,6 +301,9 @@ async function PATCH(req: NextRequest, ctx: { userId: string; role: string }) {
   // never recomputed completeness, so the stored figure went stale the moment a
   // seeker edited here instead of through /api/job-seeker/profile.
   await recomputeCompleteness(ctx.userId, updated);
+  // Score the feed against the new profile now, so Home opens on final match
+  // scores instead of changing on refresh.
+  await queueSeekerMatchWarm(ctx.userId);
 
   if (typeof requestedConsent === "boolean" && previousConsent?.marketingConsent !== requestedConsent) {
     await ConsentLog.create({

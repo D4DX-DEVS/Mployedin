@@ -23,6 +23,8 @@ interface OverviewProps {
   stageConfig: Record<LeadStatus, StageStyle>;
   actions: LeadActionHandlers;
   canUpdate: boolean;
+  /** Admin → Settings → Employer onboarding lets this role add employers. */
+  canCreateEmployer?: boolean;
   converting: boolean;
   onLeadChange: (lead: Lead) => void;
   t: T;
@@ -31,11 +33,11 @@ interface OverviewProps {
 
 /** The workspace's first tab: where the lead stands and what happens next. */
 export function LeadOverview(props: OverviewProps) {
-  const { lead, actions, canUpdate, converting, t } = props;
+  const { lead, actions, canUpdate, canCreateEmployer = true, converting, t } = props;
   return (
     <div className="space-y-4">
       <StatusSection {...props} />
-      {lead.status === "converted" && !lead.convertedToEmployerId && canUpdate && (
+      {lead.status === "converted" && !lead.convertedToEmployerId && canUpdate && canCreateEmployer && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-status-selected/25 bg-status-selected-bg p-3">
           <Building2 className="h-5 w-5 shrink-0 text-status-selected" aria-hidden="true" />
           <p className="min-w-0 flex-1 text-sm text-foreground">{t("noEmployerAccountYet")}</p>

@@ -185,6 +185,7 @@ export function LeadWorkspace({
                   stageConfig={stageConfig}
                   actions={actions}
                   canUpdate={state.canUpdate}
+                  canCreateEmployer={state.canCreateEmployer !== false}
                   converting={state.convertingId === lead._id}
                   onLeadChange={applyChange}
                   t={t}

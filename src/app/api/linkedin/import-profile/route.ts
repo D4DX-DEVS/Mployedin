@@ -7,6 +7,7 @@ import { decrypt } from "@/lib/security/encryption";
 import { importLinkedInProfile } from "@/lib/ai/linkedin-import";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import logger from "@/lib/logger";
+import { queueSeekerMatchWarm } from "@/lib/matching/seekerMatchWarmQueue";
 
 export const runtime = "nodejs";
 
@@ -145,6 +146,7 @@ async function handler(
         { userId: ctx.userId },
         { $set: update },
       );
+      await queueSeekerMatchWarm(ctx.userId);
     }
 
     logger.info(

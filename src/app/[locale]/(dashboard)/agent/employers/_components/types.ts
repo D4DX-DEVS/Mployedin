@@ -16,6 +16,8 @@ export interface Employer {
   assignedToMe?: boolean;
   /** Open jobs, the week's new applicants, interviews ahead and hires. */
   activity?: AccountActivity;
+  /** The effective agent commission rate. */
+  agentRate?: { rate: number; source: "employer_rate" } | { source: "none" };
 }
 
 /** What the table does with a row; the page owns the handlers. */

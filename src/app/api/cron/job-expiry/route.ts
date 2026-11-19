@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
   }
 
   const jobIds = allJobs.map((j) => j._id);
-  await Job.updateMany({ _id: { $in: jobIds } }, { $set: { status: "closed" } });
+  await Job.updateMany({ _id: { $in: jobIds } }, { $set: { status: "closed", closedAt: now } });
 
   // Batch-fetch employers and users
   const employerIds = allJobs.map((j) => j.employerId).filter(Boolean);

@@ -14,6 +14,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 let mockLocale = "ar";
 let mockSearch = "";
 const signIn = jest.fn();
+// Public employer sign-up open (Admin → Settings → Employer onboarding): these
+// tests cover the pages as they were before that switch existed.
+jest.mock("@/hooks/useEmployerOnboarding", () => ({ useEmployerSignupOpen: () => true }));
 jest.mock("next-auth/react", () => ({
   signIn: (...args: unknown[]) => signIn(...args),
   getSession: jest.fn().mockResolvedValue(null),

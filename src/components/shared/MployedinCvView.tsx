@@ -4,77 +4,75 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Download, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EMPTY_CV_FORM, cvFormFromProfile, type SeekerProfileData } from "@/app/[locale]/(dashboard)/job-seeker/cv/built-cv";
-import { DEFAULT_FORMATTING, getVisibleForm, type FormattingOptions } from "@/app/[locale]/(dashboard)/job-seeker/cv/types";
-import { useCvPdfLabels } from "@/app/[locale]/(dashboard)/job-seeker/cv/use-cv-pdf-labels";
 import { PdfPagesPreview } from "@/app/[locale]/(dashboard)/job-seeker/cv/pdf-pages-preview";
 import { PagedPreview } from "@/app/[locale]/(dashboard)/job-seeker/cv/paged-preview";
 import { TemplateRenderer } from "@/app/[locale]/(dashboard)/job-seeker/cv/templates";
-import { CV_TEMPLATE_IDS } from "@/lib/jobSeeker/cvDesign";
+import { builtCvRenderInput, renderBuiltCvPdf, type BuiltCvResponse } from "@/lib/cv/renderBuiltCv";
+import { builtCvLabelLang } from "@/lib/cv/cvPdfLabels";
+import { saveBlob } from "@/lib/download/saveBlob";
+import { useCvPdfLabelsFor } from "./useCvPdfLabelsFor";
 
 /**
- * The CV built on Mployedin for a seeker, drawn from their profile in the
- * design they saved (Classic when they never chose one) — the "Mployedin CV"
- * side of the CV viewer. Loaded only when that side is opened: it carries the
- * PDF renderer.
+ * The CV built on Mployedin for a seeker, drawn from their profile — the
+ * "Mployedin CV" side of the CV viewer. Loaded only when that side is opened:
+ * it carries the PDF renderer.
+ *
+ * By default it is drawn in the design the seeker saved (Classic when they
+ * never chose one). `templateOverride` draws it in that template instead, in
+ * the default formatting, so every candidate looks the same; the sections the
+ * candidate hid stay hidden. Preview and
+ * download both go through lib/cv/renderBuiltCv.ts, and both print the CV's
+ * headings in the CV's own language (Arabic for an Arabic CV), not the screen's.
  */
 
-interface BuiltCvResponse {
-  hasContent: boolean;
-  identity: { fullName: string; email: string; phone: string };
-  profile: SeekerProfileData & { cvDesign?: { templateId?: string; formatting?: FormattingOptions; hiddenSections?: string[] } | null };
+interface MployedinCvViewProps {
+  url: string;
+  /** What the toolbar's Download saves the PDF as. Not needed by a caller that hides the toolbar. */
+  fileName?: string;
+  templateOverride?: string;
+  /** Details the caller already fetched from `url`: used as they are, with no fetch of its own. */
+  data?: BuiltCvResponse;
+  /** The hint and Download button above the preview. A caller that draws its own turns this off. Default true. */
+  showToolbar?: boolean;
 }
 
-export default function MployedinCvView({ url, fileName }: { url: string; fileName: string }) {
+export default function MployedinCvView({ url, fileName = "Standardised CV (Mployedin).pdf", templateOverride, data: loaded, showToolbar = true }: MployedinCvViewProps) {
   const t = useTranslations("resumeViewerModal");
   const tp = useTranslations("cvBuilderPage.preview");
-  const labels = useCvPdfLabels();
-  const [data, setData] = useState<BuiltCvResponse | null>(null);
+  const [fetched, setFetched] = useState<BuiltCvResponse | null>(null);
+  const data = loaded ?? fetched;
+  const { labels, ready: labelsReady, resolve: resolveLabels } = useCvPdfLabelsFor(data ? builtCvLabelLang(data) : null);
   const [failed, setFailed] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Download's failure (the PDF render threw or timed out), shown beside the button.
+  const [downloadFailed, setDownloadFailed] = useState(false);
 
   useEffect(() => {
+    if (loaded) return;
     let live = true;
-    setData(null);
+    setFetched(null);
     setFailed(false);
     fetch(url, { credentials: "same-origin" })
       .then((res) => (res.ok ? (res.json() as Promise<BuiltCvResponse>) : Promise.reject(new Error(String(res.status)))))
-      .then((body) => { if (live) setData(body); })
+      .then((body) => { if (live) setFetched(body); })
       .catch(() => { if (live) setFailed(true); });
     return () => { live = false; };
-  }, [url]);
+  }, [url, loaded]);
 
-  const design = data?.profile.cvDesign;
-  const templateId = design?.templateId && (CV_TEMPLATE_IDS as readonly string[]).includes(design.templateId) ? design.templateId : "classic";
-  const formatting = design?.formatting ?? DEFAULT_FORMATTING;
-  const cv = useMemo(() => {
-    if (!data) return null;
-    const form = cvFormFromProfile(data.profile, {
-      ...EMPTY_CV_FORM,
-      fullName: data.identity.fullName,
-      email: data.identity.email,
-      phone: data.identity.phone,
-    });
-    return getVisibleForm(form, new Set(design?.hiddenSections ?? []));
-  }, [data, design?.hiddenSections]);
+  // An old failure belongs to the CV it happened on.
+  useEffect(() => { setDownloadFailed(false); }, [data]);
+
+  const cv = useMemo(() => (data ? builtCvRenderInput(data, templateOverride) : null), [data, templateOverride]);
 
   async function download() {
-    if (!cv) return;
+    if (!data) return;
     setDownloading(true);
+    setDownloadFailed(false);
     try {
-      const [{ pdf }, { CVPDFDocument }] = await Promise.all([
-        import("@react-pdf/renderer"),
-        import("@/app/[locale]/(dashboard)/job-seeker/cv/cv-pdf-document"),
-      ]);
-      const blob = await pdf(<CVPDFDocument data={cv} templateId={templateId} formatting={formatting} labels={labels} />).toBlob();
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = href;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(href);
+      const blob = await renderBuiltCvPdf(data, await resolveLabels(), { templateId: templateOverride });
+      saveBlob(blob, fileName);
+    } catch {
+      setDownloadFailed(true);
     } finally {
       setDownloading(false);
     }
@@ -88,7 +86,8 @@ export default function MployedinCvView({ url, fileName }: { url: string; fileNa
       </div>
     );
   }
-  if (!cv) {
+  // The preview waits for the CV's language, so its headings never flash in the screen's.
+  if (!cv || !labelsReady) {
     return (
       <div className="flex min-h-full items-center justify-center" role="status" aria-label={t("builtCvLoading")}>
         <Loader2 className="size-6 animate-spin text-muted-foreground/50" aria-hidden="true" />
@@ -97,23 +96,28 @@ export default function MployedinCvView({ url, fileName }: { url: string; fileNa
   }
   return (
     <div className="mx-auto max-w-3xl space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">{t("builtCvHint")}</p>
-        <Button size="sm" variant="outline" onClick={download} disabled={downloading} className="min-h-9 shrink-0 gap-1.5">
-          {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
-          {t("builtCvDownload")}
-        </Button>
-      </div>
+      {showToolbar && (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">{t("builtCvHint")}</p>
+          <Button size="sm" variant="outline" onClick={download} disabled={downloading} className="min-h-9 shrink-0 gap-1.5">
+            {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
+            {t("builtCvDownload")}
+          </Button>
+        </div>
+      )}
+      {showToolbar && downloadFailed && (
+        <p role="alert" className="text-xs font-medium text-destructive">{t("downloadError")}</p>
+      )}
       <PdfPagesPreview
-        data={cv}
-        templateId={templateId}
-        formatting={formatting}
+        data={cv.data}
+        templateId={cv.templateId}
+        formatting={cv.formatting}
         labels={labels}
         pageLabel={(n) => tp("pageBreak", { n })}
         updatingLabel={tp("updating")}
         fallback={
-          <PagedPreview formatting={formatting} bleed={templateId === "modern"} pageLabel={(n) => tp("pageBreak", { n })}>
-            <TemplateRenderer templateId={templateId} data={cv} formatting={formatting} />
+          <PagedPreview formatting={cv.formatting} bleed={cv.templateId === "modern"} pageLabel={(n) => tp("pageBreak", { n })}>
+            <TemplateRenderer templateId={cv.templateId} data={cv.data} formatting={cv.formatting} />
           </PagedPreview>
         }
       />

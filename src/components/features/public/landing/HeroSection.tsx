@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { EmployerEntryLink } from "@/components/shared/EmployerEntryLink";
 import { CheckCircle2, Search, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -166,9 +167,9 @@ export function HeroSection({ locale, audience, onAudienceChange }: HeroSectionP
           </div>
         ) : (
           <div className="flex w-full max-w-xl flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href={`/${locale}/employer-register`} className="w-full sm:w-auto">
+            <EmployerEntryLink locale={locale} className="w-full sm:w-auto">
               <Button size="lg" className="w-full min-w-44 rounded-xl">{t("startHiring")}</Button>
-            </Link>
+            </EmployerEntryLink>
             <Link href={`/${locale}/login`} className="w-full sm:w-auto">
               <Button size="lg" variant="outline" className="w-full min-w-44 rounded-xl">{t("employerSignIn")}</Button>
             </Link>

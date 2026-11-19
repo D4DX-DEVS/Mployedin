@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 export interface PhoneRecordStat {
@@ -39,6 +40,17 @@ export interface PhoneRecord {
   facts?: readonly ReactNode[];
   /** Facts cards only: opens the record in place (a dialog) when it has no page of its own. */
   onSelect?: () => void;
+  /**
+   * A row checkbox for lists that can be selected (bulk export). It starts the
+   * card's header row, before the avatar, so the details under the name shift
+   * in to stay lined up with it.
+   */
+  selection?: {
+    checked: boolean;
+    onToggle: () => void;
+    /** Accessible name, e.g. "Select Sara Ahmed". */
+    label: string;
+  };
 }
 
 interface PhoneRecordListProps {
@@ -56,6 +68,21 @@ interface PhoneRecordListProps {
 
 /** Lines detail rows up under the title, past the 40px leading slot. */
 const UNDER_TITLE = "ps-[3.25rem]";
+/** The same, past the checkbox a selectable card starts with too (44px box, 8px pulled back, 4px gap). */
+const UNDER_TITLE_SELECTABLE = "ps-[5.75rem]";
+
+/**
+ * The card's row checkbox. The box stays 16px; the label around it is the 44px
+ * target a thumb needs, lifted above the card's stretched link so a tap on it
+ * selects instead of opening the record.
+ */
+function SelectBox({ selection }: { selection: NonNullable<PhoneRecord["selection"]> }) {
+  return (
+    <label className="relative z-10 -ms-2 -mt-1 flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center">
+      <Checkbox checked={selection.checked} onCheckedChange={selection.onToggle} aria-label={selection.label} />
+    </label>
+  );
+}
 
 /**
  * Phone list of records, one card per row. Replaces the generic
@@ -86,11 +113,19 @@ export function PhoneRecordList({ items, loading, empty, className, label, compa
     <ul className={cn("space-y-2", className)} aria-label={label}>
       {items.map((item) => {
         const hasLeading = Boolean(item.leading);
+        const underTitle = item.selection ? UNDER_TITLE_SELECTABLE : UNDER_TITLE;
         if (item.facts) return <FactsCard key={item.key} item={item} />;
         return (
           <li key={item.key} className={cn("relative rounded-xl border border-border/70 bg-card shadow-sm", compact ? "p-2.5" : "p-3")}>
             <div className="flex items-start gap-3">
-              {hasLeading && <div className="shrink-0">{item.leading}</div>}
+              {item.selection ? (
+                <div className="flex shrink-0 items-start gap-1">
+                  <SelectBox selection={item.selection} />
+                  {hasLeading && <div className="shrink-0">{item.leading}</div>}
+                </div>
+              ) : (
+                hasLeading && <div className="shrink-0">{item.leading}</div>
+              )}
               <div className="min-w-0 flex-1">
                 {/* Header = identity only: name, status, subtitle. Buttons live in
                     the footer row; beside the name they crushed it ("(b I…"),
@@ -125,13 +160,13 @@ export function PhoneRecordList({ items, loading, empty, className, label, compa
             {item.meta && (
               // `!flex-nowrap`: the admin shell makes every flex row wrap
               // (globals.css), which split an icon from its text here.
-              <div className={cn("mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-muted-foreground [&>*]:max-w-full [&>.flex]:!flex-nowrap", compact ? "text-[11px]" : "text-xs", hasLeading && UNDER_TITLE)}>{item.meta}</div>
+              <div className={cn("mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-muted-foreground [&>*]:max-w-full [&>.flex]:!flex-nowrap", compact ? "text-[11px]" : "text-xs", hasLeading && underTitle)}>{item.meta}</div>
             )}
 
             {/* With a footer, badges ride at its start instead of a row of their
                 own; the footer wraps them above the buttons when both don't fit. */}
             {item.badges && !item.actions && (
-              <div className={cn("relative z-10 flex flex-wrap items-center text-[11px]", compact ? "mt-1.5 gap-1" : "mt-2 gap-1.5", hasLeading && UNDER_TITLE)}>
+              <div className={cn("relative z-10 flex flex-wrap items-center text-[11px]", compact ? "mt-1.5 gap-1" : "mt-2 gap-1.5", hasLeading && underTitle)}>
                 {item.badges}
               </div>
             )}
@@ -206,7 +241,14 @@ function FactsCard({ item }: { item: PhoneRecord }) {
   return (
     <li className="relative rounded-xl border border-border/70 bg-card px-3 py-2.5 shadow-sm" data-phone-card="facts">
       <div className="flex items-start gap-2.5">
-        {item.leading && <div className="shrink-0">{item.leading}</div>}
+        {item.selection ? (
+          <div className="flex shrink-0 items-start gap-1">
+            <SelectBox selection={item.selection} />
+            {item.leading && <div className="shrink-0">{item.leading}</div>}
+          </div>
+        ) : (
+          item.leading && <div className="shrink-0">{item.leading}</div>
+        )}
         <div className="min-w-0 flex-1">
           {/* The name is never cut: it may wrap, it is never truncated. */}
           <p className="break-words text-sm font-semibold leading-5 text-foreground">

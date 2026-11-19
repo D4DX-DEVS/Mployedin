@@ -31,6 +31,7 @@ import {
   Clock,
   Columns3,
   AlertTriangle,
+  FileDown,
   FolderPlus,
   ShieldCheck,
   LayoutList,
@@ -63,6 +64,10 @@ import { FeatureGate } from "@/components/shared/FeatureGate";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
+import { CvExportDialog } from "@/components/shared/CvExport/CvExportDialog";
+import { CV_EXPORT_MAX_ITEMS } from "@/lib/cv/cvExportTypes";
+import { candidateCvHref, fileExtensionOf, sentCvFileOf } from "@/lib/applications/candidateCv";
+import { withDownloadFlag } from "@/lib/cv/downloadFlag";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { PriorityBadge } from "@/components/shared/PriorityBadge";
@@ -127,6 +132,7 @@ import {
 import { buildJobFilterOptions } from "@/lib/jobs/duplicateJobLabels";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePermissions } from "@/hooks/usePermissions";
+import { mayOfferCvExport } from "@/lib/permissions/companyFunctions";
 import { useTableExport } from "@/hooks/useTableExport";
 import { useScorecardsByApplicationIds } from "@/hooks/useScorecards";
 import type { Scorecard } from "@/hooks/useScorecards";
@@ -368,6 +374,31 @@ export function resumeViewHref(app: Applicant): string | null {
   return `/api/applications/${app._id}/documents/download?i=${index}&view=1#${encodeURIComponent(doc.name)}`;
 }
 
+/**
+ * Where "View CV" and "Original CV (Uploaded)" open this applicant's CV.
+ *
+ * The candidate CV route is the one URL the viewer pairs with a Standardised
+ * (Mployedin) CV, so staff open on it; with the application id it still serves
+ * the CV sent with that application. The per-application download route that
+ * resumeViewHref points at has no Standardised version: the viewer showed only
+ * the uploaded file. Null when there is no uploaded file to open; an applicant
+ * without a profile id keeps that older route.
+ */
+export function cvViewerHref(app: Applicant): string | null {
+  const fallback = resumeViewHref(app);
+  const seekerId = app.jobSeekerId?._id;
+  if (!fallback || !seekerId) return fallback;
+  // The resume sent with the application is served first, the Profile CV after it.
+  const sentUrl = app.documents?.find((doc) => doc.type === "resume" && doc.url)?.url;
+  return candidateCvHref({
+    _id: seekerId,
+    applicationCv: {
+      applicationId: app._id,
+      extension: fileExtensionOf(sentUrl ?? app.jobSeekerId?.cv?.originalUrl),
+    },
+  });
+}
+
 export function ApplicationsWorkspace({
   jobId,
   embedded = false,
@@ -383,12 +414,15 @@ export function ApplicationsWorkspace({
   const { locale } = useParams<{ locale: string }>();
   const initialJobId = jobId ?? searchParams.get("jobId") ?? searchParams.get("job") ?? "";
   const jobPinned = Boolean(jobId);
-  const { can } = usePermissions();
+  const { can, session } = usePermissions();
+  // A colleague exports only with the applicant-review or candidate-pool function (the server decides too).
+  const canExportCvs = mayOfferCvExport(session?.user as Parameters<typeof mayOfferCvExport>[0]);
   const t = useTranslations("employerApplications");
   const tCommon = useTranslations("common");
   const ta = useTranslations("employerAts");
   const tw = useTranslations("employerJobWorkspace");
   const tc = useTranslations("employerCommon");
+  const tx = useTranslations("cvExport");
   // The job form's labels for the selected job's facts (work mode, type, pay period).
   const tf = useTranslations("employerJobForm");
   const jobFact = (group: "step1.workModes" | "step1.employmentTypes" | "step4.salaryPeriods", value: string) =>
@@ -424,6 +458,7 @@ export function ApplicationsWorkspace({
   // ?unreviewed=1 deep-links from the Overview "not yet reviewed" row (A17).
   const [unreviewedOnly, setUnreviewedOnly] = useState(() => ["1", "true"].includes(searchParams.get("unreviewed") ?? ""));
   const [bulkPoolOpen, setBulkPoolOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectPrompt, setShowRejectPrompt] = useState(false);
@@ -644,6 +679,14 @@ export function ApplicationsWorkspace({
   const selectedSeekerIds = Array.from(new Set(
     selected.map((id) => applications.find((a) => a._id === id)?.jobSeekerId?._id).filter((x): x is string => Boolean(x)),
   ));
+  // One CV-export item per selected application, not per seeker: the
+  // applicationId is what makes "Original" the CV sent with that application.
+  const exportItems = selected.flatMap((id) => {
+    const app = applications.find((a) => a._id === id);
+    const seekerId = app?.jobSeekerId?._id;
+    return app && seekerId ? [{ seekerId, applicationId: app._id, name: getCandidateName(app) }] : [];
+  });
+  const exportTooMany = exportItems.length > CV_EXPORT_MAX_ITEMS;
   const total = applicationsQuery.data?.pagination?.total ?? applications.length;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const isLoading = applicationsQuery.isLoading;
@@ -1081,7 +1124,7 @@ export function ApplicationsWorkspace({
     const js = app.jobSeekerId;
     const currentRole = js?.experience?.find((e) => e.isCurrent)?.jobTitle;
     return {
-      url: urlOverride ?? resumeViewHref(app) ?? "",
+      url: urlOverride ?? cvViewerHref(app) ?? "",
       name: getCandidateName(app),
       applicationId: app._id,
       status: app.status,
@@ -1763,6 +1806,25 @@ export function ApplicationsWorkspace({
                 <span className="ms-1.5 sm:hidden">{t("compareShort")}</span>
               </Button>
             )}
+            {/* Export CVs: a read action on the people already selected, so it
+                sits last. One export covers at most CV_EXPORT_MAX_ITEMS; above
+                that the button is off and the reason is on the page, not just
+                in a tooltip a phone cannot show. */}
+            {canExportCvs && (<>
+            <Button size="sm" variant="outline" className="h-11 flex-1 rounded-xl border-border bg-background/80 px-2 text-xs sm:h-10 sm:flex-none sm:px-4 sm:text-sm"
+              aria-label={t("exportCvs")}
+              aria-describedby={exportTooMany ? "applications-export-limit" : undefined}
+              onClick={() => setExportOpen(true)} disabled={exportItems.length === 0 || exportTooMany}>
+              <FileDown className="h-3.5 w-3.5 sm:me-2" aria-hidden="true" />
+              <span className="hidden sm:inline">{t("exportCvs")}</span>
+              <span className="ms-1.5 sm:hidden">{t("exportCvsShort")}</span>
+            </Button>
+            {exportTooMany ? (
+              <p id="applications-export-limit" className="col-span-3 text-xs text-muted-foreground sm:basis-full">
+                {tx("tooMany", { max: CV_EXPORT_MAX_ITEMS })}
+              </p>
+            ) : null}
+            </>)}
           </div>
         </div>
       )}
@@ -1773,6 +1835,8 @@ export function ApplicationsWorkspace({
         open={bulkPoolOpen}
         onOpenChange={(open) => { setBulkPoolOpen(open); if (!open) setSelected([]); }}
       />
+
+      <CvExportDialog open={exportOpen} onOpenChange={setExportOpen} items={exportItems} />
 
       {compareOpen && (
         <CompareCandidatesDialog open={compareOpen} onOpenChange={setCompareOpen} applicationIds={selected.slice(0, 3)} />
@@ -2837,6 +2901,8 @@ function ApplicationDetailsPanel({
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const t = useTranslations("employerApplications");
   const tc = useTranslations("employerCommon");
+  // "Original CV (Uploaded)" is named once, in the viewer's own namespace.
+  const tv = useTranslations("resumeViewerModal");
   const [noteText, setNoteText] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
@@ -2925,9 +2991,13 @@ function ApplicationDetailsPanel({
   const resumeDoc = app.documents?.find((doc) => doc.type === "resume");
   const resumeDocIndex = app.documents?.findIndex((doc) => doc.type === "resume") ?? -1;
   const hasResume = !!app.jobSeekerId?.cv?.originalUrl || !!resumeDoc;
+  // What the candidate CV route would serve as the original: a link to another site is skipped by it.
+  const sentCv = sentCvFileOf(app.documents, app.jobSeekerId?.cv?.originalUrl);
 
   function handleViewResume() {
-    if (app.jobSeekerId?.cv?.originalUrl && onViewCv) {
+    // Profile CV or a resume sent with the application: either way the viewer
+    // opens on the candidate CV route, where the Standardised CV is.
+    if (cvViewerHref(app) && onViewCv) {
       onViewCv(app);
       return;
     }
@@ -3265,6 +3335,21 @@ function ApplicationDetailsPanel({
                         <FolderPlus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                         {t("saveToPool")}
                       </button>
+                    ) : null}
+                    {/* The primary "View CV" opens the Standardised CV; this is
+                        the file the candidate sent, opened directly in a tab. */}
+                    {candidateProfileId && cvViewerHref(app) && sentCv.servable ? (
+                      <a
+                        role="menuitem"
+                        href={withDownloadFlag(cvViewerHref(app)) ?? undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start text-sm text-foreground transition hover:bg-muted"
+                        onClick={() => setMoreMenuOpen(false)}
+                      >
+                        <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        {sentCv.built ? tv("sentWithApplication") : tv("originalCv")}
+                      </a>
                     ) : null}
                   </div>
                 </>

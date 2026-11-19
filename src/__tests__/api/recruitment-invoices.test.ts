@@ -93,6 +93,11 @@ jest.mock("@/models/Invoice", () => ({
   },
 }));
 
+// Invoice lines link to the job's hires (lib/invoices/linePlacements); none here.
+jest.mock("@/models/Placement", () => ({
+  __esModule: true,
+  default: { find: () => ({ select: () => ({ lean: async () => [] }) }) },
+}));
 jest.mock("@/models/Commission", () => ({
   __esModule: true,
   default: {
@@ -209,7 +214,7 @@ describe("Recruitment invoice creation API", () => {
     expect(Invoice.create).not.toHaveBeenCalled();
   });
 
-  it("calculates agent and super-agent commissions from the pre-tax discounted subtotal", async () => {
+  it("calculates commissions on the invoice total minus tax (discount off, service charge in)", async () => {
     const { POST } = await import("@/app/api/invoices/recruitment/route");
     const req = new NextRequest("http://localhost:3000/api/invoices/recruitment", {
       method: "POST",
@@ -244,13 +249,13 @@ describe("Recruitment invoice creation API", () => {
     expect(payload.amount).toBe(995);
     expect(payload.commissions).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: "agent", rate: 10, amount: 90 }),
-        expect.objectContaining({ role: "super_agent", rate: 5, amount: 45 }),
+        expect.objectContaining({ role: "agent", rate: 10, amount: 95 }),
+        expect.objectContaining({ role: "super_agent", rate: 5, amount: 47.5 }),
       ])
     );
 
-    expect(Commission.create).toHaveBeenNthCalledWith(1, [expect.objectContaining({ type: "placement", amount: 90 })], {});
-    expect(Commission.create).toHaveBeenNthCalledWith(2, [expect.objectContaining({ type: "override", amount: 45 })], {});
+    expect(Commission.create).toHaveBeenNthCalledWith(1, [expect.objectContaining({ type: "placement", amount: 95 })], {});
+    expect(Commission.create).toHaveBeenNthCalledWith(2, [expect.objectContaining({ type: "override", amount: 47.5 })], {});
   });
 
   it("forces agent-created invoices into pending approval and defers commission records", async () => {

@@ -163,3 +163,22 @@ describe("termsPending on the token", () => {
     expect(s.user.termsPending).toBe(true);
   });
 });
+
+// Whether this sign-in created the account, as the provider that did it says.
+// The public apply card reads it right after signing in: an existing account
+// must never have a picked CV read over its profile.
+describe("isNewAccount", () => {
+  it.each([true, false])("is copied from the provider's user at sign-in (%s) and reaches session.user", async (isNew) => {
+    const token = (await jwt({ token: {}, user: { id: "user-1", role: "job_seeker", isNewAccount: isNew }, trigger: "signIn", account: { provider: "credentials" } }))!;
+    expect(token.isNewAccount).toBe(isNew);
+    const s = await session({ session: { user: {} }, token });
+    expect(s.user.isNewAccount).toBe(isNew);
+  });
+
+  it("is absent for a provider that does not say (password sign-in)", async () => {
+    const token = (await jwt({ token: {}, user: { id: "user-1", role: "job_seeker" }, trigger: "signIn", account: { provider: "credentials" } }))!;
+    expect(token.isNewAccount).toBeUndefined();
+    const s = await session({ session: { user: {} }, token });
+    expect(s.user.isNewAccount).toBeUndefined();
+  });
+});

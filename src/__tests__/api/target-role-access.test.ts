@@ -32,7 +32,7 @@ const loadTargetReport = jest.fn();
 
 jest.mock("@/models/TargetProfile", () => ({
   __esModule: true,
-  PROFIT_TARGET_FILTER: { targetType: "profit" },
+  PROFIT_TARGET_FILTER: { targetType: { $in: ["profit", "kpi3"] } },
   default: {
     findOne: (...a: unknown[]) => findOne(...a),
     find: (...a: unknown[]) => find(...a),
@@ -62,6 +62,11 @@ jest.mock("@/lib/targets/profileAchievementCalculator", () => ({
   enrichProfiles: (...a: unknown[]) => enrichProfiles(...a),
 }));
 jest.mock("@/lib/targets/loadReport", () => ({ loadTargetReport: (...a: unknown[]) => loadTargetReport(...a) }));
+jest.mock("@/lib/targets/kpiCalculator", () => ({
+  calculateKpis: jest.fn().mockResolvedValue(new Map()),
+  kpiOwnerKey: (role: string, userId: string) => `${role}:${userId}`,
+  achievement: jest.fn((actual: number, target: number) => target > 0 ? Math.round((actual / target) * 100) : null),
+}));
 
 const { auth } = jest.requireMock("@/lib/auth/config") as { auth: jest.Mock };
 
@@ -159,14 +164,14 @@ describe("agent report", () => {
 
     await get();
 
-    expect(findOne).toHaveBeenCalledWith(expect.objectContaining({ assigneeId: AGENT_A, assigneeRole: "agent", targetType: "profit" }));
+    expect(findOne).toHaveBeenCalledWith(expect.objectContaining({ assigneeId: AGENT_A, assigneeRole: "agent" }));
   });
 
-  it("returns no report, not someone else's, when the agent has no target", async () => {
+  it("returns no profile, not someone else's, when the agent has no target", async () => {
     signIn("agent", AGENT_A);
     findOneLean.mockResolvedValue(null);
 
-    expect((await (await get()).json()).report).toBeNull();
+    expect((await (await get()).json()).profile).toBeNull();
     expect(loadTargetReport).not.toHaveBeenCalled();
   });
 });
@@ -358,7 +363,7 @@ describe("super agent team view", () => {
     expect(find).toHaveBeenCalledWith(expect.objectContaining({
       parentProfileId: "own-profile",
       assigneeId: { $in: [AGENT_A, AGENT_B] },
-      targetType: "profit",
+      targetType: { $in: ["profit", "kpi3"] },
     }));
   });
 

@@ -84,6 +84,14 @@ export interface ISystemSettings extends Document {
   /** When false (default), subscription enforcement is bypassed and all users get full access.
    *  Flip to true once payment integration is live to enforce plan limits / feature gates. */
   subscriptionEnforcementEnabled: boolean;
+  /** Anyone can open /employer-register without an invite and see "Register as employer" links. Default off. */
+  employerSelfRegistrationEnabled: boolean;
+  /** Agent / super-agent employer invite links (/employer-register?ref=) work and can be created. Default on. */
+  employerInviteLinksEnabled: boolean;
+  /** Super agents may add employers directly (POST /api/employers). Default on. */
+  superAgentCanCreateEmployers: boolean;
+  /** Agents may add employers directly (POST /api/employers, lead convert). Default on. */
+  agentCanCreateEmployers: boolean;
   /**
    * The Terms of Service + Privacy Policy version every user must have
    * accepted. Unset = TERMS_BASELINE_VERSION. An admin bumps it from the GDPR
@@ -107,6 +115,10 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
     maintenanceMode: { type: Boolean, default: false },
     defaultCurrency: { type: String, default: "AED" },
     subscriptionEnforcementEnabled: { type: Boolean, default: false },
+    employerSelfRegistrationEnabled: { type: Boolean, default: false },
+    employerInviteLinksEnabled: { type: Boolean, default: true },
+    superAgentCanCreateEmployers: { type: Boolean, default: true },
+    agentCanCreateEmployers: { type: Boolean, default: true },
     legalTermsVersion: { type: String, maxlength: 40 },
     smtp: {
       smtpEmail: { type: String },

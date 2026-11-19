@@ -191,7 +191,7 @@ describe("public EasyApply — a seeker with no CV", () => {
   });
 
   it("takes a seeker who chose Apply without CV to the questions, then back to this job", async () => {
-    sessionStorage.setItem("mployedin:apply-auto-cv", "job1");
+    sessionStorage.setItem("mployedin:apply-auto-cv", `job1|${Date.now()}`);
     open();
     await waitFor(() => expect(navigateWithPageLoad).toHaveBeenCalledTimes(1));
     const target = (navigateWithPageLoad as jest.Mock).mock.calls[0][0] as string;
@@ -205,7 +205,7 @@ describe("public EasyApply — a seeker with no CV", () => {
   });
 
   it("does not send an onboarded seeker who has a CV to the questions", async () => {
-    sessionStorage.setItem("mployedin:apply-auto-cv", "job1");
+    sessionStorage.setItem("mployedin:apply-auto-cv", `job1|${Date.now()}`);
     me.cvUrl = "https://cdn/cvs/profile.pdf";
     open();
     await screen.findByRole("radio", { name: /Profile CV/ });

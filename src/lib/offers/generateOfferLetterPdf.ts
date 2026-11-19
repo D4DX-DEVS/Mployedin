@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import { getLogoBase64 } from "@/lib/pdf/logo";
+import { getLogoBase64, logoBox } from "@/lib/pdf/logo";
 
 /**
  * Offer-letter PDF generator (FG-6).
@@ -46,7 +46,8 @@ export function generateOfferLetterPdf(data: OfferLetterData): Buffer {
   // ── Header ──────────────────────────────────────────────
   const logo = getLogoBase64();
   if (logo) {
-    doc.addImage(logo, "PNG", margin, y, 120, 30);
+    const box = logoBox(100);
+    doc.addImage(logo, "PNG", margin, y, box.width, box.height);
   } else {
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");

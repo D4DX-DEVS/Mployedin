@@ -1,10 +1,13 @@
 /**
  * Commission rate resolver — applies country-based overrides from SystemSettings.
  *
- * Priority:
+ * Priority (agent):
+ * 0. The employer's own agent rate effective on the invoice date (Employer.agentCommissionRates)
  * 1. Role-specific country override (agentRate / superAgentRate) if set
  * 2. Generic country override (rate) as fallback
- * 3. Agent/SuperAgent's own configured rate (final fallback)
+ * 3. Agent/SuperAgent's own configured rate (final fallback). For a super agent
+ *    the "own rate" is the override rate effective on the invoice date
+ *    (SuperAgent.overrideRateHistory), else `overrideRate`.
  *
  * Rules are keyed by ISO code ("SA"); employers store their country however it
  * was entered ("SA", "Saudi Arabia", "KSA"). Every spelling of the same country
@@ -14,10 +17,11 @@
 import { connectDB } from "@/lib/db/mongoose";
 import { countryKey } from "@/lib/i18n/locations";
 import SystemSettings from "@/models/SystemSettings";
+import { effectiveRate, type DatedRate } from "./effectiveRate";
 
 export interface ResolvedRate {
   rate: number;
-  source: "country_override" | "agent_default" | "super_agent_default";
+  source: "employer_rate" | "country_override" | "agent_default" | "super_agent_default";
   /** The matching rule's ISO code, if an override applied */
   countryCode?: string;
 }
@@ -39,10 +43,24 @@ interface CountryOverrideMatch {
 /**
  * Resolve the effective commission rate for an agent, considering employer's country.
  */
+export interface DatedRateContext {
+  /** Effective-dated rate changes to consult first. */
+  history?: readonly DatedRate[] | null;
+  /** The invoice date; defaults to now. */
+  on?: Date;
+}
+
 export async function resolveCommissionRate(
   agentRate: number,
   employerCountry?: string | null,
+  employerRates?: DatedRateContext,
 ): Promise<ResolvedRate> {
+  const employerRate = effectiveRate(employerRates?.history, employerRates?.on ?? new Date());
+  if (employerRate !== null) {
+    return { rate: employerRate, source: "employer_rate" };
+  }
+  // A 0% agent rate means no commission line; a country rule never adds one.
+  if (!(agentRate > 0)) return { rate: 0, source: "agent_default" };
   if (!employerCountry?.trim()) {
     return { rate: agentRate, source: "agent_default" };
   }
@@ -61,7 +79,11 @@ export async function resolveCommissionRate(
 export async function resolveOverrideRate(
   superAgentRate: number,
   employerCountry?: string | null,
+  rateHistory?: DatedRateContext,
 ): Promise<ResolvedRate> {
+  superAgentRate = effectiveRate(rateHistory?.history, rateHistory?.on ?? new Date()) ?? superAgentRate;
+  // A 0% override rate means no commission line; a country rule never adds one.
+  if (!(superAgentRate > 0)) return { rate: 0, source: "super_agent_default" };
   if (!employerCountry?.trim()) {
     return { rate: superAgentRate, source: "super_agent_default" };
   }

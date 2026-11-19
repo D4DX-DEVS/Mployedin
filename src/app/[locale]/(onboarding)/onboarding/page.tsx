@@ -1085,6 +1085,9 @@ export default function JobSeekerOnboardingPage() {
   // ── Save helpers ─────────────────────────────────────────────────────────
   const applyBuiltCv = (cv: CvBuilderResult) => {
     setBuiltCv(cv);
+    // Name and mobile were asked in the builder: when they (and the area) are
+    // there, go straight on to the first step the CV did not answer.
+    if (step === 0) setPendingCvSkip(true);
     setStep0((p) => ({ ...p, workStatus: cv.fresher ? "fresher" : "experienced" }));
     const dated = cv.jobs.map((j) => ({
       startDate: j.start ? `${j.start}-01` : undefined,
@@ -1343,7 +1346,7 @@ export default function JobSeekerOnboardingPage() {
         </div>
         <div className="flex items-center gap-3">
           {userName && (
-            <span className="text-sm text-gray-600">{t("welcome", { name: userName })}</span>
+            <span className="text-sm text-gray-600">{t("welcome", { name: step0.name.trim() || userName })}</span>
           )}
           <Button
             type="button"
@@ -1647,6 +1650,11 @@ export default function JobSeekerOnboardingPage() {
                   workStatus={step0.workStatus}
                   area={areaValue}
                   onAreaChange={changeArea}
+                  contact={{ name: step0.name, dialCode: step0.countryCode, phone: step0.phone }}
+                  onContactChange={(c) => {
+                    if (c.dialCode !== step0.countryCode) setPhoneCodePicked(true);
+                    setStep0((p) => ({ ...p, name: c.name, countryCode: c.dialCode, phone: c.phone }));
+                  }}
                   initial={builtCv}
                   existingRoles={savedRoles}
                   onDone={applyBuiltCv}

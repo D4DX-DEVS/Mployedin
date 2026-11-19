@@ -38,11 +38,18 @@ export async function ensureIndustryClassified(seeker: SeekerWithIndustryFields)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = classifyIndustry(seeker as any);
 
+  const seekerId = seeker._id || seeker.userId;
+  if (!seekerId) return;
+
+  // Evidence no longer supports the label we set automatically (e.g. a wrong
+  // guess from an old rule) — clear it rather than keep showing a wrong industry.
+  if (!result.industry && seeker.industry && seeker.industrySource === "auto") {
+    await JobSeeker.updateOne({ _id: seekerId }, { $unset: { industry: "", industrySource: "" } });
+    return;
+  }
+
   // Only update if classified and different from current
   if (result.industry && result.industry !== seeker.industry) {
-    const seekerId = seeker._id || seeker.userId;
-    if (!seekerId) return;
-
     await JobSeeker.updateOne(
       { _id: seekerId },
       {

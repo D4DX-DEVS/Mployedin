@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
@@ -12,8 +12,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAtsCheck, type AtsReport } from "@/hooks/useCandidates";
+import { usePermissions } from "@/hooks/usePermissions";
 import { RequirementReport } from "@/components/features/matching/RequirementReport";
+import { withDownloadFlag } from "@/lib/cv/downloadFlag";
 import type { RequirementReport as RequirementReportData } from "@/lib/matching/requirementReport";
+import { STAFF_CV_TEMPLATE } from "@/lib/jobSeeker/cvDesign";
+import type { UserRole } from "@/types/user";
+import { CvSourceBar, type BuiltReason, type CvSource, type FileReason } from "./CvSourceBar";
+import { useBuiltCv } from "./useBuiltCv";
+import { useOriginalCv } from "./useOriginalCv";
+import { useStandardisedCvDownload } from "./useStandardisedCvDownload";
 
 interface CandidateInfo {
   role?: string;
@@ -48,6 +56,26 @@ interface ResumeViewerModalProps {
   jobSeekerId?: string;
   /** Job _id — the keyword-match panel only renders when a job is in context. */
   jobId?: string;
+  /**
+   * Who is looking. Staff (everyone but a job seeker) open on the Standardised
+   * CV, in the one staff template; a job seeker opens their file. Read from the
+   * session when not given.
+   */
+  viewerRole?: UserRole;
+  /**
+   * The applicant sent the Mployedin-built CV with this application, so the
+   * "original" is that PDF: its tab reads "CV sent with application" instead of
+   * "Original CV (Uploaded)". Not needed: the CV route says it on the file it
+   * serves (X-Mployedin-Cv-Built) and the viewer reads that. Pass it only to
+   * override (the list already knows, so the label is right before the file lands).
+   */
+  originalIsBuilt?: boolean;
+  /**
+   * Which CV to open on, when it is not the role's default: "file" for an
+   * "Original CV (Uploaded)" menu item. A side with nothing behind it is still
+   * never shown while the other has something, and a pick made in the viewer wins.
+   */
+  initialSource?: CvSource;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; pill: string }> = {
@@ -95,7 +123,7 @@ function MoreMenu({ url, displayName }: { url: string; displayName: string }) {
       {open && (
         <div className="absolute end-0 top-9 z-10 w-44 rounded-lg border bg-popover shadow-lg py-1 text-sm">
           <a
-            href={url}
+            href={withDownloadFlag(url)}
             download={displayName}
             target="_blank"
             rel="noopener noreferrer"
@@ -196,6 +224,9 @@ function AtsPanel({ jobSeekerId, jobId }: { jobSeekerId: string; jobId: string }
 // The Mployedin CV side carries the PDF renderer: loaded only when opened.
 const MployedinCvView = dynamic(() => import("./MployedinCvView"), { ssr: false });
 
+/** The roles that open a seeker's CV as staff: they get the Standardised CV first, in the one staff template. Anything else (a job seeker, an unknown role) opens the file. */
+const STAFF_VIEWER_ROLES: readonly string[] = ["admin", "super_agent", "agent", "employer"];
+
 /** A seeker's CV served by /api/employers/candidates/<id>/cv — the one that has a Mployedin CV beside it. */
 const CANDIDATE_CV_URL = /^\/api\/employers\/candidates\/([a-f\d]{24})\/cv(?:[?#]|$)/i;
 
@@ -215,8 +246,13 @@ export function ResumeViewerModal({
   onStatusChange,
   jobSeekerId,
   jobId,
+  viewerRole,
+  originalIsBuilt,
+  initialSource,
 }: ResumeViewerModalProps) {
   const t = useTranslations("resumeViewerModal");
+  const { role: sessionRole } = usePermissions();
+  const sourceIds = useId();
   // Only URLs with a clear image extension render as <img>; everything else
   // (including extension-less signed URLs) goes through the document path,
   // where the fetched blob's mime type decides embeddability.
@@ -230,12 +266,51 @@ export function ResumeViewerModal({
   // Phones show one pane at a time; from sm both sit side by side.
   const [mobilePane, setMobilePane] = useState<"cv" | "profile">("cv");
   const [imgFailed, setImgFailed] = useState(false);
-  const [previewFailed, setPreviewFailed] = useState(false);
-  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
-  // Every role that opens a seeker's CV can also see it as the Mployedin CV,
-  // made from their profile. The file opens first, as before.
+  // The original file: its preview, and whether it is there at all.
+  const original = useOriginalCv(url, isPdf);
+  const { blobUrl: pdfBlobUrl, previewFailed } = original;
+
+  // Every role that opens a seeker's CV can also see it as the Standardised CV
+  // (Mployedin), made from their profile. Staff open on it, drawn in the one
+  // staff template so every candidate looks the same; anyone else opens their
+  // file, and sees their own design.
   const candidateCvId = CANDIDATE_CV_URL.exec(url)?.[1] ?? null;
-  const [cvSource, setCvSource] = useState<"file" | "built">("file");
+  const role = viewerRole ?? sessionRole;
+  const isStaffViewer = role !== undefined && STAFF_VIEWER_ROLES.includes(role);
+  const templateOverride = isStaffViewer ? STAFF_CV_TEMPLATE : undefined;
+  // One fetch of the details the standardised CV is drawn from: it decides the
+  // tabs, feeds the preview and is what Download renders.
+  // With an application in hand, the built view asks in its context: a colleague who may review
+  // applicants (but not manage talent pools) is only served the CV of that application's candidate.
+  const builtCvUrl = candidateCvId
+    ? `/api/employers/candidates/${candidateCvId}/cv?kind=built${applicationId ? `&applicationId=${encodeURIComponent(applicationId)}` : ""}`
+    : null;
+  const { state: built, retry: retryBuilt } = useBuiltCv(builtCvUrl);
+  const builtReason: BuiltReason | null =
+    built.status === "failed" ? built.reason : built.status === "ready" && !built.data.hasContent ? "empty" : null;
+  const fileReason: FileReason | null =
+    !url || original.availability === "missing" ? "missing" : original.availability === "notFound" ? "notFound" : null;
+  const standardisedDownload = useStandardisedCvDownload({
+    scope: url,
+    candidateId: candidateCvId ?? "",
+    data: built.status === "ready" ? built.data : null,
+    fallbackName: candidateName,
+    templateId: templateOverride,
+  });
+  // A pick belongs to the CV it was made on, so the next candidate opens on the default.
+  const [picked, setPicked] = useState<{ url: string; source: CvSource } | null>(null);
+  const pickedSource = picked?.url === url ? picked.source : null;
+
+  // What is shown: the viewer's pick, else the default for their role; a side
+  // with nothing behind it is never shown while the other has something.
+  let cvSource: CvSource = "file";
+  if (candidateCvId) {
+    cvSource = pickedSource ?? initialSource ?? (isStaffViewer ? "built" : "file");
+    if (builtReason) cvSource = "file";
+    else if (fileReason) cvSource = "built";
+  }
+  const sourceTabId = (source: CvSource) => `${sourceIds}-cv-${source}`;
+  const sourcePanelId = `${sourceIds}-cv-panel`;
 
   const displayName = fileName ?? (candidateName ? `${candidateName}'s CV` : "Resume");
   const hasRightPanel = !!(candidate || aiMatchScore != null || jobSeekerId);
@@ -251,62 +326,6 @@ export function ResumeViewerModal({
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  // The CV is streamed through our own origin, but its response carries
-  // X-Frame-Options: DENY / CSP frame-ancestors 'none' (clickjacking
-  // protection), so the browser refuses to frame it by URL. Instead we fetch
-  // the bytes and render an in-memory blob: URL, which is exempt from those
-  // directives. A missing URL, a browser without a built-in PDF viewer, or a
-  // failed fetch falls back to a download prompt.
-  useEffect(() => {
-    if (!isPdf) return;
-    setPdfBlobUrl(null);
-
-    const canViewPdf =
-      typeof navigator === "undefined" ||
-      (navigator as { pdfViewerEnabled?: boolean }).pdfViewerEnabled !== false;
-    if (!url || !canViewPdf) {
-      setPreviewFailed(true);
-      return;
-    }
-
-    setPreviewFailed(false);
-    let cancelled = false;
-    let objectUrl: string | null = null;
-    const controller = new AbortController();
-
-    // Fail only if the bytes haven't arrived yet — once the blob exists the
-    // iframe renders from memory and can't meaningfully hang, so a slow
-    // download must not flip an already-working preview to the fallback.
-    const timer = setTimeout(() => {
-      if (!cancelled && !objectUrl) setPreviewFailed(true);
-    }, 20000);
-
-    fetch(url, { credentials: "same-origin", signal: controller.signal })
-      .then((res) => {
-        if (!res.ok) throw new Error(`CV preview failed: ${res.status}`);
-        return res.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        // Non-PDF documents (doc/docx/…) can't be framed by the browser.
-        if (blob.type && !blob.type.includes("pdf")) throw new Error("not embeddable");
-        objectUrl = URL.createObjectURL(blob);
-        clearTimeout(timer);
-        setPdfBlobUrl(objectUrl);
-        setPreviewFailed(false);
-      })
-      .catch(() => {
-        if (!cancelled) setPreviewFailed(true);
-      });
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-      clearTimeout(timer);
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [url, isPdf]);
-
   // Escape: exit fullscreen first, then close
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -318,6 +337,12 @@ export function ResumeViewerModal({
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [isFullscreen, onClose]);
+
+  function chooseSource(source: CvSource) {
+    setPicked({ url, source });
+    // On a phone with the profile open, the CV is what was asked for.
+    setMobilePane("cv");
+  }
 
   async function handleAction(newStatus: string) {
     if (!onStatusChange) return;
@@ -410,8 +435,9 @@ export function ResumeViewerModal({
               </>
             )}
 
-            <MoreMenu url={url} displayName={displayName} />
-            <div className="w-px h-5 bg-border" />
+            {/* A candidate's CV has its own Download beside the tabs, for the version showing. */}
+            {!candidateCvId && <MoreMenu url={url} displayName={displayName} />}
+            {!candidateCvId && <div className="w-px h-5 bg-border" />}
             <Button
               variant="ghost"
               size="iconDense"
@@ -429,37 +455,45 @@ export function ResumeViewerModal({
           </div>
         </div>
 
-        {/* ── Phone pane switch (CV / Profile) — only when there is a profile panel ── */}
-        {hasRightPanel && (
-          <div className="reference-tablist grid grid-cols-2 sm:hidden" role="tablist" aria-label={t("panes")}>
-            {(["cv", "profile"] as const).map((pane) => (
-              <button
-                key={pane}
-                type="button"
-                role="tab"
-                aria-selected={mobilePane === pane}
-                onClick={() => setMobilePane(pane)}
-                className={`reference-tab ${mobilePane === pane ? "border-primary bg-secondary/40 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                {pane === "cv" ? t("tabCv") : t("tabProfile")}
-              </button>
-            ))}
-          </div>
+        {/* ── Which CV: the Standardised CV (Mployedin) made from the profile, or the original file.
+               On a phone this sits above the CV / Profile switch and spans the width. ── */}
+        {candidateCvId && (
+          <CvSourceBar
+            value={cvSource}
+            onChange={chooseSource}
+            builtReason={builtReason}
+            fileReason={fileReason}
+            emphasiseBuiltReason={isStaffViewer}
+            onRetryBuilt={retryBuilt}
+            sentWithApplication={originalIsBuilt ?? original.sentWithApplication}
+            compact={hasRightPanel && mobilePane === "profile"}
+            tabId={sourceTabId}
+            panelId={sourcePanelId}
+            alert={standardisedDownload.failed ? t("downloadError") : null}
+            download={
+              cvSource === "built"
+                ? { kind: "built", onClick: standardisedDownload.download, busy: standardisedDownload.downloading, disabled: built.status !== "ready" }
+                : fileReason ? null : { kind: "file", href: url, fileName: displayName }
+            }
+          />
         )}
 
-        {/* ── Which CV: the file, or the Mployedin CV made from the profile ── */}
-        {candidateCvId && (
-          <div className={`flex items-center gap-2 border-b bg-background px-3 py-2 sm:px-5 ${hasRightPanel && mobilePane === "profile" ? "hidden sm:flex" : ""}`}>
-            <div role="group" aria-label={t("cvSourceLabel")} className="inline-flex rounded-lg border border-border/70 bg-muted/40 p-0.5">
-              {(["file", "built"] as const).map((source) => (
+        {/* ── Phone pane switch (CV / Profile) — only when there is a profile panel ── */}
+        {hasRightPanel && (
+          // The wrapper hides it from sm: .reference-tablist sets display, which beats a sm:hidden on the list itself.
+          // data-fit lets the two tabs share the phone's width.
+          <div className="sm:hidden">
+            <div className="reference-tablist" data-fit role="tablist" aria-label={t("panes")}>
+              {(["cv", "profile"] as const).map((pane) => (
                 <button
-                  key={source}
+                  key={pane}
                   type="button"
-                  aria-pressed={cvSource === source}
-                  onClick={() => setCvSource(source)}
-                  className={`min-h-9 rounded-md px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${cvSource === source ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                  role="tab"
+                  aria-selected={mobilePane === pane}
+                  onClick={() => setMobilePane(pane)}
+                  className={`reference-tab ${mobilePane === pane ? "border-primary bg-secondary/40 text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  {source === "file" ? t("cvSourceFile") : t("cvSourceBuilt")}
+                  {pane === "cv" ? t("tabCv") : t("tabProfile")}
                 </button>
               ))}
             </div>
@@ -470,12 +504,28 @@ export function ResumeViewerModal({
         <div className="flex flex-1 overflow-hidden">
 
           {/* CV Viewer — padded, light bg. Hidden on phones while the profile pane is open. */}
-          <div className={`flex-1 overflow-auto bg-gray-50 p-3 sm:p-4 ${hasRightPanel && mobilePane === "profile" ? "hidden sm:block" : ""}`}>
+          <div
+            {...(candidateCvId ? { role: "tabpanel", id: sourcePanelId, "aria-labelledby": sourceTabId(cvSource) } : {})}
+            className={`flex-1 overflow-auto bg-gray-50 p-3 sm:p-4 ${hasRightPanel && mobilePane === "profile" ? "hidden sm:block" : ""}`}
+          >
             {candidateCvId && cvSource === "built" ? (
-              <MployedinCvView
-                url={`/api/employers/candidates/${candidateCvId}/cv?kind=built`}
-                fileName={`${candidateName || "CV"} - Mployedin CV.pdf`}
-              />
+              built.status === "ready" ? (
+                <MployedinCvView
+                  url={builtCvUrl ?? ""}
+                  data={built.data}
+                  showToolbar={false}
+                  templateOverride={templateOverride}
+                />
+              ) : (
+                <div className="flex min-h-full items-center justify-center" role="status" aria-label={t("builtCvLoading")}>
+                  <Loader2 className="size-6 animate-spin text-muted-foreground/50" aria-hidden="true" />
+                </div>
+              )
+            ) : candidateCvId && fileReason ? (
+              <div className="flex min-h-full flex-col items-center justify-center gap-2 px-6 text-center">
+                <FileText className="size-10 text-muted-foreground/60" aria-hidden="true" />
+                <p className="text-sm font-medium">{t(fileReason === "missing" ? "noOriginalFile" : "cvNotFound")}</p>
+              </div>
             ) : isPdf ? (
               previewFailed ? (
                 <div className="flex flex-col items-center justify-center min-h-full gap-3 text-center px-6">
@@ -488,7 +538,7 @@ export function ResumeViewerModal({
                   </div>
                   {url && (
                     <a
-                      href={url}
+                      href={withDownloadFlag(url)}
                       download={displayName}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -520,7 +570,7 @@ export function ResumeViewerModal({
                   </div>
                   {url && (
                     <a
-                      href={url}
+                      href={withDownloadFlag(url)}
                       download={displayName}
                       target="_blank"
                       rel="noopener noreferrer"

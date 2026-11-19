@@ -34,7 +34,8 @@ export default function AdminJobSeekerDetailPage() {
   const tr = useTranslations("adminJobSeekers");
   const [seeker, setSeeker] = useState<DetailSeeker | null>(null);
   const [state, setState] = useState<LoadState>("loading");
-  const [viewCv, setViewCv] = useState(false);
+  // Which CV the viewer opens on: the Standardised one (its default) or the uploaded file.
+  const [viewCv, setViewCv] = useState<"standardised" | "file" | null>(null);
   const [applications, setApplications] = useState<SeekerApplicationRow[]>([]);
 
   const load = useCallback(async () => {
@@ -104,7 +105,8 @@ export default function AdminJobSeekerDetailPage() {
             seeker={seeker}
             locale={locale}
             availabilityLabel={seeker.availabilityStatus ? (availabilityLabels[seeker.availabilityStatus] ?? seeker.availabilityStatus.replace(/_/g, " ")) : undefined}
-            onViewCv={() => setViewCv(true)}
+            onViewCv={() => setViewCv("standardised")}
+            onViewOriginalCv={() => setViewCv("file")}
           />
         </>
       )}
@@ -114,7 +116,8 @@ export default function AdminJobSeekerDetailPage() {
           url={`/api/employers/candidates/${seeker._id}/cv#cv.pdf`}
           candidateName={name}
           jobSeekerId={seeker._id}
-          onClose={() => setViewCv(false)}
+          initialSource={viewCv === "file" ? "file" : undefined}
+          onClose={() => setViewCv(null)}
         />
       )}
     </div>

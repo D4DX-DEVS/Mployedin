@@ -11,6 +11,9 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 
 const getGoogleIdToken = jest.fn();
 const preloadGoogleSignIn = jest.fn();
+// Public employer sign-up open (Admin → Settings → Employer onboarding): these
+// tests cover the pages as they were before that switch existed.
+jest.mock("@/hooks/useEmployerOnboarding", () => ({ useEmployerSignupOpen: () => true }));
 jest.mock("@/lib/firebase/googleSignIn", () => ({
   getGoogleIdToken: (...args: unknown[]) => getGoogleIdToken(...args),
   preloadGoogleSignIn: (...args: unknown[]) => preloadGoogleSignIn(...args),

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { canRoleCreateEmployers } from "@/lib/settings/employerOnboarding";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import User from "@/models/User";
@@ -30,6 +31,7 @@ import {
 } from "@/lib/agents/territoryCoverage";
 import { resolveEmployerAgents, unassignedEmployerFilter } from "@/lib/agents/employerAssignment";
 import { countAccountActivity, NO_ACTIVITY } from "@/lib/agents/assignedAccounts";
+import { effectiveRate } from "@/lib/commissions/effectiveRate";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -122,6 +124,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
     const employers = profiles.map((p) => {
       const user = p.userId as { _id?: unknown; name?: string; email?: string; isActive?: boolean; createdAt?: Date } | null;
+      const agentRate = effectiveRate(p.agentCommissionRates ?? [], new Date());
       return {
         _id: p._id,
         // The row is the company profile; /api/employers/[id] takes the user id.
@@ -144,6 +147,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         isAgentVerified: p.isAgentVerified ?? false,
         assignedToMe: assignedToMe.has(String(p._id)),
         activity: activity.get(String(p._id)) ?? NO_ACTIVITY,
+        agentRate: agentRate !== null ? { rate: agentRate, source: "employer_rate" as const } : { source: "none" as const },
       };
     });
 
@@ -209,6 +213,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       Employer.find(empQuery)
         .populate("userId", "name email isActive createdAt")
         .populate("agentId", "userId")
+        .select("+agentCommissionRates")
         .sort({ [sortField]: sortDir })
         .skip(skip)
         .limit(limit)
@@ -234,6 +239,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         const user = p.userId as { _id?: unknown; name?: string; email?: string; isActive?: boolean; createdAt?: Date } | null;
         const agentProfile = p.agentId as { _id?: unknown; userId?: unknown } | undefined;
         const agentUserId = agentProfile?.userId ? String(agentProfile.userId) : null;
+        const agentRate = effectiveRate(p.agentCommissionRates ?? [], new Date());
         return {
           _id: p._id,
           // Account holder's user id: plans and subscriptions are keyed on it.
@@ -260,6 +266,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
           inRegion: employerInRegion(p as { regionCityId?: unknown; regionStateId?: unknown }, book.territory),
           jobCount: 0,
           totalPaid: p.totalPaid ?? 0,
+          agentRate: agentRate !== null ? { rate: agentRate, source: "employer_rate" as const } : { source: "none" as const },
         };
       })
       .filter((e) => {
@@ -488,7 +495,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Attach verificationDocs and domainVerified from Employer model
   const userIds = users.map((u) => u._id);
   const employerProfiles = await Employer.find({ userId: { $in: userIds } })
-    .select("userId companyName companyEmail phone address country taxId industry verificationDocs domainVerified verificationLevel isAgentVerified agentId regionCityId regionStateId")
+    .select("userId companyName companyEmail phone address country taxId industry verificationDocs domainVerified verificationLevel isAgentVerified agentId regionCityId regionStateId agentCommissionRates")
     .lean();
 
   const profileMap = new Map(
@@ -509,6 +516,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     .filter((u) => profileMap.has(String(u._id))) // exclude orphaned employer Users without Employer profile
     .map((u) => {
     const profile = profileMap.get(String(u._id))!;
+    const agentRate = effectiveRate(profile.agentCommissionRates ?? [], new Date());
     return {
       ...u,
       employerProfileId: String(profile._id), // canonical Employer._id for tenant switch
@@ -526,6 +534,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       isAgentVerified: profile?.isAgentVerified ?? false,
       assignedAgent: agentByEmployer.get(String(profile._id)) ?? null,
       ...(regionByEmployer ? { region: regionByEmployer.get(String(profile._id)) ?? null } : {}),
+      agentRate: agentRate !== null ? { rate: agentRate, source: "employer_rate" as const } : { source: "none" as const },
     };
   });
 
@@ -557,6 +566,13 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     );
   }
 
+  // Admin → Settings → Employer onboarding can stop super agents or agents adding employers.
+  if (!(await canRoleCreateEmployers(ctx.role))) {
+    return NextResponse.json(
+      { code: "EMPLOYER_CREATE_DISABLED", error: "Adding employers is turned off for your role. Ask an admin." },
+      { status: 403 },
+    );
+  }
   await connectDB();
   const body = await validateBody(req, employerAdminCreateSchema);
   const { name, email, password, companyName, industry, location, phone, cityId } = body;

@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { Briefcase, GraduationCap, Loader2, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/shared/PhoneInput";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Autocomplete, TagAutocomplete } from "@/components/ui/tag-autocomplete";
@@ -38,11 +40,22 @@ interface Props {
   workStatus: string;
   area: SeekerAreaValue;
   onAreaChange: (area: SeekerAreaValue) => void;
+  /** Name and mobile go on the CV and answer onboarding's first step too — asked once, here. */
+  contact: CvContact;
+  onContactChange: (contact: CvContact) => void;
   /** A CV built before (read back from the profile): editing starts from it. */
   initial?: CvBuilderResult | null;
   /** Roles already on the profile, kept after the target role. */
   existingRoles?: string[];
   onDone: (result: CvBuilderResult) => void;
+}
+
+export interface CvContact {
+  name: string;
+  /** "+91" */
+  dialCode: string;
+  /** Digits only; "" = not given (optional on the CV). */
+  phone: string;
 }
 
 type StepKey = "quick" | "about" | "work" | "projects" | "education" | "skills" | "extras" | "review";
@@ -73,7 +86,7 @@ async function askAi<T>(body: Record<string, unknown>): Promise<{ data: T | null
 
 const filled = (list: BuiltJob[]) => list.filter((e) => e.title.trim());
 
-export function OnboardingCvBuilder({ open, onOpenChange, identity, workStatus, area, onAreaChange, initial = null, existingRoles = [], onDone }: Props) {
+export function OnboardingCvBuilder({ open, onOpenChange, identity, workStatus, area, onAreaChange, contact, onContactChange, initial = null, existingRoles = [], onDone }: Props) {
   const t = useTranslations("cvWizard");
   const [draft, setDraft] = useState<CvBuilderResult>(() => blankDraft(workStatus === "fresher"));
   const patch = useCallback((p: Partial<CvBuilderResult>) => setDraft((d) => ({ ...d, ...p })), []);
@@ -178,6 +191,7 @@ export function OnboardingCvBuilder({ open, onOpenChange, identity, workStatus, 
       organisation: e.organisation,
       targetRole: draft.targetRole,
       text: e.description,
+      skills: draft.skills.slice(0, 30),
     });
     setWriting(null);
     const text = data?.text;
@@ -233,7 +247,7 @@ export function OnboardingCvBuilder({ open, onOpenChange, identity, workStatus, 
   const linksOk = !linkProblem("LinkedIn", draft.linkedin) && !linkProblem("Portfolio", draft.portfolio)
     && draft.otherLinks.every((l) => !linkProblem(l.label, l.url));
   const canNext =
-    key === "about" ? draft.targetRole.trim().length > 1 && (draft.fresher || draft.experienceYears !== "")
+    key === "about" ? contact.name.trim().length > 1 && draft.targetRole.trim().length > 1 && (draft.fresher || draft.experienceYears !== "")
     : key === "work" ? filled(draft.jobs).length > 0
     : key === "extras" ? linksOk
     : true;
@@ -332,6 +346,24 @@ export function OnboardingCvBuilder({ open, onOpenChange, identity, workStatus, 
 
           {key === "about" && (
             <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="cvw-name">{t("about.nameLabel")}</Label>
+                  <Input id="cvw-name" className="h-11" autoComplete="name" maxLength={100} value={contact.name}
+                    onChange={(e) => onContactChange({ ...contact, name: e.target.value })} />
+                </div>
+                <PhoneInput
+                  id="cvw-phone"
+                  label={t("about.phoneLabel")}
+                  value={`${contact.dialCode} ${contact.phone}`}
+                  onChange={(value) => {
+                    const m = value.match(/^(\+\d+)\s*(.*)$/);
+                    onContactChange({ ...contact, dialCode: m?.[1] ?? contact.dialCode, phone: m?.[2]?.replace(/\D/g, "") ?? "" });
+                  }}
+                  onCountryChange={(c) => onContactChange({ ...contact, dialCode: c.dialCode })}
+                  hint={t("about.phoneHint")}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="cvw-role">{t("about.roleLabel")}</Label>
                 <Autocomplete id="cvw-role" type="roles" value={draft.targetRole} onChange={(v) => patch({ targetRole: v })} placeholder={t("about.rolePlaceholder")} />

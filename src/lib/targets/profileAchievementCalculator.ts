@@ -66,6 +66,13 @@ export interface EnrichedProfile {
   status: string;
   createdAt: string;
   updatedAt: string;
+  /** kpi3 (jobs, onboarded, revenue) or a legacy profit target, and who set it. */
+  targetType?: "profit" | "kpi3";
+  jobTarget?: number;
+  conversionTarget?: number;
+  revenueTarget?: number;
+  setByRole?: "admin" | "super_agent";
+  overriddenByAdmin?: boolean;
 
   // Enriched
   profitAchieved: number;
@@ -206,6 +213,13 @@ function toEnriched(profile: Record<string, unknown>, profit: OwnerProfit, now: 
     status: (profile.status as string) ?? "active",
     createdAt: String(profile.createdAt),
     updatedAt: String(profile.updatedAt),
+    // Carried through so the kpi3 screens see their targets (they were dropped here before).
+    targetType: profile.targetType as EnrichedProfile["targetType"],
+    jobTarget: profile.jobTarget as number | undefined,
+    conversionTarget: profile.conversionTarget as number | undefined,
+    revenueTarget: profile.revenueTarget as number | undefined,
+    setByRole: profile.setByRole as EnrichedProfile["setByRole"],
+    overriddenByAdmin: profile.overriddenByAdmin as boolean | undefined,
 
     profitAchieved,
     profitProgress,

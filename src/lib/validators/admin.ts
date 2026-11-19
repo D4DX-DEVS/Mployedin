@@ -62,6 +62,9 @@ export const superAgentUpdateSchema = z.object({
   email: commonSchemas.email.optional(),
   isActive: z.boolean().optional(),
   overrideCommissionRate: z.number().min(0).max(100).optional(),
+  /** First day the new override rate applies (UTC, YYYY-MM-DD); defaults to today. */
+  overrideRateEffectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  overrideRateReason: z.string().trim().max(500).optional(),
   defaultAgentCommissionRate: z.number().min(0).max(100).optional(),
   assignedCityIds: z.array(commonSchemas.objectId).max(200).optional(),
   assignedStateIds: z.array(commonSchemas.objectId).max(400).optional(),

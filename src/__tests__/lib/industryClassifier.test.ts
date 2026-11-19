@@ -150,6 +150,105 @@ describe("industryClassifier", () => {
     });
   });
 
+  describe("developer CVs (project descriptions must not decide the industry)", () => {
+    const d4dx = {
+      jobTitle: "MERN Stack Developer",
+      company: "D4DX Innovations LLP",
+      startDate: new Date("2025-06-01"),
+      isCurrent: true,
+      description: "Built REST APIs and dashboards.",
+    };
+    const techmaghi = {
+      jobTitle: "Full Stack Intern",
+      company: "TechMaghi",
+      startDate: new Date("2024-12-01"),
+      endDate: new Date("2025-05-01"),
+      isCurrent: false,
+      description:
+        "Built admin and user dashboards for managing real estate listings, offers, and property information.",
+    };
+
+    it("classifies the reported seeker (MERN developer, real-estate internship project) as IT", () => {
+      const result = classifyIndustry({ experience: [d4dx, techmaghi], skills: [], education: [] } as any);
+      expect(result.industry).toBe("Information Technology");
+    });
+
+    it("does not let a real-estate project in a tech-titled job's description decide", () => {
+      const result = classifyIndustry({ experience: [techmaghi], skills: [], education: [] } as any);
+      expect(result.industry).toBe("Information Technology");
+    });
+
+    it("keeps a real-estate job as real estate when the title is not technical", () => {
+      const result = classifyIndustry({
+        experience: [
+          {
+            jobTitle: "Sales Executive",
+            company: "Skyline",
+            startDate: new Date("2022-01-01"),
+            isCurrent: true,
+            description: "Sold real estate units to overseas buyers.",
+          },
+        ],
+        skills: [],
+        education: [],
+      } as any);
+      expect(result.industry).toBe("Real Estate/Property");
+    });
+
+    it("treats a property developer as real estate, not IT", () => {
+      const result = classifyIndustry({
+        experience: [
+          {
+            jobTitle: "Property Developer",
+            company: "Emaar Properties",
+            startDate: new Date("2020-01-01"),
+            isCurrent: true,
+            description: "Led residential projects.",
+          },
+        ],
+        skills: [],
+        education: [],
+      } as any);
+      expect(result.industry).toBe("Real Estate/Property");
+    });
+
+    it("uses the employer's industry for a developer at a bank", () => {
+      const result = classifyIndustry({
+        experience: [
+          { jobTitle: "Software Developer", company: "First Gulf Bank", startDate: new Date("2021-01-01"), isCurrent: true },
+        ],
+        skills: [],
+        education: [],
+      } as any);
+      expect(result.industry).toBe("Banking/Financial Services");
+    });
+
+    it("recognises tech skills when there is no work history", () => {
+      const result = classifyIndustry({
+        experience: [],
+        skills: ["JavaScript", "TypeScript", "React", "Node.js", "MongoDB"],
+        education: [],
+      } as any);
+      expect(result.industry).toBe("Information Technology");
+      expect(result.source).toBe("skills");
+    });
+
+    it("does not call two generic tech skills an IT career", () => {
+      const result = classifyIndustry({ experience: [], skills: ["SQL", "Excel"], education: [] } as any);
+      expect(result.industry).toBeUndefined();
+    });
+
+    it("uses a computer-science degree as a last resort", () => {
+      const result = classifyIndustry({
+        experience: [],
+        skills: [],
+        education: [{ degree: "B.Tech", institution: "X", field: "Computer Science and Engineering" }],
+      } as any);
+      expect(result.industry).toBe("Information Technology");
+      expect(result.source).toBe("education");
+    });
+  });
+
   describe("INDUSTRY_KEY_TO_INDUSTRIES", () => {
     it("should have all 20 industry keys mapped to Industries names", () => {
       const keys = Object.keys(INDUSTRY_KEY_TO_INDUSTRIES);

@@ -153,6 +153,8 @@ const lineItemSchema = z.object({
   unitPrice: z.number().min(0),
   amount: z.number().min(0),
   jobId: commonSchemas.objectId.optional(),
+  /** The hire this line bills (lib/invoices/linePlacements). */
+  placementId: commonSchemas.objectId.optional(),
 });
 
 const billingDetailsSchema = z.object({

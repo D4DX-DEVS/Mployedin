@@ -436,6 +436,8 @@ export const authConfig: NextAuthConfig = {
               locale: dbUser.locale,
               isEmailVerified,
               isOnboarded: false,
+              // This sign-in created the account (read by the public apply card).
+              isNewAccount: true,
             };
           } else {
             const update: Record<string, unknown> = {};
@@ -512,6 +514,7 @@ export const authConfig: NextAuthConfig = {
             locale: dbUser.locale,
             isEmailVerified,
             isOnboarded: fbJobSeeker?.isOnboarded ?? false,
+            isNewAccount: false,
             permissionMode: dbUser.permissionMode,
             customPermissions: dbUser.customPermissions,
           };
@@ -824,6 +827,8 @@ export const authConfig: NextAuthConfig = {
             locale: user.locale,
             isEmailVerified: true,
             isOnboarded: jobSeeker?.isOnboarded ?? false,
+            // False after the E11000 race too: that account was someone else's insert.
+            isNewAccount: isNewUser,
           };
         } catch (err) {
           // Typed refusals (consent_required) carry the code the page acts on.
@@ -996,6 +1001,12 @@ export const authConfig: NextAuthConfig = {
         token.locale = ((user as unknown) as { locale: string }).locale ?? "en";
         token.isEmailVerified = ((user as unknown) as { isEmailVerified?: boolean }).isEmailVerified ?? false;
         token.isOnboarded = ((user as unknown) as { isOnboarded?: boolean }).isOnboarded ?? false;
+        // Whether this sign-in created the account, when the provider says
+        // (Google via Firebase, e-mail code). The public apply card reads it so a
+        // CV picked there is never read over an existing account's profile.
+        const isNewAccount = ((user as unknown) as { isNewAccount?: boolean }).isNewAccount;
+        if (typeof isNewAccount === "boolean") token.isNewAccount = isNewAccount;
+        else delete token.isNewAccount;
         token.permissionMode = ((user as unknown) as { permissionMode?: string }).permissionMode ?? "role_default";
         token.customPermissions = ((user as unknown) as { customPermissions?: Record<string, string[]> }).customPermissions ?? undefined;
         // Set JWT expiry based on rememberMe: 3 days if checked, 1 hour otherwise
@@ -1380,6 +1391,7 @@ export const authConfig: NextAuthConfig = {
         (session.user as unknown as { permissionMode: string }).permissionMode = (token.permissionMode as string) ?? "role_default";
         (session.user as unknown as { customPermissions?: Record<string, string[]> }).customPermissions = token.customPermissions as Record<string, string[]> | undefined;
         (session.user as unknown as { isOnboarded: boolean }).isOnboarded = (token.isOnboarded as boolean) ?? false;
+        if (typeof token.isNewAccount === "boolean") (session.user as unknown as { isNewAccount?: boolean }).isNewAccount = token.isNewAccount;
         (session.user as unknown as { isEmailVerified: boolean }).isEmailVerified = (token.isEmailVerified as boolean) ?? false;
         (session.user as unknown as { termsPending: boolean }).termsPending = token.termsPending === true;
         (session.user as unknown as { provider?: string }).provider = (token.provider as string) ?? undefined;

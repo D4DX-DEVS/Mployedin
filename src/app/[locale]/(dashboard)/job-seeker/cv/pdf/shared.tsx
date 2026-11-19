@@ -9,8 +9,9 @@ import type { CVForm, FormattingOptions, DateFormat } from "../types";
 import { formatDateValue, getBulletChar, getSectionOrder, normalizeUrl } from "../types";
 import { parseRichText } from "../rich-text";
 import { toSafeImageSrc } from "@/lib/images/externalAvatar";
-import { CV_FONTS_BY_ID, cvFontFile, pdfFamilies, type CvFont } from "../fonts";
+import { CV_ARABIC_FONT, CV_FONTS_BY_ID, cvFontFile, pdfFamilies, pdfFamilyNames, pdfFontForText, type CvFont } from "../fonts";
 import { usePdfLayout } from "./pdf-layout";
+import { hasArabicScript } from "@/lib/cv/scriptDirection";
 
 export type CVPDFLabels = {
   yourName: string;
@@ -56,13 +57,14 @@ export function dateRange(start: string, end: string, isCurrent: boolean, df: Da
  * numbered lists, and bold/italic/underline inline formatting preserved.
  */
 export function RichPdfText({
-  value, style,
-}: { value: string; style?: Style }) {
+  value, style, rtl = false,
+}: { value: string; style?: Style; /** Right-to-left paragraphs: direction rtl, flush right, bullets at the right edge. */ rtl?: boolean }) {
   const { layout, formatting } = usePdfLayout();
   if (!value) return null;
   const blocks = parseRichText(value);
   const bullet = getBulletChar(formatting);
   const align: Style = layout.textAlign === "justify" ? { textAlign: "justify" } : {};
+  const direction: Style = rtl ? { direction: "rtl", ...(layout.textAlign === "justify" ? {} : { textAlign: "right" as const }) } : {};
   if (blocks.length === 0) return null;
   let numberCounter = 0;
   return (
@@ -80,13 +82,26 @@ export function RichPdfText({
             {span.text}
           </Text>
         ));
-        let prefix = "";
-        if (block.type === "bullet") prefix = `${bullet}  `;
-        else if (block.type === "number") prefix = `${++numberCounter}.  `;
+        let marker = "";
+        if (block.type === "bullet") marker = bullet;
+        else if (block.type === "number") marker = `${++numberCounter}.`;
         else numberCounter = 0;
+        // A paragraph with Arabic in it is drawn in the Arabic face alone (see pdfFontForText).
+        const blockText = block.spans.map((span) => span.text).join("");
+        const face = hasArabicScript(blockText) ? { fontFamily: pdfFontForText(blockText, []) } : {};
+        if (rtl && marker) {
+          // The marker is a node of its own at the right edge: a wrapped line stays beside the text
+          // (hanging bullet) and the marker takes no part in the Arabic line's reordering.
+          return (
+            <View key={bi} style={{ flexDirection: "row-reverse", alignItems: "flex-start", gap: 4 }}>
+              <Text style={{ ...(style as object), ...face }}>{marker}</Text>
+              <Text style={{ ...(style as object), ...face, ...align, ...direction, flexShrink: 1 }}>{inline}</Text>
+            </View>
+          );
+        }
         return (
-          <Text key={bi} style={{ ...(style as object), ...align }}>
-            {prefix}{inline}
+          <Text key={bi} style={{ ...(style as object), ...face, ...align, ...direction }}>
+            {marker ? `${marker}  ` : ""}{inline}
           </Text>
         );
       })}
@@ -143,7 +158,7 @@ export function registerCvPdfFonts(): void {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const url = (font: CvFont, weight: 400 | 700, style: "normal" | "italic") => `${origin}${cvFontFile(font, weight, style)}`;
   for (const font of Object.values(CV_FONTS_BY_ID)) {
-    const names = pdfFamilies(font);
+    const names = pdfFamilyNames(font);
     Font.register({
       family: names.regular,
       fonts: [
@@ -173,22 +188,87 @@ export function registerCvPdfFonts(): void {
       ],
     });
   }
+  registerArabicFallback(url);
   fontsRegistered = true;
+}
+
+/**
+ * The Arabic face behind every Latin one (see CV_ARABIC_FONT). Three families,
+ * like the Latin fonts, so each stack in fonts.ts pdfFamilies() finds a face
+ * for its weight. There is no Arabic italic: italic uses the upright files.
+ */
+function registerArabicFallback(url: (font: CvFont, weight: 400 | 700, style: "normal" | "italic") => string): void {
+  const names = pdfFamilyNames(CV_ARABIC_FONT);
+  const regular = url(CV_ARABIC_FONT, 400, "normal");
+  const bold = url(CV_ARABIC_FONT, 700, "normal");
+  Font.register({
+    family: names.regular,
+    fonts: [
+      { src: regular, fontWeight: 400, fontStyle: "normal" },
+      { src: bold, fontWeight: 700, fontStyle: "normal" },
+      { src: regular, fontWeight: 400, fontStyle: "italic" },
+      { src: bold, fontWeight: 700, fontStyle: "italic" },
+    ],
+  });
+  Font.register({
+    family: names.bold,
+    fonts: [
+      { src: bold, fontWeight: 400, fontStyle: "normal" },
+      { src: bold, fontWeight: 700, fontStyle: "normal" },
+      { src: bold, fontWeight: 400, fontStyle: "italic" },
+      { src: bold, fontWeight: 700, fontStyle: "italic" },
+    ],
+  });
+  Font.register({
+    family: names.italic,
+    fonts: [
+      { src: regular, fontWeight: 400, fontStyle: "normal" },
+      { src: bold, fontWeight: 700, fontStyle: "normal" },
+      { src: regular, fontWeight: 400, fontStyle: "italic" },
+      { src: bold, fontWeight: 700, fontStyle: "italic" },
+    ],
+  });
+}
+
+/**
+ * Make the next PDF parse the CV font files afresh (call it before each PDF).
+ *
+ * fontkit keeps one glyph object per glyph id for the life of a parsed font,
+ * stamped with the code points of the FIRST text that used it. react-pdf
+ * reorders right-to-left text using those code points, so a later phrase that
+ * reaches the same glyph with a different number of letters (the lam-alef
+ * ligature, letters carrying harakat) makes it throw "Cannot read properties
+ * of undefined (reading 'id')" or order the letters wrongly. Fresh fonts per
+ * PDF stop one document's glyphs from poisoning the next.
+ *
+ * Font.reset() is not a substitute: it keeps each font's load promise, so
+ * nothing is parsed again, and it also wipes the built-in Helvetica.
+ */
+export function refreshCvPdfFonts(): void {
+  for (const [name, family] of Object.entries(Font.getRegisteredFonts())) {
+    if (!name.startsWith("CV ")) continue;
+    for (const source of family.sources) {
+      source.data = null;
+      source.loadResultPromise = null;
+    }
+  }
 }
 
 function cvFont(formatting: FormattingOptions): CvFont {
   return CV_FONTS_BY_ID[formatting.font] ?? CV_FONTS_BY_ID.inter;
 }
 
-export function getPDFFont(formatting: FormattingOptions): string {
+/* Every family is a stack [the font's own face, the Arabic face]: react-pdf
+   draws each character with the first face that has it. */
+export function getPDFFont(formatting: FormattingOptions): string[] {
   return pdfFamilies(cvFont(formatting)).regular;
 }
 
-export function getPDFBoldFont(formatting: FormattingOptions): string {
+export function getPDFBoldFont(formatting: FormattingOptions): string[] {
   return pdfFamilies(cvFont(formatting)).bold;
 }
 
-export function getPDFItalicFont(formatting: FormattingOptions): string {
+export function getPDFItalicFont(formatting: FormattingOptions): string[] {
   return pdfFamilies(cvFont(formatting)).italic;
 }
 
@@ -196,7 +276,7 @@ export function getPDFItalicFont(formatting: FormattingOptions): string {
    PDF STYLES (parameterized by theme)
    ═══════════════════════════════════════ */
 
-export function makeStyles(primary: string, scale: number, gap: string, font: string, boldFont: string, margin: number, lineHeight: number) {
+export function makeStyles(primary: string, scale: number, gap: string, font: string[], boldFont: string[], margin: number, lineHeight: number) {
   const base = 10 * scale;
   return StyleSheet.create({
     page:       { padding: margin, fontFamily: font, fontSize: base, color: "#1a1a1a", lineHeight },
@@ -340,15 +420,17 @@ function PdfIcon({ name, size, color }: { name: IconName; size: number; color: s
 }
 
 export function PdfContactBar({
-  data, scale, color = "#6b7280", align = "start", vertical = false, fontFamily, style,
+  data, scale, color = "#6b7280", align = "start", vertical = false, rtl = false, fontFamily, style,
 }: {
   data: CVForm;
   scale: number;
   color?: string;
   align?: "start" | "center";
   vertical?: boolean;
-  /** e.g. "Courier" for the Technical template's mono contact line. */
-  fontFamily?: string;
+  /** Mirror the bar: items run from the right edge, each icon sits right of its text. */
+  rtl?: boolean;
+  /** e.g. "Courier" for the Technical template's mono contact line (a stack, so Arabic still draws). */
+  fontFamily?: string | string[];
   style?: Style;
 }) {
   const items: { icon: IconName; url?: string; label: string }[] = [];
@@ -366,9 +448,9 @@ export function PdfContactBar({
   return (
     <View
       style={{
-        flexDirection: vertical ? "column" : "row",
+        flexDirection: vertical ? "column" : rtl ? "row-reverse" : "row",
         flexWrap: "wrap",
-        alignItems: vertical ? "flex-start" : "center",
+        alignItems: vertical ? (rtl ? "flex-end" : "flex-start") : "center",
         justifyContent: align === "center" && !vertical ? "center" : "flex-start",
         columnGap: 10 * scale,
         rowGap: 3 * scale,
@@ -377,9 +459,11 @@ export function PdfContactBar({
     >
       {items.map((item, i) => {
         const href = item.url ? normalizeUrl(item.url) : "";
-        const text = <Text style={{ fontSize, color, lineHeight: 1.2, ...(fontFamily ? { fontFamily } : {}) }}>{item.label}</Text>;
+        // A label with Arabic in it (a city, a nationality) is drawn in the Arabic face alone.
+        const face = hasArabicScript(item.label) ? pdfFontForText(item.label, []) : fontFamily;
+        const text = <Text style={{ fontSize, color, lineHeight: 1.2, ...(face ? { fontFamily: face } : {}) }}>{item.label}</Text>;
         return (
-          <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+          <View key={i} style={{ flexDirection: rtl ? "row-reverse" : "row", alignItems: "center", gap: 3 }}>
             <PdfIcon name={item.icon} size={iconSize} color={color} />
             {href ? <Link src={href} style={{ textDecoration: "none", color }}>{text}</Link> : text}
           </View>

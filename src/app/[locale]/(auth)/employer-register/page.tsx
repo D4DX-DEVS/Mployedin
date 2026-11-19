@@ -12,6 +12,7 @@ import { CityPicker } from "@/components/shared/CityPicker";
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 import { normalizeWebsiteUrl } from "@/lib/validators/website";
 import { readCookieChoice } from "@/lib/gdpr/cookieChoice";
+import { EmployerSignupGate } from "./_components/EmployerSignupGate";
 
 type VerificationLevel = "basic" | "standard" | "premium";
 
@@ -179,6 +180,16 @@ function getCountryOptions(locale: string) {
 }
 
 export default function EmployerRegisterPage() {
+  const searchParams = useSearchParams();
+  const params = useParams<{ locale?: string }>();
+  return (
+    <EmployerSignupGate locale={params?.locale ?? "en"} referralCode={searchParams.get("ref") ?? ""}>
+      <EmployerRegisterForm />
+    </EmployerSignupGate>
+  );
+}
+
+function EmployerRegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams<{ locale?: string }>();
@@ -186,6 +197,7 @@ export default function EmployerRegisterPage() {
   const t = useTranslations("employerRegister");
   const tErrors = useTranslations("formErrors");
   const tc = useTranslations("common");
+  const tSignup = useTranslations("employerAccess.signup");
   const referralCode = searchParams.get("ref") ?? "";
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -352,19 +364,26 @@ export default function EmployerRegisterPage() {
       const contentType = res.headers.get("content-type") ?? "";
       if (!res.ok) {
         let serverMessage: string | undefined;
+        let serverCode: string | undefined;
         if (contentType.includes("application/json")) {
           try {
             const data = await res.json();
             // Middleware (csrf.ts) uses { error }, route handler uses { message }.
             // Accept either so we never mask the real reason again.
             serverMessage = data?.message ?? data?.error;
+            serverCode = typeof data?.code === "string" ? data.code : undefined;
           } catch {
             /* body wasn't valid JSON despite the header — fall through */
           }
         }
         // Status-specific fallbacks so the user at least knows the category
         // of failure even if the body was empty/unparseable.
+        // Admin turned employer sign-up or invites off while the form was open.
+        const tOnboarding = serverCode === "EMPLOYER_SIGNUP_CLOSED" ? "closedBody"
+          : serverCode === "EMPLOYER_INVITES_PAUSED" ? "invitePausedBody"
+          : serverCode === "EMPLOYER_INVITE_INVALID" ? "inviteInvalidBody" : null;
         setError(
+          (tOnboarding ? tSignup(tOnboarding) : undefined) ??
           serverMessage ??
             (res.status >= 500
               ? t("validation.serverError")
