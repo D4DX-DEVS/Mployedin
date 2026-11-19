@@ -97,7 +97,7 @@ export function PdfEntryRow({
 
 /** PDF twin of SkillList: chips (template's own), comma list or bullet columns. */
 export function PdfSkillList({
-  skills, chip, fontSize, color = "#374151", columns = 3, chipGap = 4, templateDefault = "chips", separator = ", ", style,
+  skills, chip, fontSize, color = "#374151", columns = 3, chipGap = 4, templateDefault = "chips", separator = ", ", rtl = false, style,
 }: {
   skills: string[];
   chip: (skill: string, index: number) => React.ReactNode;
@@ -108,26 +108,30 @@ export function PdfSkillList({
   templateDefault?: "chips" | "comma" | "columns";
   /** Joiner for the template's own list look (e.g. " · "); an explicit Comma list uses ", ". */
   separator?: string;
+  /** Right-to-left: chips and columns run from the right edge, text is flush right. */
+  rtl?: boolean;
   /** Extra text style for the list line (e.g. centred). */
   style?: Style;
 }) {
   const { layout, formatting } = usePdfLayout();
   const choice = pickAuto(layout.skillsStyle, templateDefault);
   if (choice === "comma") {
-    return <Text style={{ fontSize, color, ...(style as object) }}>{skills.join(layout.skillsStyle === "auto" ? separator : ", ")}</Text>;
+    const direction: Style = rtl ? { direction: "rtl", textAlign: "right" } : {};
+    return <Text style={{ fontSize, color, ...direction, ...(style as object) }}>{skills.join(layout.skillsStyle === "auto" ? separator : ", ")}</Text>;
   }
   if (choice === "columns") {
     const bullet = getBulletChar(formatting);
+    const direction: Style = rtl ? { direction: "rtl", textAlign: "right" } : {};
     return (
-      <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: 2 }}>
+      <View style={{ flexDirection: rtl ? "row-reverse" : "row", flexWrap: "wrap", rowGap: 2 }}>
         {skills.map((s, i) => (
-          <View key={i} style={{ width: `${100 / columns}%`, flexDirection: "row", gap: 3, paddingRight: 6 }}>
+          <View key={i} style={{ width: `${100 / columns}%`, flexDirection: rtl ? "row-reverse" : "row", gap: 3, ...(rtl ? { paddingLeft: 6 } : { paddingRight: 6 }) }}>
             <Text style={{ fontSize, color }}>{bullet}</Text>
-            <Text style={{ fontSize, color, flexShrink: 1 }}>{s}</Text>
+            <Text style={{ fontSize, color, flexShrink: 1, ...direction }}>{s}</Text>
           </View>
         ))}
       </View>
     );
   }
-  return <View style={{ flexDirection: "row", flexWrap: "wrap", gap: chipGap }}>{skills.map((s, i) => <React.Fragment key={i}>{chip(s, i)}</React.Fragment>)}</View>;
+  return <View style={{ flexDirection: rtl ? "row-reverse" : "row", flexWrap: "wrap", gap: chipGap }}>{skills.map((s, i) => <React.Fragment key={i}>{chip(s, i)}</React.Fragment>)}</View>;
 }

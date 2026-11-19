@@ -7,7 +7,6 @@
 
    Nothing here loads react-pdf until a PDF is actually made. */
 
-import { createElement } from "react";
 import type { CVForm, FormattingOptions, LanguageSkill } from "./types";
 import { getVisibleForm, restoreCvDesign } from "./types";
 import type { CVPDFLabels } from "./pdf/shared";
@@ -15,6 +14,8 @@ import { plainTextToHtml } from "./rich-text";
 import { cleanSocialLinks, type ProfileLink } from "@/lib/jobSeeker/socialLinks";
 import { cleanSkills } from "@/lib/jobSeeker/tagList";
 import { csrfFetch } from "@/lib/security/csrf-client";
+import { renderCvPdfBlob } from "@/lib/cv/renderCvPdf";
+import { cvHasArabic } from "@/lib/cv/scriptDirection";
 
 // The apply dialogs' key for "send the CV I built here" lives with the other
 // CV choices; re-exported for the callers that already import it from here.
@@ -139,16 +140,31 @@ function hashText(value: string): string {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, "0");
 }
 
-/** Identifies one rendering of the CV: its content, template, formatting and labels. */
+/**
+ * Which drawing of Arabic a stored PDF was made with. Built CVs stored before
+ * the Arabic fixes (Arabic font, right-to-left layout) are broken for Arabic
+ * seekers; counting this into the hash of a CV that has Arabic in it makes
+ * those seekers get a fresh copy on their next apply. 1 was the old drawing,
+ * so the first fixed one is 2; raise it when Arabic drawing changes again.
+ */
+export const ARABIC_RENDER_VERSION = 2;
+
+/**
+ * Identifies one rendering of the CV: its content, template, formatting and
+ * labels. A CV with Arabic in it (content or labels) also counts the Arabic
+ * render version. A CV without Arabic hashes exactly as it always did, so no
+ * stored English PDF is invalidated.
+ */
 export function builtCvHash(input: {
   data: CVForm;
   templateId: string;
   formatting: unknown;
   labels: unknown;
-}): string {
+}, arabicRenderVersion: number = ARABIC_RENDER_VERSION): string {
   // A signed photo link gets a new signature on every read; the photo is the same.
   const data = { ...input.data, photo: input.data.photo.split("?")[0] };
-  return hashText(JSON.stringify({ data, templateId: input.templateId, formatting: input.formatting, labels: input.labels }));
+  const rendering = { data, templateId: input.templateId, formatting: input.formatting, labels: input.labels };
+  return hashText(JSON.stringify(cvHasArabic(input) ? { ...rendering, arabicRenderVersion } : rendering));
 }
 
 export interface BuiltCvDocument {
@@ -200,16 +216,8 @@ async function loadDocuments(): Promise<BuiltCvDocument[] | null> {
   }
 }
 
-async function renderPdf(input: BuiltCvRenderInput): Promise<Blob> {
-  const [{ pdf }, { CVPDFDocument }] = await Promise.all([
-    import("@react-pdf/renderer"),
-    import("./cv-pdf-document"),
-  ]);
-  // CVPDFDocument returns react-pdf's <Document>; `pdf` is typed for that
-  // element itself, not for a component wrapping it (JSX hid this in the builder).
-  const document = createElement(CVPDFDocument, input) as unknown as Parameters<typeof pdf>[0];
-  return pdf(document).toBlob();
-}
+// The same render function the standardised CV (lib/cv/renderBuiltCv.ts) uses.
+const renderPdf = (input: BuiltCvRenderInput): Promise<Blob> => renderCvPdfBlob(input);
 
 async function upload(file: File, builtHash: string): Promise<BuiltCvDocument> {
   const fd = new FormData();

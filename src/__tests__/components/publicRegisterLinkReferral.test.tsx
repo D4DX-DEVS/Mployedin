@@ -24,6 +24,12 @@ jest.mock("next/image", () => ({
   default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} alt={props.alt ?? ""} />,
 }));
 
+// Admin → Settings → Employer onboarding: public employer sign-up switch.
+let mockEmployerSignupOpen = true;
+jest.mock("@/hooks/useEmployerOnboarding", () => ({
+  useEmployerSignupOpen: () => mockEmployerSignupOpen,
+}));
+
 import PublicHeader from "@/components/shared/PublicHeader";
 import PublicFooter from "@/components/shared/PublicFooter";
 import { clearPendingReferral, setPendingReferral } from "@/lib/referrals/pendingReferral";
@@ -64,6 +70,21 @@ describe("public header register link", () => {
     );
     expect(employer.length).toBeGreaterThan(0);
     employer.forEach((a) => expect(a.getAttribute("href")).toBe("/en/employer-register"));
+  });
+});
+
+describe("public employer links follow the admin switch", () => {
+  afterEach(() => {
+    mockEmployerSignupOpen = true;
+  });
+
+  it("send employers to the contact page while public employer sign-up is off", () => {
+    mockEmployerSignupOpen = false;
+    render(<PublicHeader locale="en" />);
+    render(<PublicFooter locale="en" />);
+    const hrefs = Array.from(document.querySelectorAll<HTMLAnchorElement>("a")).map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.some((h) => h.includes("employer-register"))).toBe(false);
+    expect(hrefs).toContain("/en/contact");
   });
 });
 

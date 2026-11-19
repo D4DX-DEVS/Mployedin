@@ -12,6 +12,7 @@ import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useRowSelection } from "@/hooks/useRowSelection";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,8 @@ import { ReferSeekerDialog } from "@/components/features/agent/ReferSeekerDialog
 import { SeekerDetailPanel } from "@/components/features/super-agent/SeekerDetailPanel";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
+import type { CvSource } from "@/components/shared/CvSourceBar";
+import { SeekerCvExport, SeekerPageCheckbox, SeekerRowCheckbox, SeekerSelectAllRow } from "@/components/features/super-agent/SeekerCvExport";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
@@ -105,6 +108,9 @@ function getRole(s: JobSeeker): { title: string; kind: "held" | "preferred" | "s
   return undefined;
 }
 
+const seekerIdOf = (s: JobSeeker) => s._id;
+const seekerNameOf = (s: JobSeeker) => s.userId?.name;
+
 // These will be built inside the component to use translations
 
 export default function AgentJobSeekersPage() {
@@ -112,6 +118,7 @@ export default function AgentJobSeekersPage() {
   const t = useTranslations("agentJobSeekers");
   const tf = useTranslations("formErrors");
   const tc = useTranslations("common");
+  const tSelect = useTranslations("selectionBar");
   // The stated total, else the dated jobs added up; null when neither says.
   const experienceLabel = (s: JobSeeker): string | null => {
     const total = totalExperience(s.totalExperienceYears, s.experience ?? []);
@@ -142,7 +149,10 @@ export default function AgentJobSeekersPage() {
   // Client report 2026-10-30: an agent could not open a seeker's profile or
   // CV from this list. The super agent's read-only panel is reused.
   const [profileSeekerId, setProfileSeekerId] = useState<string | null>(null);
-  const [cvSeeker, setCvSeeker] = useState<{ id: string; name: string } | null>(null);
+  // `source` "file" opens the uploaded CV; without it the viewer opens on the Standardised one.
+  const [cvSeeker, setCvSeeker] = useState<{ id: string; name: string; source?: CvSource } | null>(null);
+  // Ticked rows, kept whole across pages, for the CV export.
+  const selection = useRowSelection<JobSeeker>(seekerIdOf);
   // A task's linked candidate opens here as ?profile=<id>. The param is dropped
   // once read so closing the panel and reloading don't reopen it.
   useEffect(() => {
@@ -699,6 +709,9 @@ export default function AgentJobSeekersPage() {
         onSelect={(next) => { setIndustry(next); pagination.resetPage(); }}
       />
 
+      {seekers.length > 0 && (
+        <SeekerSelectAllRow state={selection.pageState(seekers)} onToggle={() => selection.togglePage(seekers)} />
+      )}
       <PhoneRecordList
         className="sm:hidden"
         label={t("heroTitle")}
@@ -726,6 +739,11 @@ export default function AgentJobSeekersPage() {
           const allFacts = [...factsLine1, ...factsLine2].filter(Boolean) as string[];
           return {
             key: s._id,
+            selection: {
+              checked: selection.isSelected(s._id),
+              onToggle: () => selection.toggle(s),
+              label: tSelect("selectRow", { name: s.userId?.name ?? "—" }),
+            },
             leading: <UserAvatar name={s.userId?.name} email={s.userId?.email} className="h-8 w-8 shrink-0" colorful />,
             title: (
               <button
@@ -788,6 +806,9 @@ export default function AgentJobSeekersPage() {
         <Table className="compact-phone-cards" data-mobile-table="scroll">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="w-10">
+                <SeekerPageCheckbox state={selection.pageState(seekers)} onToggle={() => selection.togglePage(seekers)} />
+              </TableHead>
               <TableHead>{tc("name")}</TableHead>
               <TableHead className="hidden lg:table-cell">{t("tableHeaderTitle")}</TableHead>
               <TableHead className="hidden lg:table-cell">{tc("industry")}</TableHead>
@@ -799,10 +820,10 @@ export default function AgentJobSeekersPage() {
           </TableHeader>
           <TableBody>
             {loading && seekers.length === 0 ? (
-              <TableBodySkeleton rows={5} cols={7} />
+              <TableBodySkeleton rows={5} cols={8} />
             ) : seekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={7} className="py-12">
+                <TableCell colSpan={8} className="py-12">
                   {emptyState}
                 </TableCell>
               </TableRow>
@@ -810,7 +831,14 @@ export default function AgentJobSeekersPage() {
               const isPremium = (s.badges ?? []).includes("premium");
 
               return (
-                <TableRow key={s._id} className="group">
+                <TableRow key={s._id} className={`group ${selection.isSelected(s._id) ? "bg-primary/5" : ""}`}>
+                  <TableCell>
+                    <SeekerRowCheckbox
+                      checked={selection.isSelected(s._id)}
+                      onToggle={() => selection.toggle(s)}
+                      name={s.userId?.name ?? "—"}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex min-w-0 items-start gap-3">
                       <UserAvatar name={s.userId?.name} email={s.userId?.email} className="h-9 w-9 shrink-0" colorful />
@@ -965,6 +993,14 @@ export default function AgentJobSeekersPage() {
         />
       )}
 
+      {/* "N selected · Clear · Export CVs": sticky below the list while rows are ticked. */}
+      <SeekerCvExport
+        selection={selection}
+        idOf={seekerIdOf}
+        nameOf={seekerNameOf}
+        columns={exportColumns as unknown as ExportColumn<JobSeeker>[]}
+      />
+
       {/* A seeker's profile, docked beside the list (full width on phones). */}
       <Dialog open={profileSeekerId !== null && !cvSeeker} onOpenChange={(open) => { if (!open) setProfileSeekerId(null); }}>
         <DialogContent side="end" className="flex flex-col gap-0 p-0 sm:max-w-xl" aria-describedby={undefined}>
@@ -974,7 +1010,12 @@ export default function AgentJobSeekersPage() {
       </Dialog>
       {/* Closing the CV brings the profile back where it was. */}
       {cvSeeker && (
-        <ResumeViewerModal url={`/api/employers/candidates/${cvSeeker.id}/cv#cv.pdf`} candidateName={cvSeeker.name} onClose={() => setCvSeeker(null)} />
+        <ResumeViewerModal
+          url={`/api/employers/candidates/${cvSeeker.id}/cv#cv.pdf`}
+          candidateName={cvSeeker.name}
+          initialSource={cvSeeker.source}
+          onClose={() => setCvSeeker(null)}
+        />
       )}
 
       <CrudModal

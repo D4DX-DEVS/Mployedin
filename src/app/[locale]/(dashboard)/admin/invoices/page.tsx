@@ -39,6 +39,7 @@ import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailV
 import { RevenueKPICards } from "@/components/features/invoices/RevenueKPICards";
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
 import { UninvoicedPlacementsQueue } from "@/components/features/invoices/UninvoicedPlacementsQueue";
+import { LinkHiresDialog } from "@/app/[locale]/(dashboard)/admin/invoices/_components/LinkHiresDialog";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -137,8 +138,8 @@ export default function AdminInvoicesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   // In the URL so dashboard rows can deep-link and back/refresh keep the view.
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "", { allow: INVOICE_STATUSES });
-  /** Rows needing a person: an unverified payment notice, or an open dispute. */
-  const [attentionFilter, setAttentionFilter] = useUrlFilter("attention", "", { allow: ["payment_notice", "dispute"] });
+  /** Rows needing a person: an unverified payment notice, an open dispute, or a recruitment invoice line not yet linked to a hire. */
+  const [attentionFilter, setAttentionFilter] = useUrlFilter("attention", "", { allow: ["payment_notice", "dispute", "unlinked_hire"] });
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "createdAt", { allow: ["createdAt", "dueDate", "totalAmount", "invoiceNumber"] });
   const [sortOrderParam, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
   const sortOrder: "asc" | "desc" = sortOrderParam === "asc" ? "asc" : "desc";
@@ -310,6 +311,9 @@ export default function AdminInvoicesPage() {
     <div className="flex flex-col items-center gap-3"><div className="workspace-muted-pill rounded-3xl p-3"><Inbox className="h-6 w-6" /></div><div><p className="text-sm font-semibold">{t("noInvoicesFound")}</p><p className="mt-1 text-sm text-muted-foreground">{t("noInvoicesDescription")}</p></div></div>
   );
 
+  // State for link hires dialog
+  const [linkHiresInvoiceId, setLinkHiresInvoiceId] = useState<string | null>(null);
+
   const invoiceActions = (inv: Invoice) => (
     <RowActions
       name={inv.invoiceNumber}
@@ -349,6 +353,14 @@ export default function AdminInvoicesPage() {
                 const ok = await confirmDialog(t("confirmVoidMessage"));
                 if (ok) updateStatus(inv._id, "void");
               }, destructive: true });
+            }
+            if (inv.category === "recruitment" && ["issued", "sent", "paid", "partially_paid", "overdue"].includes(inv.status)) {
+              items.push({
+                key: "linkHires",
+                label: t("linkHires"),
+                icon: ClipboardList,
+                onSelect: () => setLinkHiresInvoiceId(inv._id),
+              });
             }
           }
           return items;
@@ -541,7 +553,7 @@ export default function AdminInvoicesPage() {
                 className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/10"
                 aria-label={t("attentionClearAria")}
               >
-                {attentionFilter === "payment_notice" ? t("attentionPaymentNotice") : t("attentionDispute")}
+                {attentionFilter === "payment_notice" ? t("attentionPaymentNotice") : attentionFilter === "dispute" ? t("attentionDispute") : t("attentionUnlinkedHires")}
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </div>
@@ -685,6 +697,14 @@ export default function AdminInvoicesPage() {
         }}
         onRefresh={() => { fetchInvoices(); refreshAnalytics(); }}
         role="admin"
+      />
+
+      {/* Link Hires Dialog */}
+      <LinkHiresDialog
+        invoiceId={linkHiresInvoiceId}
+        open={!!linkHiresInvoiceId}
+        onClose={() => setLinkHiresInvoiceId(null)}
+        onSuccess={() => { setLinkHiresInvoiceId(null); fetchInvoices(); }}
       />
     </div>
   );

@@ -116,3 +116,6 @@ export {
   NextIntlClientProvider,
   IntlProvider,
 };
+
+// The real translator, for code that builds one from a message catalogue it loaded itself (lib/cv/cvPdfLabels.ts).
+export { createTranslator } from "use-intl/core";

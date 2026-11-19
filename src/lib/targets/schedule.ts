@@ -33,6 +33,9 @@ export interface SchedulePeriod extends PeriodBounds {
   /** A name for a custom period; the others are named by their position. */
   label?: string;
   profitTarget: number;
+  jobTarget?: number;
+  conversionTarget?: number;
+  revenueTarget?: number;
 }
 
 export type PeriodStatus = "upcoming" | "current" | "past";
@@ -384,23 +387,32 @@ export interface StoredPeriod {
   startDate: Date;
   endDate: Date;
   profitTarget: number;
+  jobTarget?: number;
+  conversionTarget?: number;
+  revenueTarget?: number;
 }
 
 export function toStoredPeriods(periods: SchedulePeriod[]): StoredPeriod[] {
-  return periods.map(({ label, startDate, endDate, profitTarget }) => ({
+  return periods.map(({ label, startDate, endDate, profitTarget, jobTarget, conversionTarget, revenueTarget }) => ({
     ...(label ? { label } : {}),
     startDate: new Date(`${startDate}T00:00:00.000Z`),
     endDate: new Date(`${endDate}T00:00:00.000Z`),
     profitTarget,
+    ...(jobTarget !== undefined ? { jobTarget } : {}),
+    ...(conversionTarget !== undefined ? { conversionTarget } : {}),
+    ...(revenueTarget !== undefined ? { revenueTarget } : {}),
   }));
 }
 
-export function fromStoredPeriods(stored: { label?: string; startDate: Date | string; endDate: Date | string; profitTarget: number }[] | undefined): SchedulePeriod[] {
+export function fromStoredPeriods(stored: { label?: string; startDate: Date | string; endDate: Date | string; profitTarget: number; jobTarget?: number; conversionTarget?: number; revenueTarget?: number; }[] | undefined): SchedulePeriod[] {
   const day = (value: Date | string) => (typeof value === "string" ? value : value.toISOString()).slice(0, 10);
   return (stored ?? []).map((period) => ({
     ...(period.label ? { label: period.label } : {}),
     startDate: day(period.startDate),
     endDate: day(period.endDate),
     profitTarget: period.profitTarget,
+    ...(period.jobTarget !== undefined ? { jobTarget: period.jobTarget } : {}),
+    ...(period.conversionTarget !== undefined ? { conversionTarget: period.conversionTarget } : {}),
+    ...(period.revenueTarget !== undefined ? { revenueTarget: period.revenueTarget } : {}),
   }));
 }

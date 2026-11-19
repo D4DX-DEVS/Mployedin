@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
-import { resolveCommissionRate, resolveOverrideRate, type ResolvedRate } from "@/lib/commissions/resolveRate";
+import { resolveCommissionRate, resolveOverrideRate, type DatedRateContext, type ResolvedRate } from "@/lib/commissions/resolveRate";
 import { recruitmentJobAccessError } from "@/lib/invoices/recruitmentJobAccess";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import Job from "@/models/Job";
@@ -34,10 +34,11 @@ async function lineRate(
   profileRate: number,
   country: string | null,
   resolve: typeof resolveCommissionRate,
-  defaultSource: ResolvedRate["source"],
+  history: DatedRateContext,
 ): Promise<InvoiceCommissionRate> {
-  if (profileRate <= 0) return { rate: 0, source: defaultSource, profileRate: 0 };
-  return { ...(await resolve(profileRate, country)), profileRate };
+  // The resolver applies the employer / effective-dated rate first and returns 0
+  // for a 0% profile rate, exactly as invoice creation does.
+  return { ...(await resolve(profileRate, country, history)), profileRate };
 }
 
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
@@ -61,16 +62,16 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
 
   const [agentDoc, employer] = await Promise.all([
     job.agentId ? Agent.findById(job.agentId).select("commissionRate superAgentId").lean() : null,
-    job.employerId ? Employer.findById(job.employerId).select("country").lean() : null,
+    job.employerId ? Employer.findById(job.employerId).select("country agentCommissionRates").lean() : null,
   ]);
   const superAgentDoc = agentDoc?.superAgentId
-    ? await SuperAgent.findById(agentDoc.superAgentId).select("overrideRate").lean()
+    ? await SuperAgent.findById(agentDoc.superAgentId).select("overrideRate overrideRateHistory").lean()
     : null;
   const country = employer?.country ?? null;
 
   const [agent, superAgent] = await Promise.all([
-    agentDoc ? lineRate(agentDoc.commissionRate ?? 0, country, resolveCommissionRate, "agent_default") : null,
-    superAgentDoc ? lineRate(superAgentDoc.overrideRate ?? 0, country, resolveOverrideRate, "super_agent_default") : null,
+    agentDoc ? lineRate(agentDoc.commissionRate ?? 0, country, resolveCommissionRate, { history: employer?.agentCommissionRates }) : null,
+    superAgentDoc ? lineRate(superAgentDoc.overrideRate ?? 0, country, resolveOverrideRate, { history: superAgentDoc.overrideRateHistory }) : null,
   ]);
 
   return NextResponse.json({ agent, superAgent });

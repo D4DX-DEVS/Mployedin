@@ -3,6 +3,7 @@
 import { IndustryChips } from "@/components/shared/IndustryChips";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useRowSelection } from "@/hooks/useRowSelection";
 import { toast } from "sonner";
 import { useTranslations, useLocale } from "next-intl";
 import { useMediaQuery, PHONE_QUERY } from "@/hooks/useMediaQuery";
@@ -26,6 +27,8 @@ import { ReferSeekerDialog } from "@/components/features/agent/ReferSeekerDialog
 import { SeekerDetailPanel } from "@/components/features/super-agent/SeekerDetailPanel";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
+import type { CvSource } from "@/components/shared/CvSourceBar";
+import { SeekerCvExport, SeekerPageCheckbox, SeekerRowCheckbox, SeekerSelectAllRow } from "@/components/features/super-agent/SeekerCvExport";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
@@ -67,6 +70,9 @@ interface JobSeekerItem {
   industry?: string;
 }
 
+const seekerIdOf = (s: JobSeekerItem) => s._id;
+const seekerNameOf = (s: JobSeekerItem) => s.fullName;
+
 /** Which job seekers the list shows (`?view=`), as on the agent's page. */
 const VIEWS = ["all", "area"] as const;
 
@@ -96,6 +102,7 @@ export default function SuperAgentJobSeekersPage() {
   const locale = useLocale();
   const t = useTranslations("superAgentJobSeekers");
   const tc = useTranslations("common");
+  const tSelect = useTranslations("selectionBar");
 
   const [seekers, setSeekers] = useState<JobSeekerItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,7 +120,11 @@ export default function SuperAgentJobSeekersPage() {
   const [referOpen, setReferOpen] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [selectedSeekerId, setSelectedSeekerId] = useState<string | null>(null);
-  const [cvSeeker, setCvSeeker] = useState<{ id: string; name: string } | null>(null);
+  // `source` "file" opens the uploaded CV; without it the viewer opens on the Standardised one.
+  const [cvSeeker, setCvSeeker] = useState<{ id: string; name: string; source?: CvSource } | null>(null);
+  // Ticked rows, kept whole across pages, for the CV export. Separate from
+  // `selectedSeekerId`, which is the one profile open in the side panel.
+  const selection = useRowSelection<JobSeekerItem>(seekerIdOf);
   const pagination = usePagination();
   // All job seekers | In my area — the agent's "In my area" view, over the
   // super agent's whole region.
@@ -477,6 +488,9 @@ export default function SuperAgentJobSeekersPage() {
             onSelect={(next) => updateFilter("industry", next)}
           />
         </div>
+        {!loading && seekers.length > 0 && (
+          <SeekerSelectAllRow state={selection.pageState(seekers)} onToggle={() => selection.togglePage(seekers)} />
+        )}
         <PhoneRecordList
           className="sm:hidden"
           label={t("pageTitle")}
@@ -502,6 +516,11 @@ export default function SuperAgentJobSeekersPage() {
             ];
             return {
               key: s._id,
+              selection: {
+                checked: selection.isSelected(s._id),
+                onToggle: () => selection.toggle(s),
+                label: tSelect("selectRow", { name: s.fullName }),
+              },
               leading: <UserAvatar name={s.fullName} email={s.email} className="h-10 w-10" colorful />,
               title: s.fullName,
               subtitle: s.email,
@@ -566,6 +585,9 @@ export default function SuperAgentJobSeekersPage() {
           <Table className="compact-phone-cards" data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead className="w-10">
+                  <SeekerPageCheckbox state={selection.pageState(seekers)} onToggle={() => selection.togglePage(seekers)} />
+                </TableHead>
                 <TableHead className="min-w-[180px]">{tc("name")}</TableHead>
                 <TableHead>{t("currentRole")}</TableHead>
                 <TableHead>{tc("industry")}</TableHead>
@@ -576,10 +598,10 @@ export default function SuperAgentJobSeekersPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableBodySkeleton rows={5} cols={5} />
+                <TableBodySkeleton rows={5} cols={7} />
               ) : seekers.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={5} className="py-12">
+                  <TableCell colSpan={7} className="py-12">
                     {view === "area" && !filters.search && filters.country === "all" && filters.experienceMin === "all" && filters.availability === "all" && filters.premium === "all" && filters.agent === "all" ? (
                       <EmptyState
                         title={areaAssigned ? t("area.emptyTitle") : t("area.noRegionTitle")}
@@ -602,7 +624,10 @@ export default function SuperAgentJobSeekersPage() {
                   },
                 ];
                 return (
-                <TableRow key={s._id} className="group">
+                <TableRow key={s._id} className={`group ${selection.isSelected(s._id) ? "bg-primary/5" : ""}`}>
+                  <TableCell>
+                    <SeekerRowCheckbox checked={selection.isSelected(s._id)} onToggle={() => selection.toggle(s)} name={s.fullName} />
+                  </TableCell>
                   <TableCell data-mobile-primary>
                     <div className="flex min-w-0 items-start gap-3">
                       <UserAvatar name={s.fullName} email={s.email} className="mt-0.5 h-9 w-9 shrink-0" colorful />
@@ -731,6 +756,9 @@ export default function SuperAgentJobSeekersPage() {
         onLimitChange={pagination.setLimit}
       />
 
+      {/* "N selected · Clear · Export CVs": sticky below the list while rows are ticked. */}
+      <SeekerCvExport selection={selection} idOf={seekerIdOf} nameOf={seekerNameOf} columns={exportColumns} />
+
       {/* A seeker's profile, docked beside the list (full width on phones). */}
       <Dialog open={selectedSeekerId !== null && !cvSeeker} onOpenChange={(open) => { if (!open) setSelectedSeekerId(null); }}>
         <DialogContent side="end" className="flex flex-col gap-0 p-0 sm:max-w-xl" aria-describedby={undefined}>
@@ -740,7 +768,12 @@ export default function SuperAgentJobSeekersPage() {
       </Dialog>
       {/* Closing the CV brings the profile back where it was. */}
       {cvSeeker && (
-        <ResumeViewerModal url={`/api/employers/candidates/${cvSeeker.id}/cv#cv.pdf`} candidateName={cvSeeker.name} onClose={() => setCvSeeker(null)} />
+        <ResumeViewerModal
+          url={`/api/employers/candidates/${cvSeeker.id}/cv#cv.pdf`}
+          candidateName={cvSeeker.name}
+          initialSource={cvSeeker.source}
+          onClose={() => setCvSeeker(null)}
+        />
       )}
     </div>
   );

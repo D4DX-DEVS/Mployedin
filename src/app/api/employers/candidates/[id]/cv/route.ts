@@ -3,27 +3,16 @@ import { withAuth } from "@/lib/auth/withAuth";
 import type { AuthContext } from "@/lib/auth/withAuth";
 import { connectDB } from "@/lib/db/mongoose";
 import JobSeeker from "@/models/JobSeeker";
-import Employer from "@/models/Employer";
-import Application from "@/models/Application";
-import TalentPool from "@/models/TalentPool";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import { downloadBuffer } from "@/lib/storage/spaces";
 import { guessMime } from "@/lib/storage/mime";
-import { canStaffAccessSeeker, type SeekerOwnership } from "@/lib/jobSeeker/staffAccess";
-import { servedApplicationCvUrl } from "@/lib/applications/sentCv";
+import { authorizeCvAccess, hasBuiltCvContent, type BuiltCvSource } from "@/lib/cv/cvAccess";
+import { resolveOriginalCvSource } from "@/lib/cv/originalCvSource";
 import User from "@/models/User";
 
 /** What the Mployedin CV is drawn from: the profile, as the CV Builder saves it. */
 const BUILT_CV_FIELDS =
   "userId fullName phone nationality currentLocation summary headline avatar socialLinks skills experience education languages certifications projects cvDesign";
-
-
-interface SeekerDoc {
-  _id?: unknown;
-  userId: unknown;
-  cv?: { originalUrl?: string };
-  documents?: Array<{ category?: string; url?: string }>;
-}
 
 /**
  * GET /api/employers/candidates/[id]/cv
@@ -40,6 +29,11 @@ interface SeekerDoc {
  * object lives on a cross-origin CDN that serves `Content-Disposition:
  * attachment`; proxying lets us force `inline` and avoids CSP frame-src /
  * CORS restrictions on the third-party domain.
+ *
+ * `&download=1` marks an actual download or export (not a viewer open): the only
+ * request that counts toward the seeker's CV download statistic, and only when the
+ * file is served in full. The Standardised CV (generated, not the uploaded file) is
+ * never counted.
  *
  * GET /api/employers/candidates/[id]/cv?kind=built
  *
@@ -70,74 +64,36 @@ async function getHandler(
   if (applicationId && !isValidObjectId(applicationId)) {
     return NextResponse.json({ error: "Invalid application ID" }, { status: 400 });
   }
-  // Set for an employer: the application must be one of theirs.
-  let employerId: unknown = null;
 
-  let seeker: SeekerDoc | null = null;
-  if (ctx.role === "job_seeker") {
-    // A job seeker may only ever view their own CV; the [id] param is ignored.
-    seeker = (await JobSeeker.findOne({ userId: ctx.userId })
-      .select("userId cv documents")
-      .lean()) as SeekerDoc | null;
-  } else if (ctx.role === "admin") {
-    // Platform operator — may view any candidate CV for support.
-    seeker = (await JobSeeker.findById(id)
-      .select("userId cv documents")
-      .lean()) as SeekerDoc | null;
-  } else if (ctx.role === "employer") {
-    // An employer may view a candidate's CV only if that candidate applied to
-    // one of the employer's jobs OR sits in one of the employer's talent pools.
-    // Without this gate any employer could stream any seeker's resume (PII IDOR).
-    const employer = await Employer.findOne({ userId: ctx.userId }).select("_id").lean();
-    if (!employer) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    const [hasApplication, inTalentPool] = await Promise.all([
-      Application.exists({ jobSeekerId: id, employerId: employer._id }),
-      TalentPool.exists({ employerId: employer._id, "candidates.jobSeekerId": id }),
-    ]);
-    if (!hasApplication && !inTalentPool) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    employerId = employer._id;
-    seeker = (await JobSeeker.findById(id)
-      .select("userId cv documents")
-      .lean()) as SeekerDoc | null;
-  } else if (ctx.role === "super_agent" || ctx.role === "agent") {
-    // Owner, 2026-10-14: a super agent sees the CV along with the profile;
-    // 2026-10-30 the same for an agent (client: agents could not open a
-    // seeker's profile or CV). Same scope as the profile itself, so no seeker
-    // is newly exposed.
-    const full = await JobSeeker.findById(id)
-      .select("userId cv documents agentId referral regionCityId regionStateId profileVisibility roleArchivedAt")
-      .lean();
-    if (!full) return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
-    if (!(await canStaffAccessSeeker(full as unknown as SeekerOwnership, ctx, "view"))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-    seeker = full as unknown as SeekerDoc;
-  } else {
+  // The access rule lives in authorizeCvAccess (shared with the other CV
+  // surfaces). The built-CV view has always ignored `applicationId`, so it is
+  // not passed there.
+  const built = req.nextUrl.searchParams.get("kind") === "built";
+
+  // A colleague who may review applicants but not manage talent pools (the
+  // default hiring_manager role) opens a CV only through an application of
+  // their company: withAuth lets the request in on that promise, and here it is
+  // kept — the application is required, and checked even for the built view,
+  // which otherwise ignores it. Anyone else is unchanged.
+  const applicationOnly = !!ctx.member && ctx.member.permissions.canManageTalentPools !== true;
+  if (applicationOnly && !applicationId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-
-  if (!seeker) {
-    return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+  const access = await authorizeCvAccess(ctx, id, { applicationId: built && !applicationOnly ? null : applicationId });
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
+  const { seeker } = access;
 
-  if (req.nextUrl.searchParams.get("kind") === "built") {
+  if (built) {
     const profile = (await JobSeeker.findById(seeker._id ?? id).select(BUILT_CV_FIELDS).lean()) as
-      | (Record<string, unknown> & { userId?: unknown; phone?: string })
+      | (BuiltCvSource & Record<string, unknown> & { userId?: unknown; phone?: string })
       | null;
     if (!profile) return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
     const user = (await User.findById(profile.userId).select("name email phone").lean()) as
       | { name?: string; email?: string; phone?: string }
       | null;
-    const hasContent = Boolean(
-      (profile.experience as unknown[] | undefined)?.length ||
-      (profile.education as unknown[] | undefined)?.length ||
-      (profile.skills as unknown[] | undefined)?.length ||
-      profile.summary,
-    );
+    const hasContent = hasBuiltCvContent(profile);
     const { userId: _userId, ...cvProfile } = profile;
     return NextResponse.json(
       {
@@ -149,25 +105,11 @@ async function getHandler(
     );
   }
 
-  let cvUrl: string | null | undefined;
-  // Staff views have no application in hand; the parameter is for the
-  // employer's applicant screens (and admin support, and the seeker's own).
-  if (applicationId && ctx.role !== "agent" && ctx.role !== "super_agent") {
-    const application = (await Application.findOne({
-      _id: applicationId,
-      jobSeekerId: seeker._id ?? id,
-      ...(employerId ? { employerId } : {}),
-    })
-      .select("documents")
-      .lean()) as { documents?: { url?: string; type?: string }[] } | null;
-    if (!application) {
-      return NextResponse.json({ error: "Application not found" }, { status: 404 });
-    }
-    cvUrl = servedApplicationCvUrl(application.documents, seeker.cv?.originalUrl);
-  } else {
-    const resumeDoc = seeker.documents?.find((d) => d.category === "resume" && d.url);
-    cvUrl = seeker.cv?.originalUrl || resumeDoc?.url;
-  }
+  // `access.application` is set only where an application applies (the
+  // employer's applicant screens, admin support, the seeker's own); staff views
+  // have none and get the seeker's own CV. The rule is shared with the export
+  // manifest, which reports whether this file exists before anyone fetches it.
+  const { url: cvUrl, isBuilt } = resolveOriginalCvSource(seeker, access.application);
   if (!cvUrl) {
     return NextResponse.json(
       { error: "No CV on file for this candidate.", code: "NO_CV" },
@@ -185,16 +127,35 @@ async function getHandler(
     );
   }
 
+  // The seeker's "CV downloads" statistic counts ACTUAL downloads and exports, not
+  // viewer opens: only a request that says so (`download=1`: the viewer's Download,
+  // the "Original CV" menu links, the bulk export) counts. The viewer's preview
+  // always fetches the file, so it never carries the flag. Employer downloads only,
+  // as the statistic always was (it moved here from the per-application download
+  // route, which only employers used); staff and the seeker's own are not counted.
+  // It is a statistic: it never fails the response. A seeker with no Profile CV can
+  // have `cv` stored as null, which $inc cannot reach into.
+  if (ctx.role === "employer" && req.nextUrl.searchParams.get("download") === "1") {
+    try {
+      await JobSeeker.updateOne({ _id: seeker._id }, { $inc: { "cv.downloadCount": 1 } });
+    } catch {
+      await JobSeeker.updateOne({ _id: seeker._id, cv: null }, { $set: { cv: { downloadCount: 1 } } }).catch(() => {});
+    }
+  }
+
   const mime = guessMime(cvUrl);
-  return new NextResponse(new Uint8Array(buffer), {
-    status: 200,
-    headers: {
-      "Content-Type": mime,
-      "Content-Disposition": "inline",
-      "Cache-Control": "private, no-store",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+  const headers: Record<string, string> = {
+    "Content-Type": mime,
+    "Content-Disposition": "inline",
+    "Cache-Control": "private, no-store",
+    "X-Content-Type-Options": "nosniff",
+  };
+  // The file is the PDF built on Mployedin that went with this application, not
+  // an upload: the viewer names that tab "CV sent with application" rather than
+  // "Original CV (Uploaded)". Only said where an application applies; the
+  // seeker's stored built copy on a staff view is just their profile file.
+  if (isBuilt && access.application) headers["X-Mployedin-Cv-Built"] = "1";
+  return new NextResponse(new Uint8Array(buffer), { status: 200, headers });
 }
 
 export const GET = withAuth(getHandler);

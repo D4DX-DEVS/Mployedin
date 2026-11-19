@@ -33,6 +33,8 @@ const bodySchema = z.discriminatedUnion("action", [
     organisation: line(120),
     targetRole: line(120),
     text: line(1500),
+    /** Skills already on the CV: the bullets may show them in use. */
+    skills: z.array(z.string().max(60)).max(30).optional().default([]),
   }),
   z.object({
     action: z.literal("skills"),
@@ -110,7 +112,7 @@ Rules:
 - Use ONLY facts they wrote. Never invent employers, schools, dates, numbers, skills or links. Leave a field "" or [] when they did not say it.
 - Write everything in clear professional English; fix spelling.
 - jobs = paid work only. projects = college projects, internships, volunteering, personal projects.
-- Each job / project "description": 2-5 CV bullet lines from what they said they did, each starting "• " with an action verb, no first person, joined by "\n".
+- Each job / project "description": 4-6 CV bullet lines, each starting "• " with an action verb, no first person, joined by "\n". Build them from what they said, then fill out what that role and the tools / stack they named normally involve (e.g. a full stack developer who used Next.js and Redis: building pages and APIs, caching, performance work) so it reads like a real CV. Be specific to their role and tools, never generic ("worked on projects"). Never invent numbers, percentages, team sizes, clients or awards.
 - Dates: "YYYY-MM" when they gave a month, "YYYY" when only a year, else "". If they only say how long ("1 year", "6 months") leave start and end "" — never work dates out. current=true only if they say they still do it.
 - education.level: one of doctorate, masters, graduation (bachelor's), diploma (incl. ITI / polytechnic), 12th (higher secondary / plus two / A-level), 10th, below_10th. One entry per school or college they mention, highest first.
 - languages proficiency: basic | conversational | professional | native.
@@ -126,7 +128,7 @@ ${clean(b.text)}
 
 Return ONLY JSON, no markdown, exactly this shape:
 {"totalYears":"","targetRole":"","summary":"","jobs":[{"title":"","organisation":"","start":"","end":"","current":false,"description":""}],"projects":[{"title":"","organisation":"","start":"","end":"","current":false,"description":""}],"education":[{"level":"","course":"","field":"","institution":"","startYear":"","endYear":"","studying":false,"grade":""}],"skills":[""],"languages":[{"language":"","proficiency":""}],"certificates":[{"name":"","issuer":"","year":""}],"links":[{"label":"","url":""}]}`;
-      const out = (await generateText(prompt, GEMINI_MODELS.flash, 2500)).replace(/```json\n?|```/g, "").trim();
+      const out = (await generateText(prompt, GEMINI_MODELS.flash, 4000)).replace(/```json\n?|```/g, "").trim();
       const start = out.indexOf("{");
       const end = out.lastIndexOf("}");
       let raw: unknown = {};
@@ -169,24 +171,35 @@ Return ONLY JSON, no markdown, exactly this shape:
       const what = b.kind === "job"
         ? `the job "${clean(b.title)}"${b.organisation ? ` at ${clean(b.organisation)}` : ""}`
         : `the project / internship / activity "${clean(b.title)}"${b.organisation ? ` (${clean(b.organisation)})` : ""}`;
+      const context = [
+        b.targetRole && `Role they want: ${clean(b.targetRole)}`,
+        b.skills.length > 0 && `Skills on their CV: ${clean(b.skills.join(", "))}`,
+      ].filter(Boolean).join("\n");
+      // A box that already holds bullets is "write it again": a fresh, fuller
+      // take — tidying the same lines back looked like the button did nothing.
+      const again = /^\s*•/m.test(b.text);
       const prompt = b.text.trim()
-        ? `Turn what a job seeker wrote about ${what} into 3-5 short CV bullet points.
-Rules:
-- Start each with a strong past or present action verb; no first person
-- Keep only facts they gave; never add numbers, tools or results they did not mention
-- Fix spelling and grammar; plain English; each bullet under 20 words
-- If they wrote in another language, write the bullets in English
+        ? `Write 4-6 CV bullet points for ${what}.
+${context}
 
-What they wrote:
+What the seeker wrote${again ? " (an earlier draft: write a NEW, fuller version with different wording and angles, not a copy)" : ""}:
 ${clean(b.text)}
 
+Rules:
+- Keep every fact they gave, then fill out what this kind of ${b.kind === "job" ? "job" : "project"} and the tools / stack they named normally involve, so it reads like a strong real CV (what they built, owned, improved, worked with)
+- Be specific to their role and tools; nothing generic like "worked on projects" or "implemented solutions"
+- Never invent numbers, percentages, team sizes, clients, employers or awards
+- Start each with a different strong action verb; no first person; each 10-22 words
+- Plain professional English, even if they wrote in another language
+
 Return ONLY the bullets, one per line, each starting with "• ".`
-        : `Write 3-4 short, typical CV bullet points for ${what}${b.targetRole ? ` for someone aiming at ${clean(b.targetRole)} roles` : ""}.
-They are a starting point the seeker will edit, so keep them general and true for most people in this role: no numbers, no named tools unless the role clearly needs them.
-Each under 18 words, starting with an action verb, no first person.
+        : `Write 4-5 CV bullet points for ${what}.
+${context}
+They are a starting point the seeker will edit: describe what this role normally involves, specific to the role and any skills above. No numbers or invented results.
+Each 10-20 words, starting with a different action verb, no first person.
 
 Return ONLY the bullets, one per line, each starting with "• ".`;
-      const out = (await generateText(prompt, GEMINI_MODELS.flash, 300)).trim();
+      const out = (await generateText(prompt, GEMINI_MODELS.flash, 600)).trim();
       const bullets = out
         .split("\n")
         .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())

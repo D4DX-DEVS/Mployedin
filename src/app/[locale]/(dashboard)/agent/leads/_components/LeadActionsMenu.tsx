@@ -27,6 +27,8 @@ export interface LeadActionHandlers {
 export interface LeadActionState {
   canUpdate: boolean;
   canDelete: boolean;
+  /** Admin → Settings → Employer onboarding lets this role add employers (default true). */
+  canCreateEmployer?: boolean;
   scoringId: string | null;
   convertingId: string | null;
 }
@@ -108,7 +110,7 @@ export function LeadActionsMenu({
         <DropdownMenuItem disabled={scoring} onSelect={() => actions.score(lead)}>
           {scoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}{t("aiScore")}
         </DropdownMenuItem>
-        {canCreateAccount && state.canUpdate && (
+        {canCreateAccount && state.canUpdate && state.canCreateEmployer !== false && (
           <DropdownMenuItem disabled={converting} onSelect={() => actions.createAccount(lead)}>
             {converting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Building2 className="h-4 w-4" />}{t("createEmployerAccount")}
           </DropdownMenuItem>

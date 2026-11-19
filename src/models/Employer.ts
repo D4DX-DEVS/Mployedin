@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { RateChangeSchema, type IRateChange } from "./rateHistory";
 import { encryptIfPlain, decrypt } from "@/lib/security/encryption";
 import { BRAND_FONT_IDS, type BrandFont } from "@/lib/brand/brandKit";
 
@@ -50,6 +51,8 @@ export interface IEmployer extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   agentId?: mongoose.Types.ObjectId;
+  /** Agent commission % for this employer's invoices, effective-dated and append-only. Empty = country rule / agent default. */
+  agentCommissionRates?: IRateChange[];
   // Company Info
   companyName: string;
   companyEmail: string;
@@ -163,6 +166,7 @@ const EmployerSchema = new Schema<IEmployer>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     agentId: { type: Schema.Types.ObjectId, ref: "Agent" },
+    agentCommissionRates: { type: [RateChangeSchema], default: undefined },
     isActive: { type: Boolean, default: true, index: true },
     roleArchivedAt: { type: Date, default: null, index: true },
     createdVia: { type: String, enum: ["self", "admin", "role_conversion"], default: "self" },

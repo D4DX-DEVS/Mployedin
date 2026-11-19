@@ -106,6 +106,10 @@ export const systemSettingsUpdateSchema = z.object({
   maintenanceMode: z.boolean().optional(),
   defaultCurrency: z.string().max(5).trim().optional(),
   subscriptionEnforcementEnabled: z.boolean().optional(),
+  employerSelfRegistrationEnabled: z.boolean().optional(),
+  employerInviteLinksEnabled: z.boolean().optional(),
+  superAgentCanCreateEmployers: z.boolean().optional(),
+  agentCanCreateEmployers: z.boolean().optional(),
   smtp: z
     .object({
       smtpEmail: z.union([z.string().email().max(254), z.literal("")]).optional(),

@@ -9,10 +9,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import { canAccessInvoice } from "@/lib/invoices/access";
 import { generateInvoicePdf } from "@/lib/invoices/generatePdf";
+import { attachLineHires } from "@/lib/invoices/lineHires";
 import { getInvoiceIssuer } from "@/lib/invoices/issuer";
 import { resolveBillToFallback } from "@/lib/invoices/billToFallback";
 import { sendEmail } from "@/lib/communications/email";
-import { escapeHtml } from "@/lib/security/html-escape";
+import { buildInvoiceEmail } from "@/lib/invoices/invoiceEmail";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
@@ -74,53 +75,25 @@ async function handler(
     resolveBillToFallback(invoice),
   ]);
   const pdfBuffer = generateInvoicePdf(
-    invoice as Parameters<typeof generateInvoicePdf>[0],
+    (await attachLineHires(invoice as unknown as { lineItems?: [] })) as unknown as Parameters<typeof generateInvoicePdf>[0],
     { issuer, billToFallback },
   );
 
-  // Typed values (company name, invoice number, currency) are escaped where they enter the HTML below.
   const companyName = billing?.companyName ?? employer?.companyName ?? "Customer";
   const invNumber = invoice.invoiceNumber ?? "Invoice";
-  const currency = invoice.currency ?? "AED";
-  const safe = { companyName: escapeHtml(companyName), invNumber: escapeHtml(invNumber), currency: escapeHtml(currency) };
-  const total = (invoice.totalAmount ?? invoice.amount ?? 0).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
+  const { subject, html } = buildInvoiceEmail({
+    invoice: invoice as Parameters<typeof buildInvoiceEmail>[0]["invoice"],
+    companyName,
+    issuerName: issuer?.legalName,
+    issuerEmail: issuer?.email,
+    hasBankDetails: Boolean(issuer?.hasBankDetails),
   });
-  const dueDateStr = invoice.dueDate
-    ? new Date(invoice.dueDate).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : "upon receipt";
 
   // Send email with PDF attachment
   const emailResult = await sendEmail({
     to: recipientEmail,
-    subject: `Invoice ${invNumber} from Mployedin`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #2980b9;">Invoice ${safe.invNumber}</h2>
-        <p>Dear ${safe.companyName},</p>
-        <p>Please find attached your invoice <strong>${safe.invNumber}</strong> for <strong>${safe.currency} ${total}</strong>.</p>
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-          <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Invoice Number</td>
-            <td style="padding: 8px; border-bottom: 1px solid #eee;">${safe.invNumber}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Amount</td>
-            <td style="padding: 8px; border-bottom: 1px solid #eee;">${safe.currency} ${total}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Due Date</td>
-            <td style="padding: 8px; border-bottom: 1px solid #eee;">${dueDateStr}</td>
-          </tr>
-        </table>
-        <p>If you have any questions about this invoice, please don't hesitate to contact us.</p>
-        <p style="margin-top: 30px; color: #666; font-size: 12px;">This is an automated message from Mployedin.</p>
-      </div>
-    `,
+    subject,
+    html,
     source: "invoice",
     category: "system",
     userId: String(invoice.userId),

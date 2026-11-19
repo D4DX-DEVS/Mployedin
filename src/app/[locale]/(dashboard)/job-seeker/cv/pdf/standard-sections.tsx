@@ -4,10 +4,13 @@
 
 import React from "react";
 import { Image, Text, View } from "@react-pdf/renderer";
+import type { Style } from "@react-pdf/types";
 import type { SectionKey } from "../types";
 import { formatDateValue, getSectionGap } from "../types";
 import { KeepWithFirst, RichPdfText, dateRange, pdfScale, safePhoto, tint, type PdfTemplateProps } from "./shared";
 import { PdfSkillList, headingLook, photoRadiusOf, usePdfLayout } from "./pdf-layout";
+import { hasArabicScript } from "@/lib/cv/scriptDirection";
+import { pdfFontForText } from "../fonts";
 
 export const GRAY = {
   g400: "#9ca3af",
@@ -30,13 +33,14 @@ export function sectionGap(props: PdfTemplateProps): number {
   return parseInt(getSectionGap(props.formatting), 10) || 14;
 }
 
+/** Font stacks ([the font's own face, the Arabic face]), as makeStyles set them. */
 export interface StandardFonts {
-  regular: string;
-  bold: string;
+  regular: string[];
+  bold: string[];
 }
 
 export function standardFonts(props: PdfTemplateProps): StandardFonts {
-  return { regular: String(props.styles.page.fontFamily), bold: String(props.styles.name.fontFamily) };
+  return { regular: props.styles.page.fontFamily, bold: props.styles.name.fontFamily };
 }
 
 /**
@@ -134,10 +138,13 @@ export function capitalize(value: string): string {
 }
 
 /** Twin of SectionTitle in ../templates.tsx: uppercase, theme colour, faint theme rule. */
-export function SectionTitlePdf({ label, primary, bold }: { label: string; primary: string; bold: string }) {
+export function SectionTitlePdf({ label, primary, bold, rtl = false }: { label: string; primary: string; bold: string | string[]; rtl?: boolean }) {
   const { formatting } = usePdfLayout();
+  // Letter-spacing pulls the joined letters of an Arabic heading apart.
+  const letterSpacing = hasArabicScript(label) ? 0 : 0.8;
+  const direction: Style = rtl ? { direction: "rtl", textAlign: "right" } : {};
   return (
-    <Text style={{ fontFamily: bold, fontSize: 10.5, textTransform: "uppercase", letterSpacing: 0.8, paddingBottom: 3, marginBottom: 6, ...headingLook(formatting, "underline", primary, tint(primary, 0.19)) }}>
+    <Text style={{ fontFamily: pdfFontForText(label, Array.isArray(bold) ? bold : [bold], "bold"), fontSize: 10.5, textTransform: "uppercase", letterSpacing, paddingBottom: 3, marginBottom: 6, ...direction, ...headingLook(formatting, "underline", primary, tint(primary, 0.19)) }}>
       {label}
     </Text>
   );
@@ -149,7 +156,7 @@ export function SectionTitlePdf({ label, primary, bold }: { label: string; prima
  */
 export function BandPhoto({
   photo, name, size, ring, primary, bold, initialFallback,
-}: { photo: string; name: string; size: number; ring: string; primary: string; bold: string; initialFallback: boolean }) {
+}: { photo: string; name: string; size: number; ring: string; primary: string; bold: string | string[]; initialFallback: boolean }) {
   const { formatting } = usePdfLayout();
   const src = safePhoto(photo);
   if (src) {

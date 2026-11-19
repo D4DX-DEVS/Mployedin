@@ -23,6 +23,7 @@ import { oauthRedirectUrl } from "@/lib/auth/oauthRedirect";
 import { useSignupConsentPrompt } from "@/components/features/auth/SignupConsentDialog";
 import { CONSENT_REQUIRED_CODE, rememberSignupConsent, signupConsentCredentials } from "@/lib/auth/signupConsent";
 import { EMAIL_PATTERN } from "@/lib/errors/email-pattern";
+import { useEmployerSignupOpen } from "@/hooks/useEmployerOnboarding";
 import { normalizeReferralCode, registerHrefFor } from "@/lib/referrals/url";
 import {
   clearPendingReferral,
@@ -78,6 +79,8 @@ export default function LoginPage() {
   const t = useTranslations("auth");
   const tf = useTranslations("formErrors");
   const tc = useTranslations("common");
+  // Admin → Settings → Employer onboarding: the employer sign-up link shows only while public sign-up is on.
+  const employerSignupOpen = useEmployerSignupOpen();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<LoginErrorState | null>(null);
@@ -595,14 +598,16 @@ export default function LoginPage() {
       </>
       )}
 
-      <p className="text-center text-sm text-muted-foreground">
-        <Link
-          href={withCallback(`/${locale}/employer-register`, callbackPath)}
-          className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {t("postJobsAsEmployer")}
-        </Link>
-      </p>
+      {employerSignupOpen ? (
+        <p className="text-center text-sm text-muted-foreground">
+          <Link
+            href={withCallback(`/${locale}/employer-register`, callbackPath)}
+            className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {t("postJobsAsEmployer")}
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

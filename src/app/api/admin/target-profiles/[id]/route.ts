@@ -3,13 +3,16 @@ import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import TargetProfile, { PROFIT_TARGET_FILTER } from "@/models/TargetProfile";
 import { validateBody } from "@/lib/validators";
-import { targetProfileUpdateSchema } from "@/lib/validators/targetProfiles";
+import { targetProfileUpdateSchema, kpi3ProfileUpdateSchema } from "@/lib/validators/targetProfiles";
 import { enrichProfile, enrichProfiles } from "@/lib/targets/profileAchievementCalculator";
 import { resolveSchedule, toStoredPeriods, type PeriodType, type SplitStrategy } from "@/lib/targets/schedule";
+import { equalKpiPeriods, kpiPeriodIssues, manualKpiPeriods } from "@/lib/targets/kpiSchedule";
 import { allocatedProfitCents, checkProfitBudget, profitToCents } from "@/lib/targets/budget";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notifyTargetUpdated } from "@/lib/notifications/trigger";
 import User from "@/models/User";
+import { calculateKpis, kpiOwnerKey } from "@/lib/targets/kpiCalculator";
+import { fromStoredPeriods } from "@/lib/targets/schedule";
 
 interface AuthCtx { userId: string; role: string; locale: string; }
 
@@ -68,6 +71,32 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
     });
   }
 
+  let kpi: unknown = null;
+  const profileRecord = profile as unknown as Record<string, unknown>;
+  if (profileRecord.targetType === "kpi3" && profile.periods) {
+    const kpiResults = await calculateKpis(
+      [
+        {
+          userId: String(profile.assigneeId),
+          role: profile.assigneeRole as "agent" | "super_agent",
+          currency: profile.currency,
+          periods: fromStoredPeriods(profile.periods),
+        },
+      ],
+      profile.year,
+    );
+    const kpiData = kpiResults.get(kpiOwnerKey(profile.assigneeRole as "agent" | "super_agent", String(profile.assigneeId)));
+    if (kpiData) {
+      kpi = {
+        months: kpiData.months,
+        totals: kpiData.totals,
+        otherCurrencies: kpiData.otherCurrencies,
+        commission: kpiData.commission,
+        byAgent: kpiData.byAgent.size > 0 ? Array.from(kpiData.byAgent.entries()).map(([agentId, counts]) => ({ agentId, ...counts })) : [],
+      };
+    }
+  }
+
   return NextResponse.json({
     profile: {
       ...enriched,
@@ -75,6 +104,7 @@ async function getHandler(_req: NextRequest, ctx: AuthCtx, params?: Record<strin
       assigneeEmail: assignee?.email ?? "",
     },
     agentProfiles,
+    ...(kpi ? { kpi } : {}),
   });
 }
 
@@ -89,13 +119,20 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   const id = params?.id;
   if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
-  const body = await validateBody(req, targetProfileUpdateSchema);
-
+  // Get the current profile to determine its type
   const current = await TargetProfile.findOne({ _id: id, ...PROFIT_TARGET_FILTER }).lean();
   if (!current) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
+  // Use the appropriate schema based on targetType
+  const schema = current.targetType === "kpi3" ? kpi3ProfileUpdateSchema : targetProfileUpdateSchema;
+  const body = await validateBody(req, schema);
+
+  const bodyRecord = body as unknown as Record<string, unknown>;
   const changesSchedule =
     body.profitTarget !== undefined ||
+    bodyRecord.jobTarget !== undefined ||
+    bodyRecord.conversionTarget !== undefined ||
+    bodyRecord.revenueTarget !== undefined ||
     body.periodType !== undefined ||
     body.distributionStrategy !== undefined ||
     body.periods !== undefined;
@@ -111,7 +148,19 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   // type without periods re-cuts the year; a custom schedule or a hand-typed
   // split has no rule to re-cut from, so the caller must spell it out.
   let storedPeriods: ReturnType<typeof toStoredPeriods> | undefined;
-  if (changesSchedule) {
+  if (changesSchedule && current.targetType === "kpi3") {
+    // kpi3: twelve months of three figures. Equal split built here; a manual one must add up.
+    const totals = {
+      jobTarget: (bodyRecord.jobTarget as number | undefined) ?? current.jobTarget ?? 0,
+      conversionTarget: (bodyRecord.conversionTarget as number | undefined) ?? current.conversionTarget ?? 0,
+      revenueTarget: (bodyRecord.revenueTarget as number | undefined) ?? current.revenueTarget ?? 0,
+    };
+    const manual = body.distributionStrategy === "custom" && body.periods;
+    if (manual && kpiPeriodIssues(body.periods as never, totals).length > 0) {
+      return NextResponse.json({ error: "The months must add up to each yearly target" }, { status: 400 });
+    }
+    storedPeriods = toStoredPeriods(manual ? manualKpiPeriods(current.year, body.periods as never) : equalKpiPeriods(current.year, totals));
+  } else if (changesSchedule) {
     const schedule = resolveSchedule({ year: current.year, profitTarget: annual, periodType, strategy, periods: body.periods });
     if ("error" in schedule) {
       return NextResponse.json({ error: schedule.error, details: schedule.details }, { status: 400 });
@@ -154,6 +203,36 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     }
   }
 
+  // Collect changes for audit log
+  const changes: { before: Record<string, unknown>; after: Record<string, unknown> } = { before: {}, after: {} };
+  const fieldsToTrack = ["profitTarget", "currency", "region", "status"];
+
+  // Add KPI fields only if the profile is KPI3 type
+  if (current.targetType === "kpi3") {
+    fieldsToTrack.push("jobTarget", "conversionTarget", "revenueTarget");
+  }
+
+  const currentRecord = current as unknown as Record<string, unknown>;
+  for (const field of fieldsToTrack) {
+    if (field in bodyRecord && bodyRecord[field] !== undefined) {
+      const before = currentRecord[field];
+      const after = bodyRecord[field];
+      if (before !== after) {
+        changes.before[field] = before;
+        changes.after[field] = after;
+      }
+    }
+  }
+
+  // Track period changes
+  if (body.periods !== undefined && storedPeriods) {
+    changes.before.periods = current.periods;
+    changes.after.periods = storedPeriods;
+  }
+
+  // If editing a super-agent-set target, mark it as overridden by admin
+  const shouldMarkOverridden = current.setByRole === "super_agent" && Object.keys(changes.before).length > 0;
+
   let profile;
   try {
     profile = await TargetProfile.findOneAndUpdate(
@@ -162,6 +241,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
         $set: {
           ...withoutPeriods(body),
           ...(storedPeriods ? { periodType, distributionStrategy: strategy, periods: storedPeriods } : {}),
+          ...(shouldMarkOverridden ? { overriddenByAdmin: true } : {}),
         },
       },
       { returnDocument: "after" }
@@ -193,7 +273,12 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
     action: "target_profile.update",
     resource: "targets",
     resourceId: id,
-    meta: body,
+    changes: Object.keys(changes.before).length > 0 ? changes : undefined,
+    meta: {
+      year: current.year,
+      assigneeId: String(current.assigneeId),
+      ...(body.reason ? { reason: body.reason } : {}),
+    },
     req,
   });
 

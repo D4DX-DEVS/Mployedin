@@ -26,6 +26,12 @@ jest.mock("next/link", () => ({
   default: ({ children, href }: any) => <a href={href}>{children}</a>,
 }));
 
+// Admin → Settings → Employer onboarding: public employer sign-up switch.
+let mockEmployerSignupOpen = true;
+jest.mock("@/hooks/useEmployerOnboarding", () => ({
+  useEmployerSignupOpen: () => mockEmployerSignupOpen,
+}));
+
 import RegisterPage from "@/app/[locale]/(auth)/register/page";
 import { clearPendingReferral, getPendingReferral, setPendingReferral } from "@/lib/referrals/pendingReferral";
 
@@ -266,5 +272,23 @@ describe("/register (no referral)", () => {
     expect(screen.getByRole("heading", { name: "Create your account" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Change" }));
     expect(screen.getByText(CHOOSER_HEADING)).toBeInTheDocument();
+  });
+});
+
+describe("/register while public employer sign-up is off", () => {
+  afterEach(() => {
+    mockEmployerSignupOpen = true;
+  });
+
+  it("skips the Find a job / Hire talent chooser and shows no employer link", async () => {
+    mockEmployerSignupOpen = false;
+    arriveAt("");
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+    render(<RegisterPage />);
+    expect(screen.getByRole("heading", { name: "Create your account" })).toBeInTheDocument();
+    expect(screen.queryByText(CHOOSER_HEADING)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Change" })).toBeNull();
+    const hrefs = Array.from(document.querySelectorAll("a")).map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.some((h) => h.includes("employer-register"))).toBe(false);
   });
 });

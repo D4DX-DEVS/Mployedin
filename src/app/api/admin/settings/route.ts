@@ -4,6 +4,7 @@ import { withAuth } from "@/lib/auth/withAuth";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { clearCommissionOverrideCache } from "@/lib/commissions/resolveRate";
 import { clearSubscriptionEnforcementCache } from "@/lib/subscription/enforcementFlag";
+import { clearEmployerOnboardingCache, EMPLOYER_ONBOARDING_KEYS } from "@/lib/settings/employerOnboarding";
 import SystemSettings from "@/models/SystemSettings";
 import type { ISystemSettings } from "@/models/SystemSettings";
 import { validateBody } from "@/lib/validators";
@@ -52,7 +53,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   await connectDB();
   const body = await validateBody(req, systemSettingsUpdateSchema);
-  const allowed: (keyof ISystemSettings)[] = ["platformName", "supportEmail", "maintenanceMode", "defaultCurrency", "subscriptionEnforcementEnabled", "commissionOverrides", "invoiceIssuer"];
+  const allowed: (keyof ISystemSettings)[] = ["platformName", "supportEmail", "maintenanceMode", "defaultCurrency", "subscriptionEnforcementEnabled", "commissionOverrides", "invoiceIssuer", ...EMPLOYER_ONBOARDING_KEYS];
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if ((body as Record<string, unknown>)[key] !== undefined) update[key] = (body as Record<string, unknown>)[key];
@@ -153,6 +154,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   // Invalidate subscription-enforcement cache so the toggle takes effect now
   if (update.subscriptionEnforcementEnabled !== undefined) {
     clearSubscriptionEnforcementCache();
+  }
+
+  // Employer onboarding switches: public pages and APIs read them through a cache
+  if (EMPLOYER_ONBOARDING_KEYS.some((key) => update[key] !== undefined)) {
+    clearEmployerOnboardingCache();
   }
 
   // Secrets never go to the audit trail, encrypted or not.

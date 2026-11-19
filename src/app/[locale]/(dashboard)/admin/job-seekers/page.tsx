@@ -4,6 +4,7 @@ import { IndustryChips } from "@/components/shared/IndustryChips";
 import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
 import type { ReferralSummary } from "@/lib/referrals/summary";
+import { seekerCvAvailability } from "@/lib/cv/seekerCvAvailability";
 import { useLocale, useTranslations } from "next-intl";
 import { FormError, formErrorFromResponse } from "@/lib/errors/form-error";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
@@ -17,7 +18,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import {
-  Pencil, Trash2, Ban, Inbox, FileDown, Loader2, Eye, RotateCcw, X, Crown,
+  Pencil, Trash2, Ban, Inbox, FileDown, FileText, Loader2, Eye, RotateCcw, X, Crown,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,7 +36,12 @@ import {
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
-import { cvIdsInListOrder } from "@/lib/jobseekers/cvIdsInListOrder";
+import { seekersInListOrder } from "@/lib/jobseekers/seekersInListOrder";
+import { useRowSelection } from "@/hooks/useRowSelection";
+import { Checkbox } from "@/components/ui/checkbox";
+import { SelectionBar, ExportCvsButton } from "@/components/shared/SelectionBar";
+import { CvExportDialog } from "@/components/shared/CvExport/CvExportDialog";
+import { CV_EXPORT_MAX_ITEMS } from "@/lib/cv/cvExportTypes";
 import { toast } from "sonner";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
@@ -92,12 +98,9 @@ interface AiFilters {
   summary?: string;
 }
 
-/** The ZIP holds at most this many CVs (each is streamed through the CV endpoint). */
-const BULK_CV_MAX = 50;
-
 /**
  * The list query for the current search + filters. The table, the exports and
- * the CV download all build it here, so they always describe the same people.
+ * the CV export all build it here, so they always describe the same people.
  */
 function seekerListParams(search: string, filters: JobSeekerFilters): URLSearchParams {
   const params = new URLSearchParams();
@@ -119,6 +122,8 @@ function seekerListParams(search: string, filters: JobSeekerFilters): URLSearchP
 export default function AdminJobSeekersPage() {
   const tr = useTranslations("adminJobSeekers");
   const tf = useTranslations("formErrors");
+  const tSelect = useTranslations("selectionBar");
+  const tViewer = useTranslations("resumeViewerModal");
   const locale = useLocale();
   const router = useRouter();
   const { can } = usePermissions();
@@ -138,7 +143,8 @@ export default function AdminJobSeekersPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [editItem, setEditItem] = useState<JobSeeker | null>(null);
-  const [viewCv, setViewCv] = useState<{ id: string; name: string } | null>(null);
+  // `source: "file"` opens the original upload; otherwise the viewer opens on the Standardised CV.
+  const [viewCv, setViewCv] = useState<{ id: string; name: string; source?: "file" } | null>(null);
   // Industry counts aggregated from the filtered scope
   const [industryCounts, setIndustryCounts] = useState<Array<{ industry: string; count: number }>>([]);
   // Industries for the admin edit form dropdown
@@ -176,8 +182,13 @@ export default function AdminJobSeekersPage() {
   // of filter results. Any filter or search edit drops back to filter results.
   const [closestTo, setClosestTo] = useState<string | null>(null);
 
-  // ── CV download state ───────────────────────────────────
-  const [cvDownloading, setCvDownloading] = useState(false);
+  // ── CV export: row selection + the shared export dialog ──
+  const selection = useRowSelection<JobSeeker>((js) => js._id);
+  // Who the dialog is for: the ticked rows, or the first 50 of the filtered list.
+  const [exportRows, setExportRows] = useState<JobSeeker[]>([]);
+  const [exportOpen, setExportOpen] = useState(false);
+  // True while the filtered list is being paged for an export with nothing ticked.
+  const [exportPreparing, setExportPreparing] = useState(false);
 
   // ── Export columns (comprehensive) ──────────────────────
   const exportColumns: ExportColumn<JobSeeker>[] = useMemo(() => [
@@ -384,21 +395,57 @@ export default function AdminJobSeekersPage() {
     resetPage();
   };
 
-  // ── Bulk CV Download (single ZIP: CVs + details sheet) ──
-  const handleBulkCvDownload = async () => {
+  // ── CV export (shared dialog: Standardised / Original / Both, one ZIP) ──
+  const seekerName = (js: JobSeeker) => js.fullName || js.userId?.name || "";
+  const exportItems = useMemo(
+    () => exportRows.map((js) => ({ seekerId: js._id, name: js.fullName || js.userId?.name || "" })),
+    [exportRows],
+  );
+  // The candidates.xlsx columns the old ZIP had, minus the CV-file column: the
+  // ZIP adds the Standardised / Original columns itself.
+  const exportDetails = useMemo(() => ({
+    header: [
+      tr("bulkCvExcelSheetHeaderName"), tr("bulkCvExcelSheetHeaderEmail"), tr("bulkCvExcelSheetHeaderNationality"),
+      tr("bulkCvExcelSheetHeaderLocation"), tr("bulkCvExcelSheetHeaderExperience"), tr("bulkCvExcelSheetHeaderHeadline"),
+    ],
+    rowsById: new Map(exportRows.map((js) => [js._id, [
+      js.fullName || js.userId?.name || "", js.email ?? js.userId?.email ?? "", js.nationality ?? "", js.currentLocation ?? "",
+      js.totalExperienceYears != null ? String(js.totalExperienceYears) : "", js.headline ?? "",
+    ]])),
+  }), [exportRows, tr]);
+
+  const openCvExport = (picked: JobSeeker[]) => {
+    setExportRows(picked);
+    setExportOpen(true);
+  };
+
+  // The "Download CVs" menu item: the ticked rows, or, with none ticked and the
+  // admin's say-so, the first 50 of the filtered list in the order shown.
+  const handleCvExportMenu = async () => {
+    if (selection.count > 0) {
+      openCvExport(selection.items);
+      return;
+    }
+    const filteredTotal = closestTo ? jobSeekers.length : total;
+    if (filteredTotal === 0) {
+      toast.error(tr("noCvsFound"));
+      return;
+    }
     const ok = await confirmDialog({
-      message: tr("bulkCvDownloadConfirmMessage"),
-      confirmLabel: tr("downloadCvsButton"),
+      message: filteredTotal > CV_EXPORT_MAX_ITEMS
+        ? tr("exportFilteredFirstMessage", { max: CV_EXPORT_MAX_ITEMS, total: filteredTotal })
+        : tr("exportFilteredAllMessage", { count: filteredTotal }),
+      confirmLabel: tSelect("exportCvs"),
     });
     if (!ok) return;
-    setCvDownloading(true);
+    setExportPreparing(true);
     try {
-      // The ZIP holds exactly the people on screen, top to bottom: page through
-      // the same list query (filters + sort) the table uses, then fetch those ids.
-      // A ranked AI search has no paged full set — use the rows it showed.
-      const ids = closestTo
-        ? jobSeekers.filter((js) => js.cv?.originalUrl).map((js) => js._id).slice(0, BULK_CV_MAX)
-        : await cvIdsInListOrder(async (p, l) => {
+      // The export holds exactly the people on screen, top to bottom: page through
+      // the same list query (filters + sort) the table uses. A ranked AI search
+      // has no paged full set, so it uses the rows it showed.
+      const picked = closestTo
+        ? jobSeekers.slice(0, CV_EXPORT_MAX_ITEMS)
+        : await seekersInListOrder<JobSeeker>(async (p, l) => {
             const params = seekerListParams(search, filters);
             params.set("page", String(p));
             params.set("limit", String(l));
@@ -406,78 +453,16 @@ export default function AdminJobSeekersPage() {
             if (!listRes.ok) throw new Error("list");
             const json = await listRes.json();
             return { rows: json.items ?? json.jobSeekers ?? [], total: Number(json.total ?? 0) };
-          }, BULK_CV_MAX);
-      if (ids.length === 0) {
+          }, CV_EXPORT_MAX_ITEMS);
+      if (picked.length === 0) {
         toast.error(tr("noCvsFound"));
         return;
       }
-      const res = await fetch("/api/job-seekers/bulk-cv-download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-      });
-      if (!res.ok) throw new Error("Failed to fetch CVs");
-      const data = await res.json();
-      const cvs = data.cvs as {
-        id: string; name: string; headline?: string; email?: string;
-        nationality?: string; location?: string; experienceYears?: number;
-      }[];
-
-      if (cvs.length === 0) {
-        toast.error(tr("noCvsFound"));
-        return;
-      }
-
-      const [{ default: JSZip }, { xlsxBlobFromRows }] = await Promise.all([
-        import("jszip"),
-        import("@/lib/export"),
-      ]);
-      const zip = new JSZip();
-      const extFromType = (ct: string | null): string =>
-        ct?.includes("pdf") ? "pdf"
-        : ct?.includes("wordprocessingml") ? "docx"
-        : ct?.includes("msword") ? "doc"
-        : ct?.includes("png") ? "png"
-        : ct?.includes("jpeg") ? "jpg"
-        : "pdf";
-      const rows: string[][] = [[tr("bulkCvExcelSheetHeaderName"), tr("bulkCvExcelSheetHeaderEmail"), tr("bulkCvExcelSheetHeaderNationality"), tr("bulkCvExcelSheetHeaderLocation"), tr("bulkCvExcelSheetHeaderExperience"), tr("bulkCvExcelSheetHeaderHeadline"), tr("bulkCvExcelSheetHeaderCvFile")]];
-      let added = 0;
-      for (const cv of cvs.slice(0, 50)) {
-        try {
-          // Stream through our authenticated endpoint — raw storage URLs are private-ACL
-          const fileRes = await fetch(`/api/employers/candidates/${cv.id}/cv`);
-          if (!fileRes.ok) continue;
-          const ext = extFromType(fileRes.headers.get("content-type"));
-          const safe = cv.name.replace(/[^a-zA-Z0-9 _-]/g, "").trim() || cv.id;
-          const fileName = `CVs/${safe}_${cv.id.slice(-6)}.${ext}`;
-          zip.file(fileName, await fileRes.arrayBuffer());
-          rows.push([
-            cv.name, cv.email ?? "", cv.nationality ?? "", cv.location ?? "",
-            cv.experienceYears != null ? String(cv.experienceYears) : "", cv.headline ?? "", fileName,
-          ]);
-          added++;
-        } catch {
-          // Skip individual failures
-        }
-      }
-      if (added === 0) {
-        toast.error(tr("cvsDownloadFailed"));
-        return;
-      }
-      zip.file("candidates.xlsx", await xlsxBlobFromRows(rows, "Candidates"));
-      const blob = await zip.generateAsync({ type: "blob" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "job-seeker-cvs.zip";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
-      toast.success(tr("cvsDownloadedSuccess", { count: added }));
+      openCvExport(picked);
     } catch {
-      toast.error(tr("cvsDownloadFailed"));
+      toast.error(tr("exportListError"));
     } finally {
-      setCvDownloading(false);
+      setExportPreparing(false);
     }
   };
 
@@ -563,7 +548,8 @@ export default function AdminJobSeekersPage() {
   };
   const canUpdate = can("job_seekers", "update");
   const canDelete = can("job_seekers", "delete");
-  const columnCount = 9;
+  const columnCount = 10;
+  const pageSelection = selection.pageState(jobSeekers);
 
   // Premium = the `premium` entry in badges[]; the route also re-stamps the
   // seeker's applications as priority (or takes it back).
@@ -594,11 +580,19 @@ export default function AdminJobSeekersPage() {
   const rowActionsFor = (js: JobSeeker): { quick: RowAction[]; menu: RowAction[] } => {
     const inactive = js.userId?.isActive === false;
     const isPremium = (js.badges ?? []).includes("premium");
+    const name = seekerName(js) || "CV";
+    const { hasCv, canBuildCv } = seekerCvAvailability(js);
     return {
-      quick: js.cv?.originalUrl
-        ? [{ key: "cv", label: tr("viewCvTitle"), icon: Eye, onSelect: () => setViewCv({ id: js._id, name: js.fullName || js.userId?.name || "CV" }) }]
+      // View CV opens the Standardised CV, which is made from the profile, so it
+      // is offered for someone with no upload too, but not when there is neither a file
+      // nor profile content to build one from (same rule as the super-agent profile panel).
+      quick: hasCv || canBuildCv
+        ? [{ key: "cv", label: tr("viewCvTitle"), icon: Eye, onSelect: () => setViewCv({ id: js._id, name }) }]
         : [],
       menu: [
+        ...(js.cv?.originalUrl
+          ? [{ key: "originalCv", label: tViewer("originalCv"), icon: FileText, onSelect: () => setViewCv({ id: js._id, name, source: "file" as const }) }]
+          : []),
         ...(canUpdate ? [
           { key: "edit", label: tr("actionEditTitle"), icon: Pencil, onSelect: () => setEditItem(js) },
           {
@@ -647,8 +641,8 @@ export default function AdminJobSeekersPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
         exportExtra={(
-          <DropdownMenuItem onClick={() => void handleBulkCvDownload()} disabled={cvDownloading}>
-            {cvDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+          <DropdownMenuItem onClick={() => void handleCvExportMenu()} disabled={exportPreparing}>
+            {exportPreparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
             {tr("downloadCvsButton")}
           </DropdownMenuItem>
         )}
@@ -687,9 +681,25 @@ export default function AdminJobSeekersPage() {
         ) : (
         <>
         <div className="sm:hidden">
+          {/* Phones have no header row, so the page's select-all sits above the cards. */}
+          {!loading && jobSeekers.length > 0 && (
+            <label className="mb-2 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-border/70 bg-card px-3 text-sm font-medium">
+              <Checkbox
+                checked={pageSelection === "all" ? true : pageSelection === "some" ? "indeterminate" : false}
+                onCheckedChange={() => selection.togglePage(jobSeekers)}
+                aria-label={tSelect("selectAllOnPage")}
+              />
+              {tSelect("selectAllOnPage")}
+            </label>
+          )}
           <JobSeekerMobileList
             seekers={jobSeekers}
             loading={loading}
+            selection={{
+              isSelected: selection.isSelected,
+              onToggle: selection.toggle,
+              label: (name) => tSelect("selectRow", { name }),
+            }}
             hrefFor={(js) => `/${locale}/admin/job-seekers/${js._id}`}
             availabilityLabels={availabilityLabels}
             empty={(
@@ -707,13 +717,11 @@ export default function AdminJobSeekersPage() {
                 ) : undefined}
               />
             )}
-            renderActions={(js) => (js.cv?.originalUrl || canUpdate || canDelete
-              ? (() => {
-                  // Phones: View CV joins the menu, so the card needs no actions line.
-                  const { quick, menu } = rowActionsFor(js);
-                  return <RowActions name={js.fullName || js.userId?.name || js.email || ""} quick={[]} menu={[...quick, ...menu]} />;
-                })()
-              : null)}
+            renderActions={(js) => {
+              // Phones: View CV joins the menu, so the card needs no actions line.
+              const { quick, menu } = rowActionsFor(js);
+              return <RowActions name={js.fullName || js.userId?.name || js.email || ""} quick={[]} menu={[...quick, ...menu]} />;
+            }}
           />
         </div>
 
@@ -722,6 +730,14 @@ export default function AdminJobSeekersPage() {
         <Table data-mobile-table="scroll" className="max-sm:hidden">
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="w-10">
+                <Checkbox
+                  aria-label={tSelect("selectAllOnPage")}
+                  className="tap-target-box"
+                  checked={pageSelection === "all" ? true : pageSelection === "some" ? "indeterminate" : false}
+                  onCheckedChange={() => selection.togglePage(jobSeekers)}
+                />
+              </TableHead>
               <TableHead>
                 <div className="flex items-center gap-1.5">
                   <span>{tr("tableHeaderName")}</span>
@@ -777,7 +793,15 @@ export default function AdminJobSeekersPage() {
                 </TableCell>
               </TableRow>
             ) : jobSeekers.map((js) => (
-              <Fragment key={js._id}><TableRow className="cursor-pointer hover:bg-muted/30" onClick={(e) => { if (isRowToggleClick(e)) router.push(`/${locale}/admin/job-seekers/${js._id}`); }}>
+              <Fragment key={js._id}><TableRow className={`cursor-pointer hover:bg-muted/30 ${selection.isSelected(js._id) ? "bg-primary/5" : ""}`} onClick={(e) => { if (isRowToggleClick(e)) router.push(`/${locale}/admin/job-seekers/${js._id}`); }}>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    aria-label={tSelect("selectRow", { name: seekerName(js) || js.email || js.userId?.email || "—" })}
+                    className="tap-target-box"
+                    checked={selection.isSelected(js._id)}
+                    onCheckedChange={() => selection.toggle(js)}
+                  />
+                </TableCell>
                 <TableCell>
                   <div className="flex items-start gap-2">
                     <UserAvatar name={js.fullName || js.userId?.name} email={js.email ?? js.userId?.email} className="h-9 w-9 shrink-0" colorful />
@@ -837,9 +861,7 @@ export default function AdminJobSeekersPage() {
                     : <span className="text-muted-foreground">—</span>}
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                  {js.cv?.originalUrl || canUpdate || canDelete ? (
-                    <RowActions name={js.fullName || js.userId?.name || js.email || ""} labelsFrom="wide" {...rowActionsFor(js)} />
-                  ) : <span className="text-muted-foreground">—</span>}
+                  <RowActions name={js.fullName || js.userId?.name || js.email || ""} labelsFrom="wide" {...rowActionsFor(js)} />
                 </TableCell>
               </TableRow>
 
@@ -860,9 +882,22 @@ export default function AdminJobSeekersPage() {
           url={`/api/employers/candidates/${viewCv.id}/cv#cv.pdf`}
           candidateName={viewCv.name}
           jobSeekerId={viewCv.id}
+          initialSource={viewCv.source}
           onClose={() => setViewCv(null)}
         />
       )}
+
+      {/* ── CV export: the shared dialog, and the bar that starts it ── */}
+      <CvExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        items={exportItems}
+        detailsRows={exportDetails}
+        onExported={selection.clear}
+      />
+      <SelectionBar count={selection.count} onClear={selection.clear}>
+        <ExportCvsButton count={selection.count} onClick={() => openCvExport(selection.items)} />
+      </SelectionBar>
 
       {/* ── Edit Modal ────────────────────────────────────── */}
       <CrudModal open={!!editItem} onClose={() => setEditItem(null)} title={tr("editModalTitle")} fields={editFields}

@@ -788,13 +788,14 @@ describe("EasyApply Anonymous Card", () => {
 
       // The visitor picked a CV, then verifies an emailed code. `queued` are the
       // responses of the requests that follow the code request (CV extraction, save).
-      async function verifyEmailCodeWithCv(update: jest.Mock, queued: unknown[]) {
+      async function verifyEmailCodeWithCv(update: jest.Mock, queued: unknown[], routeRequests?: () => void) {
         const { csrfFetch } = require("@/lib/security/csrf-client");
         csrfFetch.mockReset();
         csrfFetch.mockResolvedValueOnce(new Response(JSON.stringify({ sent: true }), { status: 200 }));
         for (const response of queued) csrfFetch.mockResolvedValueOnce(response);
         (useSession as jest.Mock).mockReturnValue({ data: null, status: "unauthenticated", update });
         (global.fetch as unknown as jest.Mock).mockResolvedValue({ ok: false, json: async () => null });
+        routeRequests?.();
         const user = userEvent.setup();
         renderCard();
         const cv = new File(["cv"], "cv.pdf", { type: "application/pdf" });
@@ -855,6 +856,181 @@ describe("EasyApply Anonymous Card", () => {
           await waitFor(() => expect(update).toHaveBeenCalled());
           expect(navigateWithPageLoad).not.toHaveBeenCalled();
           expect(csrfFetch).toHaveBeenCalledTimes(1); // only the code request: the CV is not read
+        });
+      });
+
+      // A seeker who already has an account picks a CV and signs in: the CV is
+      // for this application only. Reading it into the account would replace
+      // their name, experience, skills and visibility with whatever the file says.
+      describe("when the account already exists, and a CV was picked", () => {
+        const { csrfFetch } = require("@/lib/security/csrf-client");
+        const uploaded = { id: "doc-new", name: "latest-cv.pdf", category: "resume", url: "/f/latest-cv.pdf" };
+
+        function routeFetch(me: unknown) {
+          (global.fetch as unknown as jest.Mock).mockImplementation(async (url: string, init?: RequestInit) => {
+            if (url === "/api/job-seeker/documents" && init?.method === "POST") {
+              return { ok: true, json: async () => ({ document: uploaded }) };
+            }
+            if (url === "/api/job-seeker/me") return { ok: true, json: async () => me };
+            return { ok: false, json: async () => null };
+          });
+        }
+
+        beforeEach(() => {
+          csrfFetch.mockReset();
+          sessionStorage.clear();
+        });
+
+        it("an onboarded Google account: keeps the CV as a document, never reads it into the profile, and loads the job page", async () => {
+          getSession.mockResolvedValue({ user: { role: "job_seeker", isOnboarded: true, isNewAccount: false } });
+          routeFetch({ jobSeeker: null });
+          (useSession as jest.Mock).mockReturnValue({ data: null, status: "unauthenticated", update: jest.fn() });
+          renderCard();
+          const cv = new File(["cv"], "latest-cv.pdf", { type: "application/pdf" });
+          fireEvent.change(document.querySelector("input[type=file]") as HTMLInputElement, { target: { files: [cv] } });
+
+          fireEvent.click(googleButton());
+
+          await waitFor(() => expect(navigateWithPageLoad).toHaveBeenCalledWith(window.location.pathname + window.location.search));
+          expect(global.fetch).toHaveBeenCalledWith("/api/job-seeker/documents", expect.objectContaining({ method: "POST" }));
+          // The same file twice (a retry, a second go) is not stored twice.
+          const sent = (global.fetch as unknown as jest.Mock).mock.calls.find(([u]: [string]) => u === "/api/job-seeker/documents")[1].body as FormData;
+          expect(sent.get("reuseSame")).toBe("1");
+          expect(csrfFetch).not.toHaveBeenCalledWith("/api/ai/cv-extract", expect.anything());
+          expect(csrfFetch).not.toHaveBeenCalledWith("/api/job-seekers/profile", expect.anything());
+          expect(screen.queryByRole("button", { name: "reviewSave" })).toBeNull();
+          // The reloaded form preselects that CV.
+          expect(sessionStorage.getItem("mployedin:apply-returning-cv")).toMatch(/^test-job-id\|doc-new\|\d+$/);
+        });
+
+        it("the provider's word is final: an existing account with an EMPTY profile is still existing (emailed code)", async () => {
+          getSession.mockResolvedValue({ user: { role: "job_seeker", isOnboarded: false, isNewAccount: false } });
+          const update = jest.fn();
+          await verifyEmailCodeWithCv(update, [], () => routeFetch({ jobSeeker: { cvUrl: null, documents: [], hasBuiltCv: false } }));
+
+          await waitFor(() => expect(update).toHaveBeenCalled());
+          expect(global.fetch).toHaveBeenCalledWith("/api/job-seeker/documents", expect.objectContaining({ method: "POST" }));
+          expect(csrfFetch).toHaveBeenCalledTimes(1);
+          expect(screen.queryByRole("button", { name: "reviewSave" })).toBeNull();
+        });
+
+        it("an account the provider just created has its CV read, even if the profile lookup says otherwise", async () => {
+          getSession.mockResolvedValue({ user: { role: "job_seeker", isOnboarded: false, isNewAccount: true } });
+          routeFetch({ jobSeeker: { cvUrl: "/f/x.pdf", documents: [] } });
+          csrfFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, extracted: {}, profileCompleteness: 10 }) });
+          (useSession as jest.Mock).mockReturnValue({ data: null, status: "unauthenticated", update: jest.fn() });
+          renderCard();
+          const cv = new File(["cv"], "cv.pdf", { type: "application/pdf" });
+          fireEvent.change(document.querySelector("input[type=file]") as HTMLInputElement, { target: { files: [cv] } });
+
+          fireEvent.click(googleButton());
+
+          await waitFor(() => expect(csrfFetch).toHaveBeenCalledWith("/api/ai/cv-extract", expect.anything()));
+          expect(global.fetch).not.toHaveBeenCalledWith("/api/job-seeker/documents", expect.anything());
+        });
+
+        it("a session without the provider's flag falls back to the profile: one that holds a CV is existing (emailed code)", async () => {
+          getSession.mockResolvedValue({ user: { role: "job_seeker", isOnboarded: false } });
+          const update = jest.fn();
+          await verifyEmailCodeWithCv(update, [], () => routeFetch({ jobSeeker: { cvUrl: "/f/old.pdf", documents: [] } }));
+
+          await waitFor(() => expect(update).toHaveBeenCalled());
+          expect(global.fetch).toHaveBeenCalledWith("/api/job-seeker/documents", expect.objectContaining({ method: "POST" }));
+          // Only the code request: the CV is not read, nothing is saved over the profile.
+          expect(csrfFetch).toHaveBeenCalledTimes(1);
+          expect(navigateWithPageLoad).not.toHaveBeenCalled();
+          expect(screen.queryByRole("button", { name: "reviewSave" })).toBeNull();
+        });
+
+        it("a brand-new account still has its CV read (the review window opens)", async () => {
+          getSession.mockResolvedValue({ user: { role: "job_seeker", isOnboarded: false } });
+          routeFetch({ jobSeeker: { cvUrl: null, documents: [], hasBuiltCv: false } });
+          csrfFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, extracted: {}, profileCompleteness: 10 }) });
+          (useSession as jest.Mock).mockReturnValue({ data: null, status: "unauthenticated", update: jest.fn() });
+          renderCard();
+          const cv = new File(["cv"], "cv.pdf", { type: "application/pdf" });
+          fireEvent.change(document.querySelector("input[type=file]") as HTMLInputElement, { target: { files: [cv] } });
+
+          fireEvent.click(googleButton());
+
+          await waitFor(() => expect(csrfFetch).toHaveBeenCalledWith("/api/ai/cv-extract", expect.anything()));
+          expect(global.fetch).not.toHaveBeenCalledWith("/api/job-seeker/documents", expect.anything());
+        });
+
+        it("a failed upload still lands on the form, flagged so the page says to pick or upload again", async () => {
+          getSession.mockResolvedValue({ user: { role: "job_seeker", isNewAccount: false } });
+          (global.fetch as unknown as jest.Mock).mockImplementation(async (url: string) =>
+            url === "/api/job-seeker/documents" ? { ok: false, status: 500, json: async () => ({ error: "boom" }) } : { ok: false, json: async () => null });
+          (useSession as jest.Mock).mockReturnValue({ data: null, status: "unauthenticated", update: jest.fn() });
+          renderCard();
+          const cv = new File(["cv"], "latest-cv.pdf", { type: "application/pdf" });
+          fireEvent.change(document.querySelector("input[type=file]") as HTMLInputElement, { target: { files: [cv] } });
+
+          fireEvent.click(googleButton());
+
+          await waitFor(() => expect(navigateWithPageLoad).toHaveBeenCalled());
+          expect(sessionStorage.getItem("mployedin:apply-returning-cv")).toMatch(/^test-job-id\|\|\d+$/);
+          expect(csrfFetch).not.toHaveBeenCalledWith("/api/ai/cv-extract", expect.anything());
+        });
+
+        function signedInReturning(me: unknown) {
+          (useSession as jest.Mock).mockReturnValue({
+            data: { user: { role: "job_seeker", isOnboarded: true, email: "seeker@example.com", name: "Old Name" } },
+            status: "authenticated",
+            update: jest.fn(),
+          });
+          (global.fetch as unknown as jest.Mock).mockImplementation(async (url: string) => {
+            if (url.startsWith("/api/applications")) return { ok: true, json: async () => ({ applications: [] }) };
+            if (url === "/api/job-seeker/me") return { ok: true, json: async () => me };
+            return { ok: false, json: async () => null };
+          });
+          rtlRender(<EasyApply jobId="test-job-id" jobTitle="Test Job" locale="en" />);
+        }
+
+        it("the picked CV turned out to be their Profile CV: that one is preselected", async () => {
+          sessionStorage.setItem("mployedin:apply-returning-cv", `test-job-id|__profile_cv__|${Date.now()}`);
+          signedInReturning({ jobSeeker: { cvUrl: "/f/old.pdf", cvFileName: "old.pdf", documents: [uploaded] } });
+
+          expect(await screen.findByText("welcomeBackTitle")).toBeInTheDocument();
+          const profile = screen.getByText("old.pdf").closest("label")!.querySelector("input") as HTMLInputElement;
+          expect(profile).toBeChecked();
+          expect(screen.queryByText("errors.returningCvNotKept")).toBeNull();
+        });
+
+        it("after a failed upload (or a refresh mid-upload): says so, and the form still offers their CVs and an upload", async () => {
+          sessionStorage.setItem("mployedin:apply-returning-cv", `test-job-id||${Date.now()}`);
+          signedInReturning({ jobSeeker: { cvUrl: "/f/old.pdf", cvFileName: "old.pdf", documents: [] } });
+
+          expect(await screen.findByText("errors.returningCvNotKept")).toBeInTheDocument();
+          expect(screen.getByText("old.pdf")).toBeInTheDocument();
+          expect(screen.getByText("uploadDifferentCv")).toBeInTheDocument();
+        });
+
+        it("back on the job page, signed in: welcomes them back and preselects the CV they just picked", async () => {
+          sessionStorage.setItem("mployedin:apply-returning-cv", `test-job-id|doc-new|${Date.now()}`);
+          (useSession as jest.Mock).mockReturnValue({
+            data: { user: { role: "job_seeker", isOnboarded: true, email: "seeker@example.com", name: "Old Name" } },
+            status: "authenticated",
+            update: jest.fn(),
+          });
+          (global.fetch as unknown as jest.Mock).mockImplementation(async (url: string) => {
+            if (url.startsWith("/api/applications")) return { ok: true, json: async () => ({ applications: [] }) };
+            if (url === "/api/job-seeker/me") {
+              return {
+                ok: true,
+                json: async () => ({ jobSeeker: { name: "Old Name", cvUrl: "/f/old.pdf", cvFileName: "old.pdf", documents: [uploaded] } }),
+              };
+            }
+            return { ok: false, json: async () => null };
+          });
+          rtlRender(<EasyApply jobId="test-job-id" jobTitle="Test Job" locale="en" />);
+
+          expect(await screen.findByText("welcomeBackTitle")).toBeInTheDocument();
+          const picked = screen.getByText("latest-cv.pdf").closest("label")!.querySelector("input") as HTMLInputElement;
+          expect(picked).toBeChecked();
+          expect(screen.getByRole("link", { name: /welcomeBackUpdateProfile/ })).toHaveAttribute("href", "/en/job-seeker/documents");
+          // Read once: a later visit is an ordinary one.
+          expect(sessionStorage.getItem("mployedin:apply-returning-cv")).toBe("");
         });
       });
 

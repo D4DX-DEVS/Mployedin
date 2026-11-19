@@ -36,6 +36,7 @@ import { ReferredBadge } from "@/components/shared/ReferredBadge";
 import { PriorityBadge } from "@/components/shared/PriorityBadge";
 import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { formatCount } from "@/lib/ui/intlFormat";
+import { candidateHasCv } from "@/lib/applications/candidateCv";
 
 // ── Detail response shape (subset of /api/employers/candidates/[id]) ──
 interface DetailLanguage {
@@ -357,10 +358,12 @@ export function CandidateDetailPanel({
             <MessageSquare className="h-3.5 w-3.5" />
             {t("messageAction")}
           </Button>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onOpenCv(candidate)}>
-            <FileText className="h-3.5 w-3.5" />
-            {t("viewCv")}
-          </Button>
+          {candidateHasCv(candidate) ? (
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onOpenCv(candidate)}>
+              <FileText className="h-3.5 w-3.5" />
+              {t("viewCv")}
+            </Button>
+          ) : null}
           <Button
             size="sm"
             variant={isInReviewList ? "secondary" : "outline"}

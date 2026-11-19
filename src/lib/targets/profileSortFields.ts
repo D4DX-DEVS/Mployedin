@@ -9,6 +9,9 @@ export const TARGET_PROFILE_SORT_FIELDS = [
   "profitTarget",
   "profitAchieved",
   "profitProgress",
+  "jobProgress",
+  "onboardedProgress",
+  "revenueProgress",
   "risk",
 ] as const;
 

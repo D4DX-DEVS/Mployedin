@@ -12,6 +12,7 @@ import { rememberLocaleChoice } from "@/lib/consent/rememberLocale";
 import { roleHomePath } from "@/lib/auth/roleHome";
 import { usePendingReferral } from "@/lib/referrals/pendingReferral";
 import { registerHrefFor } from "@/lib/referrals/url";
+import { useEmployerEntryHref } from "@/components/shared/EmployerEntryLink";
 
 interface PublicHeaderProps {
   locale: string;
@@ -32,11 +33,13 @@ export default function PublicHeader({ locale }: PublicHeaderProps) {
   // A job an agent shared opens with ?ref=; the code is held in memory (never a
   // cookie) and carried to sign-up in the link.
   const registerHref = registerHrefFor(locale, usePendingReferral());
+  // Sign-up while the admin allows it, otherwise our contact page.
+  const employerHref = useEmployerEntryHref(locale);
 
   const navLinks = [
     { href: `/${locale}/jobs`, label: tNav("jobs") },
     { href: `/${locale}/companies`, label: tLanding("companies") },
-    { href: `/${locale}/employer-register`, label: tLanding("forEmployers") },
+    { href: employerHref, label: tLanding("forEmployers") },
     { href: `/${locale}/blog`, label: tLanding("blog") },
   ];
   const mobileMenuId = "public-mobile-navigation";

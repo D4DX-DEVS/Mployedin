@@ -1,8 +1,11 @@
 /**
- * Downloads for the Copilot's ranked candidate shortlist: an Excel sheet, a
- * PDF report, or a ZIP with every CV beside the sheet. Contact details are
- * fetched here, at click time, so they never pass through the chat model.
+ * Downloads for the Copilot's ranked candidate shortlist: an Excel sheet, a PDF
+ * report, and the rows the shared CV export (CvExportDialog) writes beside the
+ * CVs. Contact details are fetched here, at click time, so they never pass
+ * through the chat model.
  */
+
+import type { CvDetails } from "@/lib/cv/cvZip";
 
 export interface ShortlistDetail {
   id: string;
@@ -29,7 +32,6 @@ export interface ShortlistColumns {
   email: string;
   phone: string;
   skills: string;
-  cv: string;
 }
 
 /** The picked seekers' full details, in the ranking's order. Admin-only route. */
@@ -52,41 +54,33 @@ export function shortlistFileName(brief: string, ext: string): string {
   return `shortlist-${fileSafe(brief)}.${ext}`;
 }
 
-function sheetRows(
-  details: ShortlistDetail[],
-  fits: Map<string, number>,
-  cols: ShortlistColumns,
-  cvFiles?: Map<string, string>,
-): string[][] {
+function sheetRows(details: ShortlistDetail[], fits: Map<string, number>, cols: ShortlistColumns): string[][] {
   const header = [cols.rank, cols.name, cols.title, cols.fit, cols.experience, cols.location, cols.nationality, cols.email, cols.phone, cols.skills];
   return [
-    cvFiles ? [...header, cols.cv] : header,
-    ...details.map((d, i) => {
-      const row = [
-        String(i + 1),
-        d.name,
-        d.title || d.headline,
-        fits.has(d.id) ? `${fits.get(d.id)}%` : "",
-        d.experienceYears != null ? String(d.experienceYears) : "",
-        d.location,
-        d.nationality,
-        d.email,
-        d.phone,
-        d.skills.join(", "),
-      ];
-      return cvFiles ? [...row, cvFiles.get(d.id) ?? ""] : row;
-    }),
+    header,
+    ...details.map((d, i) => [
+      String(i + 1),
+      d.name,
+      d.title || d.headline,
+      fits.has(d.id) ? `${fits.get(d.id)}%` : "",
+      d.experienceYears != null ? String(d.experienceYears) : "",
+      d.location,
+      d.nationality,
+      d.email,
+      d.phone,
+      d.skills.join(", "),
+    ]),
   ];
 }
 
-function triggerDownload(blob: Blob, filename: string) {
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(link.href);
+/**
+ * The shortlist's sheet columns for the CV export's `candidates.xlsx`, keyed by
+ * seeker id (the export matches rows to candidates by id, never by position).
+ * The export appends its own "Standardised" / "Original" columns.
+ */
+export function shortlistCvDetails(details: ShortlistDetail[], fits: Map<string, number>, cols: ShortlistColumns): CvDetails {
+  const [header, ...rows] = sheetRows(details, fits, cols);
+  return { header, rowsById: new Map(details.map((d, i) => [d.id, rows[i]])) };
 }
 
 export async function downloadShortlistExcel(details: ShortlistDetail[], fits: Map<string, number>, cols: ShortlistColumns, brief: string) {
@@ -118,35 +112,4 @@ export async function downloadShortlistPdf(details: ShortlistDetail[], fits: Map
     { header: cols.phone, key: "phone" },
   ];
   await exportPdf(rows, columns, shortlistFileName(brief, "pdf"), brief ? `${title} — ${brief}` : title);
-}
-
-const extFromType = (ct: string | null): string =>
-  ct?.includes("pdf") ? "pdf"
-  : ct?.includes("wordprocessingml") ? "docx"
-  : ct?.includes("msword") ? "doc"
-  : ct?.includes("png") ? "png"
-  : ct?.includes("jpeg") ? "jpg"
-  : "pdf";
-
-/** ZIP of every CV plus the sheet (with each CV's file name). Returns how many CVs made it in. */
-export async function downloadShortlistZip(details: ShortlistDetail[], fits: Map<string, number>, cols: ShortlistColumns, brief: string): Promise<number> {
-  const [{ default: JSZip }, { xlsxBlobFromRows }] = await Promise.all([import("jszip"), import("@/lib/export")]);
-  const zip = new JSZip();
-  const cvFiles = new Map<string, string>();
-  for (const [i, d] of details.entries()) {
-    if (!d.hasCV) continue;
-    try {
-      // Streamed through the authenticated endpoint: stored files are private.
-      const fileRes = await fetch(`/api/employers/candidates/${d.id}/cv`);
-      if (!fileRes.ok) continue;
-      const name = `CVs/${String(i + 1).padStart(2, "0")}-${fileSafe(d.name)}.${extFromType(fileRes.headers.get("content-type"))}`;
-      zip.file(name, await fileRes.arrayBuffer());
-      cvFiles.set(d.id, name);
-    } catch {
-      // One unreadable CV must not sink the rest.
-    }
-  }
-  zip.file("candidates.xlsx", await xlsxBlobFromRows(sheetRows(details, fits, cols, cvFiles), "Shortlist"));
-  triggerDownload(await zip.generateAsync({ type: "blob" }), shortlistFileName(brief, "zip"));
-  return cvFiles.size;
 }

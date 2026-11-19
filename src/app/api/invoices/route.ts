@@ -17,7 +17,7 @@ import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { isInvoiceStatus, NON_REVENUE_INVOICE_STATUSES, PENDING_BALANCE_INVOICE_STATUSES } from "@/lib/invoices/status";
-import { INVOICE_DISPUTE_OPEN_FILTER, PAYMENT_NOTICE_PENDING_FILTER } from "@/lib/admin/queueFilters";
+import { INVOICE_DISPUTE_OPEN_FILTER, PAYMENT_NOTICE_PENDING_FILTER, UNLINKED_HIRE_FILTER } from "@/lib/admin/queueFilters";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -100,6 +100,13 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     Object.assign(filter, PAYMENT_NOTICE_PENDING_FILTER);
   } else if (attentionParam === "dispute") {
     Object.assign(filter, INVOICE_DISPUTE_OPEN_FILTER);
+  } else if (attentionParam === "unlinked_hire" && ctx.role === "admin") {
+    // Recruitment lines not linked to a hire yet; only admin links them.
+    if (filter.$nor) {
+      filter.$and = [...(Array.isArray(filter.$and) ? filter.$and : []), UNLINKED_HIRE_FILTER];
+    } else {
+      Object.assign(filter, UNLINKED_HIRE_FILTER);
+    }
   }
 
   // Type filter

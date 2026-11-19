@@ -13,8 +13,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { NO_ACTIVITY } from "@/lib/agents/accountActivity";
 import type { Employer, EmployerListProps } from "./types";
 import { ClientPlanChip, useClientPlans } from "@/components/features/subscription/ClientPlans";
+import { AgentRateCell } from "@/components/features/commissions/_components/AgentRateCell";
 
-const COLUMN_COUNT = 5;
+const COLUMN_COUNT = 6;
 
 export function EmployerTable({
   employers,
@@ -107,6 +108,16 @@ export function EmployerTable({
             {t("activityOpenJobs", { count: activity.openJobs })} · {t("activityNewApplicants", { count: activity.newApplicants })} · {t("activityHires", { count: activity.hires })}
           </span>
         );
+        facts.push(
+          <div key="agent-rate" className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Agent rate:</span>
+            <AgentRateCell
+              employerId={em.userId ?? ""}
+              initialRate={em.agentRate && "rate" in em.agentRate ? em.agentRate.rate : null}
+              role="agent"
+            />
+          </div>
+        );
         return {
           key: em._id,
           leading: <UserAvatar name={em.companyName ?? em.name} email={em.email} className="h-10 w-10" colorful />,
@@ -154,6 +165,7 @@ export function EmployerTable({
                 {/* Secondary: below 1280px the row keeps company, status and
                     actions; the export carries both fields. */}
                 <TableHead className="hidden xl:table-cell">{`${t("exportColumnIndustry")} / ${t("exportColumnLocation")}`}</TableHead>
+                <TableHead className="hidden xl:table-cell">Agent rate</TableHead>
                 <TableHead className="text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -221,6 +233,13 @@ export function EmployerTable({
                           <span className="block">{em.industry || "—"}</span>
                           <span className="mt-1 block text-xs">{em.location || "—"}</span>
                         </div>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        <AgentRateCell
+                          employerId={em.userId ?? ""}
+                          initialRate={em.agentRate && "rate" in em.agentRate ? em.agentRate.rate : null}
+                          role="agent"
+                        />
                       </TableCell>
                       <TableCell className="text-right">
                         <RowActions name={em.companyName ?? em.name} quick={quick} menu={menu} />

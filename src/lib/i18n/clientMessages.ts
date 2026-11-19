@@ -33,7 +33,7 @@ export const CLIENT_NAMESPACES = {
     "formErrors", "passwordRequirements", "setPassword",
   ],
   auth: [
-    "a11y", "agentRegister", "auth", "calendar", "common", "confirmEmailChange", "employerRegister",
+    "a11y", "agentRegister", "auth", "calendar", "common", "confirmEmailChange", "employerAccess.signup", "employerRegister",
     "forgotPasswordPage", "formErrors", "interviewResponse", "linkPassword", "mcpAuthorize", "passwordRequirements", "resetPassword",
     "teamJoin", "verifyEmail",
   ],

@@ -15,6 +15,11 @@ export interface IInvoiceLineItem {
   unitPrice: number;
   amount: number;
   jobId?: mongoose.Types.ObjectId;
+  /** The hire this line bills. One invoice can bill several hires, so the link lives on the line. */
+  placementId?: mongoose.Types.ObjectId;
+  /** Who linked an older line to its hire from the admin invoices page, and when. */
+  placementLinkedBy?: mongoose.Types.ObjectId;
+  placementLinkedAt?: Date;
 }
 
 // ── Commission Breakdown (embedded) ──────────────────────────────────────────
@@ -179,6 +184,9 @@ const LineItemSchema = new Schema<IInvoiceLineItem>(
     unitPrice: { type: Number, required: true, min: 0 },
     amount: { type: Number, required: true, min: 0 },
     jobId: { type: Schema.Types.ObjectId, ref: "Job" },
+    placementId: { type: Schema.Types.ObjectId, ref: "Placement" },
+    placementLinkedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    placementLinkedAt: Date,
   },
   { _id: false },
 );
@@ -365,6 +373,7 @@ InvoiceSchema.index({ subscriptionId: 1 });
 InvoiceSchema.index({ status: 1 });
 InvoiceSchema.index({ category: 1 });
 InvoiceSchema.index({ jobId: 1 });
+InvoiceSchema.index({ "lineItems.placementId": 1 });
 InvoiceSchema.index({ employerId: 1 });
 InvoiceSchema.index({ agentId: 1 });
 InvoiceSchema.index({ dueDate: 1, status: 1 });

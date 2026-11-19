@@ -144,14 +144,11 @@ function loadPdfJs(): Promise<PdfJs> {
 async function renderPdfPages({
   data, templateId, formatting, labels,
 }: { data: CVForm; templateId: string; formatting: FormattingOptions; labels: CVPDFLabels }): Promise<RenderedPage[]> {
-  const [{ pdf }, { CVPDFDocument }, pdfjs] = await Promise.all([
-    import("@react-pdf/renderer"),
-    import("./cv-pdf-document"),
+  const [{ renderCvPdfBlob }, pdfjs] = await Promise.all([
+    import("@/lib/cv/renderCvPdf"),
     loadPdfJs(),
   ]);
-  const blob = await pdf(
-    <CVPDFDocument data={data} templateId={templateId} formatting={formatting} labels={labels} />,
-  ).toBlob();
+  const blob = await renderCvPdfBlob({ data, templateId, formatting, labels });
   const doc = await pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise;
   try {
     const out: RenderedPage[] = [];

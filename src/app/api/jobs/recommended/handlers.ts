@@ -1,19 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
-import Job from "@/models/Job";
-import JobSeeker from "@/models/JobSeeker";
-import Application from "@/models/Application";
-import { SEEKER_MATCH_FIELDS } from "@/lib/matchScore";
-import { effectiveSeekerProfile } from "@/lib/effectiveSeekerProfile";
-import {
-  buildRecommendedJobQuery,
-  poolCountries,
-  RECOMMENDATION_POOL_SIZE,
-  RECOMMENDED_JOB_SELECT,
-} from "@/lib/jobRecommendations";
 import { displayedJobs, scoreSeekerPool } from "@/lib/matching/seekerMatches";
 import { maskJobEmployer } from "@/lib/jobs/companyDisclosure";
-import { restrictToIds, vectorRetrievalEnabled, vectorRetrieveJobs } from "@/lib/matching/vectorRetrieval";
+import { loadSeekerJobPool, POOL_SIZE } from "@/lib/matching/seekerJobPool";
 import type { UserRole } from "@/models/User";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string; }
@@ -37,8 +26,6 @@ interface AuthCtx { userId: string; role: UserRole; locale: string; }
  *   recommended — "true" returns recommended jobs only (the home page's list)
  */
 
-const POOL_SIZE = RECOMMENDATION_POOL_SIZE;
-
 async function getHandler(req: NextRequest, ctx: AuthCtx) {
   if (ctx.role !== "job_seeker") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -56,58 +43,11 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   const poolPage = Number.isFinite(poolPageParam) ? Math.max(1, Math.round(poolPageParam)) : 1;
   const recommendedOnly = sp.get("recommended") === "true";
 
-  const seeker = await JobSeeker.findOne({ userId: ctx.userId })
-    .select(SEEKER_MATCH_FIELDS)
-    .lean();
-
-  if (!seeker) {
+  const loaded = await loadSeekerJobPool(ctx.userId, poolPage);
+  if (!loaded) {
     return NextResponse.json({ jobs: [], nextCursor: null, total: 0 });
   }
-
-  // Effective profile (base + confirmed skills) — shared with the dashboard
-  // surfaces so every page shows the same percentage for the same job.
-  const seekerProfile = await effectiveSeekerProfile(ctx.userId, seeker);
-
-  // Exclude already-applied jobs — withdrawn applications don't count, since
-  // the apply endpoints allow re-applying after a withdrawal.
-  const seekerId = (seeker as unknown as { _id: unknown })._id;
-  const appliedJobIds = await Application.find({ jobSeekerId: seekerId, status: { $ne: "withdrawn" } })
-    .select("jobId")
-    .lean()
-    .then((apps) => apps.map((a) => a.jobId));
-
-  // Candidate filter — shared with the seeker home page so both surfaces
-  // start from the same pool (live, unexpired, not applied to, in a preferred
-  // country or remote).
-  const jobQuery = buildRecommendedJobQuery({
-    preferredCountries: poolCountries(seeker),
-    excludeJobIds: appliedJobIds,
-  });
-
-  // Total matching jobs count (for pool page calculation)
-  const totalMatchingJobs = await Job.countDocuments(jobQuery);
-
-  // More matching jobs than one pool holds: start from the ones nearest the
-  // seeker's vector instead of the newest. Three pools' worth of ids, because
-  // the vector filter knows only status and jobQuery still drops some (country,
-  // expiry, applied). One pool then, so pool_page stays 1.
-  const vectorIds =
-    poolPage === 1 && totalMatchingJobs > POOL_SIZE && vectorRetrievalEnabled()
-      ? await vectorRetrieveJobs(String(seekerId), POOL_SIZE * 3)
-      : null;
-
-  // Candidate pool — fetch the current pool page slice
-  const poolSkip = vectorIds ? 0 : (poolPage - 1) * POOL_SIZE;
-  const candidateJobs = await Job.find(vectorIds ? restrictToIds(jobQuery, vectorIds) : jobQuery)
-    // _id tiebreaker: jobs seeded in the same second otherwise get an arbitrary
-    // order per query, so skip/limit windows shift and the same job can land in
-    // two pool pages (duplicate React keys downstream).
-    .sort({ createdAt: -1, _id: -1 })
-    .skip(poolSkip)
-    .limit(POOL_SIZE)
-    .select(RECOMMENDED_JOB_SELECT)
-    .populate("employerId", "companyName logo")
-    .lean();
+  const { seekerProfile, candidateJobs, totalMatchingJobs, retrievedByVector } = loaded;
 
   // Score with the engine. Recommended jobs lead; jobs that fail a hard gate
   // sink by a fixed penalty but stay visible (LinkedIn / Indeed behaviour), and
@@ -134,7 +74,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
   }
 
   const poolTotal = scored.length;
-  const totalPoolPages = vectorIds ? 1 : Math.max(1, Math.ceil(totalMatchingJobs / POOL_SIZE));
+  const totalPoolPages = retrievedByVector ? 1 : Math.max(1, Math.ceil(totalMatchingJobs / POOL_SIZE));
 
   // Aggregate signals for the dashboard stat cards (computed over the scored
   // pool so they reflect genuine profile fit, not the raw active-job count).

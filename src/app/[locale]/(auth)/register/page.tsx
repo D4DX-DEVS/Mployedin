@@ -26,6 +26,7 @@ import { clearPendingReferral, getPendingReferral, setPendingReferral, stripRefF
 import { validatePasswordForForm } from "@/lib/security/passwordPolicy";
 import { readCookieChoice } from "@/lib/gdpr/cookieChoice";
 import { EMAIL_PATTERN } from "@/lib/errors/email-pattern";
+import { useEmployerSignupOpen } from "@/hooks/useEmployerOnboarding";
 
 type FieldName = "name" | "email" | "password" | "confirmPassword" | "terms";
 type FieldErrors = Partial<Record<FieldName, string>>;
@@ -74,7 +75,10 @@ export default function RegisterPage() {
   const arrivedByReferral = refParam !== "";
   const [roleSelected, setRoleSelected] = useState(arrivedByReferral);
   // An employer code on this page still gets the way back to "Hire talent".
-  const showRoleChange = !arrivedByReferral || referralWrongAudience;
+  // Admin → Settings → Employer onboarding: while public employer sign-up is off
+  // there is no second account type to choose, so the chooser is skipped.
+  const employerSignupOpen = useEmployerSignupOpen();
+  const showRoleChange = employerSignupOpen && (!arrivedByReferral || referralWrongAudience);
   const roleBadgeId = useId();
 
   // The code is in state now; take `ref` out of the address bar (history entry,
@@ -288,7 +292,7 @@ export default function RegisterPage() {
     router.replace(callback ?? `/${locale}/onboarding`);
   }
 
-  if (!roleSelected) {
+  if (!roleSelected && employerSignupOpen) {
     return (
       <div className="flex w-full flex-col gap-6">
         <div className="space-y-2">
@@ -569,12 +573,14 @@ export default function RegisterPage() {
         </Link>
       </p>
 
-      <p className="text-center text-xs text-muted-foreground">
-        {t("hiringQuestion")}{" "}
-        <Link href={withCallback(`/${locale}/employer-register`, callback)} className="text-muted-foreground hover:text-foreground font-medium underline transition-colors">
-          {t("registerAsEmployer")}
-        </Link>
-      </p>
+      {employerSignupOpen ? (
+        <p className="text-center text-xs text-muted-foreground">
+          {t("hiringQuestion")}{" "}
+          <Link href={withCallback(`/${locale}/employer-register`, callback)} className="text-muted-foreground hover:text-foreground font-medium underline transition-colors">
+            {t("registerAsEmployer")}
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

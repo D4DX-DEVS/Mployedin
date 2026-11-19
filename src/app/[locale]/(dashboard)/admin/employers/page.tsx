@@ -38,6 +38,7 @@ import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { cn } from "@/lib/utils";
 import { AssignAgentDialog } from "@/components/features/agent/AssignAgentDialog";
 import { ChangeRegionDialog } from "./_components/ChangeRegionDialog";
+import { AgentRateCell } from "@/components/features/commissions/_components/AgentRateCell";
 import type { EmployerAgentSummary } from "@/lib/agents/employerAssignment";
 import type { EmployerRegionSummary } from "@/lib/agents/territoryCoverage";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -65,6 +66,8 @@ interface Employer {
   assignedAgent?: EmployerAgentSummary | null;
   /** The region (catalogue city) and every super-agent whose territory covers it. */
   region?: EmployerRegionSummary | null;
+  /** The effective agent commission rate. */
+  agentRate?: { rate: number; source: "employer_rate" } | { source: "none" };
 }
 
 export default function AdminEmployersPage() {
@@ -359,7 +362,7 @@ export default function AdminEmployersPage() {
   };
 
   const canManageRows = can("employers", "update") || can("employers", "delete") || can("employers", "approve");
-  const tableColumnCount = canManageRows ? 5 : 4;
+  const tableColumnCount = canManageRows ? 6 : 5;
 
   const toggleSort = (col: "companyName" | "industry" | "createdAt") => {
     if (sortBy === col) {
@@ -669,6 +672,7 @@ export default function AdminEmployersPage() {
               <TableHead className="min-w-[220px]"><SortableTableHeader label={t("tableHeaderCompany")} active={sortBy === "companyName"} order={order} onClick={() => toggleSort("companyName")} /></TableHead>
               <TableHead className="min-w-[120px]"><SortableTableHeader label={t("tableHeaderIndustry")} active={sortBy === "industry"} order={order} onClick={() => toggleSort("industry")} /></TableHead>
               <TableHead className="min-w-[160px]">{t("tableHeaderAgent")}</TableHead>
+              <TableHead className="min-w-[120px]">{t("tableHeaderAgentRate")}</TableHead>
               <TableHead className="whitespace-nowrap"><SortableTableHeader label={t("tableHeaderJoined")} active={sortBy === "createdAt"} order={order} onClick={() => toggleSort("createdAt")} /></TableHead>
               {canManageRows && (
                 <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
@@ -750,6 +754,9 @@ export default function AdminEmployersPage() {
                       ? t("regionSuperAgents", { names: emp.region.superAgents.map((s) => s.name).join(", ") })
                       : emp.region ? t("regionUncovered") : t("regionMissing")}
                   </p>
+                </TableCell>
+                <TableCell>
+                  <AgentRateCell employerId={emp._id} initialRate={emp.agentRate?.source === "employer_rate" ? emp.agentRate.rate : null} />
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatListDate(new Date(emp.createdAt), locale)}</TableCell>
                 {canManageRows && (

@@ -35,7 +35,10 @@ interface JobSeekerExpandedRowProps {
   seeker: ExpandedSeeker;
   locale: string;
   availabilityLabel?: string;
+  /** Opens the viewer on the Standardised CV (Mployedin), made from the profile. */
   onViewCv: () => void;
+  /** Opens the viewer on the file the seeker uploaded. */
+  onViewOriginalCv: () => void;
 }
 
 /** Items shown before "Show all": enough to judge a profile at a glance. */
@@ -92,7 +95,8 @@ function Chips({ items, more, onMore }: { items: string[]; more: number; onMore?
  * them on the left (with the CV), what they have done on the right. Replaces a
  * fixed three-column grid that left large holes beside short sections.
  */
-export function JobSeekerExpandedRow({ seeker, locale, availabilityLabel, onViewCv }: JobSeekerExpandedRowProps) {
+export function JobSeekerExpandedRow({ seeker, locale, availabilityLabel, onViewCv, onViewOriginalCv }: JobSeekerExpandedRowProps) {
+  const tViewer = useTranslations("resumeViewerModal");
   const t = useTranslations("adminJobSeekers");
   const [allExperience, setAllExperience] = useState(false);
   const [allSkills, setAllSkills] = useState(false);
@@ -176,20 +180,27 @@ export function JobSeekerExpandedRow({ seeker, locale, availabilityLabel, onView
         </Section>
 
         <Section icon={FileText} title={t("expandedLabelCvResume")}>
-          {seeker.cv?.originalUrl ? (
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" onClick={onViewCv} className="min-h-11 flex-1 gap-1.5 sm:min-h-9">
-                <Eye className="size-4" aria-hidden="true" />
-                {t("viewCvTitle")}
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => void downloadCv()} disabled={downloading} className="min-h-11 flex-1 gap-1.5 sm:min-h-9">
-                {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
-                {t("downloadCvLink")}
-              </Button>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">{t("expandedNoCv")}</p>
-          )}
+          {/* View CV is the Standardised CV, made from the profile, so it is there
+              even when nothing was uploaded; the upload has its own buttons. */}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" onClick={onViewCv} className="min-h-11 flex-1 gap-1.5 sm:min-h-9">
+              <Eye className="size-4" aria-hidden="true" />
+              {t("viewCvTitle")}
+            </Button>
+            {seeker.cv?.originalUrl && (
+              <>
+                <Button type="button" size="sm" variant="outline" onClick={onViewOriginalCv} className="min-h-11 flex-1 gap-1.5 sm:min-h-9">
+                  <FileText className="size-4" aria-hidden="true" />
+                  {tViewer("originalCv")}
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => void downloadCv()} disabled={downloading} className="min-h-11 flex-1 gap-1.5 sm:min-h-9">
+                  {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
+                  {t("downloadCvLink")}
+                </Button>
+              </>
+            )}
+          </div>
+          {!seeker.cv?.originalUrl && <p className="mt-2 text-sm text-muted-foreground">{t("expandedNoCv")}</p>}
         </Section>
       </div>
 

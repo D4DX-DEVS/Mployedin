@@ -12,6 +12,7 @@ import Placement from "@/models/Placement";
 import Invoice from "@/models/Invoice";
 import { INVOICE_TERMINAL_STATUSES } from "@/lib/invoices/status";
 import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/resolveRate";
+import type { DatedRate } from "@/lib/commissions/effectiveRate";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -56,12 +57,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Get all placements with populated data
   const allPlacements = await Placement.find(placementQuery)
     .populate("jobId", "title location salary currency")
-    .populate("employerId", "companyName companyEmail phone address country taxId")
+    .populate("employerId", "companyName companyEmail phone address country taxId agentCommissionRates")
     .populate("jobSeekerId", "userId")
     .populate({ path: "jobSeekerId", populate: { path: "userId", select: "name email" } })
     .populate("agentId", "userId commissionRate")
     .populate({ path: "agentId", populate: { path: "userId", select: "name email" } })
-    .populate("superAgentId", "userId overrideRate")
+    .populate("superAgentId", "userId overrideRate overrideRateHistory")
     .populate({ path: "superAgentId", populate: { path: "userId", select: "name" } })
     .sort({ placedAt: -1 })
     .lean();
@@ -96,21 +97,21 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // Format for frontend — resolve effective commission rates including country overrides
   const items = await Promise.all(paginated.map(async (p) => {
     const job = p.jobId as { _id?: unknown; title?: string; salary?: number; currency?: string } | null;
-    const emp = p.employerId as { _id?: unknown; companyName?: string; companyEmail?: string; phone?: string; address?: string; country?: string; taxId?: string } | null;
+    const emp = p.employerId as { _id?: unknown; companyName?: string; companyEmail?: string; phone?: string; address?: string; country?: string; taxId?: string; agentCommissionRates?: DatedRate[] } | null;
     const seeker = p.jobSeekerId as { userId?: { name?: string; email?: string } } | null;
     const agent = p.agentId as { _id?: unknown; userId?: { name?: string; email?: string }; commissionRate?: number } | null;
-    const superAgent = p.superAgentId as { _id?: unknown; userId?: { name?: string }; overrideRate?: number } | null;
+    const superAgent = p.superAgentId as { _id?: unknown; userId?: { name?: string }; overrideRate?: number; overrideRateHistory?: DatedRate[] } | null;
 
     const employerCountry = emp?.country ?? null;
     const rawAgentRate = agent?.commissionRate ?? 0;
     const rawSARate = superAgent?.overrideRate ?? 0;
 
     // Resolve rates with country overrides (same logic as invoice creation)
-    const resolvedAgentRate = rawAgentRate > 0
-      ? (await resolveCommissionRate(rawAgentRate, employerCountry)).rate
+    const resolvedAgentRate = agent
+      ? (await resolveCommissionRate(rawAgentRate, employerCountry, { history: emp?.agentCommissionRates })).rate
       : 0;
-    const resolvedSARate = rawSARate > 0
-      ? (await resolveOverrideRate(rawSARate, employerCountry)).rate
+    const resolvedSARate = superAgent
+      ? (await resolveOverrideRate(rawSARate, employerCountry, { history: superAgent.overrideRateHistory })).rate
       : 0;
 
     return {

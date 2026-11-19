@@ -23,6 +23,9 @@ export const MEMBER_ROUTE_FUNCTIONS: ReadonlyArray<readonly [string, PermissionF
   ["/api/employers/analytics", "canViewAnalytics"],
   ["/api/employers/screening-analytics", "canRunScreening"],
   ["/api/employers/candidates", "canManageTalentPools"],
+  // Bulk CV export: its manifest reads the same candidates (and the files then
+  // come through /api/employers/candidates), so the same function opens it.
+  ["/api/cv-export", "canManageTalentPools"],
   ["/api/employers/comm-templates", "canManageTalentPools"],
   ["/api/employers/posters", "canManageTalentPools"],
   ["/api/employers/poster-credits", "canManageTalentPools"],
@@ -107,6 +110,34 @@ function matchLongestPrefix(pathname: string): PermissionFlag | null {
   return best?.flag ?? null;
 }
 
+/** The part of the request an exception may read; without it only the path decides. */
+export interface MemberRequestInfo {
+  method?: string;
+  searchParams?: URLSearchParams;
+}
+
+const CANDIDATE_CV_PATH = /^\/api\/employers\/candidates\/[^/]+\/cv$/;
+
+/**
+ * The one narrow door past the candidate-pool function: opening an applicant's
+ * CV. A colleague who reviews applicants (canReviewApplicants) may GET a
+ * candidate's CV only with an `applicationId` (the route then requires that
+ * application to be this company's and this candidate's), and may POST the bulk
+ * export manifest (the route then requires every item to name an application).
+ * Talent-pool access (no application) stays on canManageTalentPools.
+ */
+function reviewerMayOpenApplicantCv(
+  pathname: string,
+  permissions: ICompanyUserPermissions,
+  request?: MemberRequestInfo
+): boolean {
+  if (permissions.canReviewApplicants !== true || !request) return false;
+  if (request.method === "GET" && CANDIDATE_CV_PATH.test(pathname)) {
+    return Boolean(request.searchParams?.get("applicationId"));
+  }
+  return request.method === "POST" && pathname === "/api/cv-export/manifest";
+}
+
 /**
  * Default deny. A company member reaches a path only when it is universally
  * allowed, or it is mapped and they hold the mapped flag. An unmapped
@@ -115,12 +146,44 @@ function matchLongestPrefix(pathname: string): PermissionFlag | null {
  */
 export function memberCanAccessPath(
   pathname: string,
-  permissions: ICompanyUserPermissions
+  permissions: ICompanyUserPermissions,
+  request?: MemberRequestInfo
 ): boolean {
   for (const prefix of MEMBER_ALWAYS_ALLOWED) {
     if (pathname === prefix || pathname.startsWith(prefix + "/")) return true;
   }
+  if (reviewerMayOpenApplicantCv(pathname, permissions, request)) return true;
   const flag = matchLongestPrefix(pathname);
   if (!flag) return false;
   return permissions[flag] === true;
+}
+
+/**
+ * Whether the workspace should offer "Export CVs": the server's rule, for hiding
+ * a button. An owner (or anyone who is not a colleague) is not limited; a
+ * colleague needs the applicant-review or the candidate-pool function. A
+ * colleague whose session carries no permissions is treated as having none.
+ */
+export function mayOfferCvExport(
+  user: { id?: string; companyOwnerUserId?: string; companyPermissions?: Partial<ICompanyUserPermissions> } | null | undefined
+): boolean {
+  const isColleague = Boolean(user?.companyOwnerUserId && user.companyOwnerUserId !== user.id);
+  if (!isColleague) return true;
+  const permissions = user?.companyPermissions;
+  return permissions?.canReviewApplicants === true || permissions?.canManageTalentPools === true;
+}
+
+/**
+ * Whether the workspace should offer "View CV" on a talent-pool row (no
+ * application): the CV route refuses a colleague who may review applicants but
+ * not manage talent pools there, and opens a CV for them only through an
+ * application of their company. An owner (or anyone who is not a colleague) is
+ * not limited. Mirrors the route's rule, for hiding a button.
+ */
+export function mayOpenTalentPoolCv(
+  user: { id?: string; companyOwnerUserId?: string; companyPermissions?: Partial<ICompanyUserPermissions> } | null | undefined
+): boolean {
+  const isColleague = Boolean(user?.companyOwnerUserId && user.companyOwnerUserId !== user.id);
+  if (!isColleague) return true;
+  return user?.companyPermissions?.canManageTalentPools === true;
 }

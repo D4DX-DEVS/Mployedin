@@ -46,9 +46,14 @@ jest.mock("@/lib/cv/cvDocuments", () => ({
 
 const limitCvUpload = jest.fn();
 // GET /api/job-seeker/me looks up the profile CV's file name (no record here).
+// Records of files this seeker already holds with the same content (fingerprint).
+let sameContentRecords: Array<{ fileUrl: string }> = [];
 jest.mock("@/models/CvDocument", () => ({
   __esModule: true,
-  default: { findOne: () => ({ select: () => ({ lean: async () => null }) }) },
+  default: {
+    findOne: () => ({ select: () => ({ lean: async () => null }) }),
+    find: () => ({ select: () => ({ lean: async () => sameContentRecords }) }),
+  },
 }));
 jest.mock("@/lib/cv/uploadLimit",() => ({ limitCvUpload: (...a: unknown[]) => limitCvUpload(...a) }));
 
@@ -77,6 +82,7 @@ const pdf = (name = "Antony_CV.pdf") => new File([Buffer.from("%PDF-1.4 antony")
 
 beforeEach(() => {
   jest.clearAllMocks();
+  sameContentRecords = [];
   limitCvUpload.mockResolvedValue(null);
   seekerDoc = {
     _id: SEEKER_ID,
@@ -164,6 +170,55 @@ describe("/api/job-seeker/documents", () => {
     expect(registerCvDocument).not.toHaveBeenCalled();
     // Only the resume counted toward the CV upload limit.
     expect(limitCvUpload).toHaveBeenCalledTimes(1);
+  });
+
+  // The public job page sends the CV an existing seeker picked with
+  // reuseSame=1: a retry, a second try after a refresh, or a CV they already
+  // hold must not become another identical document.
+  describe("reuseSame (the public apply card)", () => {
+    async function postResume(reuse: boolean) {
+      const { POST } = await import("@/app/api/job-seeker/documents/route");
+      form = new FormData();
+      form.append("file", pdf("Latest.pdf"));
+      form.append("category", "resume");
+      if (reuse) form.append("reuseSame", "1");
+      return POST(new NextRequest("http://localhost/api/job-seeker/documents", { method: "POST" }), { params: Promise.resolve({}) });
+    }
+
+    it("hands back the document that already holds the same file, and stores nothing", async () => {
+      sameContentRecords = [{ fileUrl: "https://cdn/documents/resume.pdf" }];
+      const res = await postResume(true);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toMatchObject({ reused: true, document: { id: "d1", name: "Resume.pdf", category: "resume" } });
+      expect(uploadFile).not.toHaveBeenCalled();
+      expect(seekerUpdateOne).not.toHaveBeenCalled();
+      expect(limitCvUpload).not.toHaveBeenCalled();
+    });
+
+    it("says it is the Profile CV when that is the same file", async () => {
+      sameContentRecords = [{ fileUrl: "https://cdn/cvs/january.pdf" }];
+      const body = await (await postResume(true)).json();
+      expect(body).toEqual({ reused: true, profileCv: true, document: null });
+      expect(uploadFile).not.toHaveBeenCalled();
+    });
+
+    it("stores a new document when no held file has the same content (a record whose file is gone does not count)", async () => {
+      sameContentRecords = [{ fileUrl: "https://cdn/documents/deleted-long-ago.pdf" }];
+      uploadFile.mockResolvedValue({ url: "https://cdn/documents/latest.pdf" });
+      const body = await (await postResume(true)).json();
+      expect(body.reused).toBeUndefined();
+      expect(body.document).toMatchObject({ name: "Latest.pdf", url: "https://cdn/documents/latest.pdf" });
+      expect(seekerUpdateOne).toHaveBeenCalledTimes(1);
+    });
+
+    it("is opt-in: the dashboard upload still stores every file it is given", async () => {
+      sameContentRecords = [{ fileUrl: "https://cdn/documents/resume.pdf" }];
+      uploadFile.mockResolvedValue({ url: "https://cdn/documents/latest.pdf" });
+      const body = await (await postResume(false)).json();
+      expect(body.reused).toBeUndefined();
+      expect(uploadFile).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("stops a resume over the upload limit before it is stored", async () => {

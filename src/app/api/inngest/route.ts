@@ -10,6 +10,7 @@ import { aiScreenApplication } from "@/lib/inngest/aiScreenApplication";
 import { rescoreJobApplicants } from "@/lib/inngest/rescoreJobApplicants";
 import { processCvDocumentFunction } from "@/lib/inngest/processCvDocument";
 import { jevFillFunction } from "@/lib/inngest/jevFill";
+import { seekerMatchWarmFunction } from "@/lib/inngest/seekerMatchWarm";
 import { fillMissingJobSkillsCron, refreshMatchEmbeddingsCron } from "@/lib/inngest/matchEmbeddings";
 import { emailSequenceSenderCron } from "@/lib/inngest/emailSequenceSender";
 import { extractionDraftExpiryCron } from "@/lib/inngest/extractionDraftExpiry";
@@ -41,6 +42,9 @@ export const { GET, POST, PUT } = serve({
     processCvDocumentFunction,
     // Decides the Jev verdicts page renders found missing (they never wait on Jev).
     jevFillFunction,
+    // Scores a seeker's feed after a profile save so the home page opens on
+    // final match scores instead of changing on refresh.
+    seekerMatchWarmFunction,
     // Keeps job and seeker matching vectors fresh (off until MATCH_EMBEDDINGS=on).
     refreshMatchEmbeddingsCron,
     fillMissingJobSkillsCron,

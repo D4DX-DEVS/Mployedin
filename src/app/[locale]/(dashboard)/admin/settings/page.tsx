@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, type RefObject } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Eye, EyeOff, Mail, Send, Globe, ReceiptText, Check, Building2, Percent, Palette, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Mail, Send, Globe, ReceiptText, Check, Building2, Percent, Palette, ShieldCheck, Briefcase } from "lucide-react";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { BrandKitEditor } from "@/components/features/poster/BrandKitEditor";
 import { PosterContactForm } from "@/components/features/poster/PosterContactForm";
 import { CommissionCountryRules, commissionRuleProblem, type CommissionOverride } from "./_components/CommissionCountryRules";
 import { GeneralSectionNav, type GeneralSectionItem } from "./_components/GeneralSectionNav";
+import { EmployerOnboardingSection } from "./_components/EmployerOnboardingSection";
 import { InvoiceIssuerSection, EMPTY_ISSUER, type InvoiceIssuerForm } from "./_components/InvoiceIssuerSection";
 
 interface SmtpConfig {
@@ -71,7 +72,7 @@ function toEmailConfig(email: { provider?: string; ses?: Partial<SesConfig> } | 
 
 
 /** The General tab's topics; each renders on its own, chosen from the side nav and kept in ?section=. */
-const SECTION_KEYS = ["platform", "invoices", "commissions", "email", "branding", "account"] as const;
+const SECTION_KEYS = ["platform", "employers", "invoices", "commissions", "email", "branding", "account"] as const;
 type SectionKey = (typeof SECTION_KEYS)[number];
 /** Topics whose fields go out with the shared Save button; Branding and Account save themselves. */
 const SAVED_SECTIONS: readonly SectionKey[] = ["platform", "invoices", "commissions", "email"];
@@ -136,6 +137,7 @@ export default function AdminSettingsPage() {
 
   const sections: GeneralSectionItem<SectionKey>[] = [
     { key: "platform", label: t("sectionPlatform"), description: t("sectionPlatformDesc"), icon: Building2 },
+    { key: "employers", label: t("sectionEmployers"), description: t("sectionEmployersDesc"), icon: Briefcase },
     { key: "invoices", label: t("sectionInvoices"), description: t("sectionInvoicesDesc"), icon: ReceiptText },
     { key: "commissions", label: t("sectionCommissions"), description: t("sectionCommissionsDesc"), icon: Percent },
     { key: "email", label: t("sectionEmail"), description: t("sectionEmailDesc"), icon: Mail },
@@ -439,6 +441,8 @@ export default function AdminSettingsPage() {
               </div>
             </section>
           )}
+
+          {section === "employers" && <EmployerOnboardingSection />}
 
           {section === "invoices" && (
             <section className="workspace-panel-surface rounded-3xl divide-y" aria-labelledby="admin-settings-invoices-title">

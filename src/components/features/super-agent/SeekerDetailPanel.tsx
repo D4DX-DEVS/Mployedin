@@ -17,9 +17,12 @@ import {
   Laptop,
   Mail,
   MapPin,
+  MoreHorizontal,
   UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import type { CvSource } from "@/components/shared/CvSourceBar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReferralSourceChip } from "@/components/shared/ReferralSourceChip";
@@ -30,6 +33,7 @@ import { cn } from "@/lib/utils";
 import type { SeekerApplicationRow } from "@/lib/jobseekers/hiringStatus";
 import { SeekerApplicationsCard } from "@/components/shared/SeekerApplicationsCard";
 import { cleanRoleTitle } from "@/lib/jobseekers/roleTitle";
+import { seekerCvAvailability } from "@/lib/cv/seekerCvAvailability";
 
 interface DetailLanguage {
   language: string;
@@ -91,8 +95,10 @@ interface SeekerDetailPanelProps {
   seekerId: string | null;
   context?: SeekerTeamContext;
   /** Open the CV. The page shows the viewer with this panel hidden: inside
-   *  the panel's modal dialog the viewer could not be clicked or focused. */
-  onViewCv: (seeker: { id: string; name: string }) => void;
+   *  the panel's modal dialog the viewer could not be clicked or focused.
+   *  `source` is set only for the uploaded file ("file"); without it the viewer
+   *  opens on the Standardised CV, which is what staff see first. */
+  onViewCv: (seeker: { id: string; name: string; source?: CvSource }) => void;
 }
 
 const AVAILABILITY_KEYS: Record<string, string> = {
@@ -187,7 +193,8 @@ export function SeekerDetailPanel({ seekerId, context, onViewCv }: SeekerDetailP
 
   const name = seeker.userId?.name ?? t("detail.unnamed");
   const email = seeker.userId?.email ?? "";
-  const hasCv = Boolean(seeker.cv?.originalUrl || seeker.documents?.some((d) => d.category === "resume" && d.url));
+  // The Standardised CV is built from the profile, so it exists without an uploaded file.
+  const { hasCv, canBuildCv } = seekerCvAvailability(seeker);
   const current = seeker.experience?.find((e) => e.isCurrent) ?? seeker.experience?.[0];
   const wantedRoles = (seeker.preferredRoles ?? []).map((r) => r.trim()).filter(Boolean);
   // Imported CVs put the employer and dates in the title; show only the role.
@@ -296,11 +303,27 @@ export function SeekerDetailPanel({ seekerId, context, onViewCv }: SeekerDetailP
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {/* Owner, 2026-10-14: the super agent sees the CV with the profile;
                 the CV route applies the same scope as this profile. */}
-            {hasCv ? (
-              <Button size="sm" className="min-h-11 gap-1.5 sm:min-h-9" onClick={() => onViewCv({ id: seeker._id, name })}>
-                <FileText className="h-4 w-4" aria-hidden="true" />
-                {t("viewCv")}
-              </Button>
+            {hasCv || canBuildCv ? (
+              <div className="flex items-center gap-1">
+                <Button size="sm" className="min-h-11 gap-1.5 sm:min-h-9" onClick={() => onViewCv({ id: seeker._id, name })}>
+                  <FileText className="h-4 w-4" aria-hidden="true" />
+                  {t("viewCv")}
+                </Button>
+                {hasCv && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon" className="size-11 sm:size-9" aria-label={t("moreCvOptions")}>
+                        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onSelect={() => onViewCv({ id: seeker._id, name, source: "file" })}>
+                        {t("originalCv")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             ) : (
               <span className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-dashed border-border px-3 text-xs text-muted-foreground">
                 <FileText className="h-3.5 w-3.5" aria-hidden="true" />

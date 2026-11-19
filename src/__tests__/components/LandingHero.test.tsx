@@ -8,6 +8,9 @@ import { HeroSection } from "@/components/features/public/landing/HeroSection";
 import { StatsSection } from "@/components/features/public/landing/StatsSection";
 import { CountriesSection } from "@/components/features/public/landing/CountriesSection";
 
+// Public employer sign-up open (Admin → Settings → Employer onboarding): these
+// tests cover the pages as they were before that switch existed.
+jest.mock("@/hooks/useEmployerOnboarding", () => ({ useEmployerSignupOpen: () => true }));
 jest.mock("next/link", () => ({
   __esModule: true,
   default: ({ children, href, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (

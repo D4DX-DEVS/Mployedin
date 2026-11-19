@@ -8,11 +8,21 @@ import {
   paymentState,
   type PresentableInvoice,
   type BillToFallback,
-  type InvoiceFactKey,
-  type TotalRow,
 } from "./presentation";
 import type { ResolvedIssuer } from "./issuer";
-import { getLogoBase64 } from "@/lib/pdf/logo";
+import {
+  statusBadge,
+  isCollectible,
+  factLabel,
+  factValue,
+  totalRowLabel,
+  safeDate,
+  fmtMoney,
+  hireLine,
+  type Rgb,
+} from "./pdfLabels";
+import { getLogoBase64, logoBox } from "@/lib/pdf/logo";
+import { registerInvoiceFonts, hasArabic } from "@/lib/pdf/invoiceFonts";
 
 /**
  * The invoice document, as printed.
@@ -20,10 +30,12 @@ import { getLogoBase64 } from "@/lib/pdf/logo";
  * What each block contains is decided in `presentation.ts`, which the employer
  * dialog reads too — so a subscription invoice that shows a plan and a service
  * period on screen prints the same plan and service period here, and a bill-to
- * block that resolves on screen cannot print as an empty "—".
+ * block that resolves on screen cannot print as an empty "—". Wording lives in
+ * `pdfLabels.ts`; this file only draws.
  */
 export type PdfInvoice = PresentableInvoice & {
   issuedByLabel?: string;
+  paidAt?: string | Date | null;
   commissions?: Array<{ role: string; rate: number; amount: number }>;
 };
 
@@ -37,56 +49,14 @@ export type GeneratePdfOptions = {
   billToFallback?: BillToFallback;
 };
 
-function safeDate(value?: Date | string | null): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function fmt(amount: number, currency: string): string {
-  return `${currency} ${amount.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-const FACT_LABELS: Record<InvoiceFactKey, string> = {
-  plan: "Plan",
-  billingCycle: "Billing Cycle",
-  servicePeriod: "Service Period",
-  renewalType: "Type",
-  job: "Job",
-  category: "Category",
-  currency: "Currency",
-  paymentTerms: "Payment Terms",
-};
-
-/** English labels for the totals ladder; the dialog translates the same keys. */
-function totalRowLabel(row: TotalRow): string {
-  switch (row.key) {
-    case "subtotal":
-      return "Subtotal";
-    case "discount":
-      return row.meta?.discountPercent
-        ? `Discount (${row.meta.discountPercent}%)`
-        : "Discount";
-    case "tax": {
-      const name = row.meta?.taxType ?? "Tax";
-      return row.meta?.taxPercent ? `${name} (${row.meta.taxPercent}%)` : name;
-    }
-    case "serviceCharge":
-      return "Service Charge";
-    case "paid":
-      return "Paid";
-    case "balance":
-      return "Balance Due";
-    case "total":
-    default:
-      return "Total";
-  }
-}
-
+const NAVY: Rgb = [30, 47, 108]; // #1e2f6c
+const BRAND: Rgb = [40, 69, 149]; // #284595
+const CYAN: Rgb = [75, 186, 221]; // #4BBADD
+const INK: Rgb = [24, 24, 27];
+const BODY: Rgb = [63, 63, 70];
+const MUTED: Rgb = [113, 113, 122];
+const HAIRLINE: Rgb = [228, 228, 231];
+const TINT: Rgb = [244, 246, 251];
 
 export function generateInvoicePdf(
   invoice: PdfInvoice,
@@ -98,27 +68,62 @@ export function generateInvoicePdf(
   const issuer = opts.issuer;
 
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const fonts = registerInvoiceFonts(doc);
   const pageWidth = doc.internal.pageSize.getWidth(); // ~595pt
   const pageHeight = doc.internal.pageSize.getHeight(); // ~842pt
-  const margin = 36;
-  const contentWidth = pageWidth - margin * 2;
-  const bottomLimit = pageHeight - 56;
+  const margin = 40;
+  const right = pageWidth - margin;
+  const contentWidth = right - margin;
+  const bottomLimit = pageHeight - 48; // footer hairline sits at -40
   let y = margin;
-
-  const brandBlue: [number, number, number] = [40, 69, 149]; // #284595
-  const brandDark: [number, number, number] = [30, 47, 108]; // #1e2f6c
-  const brandCyan: [number, number, number] = [75, 186, 221]; // #4BBADD
-  const mutedText: [number, number, number] = [110, 116, 130];
-  const bodyText: [number, number, number] = [50, 50, 50];
 
   const currency = invoice.currency || "AED";
   const state = paymentState(invoice);
+  const badge = statusBadge(invoice.status, state);
+  const owes = isCollectible(invoice.status, state);
+  const isCreditNote = invoice.status === "credit_note";
+  // Status shows once, in the pill under the number. Lateness goes under the due date,
+  // and only on a document still asking for money.
+  const daysLate = owes && state.stamp === "overdue" && state.overdueDays > 0 ? state.overdueDays : 0;
   const billTo = resolveBillTo(invoice, opts.billToFallback);
   const items = resolveLineItems(invoice);
   const facts = invoiceFacts(invoice, { formatDate: (d) => safeDate(d) });
   const commissions = invoice.commissions ?? [];
+  const money = (n: number) => fmtMoney(n, currency);
 
-  /** Start a new page when the next block would run off the bottom. */
+  // ── Drawing helpers ─────────────────────────────────────────────────────
+  type Style = "normal" | "bold";
+  /** Pick the face per string: Arabic text needs the Arabic font to shape at all. */
+  // ponytail: a line mixing Arabic and Latin letters prints in the Arabic face, which has no Latin letters (digits survive) — split runs if that shows up in real data.
+  const font = (text: string, style: Style, size: number, color: Rgb) => {
+    const family = fonts.arabic && hasArabic(text) ? fonts.arabic : fonts.latin;
+    doc.setFont(family, style);
+    doc.setFontSize(size);
+    doc.setTextColor(...color);
+  };
+  const write = (
+    text: string,
+    x: number,
+    atY: number,
+    o: { style?: Style; size?: number; color?: Rgb; align?: "left" | "right" | "center" } = {},
+  ) => {
+    font(text, o.style ?? "normal", o.size ?? 9, o.color ?? BODY);
+    doc.text(text, x, atY, o.align ? { align: o.align } : undefined);
+  };
+  /** Wrapped block; returns the y after it. */
+  const writeWrapped = (text: string, x: number, atY: number, width: number, size = 9, style: Style = "normal", color: Rgb = BODY, lh = 12.5) => {
+    font(text, style, size, color);
+    const lines = doc.splitTextToSize(text, width) as string[];
+    doc.text(lines, x, atY);
+    return atY + lines.length * lh;
+  };
+  const label = (text: string, x: number, atY: number, align?: "left" | "right") =>
+    write(text.toUpperCase(), x, atY, { style: "bold", size: 6.8, color: MUTED, align });
+  const hairline = (atY: number, x1 = margin, x2 = right) => {
+    doc.setDrawColor(...HAIRLINE);
+    doc.setLineWidth(0.6);
+    doc.line(x1, atY, x2, atY);
+  };
   const ensureSpace = (needed: number) => {
     if (y + needed > bottomLimit) {
       doc.addPage();
@@ -126,90 +131,74 @@ export function generateInvoicePdf(
     }
   };
 
-  // ── Header: logo + INVOICE + number ─────────────────────────────────────
+  // ── Header: logo | Invoice + number + status ────────────────────────────
   const logoBase64 = getLogoBase64();
   if (logoBase64) {
-    doc.addImage(logoBase64, "PNG", margin, y, 120, 30);
+    const box = logoBox(100);
+    doc.addImage(logoBase64, "PNG", margin, y, box.width, box.height);
   } else {
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...brandDark);
-    doc.text(issuer?.legalName ?? "mployedin", margin, y + 18);
+    write(issuer?.legalName ?? "mployedin", margin, y + 20, { style: "bold", size: 16, color: NAVY });
   }
+  write(isCreditNote ? "Credit note" : "Invoice", right, y + 18, { style: "bold", size: 24, color: INK, align: "right" });
+  write(invoice.invoiceNumber ?? "—", right, y + 33, { size: 9.5, color: MUTED, align: "right" });
 
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...brandBlue);
-  doc.text("INVOICE", pageWidth - margin, y + 16, { align: "right" });
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...mutedText);
-  doc.text(invoice.invoiceNumber ?? "—", pageWidth - margin, y + 29, { align: "right" });
-  y += 40;
+  // Status pill, right-aligned under the number.
+  font(badge.label, "bold", 7.5, badge.text);
+  const pillW = doc.getTextWidth(badge.label.toUpperCase()) + 16;
+  doc.setFillColor(...badge.fill);
+  doc.roundedRect(right - pillW, y + 40, pillW, 15, 7.5, 7.5, "F");
+  write(badge.label.toUpperCase(), right - pillW / 2, y + 50.3, { style: "bold", size: 7.5, color: badge.text, align: "center" });
+  y += 72;
 
-  doc.setFillColor(...brandBlue);
-  doc.rect(margin, y, contentWidth, 3, "F");
-  y += 16;
+  // ── Summary band: the three numbers a payer looks for ───────────────────
+  const bandH = 66;
+  doc.setFillColor(...NAVY);
+  doc.roundedRect(margin, y, contentWidth, bandH, 6, 6, "F");
+  doc.setFillColor(...CYAN);
+  doc.rect(margin + 18, y + bandH - 12, 28, 2.5, "F");
 
-  // ── Status stamp ────────────────────────────────────────────────────────
-  // Drawn before the body so the content sits on top of it. A void or paid
-  // invoice used to print identically to a live one, which is how a voided
-  // document can end up being paid.
-  if (state.stamp) {
-    const stampText = state.stamp.toUpperCase();
-    const stampColor: [number, number, number] =
-      state.stamp === "paid" ? [206, 232, 213] : state.stamp === "void" ? [214, 214, 218] : [247, 214, 214];
-    doc.saveGraphicsState();
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(74);
-    doc.setTextColor(...stampColor);
-    doc.text(stampText, pageWidth / 2, pageHeight / 2, {
-      align: "center",
-      angle: 28,
-      baseline: "middle",
-    });
-    doc.restoreGraphicsState();
-  }
-
-  // ── FROM | BILL TO ──────────────────────────────────────────────────────
-  const midX = margin + contentWidth * 0.52;
-  const colTop = y;
-  const leftColWidth = contentWidth * 0.48 - 10;
-  const rightColWidth = pageWidth - margin - midX;
-
-  const columnHeading = (text: string, x: number, atY: number) => {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(...brandBlue);
-    doc.text(text, x, atY);
-  };
-
-  /** Write wrapped lines and return the y position after them. */
-  const writeLines = (lines: string[], x: number, startY: number, maxWidth: number): number => {
-    let ly = startY;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(...bodyText);
-    for (const line of lines) {
-      const wrapped = doc.splitTextToSize(line, maxWidth);
-      doc.text(wrapped, x, ly);
-      ly += wrapped.length * 11;
+  const headline: [string, string] = isCreditNote
+    ? ["Credit amount", money(state.totalAmount)]
+    : owes
+      ? ["Amount due", money(state.balanceDue)]
+      : state.isPaid
+        ? ["Amount paid", money(state.paidAmount || state.totalAmount)]
+        : ["Invoice total", money(state.totalAmount)];
+  const issued: [string, string] = ["Issue date", safeDate(invoice.issuedAt ?? invoice.createdAt)];
+  const bandCols: Array<[string, string]> = isCreditNote
+    ? [headline, issued, ["Currency", currency]]
+    : [
+        headline,
+        state.isPaid && invoice.paidAt ? ["Paid on", safeDate(invoice.paidAt)] : ["Due date", safeDate(invoice.dueDate)],
+        issued,
+      ];
+  const bandColW = [contentWidth * 0.46, contentWidth * 0.27, contentWidth * 0.27];
+  let bx = margin + 18;
+  bandCols.forEach(([k, v], i) => {
+    write(k.toUpperCase(), bx, y + 22, { style: "bold", size: 6.8, color: [180, 192, 228] });
+    write(v, bx, y + 42, { style: "bold", size: i === 0 ? 17 : 11, color: [255, 255, 255] });
+    if (i === 1 && k === "Due date" && daysLate > 0) {
+      // Solid red pill, same shape as the status pill — a clear warning on the navy band.
+      const note = `${daysLate} ${daysLate === 1 ? "day" : "days"} overdue`;
+      font(note, "bold", 7, [255, 255, 255]);
+      const noteW = doc.getTextWidth(note) + 12;
+      doc.setFillColor(220, 38, 38);
+      doc.roundedRect(bx, y + 49.5, noteW, 11, 5.5, 5.5, "F");
+      write(note, bx + noteW / 2, y + 57.1, { style: "bold", size: 7, color: [255, 255, 255], align: "center" });
     }
-    return ly;
-  };
+    bx += bandColW[i];
+  });
+  y += bandH + 26;
 
-  // FROM
+  // ── From | Bill to ──────────────────────────────────────────────────────
+  const colW = contentWidth / 2 - 14;
+  const midX = margin + contentWidth / 2 + 14;
+  const colTop = y;
+
   let ly = colTop;
   if (issuer) {
-    columnHeading("FROM", margin, ly);
-    ly += 13;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(...brandDark);
-    const nameLines = doc.splitTextToSize(issuer.legalName, leftColWidth);
-    doc.text(nameLines, margin, ly);
-    ly += nameLines.length * 11;
-
+    label("From", margin, ly);
+    ly = writeWrapped(issuer.legalName, margin, ly + 15, colW, 10.5, "bold", INK, 13.5);
     const fromLines = [
       ...issuer.addressLines,
       issuer.country,
@@ -218,273 +207,218 @@ export function generateInvoicePdf(
       issuer.phone,
       issuer.website,
     ].filter((l): l is string => Boolean(l));
-    ly = writeLines(fromLines, margin, ly, leftColWidth);
+    for (const line of fromLines) ly = writeWrapped(line, margin, ly, colW, 8.5, "normal", BODY, 12);
   }
-  const leftEndY = ly;
 
-  // BILL TO
   let ry = colTop;
-  columnHeading("BILL TO", midX, ry);
-  ry += 13;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...brandDark);
+  label("Bill to", midX, ry);
   if (billTo.companyName) {
-    const cn = doc.splitTextToSize(billTo.companyName, rightColWidth);
-    doc.text(cn, midX, ry);
-    ry += cn.length * 11;
+    ry = writeWrapped(billTo.companyName, midX, ry + 15, colW, 10.5, "bold", INK, 13.5);
   } else {
     // No payer details on record — say so rather than printing a bare dash.
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(8.5);
-    doc.setTextColor(...mutedText);
-    doc.text("Details not on record", midX, ry);
-    ry += 11;
+    ry = writeWrapped("Details not on record", midX, ry + 15, colW, 9, "normal", MUTED);
   }
-
   const billLines = [
-    billTo.contactPerson,
+    billTo.contactPerson ? `Attn: ${billTo.contactPerson}` : undefined,
     billTo.email,
     billTo.phone,
     ...billTo.lines,
     billTo.taxId ? `Tax ID: ${billTo.taxId}` : undefined,
   ].filter((l): l is string => Boolean(l));
-  ry = writeLines(billLines, midX, ry, rightColWidth);
+  for (const line of billLines) ry = writeWrapped(line, midX, ry, colW, 8.5, "normal", BODY, 12);
 
-  y = Math.max(leftEndY, ry) + 12;
+  y = Math.max(ly, ry) + 14;
 
-  // ── Invoice meta band ───────────────────────────────────────────────────
-  // Invoice number, dates, status and the category-specific facts — the plan,
-  // billing cycle and service period a subscription invoice carries, or the
-  // job a recruitment invoice was raised against.
-  const metaPairs: Array<[string, string]> = [
-    ["Invoice No", invoice.invoiceNumber ?? "—"],
-    ["Issue Date", safeDate(invoice.issuedAt ?? invoice.createdAt)],
-    ["Due Date", safeDate(invoice.dueDate)],
-    ["Status", (invoice.status ?? "—").replace(/_/g, " ").toUpperCase()],
-    ...facts
-      .filter((f) => f.key !== "currency")
-      .map((f): [string, string] => [FACT_LABELS[f.key], f.value]),
-  ];
-  if (invoice.issuedByLabel) metaPairs.push(["Issued By", invoice.issuedByLabel]);
+  // ── Details: plan, period, position, terms… ─────────────────────────────
+  const details: Array<[string, string]> = facts
+    .filter((f) => f.key !== "currency")
+    .map((f): [string, string] => [factLabel(f.key), factValue(f.key, f.value)]);
+  if (invoice.issuedByLabel) details.push(["Issued by", invoice.issuedByLabel]);
 
-  const metaCols = 3;
-  const metaColWidth = contentWidth / metaCols;
-  const metaRows = Math.ceil(metaPairs.length / metaCols);
-  const metaRowHeight = 24;
-  const metaHeight = metaRows * metaRowHeight + 8;
-
-  ensureSpace(metaHeight + 20);
-  doc.setFillColor(246, 248, 252);
-  doc.roundedRect(margin, y, contentWidth, metaHeight, 4, 4, "F");
-
-  metaPairs.forEach((pair, i) => {
-    const col = i % metaCols;
-    const row = Math.floor(i / metaCols);
-    const cellX = margin + col * metaColWidth + 8;
-    const cellY = y + 14 + row * metaRowHeight;
-    const cellW = metaColWidth - 16;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.5);
-    doc.setTextColor(...mutedText);
-    doc.text(pair[0].toUpperCase(), cellX, cellY);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(...bodyText);
-    const value = doc.splitTextToSize(pair[1], cellW)[0] ?? "—";
-    doc.text(value, cellX, cellY + 10);
-  });
-  y += metaHeight + 16;
+  if (details.length > 0) {
+    const cols = 3;
+    const cellW = contentWidth / cols;
+    const rows = Math.ceil(details.length / cols);
+    ensureSpace(rows * 28 + 16);
+    hairline(y);
+    y += 16;
+    details.forEach(([k, v], i) => {
+      const cx = margin + (i % cols) * cellW;
+      const cy = y + Math.floor(i / cols) * 28;
+      label(k, cx, cy);
+      font(v, "normal", 9, INK);
+      doc.text((doc.splitTextToSize(v, cellW - 12) as string[])[0] ?? "—", cx, cy + 12);
+    });
+    y += rows * 28 + 2;
+  }
+  y += 8;
 
   // ── Line items ──────────────────────────────────────────────────────────
+  // A line linked to a hire names it underneath, smaller and grey, so the employer sees
+  // what each fee is for without it reading as part of the description.
+  const HIRE_SIZE = 7.8;
+  const HIRE_LH = 10.5;
+  const hireTexts = items.map((item) => hireLine(item.hire));
+  // Description column = everything the fixed Qty / Unit price / Amount columns leave, less padding.
+  const descTextWidth = contentWidth - 40 - 92 - 96 - 16;
+  const hireLineCount = (text: string) => {
+    font(text, "normal", HIRE_SIZE, MUTED);
+    return (doc.splitTextToSize(text, descTextWidth) as string[]).length;
+  };
   autoTable(doc, {
     startY: y,
-    head: [["#", "Description", "Qty", "Unit Price", "Amount"]],
-    body: items.map((item, i) => [
-      String(i + 1),
+    head: [["Description", "Qty", "Unit price", "Amount"]],
+    body: items.map((item) => [
       item.description,
       String(item.quantity),
-      fmt(item.unitPrice, currency),
-      fmt(item.amount, currency),
+      money(item.unitPrice),
+      money(item.amount),
     ]),
-    theme: "grid",
-    headStyles: {
-      fillColor: brandBlue,
-      textColor: 255,
-      fontSize: 8.5,
-      cellPadding: 5,
-      fontStyle: "bold",
-    },
-    bodyStyles: { fontSize: 8, cellPadding: 5, textColor: [40, 40, 40] },
-    alternateRowStyles: { fillColor: [245, 248, 255] },
+    theme: "plain",
+    styles: { font: fonts.latin, textColor: BODY, fontSize: 8.8, cellPadding: { top: 9, bottom: 9, left: 8, right: 8 } },
+    headStyles: { fillColor: TINT, textColor: MUTED, fontStyle: "bold", fontSize: 7, cellPadding: { top: 8, bottom: 8, left: 8, right: 8 } },
     columnStyles: {
-      0: { cellWidth: 20, halign: "center" },
-      1: { cellWidth: "auto" },
-      2: { cellWidth: 28, halign: "center" },
-      3: { cellWidth: 72, halign: "right" },
-      4: { cellWidth: 72, halign: "right" },
+      0: { cellWidth: "auto", textColor: INK },
+      1: { cellWidth: 40, halign: "center" },
+      2: { cellWidth: 92, halign: "right" },
+      3: { cellWidth: 96, halign: "right", fontStyle: "bold", textColor: INK },
+    },
+    didParseCell: (data) => {
+      if (data.section === "head") {
+        data.cell.text = data.cell.text.map((t) => t.toUpperCase());
+        if (data.column.index >= 2) data.cell.styles.halign = "right";
+        if (data.column.index === 1) data.cell.styles.halign = "center";
+      }
+      if (fonts.arabic && hasArabic(data.cell.text.join(" "))) data.cell.styles.font = fonts.arabic;
+      // Room under the description for the hire line, which didDrawCell draws.
+      const hire = data.section === "body" && data.column.index === 0 ? hireTexts[data.row.index] : null;
+      if (hire) {
+        const pad = data.cell.styles.cellPadding as { top: number; bottom: number; left: number; right: number };
+        data.cell.styles.cellPadding = { ...pad, bottom: pad.bottom + 3 + hireLineCount(hire) * HIRE_LH };
+      }
+    },
+    didDrawCell: (data) => {
+      if (data.section !== "body") return;
+      const hire = data.column.index === 0 ? hireTexts[data.row.index] : null;
+      if (hire) {
+        font(hire, "normal", HIRE_SIZE, MUTED);
+        const lines = doc.splitTextToSize(hire, data.cell.width - 16) as string[];
+        const firstBaseline = data.cell.y + data.cell.height - 9 - (lines.length - 1) * HIRE_LH - 2;
+        lines.forEach((line, i) => doc.text(line, data.cell.x + 8, firstBaseline + i * HIRE_LH));
+      }
+      doc.setDrawColor(...HAIRLINE);
+      doc.setLineWidth(0.6);
+      doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
     },
     margin: { left: margin, right: margin },
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  y = (doc as any).lastAutoTable?.finalY ?? y + 50;
-  y += 14;
+  y = ((doc as any).lastAutoTable?.finalY ?? y + 50) + 18;
 
-  // ── Totals ──────────────────────────────────────────────────────────────
-  const totalsX = pageWidth - margin - 190;
-  const valX = pageWidth - margin;
+  // ── Totals (right) ──────────────────────────────────────────────────────
+  const totalsW = 230;
+  const totalsX = right - totalsW;
+  const totalRows = resolveTotalRows(invoice).filter((r) => r.key !== "balance");
+  ensureSpace(totalRows.length * 18 + 50);
 
-  const addTotalRow = (
-    label: string,
-    value: string,
-    variant: "plain" | "total" | "payable" = "plain",
-  ) => {
-    ensureSpace(18);
-    if (variant === "total") {
-      doc.setFillColor(...brandBlue);
-      doc.rect(totalsX - 6, y - 9, valX - totalsX + 12, 16, "F");
-      doc.setTextColor(255, 255, 255);
-    } else if (variant === "payable") {
-      doc.setFillColor(255, 244, 230);
-      doc.rect(totalsX - 6, y - 9, valX - totalsX + 12, 16, "F");
-      doc.setTextColor(150, 80, 10);
-    } else {
-      doc.setTextColor(...bodyText);
+  for (const row of totalRows) {
+    const isTotal = row.key === "total";
+    if (isTotal) {
+      hairline(y - 9, totalsX, right);
+      y += 4;
     }
-    doc.setFont("helvetica", variant === "plain" ? "normal" : "bold");
-    doc.setFontSize(variant === "plain" ? 8.5 : 9.5);
-    doc.text(label, totalsX, y);
-    doc.text(value, valX, y, { align: "right" });
-    y += variant === "plain" ? 13 : 19;
-  };
-
-  // `balance` is re-stated below as Amount Payable, which also covers invoices
-  // with no payment yet — those never reached a balance row at all before.
-  for (const row of resolveTotalRows(invoice).filter((r) => r.key !== "balance")) {
-    addTotalRow(
-      `${totalRowLabel(row)}:`,
-      `${row.negative ? "- " : ""}${fmt(row.amount, currency)}`,
-      row.key === "total" ? "total" : "plain",
-    );
+    const size = isTotal ? 11 : 9;
+    const style: Style = isTotal ? "bold" : "normal";
+    write(totalRowLabel(row), totalsX + 10, y, { style, size, color: isTotal ? INK : MUTED });
+    write(`${row.negative ? "– " : ""}${money(row.amount)}`, right - 10, y, { style, size, color: INK, align: "right" });
+    y += isTotal ? 22 : 17;
   }
 
-  if (state.hasBalance) {
-    addTotalRow("Amount Payable:", fmt(state.balanceDue, currency), "payable");
+  if (owes) {
+    y += 2;
+    doc.setFillColor(...BRAND);
+    doc.roundedRect(totalsX, y - 4, totalsW, 30, 5, 5, "F");
+    write("Amount due", totalsX + 10, y + 15, { style: "bold", size: 10, color: [255, 255, 255] });
+    write(money(state.balanceDue), right - 10, y + 15, { style: "bold", size: 12, color: [255, 255, 255], align: "right" });
+    y += 36;
   }
+
+  y += 10;
 
   // ── Commission summary (internal staff only) ────────────────────────────
   if (commissions.length > 0) {
-    ensureSpace(24 + commissions.length * 11);
-    y += 6;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(...brandBlue);
-    doc.text("Commission Summary", margin, y);
-    y += 11;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(...bodyText);
+    ensureSpace(26 + commissions.length * 13);
+    label("Commission summary", margin, y);
+    y += 14;
     for (const comm of commissions) {
       const roleLabel = comm.role === "agent" ? "Agent" : "Super Agent";
-      const detailStr = ["admin", "super_agent", "agent"].includes(viewerRole)
-        ? `: ${comm.rate}% = ${fmt(comm.amount, currency)}`
-        : "";
-      doc.text(`${roleLabel}${detailStr}`, margin + 6, y);
-      y += 11;
+      const detail = ["admin", "super_agent", "agent"].includes(viewerRole) ? `: ${comm.rate}% = ${money(comm.amount)}` : "";
+      write(`${roleLabel}${detail}`, margin, y, { size: 8.5 });
+      y += 13;
     }
+    y += 6;
   }
 
   // ── Payment instructions ────────────────────────────────────────────────
   // Only when money is actually owed, and only once bank details are on file.
-  if (state.hasBalance && issuer?.bank && issuer.hasBankDetails) {
+  if (owes && issuer?.bank && issuer.hasBankDetails) {
     const bank = issuer.bank;
-    const bankPairs: Array<[string, string]> = [
-      ["Bank", bank.bankName],
-      ["Account Name", bank.accountName],
-      ["Account Number", bank.accountNumber],
-      ["IBAN", bank.iban],
-      ["SWIFT/BIC", bank.swift],
-      ["Branch", bank.branch],
-    ].filter((p): p is [string, string] => Boolean(p[1]));
+    const bankPairs = (
+      [
+        ["Bank", bank.bankName],
+        ["Account name", bank.accountName],
+        ["Account number", bank.accountNumber],
+        ["IBAN", bank.iban],
+        ["SWIFT / BIC", bank.swift],
+        ["Branch", bank.branch],
+      ] as Array<[string, string | undefined]>
+    ).filter((p): p is [string, string] => Boolean(p[1]));
 
-    const bankCols = 2;
-    const bankRows = Math.ceil(bankPairs.length / bankCols);
-    const reference = `Please quote ${invoice.invoiceNumber ?? "the invoice number"} as the payment reference.`;
-    const instructionText = bank.instructions ?? reference;
-    const boxHeight = 30 + bankRows * 22 + 14;
+    const bankRows = Math.ceil(bankPairs.length / 2);
+    const instruction =
+      bank.instructions ?? `Please quote ${invoice.invoiceNumber ?? "the invoice number"} as the payment reference.`;
+    const boxH = 34 + bankRows * 26 + 16;
+    ensureSpace(boxH + 14);
 
-    ensureSpace(boxHeight + 14);
-    y += 8;
-    doc.setDrawColor(210, 220, 240);
-    doc.setFillColor(248, 250, 255);
-    doc.roundedRect(margin, y, contentWidth, boxHeight, 4, 4, "FD");
+    doc.setFillColor(...TINT);
+    doc.roundedRect(margin, y, contentWidth, boxH, 6, 6, "F");
+    doc.setFillColor(...BRAND);
+    doc.rect(margin, y + 8, 3, boxH - 16, "F");
+    write("How to pay", margin + 18, y + 20, { style: "bold", size: 10, color: INK });
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(...brandBlue);
-    doc.text("PAYMENT INSTRUCTIONS", margin + 10, y + 16);
-
-    const bankColWidth = (contentWidth - 20) / bankCols;
-    bankPairs.forEach((pair, i) => {
-      const col = i % bankCols;
-      const row = Math.floor(i / bankCols);
-      const cellX = margin + 10 + col * bankColWidth;
-      const cellY = y + 32 + row * 22;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.5);
-      doc.setTextColor(...mutedText);
-      doc.text(pair[0].toUpperCase(), cellX, cellY);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8.5);
-      doc.setTextColor(...bodyText);
-      doc.text(doc.splitTextToSize(pair[1], bankColWidth - 10)[0] ?? "", cellX, cellY + 10);
+    const half = (contentWidth - 36) / 2;
+    bankPairs.forEach(([k, v], i) => {
+      const cx = margin + 18 + (i % 2) * half;
+      const cy = y + 40 + Math.floor(i / 2) * 26;
+      label(k, cx, cy);
+      write(v, cx, cy + 12, { size: 9, color: INK });
     });
-
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(7.5);
-    doc.setTextColor(...mutedText);
-    doc.text(
-      doc.splitTextToSize(instructionText, contentWidth - 20),
-      margin + 10,
-      y + 32 + bankRows * 22 + 4,
-    );
-    y += boxHeight + 12;
+    writeWrapped(instruction, margin + 18, y + 40 + bankRows * 26 + 2, contentWidth - 36, 8, "normal", MUTED, 10);
+    y += boxH + 14;
   }
 
   // ── Notes ───────────────────────────────────────────────────────────────
   if (invoice.notes) {
-    const noteLines = doc.splitTextToSize(invoice.notes, contentWidth - 50);
-    ensureSpace(noteLines.length * 10 + 18);
-    y += 4;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(...brandDark);
-    doc.text("Notes:", margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...bodyText);
-    doc.setFontSize(8);
-    doc.text(noteLines, margin + 44, y);
-    y += noteLines.length * 10;
+    font(invoice.notes, "normal", 8.5, BODY);
+    const noteLines = doc.splitTextToSize(invoice.notes, contentWidth) as string[];
+    ensureSpace(noteLines.length * 12 + 16);
+    label("Notes", margin, y);
+    writeWrapped(invoice.notes, margin, y + 14, contentWidth, 8.5, "normal", BODY, 12);
   }
 
   // ── Footer on every page ────────────────────────────────────────────────
-  const footerNote =
-    issuer?.footerNote ?? "This is a computer-generated invoice. No signature required.";
+  const footerNote = issuer?.footerNote ?? "This is a computer-generated invoice. No signature required.";
   const pageCount = doc.getNumberOfPages();
   for (let p = 1; p <= pageCount; p += 1) {
     doc.setPage(p);
-    const footerY = pageHeight - 28;
-    doc.setFillColor(...brandCyan);
-    doc.rect(margin, footerY - 8, contentWidth, 1.5, "F");
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(140, 140, 140);
-    doc.text(invoice.invoiceNumber ?? "", margin, footerY + 3);
-    doc.text(footerNote, pageWidth / 2, footerY + 3, { align: "center" });
-    doc.text(`Page ${p} of ${pageCount}`, pageWidth - margin, footerY + 3, { align: "right" });
+    const fy = pageHeight - 30;
+    hairline(fy - 10);
+    write(invoice.invoiceNumber ?? "", margin, fy, { size: 7, color: MUTED });
+    font(footerNote, "normal", 7, MUTED);
+    const note = (doc.splitTextToSize(footerNote, contentWidth - 160) as string[])[0] ?? "";
+    write(note, pageWidth / 2, fy, { size: 7, color: MUTED, align: "center" });
+    write(`Page ${p} of ${pageCount}`, right, fy, { size: 7, color: MUTED, align: "right" });
   }
 
   return Buffer.from(doc.output("arraybuffer"));

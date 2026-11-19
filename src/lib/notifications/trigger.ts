@@ -574,6 +574,63 @@ export async function notifyTeamTargetAtRisk(
   });
 }
 
+/** Bodies for a kpi3 at-risk alert, one per pillar (static keys, never built from a variable). */
+const KPI_RISK_BODY = {
+  jobs: { own: "kpiJobsAtRiskBody", team: "kpiTeamJobsAtRiskBody", en: "jobs acquired" },
+  onboarded: { own: "kpiOnboardedAtRiskBody", team: "kpiTeamOnboardedAtRiskBody", en: "onboarded" },
+  revenue: { own: "kpiRevenueAtRiskBody", team: "kpiTeamRevenueAtRiskBody", en: "invoiced revenue" },
+} as const;
+
+/** A kpi3 target falling behind pace: names the weakest pillar (jobs, onboarded or revenue). */
+export async function notifyKpiTargetAtRisk(
+  assigneeId: string,
+  assigneeRole: TargetAssigneeRole,
+  profileId: string,
+  pillar: keyof typeof KPI_RISK_BODY,
+  progress: number,
+  expectedProgress: number,
+  locale = "en"
+): Promise<void> {
+  const body = KPI_RISK_BODY[pillar];
+  await notify({
+    userId: assigneeId,
+    type: "target_at_risk",
+    title: "Target needs attention",
+    message: `Your ${body.en} target is at ${progress}% against an expected pace of ${expectedProgress}%.`,
+    link: getTargetManagementLink(assigneeRole, locale),
+    sendEmail: true,
+    metadata: { profileId, pillar, overallProgress: progress, expectedProgress, assigneeRole },
+    titleKey: "targetAtRiskTitle",
+    bodyKey: body.own,
+    params: { progress: String(progress), expectedProgress: String(expectedProgress) },
+  });
+}
+
+/** Tells a super agent that one of their agents is behind on a kpi3 pillar. */
+export async function notifyTeamKpiTargetAtRisk(
+  superAgentUserId: string,
+  agentName: string,
+  agentProfileId: string,
+  pillar: keyof typeof KPI_RISK_BODY,
+  progress: number,
+  expectedProgress: number,
+  locale = "en"
+): Promise<void> {
+  const body = KPI_RISK_BODY[pillar];
+  await notify({
+    userId: superAgentUserId,
+    type: "target_at_risk",
+    title: "An agent is behind on their target",
+    message: `${agentName} is at ${progress}% of their ${body.en} target against an expected pace of ${expectedProgress}%.`,
+    link: getTargetManagementLink("super_agent", locale),
+    sendEmail: false,
+    metadata: { profileId: agentProfileId, pillar, progress, expectedProgress, agentName },
+    titleKey: "targetTeamAtRiskTitle",
+    bodyKey: body.team,
+    params: { agentName, progress: String(progress), expectedProgress: String(expectedProgress) },
+  });
+}
+
 export async function notifyTargetMilestone(
   assigneeId: string,
   assigneeRole: TargetAssigneeRole,

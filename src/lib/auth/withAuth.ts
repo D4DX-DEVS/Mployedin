@@ -200,7 +200,10 @@ export function withAuth(
       companyPermissions &&
       companyOwnerUserId !== userId
     ) {
-      if (!memberCanAccessPath(req.nextUrl.pathname, companyPermissions)) {
+      if (!memberCanAccessPath(req.nextUrl.pathname, companyPermissions, {
+          method: req.method,
+          searchParams: req.nextUrl.searchParams,
+        })) {
         return NextResponse.json(
           { error: "Forbidden — your account does not have access to this area" },
           { status: 403 }

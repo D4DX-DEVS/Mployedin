@@ -646,7 +646,7 @@ async function deleteHandler(req: NextRequest, ctx: AuthCtx) {
     const employer = await Employer.findOne({ userId: user._id }).select("_id").lean();
     if (employer) {
       const Job = (await import("@/models/Job")).default;
-      await Job.updateMany({ employerId: employer._id, status: "active" }, { $set: { status: "closed" } });
+      await Job.updateMany({ employerId: employer._id, status: "active" }, { $set: { status: "closed", closedAt: new Date() } });
     }
   }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import TargetProfile, { PROFIT_TARGET_FILTER, type ITargetProfile } from "@/models/TargetProfile";
+import { equalKpiPeriods, kpiPeriodIssues, manualKpiPeriods } from "@/lib/targets/kpiSchedule";
 import { validateBody } from "@/lib/validators";
 import {
   targetProfileCreateSchema,
@@ -20,6 +21,8 @@ import {
   type SchedulePeriod,
   type SplitStrategy,
 } from "@/lib/targets/schedule";
+import { calculateKpis, type KpiSource } from "@/lib/targets/kpiCalculator";
+import { kpiPace, kpiRisk, yearElapsedPercent } from "@/lib/targets/kpiRisk";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { notifyTargetAssigned } from "@/lib/notifications/trigger";
 import User from "@/models/User";
@@ -61,6 +64,11 @@ interface SortableRow {
   profitTarget: number;
   profitAchieved: number;
   profitProgress: number;
+  jobProgress: number;
+  onboardedProgress: number;
+  revenueProgress: number;
+  /** kpi3: mean of the pillars that have a target; profit targets: profit progress. */
+  overallProgress: number;
   riskScore: "high" | "medium" | "low";
 }
 
@@ -72,7 +80,11 @@ const SORTERS: Record<TargetProfileSortField, (a: SortableRow, b: SortableRow) =
   teamSize: (a, b) => a.teamSize - b.teamSize,
   profitTarget: (a, b) => a.profitTarget - b.profitTarget,
   profitAchieved: (a, b) => a.profitAchieved - b.profitAchieved,
-  profitProgress: (a, b) => a.profitProgress - b.profitProgress,
+  // "Performance": the overall progress, whichever kind of target it is.
+  profitProgress: (a, b) => a.overallProgress - b.overallProgress,
+  jobProgress: (a, b) => a.jobProgress - b.jobProgress,
+  onboardedProgress: (a, b) => a.onboardedProgress - b.onboardedProgress,
+  revenueProgress: (a, b) => a.revenueProgress - b.revenueProgress,
   risk: (a, b) => RISK_RANK[a.riskScore] - RISK_RANK[b.riskScore],
 };
 
@@ -83,6 +95,26 @@ function sortRows<T extends SortableRow>(rows: T[], sortBy: string | null, order
   if (!compare) return !sortBy && order === "asc" ? [...rows].reverse() : rows;
   const direction = order === "asc" ? 1 : -1;
   return [...rows].sort((a, b) => compare(a, b) * direction);
+}
+
+/** The tiles: jobs and onboarded add up; revenue stays per currency. Top-level rows only, so a team counts once. */
+function kpiTotals(rows: Array<Record<string, unknown>>) {
+  const jobs = { target: 0, actual: 0 };
+  const onboarded = { target: 0, actual: 0 };
+  const revenue = new Map<string, { currency: string; target: number; actual: number }>();
+  for (const row of rows) {
+    if (row.targetType !== "kpi3") continue;
+    jobs.target += Number(row.jobTarget) || 0;
+    jobs.actual += Number(row.jobActual) || 0;
+    onboarded.target += Number(row.conversionTarget) || 0;
+    onboarded.actual += Number(row.onboardedActual) || 0;
+    const currency = String(row.currency || "AED");
+    const r = revenue.get(currency) ?? { currency, target: 0, actual: 0 };
+    r.target += Number(row.revenueTarget) || 0;
+    r.actual += Number(row.revenueActual) || 0;
+    revenue.set(currency, r);
+  }
+  return { jobs, onboarded, revenue: [...revenue.values()].sort((a, b) => b.target - a.target) };
 }
 
 async function getEligibleAssigneeIds(assigneeIds: string[], assigneeRole: string): Promise<Set<string>> {
@@ -144,7 +176,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     .filter((p) => p.assigneeRole === "super_agent")
     .map((p) => String(p.assigneeId));
   const saDocs = saIds.length
-    ? await SuperAgent.find({ userId: { $in: saIds } }).select("_id userId").lean()
+    ? await SuperAgent.find({ userId: { $in: saIds } }).select("_id userId canSetRevenueTargets").lean()
     : [];
   const teamCounts = saDocs.length
     ? await Agent.aggregate<{ _id: unknown; count: number }>([
@@ -154,17 +186,87 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     : [];
   const countBySaDoc = new Map(teamCounts.map((row) => [String(row._id), row.count]));
   const teamSizeMap = new Map(saDocs.map((sa) => [String(sa.userId), countBySaDoc.get(String(sa._id)) ?? 0]));
+  const revenuePermission = new Map(saDocs.map((sa) => [String(sa.userId), Boolean((sa as { canSetRevenueTargets?: boolean }).canSetRevenueTargets)]));
 
   // Enrich with achievements
-  const enriched = await enrichProfiles(profiles as unknown as Record<string, unknown>[]);
+  const enriched = await enrichProfiles(profiles as Record<string, unknown>[]);
+
+  // Calculate KPI3 progress for each profile that has KPI targets
+  const kpiSources: KpiSource[] = profiles
+    .filter((p) => p.targetType === "kpi3")
+    .map((p) => ({
+      userId: String(p.assigneeId),
+      role: p.assigneeRole === "super_agent" ? "super_agent" : "agent",
+      currency: p.currency,
+      periods: fromStoredPeriods(p.periods),
+    }));
+
+  const kpiMap = kpiSources.length > 0 ? await calculateKpis(kpiSources, year) : new Map();
+
+  // Helper to calculate percentage progress
+  const pct = (actual: number, target: number): number => {
+    if (target <= 0) return 0;
+    return Math.min(Math.round((actual / target) * 100), 999);
+  };
 
   const allRows = enriched.map((p) => {
     const user = userMap.get(p.assigneeId);
+    const pRecord = p as unknown as Record<string, unknown>;
+
+    // Get KPI data for this profile
+    let jobProgress = 0;
+    let onboardedProgress = 0;
+    let revenueProgress = 0;
+    let actuals = { jobs: 0, onboarded: 0, revenue: 0 };
+    let overallProgress = p.profitProgress;
+    let riskScore = p.riskScore;
+
+    if (pRecord.targetType === "kpi3") {
+      const role = p.assigneeRole === "super_agent" ? "super_agent" : "agent";
+      const keyPrefix = `${role}:${p.assigneeId}`;
+      const kpi = kpiMap.get(keyPrefix);
+
+      if (kpi) {
+        const jobTarget = typeof pRecord.jobTarget === "number" ? pRecord.jobTarget : 0;
+        const conversionTarget = typeof pRecord.conversionTarget === "number" ? pRecord.conversionTarget : 0;
+        const revenueTarget = typeof pRecord.revenueTarget === "number" ? pRecord.revenueTarget : 0;
+
+        jobProgress = pct(kpi.totals.jobs, jobTarget);
+        onboardedProgress = pct(kpi.totals.onboarded, conversionTarget);
+        revenueProgress = pct(kpi.totals.revenue, revenueTarget);
+        actuals = kpi.totals;
+      }
+      // Performance and risk come from the three targets, not from profit.
+      const set = [
+        [jobProgress, pRecord.jobTarget],
+        [onboardedProgress, pRecord.conversionTarget],
+        [revenueProgress, pRecord.revenueTarget],
+      ].filter(([, target]) => typeof target === "number" && target > 0).map(([progress]) => progress as number);
+      // Each part counts at most 100%, so beating one target can't hide a missed one
+      // (57 of 24 jobs with 0 revenue is not "88% overall").
+      overallProgress = set.length ? Math.round(set.reduce((a, b) => a + Math.min(b, 100), 0) / set.length) : 0;
+      const kpiInput = {
+        actual: actuals,
+        target: { jobTarget: Number(pRecord.jobTarget) || 0, conversionTarget: Number(pRecord.conversionTarget) || 0, revenueTarget: Number(pRecord.revenueTarget) || 0 },
+        expectedProgress: yearElapsedPercent(new Date(), year),
+      };
+      riskScore = kpiRisk(kpiInput) ? "high" : kpiPace(kpiInput) === "behind" ? "medium" : "low";
+    }
+
     return {
       ...p,
       assigneeName: user?.name ?? "Unknown",
       assigneeEmail: user?.email ?? "",
       teamSize: teamSizeMap.get(p.assigneeId) ?? 0,
+      canSetRevenueTargets: revenuePermission.get(p.assigneeId) ?? false,
+      jobProgress,
+      onboardedProgress,
+      revenueProgress,
+      jobActual: actuals.jobs,
+      onboardedActual: actuals.onboarded,
+      revenueActual: actuals.revenue,
+      overallProgress,
+      riskScore,
     };
   });
 
@@ -181,8 +283,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // One currency at a time: INR plans are never added to AED ones.
     profit: profitTotals(topLevel),
     avgProgress: allRows.length > 0
-      ? Math.round(allRows.reduce((s, r) => s + r.profitProgress, 0) / allRows.length)
+      ? Math.round(allRows.reduce((s, r) => s + r.overallProgress, 0) / allRows.length)
       : 0,
+    kpi: kpiTotals(topLevel),
     riskBreakdown: {
       high: allRows.filter((r) => r.riskScore === "high").length,
       medium: allRows.filter((r) => r.riskScore === "medium").length,
@@ -194,9 +297,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const filteredRows = allRows.filter((row) => {
     if (risk && risk !== "all" && row.riskScore !== risk) return false;
     if (completion && completion !== "all") {
-      const stage = row.profitProgress >= 100
+      const stage = row.overallProgress >= 100
         ? "completed"
-        : row.profitProgress > 0 ? "in_progress" : "not_started";
+        : row.overallProgress > 0 ? "in_progress" : "not_started";
       if (stage !== completion) return false;
     }
     if (!search) return true;
@@ -346,13 +449,26 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         continue;
       }
 
-      const schedule = scheduleFor({
-        year,
-        profitTarget: target.profitTarget,
-        periodType: target.periodType,
-        strategy: target.distributionStrategy,
-        periods: target.periods,
-      });
+      const isKpi = target.targetType === "kpi3";
+      const kpiTotals = { jobTarget: target.jobTarget, conversionTarget: target.conversionTarget, revenueTarget: target.revenueTarget };
+      let schedule: ReturnType<typeof scheduleFor>;
+      if (isKpi) {
+        // Monthly, three figures a month: equal split built here, or the admin's own months checked.
+        const manual = target.distributionStrategy === "custom" && target.periods;
+        if (manual && kpiPeriodIssues(target.periods!, kpiTotals).length > 0) {
+          schedule = { error: "The months must add up to each yearly target", details: [] };
+        } else {
+          schedule = { periods: manual ? manualKpiPeriods(year, target.periods!) : equalKpiPeriods(year, kpiTotals) };
+        }
+      } else {
+        schedule = scheduleFor({
+          year,
+          profitTarget: target.profitTarget,
+          periodType: target.periodType,
+          strategy: target.distributionStrategy,
+          periods: target.periods,
+        });
+      }
 
       if ("error" in schedule) {
         skippedDetails.push({ assigneeId: target.assigneeId, reason: "distribution_invalid" });
@@ -366,9 +482,12 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
           assignedBy: ctx.userId,
           year,
           region,
-          profitTarget: target.profitTarget,
+          targetType: target.targetType,
+          // Profit is an admin finance figure only on profit targets (R9).
+          profitTarget: isKpi ? 0 : target.profitTarget,
+          ...(isKpi ? { ...kpiTotals, setByRole: "admin" } : {}),
           currency: target.currency ?? currency,
-          periodType: target.periodType ?? "monthly",
+          periodType: isKpi ? "monthly" : target.periodType ?? "monthly",
           distributionStrategy: target.distributionStrategy ?? "equal",
           periods: toStoredPeriods(schedule.periods),
           notes: target.notes,
@@ -435,6 +554,35 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         status: "active",
       }).lean();
       if (existing) continue;
+
+      if (src.targetType === "kpi3") {
+        // Three targets scaled by the change: counts stay whole, revenue to the cent; months split equally.
+        const totals = {
+          jobTarget: Math.round((src.jobTarget ?? 0) * adj),
+          conversionTarget: Math.round((src.conversionTarget ?? 0) * adj),
+          revenueTarget: Math.round((src.revenueTarget ?? 0) * adj * 100) / 100,
+        };
+        const profile = await TargetProfile.create({
+          assigneeId: src.assigneeId,
+          assigneeRole: src.assigneeRole,
+          assignedBy: ctx.userId,
+          year: body.targetYear,
+          region: src.region,
+          targetType: "kpi3",
+          profitTarget: 0,
+          ...totals,
+          setByRole: src.setByRole ?? "admin",
+          currency: src.currency,
+          periodType: "monthly",
+          distributionStrategy: "equal",
+          periods: toStoredPeriods(equalKpiPeriods(body.targetYear, totals)),
+          notes: `Cloned from ${body.sourceYear} with ${body.adjustmentPct ?? 0}% adjustment`,
+          status: "active",
+        });
+        cloned.push(profile);
+        void notifyTargetAssigned(String(profile.assigneeId), src.assigneeRole as "agent" | "super_agent", String(profile._id), body.targetYear, ctx.locale);
+        continue;
+      }
 
       const profitTarget = Math.round(src.profitTarget * adj * 100) / 100;
 
@@ -524,9 +672,22 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   let profile: ITargetProfile;
   try {
     profile = await TargetProfile.create({
-      ...body,
+      targetType: body.targetType ?? "kpi3",
+      assigneeId: body.assigneeId,
+      assigneeRole: body.assigneeRole,
       assignedBy: ctx.userId,
+      year: body.year,
+      region: body.region,
+      profitTarget: body.profitTarget,
+      currency: body.currency ?? "AED",
+      jobTarget: body.jobTarget,
+      conversionTarget: body.conversionTarget,
+      revenueTarget: body.revenueTarget,
+      setByRole: "admin",
+      periodType: body.periodType,
+      distributionStrategy: body.distributionStrategy,
       periods: toStoredPeriods(schedule.periods),
+      notes: body.notes,
       status: "active",
     });
   } catch (error) {
@@ -542,13 +703,18 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   await logActivity({
     ...actorFromCtx(ctx),
-    action: "target_profile.create",
+    action: "target.create",
     resource: "targets",
     resourceId: String(profile._id),
     meta: {
       year: body.year,
-      profitTarget: body.profitTarget,
+      targetType: profile.targetType,
       assigneeId: body.assigneeId,
+      assigneeRole: body.assigneeRole,
+      profitTarget: body.profitTarget,
+      jobTarget: body.jobTarget,
+      conversionTarget: body.conversionTarget,
+      revenueTarget: body.revenueTarget,
     },
     req,
   });

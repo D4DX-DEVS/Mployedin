@@ -38,6 +38,11 @@ jest.mock("@/models/JobSeeker", () => ({
 }));
 
 jest.mock("@/models/User", () => ({ __esModule: true, default: {} }));
+// Which rows' CVs the viewer may open has its own suite (talent-search-cv-accessible).
+jest.mock("@/lib/cv/cvAccess", () => ({
+  resolveCvActor: jest.fn().mockResolvedValue({ employerId: "e1", canViewSeeker: async () => false }),
+  employerAccessibleSeekerIds: jest.fn().mockResolvedValue(new Set()),
+}));
 
 import { GET as _GET } from "@/app/api/employer/talent-search/route";
 

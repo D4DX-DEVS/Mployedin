@@ -11,6 +11,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useQueryFlag } from "@/hooks/useQueryFlag";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useCanCreateEmployers } from "@/hooks/useEmployerOnboarding";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -235,7 +236,9 @@ export default function AgentLeadsPage() {
   const tf = useTranslations("formErrors");
   const locale = useLocale();
   const tc = useTranslations("common");
-  const { can } = usePermissions();
+  const { can, role } = usePermissions();
+  // Admin → Settings → Employer onboarding can turn "add employers" off for this role.
+  const canCreateEmployers = useCanCreateEmployers(role);
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
   const { setTotal, setTotalPages, setPage, resetPage } = pagination;
@@ -788,7 +791,7 @@ export default function AgentLeadsPage() {
   const onLeadMoved = (lead: Lead) => {
     toast.success(t("leadMovedToStage", { stage: STAGE_CONFIG[lead.status].label }));
     afterLeadChange();
-    if (lead.status === "converted" && !lead.convertedToEmployerId) void offerEmployerAccount(lead);
+    if (lead.status === "converted" && !lead.convertedToEmployerId && canCreateEmployers) void offerEmployerAccount(lead);
   };
 
   const openWorkspace = (lead: Lead, tab: WorkspaceTab = "overview") => {
@@ -812,6 +815,7 @@ export default function AgentLeadsPage() {
     canDelete: can("leads", "delete"),
     scoringId: scoringLeadId,
     convertingId: convertingLeadId,
+    canCreateEmployer: canCreateEmployers,
   };
   const phoneFilterCount = [statusFilter !== "all", exhibitionFilter !== "all", followUpFilter === "due"].filter(Boolean).length;
   const toggleFollowUpFilter = () => setFollowUpFilter(followUpFilter === "due" ? "all" : "due");
@@ -856,7 +860,7 @@ export default function AgentLeadsPage() {
     });
 
     // An employer account follows a Won lead (Mark Won offers it).
-    if (lead.status === "converted" && !lead.convertedToEmployerId && can("leads", "update")) {
+    if (lead.status === "converted" && !lead.convertedToEmployerId && can("leads", "update") && canCreateEmployers) {
       rowActions.menu.push({
         key: "convert",
         label: t("createEmployerAccount"),

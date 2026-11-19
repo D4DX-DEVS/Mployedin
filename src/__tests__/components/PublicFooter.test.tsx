@@ -67,6 +67,9 @@ const arMessages: Record<string, string> = {
 
 let activeMessages = enMessages;
 
+// Public employer sign-up open (Admin → Settings → Employer onboarding): these
+// tests cover the pages as they were before that switch existed.
+jest.mock("@/hooks/useEmployerOnboarding", () => ({ useEmployerSignupOpen: () => true }));
 jest.mock("next-intl", () => ({
   useTranslations: () => (key: string) => activeMessages[key] ?? key,
 }));

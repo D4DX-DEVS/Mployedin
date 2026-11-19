@@ -7,6 +7,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import LoginPage from "@/app/[locale]/(auth)/login/page";
 import RegisterPage from "@/app/[locale]/(auth)/register/page";
 
+// Public employer sign-up open (Admin → Settings → Employer onboarding): these
+// tests cover the pages as they were before that switch existed.
+jest.mock("@/hooks/useEmployerOnboarding", () => ({ useEmployerSignupOpen: () => true }));
 jest.mock("next-auth/react", () => ({
   signIn: jest.fn(),
   getSession: jest.fn().mockResolvedValue(null),

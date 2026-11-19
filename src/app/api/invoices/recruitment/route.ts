@@ -15,6 +15,7 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/resolveRate";
 import { createCommissionRecordsForInvoice } from "@/lib/invoices/commissionRecords";
 import { recruitmentJobAccessError } from "@/lib/invoices/recruitmentJobAccess";
+import { commissionBase, linkLinePlacements } from "@/lib/invoices/linePlacements";
 import { INVOICE_TERMINAL_STATUSES } from "@/lib/invoices/status";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import logger from "@/lib/logger";
@@ -120,21 +121,30 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
   const invoiceCurrency = currency ?? defaultCurrency;
 
   // Build line items (if none provided, create single item from amount)
-  const lineItems = (rawLineItems && rawLineItems.length > 0)
-    ? rawLineItems.map((li: { description: string; quantity: number; unitPrice: number; amount: number; jobId?: string }) => ({
+  const builtLines = (rawLineItems && rawLineItems.length > 0)
+    ? rawLineItems.map((li: { description: string; quantity: number; unitPrice: number; amount: number; jobId?: string; placementId?: string }) => ({
         description: li.description,
         quantity: li.quantity,
         unitPrice: li.unitPrice,
         amount: li.quantity * li.unitPrice,
         jobId: li.jobId ?? jobId,
+        placementId: li.placementId,
       }))
-    : [{ description: `Recruitment fee — ${job.title}`, quantity: 1, unitPrice: amount, amount, jobId }];
+    : [{ description: `Recruitment fee — ${job.title}`, quantity: 1, unitPrice: amount, amount, jobId, placementId: undefined as string | undefined }];
+  const linked = await linkLinePlacements(jobId, builtLines);
+  if ("error" in linked) return NextResponse.json({ error: linked.error }, { status: 400 });
+  const lineItems = linked.lines;
 
   const subtotal = lineItems.reduce((sum: number, li: { amount: number }) => sum + li.amount, 0);
   const discountAmount = Math.round((subtotal * discountPercent) / 100 * 100) / 100;
   const discountedSubtotal = subtotal - discountAmount;
   const taxAmount = Math.round((discountedSubtotal * taxPercent) / 100 * 100) / 100;
   const billedTotal = Math.round((discountedSubtotal + taxAmount + serviceCharge) * 100) / 100;
+  // Commission is paid on the invoice total minus tax (owner rule, 2026-11-18).
+  const base = commissionBase(discountedSubtotal, serviceCharge);
+  const invoiceDate = new Date();
+  const employerRates = { history: employer.agentCommissionRates, on: invoiceDate };
+  const saRateHistory = { history: superAgentDoc?.overrideRateHistory, on: invoiceDate };
 
   // Auto-fill billing details from employer if not provided
   const finalBilling = billingDetails ?? {
@@ -159,21 +169,24 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Determine effective agent commission rate
   const useAgentOverride = canOverride && overrideAgentRate !== undefined;
-  const effectiveAgentRate = useAgentOverride ? overrideAgentRate : (agentDoc?.commissionRate ?? 0);
+  const agentResolved = agentDoc
+    ? await resolveCommissionRate(agentDoc.commissionRate ?? 0, employerCountry, employerRates)
+    : null;
+  const effectiveAgentRate = useAgentOverride ? overrideAgentRate : (agentResolved?.rate ?? 0);
 
   if (agentDoc && effectiveAgentRate > 0) {
     let finalRate = effectiveAgentRate;
     let sourceNote = "";
-    if (!useAgentOverride) {
-      const resolved = await resolveCommissionRate(agentDoc.commissionRate, employerCountry);
-      finalRate = resolved.rate;
-      sourceNote = resolved.source === "country_override"
-        ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
+    if (!useAgentOverride && agentResolved) {
+      finalRate = agentResolved.rate;
+      sourceNote = agentResolved.source === "country_override"
+        ? ` [Country override: ${agentResolved.countryCode} → ${agentResolved.rate}%]`
+        : agentResolved.source === "employer_rate" ? " [Employer rate]" : "";
     } else {
       // Validate override against system-resolved rate (super_agent cannot exceed system cap)
-      const systemResolved = await resolveCommissionRate(agentDoc.commissionRate, employerCountry);
+      const systemResolved = await resolveCommissionRate(agentDoc.commissionRate ?? 0, employerCountry, employerRates);
       const systemCap = systemResolved.rate;
-      if (ctx.role === "super_agent" && overrideAgentRate > systemCap) {
+      if (ctx.role === "super_agent" && (overrideAgentRate ?? 0) > systemCap) {
         logger.warn({
           agentId: String(agentDoc._id),
           userId: ctx.userId,
@@ -187,8 +200,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       }
       sourceNote = " [Manual override]";
     }
-    // Calculate commission on discountedSubtotal only (before tax) — tax is a pass-through liability
-    const agentAmount = Math.round((discountedSubtotal * finalRate) / 100 * 100) / 100;
+    // Tax is a pass-through liability, so it never earns commission.
+    const agentAmount = Math.round((base * finalRate) / 100 * 100) / 100;
 
     commissions.push({
       agentId: agentDoc._id,
@@ -206,21 +219,23 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Determine effective super-agent commission rate
   const useSAOverride = canOverride && overrideSuperAgentRate !== undefined;
-  const effectiveSARate = useSAOverride ? overrideSuperAgentRate : (superAgentDoc?.overrideRate ?? 0);
+  const saResolved = superAgentDoc
+    ? await resolveOverrideRate(superAgentDoc.overrideRate ?? 0, employerCountry, saRateHistory)
+    : null;
+  const effectiveSARate = useSAOverride ? overrideSuperAgentRate : (saResolved?.rate ?? 0);
 
   if (superAgentDoc && effectiveSARate > 0) {
     let finalRate = effectiveSARate;
     let sourceNote = "";
-    if (!useSAOverride) {
-      const resolved = await resolveOverrideRate(superAgentDoc.overrideRate, employerCountry);
-      finalRate = resolved.rate;
-      sourceNote = resolved.source === "country_override"
-        ? ` [Country override: ${resolved.countryCode} → ${resolved.rate}%]` : "";
+    if (!useSAOverride && saResolved) {
+      finalRate = saResolved.rate;
+      sourceNote = saResolved.source === "country_override"
+        ? ` [Country override: ${saResolved.countryCode} → ${saResolved.rate}%]` : "";
     } else {
       // Validate override against system-resolved rate (super_agent cannot exceed system cap)
-      const systemResolved = await resolveOverrideRate(superAgentDoc.overrideRate, employerCountry);
+      const systemResolved = await resolveOverrideRate(superAgentDoc.overrideRate ?? 0, employerCountry, saRateHistory);
       const systemCap = systemResolved.rate;
-      if (ctx.role === "super_agent" && overrideSuperAgentRate > systemCap) {
+      if (ctx.role === "super_agent" && (overrideSuperAgentRate ?? 0) > systemCap) {
         logger.warn({
           superAgentId: String(superAgentDoc._id),
           userId: ctx.userId,
@@ -234,8 +249,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       }
       sourceNote = " [Manual override]";
     }
-    // Calculate commission on discountedSubtotal only (before tax) — tax is a pass-through liability
-    const overrideAmount = Math.round((discountedSubtotal * finalRate) / 100 * 100) / 100;
+    const overrideAmount = Math.round((base * finalRate) / 100 * 100) / 100;
 
     commissions.push({
       superAgentId: superAgentDoc._id,

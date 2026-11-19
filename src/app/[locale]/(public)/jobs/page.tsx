@@ -6,7 +6,8 @@ import { maskJobEmployer } from "@/lib/jobs/companyDisclosure";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { MapPin, Briefcase, Clock, Search, ChevronLeft, ChevronRight, X, Check, Banknote } from "lucide-react";
+import { MapPin, Briefcase, Clock, Search, ChevronLeft, ChevronRight, X, Check, Banknote, GraduationCap } from "lucide-react";
+import { jobCardTags } from "@/lib/jobs/cardTags";
 import RelativeDate from "@/components/shared/RelativeDate";
 import { closesInDays } from "@/lib/jobs/expiry";
 
@@ -240,6 +241,11 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
               const employer = maskJobEmployer(job as Record<string, unknown>).employerId as any;
               const salary = job.showSalary !== false ? salaryLabel(job.salary as Parameters<typeof salaryLabel>[0], locale, t) : null;
               const daysLeft = closesInDays(job.expiresAt as Date | null);
+              const tags = jobCardTags({
+                skills: job.requirements?.skills,
+                education: job.requirements?.education,
+                qualifications: locale === "ar" && job.qualificationsAr?.length ? job.qualificationsAr : job.qualifications,
+              });
 
               return (
                 <Link
@@ -294,15 +300,22 @@ export default async function JobsPage({ params, searchParams }: PageProps) {
                         </span>
                       </div>
 
-                      {job.requirements?.skills?.length > 0 && (
+                      {tags.education && (
+                        <p className="flex items-start gap-1 mt-2 text-xs text-muted-foreground">
+                          <GraduationCap className="h-3 w-3 mt-0.5 shrink-0" aria-hidden="true" />
+                          <span className="line-clamp-1">{tags.education}</span>
+                        </p>
+                      )}
+
+                      {tags.skills.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-3">
-                          {job.requirements.skills.slice(0, 5).map((s: string) => (
+                          {tags.skills.slice(0, 5).map((s) => (
                             <span key={s} className="text-[11px] bg-muted px-2 py-0.5 rounded-md text-foreground/80">
                               {s}
                             </span>
                           ))}
-                          {job.requirements.skills.length > 5 && (
-                            <span className="text-[11px] text-muted-foreground">{t("moreSkills", { count: job.requirements.skills.length - 5 })}</span>
+                          {tags.skills.length > 5 && (
+                            <span className="text-[11px] text-muted-foreground">{t("moreSkills", { count: tags.skills.length - 5 })}</span>
                           )}
                         </div>
                       )}

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
+import type { CvSource } from "@/components/shared/CvSourceBar";
 import { JobMatches } from "@/components/features/jobs/matching/JobMatches";
 import { SeekerDetailPanel } from "@/components/features/super-agent/SeekerDetailPanel";
 
@@ -26,7 +27,8 @@ export function SuperAgentJobMatches({ locale, jobId }: SuperAgentJobMatchesProp
   const tSeekers = useTranslations("superAgentJobSeekers");
   const jobsHref = `/${locale}/super-agent/jobs`;
   const [profileId, setProfileId] = useState<string | null>(null);
-  const [cvSeeker, setCvSeeker] = useState<{ id: string; name: string } | null>(null);
+  // `source` "file" opens the uploaded CV; without it the viewer opens on the Standardised one.
+  const [cvSeeker, setCvSeeker] = useState<{ id: string; name: string; source?: CvSource } | null>(null);
 
   return (
     <div className="page-container">
@@ -66,7 +68,12 @@ export function SuperAgentJobMatches({ locale, jobId }: SuperAgentJobMatchesProp
       </Dialog>
       {/* Closing the CV brings the profile back where it was. */}
       {cvSeeker && (
-        <ResumeViewerModal url={`/api/employers/candidates/${cvSeeker.id}/cv#cv.pdf`} candidateName={cvSeeker.name} onClose={() => setCvSeeker(null)} />
+        <ResumeViewerModal
+          url={`/api/employers/candidates/${cvSeeker.id}/cv#cv.pdf`}
+          candidateName={cvSeeker.name}
+          initialSource={cvSeeker.source}
+          onClose={() => setCvSeeker(null)}
+        />
       )}
     </div>
   );

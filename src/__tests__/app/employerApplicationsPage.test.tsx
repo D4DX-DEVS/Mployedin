@@ -65,8 +65,9 @@ jest.mock("@/hooks/useCandidateJourney", () => ({
   useCandidateJourney: () => ({ data: { interviews: [], offer: undefined, check: undefined, placement: undefined }, isLoading: false, isError: false }),
 }));
 
+const usePermissionsMock = jest.fn();
 jest.mock("@/hooks/usePermissions", () => ({
-  usePermissions: () => ({ can: () => true }),
+  usePermissions: () => usePermissionsMock(),
 }));
 
 jest.mock("@/hooks/useWorkflow", () => ({
@@ -157,12 +158,31 @@ jest.mock("@/components/scorecards/ScorecardForm", () => ({
   ScorecardForm: () => null,
 }));
 
+// Records what the viewer is opened with: its URL decides whether staff get
+// the Standardised CV (only /api/employers/candidates/<id>/cv URLs have one).
+const resumeViewerMock = jest.fn();
 jest.mock("@/components/shared/ResumeViewerModal", () => ({
-  ResumeViewerModal: () => null,
+  ResumeViewerModal: (props: Record<string, unknown>) => {
+    resumeViewerMock(props);
+    return null;
+  },
+}));
+
+// The export dialog has its own suite; here only what the list hands it matters.
+const cvExportDialogMock = jest.fn();
+jest.mock("@/components/shared/CvExport/CvExportDialog", () => ({
+  CvExportDialog: (props: { open: boolean }) => {
+    cvExportDialogMock(props);
+    return props.open ? <div role="dialog" aria-label="CV export dialog" /> : null;
+  },
 }));
 
 describe("EmployerApplicationsPage", () => {
   beforeEach(() => {
+    usePermissionsMock.mockReset();
+    usePermissionsMock.mockReturnValue({ can: () => true });
+    resumeViewerMock.mockReset();
+    cvExportDialogMock.mockReset();
     useApplicationsMock.mockReset();
     updateStatusMutateAsyncMock.mockReset();
     bulkActionMutateAsyncMock.mockReset();
@@ -847,6 +867,264 @@ describe("EmployerApplicationsPage", () => {
       // Interviewing opens the scheduling modal rather than writing the stage.
       await waitFor(() => expect(screen.getByText("Set up the interview details")).toBeInTheDocument());
       expect(updateStatusMutateAsyncMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Export CVs, a bulk action", () => {
+    const makeApp = (n: number) => ({
+      _id: `app-${n}`,
+      jobId: { _id: "job-1", title: "Senior Full Stack Developer" },
+      jobSeekerId: {
+        _id: `seeker-${n}`,
+        userId: { _id: `user-${n}`, name: `Candidate ${n}` },
+        skills: [],
+        cv: { originalUrl: "https://example.com/cv.pdf" },
+      },
+      status: "shortlisted",
+      aiMatchScore: 80,
+      scoredAt: "2026-04-08T00:05:00.000Z",
+      appliedAt: "2026-04-08T00:00:00.000Z",
+    });
+    const listOf = (count: number) => useApplicationsMock.mockReturnValue({
+      data: {
+        applications: Array.from({ length: count }, (_, i) => makeApp(i + 1)),
+        pagination: { total: count, page: 1, limit: 100, totalPages: 1 },
+      },
+      isLoading: false,
+    });
+    async function selectEveryone() {
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      await user.click(screen.getByRole("button", { name: /select visible/i }));
+      return user;
+    }
+    const lastDialogProps = () => cvExportDialogMock.mock.calls.at(-1)?.[0] as {
+      open: boolean;
+      items: Array<{ seekerId: string; applicationId?: string; name?: string }>;
+    };
+
+    it("is not offered until someone is selected", () => {
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      expect(screen.queryByRole("button", { name: /export cvs/i })).not.toBeInTheDocument();
+    });
+
+    it("opens the export dialog with one item per selected application, each carrying its application id", async () => {
+      listOf(2);
+      const user = await selectEveryone();
+      expect(lastDialogProps().open).toBe(false);
+
+      await user.click(screen.getByRole("button", { name: /export cvs/i }));
+
+      expect(await screen.findByRole("dialog", { name: /cv export dialog/i })).toBeInTheDocument();
+      // applicationId is what makes "Original" the CV sent with that application.
+      expect(lastDialogProps().items).toEqual([
+        { seekerId: "seeker-1", applicationId: "app-1", name: "Candidate 1" },
+        { seekerId: "seeker-2", applicationId: "app-2", name: "Candidate 2" },
+      ]);
+    });
+
+    it("sits beside the existing bulk actions without replacing any of them", async () => {
+      listOf(2);
+      await selectEveryone();
+      expect(screen.getByRole("button", { name: /move to shortlisted/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /schedule interview/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^reject$/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /export cvs/i })).toBeEnabled();
+    });
+
+    it("allows exactly 50 candidates", async () => {
+      listOf(50);
+      const user = await selectEveryone();
+      const button = screen.getByRole("button", { name: /export cvs/i });
+      expect(button).toBeEnabled();
+      await user.click(button);
+      expect(lastDialogProps().items).toHaveLength(50);
+    });
+
+    it("blocks 51 and says why, instead of opening a dialog that cannot export", async () => {
+      listOf(51);
+      const user = await selectEveryone();
+
+      const button = screen.getByRole("button", { name: /export cvs/i });
+      expect(button).toBeDisabled();
+      expect(screen.getByText(/export up to 50 candidates at a time/i)).toBeInTheDocument();
+      expect(button).toHaveAccessibleDescription(/up to 50 candidates/i);
+
+      await user.click(button);
+      expect(lastDialogProps().open).toBe(false);
+    });
+
+    it("is there for a company colleague who holds only the applications permission", async () => {
+      // A colleague is role "employer" with a subset of the owner's rights; the
+      // server (canManageTalentPools) decides export, not an owner-only check here.
+      usePermissionsMock.mockReturnValue({
+        role: "employer",
+        can: (resource: string) => resource === "applications",
+      });
+      listOf(1);
+      await selectEveryone();
+      expect(screen.getByRole("button", { name: /export cvs/i })).toBeEnabled();
+    });
+
+    it("is hidden for a colleague who holds neither the applicant-review nor the candidate-pool function", async () => {
+      usePermissionsMock.mockReturnValue({
+        role: "employer",
+        can: () => true,
+        session: { user: { id: "u2", companyOwnerUserId: "u1", companyPermissions: { canReviewApplicants: false, canManageTalentPools: false } } },
+      });
+      listOf(1);
+      await selectEveryone();
+      expect(screen.queryByRole("button", { name: /export cvs/i })).not.toBeInTheDocument();
+      expect(cvExportDialogMock).not.toHaveBeenCalledWith(expect.objectContaining({ open: true }));
+    });
+
+    it("is there for a colleague who may review applicants (the default hiring_manager role)", async () => {
+      usePermissionsMock.mockReturnValue({
+        role: "employer",
+        can: () => true,
+        session: { user: { id: "u2", companyOwnerUserId: "u1", companyPermissions: { canReviewApplicants: true, canManageTalentPools: false } } },
+      });
+      listOf(1);
+      await selectEveryone();
+      expect(screen.getByRole("button", { name: /export cvs/i })).toBeEnabled();
+    });
+
+    it("leaves selection, and so export, to people who may update applications", () => {
+      usePermissionsMock.mockReturnValue({ role: "employer", can: () => false });
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      expect(screen.queryByRole("button", { name: /select visible/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /export cvs/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("View CV opens the Standardised CV", () => {
+    const SEEKER = "64b7c1f2a3d4e5f60718293a";
+    const applicant = (seeker: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({
+      _id: "app-1",
+      jobId: { _id: "job-1", title: "Senior Full Stack Developer" },
+      jobSeekerId: { _id: SEEKER, userId: { _id: "user-1", name: "Amina Noor" }, skills: [], ...seeker },
+      status: "shortlisted",
+      aiMatchScore: 84,
+      scoredAt: "2026-04-08T00:05:00.000Z",
+      appliedAt: "2026-04-08T00:00:00.000Z",
+      ...extra,
+    });
+    const listOf = (app: Record<string, unknown>) => useApplicationsMock.mockReturnValue({
+      data: { applications: [app], pagination: { total: 1, page: 1, limit: 10, totalPages: 1 } },
+      isLoading: false,
+    });
+    const viewerUrl = () => (resumeViewerMock.mock.calls.at(-1)?.[0] as { url: string }).url;
+    async function openPanel() {
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+      await user.click(screen.getByTestId("applicant-row-app-1"));
+      const panel = await screen.findByRole("dialog", { name: /candidate details for amina noor/i });
+      return { user, panel };
+    }
+
+    it("hands the viewer the candidate CV route with the application, the only URL that has a Standardised CV", async () => {
+      listOf(applicant({ cv: { originalUrl: "https://example.com/cv.pdf" } }));
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+
+      await user.click(screen.getByRole("button", { name: /view cv for amina noor/i }));
+
+      expect(viewerUrl()).toBe(`/api/employers/candidates/${SEEKER}/cv?applicationId=app-1#cv.pdf`);
+      // The viewer's own test for "this CV has a Mployedin version beside it".
+      expect(viewerUrl()).toMatch(/^\/api\/employers\/candidates\/[a-f\d]{24}\/cv(?:[?#]|$)/i);
+      expect(resumeViewerMock).toHaveBeenLastCalledWith(expect.objectContaining({ applicationId: "app-1", jobSeekerId: SEEKER }));
+    });
+
+    it("keeps the file's real type in the URL so an image CV is still shown as an image", async () => {
+      listOf(applicant({ cv: { originalUrl: "https://example.com/cv.PNG?sig=1" } }));
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+
+      await user.click(screen.getByRole("button", { name: /view cv for amina noor/i }));
+
+      expect(viewerUrl()).toBe(`/api/employers/candidates/${SEEKER}/cv?applicationId=app-1#cv.png`);
+    });
+
+    it("works for an applicant whose only CV is the resume sent with the application", async () => {
+      listOf(applicant({}, { documents: [{ name: "Amina - Mployedin CV.pdf", url: "https://example.com/sent.docx", type: "resume" }] }));
+      const user = userEvent.setup();
+      render(<ApplicationsWorkspace jobId="job-1" embedded />);
+
+      await user.click(screen.getByRole("button", { name: /view cv for amina noor/i }));
+
+      expect(viewerUrl()).toBe(`/api/employers/candidates/${SEEKER}/cv?applicationId=app-1#cv.docx`);
+    });
+
+    it("names the panel's primary CV button View CV, not View Resume, and opens the same viewer", async () => {
+      listOf(applicant({ cv: { originalUrl: "https://example.com/cv.pdf" } }));
+      const { user, panel } = await openPanel();
+
+      await user.click(within(panel).getByRole("button", { name: /^resume$/i }));
+      expect(within(panel).queryByRole("button", { name: /view resume/i })).not.toBeInTheDocument();
+      await user.click(within(panel).getByRole("button", { name: /^view cv$/i }));
+
+      expect(viewerUrl()).toBe(`/api/employers/candidates/${SEEKER}/cv?applicationId=app-1#cv.pdf`);
+    });
+
+    it("offers the Original CV (Uploaded) as a second item in the panel menu, opening the file directly", async () => {
+      listOf(applicant({ cv: { originalUrl: "https://example.com/cv.pdf" } }));
+      const { user, panel } = await openPanel();
+
+      await user.click(within(panel).getByRole("button", { name: /more actions/i }));
+
+      const item = within(panel).getByRole("menuitem", { name: /original cv \(uploaded\)/i });
+      // Opening the file to keep is a download, so it is flagged for the counter (View CV, the preview, is not).
+      expect(item).toHaveAttribute("href", `/api/employers/candidates/${SEEKER}/cv?applicationId=app-1&download=1#cv.pdf`);
+      expect(item).toHaveAttribute("target", "_blank");
+      expect(item.getAttribute("rel")).toContain("noopener");
+      // It opens the file in a tab; it does not open the Standardised viewer.
+      expect(resumeViewerMock).not.toHaveBeenCalled();
+    });
+
+    it("leaves the Original item out when the only resume is a link to another site: the route would serve nothing", async () => {
+      listOf(applicant({}, { documents: [{ name: "My CV on Drive", url: "https://drive.example.com/file/abc", type: "resume" }] }));
+      const { user, panel } = await openPanel();
+
+      await user.click(within(panel).getByRole("button", { name: /more actions/i }));
+
+      expect(within(panel).queryByRole("menuitem", { name: /original cv|sent with application/i })).not.toBeInTheDocument();
+    });
+
+    it("keeps it for a link-only resume when the candidate has a Profile CV, which the route falls back to", async () => {
+      listOf(applicant({ cv: { originalUrl: "https://example.com/cv.pdf" } }, { documents: [{ name: "My CV on Drive", url: "https://drive.example.com/file/abc", type: "resume" }] }));
+      const { user, panel } = await openPanel();
+
+      await user.click(within(panel).getByRole("button", { name: /more actions/i }));
+
+      expect(within(panel).getByRole("menuitem", { name: /original cv \(uploaded\)/i })).toBeInTheDocument();
+    });
+
+    it("offers a resume uploaded to our storage even with no Profile CV", async () => {
+      listOf(applicant({}, { documents: [{ name: "Tailored CV.pdf", url: "https://bucket.blr1.digitaloceanspaces.com/documents/x.pdf", type: "resume" }] }));
+      const { user, panel } = await openPanel();
+
+      await user.click(within(panel).getByRole("button", { name: /more actions/i }));
+
+      expect(within(panel).getByRole("menuitem", { name: /original cv \(uploaded\)/i })).toBeInTheDocument();
+    });
+
+    it("calls the item 'CV sent with application' when what was sent is the CV built on Mployedin", async () => {
+      listOf(applicant({}, { documents: [{ name: "Amina - Mployedin CV.pdf", url: "https://example.com/sent.pdf", type: "resume" }] }));
+      const { user, panel } = await openPanel();
+
+      await user.click(within(panel).getByRole("button", { name: /more actions/i }));
+
+      expect(within(panel).getByRole("menuitem", { name: /cv sent with application/i })).toBeInTheDocument();
+      expect(within(panel).queryByRole("menuitem", { name: /original cv \(uploaded\)/i })).not.toBeInTheDocument();
+    });
+
+    it("leaves the Original item out when the candidate has no file", async () => {
+      listOf(applicant({}));
+      const { user, panel } = await openPanel();
+
+      await user.click(within(panel).getByRole("button", { name: /more actions/i }));
+
+      expect(within(panel).queryByRole("menuitem", { name: /original cv/i })).not.toBeInTheDocument();
     });
   });
 });

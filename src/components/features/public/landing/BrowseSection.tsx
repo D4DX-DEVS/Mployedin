@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { EmployerEntryLink } from "@/components/shared/EmployerEntryLink";
 
 interface BrowseSectionProps {
   locale: string;
@@ -54,12 +55,12 @@ export function BrowseSection({ locale }: BrowseSectionProps) {
         <aside className="flex min-w-0 flex-1 flex-col gap-3.5 rounded-3xl border border-border/70 bg-[hsl(var(--brand-blue-pale))] p-7">
           <h3 className="text-2xl font-extrabold leading-tight tracking-[-0.01em] text-foreground">{t("hireFaster")}</h3>
           <p className="text-base leading-7 text-muted-foreground">{t("hireFasterDesc")}</p>
-          <Link
-            href={`/${locale}/employer-register`}
+          <EmployerEntryLink
+            locale={locale}
             className="inline-flex min-h-11 items-center self-start rounded-xl bg-primary px-5 text-sm font-bold text-primary-foreground hover:bg-primary/90"
           >
             {t("startHiring")}
-          </Link>
+          </EmployerEntryLink>
         </aside>
       </div>
     </section>

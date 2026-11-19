@@ -91,19 +91,49 @@ jest.mock("@/components/shared/PaginationControls", () => ({
   PaginationControls: () => null,
 }));
 
+// Records what the viewer is opened with: its URL decides whether staff get
+// the Standardised CV (only /api/employers/candidates/<id>/cv URLs have one).
+const resumeViewerMock = jest.fn();
 jest.mock("@/components/shared/ResumeViewerModal", () => ({
-  ResumeViewerModal: () => null,
+  ResumeViewerModal: (props: Record<string, unknown>) => {
+    resumeViewerMock(props);
+    return null;
+  },
 }));
 
+// The export dialog has its own suite; here only what the list hands it matters.
+const cvExportDialogMock = jest.fn();
+jest.mock("@/components/shared/CvExport/CvExportDialog", () => ({
+  CvExportDialog: (props: { open: boolean }) => {
+    cvExportDialogMock(props);
+    return props.open ? <div role="dialog" aria-label="CV export dialog" /> : null;
+  },
+}));
+
+// Stands in for the real dialog; "Mock save" is a successful save of the candidate(s) it was opened for.
 jest.mock("@/components/features/employer/SaveToPoolDialog", () => ({
-  SaveToPoolDialog: () => null,
+  SaveToPoolDialog: (props: { open: boolean; candidateId: string | null; candidateIds?: string[]; onSaved?: (ids: string[]) => void }) =>
+    props.open ? (
+      <button type="button" onClick={() => props.onSaved?.(props.candidateIds?.length ? props.candidateIds : props.candidateId ? [props.candidateId] : [])}>
+        Mock save
+      </button>
+    ) : null,
+}));
+
+// Who is signed in: an owner by default; a test swaps in a colleague.
+let sessionUser: Record<string, unknown> = { id: "u1", role: "employer" };
+jest.mock("@/hooks/usePermissions", () => ({
+  usePermissions: () => ({ can: () => true, role: "employer", session: { user: sessionUser } }),
 }));
 
 describe("EmployerCandidatesPage", () => {
   beforeEach(() => {
     window.history.replaceState({}, "", "/en/employer/candidates");
+    resumeViewerMock.mockReset();
+    cvExportDialogMock.mockReset();
     replaceMock.mockClear();
     pushMock.mockReset();
+    sessionUser = { id: "u1", role: "employer" };
     useCandidatesMock.mockReset();
     usePublishedJobsMock.mockReset();
     mutateAsyncStartConversationMock.mockReset();
@@ -583,5 +613,317 @@ describe("EmployerCandidatesPage", () => {
     expect(within(dialog).getByText("Strong frontend fit with strong delivery evidence.")).toBeInTheDocument();
     expect(within(dialog).getByText("Score breakdown")).toBeInTheDocument();
     expect(within(dialog).getByText("No recent Next.js project listed")).toBeInTheDocument();
+  });
+
+  describe("Export CVs, on the selection", () => {
+    const talent = (count: number, withCv = true) => Array.from({ length: count }, (_, i) => ({
+      _id: `cand-${i + 1}`,
+      userId: { _id: `user-${i + 1}`, name: `Candidate ${i + 1}`, email: `c${i + 1}@example.com` },
+      skills: ["React"],
+      currentLocation: "Dubai",
+      totalExperienceYears: 3,
+      availabilityStatus: "immediately",
+      profileCompleteness: 80,
+      experience: [],
+      ...(withCv ? { cv: { originalUrl: "https://example.com/cv.pdf" } } : {}),
+    }));
+    const listOf = (candidates: unknown[]) => useCandidatesMock.mockReturnValue({
+      data: { candidates, total: candidates.length },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: jest.fn(),
+    });
+    const lastDialogProps = () => cvExportDialogMock.mock.calls.at(-1)?.[0] as {
+      open: boolean;
+      items: Array<{ seekerId: string; applicationId?: string; name?: string }>;
+    };
+
+    it("is not offered until a candidate is selected", () => {
+      listOf(talent(2));
+      render(<EmployerCandidatesPage />);
+      expect(screen.queryByRole("button", { name: /export cvs/i })).not.toBeInTheDocument();
+    });
+
+    it("exports the ticked candidates, with no application: it is the talent pool, so Original is the profile file", async () => {
+      listOf(talent(3));
+      const user = userEvent.setup();
+      render(<EmployerCandidatesPage />);
+
+      await user.click(screen.getByRole("checkbox", { name: "Select Candidate 1" }));
+      await user.click(screen.getByRole("checkbox", { name: "Select Candidate 3" }));
+      expect(lastDialogProps().open).toBe(false);
+      await user.click(screen.getByRole("button", { name: /export cvs/i }));
+
+      expect(await screen.findByRole("dialog", { name: /cv export dialog/i })).toBeInTheDocument();
+      expect(lastDialogProps().items).toEqual([
+        { seekerId: "cand-1", name: "Candidate 1" },
+        { seekerId: "cand-3", name: "Candidate 3" },
+      ]);
+      expect(lastDialogProps().items.every((item) => !("applicationId" in item))).toBe(true);
+    });
+
+    it("keeps the list's own selection actions, and adds the shared sticky bar that carries Export", async () => {
+      listOf(talent(2));
+      const user = userEvent.setup();
+      render(<EmployerCandidatesPage />);
+
+      await user.click(screen.getByRole("checkbox", { name: "Select Candidate 1" }));
+
+      expect(screen.getByRole("button", { name: /save 1 to pool/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^clear$/i })).toBeInTheDocument();
+      const bar = screen.getByRole("region", { name: /selected rows/i });
+      expect(bar.className).toMatch(/\bsticky\b/);
+      expect(within(bar).getByText("1 selected")).toBeInTheDocument();
+      expect(within(bar).getByRole("button", { name: /export cvs/i })).toBeEnabled();
+    });
+
+    it("clears the selection from the bar", async () => {
+      listOf(talent(2));
+      const user = userEvent.setup();
+      render(<EmployerCandidatesPage />);
+      await user.click(screen.getByRole("checkbox", { name: "Select Candidate 1" }));
+
+      await user.click(within(screen.getByRole("region", { name: /selected rows/i })).getByRole("button", { name: /clear selection/i }));
+
+      expect(screen.queryByRole("region", { name: /selected rows/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /export cvs/i })).not.toBeInTheDocument();
+    });
+
+    it("selects the whole page, then allows exactly 50", async () => {
+      listOf(talent(50));
+      const user = userEvent.setup();
+      render(<EmployerCandidatesPage />);
+
+      await user.click(screen.getByRole("checkbox", { name: /select all on this page/i }));
+      const button = screen.getByRole("button", { name: /export cvs/i });
+      expect(button).toBeEnabled();
+      await user.click(button);
+
+      expect(lastDialogProps().items).toHaveLength(50);
+    });
+
+    it("blocks 51 and says why, instead of opening a dialog that cannot export", async () => {
+      listOf(talent(51));
+      const user = userEvent.setup();
+      render(<EmployerCandidatesPage />);
+
+      await user.click(screen.getByRole("checkbox", { name: /select all on this page/i }));
+
+      const button = screen.getByRole("button", { name: /export cvs/i });
+      expect(button).toBeDisabled();
+      expect(screen.getByText(/export up to 50 CVs at a time/i)).toBeInTheDocument();
+      expect(button).toHaveAccessibleDescription(/up to 50 CVs/i);
+      await user.click(button);
+      expect(lastDialogProps().open).toBe(false);
+    });
+
+    it("keeps a candidate ticked on another page in the export, named from the row that was ticked", async () => {
+      const page1 = talent(2);
+      listOf(page1);
+      const user = userEvent.setup();
+      const { rerender } = render(<EmployerCandidatesPage />);
+      await user.click(screen.getByRole("checkbox", { name: "Select Candidate 1" }));
+
+      listOf([{ ...talent(3)[2], _id: "cand-on-page-2", userId: { _id: "u9", name: "Page Two", email: "p@example.com" } }]);
+      rerender(<EmployerCandidatesPage />);
+      await user.click(screen.getByRole("checkbox", { name: "Select Page Two" }));
+      await user.click(await screen.findByRole("button", { name: /export cvs/i }));
+
+      expect(lastDialogProps().items).toEqual([
+        { seekerId: "cand-1", name: "Candidate 1" },
+        { seekerId: "cand-on-page-2", name: "Page Two" },
+      ]);
+    });
+
+    it("does not export what was saved (starred) in an earlier visit: the export has its own selection", async () => {
+      sessionStorageGetItemMock.mockReturnValueOnce(JSON.stringify({ selectedJobId: "", reviewListIds: ["cand-1", "cand-elsewhere"] }));
+      listOf(talent(2));
+      render(<EmployerCandidatesPage />);
+
+      // Nothing is ticked, so there is no bar and no export, whatever was saved.
+      expect(screen.queryByRole("button", { name: /export cvs/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: /selected rows/i })).not.toBeInTheDocument();
+      expect(lastDialogProps().items).toEqual([]);
+    });
+
+    it("the bar's Clear empties the export selection and leaves the saved stars alone", async () => {
+      sessionStorageGetItemMock.mockReturnValueOnce(JSON.stringify({ selectedJobId: "", reviewListIds: ["cand-2"] }));
+      listOf(talent(2));
+      const user = userEvent.setup();
+      render(<EmployerCandidatesPage />);
+      expect(await screen.findAllByRole("button", { name: /^saved for review$/i })).toHaveLength(1);
+
+      await user.click(screen.getByRole("checkbox", { name: "Select Candidate 1" }));
+      await user.click(within(screen.getByRole("region", { name: /selected rows/i })).getByRole("button", { name: /clear selection/i }));
+
+      expect(screen.queryByRole("region", { name: /selected rows/i })).not.toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /^saved for review$/i })).toHaveLength(1);
+    });
+
+    it("starring a candidate saves it for review without adding it to the export", async () => {
+      listOf(talent(2));
+      const user = userEvent.setup();
+      render(<EmployerCandidatesPage />);
+
+      await user.click(screen.getAllByRole("button", { name: /save for review/i })[0]);
+
+      expect(screen.queryByRole("button", { name: /export cvs/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("View CV opens the Standardised CV; the Original is one item away", () => {
+    const talent = (withCv: boolean) => [{
+      _id: "cand-1",
+      userId: { _id: "user-1", name: "Amina Noor", email: "amina@example.com" },
+      skills: ["React"],
+      currentLocation: "Dubai",
+      totalExperienceYears: 3,
+      availabilityStatus: "immediately",
+      profileCompleteness: 80,
+      experience: [],
+      ...(withCv ? { cv: { originalUrl: "https://example.com/cv.pdf" } } : {}),
+    }];
+    const listOf = (candidates: unknown[]) => useCandidatesMock.mockReturnValue({
+      data: { candidates, total: candidates.length },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: jest.fn(),
+    });
+    async function openRowMenu() {
+      const user = userEvent.setup();
+      render(<EmployerCandidatesPage />);
+      await user.click(screen.getByRole("button", { name: /more actions for amina noor/i }));
+      return user;
+    }
+
+    it("opens the viewer on the candidate CV route, the one URL that has a Standardised CV", async () => {
+      listOf(talent(true));
+      const user = await openRowMenu();
+
+      await user.click(await screen.findByRole("menuitem", { name: /^view cv$/i }));
+
+      const url = (resumeViewerMock.mock.calls.at(-1)?.[0] as { url: string }).url;
+      expect(url).toBe("/api/employers/candidates/cand-1/cv#cv.pdf");
+      expect(url).toMatch(/^\/api\/employers\/candidates\/[^/]+\/cv(?:[?#]|$)/);
+    });
+
+    it("offers Original CV (Uploaded) as a second menu item that opens the file in a tab", async () => {
+      listOf(talent(true));
+      await openRowMenu();
+
+      const item = await screen.findByRole("menuitem", { name: /original cv \(uploaded\)/i });
+      // Opening the file to keep is a download, so it is flagged (the viewer's preview is not).
+      expect(item).toHaveAttribute("href", "/api/employers/candidates/cand-1/cv?download=1#cv.pdf");
+      expect(item).toHaveAttribute("target", "_blank");
+      expect(item.getAttribute("rel")).toContain("noopener");
+      // It is a link to the file, not the Standardised viewer.
+      expect(resumeViewerMock).not.toHaveBeenCalled();
+    });
+
+    it("a profile-only candidate (no file, enough profile for a Standardised CV) opens the viewer on the candidate URL, never the not-available toast", async () => {
+      listOf([{ ...talent(false)[0], canBuildCv: true }]);
+      const user = await openRowMenu();
+
+      await user.click(await screen.findByRole("menuitem", { name: /^view cv$/i }));
+
+      expect(toastErrorMock).not.toHaveBeenCalled();
+      const url = (resumeViewerMock.mock.calls.at(-1)?.[0] as { url: string }).url;
+      expect(url).toBe("/api/employers/candidates/cand-1/cv#cv.pdf");
+      // No file to open in a tab: only the Standardised CV exists.
+      expect(screen.queryByRole("menuitem", { name: /original cv/i })).not.toBeInTheDocument();
+    });
+
+    it("a profile-only candidate gets View CV in the details panel too", async () => {
+      listOf([{ ...talent(false)[0], canBuildCv: true }]);
+      const user = userEvent.setup();
+      render(<EmployerCandidatesPage />);
+
+      await user.click(screen.getByRole("button", { name: /open details for/i }));
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByRole("button", { name: /^view cv$/i }));
+
+      expect(toastErrorMock).not.toHaveBeenCalled();
+      expect((resumeViewerMock.mock.calls.at(-1)?.[0] as { url: string }).url).toBe("/api/employers/candidates/cand-1/cv#cv.pdf");
+    });
+
+    it("offers neither when the candidate has no CV", async () => {
+      listOf(talent(false));
+      await openRowMenu();
+
+      expect(await screen.findByRole("menuitem", { name: /open profile/i })).toBeInTheDocument();
+      expect(screen.queryByRole("menuitem", { name: /view cv/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("menuitem", { name: /original cv/i })).not.toBeInTheDocument();
+    });
+
+    describe("only where the CV route would serve the candidate (cvAccessible)", () => {
+      const sourcedOnly = () => [{ ...talent(false)[0], canBuildCv: true, cvAccessible: false }];
+
+      it("a sourced-only candidate (no application, in no talent pool) has no View CV in the row menu", async () => {
+        listOf(sourcedOnly());
+        await openRowMenu();
+
+        expect(await screen.findByRole("menuitem", { name: /open profile/i })).toBeInTheDocument();
+        expect(screen.queryByRole("menuitem", { name: /view cv/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("menuitem", { name: /original cv/i })).not.toBeInTheDocument();
+      });
+
+      it("nor in the details panel", async () => {
+        listOf(sourcedOnly());
+        const user = userEvent.setup();
+        render(<EmployerCandidatesPage />);
+
+        await user.click(screen.getByRole("button", { name: /open details for/i }));
+        const dialog = await screen.findByRole("dialog");
+        expect(within(dialog).queryByRole("button", { name: /^view cv$/i })).not.toBeInTheDocument();
+      });
+
+      it("a profile-only candidate already saved to a pool (cvAccessible true) has View CV", async () => {
+        listOf([{ ...talent(false)[0], canBuildCv: true, cvAccessible: true }]);
+        const user = await openRowMenu();
+
+        await user.click(await screen.findByRole("menuitem", { name: /^view cv$/i }));
+
+        expect((resumeViewerMock.mock.calls.at(-1)?.[0] as { url: string }).url).toBe("/api/employers/candidates/cand-1/cv#cv.pdf");
+      });
+
+      it("accessible but nothing to show (no file, nothing to build from): no View CV", async () => {
+        listOf([{ ...talent(false)[0], canBuildCv: false, cvAccessible: true }]);
+        await openRowMenu();
+
+        expect(await screen.findByRole("menuitem", { name: /open profile/i })).toBeInTheDocument();
+        expect(screen.queryByRole("menuitem", { name: /view cv/i })).not.toBeInTheDocument();
+      });
+
+      it("saving the candidate to a pool in this visit gives them View CV without a reload", async () => {
+        listOf(sourcedOnly());
+        const user = await openRowMenu();
+        expect(screen.queryByRole("menuitem", { name: /view cv/i })).not.toBeInTheDocument();
+
+        await user.click(await screen.findByRole("menuitem", { name: /save to talent pool|save to pool/i }));
+        await user.click(await screen.findByRole("button", { name: "Mock save" }));
+        await user.click(screen.getByRole("button", { name: /more actions for amina noor/i }));
+
+        expect(await screen.findByRole("menuitem", { name: /^view cv$/i })).toBeInTheDocument();
+      });
+
+      it("a colleague who only reviews applicants has no View CV on a talent row, whatever the server said", async () => {
+        sessionUser = { id: "u2", role: "employer", companyOwnerUserId: "u1", companyPermissions: { canReviewApplicants: true, canManageTalentPools: false } };
+        listOf([{ ...talent(false)[0], canBuildCv: true, cvAccessible: true }]);
+        await openRowMenu();
+
+        expect(await screen.findByRole("menuitem", { name: /open profile/i })).toBeInTheDocument();
+        expect(screen.queryByRole("menuitem", { name: /view cv/i })).not.toBeInTheDocument();
+      });
+
+      it("a colleague who also manages talent pools keeps View CV", async () => {
+        sessionUser = { id: "u2", role: "employer", companyOwnerUserId: "u1", companyPermissions: { canReviewApplicants: true, canManageTalentPools: true } };
+        listOf([{ ...talent(false)[0], canBuildCv: true, cvAccessible: true }]);
+        await openRowMenu();
+
+        expect(await screen.findByRole("menuitem", { name: /^view cv$/i })).toBeInTheDocument();
+      });
+    });
   });
 });

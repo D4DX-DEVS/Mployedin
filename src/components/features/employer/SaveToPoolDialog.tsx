@@ -29,6 +29,8 @@ interface SaveToPoolDialogProps {
   sourceApplicationId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Called with the candidates now in the pool (added, or already there) after a successful save. */
+  onSaved?: (candidateIds: string[]) => void;
 }
 
 export function SaveToPoolDialog({
@@ -38,6 +40,7 @@ export function SaveToPoolDialog({
   sourceApplicationId,
   open,
   onOpenChange,
+  onSaved,
 }: SaveToPoolDialogProps) {
   const t = useTranslations("talentPool");
   const { data: pools = [], isLoading } = useTalentPools();
@@ -87,6 +90,7 @@ export function SaveToPoolDialog({
       if (!isBulk) {
         await addCandidate.mutateAsync({ poolId, jobSeekerId: targetIds[0], source: "manual", sourceApplicationId });
         toast.success(t("addedToPool"));
+        onSaved?.([targetIds[0]]);
         reset();
         onOpenChange(false);
         return;
@@ -99,15 +103,18 @@ export function SaveToPoolDialog({
       let added = 0;
       let skipped = 0;
       let failed = 0;
-      for (const r of results) {
+      const nowInPool: string[] = [];
+      results.forEach((r, index) => {
         if (r.status === "fulfilled") {
           added++;
+          nowInPool.push(targetIds[index]);
         } else if ((r.reason as { status?: number } | undefined)?.status === 409) {
           skipped++;
+          nowInPool.push(targetIds[index]);
         } else {
           failed++;
         }
-      }
+      });
 
       if (added > 0 && skipped === 0 && failed === 0) {
         toast.success(t("bulkAddedToPool", { count: added }));
@@ -119,6 +126,7 @@ export function SaveToPoolDialog({
         toast.error(t("bulkAddFailed"));
       }
 
+      if (nowInPool.length > 0) onSaved?.(nowInPool);
       if (added > 0 || skipped > 0) {
         reset();
         onOpenChange(false);

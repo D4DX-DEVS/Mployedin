@@ -221,6 +221,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
                   ? `Active ${targetYear} target profile already exists`
                   : null,
             targetProfile,
+            canSetRevenueTargets: profile?.canSetRevenueTargets ?? false,
           },
         };
       });
@@ -399,7 +400,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
   await connectDB();
 
   const body = await validateBody(req, superAgentUpdateSchema);
-  const { userId, name, email, isActive, overrideCommissionRate, defaultAgentCommissionRate, assignedCityIds, assignedStateIds, agentIds } = body;
+  const { userId, name, email, isActive, overrideCommissionRate, overrideRateEffectiveFrom, overrideRateReason, defaultAgentCommissionRate, assignedCityIds, assignedStateIds, agentIds } = body;
 
   if (!userId) return NextResponse.json({ error: "userId is required" }, { status: 400 });
 
@@ -430,7 +431,23 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Update or create super agent profile
   const profileUpdate: Record<string, unknown> = {};
-  if (overrideCommissionRate !== undefined) profileUpdate.overrideRate = overrideCommissionRate;
+  // Override-rate changes are effective-dated and append-only
+  // (SuperAgent.overrideRateHistory, lib/commissions/resolveRate). The stored
+  // `overrideRate` only moves once the change has started.
+  let rateChange: { rate: number; effectiveFrom: Date; previous: number | null } | null = null;
+  if (overrideCommissionRate !== undefined) {
+    const today = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
+    const effectiveFrom = overrideRateEffectiveFrom ? new Date(`${overrideRateEffectiveFrom}T00:00:00Z`) : today;
+    if (Number.isNaN(effectiveFrom.getTime())) {
+      return NextResponse.json({ error: "Invalid effective date" }, { status: 400 });
+    }
+    const existing = await SuperAgent.findOne({ userId }).select("overrideRate").lean<{ overrideRate?: number }>();
+    const previous = existing?.overrideRate ?? null;
+    if (previous !== overrideCommissionRate || overrideRateEffectiveFrom) {
+      rateChange = { rate: overrideCommissionRate, effectiveFrom, previous };
+      if (effectiveFrom.getTime() <= today.getTime()) profileUpdate.overrideRate = overrideCommissionRate;
+    }
+  }
   if (defaultAgentCommissionRate !== undefined) profileUpdate.defaultAgentCommissionRate = defaultAgentCommissionRate;
   if (assignedCityIds !== undefined) profileUpdate.assignedCityIds = assignedCityIds;
   if (assignedStateIds !== undefined) profileUpdate.assignedStateIds = assignedStateIds;
@@ -446,12 +463,39 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     });
   }
 
-  if (Object.keys(profileUpdate).length > 0) {
+  if (Object.keys(profileUpdate).length > 0 || rateChange) {
     const saDoc = await SuperAgent.findOneAndUpdate(
       { userId },
-      { $set: profileUpdate },
+      {
+        $set: profileUpdate,
+        ...(rateChange
+          ? {
+              $push: {
+                overrideRateHistory: {
+                  rate: rateChange.rate,
+                  effectiveFrom: rateChange.effectiveFrom,
+                  setBy: ctx.userId,
+                  setByRole: "admin",
+                  reason: overrideRateReason,
+                  setAt: new Date(),
+                },
+              },
+            }
+          : {}),
+      },
       { upsert: true, returnDocument: "after" }
     );
+    if (rateChange) {
+      await logActivity({
+        ...actorFromCtx(ctx),
+        action: "commission_rate.super_agent_set",
+        resource: "commissions",
+        resourceId: String(userId),
+        changes: { before: { overrideRate: rateChange.previous }, after: { overrideRate: rateChange.rate } },
+        meta: { effectiveFrom: rateChange.effectiveFrom.toISOString().slice(0, 10), reason: overrideRateReason },
+        req,
+      });
+    }
 
     // Sync agent references: set superAgentId on assigned agents, clear on removed ones
     if (agentIds !== undefined) {

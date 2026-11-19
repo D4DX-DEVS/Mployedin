@@ -30,6 +30,8 @@ export const REGISTRY: RegistryItem[] = [
   { name: "job-ai-*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "employer", purposeKey: "taskState" },
   { name: "job-draft-*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "employer", purposeKey: "jobDraft" },
   { name: "mployedin:apply-auto-cv", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "seeker", purposeKey: "taskState" },
+  // The CV an existing seeker picked on a public job page, preselected once they are signed in; cleared on read.
+  { name: "mployedin:apply-returning-cv", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "seeker", purposeKey: "taskState" },
   { name: "job-prefs-draft", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "seeker", purposeKey: "taskState" },
   { name: "employer-candidate-matching-session-v1", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "employer", purposeKey: "taskState" },
   { name: "ai-thread-*", kind: "sessionStorage", category: "necessary", basis: "user-action", party: "first", duration: "tab", owner: "ai", purposeKey: "taskState" },

@@ -208,6 +208,12 @@ export interface IJob extends Document {
   /** Set when the job was paused because its employer account was deactivated. */
   pauseReason?: "employer_deactivated";
   expiresAt?: Date;
+  /** First time the job went live. Set once; a job is "acquired" in this month (lib/targets/kpiCalculator). */
+  firstPublishedAt?: Date;
+  /** The agent credited with bringing this job in, frozen at first publish so a later reassignment never moves it. */
+  acquiredByAgentId?: mongoose.Types.ObjectId;
+  /** Last time the job was closed. A hire counts as a conversion once its job is closed. */
+  closedAt?: Date;
   maxApplicants?: number;
   showSalary?: boolean;
   views: number;
@@ -387,6 +393,9 @@ const JobSchema = new Schema<IJob>(
     // reactivation resumes exactly these jobs (see lib/employers/accountStatus).
     pauseReason: { type: String, enum: ["employer_deactivated"] },
     expiresAt: Date,
+    firstPublishedAt: Date,
+    acquiredByAgentId: { type: Schema.Types.ObjectId, ref: "Agent" },
+    closedAt: Date,
     maxApplicants: { type: Number, min: 1 },
     showSalary: { type: Boolean, default: true },
     views: { type: Number, default: 0 },
@@ -445,6 +454,7 @@ JobSchema.index(
 );
 
 JobSchema.index({ "workflow.template.templateId": 1 });
+JobSchema.index({ acquiredByAgentId: 1, firstPublishedAt: 1 });
 
 // Remember the status a job was loaded with, so the workflow hook below can
 // tell a draft being published from a live job being paused or closed.
@@ -455,6 +465,13 @@ JobSchema.post("init", function (doc) {
 // Every job runs a hiring workflow: the template its poster picked, or the one
 // its details match (lib/hiring/jobWorkflow.ts). Imported lazily — the helper
 // reads other models. It never throws, so a lookup failure cannot block a save.
+// Target credit: stamp the first publish (and who brought the job in) once, and
+// the latest close. updateMany paths that close jobs set `closedAt` themselves.
+JobSchema.pre("save", async function () {
+  const { stampJobLifecycle } = await import("@/lib/targets/jobLifecycle");
+  await stampJobLifecycle(this as unknown as import("@/lib/targets/jobLifecycle").LifecycleJob);
+});
+
 JobSchema.pre("save", async function () {
   const { applyJobWorkflowOnSave } = await import("@/lib/hiring/jobWorkflow");
   await applyJobWorkflowOnSave(this as unknown as import("@/lib/hiring/jobWorkflow").WorkflowHookJob);

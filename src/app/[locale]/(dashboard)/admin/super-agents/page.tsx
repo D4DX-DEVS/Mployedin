@@ -131,7 +131,7 @@ export default function AdminSuperAgentsPage() {
 
   // Edit modal
   const [editSA, setEditSA] = useState<SuperAgent | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", isActive: "true", overrideCommissionRate: "0", defaultAgentCommissionRate: "0" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", isActive: "true", overrideCommissionRate: "0", defaultAgentCommissionRate: "0", overrideRateEffectiveFrom: "", overrideRateReason: "" });
   const [editCityIds, setEditCityIds] = useState<string[]>([]);
   const [editStateIds, setEditStateIds] = useState<string[]>([]);
   const [editAgentIds, setEditAgentIds] = useState<string[]>([]);
@@ -285,6 +285,8 @@ export default function AdminSuperAgentsPage() {
       isActive: String(sa.isActive !== false),
       overrideCommissionRate: String(sa.superAgentProfile?.overrideCommissionRate ?? 0),
       defaultAgentCommissionRate: String(sa.superAgentProfile?.defaultAgentCommissionRate ?? 0),
+      overrideRateEffectiveFrom: localIsoDay(),
+      overrideRateReason: "",
     });
     setEditCityIds(sa.superAgentProfile?.assignedCityIds?.map((c) => c._id) ?? []);
     setEditStateIds(sa.superAgentProfile?.assignedStateIds?.map((s) => s._id) ?? []);
@@ -295,6 +297,13 @@ export default function AdminSuperAgentsPage() {
 
   // User Management's "Assign team & territory" lands here with ?open=<userId>.
   useOpenFromUrl(superAgents, openEdit);
+
+  const localIsoDay = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const editRateChanged =
+    !!editSA && (parseFloat(editForm.overrideCommissionRate) || 0) !== (editSA.superAgentProfile?.overrideCommissionRate ?? 0);
 
   const handleEdit = async () => {
     if (!editSA) return;
@@ -311,6 +320,10 @@ export default function AdminSuperAgentsPage() {
           email: editForm.email,
           isActive: editForm.isActive === "true",
           overrideCommissionRate: parseFloat(editForm.overrideCommissionRate) || 0,
+          // A rate change is kept in history from its start date; earlier invoices keep the old rate.
+          ...(editRateChanged
+            ? { overrideRateEffectiveFrom: editForm.overrideRateEffectiveFrom || undefined, overrideRateReason: editForm.overrideRateReason.trim() || undefined }
+            : {}),
           defaultAgentCommissionRate: parseFloat(editForm.defaultAgentCommissionRate) || 0,
           assignedCityIds: editCityIds,
           assignedStateIds: editStateIds,
@@ -829,6 +842,19 @@ export default function AdminSuperAgentsPage() {
                   <Input id="edit-sa-override-rate" type="number" min="0" max="100" value={editForm.overrideCommissionRate} onChange={(e) => setEditForm((f) => ({ ...f, overrideCommissionRate: e.target.value }))} aria-describedby="edit-sa-override-rate-hint" />
                   <p id="edit-sa-override-rate-hint" className="text-xs text-muted-foreground">{t("overrideCommissionRateHint")}</p>
                 </div>
+                {editRateChanged && (
+                  <>
+                    <div className="field">
+                      <Label htmlFor="edit-sa-rate-from">{t("overrideRateEffectiveFromLabel")}</Label>
+                      <Input id="edit-sa-rate-from" type="date" value={editForm.overrideRateEffectiveFrom} onChange={(e) => setEditForm((f) => ({ ...f, overrideRateEffectiveFrom: e.target.value }))} aria-describedby="edit-sa-rate-from-hint" />
+                      <p id="edit-sa-rate-from-hint" className="text-xs text-muted-foreground">{t("overrideRateEffectiveFromHint")}</p>
+                    </div>
+                    <div className="field">
+                      <Label htmlFor="edit-sa-rate-reason">{t("overrideRateReasonLabel")}</Label>
+                      <Input id="edit-sa-rate-reason" maxLength={500} value={editForm.overrideRateReason} onChange={(e) => setEditForm((f) => ({ ...f, overrideRateReason: e.target.value }))} />
+                    </div>
+                  </>
+                )}
               </div>
             ),
           },

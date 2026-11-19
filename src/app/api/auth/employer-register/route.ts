@@ -23,6 +23,8 @@ import { parseCookieChoice } from "@/lib/gdpr/cookieChoice";
 import { TERMS_REQUIRED_MESSAGE } from "@/lib/validators/misc";
 import { resolveEmployerRegion } from "@/lib/agents/territoryCoverage";
 import { resolveRequestLocale } from "@/lib/i18n/requestLocale";
+import { checkEmployerSignup } from "@/lib/settings/employerSignupGate";
+import { getEmployerOnboardingFlags } from "@/lib/settings/employerOnboarding";
 
 export const runtime = "nodejs";
 
@@ -50,6 +52,24 @@ export async function POST(req: NextRequest) {
 
     const form = await req.formData();
     const get = (k: string) => (form.get(k) as string | null) ?? "";
+
+    // Admin → Settings → Employer onboarding. Checked before any upload or write:
+    // without a live invite, only open while public employer sign-up is ON.
+    const signup = await checkEmployerSignup(get("referralCode"));
+    if (!signup.allowed) {
+      return NextResponse.json(
+        {
+          code: signup.code,
+          message:
+            signup.code === "EMPLOYER_SIGNUP_CLOSED"
+              ? "Employer accounts are set up by our team. Contact us to get started."
+              : signup.code === "EMPLOYER_INVITES_PAUSED"
+                ? "Employer invite links are paused right now. Contact us to get started."
+                : "This invite link is no longer valid. Ask the person who sent it for a new one.",
+        },
+        { status: 403 },
+      );
+    }
 
     // Step 1 — company fields
     const companyName = get("companyName");
@@ -203,7 +223,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Create employer profile
-    const referralCode = get("referralCode");
+    // Invite links paused by the admin: sign-up may still be open, but the code is no referral.
+    const referralCode = (await getEmployerOnboardingFlags()).employerInviteLinksEnabled ? get("referralCode") : "";
     let referrerAgentId: string | undefined;
     let isAgentVerified = false;
     let verifiedByAgentId: string | undefined;

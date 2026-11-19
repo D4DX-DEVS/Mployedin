@@ -13,9 +13,13 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { CvExportDialog } from "@/components/shared/CvExport/CvExportDialog";
+import type { CvExportItem } from "@/components/shared/CvExport/useCvExport";
+import type { CvDetails } from "@/lib/cv/cvZip";
 import type { TalentRow } from "@/lib/ai/copilot/views";
 import {
-  downloadShortlistExcel, downloadShortlistPdf, downloadShortlistZip, fetchShortlistDetails, type ShortlistColumns,
+  downloadShortlistExcel, downloadShortlistPdf, fetchShortlistDetails, shortlistCvDetails,
+  type ShortlistColumns,
 } from "./candidateShortlistExport";
 
 /** Rows shown before "Show all": enough to read without scrolling the chat away. */
@@ -35,7 +39,7 @@ function fitTone(fit: number): string {
   return "bg-muted text-muted-foreground ring-border";
 }
 
-type ExportKind = "excel" | "pdf" | "zip";
+type ExportKind = "excel" | "pdf" | "cvs";
 
 /** The ranked candidates find_candidates returned, with downloads for the whole list. */
 export function TalentShortlist({ talent, totalMatched, relaxed, brief, onInternalLink }: TalentShortlistProps) {
@@ -43,29 +47,36 @@ export function TalentShortlist({ talent, totalMatched, relaxed, brief, onIntern
   const locale = useLocale();
   const [expanded, setExpanded] = useState(false);
   const [exporting, setExporting] = useState<ExportKind | null>(null);
+  // What the shared export dialog is handed once "Export CVs (ZIP)" was chosen.
+  const [cvExport, setCvExport] = useState<{ items: CvExportItem[]; rows: CvDetails }>({ items: [], rows: { header: [], rowsById: new Map() } });
+  const [cvExportOpen, setCvExportOpen] = useState(false);
   const shown = expanded ? talent : talent.slice(0, COLLAPSED);
 
   const columns: ShortlistColumns = {
     rank: t("col.rank"), name: t("col.name"), title: t("col.title"), fit: t("col.fit"),
     experience: t("col.experience"), location: t("col.location"), nationality: t("col.nationality"),
-    email: t("col.email"), phone: t("col.phone"), skills: t("col.skills"), cv: t("col.cv"),
+    email: t("col.email"), phone: t("col.phone"), skills: t("col.skills"),
   };
 
+  // The CV download is the shared export (Standardised / Original / Both); the
+  // shortlist only brings the candidates and the sheet rows it already builds.
   const runExport = async (kind: ExportKind) => {
     setExporting(kind);
     try {
       const details = await fetchShortlistDetails(talent.map((r) => r.seekerId));
       const fits = new Map(talent.map((r) => [r.seekerId, r.fit]));
-      if (kind === "pdf") {
+      if (kind === "cvs") {
+        setCvExport({
+          items: details.map((d) => ({ seekerId: d.id, name: d.name })),
+          rows: shortlistCvDetails(details, fits, columns),
+        });
+        setCvExportOpen(true);
+      } else if (kind === "pdf") {
         await downloadShortlistPdf(details, fits, columns, brief, t("pdfTitle"));
         toast.success(t("exportDone", { count: details.length }));
-      } else if (kind === "zip" && details.some((d) => d.hasCV)) {
-        const cvs = await downloadShortlistZip(details, fits, columns, brief);
-        toast.success(t("zipDone", { cvs }));
       } else {
         await downloadShortlistExcel(details, fits, columns, brief);
-        if (kind === "zip") toast.info(t("noCvs"));
-        else toast.success(t("exportDone", { count: details.length }));
+        toast.success(t("exportDone", { count: details.length }));
       }
     } catch {
       toast.error(t("exportFailed"));
@@ -97,9 +108,9 @@ export function TalentShortlist({ talent, totalMatched, relaxed, brief, onIntern
               <FileText className="size-4" aria-hidden />
               {t("exportPdf")}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => void runExport("zip")}>
+            <DropdownMenuItem onClick={() => void runExport("cvs")}>
               <FileArchive className="size-4" aria-hidden />
-              {t("exportZip")}
+              {t("exportCvs")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -212,6 +223,13 @@ export function TalentShortlist({ talent, totalMatched, relaxed, brief, onIntern
           <ChevronDown className={cn("size-3.5 transition-transform", expanded && "rotate-180")} aria-hidden />
         </button>
       )}
+
+      <CvExportDialog
+        open={cvExportOpen}
+        onOpenChange={setCvExportOpen}
+        items={cvExport.items}
+        detailsRows={cvExport.rows}
+      />
     </div>
   );
 }

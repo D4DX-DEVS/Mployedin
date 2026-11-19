@@ -28,6 +28,7 @@ import {
 } from "@/components/features/super-agent/WorkspacePage";
 import { formatCurrency } from "@/lib/currency";
 import { ReferralLinkDialog } from "@/components/features/super-agent/ReferralLinkDialog";
+import { AgentRateCell } from "@/components/features/commissions/_components/AgentRateCell";
 import { useTableExport } from "@/hooks/useTableExport";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
@@ -41,6 +42,7 @@ import { ClientPlanChip, ClientPlanRequests, useClientPlans } from "@/components
 import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 import { AssignAgentDialog } from "@/components/features/agent/AssignAgentDialog";
+import { useCanCreateEmployers } from "@/hooks/useEmployerOnboarding";
 
 /** The super agent's assign route: their own agents only, their book only. */
 const SA_ASSIGN_ENDPOINT = (employerUserId: string) => `/api/super-agent/employers/${employerUserId}/agent`;
@@ -63,6 +65,8 @@ interface Employer {
   isAgentVerified?: boolean;
   /** Registered in a city of the super agent's region. */
   inRegion?: boolean;
+  /** The effective agent commission rate. */
+  agentRate?: { rate: number; source: "employer_rate" } | { source: "none" };
 }
 
 /** Which employers the list shows (`?view=`), as on the agent's page. */
@@ -101,6 +105,8 @@ function countActiveFilters(f: Filters): number {
 }
 
 export default function SuperAgentEmployersPage() {
+  // Admin → Settings → Employer onboarding can turn "add employers" off for super agents.
+  const canCreateEmployers = useCanCreateEmployers("super_agent");
   const [employers, setEmployers] = useState<Employer[]>([]);
   const { data: clientPlans } = useClientPlans(employers.map((em) => em.userId));
   const [loading, setLoading] = useState(true);
@@ -302,6 +308,10 @@ export default function SuperAgentEmployersPage() {
     { header: t("jobsHeader"), key: "jobCount" },
   ], [t, tc]);
 
+  const handleRateChanged = useCallback(() => {
+    loadEmployers();
+  }, [loadEmployers]);
+
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: employers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
@@ -355,10 +365,12 @@ export default function SuperAgentEmployersPage() {
             the Portfolio card. A `mt-3` wrapper here pushed both buttons 12px
             below it, and the referral button ran smaller text and icon than
             its neighbour. */}
-        <Button onClick={() => setOnboardOpen(true)} className="gap-2">
-          <UserPlus className="h-4 w-4" />
-          {t("onboardButton")}
-        </Button>
+        {canCreateEmployers && (
+          <Button onClick={() => setOnboardOpen(true)} className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            {t("onboardButton")}
+          </Button>
+        )}
         <Button variant="outline" onClick={() => setReferralDialogOpen(true)} className="gap-2">
           <Link2 className="h-4 w-4" />
           {t("referralButton")}
@@ -608,6 +620,15 @@ export default function SuperAgentEmployersPage() {
                   <UserCog className="h-3 w-3 shrink-0" aria-hidden="true" />
                   <span className="truncate">{t("agentHeader")}: {em.assignedAgent?.name ?? t("unassigned")}</span>
                 </p>
+                <div className="flex min-w-0 items-center gap-1">
+                  <span className="text-xs text-muted-foreground">Agent rate:</span>
+                  <AgentRateCell
+                    employerId={em.userId ?? ""}
+                    initialRate={em.agentRate && "rate" in em.agentRate ? em.agentRate.rate : null}
+                    role="super_agent"
+                    onRateChanged={handleRateChanged}
+                  />
+                </div>
               </>
             ),
             badges: (
@@ -642,12 +663,13 @@ export default function SuperAgentEmployersPage() {
                 </TableHead>
                 <TableHead>{t("industryHeader")}</TableHead>
                 <TableHead>{t("agentHeader")}</TableHead>
+                <TableHead>{t("agentRateHeader")}</TableHead>
                 <TableHead className="w-[80px] text-right">{tc("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableBodySkeleton rows={5} cols={5} />
+                <TableBodySkeleton rows={5} cols={6} />
               ) : employers.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={5} className="py-12">
@@ -699,6 +721,14 @@ export default function SuperAgentEmployersPage() {
                     <span className="mt-1 block text-xs">{em.location ?? "—"}</span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{em.assignedAgent?.name ?? t("unassigned")}</TableCell>
+                  <TableCell>
+                    <AgentRateCell
+                      employerId={em.userId ?? ""}
+                      initialRate={em.agentRate && "rate" in em.agentRate ? em.agentRate.rate : null}
+                      role="super_agent"
+                      onRateChanged={handleRateChanged}
+                    />
+                  </TableCell>
                   <TableCell className="text-right">
                     <RowActions
                       name={em.companyName ?? em.name}

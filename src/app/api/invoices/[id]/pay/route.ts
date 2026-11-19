@@ -100,4 +100,7 @@ async function postHandler(
 }
 
 export const GET = withAuth(getHandler, { resource: "invoices", action: "read" });
+// "read" on purpose: the payer is an employer, whose role holds invoices:read
+// only. Starting a checkout changes nothing on the invoice (the gateway webhook
+// records the payment), and canAccessInvoice + PAYABLE_STATUSES gate who/what.
 export const POST = withAuth(postHandler, { resource: "invoices", action: "read" });

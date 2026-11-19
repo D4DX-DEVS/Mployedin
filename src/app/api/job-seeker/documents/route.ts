@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import JobSeeker from "@/models/JobSeeker";
+import CvDocument from "@/models/CvDocument";
 import { uploadFile } from "@/lib/storage/spaces";
 import { readUploadForm, uploadErrorResponse } from "@/lib/storage/uploadErrors";
 import { logActivity, actorFromCtx } from "@/lib/audit/log";
@@ -70,6 +71,29 @@ async function getHandler(_req: NextRequest, ctx: { userId: string; role: string
   });
 }
 
+type HeldDocument = { id: string; name: string; category: string; url: string; builtHash?: string };
+
+/**
+ * The seeker's own file with exactly this content, if they hold one: the
+ * Profile CV, else an uploaded resume (never the stored built CV). Read
+ * through the CV records, which carry each file's fingerprint; a record whose
+ * file the seeker no longer holds does not count.
+ */
+async function sameFileHeld(
+  seeker: { _id: unknown; cv?: { originalUrl?: string | null } | null; documents?: HeldDocument[] },
+  fingerprint: string,
+): Promise<{ reused: true; profileCv: true; document: null } | { reused: true; document: Omit<HeldDocument, "builtHash"> } | null> {
+  const records = await CvDocument.find({ jobSeekerId: seeker._id, fingerprint })
+    .select("fileUrl")
+    .lean<Array<{ fileUrl: string }>>();
+  const urls = new Set(records.map((r) => r.fileUrl));
+  if (urls.size === 0) return null;
+  const profileUrl = seeker.cv?.originalUrl;
+  if (profileUrl && urls.has(profileUrl)) return { reused: true, profileCv: true, document: null };
+  const doc = (seeker.documents ?? []).find((d) => d.category === "resume" && !d.builtHash && urls.has(d.url));
+  return doc ? { reused: true, document: { id: doc.id, name: doc.name, category: doc.category, url: doc.url } } : null;
+}
+
 // POST /api/job-seeker/documents — upload a document
 async function postHandler(req: NextRequest, ctx: { userId: string; role: string; locale: string }) {
   if (ctx.role !== "job_seeker") {
@@ -106,9 +130,18 @@ async function postHandler(req: NextRequest, ctx: { userId: string; role: string
   }
 
   // Limit to 20 documents per user
-  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id documents");
+  const seeker = await JobSeeker.findOne({ userId: ctx.userId }).select("_id documents cv");
   if (!seeker) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+  }
+
+  // Opt-in (the public job page's apply card): a resume whose exact file the
+  // seeker already holds is handed back instead of stored again, so a retry,
+  // a second try after a refresh, or a CV they already have does not become
+  // another identical document. The dashboard keeps storing every upload.
+  if (formData.get("reuseSame") === "1" && category === "resume" && !builtHash) {
+    const held = await sameFileHeld(seeker, createHash("sha256").update(Buffer.from(await file.arrayBuffer())).digest("hex"));
+    if (held) return NextResponse.json(held);
   }
   // The limit is on the seeker's own files. The stored built CV is kept apart:
   // there is only ever one (a new one takes the place of the last) and the

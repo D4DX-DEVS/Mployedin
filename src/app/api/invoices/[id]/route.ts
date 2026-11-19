@@ -20,6 +20,7 @@ import {
 import { PAYABLE_INVOICE_STATUSES } from "@/lib/invoices/status";
 import { isStaleInvoiceWrite, staleInvoiceResponse } from "@/lib/invoices/concurrency";
 import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/resolveRate";
+import { commissionBase } from "@/lib/invoices/linePlacements";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
 import logger from "@/lib/logger";
@@ -30,6 +31,7 @@ import SuperAgent from "@/models/SuperAgent";
 import Employer from "@/models/Employer";
 // assignedCityIds is populated below; register City even when no other route has.
 import "@/models/City";
+import { attachLineHires } from "@/lib/invoices/lineHires";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -129,7 +131,9 @@ async function getHandler(
   // once, the same way the PDF route does.
   const billToFallback = await resolveBillToFallback(invoice);
 
-  return NextResponse.json({ invoice, senderContext, billToFallback: billToFallback ?? null });
+  // Linked lines show which hire they bill (name, job, start date).
+  const withHires = await attachLineHires(invoice as unknown as { lineItems?: [] });
+  return NextResponse.json({ invoice: withHires, senderContext, billToFallback: billToFallback ?? null });
 }
 
 // ── PATCH ────────────────────────────────────────────────────────────────────
@@ -218,12 +222,14 @@ async function patchHandler(
           ? await SuperAgent.findById(agentDoc.superAgentId).lean()
           : null;
         const employer = invoice.employerId
-          ? await Employer.findById(invoice.employerId).select("country").lean()
+          ? await Employer.findById(invoice.employerId).select("country agentCommissionRates").lean()
           : null;
         const employerCountry = employer?.country ?? null;
-        // Commission base is the pre-tax, post-discount subtotal — the same base
-        // invoices/recruitment used at creation. Tax is a pass-through, not earnings.
-        const discountedSubtotal = (invoice.subtotal || 0) - (invoice.discountAmount || 0);
+        // Commission base is the invoice total minus tax (owner rule, 2026-11-18) —
+        // the same base invoices/recruitment uses at creation. Rates are the ones
+        // in effect on the invoice date.
+        const base = commissionBase((invoice.subtotal || 0) - (invoice.discountAmount || 0), invoice.serviceCharge || 0);
+        const invoiceDate = new Date(invoice.createdAt ?? Date.now());
 
         for (const commission of invoice.commissions ?? []) {
           // A rate set by hand at creation stands; re-resolving it from the profile
@@ -231,16 +237,16 @@ async function patchHandler(
           if (commission.notes?.includes(" [Manual override]")) continue;
 
           if (commission.role === "agent" && agentDoc) {
-            const resolved = await resolveCommissionRate(agentDoc.commissionRate, employerCountry);
+            const resolved = await resolveCommissionRate(agentDoc.commissionRate ?? 0, employerCountry, { history: employer?.agentCommissionRates, on: invoiceDate });
             commission.rate = resolved.rate;
-            commission.amount = Math.round((discountedSubtotal * resolved.rate) / 100 * 100) / 100;
+            commission.amount = Math.round((base * resolved.rate) / 100 * 100) / 100;
             if (resolved.source === "country_override") {
               commission.notes = `Agent placement commission [Country override: ${resolved.countryCode} → ${resolved.rate}%]`;
             }
           } else if (commission.role === "super_agent" && superAgentDoc) {
-            const resolved = await resolveOverrideRate(superAgentDoc.overrideRate, employerCountry);
+            const resolved = await resolveOverrideRate(superAgentDoc.overrideRate ?? 0, employerCountry, { history: superAgentDoc.overrideRateHistory, on: invoiceDate });
             commission.rate = resolved.rate;
-            commission.amount = Math.round((discountedSubtotal * resolved.rate) / 100 * 100) / 100;
+            commission.amount = Math.round((base * resolved.rate) / 100 * 100) / 100;
             if (resolved.source === "country_override") {
               commission.notes = `Super-agent override commission [Country override: ${resolved.countryCode} → ${resolved.rate}%]`;
             }
