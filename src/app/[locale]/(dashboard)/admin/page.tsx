@@ -24,7 +24,6 @@ import {
   type SectionContext,
 } from "./_components/sections";
 import { AdminDashboardTabs, type DashboardTab } from "./_components/admin-dashboard-tabs";
-import { TaskSummaryCards } from "@/components/features/tasks/TaskSummaryCards";
 
 /*
  * Admin dashboard, one question per tab:
@@ -132,8 +131,6 @@ export default async function AdminDashboardPage({
             <Suspense fallback={<QueueSkeleton label={loading(t("queue.title"))} />}>
               <QueueSection {...context} />
             </Suspense>
-            {/* Tasks are work waiting on the admin, so they sit with the queue, not the overview. */}
-            {can("tasks") ? <TaskSummaryCards audience="admin" /> : null}
           </div>
         )}
         {activeTab === "analysis" && (
