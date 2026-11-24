@@ -202,12 +202,20 @@ export function buildApplicantMatch(input: ApplicantMatchInput): ApplicantMatch 
   const industry = input.industry ? input.industry.score : null;
   const skills = relevance.requiredCoverage ?? relevance.skills;
   const selfReported = input.cv?.state === "none" && (seeker.roleHistory ?? []).length === 0;
+  // Experience and qualifications say whether someone meets THIS job's bar,
+  // not whether it is their kind of work. The seeker score already counts
+  // them only as far as role or skills show the job is related (relevance.ts);
+  // the employer score read them raw, so on a 0–10 year IT Admin job a video
+  // editor with none of the skills ranked 51% "Good Match" (live check
+  // 2026-11-24). Same scaling here, so both scores agree.
+  const related = (relevance.relatedness ?? 100) / 100;
+  const qualifications = qualificationsPart(relevance);
   const parts = {
     skills: selfReported ? Math.round(skills * SELF_REPORTED_SKILLS) : skills,
     preferred: mean([relevance.preferredCoverage, preferredAnswersPart(input)]),
-    experience: experiencePart(seeker, job, relevance),
+    experience: Math.round(experiencePart(seeker, job, relevance) * related),
     role: industry === null ? role : Math.round((1 - INDUSTRY_SHARE) * role + INDUSTRY_SHARE * industry),
-    education: qualificationsPart(relevance),
+    education: qualifications === null ? null : Math.round(qualifications * related),
   };
 
   const weighted = weightedApplicantScore(parts, input.weights ?? standardWeightsFor(job.requirements?.hireType));

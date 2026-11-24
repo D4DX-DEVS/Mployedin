@@ -36,6 +36,8 @@ interface JobSeekerMobileListProps<T extends MobileSeeker> {
   availabilityLabels: Record<string, string>;
   /** Row actions as one compact "…" menu; null when the viewer has none. */
   renderActions: (seeker: T) => ReactNode;
+  /** Where the seeker stands on applications and CV exports (a line under the role); null for none. */
+  renderHistory?: (seeker: T) => ReactNode;
   /** Row checkboxes, at the start of each card's header row. Omit for a list that cannot be selected. */
   selection?: {
     isSelected: (id: string) => boolean;
@@ -68,6 +70,7 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
   hrefFor,
   availabilityLabels,
   renderActions,
+  renderHistory,
   selection,
 }: JobSeekerMobileListProps<T>) {
   const tr = useTranslations("adminJobSeekers");
@@ -94,6 +97,7 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
         const edu = js.education?.[0];
         const degree = edu?.degree ? `${edu.degree}${edu.field ? ` - ${edu.field}` : ""}` : null;
         const actions = renderActions(js);
+        const history = renderHistory?.(js);
 
         return (
           // One card per seeker, the menu in the header row: a shared box with
@@ -132,6 +136,7 @@ export function JobSeekerMobileList<T extends MobileSeeker>({
               </div>
             )}
 
+            {history && <div className={`mt-2 text-xs ${underName}`}>{history}</div>}
             <div className={`mt-2 flex flex-wrap items-center gap-1.5 text-[11px] ${underName}`}>
               <StatusBadge status={js.userId?.isActive === false ? "inactive" : (js.status ?? "active")} />
               {js.badges?.includes("premium") && (

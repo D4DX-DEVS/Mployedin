@@ -65,6 +65,16 @@ describe("closeOpenInterviewsForAdvance", () => {
     expect(calls.indexOf(`invite:${FUTURE_IV}`)).toBeGreaterThan(calls.indexOf("updateMany:future"));
   });
 
+  it("keeps a future slot booked and sends no cancellation when keepFuture is set (Selected)", async () => {
+    const { closeOpenInterviewsForAdvance } = await import("@/lib/hiring/closeOpenInterviews");
+    const summary = await closeOpenInterviewsForAdvance(APP_ID, { now: NOW, keepFuture: true });
+    await flush();
+
+    expect(updateMany.mock.calls.some(([f]) => (f.scheduledAt as Record<string, unknown>)?.$gt)).toBe(false);
+    expect(sendInterviewInvite).not.toHaveBeenCalled();
+    expect(summary.cancelled).toBe(0);
+  });
+
   it("marks a past slot completed and sends nothing when no future slot is open", async () => {
     futureOpen = [];
     const { closeOpenInterviewsForAdvance } = await import("@/lib/hiring/closeOpenInterviews");

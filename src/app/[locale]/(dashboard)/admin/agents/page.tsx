@@ -43,6 +43,8 @@ import { cn } from "@/lib/utils";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { useInitialLoading } from "@/hooks/useInitialLoading";
+import Link from "next/link";
+import { AgentActivityCell, useStaffSignals, useStaffRowActions, WarningsBadge } from "../_components/staff-report/listExtras";
 
 interface AgentProfile {
   _id: string;
@@ -96,7 +98,11 @@ export default function AdminAgentsPage() {
   };
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
+  const tlist = useTranslations("adminStaffReport.list");
   const [agents, setAgents] = useState<Agent[]>([]);
+  // Plan v2: name opens the performance report; warnings + last activity per row.
+  const signals = useStaffSignals("agent", agents.map((a) => a._id));
+  const staffActions = useStaffRowActions("agent");
   const [loading, setLoading] = useState(true);
   const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState<string | null>(null);
@@ -438,7 +444,7 @@ export default function AdminAgentsPage() {
   };
 
   const rowActionsFor = (agent: Agent): { quick: RowAction[]; menu: RowAction[] } => {
-    const menu: RowAction[] = [];
+    const menu: RowAction[] = [...staffActions.actionsFor(agent)];
 
     if (can("agents", "delete")) {
       if (agent.isActive !== false) {
@@ -494,6 +500,7 @@ export default function AdminAgentsPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
+      {staffActions.node}
 
       <PageHero
         compact
@@ -575,13 +582,13 @@ export default function AdminAgentsPage() {
           empty={<EmptyState title={tr("noAgentsFound")} icon={Inbox} />}
           items={agents.map((agent) => ({
             key: agent._id,
+            href: staffActions.reportHref(agent._id),
             leading: <UserAvatar name={agent.name} email={agent.email} src={agent.avatar} className="h-10 w-10" colorful />,
             title: agent.name,
             subtitle: agent.email,
             trailing: <StatusBadge status={agent.isActive !== false ? "active" : "inactive"} />,
-            actions: (can("agents", "update") || can("agents", "delete")) ? (
-              <RowActions name={agent.name} {...rowActionsFor(agent)} />
-            ) : undefined,
+            actions: <RowActions name={agent.name} {...rowActionsFor(agent)} />,
+            badges: <WarningsBadge signal={signals.get(agent._id)} />,
             meta: (
               <>
                 <p className="flex min-w-0 items-center gap-1">
@@ -602,6 +609,7 @@ export default function AdminAgentsPage() {
             ),
             stats: [
               { label: tr("commission"), value: agent.agentProfile?.commissionRate != null ? `${agent.agentProfile.commissionRate}%` : "—" },
+              { label: tlist("lastActivity"), value: <AgentActivityCell signal={signals.get(agent._id)} /> },
             ],
           }))}
         />
@@ -625,9 +633,7 @@ export default function AdminAgentsPage() {
               <TableHead>
                 <SortableTableHeader label={tr("joined")} active={sortBy === "createdAt"} order={sortOrder} onClick={() => toggleSort("createdAt")} />
               </TableHead>
-              {(can("agents", "update") || can("agents", "delete")) && (
-                <TableHead className="text-right">{tr("actions")}</TableHead>
-              )}
+              <TableHead className="text-right">{tr("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -645,9 +651,13 @@ export default function AdminAgentsPage() {
                   <div className="flex items-start gap-3">
                     <UserAvatar name={agent.name} email={agent.email} src={agent.avatar} className="h-9 w-9" colorful />
                     <div className="flex min-w-0 flex-col items-start gap-1.5">
-                      <span className="font-medium">{agent.name}</span>
+                      <Link href={staffActions.reportHref(agent._id)} className="rounded font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{agent.name}</Link>
                       <span className="text-xs text-muted-foreground">{agent.email}</span>
-                      <StatusBadge status={agent.isActive !== false ? "active" : "inactive"} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <StatusBadge status={agent.isActive !== false ? "active" : "inactive"} />
+                        <WarningsBadge signal={signals.get(agent._id)} />
+                      </div>
+                      <AgentActivityCell signal={signals.get(agent._id)} inline />
                     </div>
                   </div>
                 </TableCell>
@@ -675,11 +685,9 @@ export default function AdminAgentsPage() {
                   {agent.agentProfile?.commissionRate != null ? `${agent.agentProfile.commissionRate}%` : "—"}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">{formatListDate(new Date(agent.createdAt), locale)}</TableCell>
-                {(can("agents", "update") || can("agents", "delete")) && (
-                  <TableCell className="text-right">
-                    <RowActions name={agent.name} {...rowActionsFor(agent)} />
-                  </TableCell>
-                )}
+                <TableCell className="text-right">
+                  <RowActions name={agent.name} {...rowActionsFor(agent)} />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

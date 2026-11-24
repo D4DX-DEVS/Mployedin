@@ -36,6 +36,8 @@ interface AssignTaskDialogProps {
   onAssigned: () => void;
   /** Opened from one agent (their row or profile): start with them chosen. */
   presetAgentUserId?: string;
+  /** Opened from one super agent (admin's report page): start with them chosen. Needs `superAgents`. */
+  presetSuperAgentUserId?: string;
 }
 
 /**
@@ -45,7 +47,7 @@ interface AssignTaskDialogProps {
  * agent); a super agent gives to their own agents.
  */
 export function AssignTaskDialog({
-  open, onOpenChange, apiBase, agents, superAgents, onAssigned, presetAgentUserId,
+  open, onOpenChange, apiBase, agents, superAgents, onAssigned, presetAgentUserId, presetSuperAgentUserId,
 }: AssignTaskDialogProps) {
   const t = useTranslations("assignedTasks");
   const tl = useTranslations("agentTasks");
@@ -97,7 +99,8 @@ export function AssignTaskDialog({
 
   useEffect(() => {
     if (open && presetAgentUserId) { setAudience("agent"); setPeople([presetAgentUserId]); }
-  }, [open, presetAgentUserId]);
+    else if (open && presetSuperAgentUserId) { setAudience("super_agent"); setPeople([presetSuperAgentUserId]); }
+  }, [open, presetAgentUserId, presetSuperAgentUserId]);
 
   const close = (next: boolean) => {
     if (!next) {

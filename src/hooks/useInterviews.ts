@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 export interface Interview {
   _id: string;
   applicationId?: string;
+  /** Current stage of the application this round belongs to. */
+  applicationStatus?: string;
   jobSeekerId?: {
     fullName?: string;
     email?: string;

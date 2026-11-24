@@ -896,7 +896,9 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                 const round = iv.interviewRound ?? 1;
                 const isScheduled = iv.status === "scheduled" || iv.status === "confirmed";
                 const isCompleted = iv.status === "completed";
-                const isPassed = isCompleted && iv.outcome === "passed";
+                // Selected in the pipeline counts as passed: whoever picked the
+                // candidate never recorded an outcome here, yet Make Offer is next.
+                const isPassed = (isCompleted && iv.outcome === "passed") || iv.applicationStatus === "selected";
                 const canUpdate = can("interviews", "update");
 
                 return (
@@ -1077,7 +1079,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
             const round = iv.interviewRound ?? 1;
             const isScheduled = iv.status === "scheduled" || iv.status === "confirmed";
             const isCompleted = iv.status === "completed";
-            const isPassed = isCompleted && iv.outcome === "passed";
+            const isPassed = (isCompleted && iv.outcome === "passed") || iv.applicationStatus === "selected";
             const prior = historyByApp.get(iv.applicationId ?? iv._id);
 
             return (
@@ -1691,7 +1693,9 @@ function InterviewActionModal({
                   mode="date"
                   value={startDate}
                   onChange={setStartDate}
-                  minDate={new Date()}
+                  // The API wants a start date after now; today as a bare date
+                  // is midnight, already past, so the earliest pick is tomorrow.
+                  minDate={new Date(Date.now() + 24 * 60 * 60 * 1000)}
                   placeholder={t("startDate")}
                 />
               </div>

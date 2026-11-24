@@ -123,7 +123,8 @@ const CANDIDATE_CV_PATH = /^\/api\/employers\/candidates\/[^/]+\/cv$/;
  * CV. A colleague who reviews applicants (canReviewApplicants) may GET a
  * candidate's CV only with an `applicationId` (the route then requires that
  * application to be this company's and this candidate's), and may POST the bulk
- * export manifest (the route then requires every item to name an application).
+ * export manifest (the route then requires every item to name an application)
+ * and its confirm call.
  * Talent-pool access (no application) stays on canManageTalentPools.
  */
 function reviewerMayOpenApplicantCv(
@@ -135,7 +136,8 @@ function reviewerMayOpenApplicantCv(
   if (request.method === "GET" && CANDIDATE_CV_PATH.test(pathname)) {
     return Boolean(request.searchParams?.get("applicationId"));
   }
-  return request.method === "POST" && pathname === "/api/cv-export/manifest";
+  // The confirm call only touches the pending rows their own manifest wrote.
+  return request.method === "POST" && (pathname === "/api/cv-export/manifest" || pathname === "/api/cv-export/complete");
 }
 
 /**

@@ -211,7 +211,7 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx, params?: Record<stri
   if (withdrawalNote !== undefined) application.withdrawalNote = withdrawalNote;
 
   await application.save();
-  if (settleInterviews) await closeOpenInterviewsForAdvance(application._id, { locale: ctx.locale });
+  if (settleInterviews) await closeOpenInterviewsForAdvance(application._id, { locale: ctx.locale, keepFuture: status === "selected" });
 
   const effectiveStatus = application.status;
   const statusChanged = effectiveStatus !== prevStatus;

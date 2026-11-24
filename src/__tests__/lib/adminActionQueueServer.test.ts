@@ -67,7 +67,7 @@ describe("getAdminActionQueue", () => {
     );
     const items = await getAdminActionQueue(() => true, ADMIN);
     expect(items.find((item) => item.id === "payment-notices")?.count).toBe(2);
-    expect(counts.exhibition).toHaveBeenCalledWith({ status: "approved" });
+    expect(counts.exhibition).toHaveBeenCalledWith({ isDeleted: { $ne: true }, status: "approved" });
   });
 
   it("drops a row whose counter fails instead of failing the dashboard", async () => {

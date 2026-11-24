@@ -122,16 +122,19 @@ export default async function AdminDashboardPage({
             <Suspense key={`snapshot-${period.key}`} fallback={<SnapshotSkeleton label={loading(t("snapshot.title"))} />}>
               <SnapshotSection {...context} />
             </Suspense>
-            <TaskSummaryCards audience="admin" />
             <Suspense key={`funnel-${period.key}`} fallback={<FunnelSkeleton label={loading(t("funnel.title"))} />}>
               <HiringFunnelSection {...context} />
             </Suspense>
           </div>
         )}
         {activeTab === "attention" && (
-          <Suspense fallback={<QueueSkeleton label={loading(t("queue.title"))} />}>
-            <QueueSection {...context} />
-          </Suspense>
+          <div className="space-y-4">
+            <Suspense fallback={<QueueSkeleton label={loading(t("queue.title"))} />}>
+              <QueueSection {...context} />
+            </Suspense>
+            {/* Tasks are work waiting on the admin, so they sit with the queue, not the overview. */}
+            {can("tasks") ? <TaskSummaryCards audience="admin" /> : null}
+          </div>
         )}
         {activeTab === "analysis" && (
           <div className="space-y-4">

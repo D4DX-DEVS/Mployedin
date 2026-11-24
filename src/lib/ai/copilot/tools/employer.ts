@@ -284,7 +284,7 @@ export const updateApplicationStatusTool: CopilotTool<{ applicationId: string; s
     // Same rule as the applications PATCH route: past interviewing, rejected
     // or withdrawn leaves no slot to attend, so any still open is settled.
     if (prevStatus !== args.status && closesOpenInterviews(args.status)) {
-      await closeOpenInterviewsForAdvance(application._id, { locale: ctx.locale });
+      await closeOpenInterviewsForAdvance(application._id, { locale: ctx.locale, keepFuture: args.status === "selected" });
     }
 
     const job = application.jobId as unknown as WorkflowSettingsCarrier & { title?: string };

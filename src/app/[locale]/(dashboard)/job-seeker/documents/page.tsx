@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import type { CvOwnerMismatch } from "@/lib/cv/cvOwnerCheck";
 import { ProfileHubShell } from "@/components/features/job-seeker/ProfileHubShell";
 import {
   Upload, FileText, CheckCircle, Loader2, Sparkles, X,
@@ -139,6 +140,8 @@ export default function JobSeekerDocumentsPage() {
   const [category, setCategory] = useState<DocCategory>("college_certificate");
   const [extracting, setExtracting] = useState(false);
   const [extracted, setExtracted] = useState<ExtractedData | null>(null);
+  // The CV reads as someone else's: said above the reading before it is saved.
+  const [ownerMismatch, setOwnerMismatch] = useState<CvOwnerMismatch | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
@@ -188,14 +191,14 @@ export default function JobSeekerDocumentsPage() {
   const pickCv = () => {
     setCategory("resume");
     setFile(null);
-    setExtracted(null);
+    setExtracted(null); setOwnerMismatch(null);
     inputRef.current?.click();
   };
   /** Certificates card → "Add a document" or a click on its drop zone. */
   const pickDocument = () => {
     if (category === "resume") setCategory("college_certificate");
     setFile(null);
-    setExtracted(null);
+    setExtracted(null); setOwnerMismatch(null);
     inputRef.current?.click();
   };
   const dropDocument = (e: React.DragEvent) => {
@@ -248,7 +251,7 @@ export default function JobSeekerDocumentsPage() {
         setDocuments((prev) => [data.document ?? { id: Date.now().toString(), name: file.name, category, url: "", size: file.size, uploadedAt: new Date().toISOString() }, ...prev]);
         toast.success(t("uploaded", { category: getCategoryLabel(category) }));
         setFile(null);
-        setExtracted(null);
+        setExtracted(null); setOwnerMismatch(null);
         if (inputRef.current) inputRef.current.value = "";
       } else {
         // If the documents API doesn't exist yet, still count the CV upload as success
@@ -256,7 +259,7 @@ export default function JobSeekerDocumentsPage() {
           setDocuments((prev) => [{ id: Date.now().toString(), name: file.name, category, url: "", size: file.size, uploadedAt: new Date().toISOString() }, ...prev]);
           toast.success(t("resumeUploaded"));
           setFile(null);
-          setExtracted(null);
+          setExtracted(null); setOwnerMismatch(null);
           if (inputRef.current) inputRef.current.value = "";
         } else {
           toast.error(t("uploadFailed"));
@@ -291,6 +294,7 @@ export default function JobSeekerDocumentsPage() {
       }
       const data = await res.json();
       setExtracted(data.extracted ?? data);
+      setOwnerMismatch(data.ownerMismatch ?? null);
       toast.success(t("extractedSuccess"));
     } catch (e) {
       toast.error(t("extractionFailed"));
@@ -401,7 +405,7 @@ export default function JobSeekerDocumentsPage() {
             <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB · {getCategoryLabel(category)}</p>
           </div>
           <button
-            onClick={(e) => { e.stopPropagation(); setFile(null); setExtracted(null); }}
+            onClick={(e) => { e.stopPropagation(); setFile(null); setExtracted(null); setOwnerMismatch(null); }}
             className="ms-2 hover:text-red-500"
           >
             <X className="h-4 w-4" />
@@ -451,6 +455,12 @@ export default function JobSeekerDocumentsPage() {
             <h3 className="font-semibold">{t("extractedProfile")}</h3>
           </div>
 
+          {ownerMismatch && (
+            <p role="alert" className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              {tCommon("cvOwnerCheck.previewWarning", { cvName: ownerMismatch.cvName, accountName: ownerMismatch.accountName })}
+            </p>
+          )}
           {extracted.fullName && <p className="text-sm"><strong>{t("extractedName")}</strong> {extracted.fullName}</p>}
           {extracted.email && <p className="text-sm"><strong>{t("extractedEmail")}</strong> {extracted.email}</p>}
           {extracted.currentLocation && <p className="text-sm"><strong>{t("extractedLocation")}</strong> {extracted.currentLocation}</p>}

@@ -28,11 +28,13 @@ export interface JobSeekersFilterSheetProps {
   industry: string;
   jobType: string;
   referred: string;
+  hiringStatus: string;
   options: {
     availability: Option[];
     experience: Option[];
     jobType: Option[];
     referred: Option[];
+    hiringStatus: Option[];
     sort: Option[];
   };
   sortField: string;
@@ -48,8 +50,11 @@ export interface JobSeekersFilterSheetProps {
     industry?: string;
     jobType?: string;
     referred?: string;
+    hiringStatus?: string;
   }) => void;
   onClearAll?: () => void;
+  /** The "For job" picker, as in the desktop bar. */
+  jobPicker?: ReactNode;
 }
 
 const CONTROL = "h-11 w-full rounded-xl border-border bg-card text-sm shadow-none";
@@ -117,6 +122,24 @@ export function JobSeekersFilterSheet(props: JobSeekersFilterSheetProps) {
               placeholder={tr("filterLabelAvailability")}
             />
           </Field>
+
+          <Field id="js-sheet-applications" label={tr("filterLabelApplications")}>
+            <SearchableSelect
+              id="js-sheet-applications"
+              className={CONTROL}
+              options={options.hiringStatus}
+              value={props.hiringStatus}
+              onValueChange={(value) => onChange({ hiringStatus: value })}
+              placeholder={tr("filterApplicationsAny")}
+            />
+          </Field>
+
+          {props.jobPicker && (
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">{tr("jobPickerLabel")}</p>
+              {props.jobPicker}
+            </div>
+          )}
 
           <Field id="js-sheet-location" label={tr("filterLabelCountryCity")}>
             <Input

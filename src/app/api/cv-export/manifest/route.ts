@@ -11,6 +11,9 @@ import { logActivity, actorFromCtx } from "@/lib/audit/log";
 import logger from "@/lib/logger";
 import { authorizeCvAccess, hasBuiltCvContent, resolveCvActor, type BuiltCvSource } from "@/lib/cv/cvAccess";
 import { resolveOriginalCvSource } from "@/lib/cv/originalCvSource";
+import mongoose from "mongoose";
+import CvExportRecord from "@/models/CvExportRecord";
+import { findJobForContext, jobApplicationsBySeeker, jobExportsBySeeker } from "@/lib/cv/cvExportHistory.server";
 import {
   CV_EXPORT_MAX_ITEMS,
   type CvExportManifestItem,
@@ -32,6 +35,7 @@ const bodySchema = z.object({
     )
     .min(1)
     .max(CV_EXPORT_MAX_ITEMS),
+  jobId: commonSchemas.objectId.nullish(),
 });
 
 /**
@@ -113,7 +117,7 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     );
   }
 
-  const { items } = await validateBody(req, bodySchema);
+  const { items, jobId: askedJobId } = await validateBody(req, bodySchema);
 
   // A colleague who may review applicants but not manage talent pools (the
   // default hiring_manager role) exports applicants only: every item must name
@@ -126,6 +130,7 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
 
   let rows: CvExportManifestItem[];
   let allowedIds: string[];
+  let batchId: mongoose.Types.ObjectId | null = null;
   try {
     await connectDB();
     // The per-person lookups run once for the whole request, not once per item;
@@ -191,6 +196,40 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
         builtUrl: applicationOnly && applicationQuery ? `${base}?kind=built&${applicationQuery.slice(1)}` : `${base}?kind=built`,
       };
     });
+
+    // The job these CVs are for: admin only for now (other roles' job scopes are
+    // not checked here), and only a job that exists.
+    const jobId = ctx.role === "admin" && askedJobId ? await findJobForContext(askedJobId) : null;
+    if (jobId && allowedIds.length > 0) {
+      const [exported, applied] = await Promise.all([
+        jobExportsBySeeker(jobId, allowedIds),
+        jobApplicationsBySeeker(jobId, allowedIds),
+      ]);
+      rows = rows.map((row) =>
+        row.denied
+          ? row
+          : { ...row, forJob: { exported: exported.get(row.seekerId) ?? null, application: applied.get(row.seekerId) ?? null } },
+      );
+    }
+
+    // One pending record per candidate the person may export; the confirm call
+    // marks done the ones whose files landed in the ZIP (models/CvExportRecord.ts).
+    const allowedRows = rows.filter((row): row is Extract<CvExportManifestItem, { denied?: false }> => !row.denied);
+    if (allowedRows.length > 0) {
+      batchId = new mongoose.Types.ObjectId();
+      const actor = actorFromCtx(ctx);
+      await CvExportRecord.insertMany(
+        allowedRows.map((row) => ({
+          batchId,
+          seekerId: row.seekerId,
+          ...(jobId ? { jobId } : {}),
+          ...(row.applicationId ? { applicationId: row.applicationId } : {}),
+          actorId: actor.actorId,
+          actorRole: actor.actorRole,
+          status: "pending",
+        })),
+      );
+    }
   } catch (err) {
     logger.error({ err }, "[cv-export] manifest failed");
     return NextResponse.json({ error: "Couldn't check these CVs right now. Please try again." }, { status: 500 });
@@ -203,11 +242,16 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
     ...actorFromCtx(ctx),
     action: "cv.export",
     resource: "job_seekers",
-    meta: { count: rows.length, allowed, denied: rows.length - allowed, seekerIds: allowedIds, deniedIds },
+    meta: {
+      count: rows.length, allowed, denied: rows.length - allowed, seekerIds: allowedIds, deniedIds,
+      // Marks the entry as having per-candidate records, so the profile history doesn't count it twice.
+      ...(batchId ? { batchId: String(batchId) } : {}),
+      ...(askedJobId && ctx.role === "admin" ? { jobId: askedJobId } : {}),
+    },
     req,
   });
 
-  const body: CvExportManifestResponse = { items: rows };
+  const body: CvExportManifestResponse = { items: rows, ...(batchId ? { batchId: String(batchId) } : {}) };
   return NextResponse.json(body, { headers: { "Cache-Control": "private, no-store" } });
 }
 

@@ -519,3 +519,39 @@ describe("the CV behind the score", () => {
     expect(withCv.qualifications.find((c) => c.key === "experience")?.status).toBe("met");
   });
 });
+
+describe("employer ATS: unrelated applicants earn no free experience or education (live check 2026-11-24)", () => {
+  // IT Admin, 0–10 years, BCA/MCA: every applicant sits inside the band, so
+  // experience alone handed a video editor with none of the skills 51% "Good Match".
+  const itAdmin = job({
+    title: "it admin",
+    skills: ["Windows", "Networking", "IT Support", "Communication"],
+    minExp: 0,
+    maxExp: 10,
+    requiredEducationLevel: 3,
+  });
+  const videoEditor = seeker({
+    skills: ["Video Editing", "Documentary Editing", "Video Shooting", "DaVinci Resolve"],
+    preferredRoles: ["video editor"],
+    roleHistory: [{ title: "video shooting & editing" }] as SeekerProfile["roleHistory"],
+    experienceYears: 1,
+  });
+  const itSupport = seeker({
+    skills: ["Windows", "Networking", "IT Support", "Communication"],
+    preferredRoles: ["it support engineer"],
+    experienceYears: 2,
+  });
+
+  const score = (s: SeekerProfile) =>
+    buildApplicantMatch({ pair: pairFor(s, itAdmin), seeker: s, job: itAdmin, weights: null });
+
+  it("keeps a candidate with no required skill and an unrelated role well below the auto-shortlist range", () => {
+    const m = score(videoEditor);
+    expect(m.matchBreakdown.experience).toBeLessThan(50);
+    expect(m.aiMatchScore).toBeLessThan(30);
+  });
+
+  it("still scores a related candidate high", () => {
+    expect(score(itSupport).aiMatchScore).toBeGreaterThanOrEqual(80);
+  });
+});

@@ -24,6 +24,8 @@ import { useCvPdfLabels } from "@/app/[locale]/(dashboard)/job-seeker/cv/use-cv-
 import { isInAppBrowser, inAppBrowserName } from "@/lib/browser/inAppBrowser";
 import { getCaptchaToken } from "@/lib/browser/captcha";
 import { CaptchaNotice } from "@/components/shared/CaptchaNotice";
+import { CvOwnerCheckDialog } from "@/components/shared/CvOwnerCheckDialog";
+import type { CvOwnerMismatch } from "@/lib/cv/cvOwnerCheck";
 import { Loader2, Zap, FileText, ChevronDown, ChevronUp, Upload, Plus, Link2, Check, Mail, Sparkles, ChevronRight, UserRound, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -344,6 +346,8 @@ function EasyApplyFlow({
   // The same, with the seeker's edits from the window's "Edit details" view.
   const [reviewDraft, setReviewDraft] = useState<SeekerProfileData | null>(null);
   const [cvReading, setCvReading] = useState(false);
+  // The CV names someone else: the read waits for "It's my CV" or another file.
+  const [cvOwnerCheck, setCvOwnerCheck] = useState<{ mismatch: CvOwnerMismatch; file: File } | null>(null);
   const [reviewSaving, setReviewSaving] = useState(false);
   const reviewValues: CvReviewValues = {
     name: confirmName, phone: confirmPhone, headline: confirmHeadline, roles: confirmRoles,
@@ -644,18 +648,30 @@ function EasyApplyFlow({
 
   // Reads the CV into the new profile while the review window is open. What
   // it finds fills only the fields the seeker has not typed into yet.
-  async function readCvInBackground(file: File) {
+  async function readCvInBackground(file: File, opts: { confirmOwner?: boolean } = {}) {
     const keep = (field: keyof CvReviewValues, found: string) => (current: string) =>
       (touchedReview.current.has(field) || !found ? current : found);
+    let heldForOwner = false;
     try {
       const fd = new FormData();
       fd.append("cv", file);
+      if (opts.confirmOwner) fd.append("confirmOwner", "1");
       const extractRes = await csrfFetch("/api/ai/cv-extract", { method: "POST", body: fd });
+      if (extractRes.status === 409) {
+        const held = (await extractRes.json().catch(() => null)) as { code?: string; ownerMismatch?: CvOwnerMismatch } | null;
+        // Another person's name on the CV: nothing was saved; ask first.
+        if (held?.code === "cv_owner_mismatch" && held.ownerMismatch) {
+          heldForOwner = true;
+          setCvOwnerCheck({ mismatch: held.ownerMismatch, file });
+          return;
+        }
+      }
       const extractData = extractRes.ok ? ((await extractRes.json()) as CvExtractResponse) : null;
       if (!extractData?.success) throw new Error("not read");
       const cv = extractData.extracted;
       setProfileCompleteness(extractData.profileCompleteness);
-      setConfirmName(keep("name", cv.fullName ?? ""));
+      // A CV vouched for despite another name keeps the account's name.
+      if (!opts.confirmOwner) setConfirmName(keep("name", cv.fullName ?? ""));
       setConfirmPhone(keep("phone", cv.phone ?? ""));
       setCvReadSummary(summarizeCvRead(cv));
       setConfirmRoles(keep("roles", rolesFromCv(cv).join(", ")));
@@ -684,8 +700,16 @@ function EasyApplyFlow({
       // Still keep the file, as a document on the profile.
       await uploadDocumentForAnon(file);
     } finally {
-      setCvReading(false);
+      // Still "reading" while the owner question is open.
+      if (!heldForOwner) setCvReading(false);
     }
+  }
+
+  function retryCvRead(file: File, opts: { confirmOwner?: boolean } = {}) {
+    setCvOwnerCheck(null);
+    setAnonCvFile(file);
+    setCvReading(true);
+    void readCvInBackground(file, opts);
   }
 
   // The review window again, filled from what the CV read stored.
@@ -1031,6 +1055,12 @@ function EasyApplyFlow({
           saving={reviewSaving || leavingPage}
           emailNote={anonOtpSent ? t("emailConfirmMsg", { email: anonEmail }) : undefined}
           onConfirm={handleAnonProfileConfirm}
+        />
+        <CvOwnerCheckDialog
+          mismatch={cvOwnerCheck?.mismatch ?? null}
+          accept={CV_UPLOAD_ACCEPT}
+          onConfirm={() => { if (cvOwnerCheck) retryCvRead(cvOwnerCheck.file, { confirmOwner: true }); }}
+          onPickAnother={(next) => retryCvRead(next)}
         />
       </>
     );

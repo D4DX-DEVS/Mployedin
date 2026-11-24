@@ -53,8 +53,14 @@ import {
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useInitialLoading } from "@/hooks/useInitialLoading";
+import type { SeekerJobContext } from "@/lib/cv/cvExportHistory";
+import { JobContextSummary } from "./_components/JobContextSummary";
+import { INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
+import { JobPickerField, type PickedJob } from "./_components/JobPickerField";
+import { ForJobCell, LastApplicationCell, SeekerHistoryLine, type SeekerHistoryFields } from "./_components/SeekerHistoryCells";
+import { useApplicationStatusLabel } from "@/components/shared/ApplicationStatusPill";
 
-interface JobSeeker {
+interface JobSeeker extends SeekerHistoryFields {
   _id: string;
   fullName: string;
   email?: string;
@@ -100,12 +106,25 @@ interface AiFilters {
   summary?: string;
 }
 
+/** The job the admin is finding seekers for, and what to leave out for it. */
+interface JobListContext {
+  jobId: string;
+  hideExported: boolean;
+  hideApplied: boolean;
+}
+
 /**
  * The list query for the current search + filters. The table, the exports and
  * the CV export all build it here, so they always describe the same people.
  */
-function seekerListParams(search: string, filters: JobSeekerFilters): URLSearchParams {
+function seekerListParams(search: string, filters: JobSeekerFilters, job?: JobListContext): URLSearchParams {
   const params = new URLSearchParams();
+  if (job?.jobId) {
+    params.set("jobId", job.jobId);
+    if (job.hideExported) params.set("hideExported", "1");
+    if (job.hideApplied) params.set("hideApplied", "1");
+  }
+  if (filters.hiringStatus) params.set("hiringStatus", filters.hiringStatus);
   if (search) params.set("search", search);
   if (filters.skills) params.set("skills", filters.skills);
   if (filters.location) params.set("location", filters.location);
@@ -126,6 +145,7 @@ export default function AdminJobSeekersPage() {
   const tf = useTranslations("formErrors");
   const tSelect = useTranslations("selectionBar");
   const tViewer = useTranslations("resumeViewerModal");
+  const applicationStatusLabel = useApplicationStatusLabel();
   const locale = useLocale();
   const router = useRouter();
   const { can } = usePermissions();
@@ -159,6 +179,19 @@ export default function AdminJobSeekersPage() {
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const debouncedSearch = useDebounce(search, 350);
   const [filters, setFilters] = useState<JobSeekerFilters>(EMPTY_JOB_SEEKER_FILTERS);
+
+  // ── Finding seekers for a job (in the URL, so the view can be shared) ──
+  const [jobId, setJobId] = useUrlFilter("job", "");
+  // Already-exported seekers are hidden by default once a job is chosen.
+  const [showExportedParam, setShowExportedParam] = useUrlFilter("showExported", "");
+  const [hideAppliedParam, setHideAppliedParam] = useUrlFilter("hideApplied", "");
+  const jobList = useMemo<JobListContext | undefined>(
+    () => (jobId ? { jobId, hideExported: showExportedParam !== "1", hideApplied: hideAppliedParam === "1" } : undefined),
+    [jobId, showExportedParam, hideAppliedParam],
+  );
+  const [jobContext, setJobContext] = useState<SeekerJobContext | null>(null);
+  // The job an export is recorded against: the list's job, or one picked in the dialog.
+  const [exportJob, setExportJob] = useState<PickedJob | null>(null);
 
   const updateFilters = (patch: Partial<JobSeekerFilters>) => {
     setFilters((current) => ({ ...current, ...patch }));
@@ -232,7 +265,25 @@ export default function AdminJobSeekersPage() {
       const role = sum.role === "super_agent" ? tr("referredByRoleSuperAgent") : tr("referredByRoleAgent");
       return sum.name ? `${role}: ${sum.name}` : role;
     }},
-  ], [tr]);
+    { header: tr("tableHeaderLastApplication"), key: "lastApplication", formatter: (v) => {
+      const app = v as JobSeeker["lastApplication"];
+      return app ? [app.jobTitle, app.company].filter(Boolean).join(" - ") : tr("notAppliedYet");
+    }},
+    { header: tr("exportHeaderLastApplicationStatus"), key: "lastApplication", formatter: (v) => {
+      const app = v as JobSeeker["lastApplication"];
+      return app ? `${applicationStatusLabel(app.status)} (${formatListDate(new Date(app.updatedAt))})` : "—";
+    }},
+    ...(jobId ? [
+      { header: tr("exportHeaderForJobApplication"), key: "forJob", formatter: (v: unknown) => {
+        const app = (v as JobSeeker["forJob"])?.application;
+        return app ? applicationStatusLabel(app.status) : tr("forJobNotApplied");
+      }},
+      { header: tr("exportHeaderForJobExported"), key: "forJob", formatter: (v: unknown) => {
+        const exported = (v as JobSeeker["forJob"])?.exported;
+        return exported ? `${formatListDate(new Date(exported.lastAt))}${exported.lastBy ? ` (${exported.lastBy})` : ""}` : tr("exportNo");
+      }},
+    ] as ExportColumn<JobSeeker>[] : []),
+  ], [tr, applicationStatusLabel, jobId]);
 
   // PDF fits ~10 columns in landscape A4; the full 17-column set is unreadable
   const pdfColumns = useMemo(() => {
@@ -244,7 +295,7 @@ export default function AdminJobSeekersPage() {
   // Ranked vector-search results have no paginated full set — export the page.
   const fetchAllJobSeekers = useCallback(async () => {
     if (closestTo) return jobSeekers as unknown as Record<string, unknown>[];
-    const base = seekerListParams(search, filters);
+    const base = seekerListParams(search, filters, jobList);
     return fetchAllPaginated<Record<string, unknown>>(
       (page, limit) => `/api/job-seekers?${new URLSearchParams({ ...Object.fromEntries(base), page: String(page), limit: String(limit) })}`,
       (json) => ({
@@ -252,7 +303,7 @@ export default function AdminJobSeekersPage() {
         total: Number(json.total ?? json.totalCount ?? (json.pagination as { total?: number } | undefined)?.total ?? 0),
       }),
     );
-  }, [closestTo, jobSeekers, search, filters]);
+  }, [closestTo, jobSeekers, search, filters, jobList]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: jobSeekers as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
@@ -265,7 +316,7 @@ export default function AdminJobSeekersPage() {
   // ── Fetch job seekers ───────────────────────────────────
   const fetchJobSeekers = useCallback(async () => {
     setLoading(true);
-    const params = seekerListParams(debouncedSearch, filters);
+    const params = seekerListParams(debouncedSearch, filters, jobList);
     params.set("page", String(page));
     params.set("limit", String(limit));
     params.set("industryCounts", "1");
@@ -275,7 +326,7 @@ export default function AdminJobSeekersPage() {
         ? await fetch("/api/job-seekers/vector-search", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: closestTo, page, limit }),
+            body: JSON.stringify({ query: closestTo, page, limit, ...(jobId ? { jobId } : {}) }),
           })
         : await fetch(`/api/job-seekers?${params}`);
       if (!res.ok) {
@@ -286,13 +337,14 @@ export default function AdminJobSeekersPage() {
       setJobSeekers(data.items ?? data.jobSeekers ?? []);
       updateTotal(data.total ?? data.totalCount ?? data.pagination?.total ?? ((data.totalPages ?? 1) * limit));
       setIndustryCounts(data.industryCounts ?? []);
+      setJobContext(data.jobContext ?? null);
       setLoadError(false);
     } catch {
       setLoadError(true);
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, filters, closestTo, page, limit]);
+  }, [debouncedSearch, filters, closestTo, page, limit, jobList, jobId]);
 
   useEffect(() => {
     const timeout = setTimeout(fetchJobSeekers, 300);
@@ -420,7 +472,16 @@ export default function AdminJobSeekersPage() {
 
   const openCvExport = (picked: JobSeeker[]) => {
     setExportRows(picked);
+    // Starts on the job the list is for; the admin can change or clear it in the dialog.
+    setExportJob(jobContext ? { id: jobContext.job.id, title: jobContext.job.title, company: jobContext.job.company, city: jobContext.job.city } : null);
     setExportOpen(true);
+  };
+
+  const pickJob = (job: PickedJob | null) => {
+    setJobId(job?.id ?? "");
+    if (!job) setJobContext(null);
+    selection.clear();
+    resetPage();
   };
 
   // The "Download CVs" menu item: the ticked rows, or, with none ticked and the
@@ -450,7 +511,7 @@ export default function AdminJobSeekersPage() {
       const picked = closestTo
         ? jobSeekers.slice(0, CV_EXPORT_MAX_ITEMS)
         : await seekersInListOrder<JobSeeker>(async (p, l) => {
-            const params = seekerListParams(search, filters);
+            const params = seekerListParams(search, filters, jobList);
             params.set("page", String(p));
             params.set("limit", String(l));
             const listRes = await fetch(`/api/job-seekers?${params}`);
@@ -650,6 +711,34 @@ export default function AdminJobSeekersPage() {
             {tr("downloadCvsButton")}
           </DropdownMenuItem>
         )}
+        // "For job": rows then say if each seeker applied to it or had their CV exported for it.
+        jobPicker={(
+          <JobPickerField
+            value={jobContext ? { id: jobContext.job.id, title: jobContext.job.title, company: jobContext.job.company, city: jobContext.job.city } : null}
+            onChange={pickJob}
+            placeholder={tr("jobPickerPlaceholder")}
+            className={`${INLINE_FILTER_CONTROL} max-sm:max-w-none`}
+          />
+        )}
+        jobSummary={jobId ? (
+          <JobContextSummary
+            context={jobContext}
+            onClear={() => pickJob(null)}
+            hideExported={jobList?.hideExported ?? true}
+            onHideExportedChange={(hide) => { setShowExportedParam(hide ? "" : "1"); resetPage(); }}
+            hideApplied={jobList?.hideApplied ?? false}
+            onHideAppliedChange={(hide) => { setHideAppliedParam(hide ? "1" : ""); resetPage(); }}
+          />
+        ) : undefined}
+        // Seekers per industry, one scrolling line inside the filter card (rollout rows 14/17).
+        strip={(
+          <IndustryChips
+            inline
+            counts={industryCounts}
+            selected={filters.industry ?? ""}
+            onSelect={(next) => updateFilters({ ...filters, industry: next })}
+          />
+        )}
         chips={filterChips.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {filterChips.map((chip) => (
@@ -668,12 +757,6 @@ export default function AdminJobSeekersPage() {
         ) : undefined}
       />
 
-      {/* Seekers per industry; a chip filters the list (rollout rows 14/17). */}
-      <IndustryChips
-        counts={industryCounts}
-        selected={filters.industry ?? ""}
-        onSelect={(next) => updateFilters({ ...filters, industry: next })}
-      />
 
       {/* ── List ──────────────────────────────────────────── */}
       {/* Phones: the cards sit straight on the page; a box around bordered cards doubled border and padding. */}
@@ -721,6 +804,7 @@ export default function AdminJobSeekersPage() {
                 ) : undefined}
               />
             )}
+            renderHistory={(js) => <SeekerHistoryLine row={js} />}
             renderActions={(js) => {
               // Phones: View CV joins the menu, so the card needs no actions line.
               const { quick, menu } = rowActionsFor(js);
@@ -749,9 +833,14 @@ export default function AdminJobSeekersPage() {
                 </div>
               </TableHead>
               <TableHead>{tr("tableHeaderProfession")}</TableHead>
-              <TableHead>{tr("tableHeaderNationality")}</TableHead>
-              <TableHead>{tr("tableHeaderIndustry")}</TableHead>
-              <TableHead>{tr("tableHeaderSkills")}</TableHead>
+              {/* With a job chosen, nationality gives way below 1536px to the job column. */}
+              <TableHead className={jobId ? "hidden min-[1536px]:table-cell" : undefined}>{tr("tableHeaderNationality")}</TableHead>
+              {/* With a job chosen, "For this job" takes the industry column's place. */}
+              {jobId
+                ? <TableHead className="bg-primary/5 text-primary">{tr("tableHeaderForJob")}</TableHead>
+                : <TableHead className="hidden min-[1536px]:table-cell">{tr("tableHeaderIndustry")}</TableHead>}
+              {/* From 1440px: below that the actions need the room; the profession line names the role. */}
+              <TableHead className="hidden min-[1440px]:table-cell">{tr("tableHeaderSkills")}</TableHead>
               {/* Wraps to two lines: nowrap made this the widest column. */}
               <TableHead className="whitespace-normal">
                 <SortableTableHeader
@@ -761,9 +850,10 @@ export default function AdminJobSeekersPage() {
                   onClick={() => sortByColumn("profile")}
                 />
               </TableHead>
-              {/* Gives way below ~1360px so the actions menu stays on screen;
-                  the expanded row shows the date instead. */}
-              <TableHead className="hidden min-[1360px]:table-cell">
+              {/* Gives way below 1536px so the actions menu stays on screen
+                  (the Last application column needs the room); the profile
+                  page shows the date instead. */}
+              <TableHead className="hidden min-[1536px]:table-cell">
                 <SortableTableHeader
                   label={tr("tableHeaderJoined")}
                   active={currentSort.field === "joined"}
@@ -771,7 +861,7 @@ export default function AdminJobSeekersPage() {
                   onClick={() => sortByColumn("joined")}
                 />
               </TableHead>
-              <TableHead>{tr("tableHeaderReferredBy")}</TableHead>
+              <TableHead>{tr("tableHeaderLastApplication")}</TableHead>
               <TableHead className="text-right">{tr("tableHeaderActions")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -822,6 +912,8 @@ export default function AdminJobSeekersPage() {
                           </span>
                         )}
                       </span>
+                      {/* Who referred them: was its own, mostly empty, column. */}
+                      {js.referralSummary && <ReferralSourceChip namespace="adminJobSeekers" summary={js.referralSummary} />}
                     </div>
                   </div>
                 </TableCell>
@@ -833,7 +925,7 @@ export default function AdminJobSeekersPage() {
                     {js.education?.[0]?.degree ? `${js.education[0].degree}${js.education[0].field ? ` - ${js.education[0].field}` : ""}` : "—"}
                   </span>
                 </TableCell>
-                <TableCell className="text-xs">
+                <TableCell className={`text-xs ${jobId ? "hidden min-[1536px]:table-cell" : ""}`}>
                   <span className="mb-1.5 block text-muted-foreground">{js.nationality ?? "—"}</span>
                   {js.availabilityStatus ? (
                     <span className={`inline-block rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium ${
@@ -846,23 +938,27 @@ export default function AdminJobSeekersPage() {
                     </span>
                   ) : "—"}
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {js.industry ? (
-                    <span className="inline-block rounded-md bg-muted px-2 py-1 text-xs font-medium">{js.industry}</span>
-                  ) : "—"}
-                </TableCell>
-                <TableCell className="max-w-[16rem] text-xs text-muted-foreground">
+                {jobId ? (
+                  <TableCell className="min-w-[8rem] max-w-[11rem] bg-primary/5 text-xs">
+                    <ForJobCell row={js} />
+                  </TableCell>
+                ) : (
+                  <TableCell className="hidden text-xs text-muted-foreground min-[1536px]:table-cell">
+                    {js.industry ? (
+                      <span className="inline-block rounded-md bg-muted px-2 py-1 text-xs font-medium">{js.industry}</span>
+                    ) : "—"}
+                  </TableCell>
+                )}
+                <TableCell className="hidden max-w-[16rem] text-xs text-muted-foreground min-[1440px]:table-cell">
                   <span className="line-clamp-2">{js.skills?.length ? `${js.skills.slice(0, 2).join(", ")}${js.skills.length > 2 ? ` +${js.skills.length - 2}` : ""}` : "—"}</span>
                   <span className="mt-1 block">{js.totalExperienceYears != null ? `${js.totalExperienceYears}y` : "—"}</span>
                 </TableCell>
                 <TableCell className="text-xs font-semibold tabular-nums">
                   {js.profileCompleteness != null ? `${js.profileCompleteness}%` : "—"}
                 </TableCell>
-                <TableCell className="hidden whitespace-nowrap min-[1360px]:table-cell text-xs text-muted-foreground">{formatListDate(new Date(js.createdAt), locale)}</TableCell>
-                <TableCell className="text-xs">
-                  {js.referralSummary
-                    ? <ReferralSourceChip namespace="adminJobSeekers" summary={js.referralSummary} />
-                    : <span className="text-muted-foreground">—</span>}
+                <TableCell className="hidden whitespace-nowrap min-[1536px]:table-cell text-xs text-muted-foreground">{formatListDate(new Date(js.createdAt), locale)}</TableCell>
+                <TableCell className="min-w-[9rem] max-w-[12rem] text-xs">
+                  <LastApplicationCell row={js} />
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <RowActions name={js.fullName || js.userId?.name || js.email || ""} labelsFrom="wide" {...rowActionsFor(js)} />
@@ -897,7 +993,26 @@ export default function AdminJobSeekersPage() {
         onOpenChange={setExportOpen}
         items={exportItems}
         detailsRows={exportDetails}
-        onExported={selection.clear}
+        onExported={() => {
+          selection.clear();
+          // Rows and the job bar now count this export.
+          if (exportJob) void fetchJobSeekers();
+        }}
+        jobId={exportJob?.id ?? null}
+        jobPicker={(
+          <>
+            <p className="text-sm font-medium text-foreground">{tr("exportJobLabel")}</p>
+            <JobPickerField
+              value={exportJob}
+              onChange={setExportJob}
+              ariaLabel={tr("exportJobLabel")}
+              placeholder={tr("exportJobPlaceholder")}
+              className="h-11 w-full"
+              modal
+            />
+            <p className="text-xs text-muted-foreground">{tr("exportJobHint")}</p>
+          </>
+        )}
       />
       <SelectionBar count={selection.count} onClear={selection.clear}>
         <ExportCvsButton count={selection.count} onClick={() => openCvExport(selection.items)} />

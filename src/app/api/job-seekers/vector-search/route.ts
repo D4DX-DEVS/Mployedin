@@ -15,6 +15,8 @@ import { atlasVectorSearch } from "@/lib/ai/atlasVectorSearch";
 import { missingSearchVectorFilter, saveSearchVectors, searchSeekerVectors, searchVectorStore } from "@/lib/ai/searchVectors";
 import { sanitizeAIInput } from "@/lib/ai/sanitize";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { applicationsBySeeker } from "@/lib/jobseekers/hiringStatus.server";
+import { findJobForContext, jobApplicationsBySeeker, jobContextFor, jobExportsBySeeker } from "@/lib/cv/cvExportHistory.server";
 
 const ALLOWED_ROLES: UserRole[] = ["admin", "super_agent"];
 const MIN_SIMILARITY = 0.35; // Minimum cosine similarity threshold
@@ -185,11 +187,30 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   const docMap = new Map(docs.map((d) => [String(d._id), d]));
 
+  // Same row facts as the plain list: the newest application, and with a job
+  // chosen (admin only), the row's application to it and CV exports for it.
+  const contextJobId = ctx.role === "admin" && typeof body.jobId === "string" ? await findJobForContext(body.jobId) : null;
+  const [applications, jobApplications, jobExports, jobContext] = await Promise.all([
+    applicationsBySeeker(pagedIds),
+    contextJobId ? jobApplicationsBySeeker(contextJobId, pagedIds) : null,
+    contextJobId ? jobExportsBySeeker(contextJobId, pagedIds) : null,
+    contextJobId ? jobContextFor(contextJobId) : null,
+  ]);
+
   const items = pagedScored
     .map(({ id, score }) => {
       const doc = docMap.get(String(id));
       if (!doc) return null;
-      return { ...doc, _relevanceScore: Math.round(score * 100) }; // 0-100%
+      const key = String(id);
+      return {
+        ...doc,
+        _relevanceScore: Math.round(score * 100), // 0-100%
+        lastApplication: applications.get(key)?.[0],
+        applicationCount: applications.get(key)?.length ?? 0,
+        ...(contextJobId ? {
+          forJob: { application: jobApplications?.get(key) ?? null, exported: jobExports?.get(key) ?? null },
+        } : {}),
+      };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
 
@@ -199,5 +220,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     page,
     totalPages: Math.ceil(total / limit),
     mode,
+    ...(jobContext ? { jobContext } : {}),
   });
 }, { resource: "job_seekers", action: "read" });

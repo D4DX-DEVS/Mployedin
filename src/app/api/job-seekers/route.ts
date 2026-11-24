@@ -17,6 +17,10 @@ import mongoose, { type PipelineStage } from "mongoose";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { isKnownCountry, locationSearchRegex } from "@/lib/i18n/locations";
 import { readSeekerListStats, SEEKER_LIST_STATS_STAGES, type SeekerListStats } from "@/lib/jobseekers/listStats";
+import {
+  findJobForContext, jobApplicationsBySeeker, jobContextFor, jobExportsBySeeker,
+  seekerIdsAppliedToJob, seekerIdsExportedForJob,
+} from "@/lib/cv/cvExportHistory.server";
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   // ── Authorization — staff-only route ──────────────────────
@@ -55,6 +59,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const wantStats = searchParams.get("stats") === "1";
   // "1": return industry counts (aggregation of industries in filtered scope)
   const wantIndustryCounts = searchParams.get("industryCounts") === "1";
+  // Admin "searching for a job": rows say whether each seeker applied to it and
+  // whether their CV was already exported for it. Other roles' job scopes are
+  // not checked here, so the job is admin-only for now.
+  const contextJobId = ctx.role === "admin" && searchParams.get("jobId")
+    ? await findJobForContext(searchParams.get("jobId") ?? "")
+    : null;
+  const hideExported = searchParams.get("hideExported") === "1";       // with jobId: drop seekers whose CV was sent for it
+  const hideApplied = searchParams.get("hideApplied") === "1";         // with jobId: drop seekers who applied to it
 
   // ── Agent scoping — an agent sees only their own job seekers ───
   let agentScopeFilter: Record<string, unknown> = {};
@@ -260,6 +272,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   if (experienceYears > 0) {
     filterConditions.push({ totalExperienceYears: { $gte: experienceYears } });
   }
+  if (contextJobId && hideExported) {
+    filterConditions.push({ _id: { $nin: await seekerIdsExportedForJob(contextJobId) } });
+  }
+  if (contextJobId && hideApplied) {
+    filterConditions.push({ _id: { $nin: await seekerIdsAppliedToJob(contextJobId) } });
+  }
 
   // ── Hiring status ("placed", "interviewing", "waiting"…) ──
   // Derived from applications, so it can't be a plain field match. Worked out
@@ -439,6 +457,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // Where each seeker on this page stands across their applications, and
     // which job that status comes from (the newest application at that stage).
     const applications = await applicationsBySeeker(rows.map((row) => row._id));
+    // With a job chosen: each row's application to it and its CV exports for it.
+    const rowIds = rows.map((row) => row._id);
+    const [jobApplications, jobExports, jobContext] = contextJobId
+      ? await Promise.all([
+          jobApplicationsBySeeker(contextJobId, rowIds),
+          jobExportsBySeeker(contextJobId, rowIds),
+          jobContextFor(contextJobId),
+        ])
+      : [null, null, null];
 
     // A guessed role for those who named none (no job history, no preferred
     // role) — from the skills they list. Shown as a guess; never searched on.
@@ -466,6 +493,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         hiringStatus,
         hiringJob: job ? { title: job.jobTitle, company: job.company } : undefined,
         applicationCount: apps.length,
+        // The newest status change across their applications (apps is newest first).
+        lastApplication: apps[0],
+        ...(contextJobId ? {
+          forJob: {
+            application: jobApplications?.get(String(row._id)) ?? null,
+            exported: jobExports?.get(String(row._id)) ?? null,
+          },
+        } : {}),
       };
     });
 
@@ -477,6 +512,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ...(owned ? { areaAssigned: areaMatch !== null } : {}),
       ...(stats ? { stats } : {}),
       ...(industryCounts.length > 0 ? { industryCounts } : {}),
+      ...(jobContext ? { jobContext } : {}),
     });
   }
 }, { resource: "job_seekers", action: "read" });

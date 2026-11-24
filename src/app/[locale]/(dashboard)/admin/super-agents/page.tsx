@@ -44,6 +44,8 @@ import { Inbox } from "lucide-react";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { useInitialLoading } from "@/hooks/useInitialLoading";
+import Link from "next/link";
+import { useStaffSignals, useStaffRowActions, WarningsBadge, WorkingAgentsText } from "../_components/staff-report/listExtras";
 
 interface AgentRef {
   _id: string;
@@ -97,6 +99,9 @@ export default function AdminSuperAgentsPage() {
   const { can } = usePermissions();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [superAgents, setSuperAgents] = useState<SuperAgent[]>([]);
+  // Plan v2: name opens the performance report; warnings + working agents per row.
+  const signals = useStaffSignals("super_agent", superAgents.map((sa) => sa._id));
+  const staffActions = useStaffRowActions("super_agent");
   const [loading, setLoading] = useState(true);
   const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState<string | null>(null);
@@ -471,7 +476,7 @@ export default function AdminSuperAgentsPage() {
   };
 
   const rowActionsFor = (sa: SuperAgent): { quick: RowAction[]; menu: RowAction[] } => {
-    const menu: RowAction[] = [];
+    const menu: RowAction[] = [...staffActions.actionsFor(sa)];
 
     if (can("super_agents", "delete")) {
       if (sa.isActive !== false) {
@@ -524,6 +529,7 @@ export default function AdminSuperAgentsPage() {
   return (
     <div className="page-container">
       {ConfirmDialogNode}
+      {staffActions.node}
 
       {/* Page Header */}
       <DashboardPageHeader
@@ -606,13 +612,12 @@ export default function AdminSuperAgentsPage() {
           empty={<EmptyState title={t("noAgentsFound")} icon={Inbox} />}
           items={superAgents.map((sa) => ({
             key: sa._id,
+            href: staffActions.reportHref(sa._id),
             leading: <UserAvatar name={sa.name} email={sa.email} src={sa.avatar} className="h-10 w-10" colorful />,
             title: sa.name,
             subtitle: sa.email,
             trailing: <StatusBadge status={sa.isActive !== false ? "active" : "inactive"} />,
-            actions: (can("super_agents", "update") || can("super_agents", "delete"))
-              ? <RowActions name={sa.name} {...rowActionsFor(sa)} />
-              : undefined,
+            actions: <RowActions name={sa.name} {...rowActionsFor(sa)} />,
             meta: (
               <>
                 <p className="flex min-w-0 items-center gap-1">
@@ -624,9 +629,11 @@ export default function AdminSuperAgentsPage() {
             ),
             badges: (
               <>
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="whitespace-nowrap text-xs">
                   {t("agentsBadge", { count: sa.superAgentProfile?.agentCount ?? 0 })}
                 </Badge>
+                <WorkingAgentsText signal={signals.get(sa._id)} />
+                <WarningsBadge signal={signals.get(sa._id)} />
                 {sa.superAgentProfile?.overrideCommissionRate != null && (
                   <Badge variant="outline" className="text-xs">
                     {t("tableHeaderCommissionOverride")}: {sa.superAgentProfile.overrideCommissionRate}%
@@ -656,9 +663,7 @@ export default function AdminSuperAgentsPage() {
               <TableHead>
                 <SortableTableHeader label={t("tableHeaderJoined")} active={sortBy === "createdAt"} order={sortOrder} onClick={() => toggleSort("createdAt")} />
               </TableHead>
-              {(can("super_agents", "update") || can("super_agents", "delete")) && (
-                <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
-              )}
+              <TableHead className="text-right">{t("tableHeaderActions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -676,19 +681,23 @@ export default function AdminSuperAgentsPage() {
                   <div className="flex items-start gap-3">
                     <UserAvatar name={sa.name} email={sa.email} src={sa.avatar} className="h-9 w-9" colorful />
                     <div className="flex min-w-0 flex-col items-start gap-1.5">
-                      <span className="font-medium">{sa.name}</span>
+                      <Link href={staffActions.reportHref(sa._id)} className="rounded font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{sa.name}</Link>
                       <span className="text-xs text-muted-foreground">{sa.email}</span>
-                      <StatusBadge status={sa.isActive !== false ? "active" : "inactive"} />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <StatusBadge status={sa.isActive !== false ? "active" : "inactive"} />
+                        <WarningsBadge signal={signals.get(sa._id)} />
+                      </div>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5 text-primary" />
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className="whitespace-nowrap text-xs">
                       {t("agentsBadge", { count: sa.superAgentProfile?.agentCount ?? 0 })}
                     </Badge>
                   </div>
+                  <WorkingAgentsText signal={signals.get(sa._id)} />
                 </TableCell>
                 <TableCell className="text-sm max-w-[200px]">
                   <div className="flex items-center gap-1 truncate" title={getLocationSummary(sa.superAgentProfile)}>
@@ -706,12 +715,10 @@ export default function AdminSuperAgentsPage() {
                     ? `${sa.superAgentProfile.overrideCommissionRate}%`
                     : t("exportDashCharacter")}
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{formatListDate(new Date(sa.createdAt), locale)}</TableCell>
-                {(can("super_agents", "update") || can("super_agents", "delete")) && (
-                  <TableCell className="text-right">
-                    <RowActions name={sa.name} {...rowActionsFor(sa)} />
-                  </TableCell>
-                )}
+                <TableCell className="whitespace-nowrap text-muted-foreground text-sm">{formatListDate(new Date(sa.createdAt), locale)}</TableCell>
+                <TableCell className="text-right">
+                  <RowActions name={sa.name} {...rowActionsFor(sa)} />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

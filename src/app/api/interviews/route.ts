@@ -299,6 +299,16 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
     }
   }
 
+  // The row's next step depends on where the application is, not only on how
+  // the interview went: a candidate picked from the pipeline (Selected) has
+  // no "passed" outcome yet still needs Make Offer.
+  const appIds = [...new Set(interviews.map((iv) => (iv.applicationId ? String(iv.applicationId) : "")).filter(Boolean))];
+  const appStatusById = new Map<string, string>();
+  if (appIds.length > 0) {
+    const apps = await Application.find({ _id: { $in: appIds } }).select("status").lean();
+    for (const a of apps) appStatusById.set(String(a._id), String(a.status));
+  }
+
   const enriched = interviews.map((iv) => {
     const job = iv.jobId as unknown as {
       _id?: unknown;
@@ -315,6 +325,7 @@ async function handler(_req: NextRequest, ctx: AuthCtx) {
 
     return {
       ...iv,
+      applicationStatus: iv.applicationId ? appStatusById.get(String(iv.applicationId)) : undefined,
       jobTitle: job?.title,
       companyName: employer?.companyName,
       jobId: job

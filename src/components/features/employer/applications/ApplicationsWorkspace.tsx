@@ -51,6 +51,7 @@ import {
   Sparkles,
   Square,
   Star,
+  Gift,
   User,
   UserCheck,
   Users,
@@ -186,6 +187,14 @@ export function checkChipTone(check: CandidateCheck): { key: string; tone: strin
 }
 
 /** True while a check should stop an offer going out without a second look. */
+/** Local yyyy-mm-dd, `days` from today — a date the offer API will accept. */
+function offerDateInput(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export function checkBlocksOffer(check?: CandidateCheck): "pending" | "flagged" | null {
   if (!check || check.status === "cancelled") return null;
   if (check.status !== "completed") return "pending";
@@ -559,6 +568,8 @@ export function ApplicationsWorkspace({
   } | null>(null);
   const [shortlistLoading, setShortlistLoading] = useState(false);
   const [shortlistCount, setShortlistCount] = useState(0);
+  /** Raw text while the count field is being typed in; null = show shortlistCount. */
+  const [shortlistDraft, setShortlistDraft] = useState<string | null>(null);
   const [postShortlistPrompt, setPostShortlistPrompt] = useState<{
     shortlistedIds: string[];
     candidateNames: string[];
@@ -961,6 +972,7 @@ export function ApplicationsWorkspace({
       failingRequirements: pool.failingRequirements,
       unscored,
     });
+    setShortlistDraft(null);
     setShortlistCount(Math.min(shortlistTarget, scored.length)); // default: the rule's target, capped by who is eligible
   }
 
@@ -1907,11 +1919,21 @@ export function ApplicationsWorkspace({
                     type="number"
                     min={1}
                     max={shortlistConfirm.total}
-                    value={shortlistCount}
+                    inputMode="numeric"
+                    aria-label={t("shortlistTop")}
+                    value={shortlistDraft ?? String(shortlistCount)}
+                    // Free typing: clamping on every keystroke snapped an
+                    // emptied field to 1, so typing "3" produced "13".
                     onChange={(e) => {
-                      const v = Math.max(1, Math.min(shortlistConfirm.total, Number(e.target.value) || 1));
-                      setShortlistCount(v);
+                      const raw = e.target.value;
+                      setShortlistDraft(raw);
+                      const n = Number(raw);
+                      if (raw !== "" && Number.isInteger(n) && n >= 1 && n <= shortlistConfirm.total) {
+                        setShortlistCount(n);
+                      }
                     }}
+                    onBlur={() => setShortlistDraft(null)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); setShortlistDraft(null); } }}
                     className="h-8 w-14 rounded-lg border border-emerald-200/60 bg-background/80 text-center text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-emerald-400"
                   />
                   <Button
@@ -2241,6 +2263,7 @@ export function ApplicationsWorkspace({
               onOpenDetails={openDetailPanel}
               getCandidateName={getCandidateName}
               onViewCv={(app) => setViewingCv(buildViewingCv(app))}
+              onMakeOffer={canUpdate ? (app) => setOfferModal({ appId: app._id }) : undefined}
               hasActiveRefinement={hasActiveRefinement}
               compact={Boolean(isWide && detailPanel)}
               sortBy={sortBy}
@@ -2462,9 +2485,11 @@ function CheckChip({ check }: { check: CandidateCheck }) {
 }
 
 function TableView({
-  applications, selected, onToggle, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOpenDetails, getCandidateName, onViewCv, hasActiveRefinement, compact, emptyTitle, emptyDescription, emptyAction, sortBy, sortOrder, onSort
+  applications, selected, onToggle, onGenerateAiMatch, aiMatchPendingId, scorecardMap, onOpenDetails, getCandidateName, onViewCv, onMakeOffer, hasActiveRefinement, compact, emptyTitle, emptyDescription, emptyAction, sortBy, sortOrder, onSort
 }: {
   applications: Applicant[];
+  /** Next step for a Selected candidate, one click from the row. */
+  onMakeOffer?: (app: Applicant) => void;
   selected: string[];
   onToggle?: (id: string) => void;
   onGenerateAiMatch?: (app: Applicant) => void;
@@ -2775,6 +2800,7 @@ function TableView({
                 <RowActions
                   name={candidateName}
                   quick={[
+                    ...(onMakeOffer && app.status === "selected" ? [{ key: "offer", label: t("makeOffer"), icon: Gift, iconClassName: "text-emerald-700", onSelect: () => onMakeOffer(app) }] : []),
                     ...(onOpenDetails ? [{ key: "details", label: t("detailedView"), icon: BarChart3, iconOnly: true as const, phoneLabel: t("reviewShort"), onSelect: () => onOpenDetails?.(app, document.activeElement as HTMLElement) }] : []),
                     ...(resumeViewHref(app) && onViewCv ? [{ key: "cv", label: t("viewCvFor", { name: candidateName }), icon: FileText, iconOnly: true as const, phoneLabel: t("cvShort"), onSelect: () => onViewCv(app) }] : []),
                   ]}
@@ -4550,10 +4576,14 @@ function OfferCreateModal({
   const [period, setPeriod] = useState<"monthly" | "annually">(
     () => (jobSalary?.period === "monthly" ? "monthly" : "annually"),
   );
-  const [startDate, setStartDate] = useState("");
+  // The API wants a start date strictly after now and an expiry between now
+  // and the start date, so a bare "today" is refused (a date-only value reads
+  // as midnight, already past). Prefill two weeks out / one week out, as the
+  // agent offer dialog does, and never let the pickers offer today.
+  const [startDate, setStartDate] = useState(() => offerDateInput(14));
   const [benefits, setBenefits] = useState("");
   const [notes, setNotes] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
+  const [expiresAt, setExpiresAt] = useState(() => offerDateInput(7));
   const [submitting, setSubmitting] = useState(false);
   // The API rejects a start date in the past with a precise message. It used to
   // go nowhere, leaving the form looking like it had simply stopped working.
@@ -4562,7 +4592,9 @@ function OfferCreateModal({
   const t = useTranslations("employerApplications");
   // Offers cannot start in the past, so the calendar must not offer it — the
   // previous month's leading cells were selectable without this.
-  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  const tomorrow = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 1); return d; }, []);
+  // The expiry cannot fall after the start date, so the picker stops there.
+  const expiryMax = useMemo(() => (startDate ? new Date(`${startDate.slice(0, 10)}T00:00:00`) : undefined), [startDate]);
   // Warn, never block: a conditional offer while references are outstanding is
   // a normal way to hire, so this informs the decision rather than gating it.
   const checkWarning = checkBlocksOffer(check);
@@ -4639,11 +4671,11 @@ function OfferCreateModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium mb-1">{`${t("offerStartDate")} *`}</label>
-            <DateTimePicker container={pickerContainer} modal mode="date" value={startDate} onChange={setStartDate} minDate={today} />
+            <DateTimePicker container={pickerContainer} modal mode="date" value={startDate} onChange={setStartDate} minDate={tomorrow} />
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">{t("offerExpiresOn")}</label>
-            <DateTimePicker container={pickerContainer} modal mode="date" value={expiresAt} onChange={setExpiresAt} minDate={today} />
+            <DateTimePicker container={pickerContainer} modal mode="date" value={expiresAt} onChange={setExpiresAt} minDate={tomorrow} maxDate={expiryMax} />
             <p className="text-[11px] text-muted-foreground mt-0.5">{t("offerExpiryDefault")}</p>
           </div>
         </div>

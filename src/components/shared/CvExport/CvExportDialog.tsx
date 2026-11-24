@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { AlertCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ import {
   type CvExportMode,
   type CvExportSummary,
 } from "./useCvExport";
+import { CvExportJobOverlapNotice, type CvExportOverlapChoice } from "./CvExportJobOverlapNotice";
 
 export interface CvExportDialogProps {
   open: boolean;
@@ -38,6 +39,14 @@ export interface CvExportDialogProps {
   detailsRows?: CvDetails;
   /** Called after the ZIP was handed to the browser and the dialog was told to close (for example, to clear the selection). */
   onExported?: (summary: CvExportSummary) => void;
+  /**
+   * The job these CVs are for (admin). The export is recorded against it, and
+   * the dialog says which candidates the client already has, leaving them out
+   * by default.
+   */
+  jobId?: string | null;
+  /** A control for choosing that job inside the dialog (optional for the person). */
+  jobPicker?: ReactNode;
 }
 
 const MODE_OPTIONS: ReadonlyArray<{ value: CvExportMode; label: string; hint: string }> = [
@@ -56,7 +65,7 @@ const MODE_OPTIONS: ReadonlyArray<{ value: CvExportMode; label: string; hint: st
  * live in `cvBuilderPage.previewSections` and `proficiency`, which the
  * dashboard layout hands to every client component).
  */
-export function CvExportDialog({ open, onOpenChange, items, detailsRows, onExported }: CvExportDialogProps) {
+export function CvExportDialog({ open, onOpenChange, items, detailsRows, onExported, jobId = null, jobPicker }: CvExportDialogProps) {
   const t = useTranslations("cvExport");
   const tc = useTranslations("common");
   const modeLabelId = useId();
@@ -71,6 +80,7 @@ export function CvExportDialog({ open, onOpenChange, items, detailsRows, onExpor
     open,
     items,
     detailsRows,
+    jobId,
     onDone: (summary) => {
       toast.success(
         summary.skipped > 0
@@ -81,9 +91,19 @@ export function CvExportDialog({ open, onOpenChange, items, detailsRows, onExpor
       onOpenChange(false);
     },
   });
-  const { phase, mode, setMode, counts, overLimit, progress, error, cancelled, selectionChanged } = exporter;
+  const { phase, mode, setMode, counts, overLimit, progress, error, cancelled, selectionChanged, jobOverlap } = exporter;
 
   const running = phase === "running";
+
+  // Candidates the client already has for this job: left out unless the person says otherwise.
+  const [overlapChoice, setOverlapChoice] = useState<CvExportOverlapChoice>("skip");
+  const overlapKey = jobOverlap.map((o) => o.seekerId).join("|");
+  useEffect(() => setOverlapChoice("skip"), [overlapKey]);
+  const skipSeekerIds = useMemo(
+    () => new Set(overlapChoice === "skip" ? jobOverlap.map((o) => o.seekerId) : []),
+    [overlapChoice, jobOverlap],
+  );
+  const exportCount = items.filter((item) => !skipSeekerIds.has(item.seekerId)).length;
 
   // The button that was pressed is disabled while running; keyboard users land on Cancel.
   useEffect(() => {
@@ -91,7 +111,7 @@ export function CvExportDialog({ open, onOpenChange, items, detailsRows, onExpor
   }, [running]);
   const checking = !overLimit && !counts && phase !== "error" && items.length > 0;
   const checkFailed = !overLimit && !counts && phase === "error";
-  const canExport = !!counts && counts.exportable > 0 && !running;
+  const canExport = !!counts && counts.exportable > 0 && exportCount > 0 && !running;
 
   const handleOpenChange = (next: boolean) => {
     // Closing in the middle of an export is a cancel.
@@ -214,6 +234,17 @@ export function CvExportDialog({ open, onOpenChange, items, detailsRows, onExpor
                   </div>
                 </div>
 
+                {jobPicker && <div className="space-y-1.5">{jobPicker}</div>}
+
+                {jobOverlap.length > 0 && (
+                  <CvExportJobOverlapNotice
+                    overlap={jobOverlap}
+                    newCount={items.filter((item) => !jobOverlap.some((o) => o.seekerId === item.seekerId)).length}
+                    choice={overlapChoice}
+                    onChoiceChange={setOverlapChoice}
+                  />
+                )}
+
                 {detailsRows && (
                   <div className="flex items-center gap-2">
                     <Checkbox
@@ -261,10 +292,10 @@ export function CvExportDialog({ open, onOpenChange, items, detailsRows, onExpor
             <Button
               type="button"
               disabled={!canExport || overLimit}
-              onClick={() => exporter.start({ includeDetails: !!detailsRows && includeDetails })}
+              onClick={() => exporter.start({ includeDetails: !!detailsRows && includeDetails, skipSeekerIds })}
             >
               {running && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              {t("exportButton", { count: items.length })}
+              {t("exportButton", { count: exportCount })}
             </Button>
           )}
         </DialogFooter>
