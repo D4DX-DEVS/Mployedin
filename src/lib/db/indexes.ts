@@ -421,15 +421,11 @@ export async function ensureIndexes() {
   // ── Invoices ──────────────────────────────────────────────────────────────
   await safeCreateIndexes(db, "invoices", [
     { key: { invoiceNumber: 1 }, unique: true },
-    {
-      key: { category: 1, jobId: 1, employerId: 1 },
-      unique: true,
-      name: "unique_active_recruitment_invoice_per_job_employer",
-      partialFilterExpression: {
-        category: "recruitment",
-        status: { $in: ["draft", "pending_approval", "issued", "sent", "paid", "partially_paid", "overdue"] },
-      },
-    },
+    // One open invoice per job was replaced by one open invoice per HIRE
+    // (lib/invoices/hireBilling, 2026-11-24). The old unique index
+    // `unique_active_recruitment_invoice_per_job_employer` is dropped by
+    // scripts/drop-recruitment-job-unique-index.mjs; this lookup index replaces it.
+    { key: { category: 1, jobId: 1, employerId: 1, status: 1 }, name: "recruitment_invoices_by_job" },
     { key: { userId: 1, createdAt: -1 } },
     { key: { subscriptionId: 1 } },
     { key: { status: 1 } },

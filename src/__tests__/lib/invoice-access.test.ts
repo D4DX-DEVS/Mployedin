@@ -12,6 +12,14 @@ jest.mock("@/models/Agent", () => ({
   },
 }));
 
+const invoiceFindByIdLean = jest.fn();
+jest.mock("@/models/Invoice", () => ({
+  __esModule: true,
+  default: {
+    findById: jest.fn(() => ({ select: jest.fn(() => ({ lean: invoiceFindByIdLean })) })),
+  },
+}));
+
 jest.mock("@/lib/auth/agentRestrictions", () => ({
   getSuperAgentScope: (...args: unknown[]) => getSuperAgentScope(...args),
 }));
@@ -42,8 +50,38 @@ describe("canAccessInvoice", () => {
 
     await expect(canAccessInvoice(
       { userId: "user_001", role: "employer" },
-      { userId: "user_001" },
+      { userId: "user_001", status: "issued" },
     )).resolves.toBe(true);
+  });
+
+  it("hides drafts and invoices awaiting approval from the billed customer", async () => {
+    const { canAccessInvoice } = await import("@/lib/invoices/access");
+
+    for (const status of ["draft", "pending_approval"]) {
+      await expect(canAccessInvoice({ userId: "user_001", role: "employer" }, { userId: "user_001", status })).resolves.toBe(false);
+      await expect(canAccessInvoice({ userId: "user_001", role: "job_seeker" }, { userId: "user_001", status })).resolves.toBe(false);
+    }
+    for (const status of ["issued", "sent", "paid", "partially_paid", "overdue", "void"]) {
+      await expect(canAccessInvoice({ userId: "user_001", role: "employer" }, { userId: "user_001", status })).resolves.toBe(true);
+    }
+  });
+
+  it("looks the status up when the caller loaded the invoice without it", async () => {
+    invoiceFindByIdLean.mockResolvedValueOnce({ status: "pending_approval" }).mockResolvedValueOnce({ status: "issued" });
+    const { canAccessInvoice } = await import("@/lib/invoices/access");
+
+    await expect(canAccessInvoice({ userId: "user_001", role: "employer" }, { _id: "inv_1", userId: "user_001" })).resolves.toBe(false);
+    await expect(canAccessInvoice({ userId: "user_001", role: "employer" }, { _id: "inv_2", userId: "user_001" })).resolves.toBe(true);
+  });
+
+  it("still lets the agent and super agent see an invoice awaiting approval", async () => {
+    agentFindOneLean.mockResolvedValue({ _id: "agent_001" });
+    getSuperAgentScope.mockResolvedValue({ effectiveAgentIds: ["agent_001"] });
+    const { canAccessInvoice } = await import("@/lib/invoices/access");
+    const invoice = { userId: "employer_user_001", agentId: "agent_001", status: "pending_approval" };
+
+    await expect(canAccessInvoice({ userId: "agent_user_001", role: "agent" }, invoice)).resolves.toBe(true);
+    await expect(canAccessInvoice({ userId: "sa_user_001", role: "super_agent" }, invoice)).resolves.toBe(true);
   });
 
   it("allows agents only when invoice agentId matches their profile", async () => {
@@ -103,5 +141,15 @@ describe("canAccessInvoice", () => {
       { userId: "agent_user_001", role: "agent" },
       { userId: "employer_user_001", agentId: "agent_001" },
     )).resolves.toBe(false);
+  });
+});
+
+describe("customerStatusFilter", () => {
+  it("excludes hidden statuses by default and refuses to list them on request", async () => {
+    const { customerStatusFilter } = await import("@/lib/invoices/access");
+    expect(customerStatusFilter(null)).toEqual({ $nin: ["draft", "pending_approval"] });
+    expect(customerStatusFilter("pending_approval")).toEqual({ $in: [] });
+    expect(customerStatusFilter("draft")).toEqual({ $in: [] });
+    expect(customerStatusFilter("paid")).toBe("paid");
   });
 });

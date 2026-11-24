@@ -30,15 +30,26 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const skip = (page - 1) * limit;
   const search = searchParams.get("search")?.trim() ?? "";
 
-  // Find all job+employer pairs that already have active invoices
-  const invoicedPairs = await Invoice.find({
+  // Find all placement IDs that already have an active invoice line
+  const invoices = await Invoice.find({
     category: "recruitment",
     status: { $nin: INVOICE_TERMINAL_STATUSES },
   })
-    .select("jobId employerId")
+    .select("jobId lineItems")
     .lean();
 
-  const invoicedJobIds = new Set(invoicedPairs.map((i) => String(i.jobId)));
+  // A hire is billed when an open invoice line names it. A job whose open
+  // invoice bills a fee that names no hire counts as billed as a whole — its
+  // people can't be told apart, and the API refuses a second invoice for it
+  // (lib/invoices/hireBilling).
+  const billedPlacementIds = new Set<string>();
+  const jobsBilledUnnamed = new Set<string>();
+  for (const invoice of invoices) {
+    for (const line of invoice.lineItems ?? []) {
+      if (line.placementId) billedPlacementIds.add(String(line.placementId));
+      else if (line.chargeType !== "other" && invoice.jobId) jobsBilledUnnamed.add(String(invoice.jobId));
+    }
+  }
 
   // Build placement query
   const placementQuery: Record<string, unknown> = {};
@@ -67,10 +78,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     .sort({ placedAt: -1 })
     .lean();
 
-  // Filter out already-invoiced placements
+  // Filter out already-invoiced placements (per placement, not per job)
   let uninvoiced = allPlacements.filter((p) => {
     const jobId = p.jobId && typeof p.jobId === "object" ? String((p.jobId as { _id: unknown })._id) : String(p.jobId);
-    return !invoicedJobIds.has(jobId);
+    return !billedPlacementIds.has(String(p._id)) && !jobsBilledUnnamed.has(jobId);
   });
 
   // Text search on populated fields

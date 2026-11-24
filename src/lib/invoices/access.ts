@@ -9,8 +9,41 @@ interface InvoiceAccessContext {
 }
 
 interface InvoiceAccessSubject {
+  _id?: unknown;
   userId?: unknown;
   agentId?: unknown;
+  status?: string;
+}
+
+const STAFF_ROLES: readonly UserRole[] = ["admin", "super_agent", "agent"];
+
+/**
+ * Invoices the billed customer (employer / job seeker) must not see yet: a
+ * draft, or an agent's invoice still waiting for a super agent or admin to
+ * approve it. They reach the customer once issued.
+ */
+export const CUSTOMER_HIDDEN_INVOICE_STATUSES = ["draft", "pending_approval"] as const;
+
+export function isCustomerRole(role: UserRole): boolean {
+  return !STAFF_ROLES.includes(role);
+}
+
+/** Status filter for a customer's invoice list; respects an explicit status request. */
+export function customerStatusFilter(requested: string | null | undefined): unknown {
+  const hidden: readonly string[] = CUSTOMER_HIDDEN_INVOICE_STATUSES;
+  if (!requested) return { $nin: [...hidden] };
+  return hidden.includes(requested) ? { $in: [] } : requested;
+}
+
+async function hiddenFromCustomer(invoice: InvoiceAccessSubject): Promise<boolean> {
+  let status = invoice.status;
+  if (status === undefined && invoice._id) {
+    // Some routes load only the fields they need; look the status up rather
+    // than let a missing field read as "visible".
+    const { default: Invoice } = await import("@/models/Invoice");
+    status = ((await Invoice.findById(invoice._id).select("status").lean()) as { status?: string } | null)?.status;
+  }
+  return status === undefined || (CUSTOMER_HIDDEN_INVOICE_STATUSES as readonly string[]).includes(status);
 }
 
 function idString(value: unknown): string | null {
@@ -34,7 +67,9 @@ function idsMatch(left: unknown, right: unknown): boolean {
 
 export async function canAccessInvoice(ctx: InvoiceAccessContext, invoice: InvoiceAccessSubject): Promise<boolean> {
   if (ctx.role === "admin") return true;
-  if (idsMatch(invoice.userId, ctx.userId)) return true;
+  if (idsMatch(invoice.userId, ctx.userId)) {
+    return isCustomerRole(ctx.role) ? !(await hiddenFromCustomer(invoice)) : true;
+  }
 
   if (ctx.role === "agent") {
     try {

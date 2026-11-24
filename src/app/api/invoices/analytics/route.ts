@@ -7,6 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
 import Invoice from "@/models/Invoice";
@@ -14,6 +15,7 @@ import Commission from "@/models/Commission";
 import Agent from "@/models/Agent";
 import SuperAgent from "@/models/SuperAgent";
 import { NON_REVENUE_INVOICE_STATUSES, PENDING_BALANCE_INVOICE_STATUSES } from "@/lib/invoices/status";
+import { CUSTOMER_HIDDEN_INVOICE_STATUSES } from "@/lib/invoices/access";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -47,7 +49,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     default: startDate = new Date(now.getTime() - 30 * 86400000);
   }
 
-  // Build scope filter based on role
+  // Build scope filter based on role. Invoice.userId is an ObjectId and
+  // aggregate() does not cast like find() does, so matching on the session's
+  // string id found nothing: an employer's analytics read all zeros.
+  const ownerId = Types.ObjectId.isValid(ctx.userId) ? new Types.ObjectId(ctx.userId) : ctx.userId;
   const scopeFilter: Record<string, unknown> = {};
   // Commission is a different collection with different owner fields: it has no
   // `userId` at all, and its `agentId`/`superAgentId` are PROFILE ids. Reusing
@@ -60,24 +65,24 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     const sa = await SuperAgent.findOne({ userId: ctx.userId }).select("_id agentIds").lean();
     if (sa) {
       scopeFilter.$or = [
-        { userId: ctx.userId },
+        { userId: ownerId },
         { agentId: { $in: sa.agentIds ?? [] } },
       ];
       commissionScope = { superAgentId: sa._id };
     } else {
-      scopeFilter.userId = ctx.userId;
+      scopeFilter.userId = ownerId;
       commissionScope = { superAgentId: null };
     }
   } else if (ctx.role === "agent") {
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (agentDoc) {
       scopeFilter.$or = [
-        { userId: ctx.userId },
+        { userId: ownerId },
         { agentId: agentDoc._id },
       ];
       commissionScope = { agentId: agentDoc._id };
     } else {
-      scopeFilter.userId = ctx.userId;
+      scopeFilter.userId = ownerId;
       commissionScope = { agentId: null };
     }
   } else if (ctx.role !== "admin") {
@@ -87,7 +92,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // empty scopeFilter and received platform-wide totalRevenue, topEmployers
     // and agentCommissionPayable. Mirrors the ownership scope in the invoices
     // list route (invoices/route.ts) using Invoice.userId (the customer ref).
-    scopeFilter.userId = ctx.userId;
+    scopeFilter.userId = ownerId;
+    // Nor do they count drafts or invoices still awaiting approval
+    // (lib/invoices/access). $and, so the per-query status filters below
+    // ({ ...scopeFilter, status }) don't overwrite it.
+    scopeFilter.$and = [{ status: { $nin: [...CUSTOMER_HIDDEN_INVOICE_STATUSES] } }];
     // Employers and job seekers never earn commission — fail closed.
     commissionScope = { _id: null };
   }
@@ -213,7 +222,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
 
     // Invoice aging analysis
     Invoice.aggregate([
-      { $match: { ...scopedFilter, status: { $in: PENDING_STATUSES } } },
+      { $match: { ...scopedFilter, status: { $in: PENDING_STATUSES }, balanceDue: { $gt: 0 } } },
       {
         $project: {
           totalAmount: 1,
@@ -257,6 +266,8 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
           // overdue cron were invisible to this tile.
           status: { $in: PENDING_STATUSES },
           dueDate: { $lt: new Date() },
+          // A zero invoice owes nothing, so it can't be late (as in cron/invoice-overdue).
+          balanceDue: { $gt: 0 },
         },
       },
       {

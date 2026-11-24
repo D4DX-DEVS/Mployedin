@@ -16,7 +16,7 @@ import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/re
 import { createCommissionRecordsForInvoice } from "@/lib/invoices/commissionRecords";
 import { recruitmentJobAccessError } from "@/lib/invoices/recruitmentJobAccess";
 import { commissionBase, linkLinePlacements } from "@/lib/invoices/linePlacements";
-import { INVOICE_TERMINAL_STATUSES } from "@/lib/invoices/status";
+import { checkHireBilling } from "@/lib/invoices/hireBilling";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import logger from "@/lib/logger";
 import connectDB from "@/lib/db/mongoose";
@@ -73,19 +73,6 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "Job does not belong to the specified employer" }, { status: 400 });
   }
 
-  const existingInvoice = await Invoice.findOne({
-    category: "recruitment",
-    jobId,
-    employerId,
-    status: { $nin: INVOICE_TERMINAL_STATUSES },
-  }).select("_id invoiceNumber status").lean();
-
-  if (existingInvoice) {
-    return NextResponse.json({
-      error: `Invoice ${existingInvoice.invoiceNumber} already exists for this job and employer`,
-    }, { status: 409 });
-  }
-
   // Determine agent — gracefully handle missing profiles (soft-deleted or reassigned)
   const agentId = job.agentId ?? undefined;
   let agentDoc = null;
@@ -122,18 +109,29 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
 
   // Build line items (if none provided, create single item from amount)
   const builtLines = (rawLineItems && rawLineItems.length > 0)
-    ? rawLineItems.map((li: { description: string; quantity: number; unitPrice: number; amount: number; jobId?: string; placementId?: string }) => ({
+    ? rawLineItems.map((li: { description: string; quantity: number; unitPrice: number; amount: number; jobId?: string; placementId?: string; chargeType?: "placement" | "other" }) => ({
         description: li.description,
         quantity: li.quantity,
         unitPrice: li.unitPrice,
         amount: li.quantity * li.unitPrice,
         jobId: li.jobId ?? jobId,
         placementId: li.placementId,
+        chargeType: li.chargeType,
       }))
-    : [{ description: `Recruitment fee — ${job.title}`, quantity: 1, unitPrice: amount, amount, jobId, placementId: undefined as string | undefined }];
+    : [{ description: `Recruitment fee — ${job.title}`, quantity: 1, unitPrice: amount, amount, jobId, placementId: undefined as string | undefined, chargeType: undefined as "placement" | "other" | undefined }];
   const linked = await linkLinePlacements(jobId, builtLines);
   if ("error" in linked) return NextResponse.json({ error: linked.error }, { status: 400 });
   const lineItems = linked.lines;
+
+  // A hire is billed on one open invoice only; unnamed fees keep one open
+  // invoice per job (lib/invoices/hireBilling).
+  const conflict = await checkHireBilling(jobId, lineItems, { employerId });
+  if (conflict) {
+    return NextResponse.json(
+      { error: conflict.error, ...("invoiceNumber" in conflict ? { invoiceNumber: conflict.invoiceNumber } : {}) },
+      { status: conflict.status },
+    );
+  }
 
   const subtotal = lineItems.reduce((sum: number, li: { amount: number }) => sum + li.amount, 0);
   const discountAmount = Math.round((subtotal * discountPercent) / 100 * 100) / 100;
@@ -307,7 +305,10 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     });
   } catch (err: unknown) {
     if ((err as { code?: number }).code === 11000) {
-      return NextResponse.json({ error: "An active invoice already exists for this job and employer" }, { status: 409 });
+      // Until the old per-job unique index is dropped
+      // (scripts/drop-recruitment-job-unique-index.mjs), the database still
+      // allows one open invoice per job.
+      return NextResponse.json({ error: "An open invoice already exists for this job. Ask an admin to finish the one-invoice-per-hire switch." }, { status: 409 });
     }
     throw err;
   }

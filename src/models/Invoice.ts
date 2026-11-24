@@ -17,6 +17,12 @@ export interface IInvoiceLineItem {
   jobId?: mongoose.Types.ObjectId;
   /** The hire this line bills. One invoice can bill several hires, so the link lives on the line. */
   placementId?: mongoose.Types.ObjectId;
+  /**
+   * "placement" (default when absent): a fee for a hire, counts toward revenue
+   * targets once linked. "other": visa, transport and similar — billed, never
+   * linked to a hire, never counted.
+   */
+  chargeType?: "placement" | "other";
   /** Who linked an older line to its hire from the admin invoices page, and when. */
   placementLinkedBy?: mongoose.Types.ObjectId;
   placementLinkedAt?: Date;
@@ -163,6 +169,10 @@ export interface IInvoice extends Document {
   rejectedBy?: mongoose.Types.ObjectId;
   rejectedAt?: Date;
   rejectionReason?: string;
+  /** Last time an approver sent this invoice back to its agent as a draft, and why. */
+  returnedBy?: mongoose.Types.ObjectId;
+  returnedAt?: Date;
+  returnReason?: string;
   voidedBy?: mongoose.Types.ObjectId;
   voidedAt?: Date;
   voidReason?: string;
@@ -185,6 +195,7 @@ const LineItemSchema = new Schema<IInvoiceLineItem>(
     amount: { type: Number, required: true, min: 0 },
     jobId: { type: Schema.Types.ObjectId, ref: "Job" },
     placementId: { type: Schema.Types.ObjectId, ref: "Placement" },
+    chargeType: { type: String, enum: ["placement", "other"] },
     placementLinkedBy: { type: Schema.Types.ObjectId, ref: "User" },
     placementLinkedAt: Date,
   },
@@ -356,6 +367,9 @@ const InvoiceSchema = new Schema<IInvoice>(
     rejectedBy: { type: Schema.Types.ObjectId, ref: "User" },
     rejectedAt: Date,
     rejectionReason: String,
+    returnedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    returnedAt: Date,
+    returnReason: { type: String, maxlength: 500 },
     voidedBy: { type: Schema.Types.ObjectId, ref: "User" },
     voidedAt: Date,
     voidReason: String,
