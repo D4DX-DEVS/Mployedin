@@ -17,7 +17,7 @@ import { resolveCommissionRate, resolveOverrideRate } from "@/lib/commissions/re
 import { commissionBase } from "@/lib/invoices/linePlacements";
 import type { DatedRate } from "@/lib/commissions/effectiveRate";
 import { createCommissionRecordsForInvoice } from "@/lib/invoices/commissionRecords";
-import { INVOICE_TERMINAL_STATUSES } from "@/lib/invoices/status";
+import { findBilledPlacements, findOpenInvoiceWithUnnamedFee } from "@/lib/invoices/hireBilling";
 import { INTERNATIONAL_TAX_PRESETS } from "@/lib/invoices/taxPresets";
 import { dispatchWebhook } from "@/lib/integrations/webhookDispatcher";
 import connectDB from "@/lib/db/mongoose";
@@ -67,23 +67,16 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     return NextResponse.json({ error: "No valid placements found" }, { status: 404 });
   }
 
-  // Check which already have invoices
-  const jobIds = placements
-    .map((p) => {
-      const job = p.jobId as { _id?: unknown } | null;
-      return job?._id ? String(job._id) : null;
-    })
-    .filter(Boolean);
-
-  const existingInvoices = await Invoice.find({
-    category: "recruitment",
-    jobId: { $in: jobIds },
-    status: { $nin: INVOICE_TERMINAL_STATUSES },
-  })
-    .select("jobId employerId invoiceNumber")
-    .lean();
-
-  const invoicedJobSet = new Set(existingInvoices.map((i) => String(i.jobId)));
+  // A hire is billed on one open invoice only, and a job whose open invoice
+  // bills an unnamed fee takes no more invoices (lib/invoices/hireBilling).
+  const billedPlacements = await findBilledPlacements(placements.map((p) => String(p._id)));
+  const unnamedFeeByJob = new Map<string, string | null>();
+  const unnamedFeeInvoice = async (jobIdStr: string): Promise<string | null> => {
+    if (!unnamedFeeByJob.has(jobIdStr)) {
+      unnamedFeeByJob.set(jobIdStr, (await findOpenInvoiceWithUnnamedFee(jobIdStr))?.invoiceNumber ?? null);
+    }
+    return unnamedFeeByJob.get(jobIdStr) ?? null;
+  };
 
   const results: Array<{
     placementId: string;
@@ -106,8 +99,15 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
     }
 
     const jobIdStr = String(job._id);
-    if (invoicedJobSet.has(jobIdStr)) {
-      results.push({ placementId: String(placement._id), status: "skipped", reason: "Invoice already exists for this job" });
+    const placementIdStr = String(placement._id);
+    const billedOn = billedPlacements.get(placementIdStr);
+    if (billedOn) {
+      results.push({ placementId: placementIdStr, status: "skipped", reason: `Hire already billed on ${billedOn}` });
+      continue;
+    }
+    const unnamedOn = await unnamedFeeInvoice(jobIdStr);
+    if (unnamedOn) {
+      results.push({ placementId: placementIdStr, status: "skipped", reason: `Invoice ${unnamedOn} bills this job with a fee that names no hire` });
       continue;
     }
 
@@ -131,15 +131,11 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
       results.push({ placementId: String(placement._id), status: "skipped", reason: "Another request is invoicing this job right now" });
       continue;
     }
-    const raced = await Invoice.exists({
-      category: "recruitment",
-      jobId: job._id,
-      status: { $nin: INVOICE_TERMINAL_STATUSES },
-    });
-    if (raced) {
-      invoicedJobSet.add(jobIdStr);
+    const racedOn = (await findBilledPlacements([placementIdStr])).get(placementIdStr)
+      ?? (await findOpenInvoiceWithUnnamedFee(jobIdStr))?.invoiceNumber;
+    if (racedOn) {
       await releaseLease(leaseKey);
-      results.push({ placementId: String(placement._id), status: "skipped", reason: "Invoice already exists for this job" });
+      results.push({ placementId: placementIdStr, status: "skipped", reason: `Hire already billed on ${racedOn}` });
       continue;
     }
 
@@ -306,8 +302,8 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         });
       }
 
-      // Mark this job as invoiced so subsequent loop iterations skip it
-      invoicedJobSet.add(jobIdStr);
+      // This hire is now billed; a repeat of it later in the batch skips.
+      billedPlacements.set(placementIdStr, invoiceNumber);
 
       // Dispatch webhook
       dispatchWebhook("invoice.created", {

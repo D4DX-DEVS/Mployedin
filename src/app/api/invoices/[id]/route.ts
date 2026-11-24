@@ -275,6 +275,17 @@ async function patchHandler(
       currency: invoice.currency,
     });
     commissionsCreated = createdCommissions.length;
+  } else if (body.status === "draft") {
+    // Send back: the approver returns the invoice to its agent as an editable
+    // draft with a reason (owner decision D2). Nothing to reverse — commission
+    // records are only created on issue. The draft keeps holding its hires.
+    if (invoice.status !== "pending_approval") {
+      return NextResponse.json({ error: "Only invoices awaiting approval can be sent back" }, { status: 400 });
+    }
+    invoice.status = "draft";
+    invoice.returnedBy = ctx.userId as unknown as typeof invoice.returnedBy;
+    invoice.returnedAt = new Date();
+    invoice.returnReason = body.returnReason;
   } else if (body.status === "pending_approval") {
     if (invoice.status !== "draft") {
       return NextResponse.json({ error: `Cannot submit a ${invoice.status} invoice for approval` }, { status: 400 });
@@ -401,7 +412,7 @@ async function patchHandler(
     resource: "invoices",
     resourceId: invoice._id.toString(),
     changes: { before, after: { status: invoice.status, notes: invoice.notes, internalNotes: invoice.internalNotes } },
-    meta: { commissionsCreated, commissionsReversed, commissionsAlreadyPaid, commissionsApproved, commissionNotificationFailures, commissionApprovalFailed },
+    meta: { ...(body.status === "draft" ? { returnReason: body.returnReason } : {}), commissionsCreated, commissionsReversed, commissionsAlreadyPaid, commissionsApproved, commissionNotificationFailures, commissionApprovalFailed },
     req,
   });
 

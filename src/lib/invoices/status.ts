@@ -4,6 +4,9 @@ export const NON_REVENUE_INVOICE_STATUSES = ["void", "cancelled", "refunded", "c
 /** A void is irreversible, so it must say why; the API and the void form share this floor. */
 export const VOID_REASON_MIN_LENGTH = 10;
 
+/** Sending an invoice back to its agent tells them what to fix; same floor as a void. */
+export const RETURN_REASON_MIN_LENGTH = 10;
+
 export const INVOICE_STATUSES = [
   "draft",
   "pending_approval",

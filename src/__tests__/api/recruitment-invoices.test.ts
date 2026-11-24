@@ -84,19 +84,23 @@ jest.mock("@/models/SystemSettings", () => ({
   },
 }));
 
+const invoiceFindLean = jest.fn().mockResolvedValue([]);
+const placementFindLean = jest.fn().mockResolvedValue([]);
+
 jest.mock("@/models/Invoice", () => ({
   __esModule: true,
   default: {
+    find: jest.fn(() => ({ select: jest.fn(() => ({ lean: invoiceFindLean })) })),
     findOne: jest.fn(() => ({ select: jest.fn(() => ({ lean: invoiceFindOneLean })) })),
     create: jest.fn((payload) => invoiceCreate(payload)),
     deleteOne: jest.fn().mockResolvedValue({}),
   },
 }));
 
-// Invoice lines link to the job's hires (lib/invoices/linePlacements); none here.
+// Invoice lines link to the job's hires (lib/invoices/linePlacements); none by default.
 jest.mock("@/models/Placement", () => ({
   __esModule: true,
-  default: { find: () => ({ select: () => ({ lean: async () => [] }) }) },
+  default: { find: () => ({ select: () => ({ lean: placementFindLean }) }) },
 }));
 jest.mock("@/models/Commission", () => ({
   __esModule: true,
@@ -152,6 +156,8 @@ describe("Recruitment invoice creation API", () => {
     agentFindOneLean.mockResolvedValue({ _id: "507f1f77bcf86cd799439031" });
     settingsLean.mockResolvedValue({ defaultCurrency: "AED" });
     invoiceFindOneLean.mockResolvedValue(null);
+    invoiceFindLean.mockResolvedValue([]);
+    placementFindLean.mockResolvedValue([]);
 
     invoiceCreate.mockImplementation(async (payload) => ({
       _id: "507f1f77bcf86cd799439061",
@@ -312,5 +318,67 @@ describe("Recruitment invoice creation API", () => {
     expect(res.status).toBe(409);
     expect(json.error).toContain("INV-EXISTING-001");
     expect(Invoice.create).not.toHaveBeenCalled();
+  });
+
+  describe("one open invoice per hire (D1)", () => {
+    const JOB = "507f1f77bcf86cd799439011";
+    const HIRE_A = "507f1f77bcf86cd7994390a1";
+    const HIRE_B = "507f1f77bcf86cd7994390b2";
+    const body = (lineItems: unknown[]) => JSON.stringify({
+      jobId: JOB,
+      employerId: "507f1f77bcf86cd799439021",
+      amount: 8000,
+      currency: "AED",
+      lineItems,
+    });
+    const hireLine = (placementId: string) => ({ description: "Placement fee", quantity: 1, unitPrice: 4000, amount: 4000, placementId });
+
+    beforeEach(() => {
+      placementFindLean.mockResolvedValue([{ _id: HIRE_A, jobId: JOB }, { _id: HIRE_B, jobId: JOB }]);
+    });
+
+    async function post(payload: string) {
+      const { POST } = await import("@/app/api/invoices/recruitment/route");
+      const req = new NextRequest("http://localhost:3000/api/invoices/recruitment", {
+        method: "POST",
+        body: payload,
+        headers: { "Content-Type": "application/json" },
+      });
+      return POST(req, { params: Promise.resolve({}) });
+    }
+
+    it("creates an invoice with one line per hire and an other charge", async () => {
+      const res = await post(body([
+        hireLine(HIRE_A),
+        hireLine(HIRE_B),
+        { description: "Visa processing", quantity: 1, unitPrice: 500, amount: 500, chargeType: "other" },
+      ]));
+      expect(res.status).toBe(201);
+      const lines = invoiceCreate.mock.calls[0][0].lineItems;
+      expect(lines.map((l: { placementId?: string }) => l.placementId)).toEqual([HIRE_A, HIRE_B, undefined]);
+      expect(lines[2].chargeType).toBe("other");
+    });
+
+    it("rejects a hire already billed on another open invoice", async () => {
+      invoiceFindLean.mockResolvedValue([{ invoiceNumber: "INV-HELD-1", lineItems: [{ placementId: HIRE_B }] }]);
+      const res = await post(body([hireLine(HIRE_A), hireLine(HIRE_B)]));
+      const json = await res.json();
+      expect(res.status).toBe(409);
+      expect(json.error).toContain("INV-HELD-1");
+      expect(json.invoiceNumber).toBe("INV-HELD-1");
+      expect(Invoice.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects the same hire twice on one invoice", async () => {
+      const res = await post(body([hireLine(HIRE_A), hireLine(HIRE_A)]));
+      expect(res.status).toBe(400);
+      expect(Invoice.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects an other charge that names a hire", async () => {
+      const res = await post(body([{ ...hireLine(HIRE_A), chargeType: "other" }]));
+      expect(res.status).toBe(400);
+      expect(Invoice.create).not.toHaveBeenCalled();
+    });
   });
 });

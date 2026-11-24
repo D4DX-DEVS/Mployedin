@@ -154,4 +154,38 @@ describe("Invoice analytics API", () => {
     });
     expect(data.kpi.totalRevenue).toBe(322);
   });
+
+  it("counts only invoices that still owe money as overdue or ageing", async () => {
+    await callRoute();
+
+    const overdue = pipelinesGroupedBy(null);
+    expect(overdue).toHaveLength(1);
+    expect(overdue[0].find((stage) => stage.$match)?.$match).toMatchObject({ balanceDue: { $gt: 0 } });
+
+    const aging = invoiceAggregateMock.mock.calls
+      .map(([pipeline]) => pipeline as Array<Record<string, unknown>>)
+      .filter((pipeline) => pipeline.some((stage) => "$bucket" in stage));
+    expect(aging).toHaveLength(1);
+    expect(aging[0][0].$match).toMatchObject({ balanceDue: { $gt: 0 } });
+  });
+
+  it("matches a customer's own invoices by ObjectId, since aggregate() does not cast", async () => {
+    const { Types } = await import("mongoose");
+    const employerUserId = "6a0000000000000000000001";
+    const { GET } = await import("@/app/api/invoices/analytics/route");
+    await (GET as Function)(new NextRequest("http://localhost/api/invoices/analytics"), {
+      userId: employerUserId,
+      role: "employer",
+      locale: "en",
+    });
+
+    expect(invoiceAggregateMock).toHaveBeenCalled();
+    for (const [pipeline] of invoiceAggregateMock.mock.calls) {
+      const match = (pipeline as Pipeline).find((stage) => stage.$match)?.$match;
+      expect(match?.userId).toBeInstanceOf(Types.ObjectId);
+      expect(String(match?.userId)).toBe(employerUserId);
+      // Drafts and invoices awaiting approval stay out of a customer's figures.
+      expect(match?.$and).toEqual([{ status: { $nin: ["draft", "pending_approval"] } }]);
+    }
+  });
 });

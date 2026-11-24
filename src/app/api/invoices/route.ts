@@ -18,6 +18,7 @@ import SuperAgent from "@/models/SuperAgent";
 import { escapeRegex } from "@/lib/security/sanitize";
 import { isInvoiceStatus, NON_REVENUE_INVOICE_STATUSES, PENDING_BALANCE_INVOICE_STATUSES } from "@/lib/invoices/status";
 import { INVOICE_DISPUTE_OPEN_FILTER, PAYMENT_NOTICE_PENDING_FILTER, UNLINKED_HIRE_FILTER } from "@/lib/admin/queueFilters";
+import { customerStatusFilter, isCustomerRole } from "@/lib/invoices/access";
 import type { UserRole } from "@/types/user";
 
 interface AuthCtx { userId: string; role: UserRole; locale: string }
@@ -87,9 +88,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     filter.userId = ctx.userId;
   }
 
-  // Status filter
+  // Status filter. A customer never sees a draft or an invoice still awaiting
+  // approval (lib/invoices/access), even when they ask for that status.
   const statusParam = url.searchParams.get("status");
-  if (isInvoiceStatus(statusParam)) {
+  if (isCustomerRole(ctx.role)) {
+    filter.status = customerStatusFilter(isInvoiceStatus(statusParam) ? statusParam : null);
+  } else if (isInvoiceStatus(statusParam)) {
     filter.status = statusParam;
   }
 

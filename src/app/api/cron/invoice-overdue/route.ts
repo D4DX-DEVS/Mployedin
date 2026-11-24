@@ -19,6 +19,17 @@ export const maxDuration = 300;
 
 const BATCH_SIZE = 50;
 
+/**
+ * Money still owed. balanceDue is worked out on save; a row written without a
+ * save may lack it, so fall back to the invoice total for those.
+ */
+const OWES_MONEY = {
+  $or: [
+    { balanceDue: { $gt: 0 } },
+    { balanceDue: { $exists: false }, totalAmount: { $gt: 0 } },
+  ],
+};
+
 export async function GET(req: NextRequest) {
   const authError = verifyCronRequest(req);
   if (authError) return authError;
@@ -27,10 +38,14 @@ export async function GET(req: NextRequest) {
 
   const now = new Date();
 
-  // Find invoices that have a due date in the past and are still in a payable status
+  // Find invoices that have a due date in the past, are still in a payable
+  // status and still have money owed. A zero invoice (e.g. a free-plan
+  // renewal) owes nothing, so it can't be late: flagging it put red "Overdue"
+  // badges on AED 0 invoices and sent admins alerts for them.
   const overdueInvoices = await Invoice.find({
     dueDate: { $lt: now },
     status: { $in: ["issued", "sent", "partially_paid"] },
+    ...OWES_MONEY,
   })
     .select("_id invoiceNumber status dueDate totalAmount currency userId employerId")
     .limit(500)

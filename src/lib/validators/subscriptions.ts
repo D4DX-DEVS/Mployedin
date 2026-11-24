@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { commonSchemas } from "./index";
-import { INVOICE_UPDATE_STATUSES, ACTIVE_RECRUITMENT_INVOICE_STATUSES, VOID_REASON_MIN_LENGTH } from "@/lib/invoices/status";
+import { INVOICE_UPDATE_STATUSES, ACTIVE_RECRUITMENT_INVOICE_STATUSES, VOID_REASON_MIN_LENGTH, RETURN_REASON_MIN_LENGTH } from "@/lib/invoices/status";
 
 // ── AI Feature Keys ──────────────────────────────────────────────────────────
 const AI_FEATURE_KEYS = [
@@ -133,9 +133,14 @@ export const invoiceUpdateSchema = z.object({
   internalNotes: z.string().max(2000).trim().optional(),
   voidReason: z.string().max(500).trim().optional(),
   rejectionReason: z.string().max(500).trim().optional(),
+  /** Why an approver sends an invoice back to its agent (status → draft). */
+  returnReason: z.string().max(500).trim().optional(),
 }).refine(
   (data) => data.status !== "void" || (data.voidReason?.length ?? 0) >= VOID_REASON_MIN_LENGTH,
   { message: `A reason of at least ${VOID_REASON_MIN_LENGTH} characters is required to void an invoice`, path: ["voidReason"] }
+).refine(
+  (data) => data.status !== "draft" || (data.returnReason?.length ?? 0) >= RETURN_REASON_MIN_LENGTH,
+  { message: `Tell the agent what to fix (at least ${RETURN_REASON_MIN_LENGTH} characters)`, path: ["returnReason"] }
 );
 
 // ── POST /api/invoices/[id]/delivery ────────────────────────────────────────
@@ -155,7 +160,12 @@ const lineItemSchema = z.object({
   jobId: commonSchemas.objectId.optional(),
   /** The hire this line bills (lib/invoices/linePlacements). */
   placementId: commonSchemas.objectId.optional(),
-});
+  /** Absent = "placement". "other" lines (visa, transport) never bill a hire. */
+  chargeType: z.enum(["placement", "other"]).optional(),
+}).refine(
+  (line) => line.chargeType !== "other" || !line.placementId,
+  { message: "An other charge can't name a hire", path: ["placementId"] },
+);
 
 const billingDetailsSchema = z.object({
   companyName: z.string().max(200).trim().optional(),
