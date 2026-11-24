@@ -40,6 +40,8 @@ import { CandidateDataNotice } from "@/components/shared/CandidateDataNotice";
 import { useRowSelection } from "@/hooks/useRowSelection";
 import { SelectionBar, ExportCvsButton } from "@/components/shared/SelectionBar";
 import { CvExportDialog } from "@/components/shared/CvExport/CvExportDialog";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -192,6 +194,7 @@ export default function AdminApplicationsPage() {
   // Data
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadFailed, setLoadFailed] = useState(false);
   const [employers, setEmployers] = useState<EmployerOption[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -202,6 +205,7 @@ export default function AdminApplicationsPage() {
   // did nothing, back from a record returned an unfiltered list, and a filtered
   // view could not be shared with a colleague.
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  const debouncedSearch = useDebounce(search, 350);
   const [status, setStatus] = useUrlFilter("status", "");
   const [employerId, setEmployerId] = useUrlFilter("employerId", "");
   const [source, setSource] = useUrlFilter("source", "");
@@ -288,7 +292,7 @@ export default function AdminApplicationsPage() {
   const fetchAllApplications = useCallback(async () => {
     const base = new URLSearchParams();
     if (jobIdFilter) base.set("jobId", jobIdFilter);
-    if (search) base.set("search", search);
+    if (debouncedSearch) base.set("search", debouncedSearch);
     if (status) base.set("status", status);
     if (employerId) base.set("employerId", employerId);
     if (source) base.set("source", source);
@@ -310,7 +314,7 @@ export default function AdminApplicationsPage() {
         total: Number(json.total ?? json.totalCount ?? (json.pagination as { total?: number } | undefined)?.total ?? 0),
       }),
     );
-  }, [jobIdFilter, search, status, employerId, source, dateFrom, dateTo, skills, sortBy, sortOrder, stale, scoreRange]);
+  }, [jobIdFilter, debouncedSearch, status, employerId, source, dateFrom, dateTo, skills, sortBy, sortOrder, stale, scoreRange]);
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: applications as unknown as Record<string, unknown>[],
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
@@ -324,7 +328,7 @@ export default function AdminApplicationsPage() {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (jobIdFilter) params.set("jobId", jobIdFilter);
-    if (search) params.set("search", search);
+    if (debouncedSearch) params.set("search", debouncedSearch);
     if (status) params.set("status", status);
     if (employerId) params.set("employerId", employerId);
     if (source) params.set("source", source);
@@ -361,7 +365,7 @@ export default function AdminApplicationsPage() {
       setLoadFailed(true);
     }
     setLoading(false);
-  }, [jobIdFilter, search, status, employerId, source, scoreRange, dateFrom, dateTo, skills, sortBy, sortOrder, stale, page, limit, employers.length, stats, updateTotal]);
+  }, [jobIdFilter, debouncedSearch, status, employerId, source, scoreRange, dateFrom, dateTo, skills, sortBy, sortOrder, stale, page, limit, employers.length, stats, updateTotal]);
 
   useEffect(() => { fetchApplications(); }, [fetchApplications]);
 
@@ -858,9 +862,9 @@ export default function AdminApplicationsPage() {
       {/* ─── Application List ─────────────────────────────────────────── */}
       {/* Error first: an empty list and a failed load are different things, and
           the empty branch below claims "No applications found". */}
-      {loadFailed && !loading ? (
+      {loadFailed && !initialLoading ? (
         <ErrorState onRetry={() => void fetchApplications()} />
-      ) : loading ? (
+      ) : initialLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-3xl border border-border/60 bg-background/70" />

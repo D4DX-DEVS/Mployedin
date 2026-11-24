@@ -25,6 +25,7 @@ import { GroupProgressPanel, type GroupRow, type GroupSummary } from "./GroupPro
 import { GivenTaskCells, PRIORITY_CLASS } from "./GivenTaskCells";
 import { TASK_STATE_CLASS, taskState, taskStateKey } from "./taskState";
 import { TaskDetailsPanel, type TaskDetails } from "./TaskDetailsPanel";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 type Row = TaskDetails & { group?: GroupSummary };
 
@@ -48,6 +49,7 @@ export function AssignedTasksWorkspace({ audience, tabs }: { audience: "super_ag
   const [agents, setAgents] = useState<AssignableAgentOption[]>([]);
   const [superAgents, setSuperAgents] = useState<AssignableAgentOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [assignOpen, setAssignOpen] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
   const [detailsTask, setDetailsTask] = useState<TaskDetails | null>(null);
@@ -233,7 +235,7 @@ export function AssignedTasksWorkspace({ audience, tabs }: { audience: "super_ag
       {tabs}
 
       <InlineFilterBar className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none" onClear={filtered ? clearAll : undefined}>
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
+        <InlineFilterSearch busy={loading && !initialLoading} value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">{filterControls(false)}</div>
       </InlineFilterBar>
@@ -250,7 +252,7 @@ export function AssignedTasksWorkspace({ audience, tabs }: { audience: "super_ag
       <PhoneRecordList
         className="sm:hidden"
         label={audience === "admin" ? t("adminTitle") : t("superAgentTitle")}
-        loading={loading}
+        loading={initialLoading}
         empty={emptyState}
         items={rows.map((task) => {
           const state = taskState(task);
@@ -286,7 +288,7 @@ export function AssignedTasksWorkspace({ audience, tabs }: { audience: "super_ag
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={cols} />
               ) : rows.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

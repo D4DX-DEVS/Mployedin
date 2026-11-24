@@ -1,5 +1,6 @@
 "use client";
 
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { ReportTabs } from "@/components/features/admin/ReportTabs";
 import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
@@ -27,6 +28,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount } from "@/lib/ui/intlFormat";
 import { InlineLabelled } from "@/components/shared/LabelledControl";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -149,8 +151,9 @@ export default function AdminCommissionsReportPage() {
   const [yearFilter, setYearFilter] = useState(currentYear);
   // Null lets the API pick the year's largest currency.
   const [currencyFilter, setCurrencyFilter] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useUrlFilter("search", "", { debounceMs: 400 });
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadFailed, setLoadFailed] = useState(false);
   const [data, setData] = useState<ReportData | null>(null);
 
@@ -274,11 +277,11 @@ export default function AdminCommissionsReportPage() {
           </>
         )}
         metrics={[
-          { label: t("totalCommissions"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalCommissions) : "—", icon: CircleDollarSign, iconClassName: "text-indigo-600", iconSurfaceClassName: "bg-indigo-50" },
-          { label: t("pending"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalPending) : "—", icon: Clock, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
-          { label: t("approved"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalApproved) : "—", icon: CheckCircle2, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
-          { label: t("paidOut"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalPaid) : "—", icon: Wallet, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
-          { label: t("avgRate"), value: loading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? `${s.avgRate}%` : "—", icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
+          { label: t("totalCommissions"), value: initialLoading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalCommissions) : "—", icon: CircleDollarSign, iconClassName: "text-indigo-600", iconSurfaceClassName: "bg-indigo-50" },
+          { label: t("pending"), value: initialLoading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalPending) : "—", icon: Clock, iconClassName: "text-amber-600", iconSurfaceClassName: "bg-amber-50" },
+          { label: t("approved"), value: initialLoading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalApproved) : "—", icon: CheckCircle2, iconClassName: "text-blue-600", iconSurfaceClassName: "bg-blue-50" },
+          { label: t("paidOut"), value: initialLoading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? money(s.totalPaid) : "—", icon: Wallet, iconClassName: "text-emerald-600", iconSurfaceClassName: "bg-emerald-50" },
+          { label: t("avgRate"), value: initialLoading ? <span className="inline-block h-6 w-20 animate-pulse rounded bg-muted" /> : s ? `${s.avgRate}%` : "—", icon: TrendingUp, iconClassName: "text-violet-600", iconSurfaceClassName: "bg-violet-50" },
         ]}
       />
 
@@ -372,7 +375,7 @@ export default function AdminCommissionsReportPage() {
           onExportCsv={handleExportCsv}
           onExportExcel={handleExportExcel}
         >
-          <InlineFilterSearch
+          <InlineFilterSearch busy={loading && !initialLoading}
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder={t("searchPlaceholder")}
@@ -381,7 +384,7 @@ export default function AdminCommissionsReportPage() {
         <PhoneRecordList
           className="p-3 sm:hidden"
           label={t("agentBreakdownTitle")}
-          loading={loading}
+          loading={initialLoading}
           empty={<p className="text-center text-sm text-muted-foreground">{t("noCommissionData", { year: yearFilter })}</p>}
           items={filteredAgents.map((agent) => ({
             key: agent.agentId,
@@ -418,7 +421,7 @@ export default function AdminCommissionsReportPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     {Array.from({ length: 8 }).map((__, j) => (

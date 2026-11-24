@@ -31,6 +31,7 @@ import {
   SuperAgentPageIntro,
 } from "@/components/features/super-agent/WorkspacePage";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -67,6 +68,7 @@ export default function SuperAgentInvoicesPage() {
   const [activeView, setActiveView] = useState<"table" | "analytics">("table");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -223,7 +225,7 @@ export default function SuperAgentInvoicesPage() {
         )}
         moreActiveCount={[dateFrom, dateTo].filter(Boolean).length}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(v) => { setSearchState(v); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -324,7 +326,7 @@ export default function SuperAgentInvoicesPage() {
           <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl">
             <InvoiceTable
               invoices={invoices}
-              loading={loading}
+              loading={initialLoading}
               role="super_agent"
               onSelect={setSelectedInvoiceId}
               hasActiveFilters={hasActiveFilters}

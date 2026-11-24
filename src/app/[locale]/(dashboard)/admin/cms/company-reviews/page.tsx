@@ -18,6 +18,8 @@ import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { SearchField } from "@/components/shared/SearchField";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 type ReviewStatus = "pending" | "approved" | "rejected";
 
@@ -55,10 +57,12 @@ export default function AdminCompanyReviewsPage() {
   const locale = useLocale();
   const [status, setStatus] = useUrlFilter("status", "pending", { allow: STATUS_FILTERS });
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  const debouncedSearch = useDebounce(search, 350);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [failed, setFailed] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -71,7 +75,7 @@ export default function AdminCompanyReviewsPage() {
     setFailed(false);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit), status });
-      if (search) params.set("search", search);
+      if (debouncedSearch) params.set("search", debouncedSearch);
       const res = await fetch(`/api/admin/company-reviews?${params}`);
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
@@ -82,7 +86,7 @@ export default function AdminCompanyReviewsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, status, search, updateTotal]);
+  }, [page, limit, status, debouncedSearch, updateTotal]);
 
   useEffect(() => {
     void load();
@@ -166,7 +170,7 @@ export default function AdminCompanyReviewsPage() {
         </div>
 
         <div className="mt-4">
-          {loading ? (
+          {initialLoading ? (
             <ul className="flex flex-col gap-3" aria-busy="true" aria-label={t("loading")}>
               {Array.from({ length: 3 }, (_, index) => (
                 <li key={index} className="workspace-subtle-surface rounded-xl p-4">

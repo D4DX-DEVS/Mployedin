@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -29,6 +31,7 @@ import {
   useUseJobTemplate,
   type JobTemplateDetail,
 } from "@/hooks/useJobs";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 export default function EmployerJobTemplatesPage() {
   const t = useTranslations("employerJobTemplates");
@@ -45,9 +48,10 @@ export default function EmployerJobTemplatesPage() {
     if (next > 1) params.set("page", String(next)); else params.delete("page");
     router.replace(`?${params.toString()}`, { scroll: false });
   }
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [limit, setLimit] = useState(10);
   const { data, isLoading: loading, isError, refetch } = useJobTemplateLibrary({ search, page, limit });
+  const initialLoading = useInitialLoading(loading);
   const templates = data?.templates ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -136,7 +140,7 @@ export default function EmployerJobTemplatesPage() {
         className="workspace-panel-surface rounded-2xl border-b-0"
         onClear={search ? () => handleSearchChange("") : undefined}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={handleSearchChange}
           placeholder={t("search")}
@@ -149,7 +153,7 @@ export default function EmployerJobTemplatesPage() {
       <section className="workspace-panel-surface rounded-3xl panel-body overflow-hidden max-sm:border-0 max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none">
         {isError ? (
           <ErrorState onRetry={() => refetch()} />
-        ) : loading ? (
+        ) : initialLoading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="workspace-glass-panel rounded-2xl space-y-3 panel-body">

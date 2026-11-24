@@ -39,6 +39,8 @@ import { singularizeTitle } from "@/lib/ui/singularize";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 
 export interface CmsColumn {
   key: string;
@@ -103,8 +105,10 @@ export default function CmsPage({
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadError, setLoadError] = useState(false);
-  const [filterValues, setFilterValues] = useState<CmsFilterValues>(getDefaultCmsFilterValues);
+  const [urlSearch, setUrlSearch] = useUrlFilter("search", "");
+  const [filterValues, setFilterValues] = useState<CmsFilterValues>(() => ({ ...getDefaultCmsFilterValues(), search: urlSearch }));
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [sortBy, setSortBy] = useState(defaultSort.by);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(defaultSort.order);
@@ -125,12 +129,16 @@ export default function CmsPage({
   const [editItem, setEditItem] = useState<Record<string, unknown> | null>(null);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
+  // The page passes a fresh array on every server render, and a URL write (the
+  // search) re-renders it; keyed on content so that does not refetch the list.
+  const filterFieldsKey = JSON.stringify(filterFieldsProp ?? null);
   const filterFields = useMemo<CmsFilterField[]>(
     () => filterFieldsProp ?? [
       { type: "search", placeholder: t("searchFallback", { title: title.toLowerCase() }) },
       { type: "status", options: DEFAULT_STATUS_OPTIONS },
     ],
-    [filterFieldsProp, title, t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on content, see above
+    [filterFieldsKey, title, t],
   );
   const requestGeneration = useRef(0);
   const activeRequest = useRef<AbortController | null>(null);
@@ -139,8 +147,9 @@ export default function CmsPage({
 
   const resetFilters = useCallback(() => {
     setFilterValues(getDefaultCmsFilterValues());
+    setUrlSearch("");
     resetPage();
-  }, [resetPage]);
+  }, [resetPage, setUrlSearch]);
 
   const fetchItems = useCallback(async () => {
     const generation = ++requestGeneration.current;
@@ -216,6 +225,7 @@ export default function CmsPage({
   // left admins with a bare "Validation failed" and no idea which field broke.
   const handleFilterChange = (next: CmsFilterValues) => {
     setFilterValues(next);
+    setUrlSearch(next.search);
     resetPage();
   };
 
@@ -470,7 +480,7 @@ export default function CmsPage({
         onClear={hasActiveFilters ? resetFilters : undefined}
         clearLabel={t("clearFilters")}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={filterValues.search}
           onChange={(value) => { handleFilterChange({ ...filterValues, search: value }); }}
           placeholder={
@@ -524,7 +534,7 @@ export default function CmsPage({
       <PhoneRecordList
         className="sm:hidden"
         label={title}
-        loading={loading}
+        loading={initialLoading}
         empty={loadError ? loadErrorContent : emptyContent}
         items={loadError ? [] : items.map((item) => ({
           key: `cms-${String(item._id)}`,
@@ -556,7 +566,7 @@ export default function CmsPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     {columns.map((col) => (

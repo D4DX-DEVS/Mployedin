@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { SearchField } from "@/components/shared/SearchField";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface AuditLogEntry {
   _id: string;
@@ -116,6 +117,7 @@ export default function AuditLogsPage() {
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState<string | null>(null);
   /* Actor search and role filter arrived with the merge of the separate
      activity-timeline page, which read this same collection through a second
@@ -332,7 +334,7 @@ export default function AuditLogsPage() {
           </>
         )}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={actorSearch}
           onChange={(value) => { setActorSearch(value); resetPage(); }}
           placeholder={t("filterByActor")}
@@ -447,7 +449,7 @@ export default function AuditLogsPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("auditLogs")}
-          loading={loading}
+          loading={initialLoading}
           empty={<EmptyState title={t("noAuditLogEntriesFound")} />}
           items={logs.map((log) => {
             const change = describeChange(log);
@@ -522,7 +524,7 @@ export default function AuditLogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={10} cols={8} />
               ) : logs.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

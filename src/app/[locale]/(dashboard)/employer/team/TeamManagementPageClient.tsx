@@ -1,5 +1,6 @@
 "use client";
 
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react";
@@ -41,6 +42,7 @@ import { FormMultiSelect } from "@/components/shared/AppForm";
 import { CompanyFunctionChecklist } from "@/components/features/employer/team/CompanyFunctionChecklist";
 import { InviteMemberDialog } from "@/components/features/employer/team/InviteMemberDialog";
 import type { PermissionFlag } from "@/lib/permissions/companyRoles";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 const ROLE_COLORS: Record<CompanyRole, string> = {
   owner: "bg-status-interview-bg text-status-interview border-status-interview/20",
@@ -76,8 +78,9 @@ export default function TeamManagementPage() {
   const { locale } = useParams<{ locale: string }>();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal } = usePagination(10);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const { data: teamData, isLoading: loading } = useTeam({ page, limit, search });
+  const initialLoading = useInitialLoading(loading);
   const members = teamData?.members ?? [];
   const teamStats = teamData?.stats ?? { active: 0, pending: 0, expired: 0, deactivated: 0, total: 0 };
   const updateMutation = useUpdateTeamMember();
@@ -304,7 +307,7 @@ export default function TeamManagementPage() {
       )}
 
       {/* Content */}
-      {loading ? (
+      {initialLoading ? (
         <div className="card-base overflow-hidden">
           <div className="divide-y divide-border/60">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -329,7 +332,7 @@ export default function TeamManagementPage() {
             onExportPdf={handleExportPdf}
             onClear={search ? () => setSearch("") : undefined}
           >
-            <InlineFilterSearch
+            <InlineFilterSearch busy={loading && !initialLoading}
               value={search}
               onChange={setSearch}
               placeholder={t("searchPlaceholder")}

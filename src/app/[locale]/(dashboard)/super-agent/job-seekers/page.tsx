@@ -43,6 +43,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import type { ExportColumn } from "@/lib/export";
 import type { ReferralSummary } from "@/lib/referrals/summary";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -106,8 +107,10 @@ export default function SuperAgentJobSeekersPage() {
 
   const [seekers, setSeekers] = useState<JobSeekerItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
+  const [urlSearch, setUrlSearch] = useUrlFilter("search", "");
+  const [filters, setFilters] = useState<Filters>(() => ({ ...INITIAL_FILTERS, search: urlSearch }));
   const [countryOptions, setCountryOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: t("allCountries") }]);
   const [jobCategoryOptions, setJobCategoryOptions] = useState<{ value: string; label: string }[]>([{ value: "", label: t("allIndustries") ?? "All Industries" }]);
   const [totalStats, setTotalStats] = useState({ total: 0, active: 0, avgCompletion: 0, withExperience: 0, premium: 0 });
@@ -191,6 +194,7 @@ export default function SuperAgentJobSeekersPage() {
 
   const handleClearFilters = () => {
     setFilters(INITIAL_FILTERS);
+    setUrlSearch("");
     pagination.resetPage();
   };
 
@@ -252,6 +256,7 @@ export default function SuperAgentJobSeekersPage() {
 
   const updateFilter = (key: keyof Filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+    if (key === "search") setUrlSearch(value);
     pagination.resetPage();
   };
 
@@ -388,7 +393,7 @@ export default function SuperAgentJobSeekersPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading} debounceMs={0}
           value={filters.search}
           onChange={(v) => updateFilter("search", v)}
           placeholder={t("searchPlaceholder")}
@@ -494,7 +499,7 @@ export default function SuperAgentJobSeekersPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("pageTitle")}
-          loading={loading}
+          loading={initialLoading}
           empty={view === "area" && !filters.search && filters.country === "all" && filters.experienceMin === "all" && filters.availability === "all" && filters.premium === "all" && filters.agent === "all" ? (
             <EmptyState
               title={areaAssigned ? t("area.emptyTitle") : t("area.noRegionTitle")}
@@ -597,7 +602,7 @@ export default function SuperAgentJobSeekersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={7} />
               ) : seekers.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

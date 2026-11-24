@@ -30,6 +30,7 @@ import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { singularizeTitle } from "@/lib/ui/singularize";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface AttributeItem {
   _id: string;
@@ -77,7 +78,8 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
   ];
   const [items, setItems] = useState<AttributeItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const initialLoading = useInitialLoading(loading);
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "sortOrder", { allow: ["name", "nameAr", "slug", "sortOrder", "createdAt"] });
@@ -249,7 +251,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
         onClear={hasActiveFilters ? () => { setSearch(""); setStatusFilter("all"); resetPage(); } : undefined}
         clearLabel={t("clear")}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(v) => { setSearch(v); resetPage(); }}
           placeholder={`${t("search")} ${displayTitle.toLowerCase()}…`}
@@ -306,7 +308,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
       <PhoneRecordList
         className="sm:hidden"
         label={displayTitle}
-        loading={loading}
+        loading={initialLoading}
         empty={
           <div className="flex flex-col items-center gap-2 text-center">
             <Inbox className="h-6 w-6 text-muted-foreground/50" />
@@ -348,7 +350,7 @@ export default function JobAttributePage({ category }: JobAttributePageProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="border-border/70 hover:bg-transparent">
                     {Array.from({ length: 6 }).map((_, j) => (

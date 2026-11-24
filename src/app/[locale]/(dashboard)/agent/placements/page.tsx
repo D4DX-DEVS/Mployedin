@@ -23,6 +23,7 @@ import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface Placement {
   _id: string;
@@ -46,6 +47,7 @@ export default function AgentPlacementsPage() {
   const pagination = usePagination();
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
@@ -192,7 +194,7 @@ export default function AgentPlacementsPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -241,7 +243,7 @@ export default function AgentPlacementsPage() {
       <PhoneRecordList
         className="sm:hidden"
         label={t("pageTitle")}
-        loading={loading}
+        loading={initialLoading}
         empty={emptyState}
         items={placements.map((p) => ({
           key: p._id,
@@ -266,7 +268,7 @@ export default function AgentPlacementsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {initialLoading ? (
               <TableBodySkeleton rows={5} cols={4} />
             ) : placements.length === 0 ? (
               <TableRow className="hover:bg-transparent">

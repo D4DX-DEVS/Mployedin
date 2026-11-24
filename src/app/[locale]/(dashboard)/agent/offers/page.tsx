@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatListDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -98,6 +99,7 @@ export default function AgentOffersPage() {
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [offers, setOffers] = useState<OfferItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   // Filters mirror into the query string: "offers awaiting a response" is a
   // dashboard queue row and a ⌘K action, and both need a URL to point at.
   const { filters, setFilter: updateFilter, resetFilters } = useUrlFilters<Filters>(
@@ -356,7 +358,7 @@ export default function AgentOffersPage() {
       />
 
       <InlineFilterBar className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none" onExportCsv={handleExportCsv} onExportExcel={handleExportExcel} onExportPdf={handleExportPdf}>
-        <InlineFilterSearch value={filters.search} onChange={(v) => updateFilter("search", v)} placeholder={t("filters.searchPlaceholder")} />
+        <InlineFilterSearch busy={loading && !initialLoading} value={filters.search} onChange={(v) => updateFilter("search", v)} placeholder={t("filters.searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect options={statusOptions} value={filters.status} onValueChange={(v) => updateFilter("status", v)} placeholder={t("filters.status")} className="w-36 shrink-0" />
@@ -384,7 +386,7 @@ export default function AgentOffersPage() {
       <PhoneRecordList
         className="sm:hidden"
         label={t("header.title")}
-        loading={loading}
+        loading={initialLoading}
         empty={<EmptyState title={t("empty")} icon={Inbox} />}
         items={offers.map((o) => {
           const { quick, menu } = offerActions(o);
@@ -409,7 +411,7 @@ export default function AgentOffersPage() {
       />
 
       <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
-        {loading ? (
+        {initialLoading ? (
           <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">

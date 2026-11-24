@@ -149,7 +149,7 @@ export function OtherConsentsTable({ pagination, onView }: OtherConsentsTablePro
           />
         }
       >
-        <InlineFilterSearch value={search} onChange={(value) => { setSearch(value); resetPage(); }} placeholder={t("searchPlaceholder")} />
+        <InlineFilterSearch debounceMs={0} value={search} onChange={(value) => { setSearch(value); resetPage(); }} placeholder={t("searchPlaceholder")} />
         {/* `contents`: from sm up these sit in the bar exactly as before; phones use phoneRow instead. */}
         <div className="contents max-sm:hidden">
         <SearchableSelect

@@ -126,10 +126,12 @@ describe("AdminApplicationsPage", () => {
     render(<AdminApplicationsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /clear filters/i })).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /clear filters/i }).length).toBeGreaterThan(0);
     });
 
-    await user.click(screen.getByRole("button", { name: /clear filters/i }));
+    // The bar's Clear and, once the list is known to be empty, the empty
+    // state's own Clear do the same thing; use the bar's.
+    await user.click(screen.getAllByRole("button", { name: /clear filters/i })[0]);
 
     expect(replaceMock).toHaveBeenCalledWith("/en/admin/applications");
     expect(paginationState.resetPage).toHaveBeenCalled();

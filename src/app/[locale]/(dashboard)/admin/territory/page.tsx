@@ -1,5 +1,6 @@
 "use client";
 
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ import { usePagination } from "@/hooks/usePagination";
 import type { RegionConflict } from "@/lib/superAgent/regions";
 import type { TerritoryRow, TerritorySuperAgentOption } from "@/lib/superAgent/territories";
 import { TerritoryDialog, type TerritoryFormValues } from "./_components/TerritoryDialog";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 const HEAD = "px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em]";
 const VISIBLE_REGIONS = 3;
@@ -45,11 +47,12 @@ export default function AdminTerritoryPage() {
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination(20);
   const { confirm, ConfirmDialogNode } = useConfirm();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const debouncedSearch = useDebounce(search, 300);
   const [rows, setRows] = useState<TerritoryRow[]>([]);
   const [superAgents, setSuperAgents] = useState<TerritorySuperAgentOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadError, setLoadError] = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -214,7 +217,7 @@ export default function AdminTerritoryPage() {
         onClear={search ? () => { setSearch(""); resetPage(); } : undefined}
         clearLabel={t("clearSearch")}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading} debounceMs={0}
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -256,7 +259,7 @@ export default function AdminTerritoryPage() {
           <PhoneRecordList
             className="p-3 sm:hidden max-sm:p-0"
             label={t("columnTerritory")}
-            loading={loading}
+            loading={initialLoading}
             empty={emptyState}
             items={rows.map((row) => {
               const shown = row.regions.slice(0, VISIBLE_REGIONS);
@@ -337,7 +340,7 @@ export default function AdminTerritoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {initialLoading ? (
                   <TableBodySkeleton rows={4} cols={5} />
                 ) : rows.length === 0 ? (
                   <TableRow className="hover:bg-transparent">

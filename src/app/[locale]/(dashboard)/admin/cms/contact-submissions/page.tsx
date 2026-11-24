@@ -42,6 +42,8 @@ import { TableSortControl, SortableTableHeader } from "@/components/shared/Table
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { formatCount, formatDate, formatDateTime } from "@/lib/ui/intlFormat";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 
 interface ContactItem {
   _id: string;
@@ -64,16 +66,18 @@ export default function ContactSubmissionsPage() {
   const { can } = usePermissions();
   const [items, setItems] = useState<ContactItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   /* The "new contact enquiry" notification links here with ?status=unread.
      Seeded from `useSearchParams` rather than `window.location`: this page is a
      client component but Next still renders it on the server, where reading
      `window` gives the fallback and the client gives the real value — the
      hydration mismatch that pattern always produces. */
   const searchParams = useSearchParams();
+  const [urlSearch, setUrlSearch] = useUrlFilter("search", "");
   const [filterValues, setFilterValues] = useState<CmsFilterValues>(() => {
     const defaults = getDefaultCmsFilterValues();
     const fromUrl = searchParams.get("status");
-    return fromUrl ? { ...defaults, status: fromUrl } : defaults;
+    return { ...defaults, search: urlSearch, ...(fromUrl ? { status: fromUrl } : {}) };
   });
   const [viewItem, setViewItem] = useState<ContactItem | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -115,8 +119,9 @@ export default function ContactSubmissionsPage() {
 
   const resetFilters = useCallback(() => {
     setFilterValues(getDefaultCmsFilterValues());
+    setUrlSearch("");
     resetPage();
-  }, [resetPage]);
+  }, [resetPage, setUrlSearch]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -141,6 +146,7 @@ export default function ContactSubmissionsPage() {
 
   const handleFilterChange = (next: CmsFilterValues) => {
     setFilterValues(next);
+    setUrlSearch(next.search);
     resetPage();
   };
 
@@ -291,7 +297,7 @@ export default function ContactSubmissionsPage() {
         onClear={hasActiveFilters ? resetFilters : undefined}
         clearLabel={t("clearFiltersButton")}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={filterValues.search}
           onChange={(value) => { handleFilterChange({ ...filterValues, search: value }); }}
           placeholder={t("searchPlaceholder")}
@@ -348,7 +354,7 @@ export default function ContactSubmissionsPage() {
       <PhoneRecordList
         className="sm:hidden"
         label={t("contactInbox")}
-        loading={loading}
+        loading={initialLoading}
         empty={emptyNode}
         items={items.map((item) => ({
           key: item._id,
@@ -402,7 +408,7 @@ export default function ContactSubmissionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="border-border/70 hover:bg-transparent">
                     {Array.from({ length: 6 }).map((_, j) => (

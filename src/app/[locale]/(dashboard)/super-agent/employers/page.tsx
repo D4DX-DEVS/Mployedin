@@ -43,6 +43,7 @@ import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 import { AssignAgentDialog } from "@/components/features/agent/AssignAgentDialog";
 import { useCanCreateEmployers } from "@/hooks/useEmployerOnboarding";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /** The super agent's assign route: their own agents only, their book only. */
 const SA_ASSIGN_ENDPOINT = (employerUserId: string) => `/api/super-agent/employers/${employerUserId}/agent`;
@@ -110,6 +111,7 @@ export default function SuperAgentEmployersPage() {
   const [employers, setEmployers] = useState<Employer[]>([]);
   const { data: clientPlans } = useClientPlans(employers.map((em) => em.userId));
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState(false);
   const router = useRouter();
   const locale = useLocale();
@@ -461,7 +463,7 @@ export default function SuperAgentEmployersPage() {
           )}
           moreActiveCount={[filters.verified].filter(Boolean).length}
         >
-          <InlineFilterSearch
+          <InlineFilterSearch busy={loading && !initialLoading}
             value={filters.search}
             onChange={(v) => { setFilter("search", v); resetPage(); }}
             placeholder={t("searchPlaceholder")}
@@ -568,7 +570,7 @@ export default function SuperAgentEmployersPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("pageTitle")}
-          loading={loading}
+          loading={initialLoading}
           empty={view === "region" && activeFilterCount === 0 && !filters.search ? (
             <EmptyState
               title={regionAssigned ? t("area.emptyTitle") : t("area.noRegionTitle")}
@@ -668,7 +670,7 @@ export default function SuperAgentEmployersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={6} />
               ) : employers.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

@@ -42,6 +42,7 @@ import { ShareJobDialog } from "@/components/features/agent/ShareJobDialog";
 import { IndustryChips, type IndustryFacet } from "./IndustryChips";
 import { useAgentJobActions } from "./useAgentJobActions";
 import { countryLabel } from "@/lib/jobs/countryFacets";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface JobItem {
   _id: string;
@@ -120,6 +121,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [employerCount, setEmployerCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadFailed, setLoadFailed] = useState(false);
   const [employers, setEmployers] = useState<EmployerOption[]>([]);
   const [shareJob, setShareJob] = useState<JobItem | null>(null);
@@ -547,7 +549,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
               onValueChange={(value) => { setWorkMode(value); resetPage(); }}
               placeholder={t("filters.allWorkModes")}
             />
-            <InlineFilterSearch
+            <InlineFilterSearch busy={loading && !initialLoading} debounceMs={0}
               value={location}
               onChange={(value) => { setLocation(value); resetPage(); }}
               placeholder={t("filters.locationPlaceholder")}
@@ -728,7 +730,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
         {isPhone && <PhoneRecordList
           className="sm:hidden"
           label={t("table.title")}
-          loading={loading}
+          loading={initialLoading}
           empty={emptyState}
           items={jobs.map((job) => {
             const jobHref = view === "all" ? `/${locale}/jobs/${job._id}` : `/${locale}/agent/jobs/${job._id}`;
@@ -770,7 +772,7 @@ export function AgentJobsWorkspace({ mode }: { mode: "my" | "browse" }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {initialLoading ? (
                   <TableBodySkeleton rows={5} cols={COLUMN_COUNT} />
                 ) : jobs.length === 0 ? (
                   <TableRow className="hover:bg-transparent">

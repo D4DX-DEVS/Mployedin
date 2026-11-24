@@ -24,6 +24,7 @@ import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatListDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface Commission {
   _id: string;
@@ -55,6 +56,7 @@ export default function AgentCommissionsPage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   // Query-string filters: "unpaid commissions" is a view the dashboard and the
   // ⌘K palette link to, so it needs an address of its own.
   const [filter, setFilter] = useUrlFilter("status", "all");
@@ -232,7 +234,7 @@ export default function AgentCommissionsPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { handleSearchChange(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -303,7 +305,7 @@ export default function AgentCommissionsPage() {
       <PhoneRecordList
         className="sm:hidden"
         label={t("pageTitle")}
-        loading={loading}
+        loading={initialLoading}
         empty={
           <EmptyState
             icon={Inbox}
@@ -345,7 +347,7 @@ export default function AgentCommissionsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {initialLoading ? (
               <TableBodySkeleton rows={5} cols={5} />
             ) : commissions.length === 0 ? (
               <TableRow className="hover:bg-transparent">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ import {
 import { formatCount } from "@/lib/ui/intlFormat";
 import { SuperAgentReportTabs } from "@/components/features/super-agent/SuperAgentReportTabs";
 import { InlineLabelled } from "@/components/shared/LabelledControl";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -137,8 +139,9 @@ export default function SuperAgentCommissionsReportPage() {
   const tc = useTranslations("common");
   const currentYear = new Date().getFullYear();
   const [yearFilter, setYearFilter] = useState(currentYear);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useUrlFilter("search", "", { debounceMs: 400 });
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [data, setData] = useState<ReportData | null>(null);
 
   const fetchReport = useCallback(async () => {
@@ -281,7 +284,7 @@ export default function SuperAgentCommissionsReportPage() {
             <p className="mt-0.5 text-xs text-muted-foreground">{t("monthlyTrendCaption")}</p>
           </div>
         </div>
-        {loading ? (
+        {initialLoading ? (
           <div className="h-[260px] animate-pulse rounded-xl bg-muted" />
         ) : hasChartData ? (
           <ResponsiveContainer width="100%" height={260}>
@@ -331,7 +334,7 @@ export default function SuperAgentCommissionsReportPage() {
                 onExportCsv={handleExportCsv}
                 onExportExcel={handleExportExcel}
               >
-                <InlineFilterSearch
+                <InlineFilterSearch busy={loading && !initialLoading}
                   value={searchQuery}
                   onChange={setSearchQuery}
                   placeholder={t("searchAgentPlaceholder")}
@@ -360,7 +363,7 @@ export default function SuperAgentCommissionsReportPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={6} />
               ) : filteredAgents.length === 0 ? (
                   <TableRow>

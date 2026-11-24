@@ -64,6 +64,7 @@ import {
   uploadExhibitionFiles,
   type ExhibitionAttachmentView,
 } from "@/components/features/exhibitions/attachmentsClient";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface ExhibitionRequest {
   _id: string;
@@ -249,6 +250,7 @@ export default function AgentExhibitionsPage() {
 
   const [items, setItems] = useState<ExhibitionRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useUrlFilter("category", "all");
@@ -678,7 +680,7 @@ export default function AgentExhibitionsPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); resetPage(); }} placeholder={t("searchPlaceholder")} />
+        <InlineFilterSearch busy={loading && !initialLoading} value={search} onChange={(v) => { setSearch(v); resetPage(); }} placeholder={t("searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect
@@ -731,7 +733,7 @@ export default function AgentExhibitionsPage() {
       <PhoneRecordList
         className="p-3 sm:hidden"
         label={t("title")}
-        loading={loading}
+        loading={initialLoading}
         empty={<EmptyState title={t("noRequests")} icon={Inbox} />}
         items={items.map((item) => {
           const { quick, menu } = requestActions(item);
@@ -758,7 +760,7 @@ export default function AgentExhibitionsPage() {
       />
 
       <section className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
-        {loading ? (
+        {initialLoading ? (
           <Table data-mobile-table="scroll">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">

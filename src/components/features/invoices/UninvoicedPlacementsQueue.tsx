@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Fragment } from "react";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ import {
 } from "lucide-react";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 import { SearchField } from "@/components/shared/SearchField";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface UninvoicedPlacement {
@@ -101,7 +104,9 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
   const ta = useTranslations("a11y");
   const [placements, setPlacements] = useState<UninvoicedPlacement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const initialLoading = useInitialLoading(loading);
+  const [search, setSearch] = useUrlFilter("placementSearch", "", { debounceMs: 400 });
+  const debouncedSearch = useDebounce(search, 350);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [total, setTotal] = useState(0);
@@ -129,7 +134,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (search.trim()) params.set("search", search.trim());
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
 
       const res = await fetch(`/api/invoices/uninvoiced-placements?${params}`);
       if (!res.ok) throw new Error("Failed to load uninvoiced placements");
@@ -141,7 +146,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search]);
+  }, [page, limit, debouncedSearch]);
 
   useEffect(() => { fetchPlacements(); }, [fetchPlacements]);
 
@@ -332,7 +337,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
         <PhoneRecordList
           className="p-3 sm:hidden"
           label={t("uninvoicedPlacements")}
-          loading={loading}
+          loading={initialLoading}
           empty={
             <div className="flex flex-col items-center gap-3 text-center">
               <div className="rounded-3xl bg-emerald-50 p-3">
@@ -448,7 +453,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="border-border/70 hover:bg-transparent">
                     {Array.from({ length: 10 }).map((_, j) => (

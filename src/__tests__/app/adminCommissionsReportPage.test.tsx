@@ -17,6 +17,8 @@ import AdminCommissionsReportPage from "@/app/[locale]/(dashboard)/admin/commiss
 jest.mock("@/components/shared/PhoneRecordList", () => ({ PhoneRecordList: () => null }));
 jest.mock("next/navigation", () => ({
   usePathname: () => "/en/admin/commissions-report",
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const originalFetch = global.fetch;

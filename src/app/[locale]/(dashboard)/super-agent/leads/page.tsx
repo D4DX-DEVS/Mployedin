@@ -40,6 +40,7 @@ import { knownStageDetails, missingStageFields } from "@/lib/leads/stageRules";
 import { MoveStageDialog } from "../../agent/leads/_components/MoveStageDialog";
 import { LeadWorkspace, type WorkspaceTab } from "../../agent/leads/_components/LeadWorkspace";
 import { getStageConfig, type Lead as WorkspaceLead } from "../../agent/leads/_components/leadShared";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -181,6 +182,7 @@ export default function SuperAgentLeadsPage() {
   // Per-stage totals across the whole filtered pipeline, from the API.
   const [apiStageCounts, setApiStageCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState("");
   // In the URL, not just in state: the dashboard's "overdue follow-ups" row
   // links straight to ?hasFollowUp=overdue, and that only works if this page
@@ -621,7 +623,7 @@ export default function SuperAgentLeadsPage() {
             </div>
           ) : null}
         >
-          <InlineFilterSearch
+          <InlineFilterSearch busy={loading && !initialLoading}
             value={filters.search}
             onChange={(v) => updateFilter("search", v)}
             placeholder={t("searchPlaceholder")}
@@ -728,7 +730,7 @@ export default function SuperAgentLeadsPage() {
           <PhoneRecordList
             className="sm:hidden"
             label={t("pageTitle")}
-            loading={loading}
+            loading={initialLoading}
             empty={<EmptyState title={t("noLeadsFoundTitle")} description={t("noLeadsFoundMessage")} icon={Target} />}
             items={leads.map((lead) => {
               const isOverdue = lead.followUpAt && new Date(lead.followUpAt) < new Date();
@@ -821,7 +823,7 @@ export default function SuperAgentLeadsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {initialLoading ? (
                   <TableBodySkeleton rows={5} cols={6} />
                 ) : leads.length === 0 ? (
                   <TableRow className="hover:bg-transparent">

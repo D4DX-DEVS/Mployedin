@@ -41,6 +41,7 @@ import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAna
 import { UninvoicedPlacementsQueue } from "@/components/features/invoices/UninvoicedPlacementsQueue";
 import { LinkHiresDialog } from "@/app/[locale]/(dashboard)/admin/invoices/_components/LinkHiresDialog";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -132,10 +133,11 @@ export default function AdminInvoicesPage() {
   // Table data
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Filters
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useUrlFilter("search", "", { debounceMs: 400 });
   // In the URL so dashboard rows can deep-link and back/refresh keep the view.
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "", { allow: INVOICE_STATUSES });
   /** Rows needing a person: an unverified payment notice, an open dispute, or a recruitment invoice line not yet linked to a hire. */
@@ -473,7 +475,7 @@ export default function AdminInvoicesPage() {
             className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
             onExportCsv={invoices.length > 0 ? handleExportCsv : undefined}
           >
-            <InlineFilterSearch
+            <InlineFilterSearch busy={loading && !initialLoading}
               value={searchTerm}
               onChange={(value) => { setSearchTerm(value); resetPage(); }}
               placeholder={t("searchPlaceholder")}
@@ -562,7 +564,7 @@ export default function AdminInvoicesPage() {
           <PhoneRecordList
             className="sm:hidden"
             label={t("title")}
-            loading={loading}
+            loading={initialLoading}
             empty={emptyNode}
             items={invoices.map((inv) => {
               const agentComm = inv.commissions?.find(c => c.role === "agent");
@@ -630,7 +632,7 @@ export default function AdminInvoicesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {loading ? (
+                  {initialLoading ? (
                     <TableBodySkeleton rows={5} cols={12} />
                   ) : invoices.length === 0 ? (
                     <TableRow className="border-border/70 hover:bg-transparent">

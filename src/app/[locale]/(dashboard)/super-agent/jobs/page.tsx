@@ -77,6 +77,7 @@ import { ShareJobDialog } from "@/components/features/agent/ShareJobDialog";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
 import { formatCurrency } from "@/lib/currency";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ────────────────────────────── Types ────────────────────────────── */
 
@@ -189,6 +190,7 @@ export default function SuperAgentJobsPage() {
 
   const [jobs, setJobs] = useState<RegionalJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
@@ -842,7 +844,7 @@ export default function SuperAgentJobsPage() {
           )}
           moreActiveCount={activeFilterCount}
         >
-          <InlineFilterSearch
+          <InlineFilterSearch busy={loading && !initialLoading}
             value={searchQuery}
             onChange={handleSearchChange}
             placeholder={t("searchPlaceholder")}
@@ -940,7 +942,7 @@ export default function SuperAgentJobsPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("pageTitle")}
-          loading={loading}
+          loading={initialLoading}
           empty={
             <EmptyState
               title={t("noJobsFound")}
@@ -1014,7 +1016,7 @@ export default function SuperAgentJobsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {initialLoading ? (
                   <TableBodySkeleton rows={5} cols={5} />
                 ) : jobs.length === 0 ? (
                   <TableRow className="hover:bg-transparent">

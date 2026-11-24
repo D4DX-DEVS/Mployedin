@@ -32,6 +32,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatListDate, formatTime } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -126,6 +127,7 @@ export default function AgentInterviewsPage() {
   /* Data state */
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadError, setLoadError] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -509,7 +511,7 @@ export default function AgentInterviewsPage() {
           </>
         )}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
+        <InlineFilterSearch busy={loading && !initialLoading} value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect
@@ -591,7 +593,7 @@ export default function AgentInterviewsPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("pageTitle")}
-          loading={loading}
+          loading={initialLoading}
           empty={emptyState}
           items={interviews.map((iv) => {
             const { open, awaitingOutcome } = interviewState(iv);
@@ -668,7 +670,7 @@ export default function AgentInterviewsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={columnCount} />
               ) : interviews.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

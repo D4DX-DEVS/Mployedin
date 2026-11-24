@@ -55,6 +55,7 @@ import {
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { useSearchParams } from "next/navigation";
 import { UpgradeRequestsPanel, usePendingUpgradeCount } from "./_components/UpgradeRequestsPanel";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -103,7 +104,7 @@ export default function AdminSubscriptionsPage() {
     searchParams.get("tab") === "requests" ? "requests" : "table",
   );
   const { data: pendingRequests = 0 } = usePendingUpgradeCount();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useUrlFilter("search", "", { debounceMs: 400 });
   const [selectedUser, setSelectedUser] = useState<SearchUser | null>(null);
 
   // ── KPI Stats ──
@@ -288,7 +289,7 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
   };
   /** Same column flips it; a new one starts latest first. */
   const sortByColumn = (field: string) => setSort(field, field === sortBy && sortOrder === "desc" ? "asc" : "desc");
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useUrlFilter("subscriberSearch", "", { debounceMs: 400 });
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   /** Only arrives from the admin dashboard's "ending within 7 days" row. */
@@ -309,6 +310,7 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
   );
 
   const { data, isLoading } = useAdminSubscriptions(queryFilters);
+  const initialLoading = useInitialLoading(isLoading);
   const subscriptions = data?.subscriptions ?? [];
 
   // Sync total from API response
@@ -521,7 +523,7 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
               </div>
             }
           >
-            <InlineFilterSearch
+            <InlineFilterSearch busy={isLoading && !initialLoading}
               value={searchInput}
               onChange={(v) => { setSearchInput(v); resetPage(); }}
               placeholder={t("searchPlaceholder")}
@@ -614,7 +616,7 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
         <PhoneRecordList
           className="p-3 sm:hidden max-sm:p-0"
           label={t("tableHeaderUser")}
-          loading={isLoading}
+          loading={initialLoading}
           empty={
             <div className="text-center text-muted-foreground">
               <Crown className="h-8 w-8 mx-auto mb-2 opacity-30" />
@@ -716,7 +718,7 @@ function SubscribersTable({ viewTabs }: { viewTabs: React.ReactNode }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {initialLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell colSpan={10} className="py-3">

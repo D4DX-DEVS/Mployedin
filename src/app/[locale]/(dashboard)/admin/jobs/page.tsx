@@ -35,6 +35,7 @@ import { JobsFilterSheet } from "./_components/JobsFilterSheet";
 import { toUserFacingError } from "@/lib/errors/user-facing";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 import { useConfirm } from "@/hooks/useConfirm";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -153,6 +154,7 @@ export default function AdminJobsPage() {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [serverApplicants, setServerApplicants] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Filters address the view. Before this, no admin list except applications
   // read anything from the query string, so a dashboard alert, a quick action
@@ -482,7 +484,7 @@ export default function AdminJobsPage() {
                 ariaLabel={t("filterTypeLabel")}
               />
             </div>
-            <InlineFilterSearch
+            <InlineFilterSearch busy={loading && !initialLoading}
               value={locationFilter}
               onChange={(value) => { setLocationFilter(value); resetPage(); }}
               placeholder={t("locationFilterPlaceholder")}
@@ -544,7 +546,7 @@ export default function AdminJobsPage() {
           </p>
         ) : null}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -659,9 +661,9 @@ export default function AdminJobsPage() {
           list below still rendered the "No jobs yet" empty state — so a failed
           load told the admin both that something broke and that there is
           nothing here. It is one branch now, and it offers a retry. */}
-      {errorMessage && !loading ? (
+      {errorMessage && !initialLoading ? (
         <ErrorState description={errorMessage} onRetry={() => void fetchJobs()} />
-      ) : loading ? (
+      ) : initialLoading ? (
         <ListSkeleton count={5} itemClassName="h-40 rounded-3xl" className="space-y-4" />
       ) : jobs.length === 0 ? (
         <EmptyState

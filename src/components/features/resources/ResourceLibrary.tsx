@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { Inbox, Pencil, Trash2, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { ResourceCard } from "./ResourceCard";
 import { ResourceDetailPanel } from "./ResourceDetailPanel";
 import { useResourceDownload } from "./useResourceDownload";
 import { RESOURCE_CATEGORY_KEYS, type Resource, type ResourceFile } from "./types";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -62,11 +64,12 @@ export function ResourceLibrary({ manage, reloadKey = 0, onSummary }: ResourceLi
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [items, setItems] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState(false);
   const [category, setCategory] = useState("all");
   const [fileType, setFileType] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -146,7 +149,7 @@ export function ResourceLibrary({ manage, reloadKey = 0, onSummary }: ResourceLi
         onClear={filtered ? clearFilters : undefined}
         clearLabel={t("clear")}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
+        <InlineFilterSearch busy={loading && !initialLoading} value={search} onChange={setSearch} placeholder={t("searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect id="resources-category" className={INLINE_FILTER_CONTROL} options={categoryOptions} value={category} onValueChange={withPageReset(setCategory)} placeholder={t("filterCategory")} ariaLabel={t("filterCategory")} />
@@ -172,7 +175,7 @@ export function ResourceLibrary({ manage, reloadKey = 0, onSummary }: ResourceLi
         </FilterField>
       </PhoneFilterSheet>
 
-      {loading ? (
+      {initialLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }, (_, i) => <CardSkeleton key={i} />)}
         </div>

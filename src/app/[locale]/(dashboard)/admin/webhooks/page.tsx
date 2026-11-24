@@ -39,6 +39,7 @@ import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { usePagination } from "@/hooks/usePagination";
 import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 const EVENTS = [
   "invoice.created",
@@ -84,6 +85,7 @@ export default function AdminWebhooksPage() {
   const [webhooks, setWebhooks] = useState<WebhookItem[]>([]);
   const [stats, setStats] = useState({ active: 0, inactive: 0, failed: 0, healthy: 0 });
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -91,7 +93,7 @@ export default function AdminWebhooksPage() {
   const [newSecret, setNewSecret] = useState<string | null>(null);
 
   // Filter state
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   /* System Health and the "Failing webhooks" quick action both link here with
      ?status=failing; in component state that filter would be ignored on arrival. */
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all");
@@ -685,7 +687,7 @@ export default function AdminWebhooksPage() {
         onClear={activeFilterCount > 0 ? clearAllFilters : undefined}
         clearLabel={t("clearNFilters", { count: activeFilterCount })}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -768,7 +770,7 @@ export default function AdminWebhooksPage() {
           <PhoneRecordList
             className="p-3 sm:hidden"
             label={t("name")}
-            loading={loading}
+            loading={initialLoading}
             empty={emptyState}
             items={filteredWebhooks.map((wh) => ({
               key: wh._id,
@@ -817,7 +819,7 @@ export default function AdminWebhooksPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {initialLoading ? (
                   <TableBodySkeleton rows={3} cols={6} />
                 ) : filteredWebhooks.length === 0 ? (
                   <TableRow className="hover:bg-transparent">

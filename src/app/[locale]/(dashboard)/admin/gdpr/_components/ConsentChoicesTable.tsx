@@ -170,7 +170,7 @@ export function ConsentChoicesTable({ days, periodChanged, onResetPeriod, pagina
           />
         }
       >
-        <InlineFilterSearch
+        <InlineFilterSearch debounceMs={0}
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("choicesSearchPlaceholder")}

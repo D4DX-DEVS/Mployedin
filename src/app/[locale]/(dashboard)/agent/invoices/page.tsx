@@ -28,6 +28,7 @@ import { InvoiceDetailView } from "@/components/features/invoices/InvoiceDetailV
 import { RevenueAnalyticsPanel } from "@/components/features/invoices/RevenueAnalyticsPanel";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
 import { useLocale } from "next-intl";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Invoice {
@@ -73,6 +74,7 @@ export default function AgentInvoicesPage() {
   const [activeView, setActiveView] = useState<"table" | "analytics">("table");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
@@ -223,7 +225,7 @@ export default function AgentInvoicesPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -295,7 +297,7 @@ export default function AgentInvoicesPage() {
               <section className="workspace-panel-surface overflow-hidden rounded-2xl sm:rounded-3xl max-sm:!overflow-visible max-sm:!rounded-none max-sm:!border-0 max-sm:!bg-transparent max-sm:!shadow-none max-sm:[&>ul]:!p-0">
                 <InvoiceTable
                   invoices={invoices}
-                  loading={loading}
+                  loading={initialLoading}
                   role="agent"
                   onSelect={setSelectedInvoiceId}
                   hasActiveFilters={hasActiveFilters}

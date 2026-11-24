@@ -38,6 +38,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface Commission {
   _id: string;
@@ -62,12 +63,13 @@ export default function SuperAgentCommissionsPage() {
   // aggregate), so the KPI tiles don't describe only the visible page.
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState(false);
   const [showOverrideInfo, setShowOverrideInfo] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilterState] = useUrlFilter("status", "");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useUrlFilter("search", "", { debounceMs: 400 });
   const [typeFilter, setTypeFilter] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -264,7 +266,7 @@ export default function SuperAgentCommissionsPage() {
           )}
           moreActiveCount={[typeFilter, currencyFilter, dateFrom, dateTo].filter(Boolean).length}
         >
-          <InlineFilterSearch
+          <InlineFilterSearch busy={loading && !initialLoading}
             value={searchQuery}
             onChange={(v) => { setSearchQuery(v); resetPage(); }}
             placeholder={t("searchPlaceholder")}
@@ -342,7 +344,7 @@ export default function SuperAgentCommissionsPage() {
           <PhoneRecordList
             className="sm:hidden"
             label={t("pageTitle")}
-            loading={loading}
+            loading={initialLoading}
             empty={<EmptyState title={t("emptyStateTitle")} description={t("emptyStateMessage")} icon={Coins} />}
             items={commissions.map((c) => {
               const agentName = c.agentId?.fullName ?? c.agentId?.userId?.name ?? "—";
@@ -402,7 +404,7 @@ export default function SuperAgentCommissionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {initialLoading ? (
                   <TableBodySkeleton rows={5} cols={7} />
                 ) : commissions.length === 0 ? (
                   <TableRow className="hover:bg-transparent">

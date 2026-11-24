@@ -44,6 +44,7 @@ import { referralUrlFor, type ReferralAudience } from "@/lib/referrals/url";
 import { registrationDisplayName } from "@/lib/referrals/display";
 import { formatDate as formatIntlDate } from "@/lib/ui/intlFormat";
 import { RowExpandToggle, isRowToggleClick } from "@/components/shared/RowExpandToggle";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 function formatDate(d: string | undefined): string {
   return d ? formatIntlDate(d, { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -74,7 +75,7 @@ export default function AdminReferralLinksPage() {
   const tCommon = useTranslations("common");
   const { locale } = useParams<{ locale: string }>();
   const { page, limit, setPage, setLimit, resetPage } = usePagination();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copyMap, setCopyMap] = useState<Record<string, boolean>>({});
   const [audienceFilter, setAudienceFilter] = useState<ReferralAudience | "">("");
@@ -103,6 +104,7 @@ export default function AdminReferralLinksPage() {
   const filters = { page, limit, search, audience: audienceFilter || undefined, sortBy: sortBy as ReferralSortField, sortOrder };
 
   const { data, isLoading } = useReferralLinks(filters);
+  const initialLoading = useInitialLoading(isLoading);
   const updateMutation = useUpdateReferralLink();
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
 
@@ -214,7 +216,7 @@ export default function AdminReferralLinksPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={isLoading && !initialLoading}
           value={search}
           onChange={(v) => { setSearch(v); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -267,7 +269,7 @@ export default function AdminReferralLinksPage() {
       <PhoneRecordList
         className="sm:hidden"
         label={t("pageTitle")}
-        loading={isLoading}
+        loading={initialLoading}
         empty={
           <div className="flex flex-col items-center gap-2 text-center">
             <Link2 className="h-10 w-10 text-muted-foreground/40" />
@@ -308,7 +310,7 @@ export default function AdminReferralLinksPage() {
       />
 
       {/* Table */}
-      {isLoading ? (
+      {initialLoading ? (
         <div className="workspace-panel-surface overflow-hidden rounded-2xl max-sm:hidden">
           <Table data-mobile-table="scroll">
             <TableHeader>

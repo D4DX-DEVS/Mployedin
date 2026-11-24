@@ -51,6 +51,7 @@ import type { ExportColumn } from "@/lib/export";
 import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { totalExperience, type DatedJob } from "@/lib/jobseekers/experience";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface ApplicationItem {
   _id: string;
@@ -114,6 +115,7 @@ export default function AgentCandidatesPage() {
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState(false);
   // This page already read jobId and status from the URL on mount but then
   // stopped writing them back, and search was never in the URL at all — so
@@ -447,7 +449,7 @@ export default function AgentCandidatesPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch value={search} onChange={(v) => { setSearch(v); pagination.resetPage(); }} placeholder={t("searchPlaceholder")} />
+        <InlineFilterSearch busy={loading && !initialLoading} value={search} onChange={(v) => { setSearch(v); pagination.resetPage(); }} placeholder={t("searchPlaceholder")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <SearchableSelect
@@ -501,7 +503,7 @@ export default function AgentCandidatesPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("candidatesPipeline")}
-          loading={loading}
+          loading={initialLoading}
           empty={<EmptyState title={t("noCandidatesFound")} description={t("noCandidatesHint")} icon={Inbox} />}
           items={applications.map((app) => {
             const name = app.jobSeekerId?.userId?.name ?? tc("unknownCandidate");
@@ -549,7 +551,7 @@ export default function AgentCandidatesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={7} />
               ) : applications.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

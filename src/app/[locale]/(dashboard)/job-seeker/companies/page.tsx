@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -50,8 +51,8 @@ export default function CompaniesListPage() {
   const t = useTranslations("jobSeekerCompanies");
   const tCommon = useTranslations("common");
   const locale = useLocale();
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useUrlFilter("search", "", { debounceMs: 400 });
+  const [search, setSearch] = useState(searchInput);
   const [industryFilter, setIndustryFilter] = useState(ALL_INDUSTRIES);
   const pagination = usePagination();
   const { resetPage, paginationParams, updateTotal } = pagination;

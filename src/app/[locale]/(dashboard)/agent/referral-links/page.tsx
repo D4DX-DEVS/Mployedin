@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useState, useCallback, Fragment } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -47,6 +49,7 @@ import { WorkspaceHeader } from "@/components/shared/WorkspaceHeader";
 import { referralUrlFor, type ReferralAudience } from "@/lib/referrals/url";
 import { registrationDisplayName } from "@/lib/referrals/display";
 import { formatListDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 export default function AgentReferralLinksPage() {
   const { locale } = useParams<{ locale: string }>();
@@ -54,7 +57,7 @@ export default function AgentReferralLinksPage() {
   const tc = useTranslations("common");
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const pagination = usePagination();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [copyMap, setCopyMap] = useState<Record<string, boolean>>({});
@@ -68,6 +71,7 @@ export default function AgentReferralLinksPage() {
   const filters = { page: pagination.page, limit: pagination.limit, search };
 
   const { data, isLoading } = useReferralLinks(filters);
+  const initialLoading = useInitialLoading(isLoading);
   const createMutation = useCreateReferralLink();
   const updateMutation = useUpdateReferralLink();
   const deleteMutation = useDeleteReferralLink();
@@ -247,7 +251,7 @@ export default function AgentReferralLinksPage() {
         onExportPdf={handleExportPdf}
         onClear={search ? () => { setSearch(""); pagination.resetPage(); } : undefined}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={isLoading && !initialLoading}
           value={search}
           onChange={(v) => { setSearch(v); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -258,7 +262,7 @@ export default function AgentReferralLinksPage() {
       <PhoneRecordList
         className="p-3 sm:hidden"
         label={t("pageTitle")}
-        loading={isLoading}
+        loading={initialLoading}
         empty={
           <EmptyState
             title={search.trim() ? t("noResultsTitle") : t("emptyStateTitle")}
@@ -325,7 +329,7 @@ export default function AgentReferralLinksPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={6} />
               ) : links.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

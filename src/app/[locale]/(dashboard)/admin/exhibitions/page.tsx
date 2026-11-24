@@ -69,6 +69,7 @@ import {
   type MatchedResource,
 } from "./_lib/exhibitions";
 import { adminWorkflowActions } from "./_lib/workflowActions";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 const HEAD = "px-3 py-3 sm:px-3 text-xs font-semibold uppercase tracking-[0.12em]";
 
@@ -130,6 +131,7 @@ export default function AdminExhibitionsPage() {
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [budgets, setBudgets] = useState<BudgetTotalRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadError, setLoadError] = useState(false);
 
   // Status and sort live in the URL so the dashboard's exhibition rows land on
@@ -147,7 +149,7 @@ export default function AdminExhibitionsPage() {
   const [countryFilter, setCountryFilter] = useState("all");
   const [budgetRange, setBudgetRange] = useState("all");
   const [reviewerFilter, setReviewerFilter] = useState("all");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const debouncedSearch = useDebounce(search.trim(), 300);
   const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
@@ -630,7 +632,7 @@ export default function AdminExhibitionsPage() {
           </>
         )}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchRequestsAgentsEvents")} />
+        <InlineFilterSearch busy={loading && !initialLoading} debounceMs={0} value={search} onChange={setSearch} placeholder={t("searchRequestsAgentsEvents")} />
         <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           {!boardView && (
@@ -805,7 +807,7 @@ export default function AdminExhibitionsPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("exhibitionOperationsCenter")}
-          loading={loading}
+          loading={initialLoading}
           empty={
             <EmptyState
               title={t("noExhibitionRequestsFound")}
@@ -900,7 +902,7 @@ export default function AdminExhibitionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {initialLoading ? (
                   <TableBodySkeleton rows={pageSize} cols={7} />
                 ) : items.length === 0 ? (
                   <TableRow className="hover:bg-transparent">
