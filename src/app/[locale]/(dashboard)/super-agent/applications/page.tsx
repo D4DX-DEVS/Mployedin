@@ -29,6 +29,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -78,6 +79,7 @@ export default function SuperAgentApplicationsPage() {
   const tc = useTranslations("common");
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadFailed, setLoadFailed] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [agentOptions, setAgentOptions] = useState<{ value: string; label: string }[]>([{ value: "all", label: t("allAgentsPlaceholder") }]);
@@ -175,7 +177,7 @@ export default function SuperAgentApplicationsPage() {
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
         >
-          <InlineFilterSearch
+          <InlineFilterSearch busy={loading && !initialLoading}
             value={filters.search}
             onChange={(v) => { setFilter("search", v); pagination.resetPage(); }}
             placeholder={t("searchPlaceholder")}
@@ -235,7 +237,7 @@ export default function SuperAgentApplicationsPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("pageTitle")}
-          loading={loading}
+          loading={initialLoading}
           empty={<EmptyState title={t("emptyState.title")} description={t("emptyState.subtitle")} icon={FileText} />}
           items={applications.map((a) => ({
             key: a._id,
@@ -279,7 +281,7 @@ export default function SuperAgentApplicationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={5} />
               ) : applications.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

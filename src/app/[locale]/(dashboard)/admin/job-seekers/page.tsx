@@ -51,6 +51,8 @@ import {
   splitJobSeekerSort, joinJobSeekerSort, type JobSeekerSortField,
 } from "./_components/JobSeekersFilterPanel";
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface JobSeeker {
   _id: string;
@@ -141,6 +143,7 @@ export default function AdminJobSeekersPage() {
   // ── Data state ──────────────────────────────────────────
   const [jobSeekers, setJobSeekers] = useState<JobSeeker[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadError, setLoadError] = useState(false);
   const [editItem, setEditItem] = useState<JobSeeker | null>(null);
   // `source: "file"` opens the original upload; otherwise the viewer opens on the Standardised CV.
@@ -154,6 +157,7 @@ export default function AdminJobSeekersPage() {
   /* In the URL so a ⌘K hit, an application row or a notification can open this
      list already narrowed to one candidate. */
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  const debouncedSearch = useDebounce(search, 350);
   const [filters, setFilters] = useState<JobSeekerFilters>(EMPTY_JOB_SEEKER_FILTERS);
 
   const updateFilters = (patch: Partial<JobSeekerFilters>) => {
@@ -261,7 +265,7 @@ export default function AdminJobSeekersPage() {
   // ── Fetch job seekers ───────────────────────────────────
   const fetchJobSeekers = useCallback(async () => {
     setLoading(true);
-    const params = seekerListParams(search, filters);
+    const params = seekerListParams(debouncedSearch, filters);
     params.set("page", String(page));
     params.set("limit", String(limit));
     params.set("industryCounts", "1");
@@ -288,7 +292,7 @@ export default function AdminJobSeekersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, filters, closestTo, page, limit]);
+  }, [debouncedSearch, filters, closestTo, page, limit]);
 
   useEffect(() => {
     const timeout = setTimeout(fetchJobSeekers, 300);
@@ -772,7 +776,7 @@ export default function AdminJobSeekersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {initialLoading ? (
               <TableBodySkeleton rows={5} cols={columnCount} />
             ) : jobSeekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">

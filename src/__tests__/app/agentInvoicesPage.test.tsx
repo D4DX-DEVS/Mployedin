@@ -198,6 +198,7 @@ describe("AgentInvoicesPage search", () => {
 
     await user.type(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), "A");
 
-    expect(paginationState.resetPage).toHaveBeenCalled();
+    // The search box waits for typing to pause before it applies the term.
+    await waitFor(() => expect(paginationState.resetPage).toHaveBeenCalled());
   });
 });

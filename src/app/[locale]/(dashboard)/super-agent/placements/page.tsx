@@ -31,6 +31,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -157,6 +158,7 @@ export default function SuperAgentPlacementsPage() {
 
   const [placements, setPlacements] = useState<Placement[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [search, setSearchState] = useUrlFilter("search", "", { debounceMs: 400 });
@@ -469,7 +471,7 @@ export default function SuperAgentPlacementsPage() {
           )}
           moreActiveCount={[filters.currency, filters.salaryMin, filters.salaryMax, filters.agentId, filters.employerId, filters.dateFrom, filters.dateTo].filter(Boolean).length}
         >
-          <InlineFilterSearch
+          <InlineFilterSearch busy={loading && !initialLoading}
             value={search}
             onChange={(v) => { setSearchState(v); resetPage(); }}
             placeholder={t("searchPlaceholder")}
@@ -524,7 +526,7 @@ export default function SuperAgentPlacementsPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("pageTitle")}
-          loading={loading}
+          loading={initialLoading}
           empty={
             <EmptyState
               title={t("emptyStateTitle")}
@@ -577,7 +579,7 @@ export default function SuperAgentPlacementsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={4} />
               ) : placements.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

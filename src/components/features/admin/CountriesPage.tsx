@@ -29,6 +29,7 @@ import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { TableSortControl } from "@/components/shared/TableSortControl";
 import { InlineFilterBar, InlineFilterSearch, INLINE_FILTER_CONTROL } from "@/components/shared/InlineFilterBar";
 import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface CountryItem {
   _id: string;
@@ -76,7 +77,8 @@ export default function CountriesPage() {
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [items, setItems] = useState<CountryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const initialLoading = useInitialLoading(loading);
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "sortOrder", { allow: ["name", "nameAr", "code", "sortOrder"] });
@@ -243,7 +245,7 @@ export default function CountriesPage() {
         onClear={hasActiveFilters ? () => { setSearch(""); setStatusFilter("all"); resetPage(); } : undefined}
         clearLabel={t("clear")}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(v) => { setSearch(v); resetPage(); }}
           placeholder={t("searchCountries")}
@@ -300,7 +302,7 @@ export default function CountriesPage() {
       <PhoneRecordList
         className="sm:hidden"
         label={t("countriesTitle")}
-        loading={loading}
+        loading={initialLoading}
         empty={
           <div className="flex flex-col items-center gap-2 text-center">
             <Inbox className="h-5 w-5 text-muted-foreground/50" />
@@ -351,7 +353,7 @@ export default function CountriesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i} className="border-border/70 hover:bg-transparent">
                     {Array.from({ length: 10 }).map((_, j) => (

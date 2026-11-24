@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { usePagination } from "@/hooks/usePagination";
 import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { cn } from "@/lib/utils";
 import { csrfFetch } from "@/lib/security/csrf-client";
@@ -101,6 +102,7 @@ export function StaffBackgroundChecks() {
   const [overview, setOverview] = useState<CheckOverview | null>(null);
   const [items, setItems] = useState<StaffBackgroundCheck[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [failed, setFailed] = useState(false);
   // `?checkId=` opens one check — the assignment notification links here.
   const [openId, setOpenId] = useUrlFilter("checkId", "");
@@ -281,7 +283,7 @@ export function StaffBackgroundChecks() {
                 candidate name and status, then facts with action. */}
             <PhoneRecordList
               className="mt-4 sm:hidden"
-              loading={loading}
+              loading={initialLoading}
               label={t("pageTitle")}
               items={items.map((check) => ({
                 key: check._id,
@@ -312,7 +314,7 @@ export function StaffBackgroundChecks() {
                   </TableRow>
                 </TableHeader>
                 <TableBody aria-busy={loading}>
-                  {loading
+                  {initialLoading
                     ? Array.from({ length: Math.min(limit, 10) }).map((_, i) => (
                         <TableRow key={i} className="hover:bg-transparent">
                           {Array.from({ length: COLUMNS }).map((__, j) => (

@@ -40,6 +40,7 @@ import { PaginationControls } from "@/components/shared/PaginationControls";
 import { SuperAgentSection } from "@/components/features/super-agent/WorkspacePage";
 import { DashboardPageHeader } from "@/components/shared/DashboardPageHeader";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 // Helper to create status options with translations
 function getStatusOptions(t: ReturnType<typeof useTranslations>, allLabel: string) {
@@ -123,6 +124,7 @@ export default function SuperAgentExhibitionsPage() {
   const [summary, setSummary] = useState<QueueSummary>(EMPTY_SUMMARY);
   const [countries, setCountries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadError, setLoadError] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
@@ -305,7 +307,7 @@ export default function SuperAgentExhibitionsPage() {
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
         >
-          <InlineFilterSearch value={filters.search} onChange={(v) => applyFilter("search", v)} placeholder={t("searchPlaceholder")} />
+          <InlineFilterSearch busy={loading && !initialLoading} value={filters.search} onChange={(v) => applyFilter("search", v)} placeholder={t("searchPlaceholder")} />
           <PhoneFiltersButton activeCount={phoneFilterCount} onClick={() => setFilterSheetOpen(true)} />
           {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
           <div className="contents max-sm:hidden">
@@ -423,7 +425,7 @@ export default function SuperAgentExhibitionsPage() {
           <>
           <ExhibitionMobileList
             items={items}
-            loading={loading}
+            loading={initialLoading}
             statusLabels={statusLabels}
             priorityLabels={priorityLabels}
             categoryLabels={categoryLabels}
@@ -462,7 +464,7 @@ export default function SuperAgentExhibitionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {initialLoading ? (
                   <TableBodySkeleton rows={5} cols={7} />
                 ) : items.length === 0 ? (
                   <TableRow className="hover:bg-transparent">

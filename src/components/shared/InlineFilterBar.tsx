@@ -1,8 +1,8 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Download, FileDown, FileSpreadsheet, FileText, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
+import { Download, FileDown, FileSpreadsheet, FileText, Loader2, RotateCcw, Search, SlidersHorizontal } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,12 +41,52 @@ interface InlineFilterSearchProps {
   label?: string;
   icon?: ReactNode;
   className?: string;
+  /**
+   * Wait this long after the last keystroke before calling `onChange`, so a
+   * list refetches once per search instead of once per letter. Enter and an
+   * emptied box apply at once. Pass 0 when the page debounces the value itself.
+   */
+  debounceMs?: number;
+  /** A search is being fetched in the background: the magnifier turns into a spinner. */
+  busy?: boolean;
 }
 
 /** Search box sized for the bar: twice a select's share of the row. */
-export function InlineFilterSearch({ value, onChange, placeholder, label, icon, className }: InlineFilterSearchProps) {
+export function InlineFilterSearch({ value, onChange, placeholder, label, icon, className, debounceMs = 350, busy = false }: InlineFilterSearchProps) {
   const t = useTranslations("common");
   const id = useId();
+  // The box shows `draft` as typed; the page only hears about it once typing
+  // pauses. Typing letter by letter used to refetch (and flash the skeleton)
+  // on every key.
+  const [draft, setDraft] = useState(value);
+  const sent = useRef(value);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+
+  // The page changed the value itself (Clear, a link, browser Back).
+  useEffect(() => {
+    if (value !== sent.current) {
+      sent.current = value;
+      setDraft(value);
+    }
+  }, [value]);
+
+  const send = useCallback((next: string) => {
+    if (next === sent.current) return;
+    sent.current = next;
+    onChangeRef.current(next);
+  }, []);
+
+  useEffect(() => {
+    if (draft === sent.current) return;
+    if (debounceMs <= 0 || draft === "") {
+      send(draft);
+      return;
+    }
+    const timer = setTimeout(() => send(draft), debounceMs);
+    return () => clearTimeout(timer);
+  }, [draft, debounceMs, send]);
+
   // Visible label (WCAG 3.3.2 / 1.3.1): the placeholder alone disappeared as
   // soon as someone typed, and on phones it was cut mid-word. The bar aligns
   // its controls to their bottom edge, so the selects beside it still line up
@@ -64,13 +104,14 @@ export function InlineFilterSearch({ value, onChange, placeholder, label, icon, 
       </label>
       <div className="relative">
         <span className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden="true">
-          {icon ?? <Search className="h-3.5 w-3.5" />}
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (icon ?? <Search className="h-3.5 w-3.5" />)}
         </span>
         <Input
           id={id}
           type="search"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") send(draft); }}
           placeholder={placeholder}
           className="h-11 w-full rounded-lg border-border bg-card ps-8 text-sm shadow-none sm:h-9"
         />

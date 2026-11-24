@@ -28,6 +28,8 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { useTableExport } from "@/hooks/useTableExport";
 import type { ExportColumn } from "@/lib/export";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -69,9 +71,11 @@ export default function SuperAgentInterviewsPage() {
   const locale = useLocale();
   const [interviews, setInterviews] = useState<InterviewItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadFailed, setLoadFailed] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
+  const [urlSearch, setUrlSearch] = useUrlFilter("search", "");
+  const [filters, setFilters] = useState<Filters>(() => ({ ...INITIAL_FILTERS, search: urlSearch }));
   const [stats, setStats] = useState({ total: 0, scheduled: 0, completed: 0, cancelRate: 0 });
   const pagination = usePagination();
 
@@ -107,6 +111,7 @@ export default function SuperAgentInterviewsPage() {
 
   const updateFilter = (key: keyof Filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+    if (key === "search") setUrlSearch(value);
     pagination.resetPage();
   };
 
@@ -157,7 +162,7 @@ export default function SuperAgentInterviewsPage() {
     }
   };
 
-  const clearAllFilters = () => { setFilters(INITIAL_FILTERS); pagination.resetPage(); };
+  const clearAllFilters = () => { setFilters(INITIAL_FILTERS); setUrlSearch(""); pagination.resetPage(); };
   const phoneFilterCount = [filters.status !== "all", filters.type !== "all", filters.dateFrom, filters.dateTo].filter(Boolean).length;
 
   return (
@@ -198,7 +203,7 @@ export default function SuperAgentInterviewsPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={filters.search}
           onChange={(v) => updateFilter("search", v)}
           placeholder={t("searchPlaceholder")}
@@ -278,7 +283,7 @@ export default function SuperAgentInterviewsPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("pageTitle")}
-          loading={loading}
+          loading={initialLoading}
           empty={<EmptyState title={t("emptyStateTitle")} description={t("emptyStateDescription")} icon={Calendar} />}
           items={interviews.map((i) => ({
             key: i._id,
@@ -320,7 +325,7 @@ export default function SuperAgentInterviewsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={4} />
               ) : interviews.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

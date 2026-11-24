@@ -9,7 +9,8 @@ import BannersAdminPage from "@/app/[locale]/(dashboard)/admin/cms/banners/page"
 
 jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "en" }),
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const paginationState = {

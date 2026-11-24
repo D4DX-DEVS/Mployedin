@@ -30,6 +30,7 @@ import { useTableExport } from "@/hooks/useTableExport";
 import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import type { ExportColumn } from "@/lib/export";
 import { formatDate, formatDateTime } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface Interview {
   _id: string;
@@ -173,8 +174,9 @@ export default function AdminInterviewOversightPage() {
   const [serverNoShow, setServerNoShow] = useState<number | null>(null);
   const { page, limit, total, totalPages, setPage, setLimit, updateTotal, resetPage } = usePagination();
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dateRange, setDateRange] = useState("all");
@@ -480,7 +482,7 @@ export default function AdminInterviewOversightPage() {
               <h3 className="heading-subsection font-semibold">{t("aiInterviewInsights")}</h3>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {loading ? (
+              {initialLoading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="workspace-glass-panel card-pad space-y-2 rounded-2xl">
                     <div className="h-4 w-24 animate-shimmer rounded bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />
@@ -577,7 +579,7 @@ export default function AdminInterviewOversightPage() {
           </>
         )}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchCandidateOrCompany")}
@@ -691,7 +693,7 @@ export default function AdminInterviewOversightPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("interviewOversight")}
-          loading={loading}
+          loading={initialLoading}
           empty={emptyNode}
           items={interviews.map((iv) => {
             const TypeIcon = TYPE_ICON[iv.type as keyof typeof TYPE_ICON] ?? Calendar;
@@ -731,7 +733,7 @@ export default function AdminInterviewOversightPage() {
 
       <section className={cn("workspace-panel-surface overflow-hidden rounded-2xl", !(loadFailed && !loading) && "max-sm:hidden")}>
 
-        {loadFailed && !loading ? (
+        {loadFailed && !initialLoading ? (
           <div className="p-6">
             <ErrorState onRetry={() => void load()} />
           </div>
@@ -750,7 +752,7 @@ export default function AdminInterviewOversightPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={6} />
               ) : interviews.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

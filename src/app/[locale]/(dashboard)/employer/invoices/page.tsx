@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
@@ -62,6 +63,7 @@ import {
   type TotalRow,
 } from "@/lib/invoices/presentation";
 import { StackedLabelled } from "@/components/shared/LabelledControl";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /** Translation keys for the category-aware fact list. */
 const FACT_LABEL_KEYS: Record<InvoiceFactKey, string> = {
@@ -933,14 +935,13 @@ export default function EmployerInvoicesPage() {
   const t = useTranslations("employerInvoices");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // The search box was wired as `search="" onSearchChange={() => {}}` — a
   // controlled input pinned to the empty string, so it looked editable and
   // discarded every keystroke. `searchInput` drives the field, the debounced
-  // copy drives the request. Kept on useState like the filters beside it
-  // rather than moved into the query string, which would change this page's
-  // addressing behaviour along with it.
-  const [searchInput, setSearchInput] = useState("");
+  // copy drives the request. The text lives in the URL so Back restores it.
+  const [searchInput, setSearchInput] = useUrlFilter("search", "", { debounceMs: 400 });
   const search = useDebounce(searchInput, 400);
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -1044,7 +1045,7 @@ export default function EmployerInvoicesPage() {
         )}
         moreActiveCount={[dateFrom, dateTo].filter(Boolean).length}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading} debounceMs={0}
           value={searchInput}
           onChange={(v) => { setSearchInput(v); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -1097,7 +1098,7 @@ export default function EmployerInvoicesPage() {
         </div>
         {/* Mobile card list (<sm) — 9-column table doesn't fit a phone */}
         <div className="space-y-3 p-4 sm:hidden">
-          {loading ? Array.from({ length: 3 }).map((_, i) => (
+          {initialLoading ? Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="space-y-3 rounded-xl border border-border/70 bg-card card-pad">
               {Array.from({ length: 3 }).map((_, j) => <div key={j} className="h-4 w-full animate-shimmer rounded-md bg-gradient-to-r from-muted/40 via-muted/70 to-muted/40 bg-[length:200%_100%]" />)}
             </div>
@@ -1146,7 +1147,7 @@ export default function EmployerInvoicesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={9} />
               ) : invoices.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

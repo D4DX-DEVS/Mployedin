@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useState, useEffect, useCallback } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -49,7 +51,7 @@ export default function AdminUserImpersonatePage() {
   const t = useTranslations("adminImpersonate");
   const locale = useLocale();
   const [users, setUsers] = useState<UserRow[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [loading, setLoading] = useState(false);
   const [impersonating, setImpersonating] = useState<string | null>(null);
   const [impersonateResult, setImpersonateResult] = useState<ImpersonateResult | null>(null);

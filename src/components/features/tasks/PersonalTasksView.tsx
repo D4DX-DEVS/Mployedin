@@ -29,6 +29,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -107,6 +108,7 @@ export function PersonalTasksView({
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState({ open: 0, pending: 0, inProgress: 0, completed: 0, failed: 0, overdue: 0 });
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   // Filters live in the query string so the dashboard queue and the nav badge
   // can link straight to "overdue tasks" instead of dropping the agent on an
   // unfiltered list and asking them to narrow it again.
@@ -293,7 +295,7 @@ export function PersonalTasksView({
         className="workspace-panel-surface rounded-2xl border-b-0 max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none"
         onClear={hasActiveFilters ? () => { setSearch(""); setStatusFilter("all"); setDueFilter("all"); setKindFilter("all"); resetPage(); } : undefined}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(v) => { setSearch(v); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -354,7 +356,7 @@ export function PersonalTasksView({
         className="sm:hidden"
         compact
         label={t("pageTitle")}
-        loading={loading}
+        loading={initialLoading}
         empty={
           <EmptyState
             title={hasActiveFilters ? t("noResultsTitle") : t("emptyStateTitle")}
@@ -414,7 +416,7 @@ export function PersonalTasksView({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={5} />
               ) : tasks.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

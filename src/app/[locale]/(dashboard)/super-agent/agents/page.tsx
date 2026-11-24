@@ -46,6 +46,7 @@ import { TableBodySkeleton } from "@/components/ui/loading";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import type { ExportColumn } from "@/lib/export";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface AgentRow {
   _id: string;
@@ -167,6 +168,7 @@ export default function SuperAgentAgentsPage() {
   const [totals, setTotals] = useState({ agents: 0, leads: 0, conversions: 0, placements: 0 });
   const [regionOptions, setRegionOptions] = useState<AgentRegion[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
@@ -508,7 +510,7 @@ export default function SuperAgentAgentsPage() {
           )}
           moreActiveCount={[filters.leadsMin, filters.leadsMax, filters.convRateMin, filters.convRateMax].filter(Boolean).length}
         >
-          <InlineFilterSearch
+          <InlineFilterSearch busy={loading && !initialLoading}
             value={filters.search}
             onChange={(v) => { setFilter("search", v); resetPage(); }}
             placeholder={t("searchAgentsPlaceholder")}
@@ -628,7 +630,7 @@ export default function SuperAgentAgentsPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("pageTitle")}
-          loading={loading}
+          loading={initialLoading}
           empty={<EmptyState title={t("noAgentsFound")} description={t("noAgentsFoundHelper")} icon={Users2} />}
           items={agents.map((a) => {
             const badges = getPerformanceBadge(a);
@@ -682,7 +684,7 @@ export default function SuperAgentAgentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={5} />
               ) : agents.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

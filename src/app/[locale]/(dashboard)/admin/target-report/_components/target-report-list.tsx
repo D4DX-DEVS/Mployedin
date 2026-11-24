@@ -1,5 +1,6 @@
 "use client";
 
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -97,7 +98,7 @@ export function TargetReportList({ people, year, locale }: { people: TargetPerso
   const t = useTranslations("adminTargetReport");
   const tp = useTranslations("profitReport");
   const router = useRouter();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [role, setRole] = useState<RoleFilter>("all");
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const phoneFilterCount = role !== "all" ? 1 : 0;

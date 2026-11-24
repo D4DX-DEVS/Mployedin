@@ -46,6 +46,7 @@ import { AlertCircle, Loader2, Clock, CalendarDays } from "lucide-react";
 import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { cn } from "@/lib/utils";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface User {
   _id: string;
@@ -94,6 +95,7 @@ export default function AdminUsersPage() {
   const { confirm, ConfirmDialogNode } = useConfirm();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState<string | null>(null);
   /* The search term addresses the view: an admin notification, a ⌘K people
      hit and the system-health panel all link here with `?search=<name>`,
@@ -728,7 +730,7 @@ export default function AdminUsersPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -804,7 +806,7 @@ export default function AdminUsersPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("userManagement")}
-          loading={loading}
+          loading={initialLoading}
           empty={<EmptyState title={t("noUsers")} icon={Inbox} />}
           items={users.map((user) => {
             const joined = formatListDate(new Date(user.createdAt), locale);
@@ -900,7 +902,7 @@ export default function AdminUsersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {initialLoading ? (
               <TableBodySkeleton rows={8} cols={7} />
             ) : users.length === 0 ? (
               <TableRow className="hover:bg-transparent">

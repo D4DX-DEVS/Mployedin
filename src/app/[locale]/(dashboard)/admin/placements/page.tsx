@@ -35,6 +35,7 @@ import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import type { ExportColumn } from "@/lib/export";
 import { CrudModal, CrudField } from "@/components/shared/CrudModal";
 import { formatCount, formatListDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 function salaryAmount(salary: Placement["salary"]): number | undefined {
   return typeof salary === "number" ? salary : salary?.amount;
@@ -95,6 +96,7 @@ export default function AdminPlacementsPage() {
   const [totalValue, setTotalValue] = useState(0);
   const [salaryByCurrency, setSalaryByCurrency] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [loadFailed, setLoadFailed] = useState(false);
   /* The search term addresses the view: an admin notification, a ⌘K people
      hit and the system-health panel all link here with `?search=<name>`,
@@ -466,7 +468,7 @@ export default function AdminPlacementsPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -603,7 +605,7 @@ export default function AdminPlacementsPage() {
       <PhoneRecordList
         className="sm:hidden"
         label={t("placementTracking")}
-        loading={loading}
+        loading={initialLoading}
         empty={emptyNode}
         items={placements.map((p) => ({
           key: p._id,
@@ -662,7 +664,7 @@ export default function AdminPlacementsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={6} cols={9} />
               ) : placements.length === 0 ? (
                 <TableRow className="hover:bg-transparent">

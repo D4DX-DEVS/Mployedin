@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PublicImage } from "@/components/shared/PublicImage";
 import { formatDate } from "@/lib/ui/intlFormat";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface BlogPost {
   _id: string;
@@ -33,7 +35,8 @@ export default function BlogListingPage() {
 
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
+  const debouncedSearch = useDebounce(search, 350);
   const [page, setPageState] = useState(() => Number(searchParams.get("page")) || 1);
 
   function setPage(next: number) {
@@ -52,7 +55,7 @@ export default function BlogListingPage() {
       page: String(page),
       limit: String(limit),
     });
-    if (search) params.set("search", search);
+    if (debouncedSearch) params.set("search", debouncedSearch);
 
     fetch(`/api/public/blogs?${params}`)
       .then((r) => r.json())
@@ -62,7 +65,7 @@ export default function BlogListingPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [page, search]);
+  }, [page, debouncedSearch]);
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

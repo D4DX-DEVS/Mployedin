@@ -50,6 +50,7 @@ import type { ReferralSummary } from "@/lib/referrals/summary";
 import { totalExperience } from "@/lib/jobseekers/experience";
 import { cleanRoleTitle } from "@/lib/jobseekers/roleTitle";
 import type { SeekerListStats } from "@/lib/jobseekers/listStats";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface JobSeeker {
   _id: string;
@@ -136,6 +137,7 @@ export default function AgentJobSeekersPage() {
   // Industry counts aggregated from the filtered scope
   const [industryCounts, setIndustryCounts] = useState<Array<{ industry: string; count: number }>>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   // Filters live in the query string so a filtered view of this list is an
   // address the dashboard, a badge or the palette can link to.
   const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
@@ -592,7 +594,7 @@ export default function AgentJobSeekersPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading} debounceMs={0}
           value={search}
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -819,7 +821,7 @@ export default function AgentJobSeekersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading && seekers.length === 0 ? (
+            {initialLoading && seekers.length === 0 ? (
               <TableBodySkeleton rows={5} cols={8} />
             ) : seekers.length === 0 ? (
               <TableRow className="hover:bg-transparent">

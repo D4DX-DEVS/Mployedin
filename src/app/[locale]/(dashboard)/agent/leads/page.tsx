@@ -59,6 +59,7 @@ import { FollowUpDialog } from "./_components/FollowUpDialog";
 import { LeadPosterImport } from "./_components/LeadPosterImport";
 import type { LeadPosterResult } from "@/lib/leads/posterClient";
 import { COPILOT_LEAD_DRAFT_EVENT, COPILOT_LEAD_DRAFT_KEY, useCopilotExecuted } from "@/components/shared/Copilot/events";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
 
@@ -250,6 +251,7 @@ export default function AgentLeadsPage() {
   const quietResyncRef = useRef<() => void>(() => {});
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState("");
   // Filters live in the query string so "leads due today" and "leads in
   // negotiation" are addresses the dashboard queue, nav badges and ⌘K can link.
@@ -943,7 +945,7 @@ export default function AgentLeadsPage() {
           setPeriodFilter("all");
         } : undefined}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { setSearch(value); pagination.resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -1043,7 +1045,7 @@ export default function AgentLeadsPage() {
       </PhoneFilterSheet>
 
       {/* ──── Content Area ──── */}
-      {loading && viewMode === "board" ? (
+      {initialLoading && viewMode === "board" ? (
         <section className="flex gap-2.5 overflow-x-auto pb-2">
           {Array.from({ length: 5 }).map((_, c) => (
             <div key={c} className="w-[252px] shrink-0 space-y-1.5">
@@ -1130,7 +1132,7 @@ export default function AgentLeadsPage() {
             <PhoneRecordList
               className="sm:hidden"
               label={t("pageTitle")}
-              loading={loading}
+              loading={initialLoading}
               empty={
                 <EmptyState
                   title={hasActiveFilters ? t("noResultsTitle") : t("emptyPipelineTitle")}
@@ -1212,7 +1214,7 @@ export default function AgentLeadsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? (
+                    {initialLoading ? (
                       <TableBodySkeleton rows={5} cols={7} />
                     ) : leads.length === 0 ? (
                       <TableRow className="hover:bg-transparent">

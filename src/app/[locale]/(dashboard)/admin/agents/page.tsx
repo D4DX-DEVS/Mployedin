@@ -42,6 +42,7 @@ import { PhoneRecordList } from "@/components/shared/PhoneRecordList";
 import { cn } from "@/lib/utils";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface AgentProfile {
   _id: string;
@@ -97,6 +98,7 @@ export default function AdminAgentsPage() {
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState<string | null>(null);
   /* The search term addresses the view: an admin notification, a ⌘K people
      hit and the system-health panel all link here with `?search=<name>`,
@@ -512,7 +514,7 @@ export default function AdminAgentsPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={tr("searchAgentPlaceholder")}
@@ -569,7 +571,7 @@ export default function AdminAgentsPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={tr("agents")}
-          loading={loading}
+          loading={initialLoading}
           empty={<EmptyState title={tr("noAgentsFound")} icon={Inbox} />}
           items={agents.map((agent) => ({
             key: agent._id,
@@ -629,7 +631,7 @@ export default function AdminAgentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {initialLoading ? (
               <TableBodySkeleton rows={5} cols={6} />
             ) : agents.length === 0 ? (
               <TableRow className="hover:bg-transparent">

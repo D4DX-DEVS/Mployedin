@@ -1,4 +1,6 @@
 "use client";
+
+import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { useQueryFlag } from "@/hooks/useQueryFlag";
 
 import { useState, useCallback, Fragment, useEffect, useId } from "react";
@@ -73,6 +75,7 @@ import { formatDate } from "@/lib/ui/intlFormat";
 import { ReferralAudienceChip } from "@/components/shared/ReferralAudienceChip";
 import { referralUrlFor, type ReferralAudience } from "@/lib/referrals/url";
 import { registrationDisplayName } from "@/lib/referrals/display";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 
 function statusLabel(s: ReturnType<typeof linkStatus>, t: ReturnType<typeof useTranslations<"superAgentReferralLinks">>): string {
@@ -96,7 +99,7 @@ export default function SuperAgentReferralLinksPage() {
   const tc = useTranslations("common");
   const tt = useTranslations("table");
   const pagination = usePagination();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // Addressable as ?new=1 for the global Create menu.
   const [createOpen, setCreateOpen] = useQueryFlag("new");
@@ -148,6 +151,7 @@ export default function SuperAgentReferralLinksPage() {
   };
 
   const { data, isLoading, isError, refetch } = useReferralLinks(filters);
+  const initialLoading = useInitialLoading(isLoading);
   const createMutation = useCreateReferralLink();
   const updateMutation = useUpdateReferralLink();
   const deleteMutation = useDeleteReferralLink();
@@ -476,7 +480,7 @@ export default function SuperAgentReferralLinksPage() {
               </div>
             ) : null}
           >
-            <InlineFilterSearch
+            <InlineFilterSearch busy={isLoading && !initialLoading}
               value={search}
               onChange={(v) => { setSearch(v); pagination.resetPage(); }}
               placeholder={t("tableSearchPlaceholder")}
@@ -600,7 +604,7 @@ export default function SuperAgentReferralLinksPage() {
 
       {/* Links table */}
       <section className="workspace-panel-surface overflow-hidden rounded-2xl">
-      {isLoading ? (
+      {initialLoading ? (
         <>
         <PhoneRecordList className="sm:hidden" label={t("pageTitle")} loading items={[]} />
         <div className="overflow-x-auto max-sm:hidden">

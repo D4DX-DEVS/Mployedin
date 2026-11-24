@@ -25,6 +25,7 @@ import { useUrlFilter } from "@/hooks/useUrlFilter";
 import { TARGET_PROFILE_SORT_FIELDS, type TargetProfileSortField } from "@/lib/targets/profileSortFields";
 import { EditTargetsDialog } from "./[id]/_components/EditTargetsDialog";
 import { TargetRowsTable, type TargetListRow } from "./_components/TargetRowsTable";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 type Risk = "high" | "medium" | "low";
 
@@ -63,7 +64,7 @@ export default function AdminTargetManagementPage() {
   const [year, setYear] = useState(Number.isFinite(requestedYear) && requestedYear > 0 ? requestedYear : currentYear);
   const [region, setRegion] = useState("");
   const [risk, setRisk] = useState<Risk | "">("");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useUrlFilter("sortBy", "", { allow: SORT_FIELDS });
   const [sortOrder, setSortOrder] = useUrlFilter("sortOrder", "desc", { allow: ["asc", "desc"] });
@@ -73,6 +74,7 @@ export default function AdminTargetManagementPage() {
   const [totals, setTotals] = useState<Totals | null>(null);
   const [regions, setRegions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
 
   const [editing, setEditing] = useState<TargetListRow | null>(null);
   const [cloneOpen, setCloneOpen] = useState(false);
@@ -309,7 +311,7 @@ export default function AdminTargetManagementPage() {
         onClear={year !== currentYear || region || risk || search ? () => { setYear(currentYear); setRegion(""); setRisk(""); setSearch(""); } : undefined}
         clearLabel={t("resetFilters")}
       >
-        <InlineFilterSearch value={search} onChange={setSearch} placeholder={t("searchSuperAgents")} />
+        <InlineFilterSearch busy={loading && !initialLoading} value={search} onChange={setSearch} placeholder={t("searchSuperAgents")} />
         <PhoneFiltersButton activeCount={(year !== currentYear ? 1 : 0) + (region ? 1 : 0)} onClick={() => setSheetOpen(true)} />
         <div className="contents max-sm:hidden">
           <TargetYearSelect value={String(year)} onChange={(v) => setYear(Number.parseInt(v, 10) || currentYear)} label={t("a11yYear")} />
@@ -390,7 +392,7 @@ export default function AdminTargetManagementPage() {
 
       <TargetRowsTable
         rows={rows}
-        loading={loading}
+        loading={initialLoading}
         empty={empty}
         sortBy={sortBy}
         order={order}

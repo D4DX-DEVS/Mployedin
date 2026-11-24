@@ -45,6 +45,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { RowActions, type RowAction } from "@/components/shared/RowActions";
 import { InlineSearchSelect } from "@/components/shared/InlineSearchSelect";
 import { formatListDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface Employer {
   _id: string;
@@ -80,6 +81,7 @@ export default function AdminEmployersPage() {
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState<string | null>(null);
   /* The search term addresses the view: an admin notification, a ⌘K people
      hit and the system-health panel all link here with `?search=<name>`,
@@ -501,7 +503,7 @@ export default function AdminEmployersPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -593,7 +595,7 @@ export default function AdminEmployersPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("pageTitle")}
-          loading={loading}
+          loading={initialLoading}
           empty={<EmptyState title={t("noEmployersFound")} icon={Inbox} />}
           items={employers.map((emp) => ({
             key: emp._id,
@@ -680,7 +682,7 @@ export default function AdminEmployersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {initialLoading ? (
               <TableBodySkeleton rows={5} cols={tableColumnCount} />
             ) : employers.length === 0 ? (
               <TableRow className="hover:bg-transparent">

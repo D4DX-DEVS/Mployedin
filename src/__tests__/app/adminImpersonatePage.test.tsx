@@ -12,6 +12,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 // behaviour is covered in phoneRecordList.test.tsx.
 jest.mock("@/components/shared/PhoneRecordList", () => ({ PhoneRecordList: () => null }));
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/en/admin/impersonate",
+  useParams: () => ({ locale: "en" }),
+}));
 jest.mock("@/components/shared/DashboardPageHeader", () => ({
   DashboardPageHeader: ({ title }: { title: string }) => <h1>{title}</h1>,
 }));

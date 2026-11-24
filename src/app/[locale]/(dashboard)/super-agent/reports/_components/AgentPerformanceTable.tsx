@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+
+import { useUrlFilter } from "@/hooks/useUrlFilter";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +40,7 @@ interface AgentPerformanceTableProps {
 export function AgentPerformanceTable({ rows, currency }: AgentPerformanceTableProps) {
   const t = useTranslations("superAgentReports");
   const locale = useLocale();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();

@@ -32,6 +32,7 @@ import { RequestTypeLabel } from "./_components/RequestTypeLabel";
 import { ConsentLogsTab } from "./_components/ConsentLogsTab";
 import { useGdprLabels } from "./_components/useGdprLabels";
 import type { GdprRequestRow } from "./_components/types";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -100,9 +101,10 @@ export default function AdminGdprPage() {
   // The figures stay skeletons until the first answer: a real 0 means "none", not "not loaded yet".
   const [statsStatus, setStatsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   // A list that could not be loaded says so (with Retry): "No data requests" would read as nothing to answer.
   const [requestsFailed, setRequestsFailed] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlFilter("search", "", { debounceMs: 400 });
   const [typeFilter, setTypeFilter] = useState("all");
   // In the URL so the dashboard's "pending GDPR requests" row lands filtered.
   const [statusFilter, setStatusFilter] = useUrlFilter("status", "all", { allow: GDPR_STATUS_VALUES });
@@ -340,7 +342,7 @@ export default function AdminGdprPage() {
               />
             }
           >
-            <InlineFilterSearch
+            <InlineFilterSearch busy={loading && !initialLoading}
               value={search}
               onChange={(v) => { setSearch(v); pagination.resetPage(); }}
               placeholder={t("searchPlaceholder")}
@@ -377,7 +379,7 @@ export default function AdminGdprPage() {
 
           {/* On a phone the cards sit straight on the page: a bordered panel around bordered cards doubled the border and the padding. */}
           <section className="workspace-panel-surface rounded-2xl panel-body max-sm:!border-0 max-sm:!bg-transparent max-sm:!p-0 max-sm:!shadow-none">
-            {loading ? (
+            {initialLoading ? (
               <>
               {/* Both skeletons, switched by CSS: `isPhone` is false until hydration, so a phone first painted the desktop table. */}
               <div className="sm:hidden" data-testid="requests-cards-skeleton"><GdprRequestCardsSkeleton /></div>

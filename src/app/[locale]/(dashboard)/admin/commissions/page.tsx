@@ -37,6 +37,7 @@ import type { ExportColumn } from "@/lib/export";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { toUserFacingError } from "@/lib/errors/user-facing";
 import { formatCount, formatDate } from "@/lib/ui/intlFormat";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface CurrencyTotals { currency: string; pending: number; approved: number; paid: number }
 /** GET /api/commissions `summary`; the single figures mix currencies, byCurrency doesn't. */
@@ -77,11 +78,12 @@ export default function AdminCommissionsPage() {
   ];
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // In the URL so the dashboard's "pending commissions" row lands filtered.
   const [status, setStatus] = useUrlFilter("status", "", { allow: ["pending", "approved", "paid", "disputed", "clawed_back"] });
   const [typeFilter, setTypeFilter] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useUrlFilter("search", "", { debounceMs: 400 });
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [currencyFilter, setCurrencyFilter] = useState("");
@@ -414,7 +416,7 @@ export default function AdminCommissionsPage() {
           </>
         )}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={searchTerm}
           onChange={(value) => { setSearchTerm(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -511,7 +513,7 @@ export default function AdminCommissionsPage() {
       <PhoneRecordList
         className="sm:hidden"
         label={t("commissionsTitle")}
-        loading={loading}
+        loading={initialLoading}
         empty={emptyNode}
         items={commissions.map((c) => ({
           key: c._id,
@@ -567,7 +569,7 @@ export default function AdminCommissionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {initialLoading ? (
                 <TableBodySkeleton rows={5} cols={7} />
               ) : commissions.length === 0 ? (
                 <TableRow className="border-border/70 hover:bg-transparent">

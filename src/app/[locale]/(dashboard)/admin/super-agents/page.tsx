@@ -43,6 +43,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Inbox } from "lucide-react";
 import { formatListDate } from "@/lib/ui/intlFormat";
 import { UserAvatar } from "@/components/shared/UserAvatar";
+import { useInitialLoading } from "@/hooks/useInitialLoading";
 
 interface AgentRef {
   _id: string;
@@ -97,6 +98,7 @@ export default function AdminSuperAgentsPage() {
   const { confirm: confirmDialog, ConfirmDialogNode } = useConfirm();
   const [superAgents, setSuperAgents] = useState<SuperAgent[]>([]);
   const [loading, setLoading] = useState(true);
+  const initialLoading = useInitialLoading(loading);
   const [error, setError] = useState<string | null>(null);
   /* The search term addresses the view: an admin notification, a ⌘K people
      hit and the system-health panel all link here with `?search=<name>`,
@@ -543,7 +545,7 @@ export default function AdminSuperAgentsPage() {
         onExportExcel={handleExportExcel}
         onExportPdf={handleExportPdf}
       >
-        <InlineFilterSearch
+        <InlineFilterSearch busy={loading && !initialLoading}
           value={search}
           onChange={(value) => { setSearch(value); resetPage(); }}
           placeholder={t("searchPlaceholder")}
@@ -600,7 +602,7 @@ export default function AdminSuperAgentsPage() {
         <PhoneRecordList
           className="sm:hidden"
           label={t("tableHeaderName")}
-          loading={loading}
+          loading={initialLoading}
           empty={<EmptyState title={t("noAgentsFound")} icon={Inbox} />}
           items={superAgents.map((sa) => ({
             key: sa._id,
@@ -660,7 +662,7 @@ export default function AdminSuperAgentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {initialLoading ? (
               <TableBodySkeleton rows={5} cols={6} />
             ) : superAgents.length === 0 ? (
               <TableRow className="hover:bg-transparent">
