@@ -205,10 +205,23 @@ describe("Needs your action", () => {
     // Zero counts are not rendered.
     expect(within(queue).queryByText(/support ticket/i)).not.toBeInTheDocument();
     expect(within(queue).getByText("4 items need action")).toBeInTheDocument();
-    // Every area keeps its chip; one with nothing waiting says so and is not a filter.
+    // Every area keeps its chip; one with nothing waiting says so with a check.
     const compliance = queue.querySelector('[data-queue-group="compliance"]') as HTMLElement;
     expect(within(compliance).getByLabelText("Nothing waiting here.")).toBeInTheDocument();
-    expect(compliance.tagName).toBe("SPAN");
+  });
+
+  it("filters to an empty area and offers that area's page instead of a dead chip", async () => {
+    await show(QueueSection(ctx()));
+    const queue = sectionNamed(/^needs your action$/i);
+    const compliance = queue.querySelector('[data-queue-group="compliance"]') as HTMLElement;
+    expect(compliance.tagName).toBe("BUTTON");
+    fireEvent.click(compliance);
+    expect(compliance).toHaveAttribute("aria-pressed", "true");
+    expect(queue.querySelectorAll("a[data-queue-id]")).toHaveLength(0);
+    expect(queue.querySelector("ul")).toHaveAttribute("hidden");
+    const empty = queue.querySelector('[data-queue-empty="compliance"]') as HTMLElement;
+    expect(empty.textContent).toContain("Nothing waiting in Compliance & support right now.");
+    expect(within(empty).getByRole("link", { name: /open compliance & support/i })).toHaveAttribute("href", "/en/admin/messages?tab=support");
   });
 
   it("filters the list to one area and back", async () => {

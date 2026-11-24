@@ -36,6 +36,11 @@ import {
   normalizeParsedCv,
 } from "@/lib/cv/parsedCv";
 import { queueSeekerMatchWarm } from "@/lib/matching/seekerMatchWarmQueue";
+import { cvOwnerMismatch } from "@/lib/cv/cvOwnerCheck";
+import { invalidateCache, smartCache } from "@/lib/cache/smartCache";
+
+/** How long a reading held back by the owner check waits for "It's my CV". */
+const OWNER_CHECK_HOLD_SECONDS = 10 * 60;
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -80,6 +85,8 @@ async function handlePOST(req: NextRequest) {
     // Documents page save only when the seeker confirms. No mode keeps the
     // one-step fill onboarding and Easy Apply rely on.
     const previewOnly = formData.get("mode") === "preview";
+    // The seeker answered "It's my CV" to the owner check below.
+    const ownerConfirmed = formData.get("confirmOwner") === "1";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -221,14 +228,21 @@ async function handlePOST(req: NextRequest) {
     // One parse call for every file type, on the best text there is.
     const sourceText = layerText.length >= MIN_TEXT_LAYER_CHARS ? layerText : ocrText || layerText;
     const aiStart = Date.now();
-    let text: string;
-    try {
-      text = (await generateText(
+    // A reading the owner check held back is reused when the seeker confirms
+    // the CV is theirs, rather than paying to read the same file twice. Kept
+    // in this server's memory only (it is personal data); a miss reads again.
+    const heldReadingKey = `cv-owner-check:${session.user.id}:${contentHash}`;
+    const readCv = async () => (await generateText(
       `${prompt}\n\nCV text:\n${sourceText}`,
       GEMINI_MODELS.flash,
       AI_TOKEN_LIMITS.cv_extract,
       true
     )).trim();
+    let text: string;
+    try {
+      text = ownerConfirmed
+        ? await smartCache(heldReadingKey, readCv, { ttl: OWNER_CHECK_HOLD_SECONDS })
+        : await readCv();
     } catch (err) {
       dropUpload();
       throw err;
@@ -258,6 +272,19 @@ async function handlePOST(req: NextRequest) {
       logger.info({ dropped: contact.dropped, scan: Boolean(ocrText) }, "[CV Extract] dropped malformed contact details");
     }
 
+    // Is this CV someone else's? Compared with the account's own name and
+    // email. Uploading a friend's CV used to put the friend's name and work
+    // history on the account without a word.
+    const account = await User.findById(session.user.id)
+      .select("name email")
+      .lean<{ name?: string; email?: string } | null>();
+    const ownerMismatch = cvOwnerMismatch({
+      accountName: account?.name,
+      accountEmail: account?.email,
+      cvName: extracted.fullName,
+      cvEmail: extracted.email,
+    });
+
     if (previewOnly) {
       await logActivity({
         actorId: session.user.id!,
@@ -269,10 +296,30 @@ async function handlePOST(req: NextRequest) {
           fileSize: file.size,
           skillsExtracted: extracted.skills?.length ?? 0,
           preview: true,
+          ...(ownerMismatch && { ownerMismatch: true }),
         },
         req,
       });
-      return NextResponse.json({ success: true, preview: true, extracted });
+      return NextResponse.json({ success: true, preview: true, extracted, ownerMismatch });
+    }
+
+    // The one-step fill stops here until the seeker says the CV is theirs:
+    // nothing is stored, and the reading waits for their answer.
+    if (ownerMismatch && !ownerConfirmed) {
+      dropUpload();
+      await smartCache(heldReadingKey, () => text, { ttl: OWNER_CHECK_HOLD_SECONDS });
+      await logActivity({
+        actorId: session.user.id!,
+        actorRole: "job_seeker",
+        action: "cv.extract",
+        resource: "ai_cv",
+        meta: { fileType: mimeType, fileSize: file.size, ownerMismatch: true, held: true },
+        req,
+      });
+      return NextResponse.json(
+        { error: "This CV seems to belong to someone else.", code: "cv_owner_mismatch", ownerMismatch },
+        { status: 409 },
+      );
     }
 
     // Save extracted data to JobSeeker profile
@@ -315,8 +362,11 @@ async function handlePOST(req: NextRequest) {
     ]);
 
     const cvTotal = mappedExperience.length ? totalExperience(extracted.totalExperienceYears, mappedExperience) : null;
+    // A CV the seeker vouched for despite another name: its content is used,
+    // but the name they signed up with stays on the account and profile.
+    const takeCvName = Boolean(extracted.fullName) && !ownerMismatch;
     const updateData = {
-      ...(extracted.fullName && { fullName: extracted.fullName }),
+      ...(takeCvName && { fullName: extracted.fullName }),
       ...(extracted.headline && { summary: extracted.headline }),
       ...(extracted.nationality && { nationality: extracted.nationality }),
       ...(extracted.currentLocation && { currentLocation: extracted.currentLocation }),
@@ -335,7 +385,7 @@ async function handlePOST(req: NextRequest) {
     };
 
     // Also update User.name if fullName was extracted
-    if (extracted.fullName) {
+    if (takeCvName) {
       await User.findByIdAndUpdate(userId, { name: extracted.fullName }, { runValidators: true });
     }
 
@@ -425,9 +475,11 @@ async function handlePOST(req: NextRequest) {
         fileType: mimeType,
         fileSize: file.size,
         skillsExtracted: extracted.skills?.length ?? 0,
+        ...(ownerMismatch && { ownerMismatch: true, ownerConfirmed: true }),
       },
       req,
     });
+    invalidateCache(heldReadingKey);
 
     if (userId) await queueSeekerMatchWarm(userId);
 

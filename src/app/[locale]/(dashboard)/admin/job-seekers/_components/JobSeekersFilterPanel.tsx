@@ -25,6 +25,8 @@ export interface JobSeekerFilters {
   nationality: string;
   industry: string;
   experienceYears: number;
+  /** Where the seeker stands across their applications (API `hiringStatus`); "" = any. */
+  hiringStatus: string;
 }
 
 export const EMPTY_JOB_SEEKER_FILTERS: JobSeekerFilters = {
@@ -39,6 +41,7 @@ export const EMPTY_JOB_SEEKER_FILTERS: JobSeekerFilters = {
   nationality: "",
   industry: "",
   experienceYears: 0,
+  hiringStatus: "",
 };
 
 export type JobSeekerSortField = "joined" | "profile";
@@ -63,9 +66,10 @@ export function countActiveJobSeekerFilters(search: string, filters: JobSeekerFi
     .length + (search ? 1 : 0);
 }
 
-/** Filters on the "Advanced Filters" line. Location and experience sit in the
- *  main bar: they are what admins narrow a hiring brief by first. */
-const ADVANCED_KEYS: (keyof JobSeekerFilters)[] = ["nationality", "jobType", "referred"];
+/** Filters on the "Advanced Filters" line. The main bar keeps one line of
+ *  everyday filters (availability, experience, the job); the owner found the
+ *  two-line bar congested (2026-11-24). */
+const ADVANCED_KEYS: (keyof JobSeekerFilters)[] = ["location", "hasCV", "industry", "hiringStatus", "nationality", "jobType", "referred"];
 
 const EXPERIENCE_PRESETS = [1, 2, 3, 5, 10];
 
@@ -104,6 +108,16 @@ function filterOptions(tr: Translate) {
     experience: [
       { value: "", label: tr("filterExperienceAny") },
       ...EXPERIENCE_PRESETS.map((n) => ({ value: String(n), label: tr("filterExperienceAtLeast", { count: n }) })),
+    ],
+    hiringStatus: [
+      { value: "", label: tr("filterApplicationsAny") },
+      { value: "waiting", label: tr("filterApplicationsNever") },
+      { value: "applied", label: tr("filterApplicationsApplied") },
+      { value: "shortlisted", label: tr("filterApplicationsShortlisted") },
+      { value: "interviewing", label: tr("filterApplicationsInterviewing") },
+      { value: "offer", label: tr("filterApplicationsOffer") },
+      { value: "placed", label: tr("filterApplicationsHired") },
+      { value: "notProgressed", label: tr("filterApplicationsNotProgressed") },
     ],
     sort: [
       { value: "joined", label: tr("tableHeaderJoined") },
@@ -146,6 +160,7 @@ export function buildJobSeekerFilterChips(
   if (filters.education) chips.push(chip("education", tr("exportColumnHeaderEducation"), filters.education));
   if (filters.experienceYears > 0) chips.push(chip("experienceYears", tr("filterLabelMinExperience"), String(filters.experienceYears)));
   if (filters.hasCV) chips.push({ key: "hasCV", label: tr("filterHasCvOnly"), clear: { hasCV: false } });
+  if (filters.hiringStatus) chips.push(chip("hiringStatus", tr("filterLabelApplications"), optionLabel(options.hiringStatus, filters.hiringStatus)));
   return chips;
 }
 
@@ -166,6 +181,12 @@ interface JobSeekersFilterPanelProps {
   exportExtra?: ReactNode;
   /** Removable chips for filters that have no field (set by AI search). */
   chips?: ReactNode;
+  /** "For job" picker: one more control in the bar (and in the phone sheet). */
+  jobPicker?: ReactNode;
+  /** Once a job is picked: a one-line summary under the filters. */
+  jobSummary?: ReactNode;
+  /** A one-line strip at the bottom of the card (the industry chips). */
+  strip?: ReactNode;
 }
 
 /**
@@ -189,6 +210,9 @@ export function JobSeekersFilterPanel({
   onExportPdf,
   exportExtra,
   chips,
+  jobPicker,
+  jobSummary,
+  strip,
 }: JobSeekersFilterPanelProps) {
   const tr = useTranslations("adminJobSeekers");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -235,6 +259,21 @@ export function JobSeekersFilterPanel({
       moreClassName="max-sm:hidden"
       more={(
         <>
+          {/* The search box matches locations too ("nurse Dubai"); this narrows by place alone. */}
+          <Input
+            aria-label={tr("filterLabelCountryCity")}
+            placeholder={tr("filterLabelCountryCity")}
+            value={filters.location}
+            onChange={(e) => onFiltersChange({ location: e.target.value })}
+            className={`${INLINE_FILTER_CONTROL} shadow-none`}
+          />
+          <label className="flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground sm:h-9">
+            <Checkbox
+              checked={filters.hasCV}
+              onCheckedChange={(checked) => onFiltersChange({ hasCV: checked === true })}
+            />
+            <span className="truncate">{tr("filterHasCvOnly")}</span>
+          </label>
           <Input
             aria-label={tr("tableHeaderNationality")}
             placeholder={tr("tableHeaderNationality")}
@@ -249,6 +288,14 @@ export function JobSeekersFilterPanel({
             value={filters.industry}
             onValueChange={(value) => onFiltersChange({ industry: value })}
             placeholder={tr("filterLabelIndustry")}
+          />
+          <SearchableSelect
+            ariaLabel={tr("filterLabelApplications")}
+            className={`${INLINE_FILTER_CONTROL} min-w-40`}
+            options={options.hiringStatus}
+            value={filters.hiringStatus}
+            onValueChange={(value) => onFiltersChange({ hiringStatus: value })}
+            placeholder={tr("filterApplicationsAny")}
           />
           <SearchableSelect
             ariaLabel={tr("filterLabelJobType")}
@@ -276,8 +323,10 @@ export function JobSeekersFilterPanel({
       onExportExcel={onExportExcel}
       onExportPdf={onExportPdf}
       exportExtra={exportExtra}
-      footer={(aiSummary || chips) ? (
+      footer={(aiSummary || chips || jobSummary || strip) ? (
         <div className="space-y-2">
+          {jobSummary}
+          {strip}
           {aiSummary && (
             <p className="rounded-xl bg-primary/5 px-4 py-2.5 text-sm text-primary">
               <Sparkles className="me-1.5 inline-block h-3.5 w-3.5" aria-hidden="true" />
@@ -323,37 +372,15 @@ export function JobSeekersFilterPanel({
         onValueChange={(value) => onFiltersChange({ availability: value })}
         placeholder={tr("filterLabelAvailability")}
       />
-      <Input
-        aria-label={tr("filterLabelCountryCity")}
-        placeholder={tr("filterLabelCountryCity")}
-        value={filters.location}
-        onChange={(e) => onFiltersChange({ location: e.target.value })}
-        className={`${INLINE_FILTER_CONTROL} shadow-none`}
-      />
-      <SearchableSelect
-        ariaLabel={tr("filterLabelIndustry")}
-        className={INLINE_FILTER_CONTROL}
-        options={industries}
-        value={filters.industry}
-        onValueChange={(value) => onFiltersChange({ industry: value })}
-        placeholder={tr("filterLabelIndustry")}
-      />
       <SearchableSelect
         ariaLabel={tr("filterLabelMinExperience")}
-        // Wide enough for "Any experience" / "10+ years" without an ellipsis.
-        className={`${INLINE_FILTER_CONTROL} min-w-40`}
+        className={INLINE_FILTER_CONTROL}
         options={experienceOptions}
         value={filters.experienceYears > 0 ? String(filters.experienceYears) : ""}
         onValueChange={(value) => onFiltersChange({ experienceYears: Number(value) || 0 })}
         placeholder={tr("filterExperienceAny")}
       />
-      <label className="flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground sm:h-9">
-        <Checkbox
-          checked={filters.hasCV}
-          onCheckedChange={(checked) => onFiltersChange({ hasCV: checked === true })}
-        />
-        <span className="truncate">{tr("filterHasCvOnly")}</span>
-      </label>
+      {jobPicker}
       <TableSortControl
         value={sort.field}
         onValueChange={(field) => onFiltersChange({ sort: joinJobSeekerSort(field as JobSeekerSortField, sort.order) })}
@@ -376,6 +403,7 @@ export function JobSeekersFilterPanel({
       industry={filters.industry}
       jobType={filters.jobType}
       referred={filters.referred}
+      hiringStatus={filters.hiringStatus}
       options={{ ...options, experience: experienceOptions }}
       sortField={sort.field}
       sortOrder={sort.order}
@@ -383,6 +411,7 @@ export function JobSeekersFilterPanel({
       onSortOrderChange={(order) => onFiltersChange({ sort: joinJobSeekerSort(sort.field, order) })}
       onChange={onFiltersChange}
       onClearAll={onClear}
+      jobPicker={jobPicker}
     />
     </>
   );

@@ -22,6 +22,9 @@ import {
   subscriptionsEndingFilter,
 } from "./queueFilters";
 
+/** Soft-deleted requests never reach the admin list (`/api/exhibitions`), so they are not counted here either. */
+const LIVE_EXHIBITION = { isDeleted: { $ne: true } } as const;
+
 /** The admin looking at the dashboard; only the task rows depend on who it is. */
 type Counter = (userId: string) => Promise<number>;
 
@@ -32,9 +35,9 @@ const givenByMe = (userId: string) => {
 };
 
 const COUNTERS: Record<AdminQueueId, Counter> = {
-  "exhibitions-submitted": () => ExhibitionRequest.countDocuments({ status: "submitted" }),
-  "exhibitions-under-review": () => ExhibitionRequest.countDocuments({ status: "under_review" }),
-  "exhibitions-budget": () => ExhibitionRequest.countDocuments({ status: "approved" }),
+  "exhibitions-submitted": () => ExhibitionRequest.countDocuments({ ...LIVE_EXHIBITION, status: "submitted" }),
+  "exhibitions-under-review": () => ExhibitionRequest.countDocuments({ ...LIVE_EXHIBITION, status: "under_review" }),
+  "exhibitions-budget": () => ExhibitionRequest.countDocuments({ ...LIVE_EXHIBITION, status: "approved" }),
   "invoices-pending-approval": () => Invoice.countDocuments({ status: "pending_approval" }),
   "commissions-pending": () => Commission.countDocuments({ status: "pending" }),
   "company-reviews-pending": () => CompanyReview.countDocuments({ status: "pending" }),

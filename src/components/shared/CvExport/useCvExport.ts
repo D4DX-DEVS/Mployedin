@@ -9,10 +9,12 @@ import { useCvPdfLabels } from "@/app/[locale]/(dashboard)/job-seeker/cv/use-cv-
 import {
   CV_EXPORT_MAX_ITEMS,
   type CvExportAllowedItem,
+  type CvExportCompleteRequest,
   type CvExportManifestItem,
   type CvExportManifestResponse,
 } from "@/lib/cv/cvExportTypes";
 import { builtCvLabelLang, resolveCvPdfLabels } from "@/lib/cv/cvPdfLabels";
+import type { CvExportVersionName, JobApplicationSummary, JobExportSummary } from "@/lib/cv/cvExportHistory";
 import type { BuildCvZipResult, CvDetails, CvExportMode } from "@/lib/cv/cvZip";
 import {
   computeCounts,
@@ -83,6 +85,16 @@ export interface UseCvExportOptions {
   detailsRows?: CvDetails;
   /** Called once, after the ZIP was handed to the browser. */
   onDone?: (summary: CvExportSummary) => void;
+  /** The job these CVs are for (admin): recorded with the export, and the check says who already has a CV for it. */
+  jobId?: string | null;
+}
+
+/** A selected candidate the client may already have: their CV was exported for the job, or they applied to it. */
+export interface CvExportJobOverlap {
+  seekerId: string;
+  name: string;
+  exported: JobExportSummary | null;
+  application: JobApplicationSummary | null;
 }
 
 export interface UseCvExportResult {
@@ -100,10 +112,19 @@ export interface UseCvExportResult {
   cancelled: boolean;
   /** The selection changed while an export was running, so the export was cancelled (cleared like `cancelled`). */
   selectionChanged: boolean;
-  start: (options?: { includeDetails?: boolean }) => void;
+  start: (options?: CvExportStartOptions) => void;
   cancel: () => void;
   /** Ask the manifest again after a failed check. */
   retry: () => void;
+  /** With a job: the selected candidates already exported for it or who applied to it (once each). */
+  jobOverlap: CvExportJobOverlap[];
+}
+
+/** Options for one run. */
+export interface CvExportStartOptions {
+  includeDetails?: boolean;
+  /** Candidates to leave out of this export (for example, those the client already has). */
+  skipSeekerIds?: ReadonlySet<string>;
 }
 
 function readStoredMode(): CvExportMode {
@@ -125,9 +146,44 @@ interface Manifest {
   rows: CvExportManifestItem[];
   /** The items the rows answer, in the same order. */
   items: CvExportItem[];
+  /** Names the export for the confirm call; absent when nobody could be exported. */
+  batchId?: string;
 }
 
-export function useCvExport({ open, items, detailsRows, onDone }: UseCvExportOptions): UseCvExportResult {
+/**
+ * Tells the server which candidates' files are in the ZIP, so "CV already
+ * exported" counts only real exports. Never throws: the download already
+ * happened, and a failure here must not look like a failed export. Awaited
+ * before onDone, so a list that refreshes then already counts this export.
+ */
+async function confirmExported(
+  batchId: string,
+  rows: readonly CvExportManifestItem[],
+  entries: ReadonlyArray<{ standardised?: { status: string }; original?: { status: string } }>,
+): Promise<void> {
+  const items: CvExportCompleteRequest["items"] = [];
+  rows.forEach((row, index) => {
+    if (row.denied) return;
+    const entry = entries[index];
+    const versions: CvExportVersionName[] = [];
+    if (entry?.standardised?.status === "ok") versions.push("standardised");
+    if (entry?.original?.status === "ok") versions.push("original");
+    if (versions.length > 0) items.push({ seekerId: row.seekerId, versions });
+  });
+  if (items.length === 0) return;
+  const body: CvExportCompleteRequest = { batchId, items };
+  try {
+    await csrfFetch("/api/cv-export/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    // Nothing to tell the person: their ZIP is downloaded; only the history misses this one.
+  }
+}
+
+export function useCvExport({ open, items, detailsRows, onDone, jobId = null }: UseCvExportOptions): UseCvExportResult {
   const t = useTranslations("cvExport");
   const tf = useTranslations("formErrors");
   const labels = useCvPdfLabels();
@@ -152,6 +208,8 @@ export function useCvExport({ open, items, detailsRows, onDone }: UseCvExportOpt
   const uiLocaleRef = useRef(uiLocale);
   const tRef = useRef(t);
   const tfRef = useRef(tf);
+  const jobIdRef = useRef(jobId);
+  jobIdRef.current = jobId;
   itemsRef.current = items;
   detailsRef.current = detailsRows;
   onDoneRef.current = onDone;
@@ -211,6 +269,7 @@ export function useCvExport({ open, items, detailsRows, onDone }: UseCvExportOpt
             seekerId: item.seekerId,
             ...(item.applicationId ? { applicationId: item.applicationId } : {}),
           })),
+          ...(jobIdRef.current ? { jobId: jobIdRef.current } : {}),
         }),
         signal: controller.signal,
       });
@@ -224,7 +283,7 @@ export function useCvExport({ open, items, detailsRows, onDone }: UseCvExportOpt
       const rows = Array.isArray(body?.items) ? body.items : null;
       // The rows answer the items one for one; anything else cannot be trusted.
       if (!rows || rows.length !== asked.length) throw new FormError(tRef.current("checkError"));
-      setManifest({ rows, items: asked });
+      setManifest({ rows, items: asked, batchId: typeof body?.batchId === "string" ? body.batchId : undefined });
       setPhase("ready");
     } catch (err) {
       if (generation !== generationRef.current) return;
@@ -234,7 +293,8 @@ export function useCvExport({ open, items, detailsRows, onDone }: UseCvExportOpt
     }
   }, [abandon, setManifest, setPhase]);
 
-  const signature = itemsSignature(items);
+  // A different job asks again: who already has a CV depends on it.
+  const signature = `${itemsSignature(items)}#${jobId ?? ""}`;
   useEffect(() => {
     if (!open) {
       abandon();
@@ -273,10 +333,28 @@ export function useCvExport({ open, items, detailsRows, onDone }: UseCvExportOpt
     [manifest, mode],
   );
 
+  const jobOverlap = useMemo<CvExportJobOverlap[]>(() => {
+    if (!manifest) return [];
+    const seen = new Set<string>();
+    const out: CvExportJobOverlap[] = [];
+    manifest.rows.forEach((row, index) => {
+      if (row.denied || !row.forJob || seen.has(row.seekerId)) return;
+      if (!row.forJob.exported && !row.forJob.application) return;
+      seen.add(row.seekerId);
+      out.push({
+        seekerId: row.seekerId,
+        name: displayName(row, manifest.items[index] ?? { seekerId: row.seekerId }, (id) => tRef.current("unnamedCandidate", { id })),
+        exported: row.forJob.exported,
+        application: row.forJob.application,
+      });
+    });
+    return out;
+  }, [manifest]);
+
   /* ── run ──────────────────────────────────────────── */
 
   const run = useCallback(
-    async (known: Manifest, chosen: CvExportMode, includeDetails: boolean) => {
+    async (known: Manifest, chosen: CvExportMode, includeDetails: boolean, skip: ReadonlySet<string>) => {
       abandon();
       const controller = new AbortController();
       controllerRef.current = controller;
@@ -303,7 +381,10 @@ export function useCvExport({ open, items, detailsRows, onDone }: UseCvExportOpt
 
       const wantStandardised = wantsStandardised(chosen);
       const wantOriginal = wantsOriginal(chosen);
-      const { rows, items: asked } = known;
+      // Candidates left out of this run (the client already has them) drop out of the ZIP and its report.
+      const kept = known.rows.flatMap((row, index) => (skip.has(row.seekerId) ? [] : [index]));
+      const rows = kept.map((index) => known.rows[index]);
+      const asked = kept.map((index) => known.items[index]);
 
       const { entries, work } = planCvExportEntries(rows, asked, chosen, notes);
       if (work.length === 0) return;
@@ -409,6 +490,7 @@ export function useCvExport({ open, items, detailsRows, onDone }: UseCvExportOpt
       }
 
       downloadBlob(result.blob, result.fileName);
+      if (known.batchId) await confirmExported(known.batchId, rows, entries);
       setProgress(null);
       setPhase("done");
       onDoneRef.current?.({
@@ -422,10 +504,10 @@ export function useCvExport({ open, items, detailsRows, onDone }: UseCvExportOpt
   );
 
   const start = useCallback(
-    (options?: { includeDetails?: boolean }) => {
+    (options?: CvExportStartOptions) => {
       const known = manifestRef.current;
       if (!known || phaseRef.current === "running" || phaseRef.current === "checking") return;
-      void run(known, modeRef.current, options?.includeDetails ?? true);
+      void run(known, modeRef.current, options?.includeDetails ?? true, options?.skipSeekerIds ?? new Set());
     },
     [run],
   );
@@ -447,5 +529,5 @@ export function useCvExport({ open, items, detailsRows, onDone }: UseCvExportOpt
     void check();
   }, [check]);
 
-  return { phase, mode, setMode, counts, overLimit, progress, error, cancelled, selectionChanged, start, cancel, retry };
+  return { phase, mode, setMode, counts, overLimit, progress, error, cancelled, selectionChanged, start, cancel, retry, jobOverlap };
 }

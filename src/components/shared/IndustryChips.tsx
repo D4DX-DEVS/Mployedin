@@ -14,6 +14,11 @@ interface IndustryChipsProps {
   selected: string;
   /** Called with the industry to filter by, or "" to clear it. */
   onSelect: (industry: string) => void;
+  /**
+   * One sideways-scrolling line with no card of its own, for placing inside
+   * another panel (the admin filter card). Default: its own wrapped card.
+   */
+  inline?: boolean;
 }
 
 /** Shown before "Show all": enough to scan, short enough to keep the list on screen. */
@@ -25,10 +30,36 @@ const VISIBLE = 8;
  * agent and super agent seeker lists (rollout rows 14/17) — 30+ chips used to
  * push the list half a screen down.
  */
-export function IndustryChips({ counts, selected, onSelect }: IndustryChipsProps) {
+export function IndustryChips({ counts, selected, onSelect, inline = false }: IndustryChipsProps) {
   const t = useTranslations("common.industryChips");
   const [expanded, setExpanded] = useState(false);
   if (counts.length === 0) return null;
+  if (inline) {
+    return (
+      <div className="scrollbar-none flex min-w-0 items-center gap-1.5 overflow-x-auto">
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">{t("label")}</span>
+        {counts.map((item) => {
+          const active = selected === item.industry;
+          return (
+            <button
+              key={item.industry}
+              type="button"
+              onClick={() => onSelect(active ? "" : item.industry)}
+              aria-pressed={active}
+              className={`inline-flex min-h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                active
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-border bg-background text-foreground hover:border-primary hover:bg-primary/5"
+              }`}
+            >
+              {item.industry}
+              <span className="font-medium opacity-70">{item.count}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   const hidden = counts.length - VISIBLE;
 

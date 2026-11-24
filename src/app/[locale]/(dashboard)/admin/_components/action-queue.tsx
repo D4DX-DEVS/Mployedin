@@ -29,6 +29,15 @@ const ITEM_KEYS: Record<AdminQueueId, string> = {
   "my-tasks-overdue": "myTasksOverdue",
 };
 
+/** Where an area's chip sends the admin when nothing in it is waiting. */
+const AREA_PAGES: Record<AdminQueueGroup, string> = {
+  decisions: "/admin/exhibitions",
+  tasks: "/admin/tasks",
+  finance: "/admin/invoices",
+  compliance: "/admin/messages?tab=support",
+  recruitment: "/admin/applications",
+};
+
 const LEVELS: readonly AdminQueueLevel[] = ["critical", "warning", "upcoming"];
 
 /** Stable tie-breaker inside a severity: privacy and money exceptions lead. */
@@ -111,8 +120,16 @@ export function AdminActionQueue({ items, groups, locale, t }: AdminActionQueueP
             group,
             label: t(`queue.groups.${group}`),
             count: items.filter((item) => item.group === group).length,
+            href: `/${locale}${AREA_PAGES[group]}`,
           }))}
-          labels={{ all: t("queue.filterAll"), areas: t("queue.areasLabel"), groupClear: t("queue.groupClear") }}
+          labels={{
+            all: t("queue.filterAll"),
+            areas: t("queue.areasLabel"),
+            groupClear: t("queue.groupClear"),
+            // The client fills `{area}`; functions cannot cross to a client component.
+            groupEmpty: t("queue.groupEmpty", { area: "{area}" }),
+            openArea: t("queue.openArea", { area: "{area}" }),
+          }}
         />
       )}
     </DashboardSection>

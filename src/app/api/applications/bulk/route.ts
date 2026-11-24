@@ -243,7 +243,7 @@ async function postHandler(req: NextRequest, ctx: AuthCtx) {
         // past interviewing, rejected or withdrawn, a slot still on the books is
         // settled rather than left to inflate the Interviews tab and fire reminders.
         if (closesOpenInterviews(newStatus)) {
-          await closeOpenInterviewsForAdvance(app._id, { now, locale: ctx.locale });
+          await closeOpenInterviewsForAdvance(app._id, { now, locale: ctx.locale, keepFuture: newStatus === "selected" });
         }
 
         // Send notification + email based on new status (both follow the notify rule).

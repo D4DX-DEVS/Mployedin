@@ -57,6 +57,7 @@ import {
 import { prefStorage } from "@/lib/consent/prefStorage";
 import { LEGACY_CV_PREVIEW_HIDDEN_KEY } from "@/lib/consent/legacyKeys";
 import { toSafeImageSrc } from "@/lib/images/externalAvatar";
+import { CvOwnerCheckDialog, useCvOwnerQuestion } from "@/components/shared/CvOwnerCheckDialog";
 
 /* Reorder an array to match a new ordering of index-string ids. */
 function reorderByIds<T>(arr: T[], ids: string[]): T[] {
@@ -87,6 +88,8 @@ export default function CVBuilderPage() {
   // An import fills the form only; the profile changes when the seeker selects
   // "Add to Profile". Kept so "Discard import" can put back what was there.
   const [importPending, setImportPending] = useState(false);
+  // A CV in someone else's name is not filled in until the seeker says it is theirs.
+  const cvOwner = useCvOwnerQuestion();
   const preImportForm = useRef<CVForm | null>(null);
   const [certInput, setCertInput] = useState("");
   const [previewExpanded, setPreviewExpanded] = useState(false);
@@ -246,6 +249,19 @@ export default function CVBuilderPage() {
 
       const data = await res.json();
       const ext = data.extracted;
+      // Someone else's name on the CV: ask before anything fills the form. A
+      // CV vouched for keeps the seeker's own name, email and phone.
+      let keepIdentity = false;
+      if (data.ownerMismatch) {
+        const answer = await cvOwner.ask(data.ownerMismatch);
+        if (answer.kind === "cancel") return;
+        if (answer.kind === "another") {
+          // After this import's own clean-up has run.
+          setTimeout(() => void handleImportCV(answer.file), 0);
+          return;
+        }
+        keepIdentity = true;
+      }
       // The reader can return a link's visible text ("LinkedIn") instead of its address.
       const links = splitProfileLinks(cleanSocialLinks([
         ...(ext.linkedin ? [{ label: "LinkedIn", url: ext.linkedin }] : []),
@@ -258,9 +274,9 @@ export default function CVBuilderPage() {
       if (!importPending) preImportForm.current = form;
       setForm((prev) => ({
         ...prev,
-        fullName: ext.fullName || prev.fullName,
-        email: ext.email || prev.email,
-        phone: ext.phone || prev.phone,
+        fullName: keepIdentity ? prev.fullName : ext.fullName || prev.fullName,
+        email: keepIdentity ? prev.email : ext.email || prev.email,
+        phone: keepIdentity ? prev.phone : ext.phone || prev.phone,
         nationality: ext.nationality || prev.nationality,
         currentLocation: ext.currentLocation || prev.currentLocation,
         headline: ext.headline || prev.headline,
@@ -633,6 +649,7 @@ export default function CVBuilderPage() {
                       // Cleared after each pick so choosing the same file again still fires.
                       onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) handleImportCV(f); }}
                     />
+                    <CvOwnerCheckDialog {...cvOwner.dialogProps} accept=".pdf,.jpg,.jpeg,.png,.webp" />
                   </div>
                   {importing && (
                     <div className="mt-3 space-y-1">

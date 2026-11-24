@@ -8,6 +8,8 @@
  * (`originalUrl` / `builtUrl`), which applies the same gate again.
  */
 
+import type { CvExportVersionName, JobApplicationSummary, JobExportSummary } from "@/lib/cv/cvExportHistory";
+
 /** The most candidates one export may cover (owner decision 4A). */
 export const CV_EXPORT_MAX_ITEMS = 50;
 
@@ -20,6 +22,11 @@ export interface CvExportManifestRequestItem {
 export interface CvExportManifestRequest {
   /** 1 to CV_EXPORT_MAX_ITEMS items; 24-hex ids. */
   items: CvExportManifestRequestItem[];
+  /**
+   * The job these CVs are exported for (admin only; ignored for other roles).
+   * Recorded with the export, and the answer says who already has a CV for it.
+   */
+  jobId?: string | null;
 }
 
 /**
@@ -62,6 +69,14 @@ export interface CvExportAllowedItem {
   originalUrl: string;
   /** Same-origin: `/api/employers/candidates/{seekerId}/cv?kind=built` (JSON the standardised PDF is drawn from). */
   builtUrl: string;
+  /**
+   * Only when a job was sent: this candidate's earlier CV exports for that job,
+   * and their own application to it. Null where there is none.
+   */
+  forJob?: {
+    exported: JobExportSummary | null;
+    application: JobApplicationSummary | null;
+  };
 }
 
 /** One row of the manifest, in the order the items were sent. */
@@ -69,4 +84,16 @@ export type CvExportManifestItem = CvExportAllowedItem | CvExportDeniedItem;
 
 export interface CvExportManifestResponse {
   items: CvExportManifestItem[];
+  /**
+   * Names this export for the confirm call (POST /api/cv-export/complete),
+   * sent once the ZIP is built with the candidates whose files are in it.
+   * Absent when nobody could be exported.
+   */
+  batchId?: string;
+}
+
+/** POST /api/cv-export/complete: the candidates whose CV files really landed in the ZIP. */
+export interface CvExportCompleteRequest {
+  batchId: string;
+  items: Array<{ seekerId: string; versions: CvExportVersionName[] }>;
 }

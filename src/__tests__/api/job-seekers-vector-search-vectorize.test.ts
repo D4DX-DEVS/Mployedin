@@ -45,6 +45,13 @@ jest.mock("@/models/JobSeeker", () => ({
   },
 }));
 jest.mock("@/models/User", () => ({ __esModule: true, default: {} }));
+jest.mock("@/lib/jobseekers/hiringStatus.server", () => ({ applicationsBySeeker: jest.fn(async () => new Map()) }));
+jest.mock("@/lib/cv/cvExportHistory.server", () => ({
+  findJobForContext: jest.fn(async () => null),
+  jobApplicationsBySeeker: jest.fn(async () => new Map()),
+  jobExportsBySeeker: jest.fn(async () => new Map()),
+  jobContextFor: jest.fn(async () => null),
+}));
 
 import worker from "../../../workers/mployedin-data/src/index";
 import { TEST_SECRET, fakeIndex, testEnv, type TestEnv } from "../../../workers/mployedin-data/src/__tests__/testEnv";

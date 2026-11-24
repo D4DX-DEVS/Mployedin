@@ -50,16 +50,20 @@ export interface ClosedInterviewSummary {
  */
 export async function closeOpenInterviewsForAdvance(
   applicationId: string | mongoose.Types.ObjectId,
-  opts: { now?: Date; locale?: string } = {},
+  opts: { now?: Date; locale?: string; keepFuture?: boolean } = {},
 ): Promise<ClosedInterviewSummary> {
   const now = opts.now ?? new Date();
   const summary: ClosedInterviewSummary = { completed: 0, cancelled: 0 };
   const open = { applicationId, status: { $in: ["scheduled", "confirmed"] } };
 
   try {
+    // `keepFuture`: Selected is silent for the candidate (they still see
+    // "Interview"), so a slot still ahead of them stays booked — cancelling it
+    // mailed "interview cancelled" to someone who had just been picked. Past
+    // slots are still closed; only offers/hires/rejections cancel what is ahead.
     const [completed, upcoming] = await Promise.all([
       Interview.updateMany({ ...open, scheduledAt: { $lte: now } }, { $set: { status: "completed" } }),
-      Interview.find({ ...open, scheduledAt: { $gt: now } }).select("_id").lean(),
+      opts.keepFuture ? Promise.resolve([]) : Interview.find({ ...open, scheduledAt: { $gt: now } }).select("_id").lean(),
     ]);
     summary.completed = completed.modifiedCount ?? 0;
 

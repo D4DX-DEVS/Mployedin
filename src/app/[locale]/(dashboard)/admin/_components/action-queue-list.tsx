@@ -22,6 +22,8 @@ export interface ActionQueueArea {
   group: AdminQueueGroup;
   label: string;
   count: number;
+  /** The area's own page, offered when the area is filtered and nothing is waiting. */
+  href?: string;
 }
 
 const GROUP_DOTS: Record<AdminQueueGroup, string> = {
@@ -49,17 +51,20 @@ const LEVEL_TAGGED: ReadonlySet<AdminQueueLevel> = new Set(["critical", "upcomin
 interface ActionQueueListProps {
   rows: readonly ActionQueueRow[];
   areas: readonly ActionQueueArea[];
-  labels: { all: string; areas: string; groupClear: string };
+  labels: { all: string; areas: string; groupClear: string; groupEmpty: string; openArea: string };
 }
 
 /**
  * The queue rows with a filter per area. An area with nothing waiting shows a
- * check instead of a count and is not a button — filtering to it would only
- * ever show an empty list.
+ * check instead of a count; pressing it still filters and says so in words,
+ * with a link to the area's own page, so no chip is a dead end.
+ * `groupEmpty`/`openArea` carry an `{area}` placeholder filled here.
  */
 export function ActionQueueList({ rows, areas, labels }: ActionQueueListProps) {
   const [area, setArea] = useState<AdminQueueGroup | "all">("all");
   const visible = area === "all" ? rows : rows.filter((row) => row.group === area);
+  const activeArea = area === "all" ? null : areas.find((option) => option.group === area) ?? null;
+  const fill = (template: string, label: string) => template.replace("{area}", label);
   const chip = "inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-medium sm:min-h-8";
   const pressable = "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
 
@@ -81,35 +86,57 @@ export function ActionQueueList({ rows, areas, labels }: ActionQueueListProps) {
           {labels.all}{" "}
           <span className="font-semibold tabular-nums">{rows.length}</span>
         </button>
-        {areas.map((option) =>
-          option.count === 0 ? (
-            <span key={option.group} className={`${chip} bg-secondary text-muted-foreground`} data-queue-group={option.group}>
-              <span className={`h-1.5 w-1.5 rounded-full ${GROUP_DOTS[option.group]}`} aria-hidden="true" />
-              {option.label}
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" aria-label={labels.groupClear} />
-            </span>
-          ) : (
-            <button
-              key={option.group}
-              type="button"
-              aria-pressed={area === option.group}
-              // A second press on the active area returns to the whole queue.
-              onClick={() => setArea((current) => (current === option.group ? "all" : option.group))}
-              className={`${chip} ${pressable} ${
-                area === option.group ? "bg-foreground text-background" : "bg-secondary text-foreground hover:bg-secondary/70"
-              }`}
-              data-queue-group={option.group}
-              data-queue-filter={option.group}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${GROUP_DOTS[option.group]}`} aria-hidden="true" />
-              {option.label}{" "}
+        {areas.map((option) => (
+          <button
+            key={option.group}
+            type="button"
+            aria-pressed={area === option.group}
+            // A second press on the active area returns to the whole queue.
+            onClick={() => setArea((current) => (current === option.group ? "all" : option.group))}
+            className={`${chip} ${pressable} ${
+              area === option.group
+                ? "bg-foreground text-background"
+                : option.count === 0
+                  ? "bg-secondary text-muted-foreground hover:bg-secondary/70"
+                  : "bg-secondary text-foreground hover:bg-secondary/70"
+            }`}
+            data-queue-group={option.group}
+            data-queue-filter={option.group}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${GROUP_DOTS[option.group]}`} aria-hidden="true" />
+            {option.label}{" "}
+            {option.count === 0 ? (
+              <CheckCircle2
+                className={`h-3.5 w-3.5 ${area === option.group ? "text-emerald-300" : "text-emerald-700"}`}
+                aria-label={labels.groupClear}
+              />
+            ) : (
               <span className="font-semibold tabular-nums">{option.count}</span>
-            </button>
-          ),
-        )}
+            )}
+          </button>
+        ))}
       </div>
 
-      <ul className="mt-3 divide-y divide-border/70 rounded-xl bg-card ring-1 ring-inset ring-border/60" aria-live="polite">
+      {activeArea && visible.length === 0 ? (
+        <p
+          className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-emerald-50 px-3 py-3 text-xs text-emerald-900 ring-1 ring-inset ring-emerald-100"
+          data-queue-empty={activeArea.group}
+        >
+          <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1">{fill(labels.groupEmpty, activeArea.label)}</span>
+          {activeArea.href ? (
+            <Link
+              href={activeArea.href}
+              className="inline-flex min-h-9 items-center gap-1 rounded-md px-1 font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {fill(labels.openArea, activeArea.label)}
+              <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
+            </Link>
+          ) : null}
+        </p>
+      ) : null}
+
+      <ul hidden={visible.length === 0} className="mt-3 divide-y divide-border/70 rounded-xl bg-card ring-1 ring-inset ring-border/60" aria-live="polite">
         {visible.map((row) => (
           <li key={row.id}>
             <Link

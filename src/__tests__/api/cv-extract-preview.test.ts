@@ -65,16 +65,27 @@ jest.mock("@/models/JobSeeker", () => ({
   },
 }));
 const userUpdate = jest.fn();
-jest.mock("@/models/User", () => ({ __esModule: true, default: { findByIdAndUpdate: (...a: unknown[]) => userUpdate(...a) } }));
+// The account the CV is checked against: by default the CV's own person.
+const account = { name: "New Name", email: "new.name@gmail.com" };
+const findUserById = jest.fn(() => ({ select: () => ({ lean: () => Promise.resolve(account) }) }));
+jest.mock("@/models/User", () => ({
+  __esModule: true,
+  default: {
+    findById: (...a: unknown[]) => (findUserById as (...x: unknown[]) => unknown)(...a),
+    findByIdAndUpdate: (...a: unknown[]) => userUpdate(...a),
+    updateOne: jest.fn(),
+  },
+}));
 jest.mock("@/models/CvDocument", () => ({ __esModule: true, default: { findOne: jest.fn() } }));
 
 import { POST } from "@/app/api/ai/cv-extract/route";
 import { EmptyOcrError } from "@/lib/ai/visionOcr";
 
-function upload(mode?: string) {
+function upload(mode?: string, opts: { bytes?: string; confirmOwner?: boolean } = {}) {
   const form = new FormData();
-  form.append("cv", new File([Buffer.from("%PDF-1.7 a new CV")], "cv.pdf", { type: "application/pdf" }));
+  form.append("cv", new File([Buffer.from(opts.bytes ?? "%PDF-1.7 a new CV")], "cv.pdf", { type: "application/pdf" }));
   if (mode) form.append("mode", mode);
+  if (opts.confirmOwner) form.append("confirmOwner", "1");
   return new NextRequest("http://localhost/api/ai/cv-extract", { method: "POST", body: form });
 }
 
@@ -186,5 +197,64 @@ describe("cv-extract blank scan", () => {
     expect(await res.json()).toEqual({ error: "CV extraction failed" });
     expect(generateText).not.toHaveBeenCalled();
     expect(findOneAndUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("cv-extract owner check (someone else's CV)", () => {
+  const friend = { ...extracted, fullName: "Rahul Sharma", email: "rahul@gmail.com" };
+  beforeEach(() => {
+    generateText.mockResolvedValue(JSON.stringify(friend));
+    findUserById.mockImplementation(() => ({
+      select: () => ({ lean: () => Promise.resolve({ name: "Ilyas Khan", email: "ilyas@example.com" }) }),
+    }));
+  });
+  afterEach(() => {
+    findUserById.mockImplementation(() => ({ select: () => ({ lean: () => Promise.resolve(account) }) }));
+  });
+
+  it("holds the one-step fill with a 409 and stores nothing", async () => {
+    const res = await POST(upload(undefined, { bytes: "%PDF friend A" }));
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body).toMatchObject({
+      code: "cv_owner_mismatch",
+      ownerMismatch: { cvName: "Rahul Sharma", accountName: "Ilyas Khan", cvEmail: "rahul@gmail.com" },
+    });
+    expect(findOneAndUpdate).not.toHaveBeenCalled();
+    expect(userUpdate).not.toHaveBeenCalled();
+    expect(saveReadCv).not.toHaveBeenCalled();
+  });
+
+  it("after 'It's my CV' saves the content, keeps the account's name, and reuses the held reading", async () => {
+    await POST(upload(undefined, { bytes: "%PDF friend B" }));
+    expect(generateText).toHaveBeenCalledTimes(1);
+
+    const res = await POST(upload(undefined, { bytes: "%PDF friend B", confirmOwner: true }));
+    expect(res.status).toBe(200);
+    expect(generateText).toHaveBeenCalledTimes(1); // not read twice
+    expect(findOneAndUpdate).toHaveBeenCalledTimes(1);
+    expect(findOneAndUpdate.mock.calls[0][1].$set.fullName).toBeUndefined();
+    expect(findOneAndUpdate.mock.calls[0][1].$set.skills).toHaveLength(3);
+    expect(userUpdate).not.toHaveBeenCalled();
+  });
+
+  it("a confirmed upload with no held reading reads the file again", async () => {
+    const res = await POST(upload(undefined, { bytes: "%PDF friend C", confirmOwner: true }));
+    expect(res.status).toBe(200);
+    expect(generateText).toHaveBeenCalledTimes(1);
+  });
+
+  it("preview answers with the mismatch and still writes nothing", async () => {
+    const body = await (await POST(upload("preview", { bytes: "%PDF friend D" }))).json();
+    expect(body.ownerMismatch).toMatchObject({ cvName: "Rahul Sharma", accountName: "Ilyas Khan" });
+    expect(findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not flag the seeker's own CV", async () => {
+    generateText.mockResolvedValue(JSON.stringify({ ...extracted, fullName: "Ilyas Ahmed Khan" }));
+    const res = await POST(upload(undefined, { bytes: "%PDF own" }));
+    expect(res.status).toBe(200);
+    expect(userUpdate).toHaveBeenCalledWith("seeker_user_001", { name: "Ilyas Ahmed Khan" }, expect.anything());
   });
 });

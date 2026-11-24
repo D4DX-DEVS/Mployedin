@@ -293,14 +293,20 @@ export function DateTimePicker({
                     {t("clear")}
                   </button>
                   <div className="flex-1" />
+                  {/* Same bounds as the day cells: the shortcut used to skip
+                      them, so "Today" put a date the form refuses in the box. */}
                   <button
                     type="button"
+                    disabled={Boolean(
+                      (minDate && isBefore(startOfDay(new Date()), startOfDay(minDate))) ||
+                      (maxDate && isBefore(startOfDay(maxDate), startOfDay(new Date()))),
+                    )}
                     onClick={() => {
                       const today = new Date();
                       setViewMonth(today);
                       handleSelectDate(today);
                     }}
-                    className="text-xs text-primary font-medium hover:text-primary/80 transition-colors"
+                    className="text-xs text-primary font-medium hover:text-primary/80 transition-colors disabled:cursor-not-allowed disabled:text-muted-foreground/40 disabled:hover:text-muted-foreground/40"
                   >
                     {t("today")}
                   </button>

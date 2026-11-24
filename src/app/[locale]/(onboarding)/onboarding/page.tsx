@@ -20,6 +20,8 @@ import { PhoneInput } from "@/components/shared/PhoneInput";
 import { SeekerAreaField, areaCountryName, hasSeekerArea, type SeekerAreaValue } from "@/components/features/job-seeker/SeekerAreaField";
 import { OnboardingCvBuilder, type CvBuilderResult } from "@/components/features/job-seeker/OnboardingCvBuilder";
 import { builtCvFromProfile } from "@/lib/onboarding/builtCvFromProfile";
+import { CvOwnerCheckDialog } from "@/components/shared/CvOwnerCheckDialog";
+import type { CvOwnerMismatch } from "@/lib/cv/cvOwnerCheck";
 import { currencyForCountry } from "@/lib/currency";
 import { QUALIFICATION_OPTIONS } from "@/lib/onboarding/qualifications";
 import { FALLBACK_PHONE_COUNTRIES } from "@/lib/phone/countries";
@@ -399,6 +401,8 @@ export default function JobSeekerOnboardingPage() {
   const [aiImportError, setAiImportError] = useState("");
   const [cvParsing, setCvParsing] = useState(false);
   const [cvParsed, setCvParsed] = useState(false);
+  // An uploaded CV in someone else's name, waiting for "It's my CV".
+  const [cvOwnerCheck, setCvOwnerCheck] = useState<{ mismatch: CvOwnerMismatch; file: File } | null>(null);
   // "Build my CV" for seekers with no CV file: the guided builder saves the
   // CV to the profile and its answers fill the steps below.
   const [cvBuilderOpen, setCvBuilderOpen] = useState(false);
@@ -759,7 +763,7 @@ export default function JobSeekerOnboardingPage() {
   }, []);
 
   // ── AI-powered CV/Resume parsing ──────────────────────────────────────────
-  const handleCvParse = useCallback(async (file: File) => {
+  const handleCvParse = useCallback(async (file: File, opts: { confirmOwner?: boolean } = {}) => {
     if (!file || file.size > 10 * 1024 * 1024) {
       setCvParseError(file.size > 10 * 1024 * 1024 ? t("fileSizeTooLarge") : t("noFileSelected"));
       return;
@@ -769,11 +773,18 @@ export default function JobSeekerOnboardingPage() {
     try {
       const formData = new FormData();
       formData.append("cv", file);
+      if (opts.confirmOwner) formData.append("confirmOwner", "1");
       const res = await csrfFetch("/api/ai/cv-extract", { method: "POST", body: formData });
       if (!res.ok) {
-        const d = await res.json().catch(() => ({})) as { error?: string };
+        const d = await res.json().catch(() => ({})) as { error?: string; code?: string; ownerMismatch?: CvOwnerMismatch };
+        // Another person's name on the CV: nothing was saved; ask first.
+        if (res.status === 409 && d.code === "cv_owner_mismatch" && d.ownerMismatch) {
+          setCvOwnerCheck({ mismatch: d.ownerMismatch, file });
+          return;
+        }
         throw new Error(d.error ?? t("cvParsingFailed"));
       }
+      setCvOwnerCheck(null);
       const reply = await res.json() as {
         /** The same file was read before: no AI call, the saved reading (if any) comes back. */
         duplicate?: boolean;
@@ -803,7 +814,8 @@ export default function JobSeekerOnboardingPage() {
 
       // Pre-fill Step 0. The number keeps its own country code: its digits used
       // to land in the box under the +971 default, saving "+971+91 97460 60086".
-      if (extracted.fullName) {
+      // A CV vouched for despite another name keeps the account's name.
+      if (extracted.fullName && !opts.confirmOwner) {
         setStep0((p) => ({ ...p, name: extracted.fullName || p.name }));
       }
       // A number without its code ("97460 60086") is read in the country the
@@ -1635,6 +1647,21 @@ export default function JobSeekerOnboardingPage() {
                       </div>
                     )}
                     {cvParseError && <p className="text-xs text-red-500">{cvParseError}</p>}
+                    <CvOwnerCheckDialog
+                      mismatch={cvOwnerCheck?.mismatch ?? null}
+                      accept=".pdf,.docx"
+                      busy={cvParsing}
+                      onConfirm={() => { if (cvOwnerCheck) void handleCvParse(cvOwnerCheck.file, { confirmOwner: true }); }}
+                      onPickAnother={(next) => {
+                        setCvOwnerCheck(null);
+                        setStep0((p) => ({ ...p, resumeFile: next }));
+                        void handleCvParse(next);
+                      }}
+                      onCancel={() => {
+                        setCvOwnerCheck(null);
+                        setStep0((p) => ({ ...p, resumeFile: null }));
+                      }}
+                    />
                   </div>
                 )}
                 <OnboardingCvBuilder

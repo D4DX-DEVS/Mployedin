@@ -960,3 +960,60 @@ describe("useCvExport: headings follow each CV's own language", () => {
     expect(labelsByName.get("Sara Ali")?.present).toBe(en.cvBuilderPage.previewSections.present);
   });
 });
+
+/* ── the job an export is for, and recording it ──────── */
+
+describe("useCvExport: the job and the export record", () => {
+  function mockManifestBody(body: Record<string, unknown>) {
+    csrfFetchMock.mockImplementation(async (url) =>
+      asResponse(fakeResponse(200, { json: String(url).includes("/complete") ? { recorded: 1 } : body })),
+    );
+  }
+  const completeCalls = () => csrfFetchMock.mock.calls.filter(([url]) => String(url).includes("/api/cv-export/complete"));
+
+  it("sends the job with the manifest, and says which candidates the client already has", async () => {
+    const rows = [
+      allowed(1, { forJob: { exported: { count: 1, lastAt: "2026-11-18T00:00:00.000Z", lastBy: "Sam", lastVersions: ["original"] }, application: null } }),
+      allowed(2, { forJob: { exported: null, application: { applicationId: "a", status: "shortlisted", updatedAt: "2026-11-20T00:00:00.000Z" } } }),
+      allowed(3, { forJob: { exported: null, application: null } }),
+    ];
+    mockManifestBody({ items: rows, batchId: "b1" });
+    const { result } = renderHook((props: UseCvExportOptions) => useCvExport(props), {
+      initialProps: { open: true, items: itemsFor(rows), jobId: "job-1" } as UseCvExportOptions,
+    });
+    await ready(result);
+    const sent = JSON.parse(String(csrfFetchMock.mock.calls[0][1]?.body));
+    expect(sent.jobId).toBe("job-1");
+    expect(result.current.jobOverlap.map((o) => [o.seekerId, !!o.exported, !!o.application])).toEqual([
+      [seekerId(1), true, false],
+      [seekerId(2), false, true],
+    ]);
+  });
+
+  it("leaves out the skipped candidates and confirms only the ones whose files are in the ZIP", async () => {
+    const rows = [allowed(1), allowed(2), allowed(3, { hasStandardised: false })];
+    mockManifestBody({ items: rows, batchId: "batch-7" });
+    const { result } = renderHook((props: UseCvExportOptions) => useCvExport(props), {
+      initialProps: { open: true, items: itemsFor(rows) } as UseCvExportOptions,
+    });
+    await ready(result);
+    act(() => result.current.start({ includeDetails: false, skipSeekerIds: new Set([seekerId(1)]) }));
+    await waitFor(() => expect(result.current.phase).toBe("done"));
+    await waitFor(() => expect(completeCalls()).toHaveLength(1));
+    const body = JSON.parse(String(completeCalls()[0][1]?.body));
+    // Candidate 1 was skipped; candidate 3 has no Standardised CV, so nothing of theirs is in a Standardised ZIP.
+    expect(body).toEqual({ batchId: "batch-7", items: [{ seekerId: seekerId(2), versions: ["standardised"] }] });
+  });
+
+  it("confirms nothing when the manifest named no batch", async () => {
+    const rows = [allowed(1)];
+    mockManifestBody({ items: rows });
+    const { result } = renderHook((props: UseCvExportOptions) => useCvExport(props), {
+      initialProps: { open: true, items: itemsFor(rows) } as UseCvExportOptions,
+    });
+    await ready(result);
+    act(() => result.current.start({ includeDetails: false }));
+    await waitFor(() => expect(result.current.phase).toBe("done"));
+    expect(completeCalls()).toHaveLength(0);
+  });
+});

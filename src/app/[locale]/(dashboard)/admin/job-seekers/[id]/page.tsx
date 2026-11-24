@@ -12,6 +12,7 @@ import { ResumeViewerModal } from "@/components/shared/ResumeViewerModal";
 import { ProfileDetailSkeleton } from "@/components/ui/loading/ProfileDetailSkeleton";
 import { JobSeekerExpandedRow, type ExpandedSeeker } from "../_components/JobSeekerExpandedRow";
 import { SeekerApplicationsCard } from "@/components/shared/SeekerApplicationsCard";
+import { SeekerCvExportsCard } from "../_components/SeekerCvExportsCard";
 import type { SeekerApplicationRow } from "@/lib/jobseekers/hiringStatus";
 
 interface DetailSeeker extends ExpandedSeeker {
@@ -100,6 +101,9 @@ export default function AdminJobSeekerDetailPage() {
 
           {/* Where they stand on Mployedin: every application and its latest status (client rollout row 4). */}
           <SeekerApplicationsCard applications={applications} className="mt-4 rounded-xl border border-border bg-card p-4" />
+
+          {/* Every bulk export that included this CV, and the job it was for. */}
+          <SeekerCvExportsCard seekerId={String(seeker._id)} className="mt-4 rounded-xl border border-border bg-card p-4" />
 
           <JobSeekerExpandedRow
             seeker={seeker}

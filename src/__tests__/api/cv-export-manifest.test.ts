@@ -149,6 +149,22 @@ jest.mock("@/models/Application", () => ({
 }));
 jest.mock("@/models/TalentPool", () => ({ __esModule: true, default: { exists: jest.fn().mockResolvedValue(null) } }));
 
+// Per-candidate export records: the manifest writes one pending row per allowed candidate.
+const recordInsertMany = jest.fn(async (docs: unknown[]) => docs);
+jest.mock("@/models/CvExportRecord", () => ({
+  __esModule: true,
+  default: { insertMany: (docs: unknown[]) => recordInsertMany(docs) },
+}));
+// The job a manifest names (admin): exists, and who already has a CV for it.
+const findJobForContext = jest.fn(async (_id: string): Promise<unknown> => null);
+const jobExportsBySeeker = jest.fn(async (_job: unknown, _ids: unknown[]) => new Map<string, unknown>());
+const jobApplicationsBySeeker = jest.fn(async (_job: unknown, _ids: unknown[]) => new Map<string, unknown>());
+jest.mock("@/lib/cv/cvExportHistory.server", () => ({
+  findJobForContext: (id: string) => findJobForContext(id),
+  jobExportsBySeeker: (j: unknown, ids: unknown[]) => jobExportsBySeeker(j, ids),
+  jobApplicationsBySeeker: (j: unknown, ids: unknown[]) => jobApplicationsBySeeker(j, ids),
+}));
+
 let staffMayOpen: Set<string>;
 const resolveStaffSeekerAccess = jest.fn(
   async (_ctx: unknown) => async (seeker: { _id?: unknown }) => staffMayOpen.has(String(seeker._id)),
@@ -766,5 +782,59 @@ describe("a colleague with the applicant-review function only (the default hirin
     const { res, json } = await manifest([{ seekerId: oid(1), applicationId: APP }, { seekerId: oid(2) }]);
     expect(res.status).toBe(200);
     expect(json.items[1].builtUrl).toBe(`${cvPath(oid(2))}?kind=built`);
+  });
+});
+
+// ── export records and the job they are for ─────────────────────────────────
+describe("export records", () => {
+  it("writes one pending record per allowed candidate, names the batch, and marks the audit entry with it", async () => {
+    ctx = asAgent();
+    const { res, json } = await manifest([{ seekerId: oid(1) }, { seekerId: oid(4) }, { seekerId: oid(2) }]);
+    expect(res.status).toBe(200);
+    expect(recordInsertMany).toHaveBeenCalledTimes(1);
+    const docs = recordInsertMany.mock.calls[0][0] as Array<Record<string, unknown>>;
+    // The refused candidate (4) gets no record: only what the gate cleared can later be confirmed.
+    expect(docs.map((d) => d.seekerId)).toEqual([oid(1), oid(2)]);
+    expect(docs.every((d) => d.status === "pending" && d.actorId === oid(71) && d.actorRole === "agent")).toBe(true);
+    expect(docs.every((d) => !("jobId" in d))).toBe(true);
+    expect(typeof json.batchId).toBe("string");
+    expect(docs.every((d) => String(d.batchId) === json.batchId)).toBe(true);
+    expect(logActivity.mock.calls[0][0].meta).toMatchObject({ batchId: json.batchId });
+  });
+
+  it("writes nothing and names no batch when nobody may be exported", async () => {
+    ctx = asAgent();
+    const { json } = await manifest([{ seekerId: oid(4) }]);
+    expect(recordInsertMany).not.toHaveBeenCalled();
+    expect(json.batchId).toBeUndefined();
+  });
+
+  it("admin with a job: records it, and each row says who already has a CV for it", async () => {
+    const JOB = oid(88);
+    const { Types } = jest.requireActual("mongoose") as typeof import("mongoose");
+    findJobForContext.mockResolvedValueOnce(new Types.ObjectId(JOB));
+    jobExportsBySeeker.mockResolvedValueOnce(new Map([[oid(1), { count: 2, lastAt: "2026-11-18T00:00:00.000Z", lastBy: "Sam", lastVersions: ["standardised"] }]]));
+    jobApplicationsBySeeker.mockResolvedValueOnce(new Map([[oid(2), { applicationId: APP, status: "shortlisted", updatedAt: "2026-11-20T00:00:00.000Z" }]]));
+    const { res, json } = await callManifest({ items: [{ seekerId: oid(1) }, { seekerId: oid(2) }, { seekerId: oid(3) }], jobId: JOB });
+    expect(res.status).toBe(200);
+    expect(json.items[0].forJob).toEqual({ exported: expect.objectContaining({ count: 2, lastBy: "Sam" }), application: null });
+    expect(json.items[1].forJob).toEqual({ exported: null, application: expect.objectContaining({ status: "shortlisted" }) });
+    expect(json.items[2].forJob).toEqual({ exported: null, application: null });
+    const docs = recordInsertMany.mock.calls[0][0] as Array<Record<string, unknown>>;
+    expect(docs.every((d) => String(d.jobId) === JOB)).toBe(true);
+  });
+
+  it("ignores a job from anyone but an admin: no job lookup, no job on the records", async () => {
+    ctx = asAgent();
+    const { json } = await callManifest({ items: [{ seekerId: oid(1) }], jobId: oid(88) });
+    expect(findJobForContext).not.toHaveBeenCalled();
+    expect(json.items[0].forJob).toBeUndefined();
+    const docs = recordInsertMany.mock.calls[0][0] as Array<Record<string, unknown>>;
+    expect("jobId" in docs[0]).toBe(false);
+  });
+
+  it("refuses a malformed job id", async () => {
+    const { res } = await callManifest({ items: [{ seekerId: oid(1) }], jobId: { $ne: null } });
+    expect(res.status).toBe(400);
   });
 });
