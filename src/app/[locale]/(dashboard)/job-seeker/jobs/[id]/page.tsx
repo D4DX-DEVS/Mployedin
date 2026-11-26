@@ -116,7 +116,6 @@ function renderJobDescription(text: string) {
 export default async function DashboardJobDetailPage({ params }: PageProps) {
   const { locale, id } = await params;
   const t = await getTranslations("jobSeekerJobDetail");
-  const tc = await getTranslations("common");
   // Phone-only labels reuse existing strings from sibling namespaces.
   const tCard = await getTranslations("jobCard");
   const tSalary = (await getTranslations("salaryDisplay")) as unknown as SalaryTranslate;
@@ -620,7 +619,7 @@ export default async function DashboardJobDetailPage({ params }: PageProps) {
                 href={`/${locale}/job-seeker/jobs`}
                 className="block rounded-xl sm:rounded-3xl border border-border/70 bg-background/90 px-4 py-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
               >
-                {tc("back")} {t("jobSearch")}
+                {t("backToJobSearch")}
               </Link>
             </div>
 

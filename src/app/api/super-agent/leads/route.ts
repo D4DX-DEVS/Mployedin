@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db/mongoose";
 import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import Lead from "@/models/Lead";
 import { escapeRegex } from "@/lib/security/sanitize";
+import mongoose from "mongoose";
 
 const VALID_STATUSES = new Set(["new", "contacted", "interested", "negotiating", "converted", "lost"]);
 const VALID_SORT_FIELDS = new Set(["createdAt", "companyName", "status", "score", "followUpAt", "country", "industry"]);
@@ -11,8 +12,8 @@ const VALID_SORT_FIELDS = new Set(["createdAt", "companyName", "status", "score"
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   await connectDB();
   const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 100);
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") ?? "20", 10) || 20), 100);
 
   // --- Filters ---
   const status = searchParams.get("status");
@@ -49,12 +50,24 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     ],
   };
 
+  // Ids and dates are checked up front: a bad one used to reach Mongo as a
+  // CastError and come back 500 (audit 2026-11-26 SA-04).
+  if ((agentId && !mongoose.isValidObjectId(agentId)) || (exhibitionId && !mongoose.isValidObjectId(exhibitionId))) {
+    return NextResponse.json({ error: "Invalid id filter" }, { status: 400 });
+  }
+  if ([dateFrom, dateTo, followUpFrom, followUpTo].some((d) => d && Number.isNaN(Date.parse(d)))) {
+    return NextResponse.json({ error: "Invalid date filter" }, { status: 400 });
+  }
+
   if (status && VALID_STATUSES.has(status)) filter.status = status;
-  if (agentId) filter.agentId = agentId;
+  // Cast to ObjectId: Lead.find casts a string, but the stage-count
+  // Lead.aggregate below does not, so filtering by agent or exhibition showed
+  // the leads with every stage tile at zero (audit 2026-11-26 SA-05/V-5).
+  if (agentId) filter.agentId = new mongoose.Types.ObjectId(agentId);
   if (country) filter.country = { $regex: escapeRegex(country), $options: "i" };
   if (industry) filter.industry = { $regex: escapeRegex(industry), $options: "i" };
   if (source) filter.source = { $regex: escapeRegex(source), $options: "i" };
-  if (exhibitionId) filter.exhibitionId = exhibitionId;
+  if (exhibitionId) filter.exhibitionId = new mongoose.Types.ObjectId(exhibitionId);
 
   // Date range filters
   if (dateFrom || dateTo) {
@@ -112,6 +125,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     Lead.find(filter)
       .populate({ path: "agentId", select: "userId", populate: { path: "userId", select: "name" } })
       .sort(sort)
+      // Case-insensitive order for text columns (SA-11), as the jobs route does.
+      .collation({ locale: "en", strength: 2 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean(),

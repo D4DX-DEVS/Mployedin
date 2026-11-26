@@ -823,7 +823,13 @@ export default function SuperAgentAgentsPage() {
         steps={[
           {
             label: tc("stepAccount"),
-            validate: () => accountFieldsError(createForm, { t: tf, locale }),
+            validate: () => {
+              const accountError = accountFieldsError(createForm, { t: tf, locale });
+              if (accountError) return accountError;
+              // The server caps the rate at 100 (SA-08); say so on this step.
+              const rate = Number(createForm.commissionRate || 0);
+              return Number.isFinite(rate) && rate >= 0 && rate <= 100 ? null : t("commissionRateRange");
+            },
             content: (
               <div className="grid gap-4">
                 <div className="field">

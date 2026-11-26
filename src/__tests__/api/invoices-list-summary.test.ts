@@ -100,8 +100,12 @@ describe("GET /api/invoices summary", () => {
       .find((pipeline) => JSON.stringify(pipeline.find((s) => s.$group)?.$group?._id) === JSON.stringify(CURRENCY_ID));
     const balance = currencyPipeline?.find((s) => s.$group)?.$group?.balanceTotal;
 
-    expect(balance).toEqual({
-      $sum: { $cond: [{ $in: ["$status", [...PENDING_BALANCE_INVOICE_STATUSES]] }, "$balanceDue", 0] },
-    });
+    // Only pending-balance statuses count; the balance expression falls back
+    // to amount − paid for legacy invoices with no balanceDue (AG-10).
+    const cond = (balance as { $sum: { $cond: unknown[] } }).$sum.$cond;
+    expect(cond[0]).toEqual({ $in: ["$status", [...PENDING_BALANCE_INVOICE_STATUSES]] });
+    expect(cond[2]).toBe(0);
+    expect(JSON.stringify(cond[1])).toContain('"$ifNull":["$balanceDue"');
+    expect(JSON.stringify(cond[1])).toContain('"$amount"');
   });
 });

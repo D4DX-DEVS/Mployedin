@@ -111,20 +111,26 @@ export default async function JobSeekerPage({
     countPromises.push(Promise.resolve(0));
   }
 
-  // Add optional unread message count if model exists
+  // The seeker's OWN unread messages, across every conversation. This used to
+  // read one arbitrary conversation (findOne) and add up every participant's
+  // count, so it showed the other person's unread messages and missed the
+  // seeker's in any other chat (audit 2026-11-26 JS-01/V-3).
   if (Conversation) {
+    const myId = String(seeker.userId);
     countPromises.push(
-      Conversation.findOne({
-        participants: new (await import("mongoose")).Types.ObjectId(seeker.userId),
+      Conversation.find({
+        participants: new (await import("mongoose")).Types.ObjectId(myId),
         type: { $ne: "customer_care" },
+        [`unreadCounts.${myId}`]: { $gt: 0 },
       })
-        .select("unreadCounts")
+        .select(`unreadCounts.${myId}`)
         .lean()
-        .then((conv: unknown) => {
-          const c = conv as { unreadCounts?: Record<string, number> } | null;
-          if (!c?.unreadCounts) return 0;
-          return Object.values(c.unreadCounts).reduce((sum, count) => sum + (count || 0), 0);
-        })
+        .then((convs: unknown) =>
+          (convs as Array<{ unreadCounts?: Record<string, number> }>).reduce(
+            (sum, c) => sum + (c.unreadCounts?.[myId] || 0),
+            0,
+          ),
+        )
         .catch(() => 0)
     );
   } else {

@@ -161,7 +161,7 @@ export default function EmployerJobsPage() {
   const draftJobs = data?.statusCounts?.draft ?? jobs.filter((job) => job.status === "draft").length;
   const pausedJobs = data?.statusCounts?.paused ?? jobs.filter((job) => job.status === "paused").length;
   const closedJobs = data?.statusCounts?.closed ?? jobs.filter((job) => job.status === "closed").length;
-  const totalOpenings = data?.totalVacancies ?? jobs.reduce((sum, job) => sum + (job.vacancies ?? 0), 0);
+  const totalOpenings = data?.totalVacancies ?? jobs.reduce((sum, job) => sum + (job.vacancies ?? 1), 0);
   const exportColumns: ExportColumn<ExportJobRecord>[] = [
     { header: t("exportTitleCol"), key: "title", formatter: (v) => String(v ?? "") },
     { header: t("exportStatusCol"), key: "status", formatter: (v) => String(v ?? "\u2014") },
@@ -169,7 +169,7 @@ export default function EmployerJobsPage() {
     { header: t("exportSalaryMinCol"), key: "salary", formatter: (_v, r) => String(r.salary?.min ?? "") },
     { header: t("exportSalaryMaxCol"), key: "salary", formatter: (_v, r) => String(r.salary?.max ?? "") },
     { header: t("exportCurrencyCol"), key: "salary", formatter: (_v, r) => String(r.salary?.currency ?? "USD") },
-    { header: t("exportVacanciesCol"), key: "vacancies", formatter: (v) => String(v ?? 0) },
+    { header: t("exportVacanciesCol"), key: "vacancies", formatter: (v) => String(v ?? 1) },
     { header: t("exportCreatedCol"), key: "createdAt", formatter: (v) => v ? formatDate(String(v), { day: "2-digit", month: "short", year: "numeric" }, locale) : "\u2014" },
   ];
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
@@ -710,7 +710,7 @@ export default function EmployerJobsPage() {
                   {[
                     { label: t("viewsStat"), value: formatCount(job.views) ?? "0" },
                     { label: t("applicantsStat"), value: formatCount(applicants) },
-                    { label: t("statOpeningsLabel"), value: formatCount((job.vacancies ?? 0)) },
+                    { label: t("statOpeningsLabel"), value: formatCount((job.vacancies ?? 1)) },
                   ].map((metric) => (
                     <div key={metric.label} className="flex min-w-0 flex-row-reverse items-baseline gap-1 sm:block sm:px-2 sm:text-center">
                       <dd className="text-sm font-semibold tabular-nums text-foreground">{metric.value}</dd>

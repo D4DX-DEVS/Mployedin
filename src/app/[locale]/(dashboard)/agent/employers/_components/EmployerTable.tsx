@@ -109,14 +109,16 @@ export function EmployerTable({
           </span>
         );
         facts.push(
-          <div key="agent-rate" className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Agent rate:</span>
+          // A <span>, not a <div>: phone-card facts render inside a <p>, and a
+          // <div> there was a hydration error (audit 2026-11-26 AG-09).
+          <span key="agent-rate" className="inline-flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{t("agentRateLabel")}</span>
             <AgentRateCell
               employerId={em.userId ?? ""}
               initialRate={em.agentRate && "rate" in em.agentRate ? em.agentRate.rate : null}
               role="agent"
             />
-          </div>
+          </span>
         );
         return {
           key: em._id,

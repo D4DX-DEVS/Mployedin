@@ -80,6 +80,10 @@ async function handlePatch(req: NextRequest, ctx: AuthCtx, params?: Record<strin
   if (body.label !== undefined) link.label = body.label;
   if (body.isActive !== undefined) link.isActive = body.isActive;
   if (body.maxUses !== undefined) link.maxUses = body.maxUses;
+  // Create refuses a past expiry; edit did not (AG-13).
+  if (body.expiresAt && new Date(body.expiresAt).getTime() < Date.now()) {
+    return NextResponse.json({ error: "Expiry date must be in the future" }, { status: 400 });
+  }
   if (body.expiresAt !== undefined) {
     link.expiresAt = body.expiresAt ? new Date(body.expiresAt) : undefined;
   }

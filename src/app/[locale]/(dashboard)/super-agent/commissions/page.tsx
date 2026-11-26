@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { CalendarDays, CheckCircle2, Coins, Info, Mail, ReceiptText, Settings2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, Coins, Info, ReceiptText, Settings2 } from "lucide-react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PaginationControls } from "@/components/shared/PaginationControls";
 import { usePagination } from "@/hooks/usePagination";
@@ -40,9 +40,17 @@ import type { ExportColumn } from "@/lib/export";
 import { formatDate } from "@/lib/ui/intlFormat";
 import { useInitialLoading } from "@/hooks/useInitialLoading";
 
+/**
+ * The row as GET /api/commissions sends it: `agentId` is flattened to
+ * `{ _id, name }`, and `recipientName`/`recipientRole` name whoever EARNS the
+ * line (the agent on a placement, the super agent on an override).
+ */
 interface Commission {
   _id: string;
-  agentId?: { fullName?: string; userId?: { name?: string; email?: string } };
+  agentId?: { _id?: string; name?: string | null } | null;
+  agentName?: string | null;
+  recipientName?: string | null;
+  recipientRole?: "agent" | "super_agent" | null;
   type?: string;
   amount: number;
   currency?: string;
@@ -54,10 +62,30 @@ interface Commission {
   createdAt: string;
 }
 
+/**
+ * Who earns the line. The page used to read `agentId.fullName` and
+ * `agentId.userId.name`, which the API never sends, so every row said "—"
+ * (audit 2026-11-26 SA-02).
+ */
+function earnerName(c: Pick<Commission, "recipientName" | "agentName" | "agentId">): string {
+  return c.recipientName || c.agentName || c.agentId?.name || "—";
+}
+
 export default function SuperAgentCommissionsPage() {
   const t = useTranslations("superAgentCommissions");
+  // Raw enum ("override") was shown in every locale (SA-21).
+  const typeLabel = (type?: string) =>
+    type === "override" ? t("typeOverride") : type === "bonus" ? t("typeBonus") : t("typePlacement");
   const tc = useTranslations("common");
   const tt = useTranslations("table");
+  // A pending line's moves. The SA's own override line cannot be approved by
+  // them (the server answers 403; an admin approves it), so Approved is not
+  // offered there. Disputing it stays allowed (audit 2026-11-26 SA-01).
+  const statusOptions = (c: Pick<Commission, "recipientRole">) => [
+    { value: "pending", label: t("status_pending") },
+    ...(c.recipientRole === "super_agent" ? [] : [{ value: "approved", label: t("status_approved") }]),
+    { value: "disputed", label: t("status_disputed") },
+  ];
   const [commissions, setCommissions] = useState<Commission[]>([]);
   // Per-status record counts over the whole filtered set (from the API's
   // aggregate), so the KPI tiles don't describe only the visible page.
@@ -143,7 +171,7 @@ export default function SuperAgentCommissionsPage() {
   };
 
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
-    { header: t("tableHeaderAgent"), key: "agentId", formatter: (_v, row) => { const a = row.agentId as { fullName?: string; userId?: { name?: string } }; return a?.fullName ?? a?.userId?.name ?? ""; } },
+    { header: t("tableHeaderAgent"), key: "agentId", formatter: (_v, row) => { const name = earnerName(row as unknown as Commission); return name === "—" ? "" : name; } },
     { header: t("tableHeaderType"), key: "type" },
     { header: t("tableHeaderNotes"), key: "notes" },
     { header: t("tableHeaderAmount"), key: "amount" },
@@ -347,12 +375,11 @@ export default function SuperAgentCommissionsPage() {
             loading={initialLoading}
             empty={<EmptyState title={t("emptyStateTitle")} description={t("emptyStateMessage")} icon={Coins} />}
             items={commissions.map((c) => {
-              const agentName = c.agentId?.fullName ?? c.agentId?.userId?.name ?? "—";
+              const agentName = earnerName(c);
               return {
                 key: c._id,
-                leading: <UserAvatar name={agentName} email={c.agentId?.userId?.email} className="h-10 w-10" colorful />,
+                leading: <UserAvatar name={agentName} className="h-10 w-10" colorful />,
                 title: agentName,
-                subtitle: c.agentId?.userId?.email || undefined,
                 trailing: c.status === "pending" ? undefined : <StatusBadge status={c.status} />,
                 actions: c.status === "pending" ? (
                   <InlinePicker
@@ -360,11 +387,7 @@ export default function SuperAgentCommissionsPage() {
                     picker={{
                       label: tc("changeStatus"),
                       value: c.status,
-                      options: [
-                        { value: "pending", label: t("status_pending") },
-                        { value: "approved", label: t("status_approved") },
-                        { value: "disputed", label: t("status_disputed") },
-                      ],
+                      options: statusOptions(c),
                       onChange: (next) => { if (next !== "pending") void updateStatus(c._id, next); },
                       display: <StatusBadge status={c.status} />,
                       pending: updatingId === c._id,
@@ -378,7 +401,7 @@ export default function SuperAgentCommissionsPage() {
                       <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
                       <span className="truncate">
                         {formatDate(new Date(c.createdAt), { day: "2-digit", month: "short", year: "numeric" })}
-                        <span className="capitalize">{` · ${(c.type ?? "placement").replace(/_/g, " ")}`}</span>
+                        <span>{` · ${typeLabel(c.type)}`}</span>
                       </span>
                     </p>
                     {c.notes && <p className="truncate">{c.notes}</p>}
@@ -413,26 +436,18 @@ export default function SuperAgentCommissionsPage() {
                     </TableCell>
                   </TableRow>
                 ) : commissions.map((c) => {
-                  const agentName = c.agentId?.fullName ?? c.agentId?.userId?.name ?? "—";
+                  const agentName = earnerName(c);
                   return (
                     <TableRow key={c._id} className="group">
                       <TableCell>
                         <div className="flex min-w-0 items-center gap-3">
-                          <UserAvatar name={agentName} email={c.agentId?.userId?.email} className="h-9 w-9 shrink-0" colorful />
-                          <div className="min-w-0 space-y-1">
-                            <p className="truncate font-medium text-foreground">{agentName}</p>
-                            {c.agentId?.userId?.email && (
-                              <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-                                <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
-                                <span className="truncate">{c.agentId.userId.email}</span>
-                              </p>
-                            )}
-                          </div>
+                          <UserAvatar name={agentName} className="h-9 w-9 shrink-0" colorful />
+                          <p className="min-w-0 truncate font-medium text-foreground">{agentName}</p>
                         </div>
                       </TableCell>
                       <TableCell><StatusBadge status={c.status} /></TableCell>
                       <TableCell className="text-right font-semibold text-foreground">{formatCurrency(c.amount, c.currency ?? currencyCode)}</TableCell>
-                      <TableCell className="hidden md:table-cell capitalize text-muted-foreground">{(c.type ?? "placement").replace(/_/g, " ")}</TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">{typeLabel(c.type)}</TableCell>
                       <TableCell className="hidden md:table-cell max-w-xs truncate text-xs text-muted-foreground">{c.notes ?? "—"}</TableCell>
                       <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{formatDate(new Date(c.createdAt), { day: "2-digit", month: "short", year: "numeric" })}</TableCell>
                       <TableCell className="text-right">
@@ -444,11 +459,7 @@ export default function SuperAgentCommissionsPage() {
                             picker={{
                               label: tc("changeStatus"),
                               value: c.status,
-                              options: [
-                                { value: "pending", label: t("status_pending") },
-                                { value: "approved", label: t("status_approved") },
-                                { value: "disputed", label: t("status_disputed") },
-                              ],
+                              options: statusOptions(c),
                               onChange: (next) => { if (next !== "pending") void updateStatus(c._id, next); },
                               display: <StatusBadge status={c.status} />,
                               pending: updatingId === c._id,

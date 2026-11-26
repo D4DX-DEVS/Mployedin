@@ -88,6 +88,7 @@ export default function JobOverviewPage() {
   // Employment-type / work-mode labels live with the form step that sets them
   // (`employerJobForm.step1.employmentTypes.*` / `.workModes.*`).
   const tf = useTranslations("employerJobForm.step1");
+  const tx = useTranslations("jobRequirementExtras");
   const { data: job } = useJobDetail(id);
   const { data: summary } = useJobHiringSummary(id);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -292,7 +293,15 @@ export default function JobOverviewPage() {
                   <p className="text-sm font-semibold text-foreground">{t("overviewYearsRange", { min: req.experienceMin ?? 0, max: req.experienceMax ?? 30 })}</p>
                 </div>
               )}
-              {req.education && (
+              {req.educationLevel != null && req.educationLevel > 0 ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("overviewEducation")}</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {tx(`education.levels.${req.educationLevel}`)}
+                    {req.educationField ? ` · ${req.educationField}` : ""}
+                  </p>
+                </div>
+              ) : req.education && (
                 <div className="space-y-1">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("overviewEducation")}</p>
                   <p className="text-sm font-semibold text-foreground">{req.education}</p>

@@ -172,13 +172,12 @@ export default function AgentJobSeekersPage() {
   useEffect(() => {
     const fetchIndustries = async () => {
       try {
-        const res = await fetch("/api/admin/job-attributes/industries");
+        // The staff seeker API's own option list. The admin job-attributes
+        // route this used to call is admin-only, so it answered 403 here.
+        const res = await fetch("/api/job-seekers?industryOptions=1");
         if (res.ok) {
-          const data = await res.json();
-          const industries = (data.items ?? []).map((ind: any) => ({
-            value: ind.name,
-            label: ind.name,
-          }));
+          const data = (await res.json()) as { industries?: string[] };
+          const industries = (data.industries ?? []).map((name) => ({ value: name, label: name }));
           setIndustryOptions([{ value: "", label: t("filterLabelIndustry") ?? "Industry" }, ...industries]);
         }
       } catch (error) {

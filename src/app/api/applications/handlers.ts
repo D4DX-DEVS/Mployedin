@@ -80,7 +80,10 @@ async function loadJobPickerOptions(ctx: AuthCtx): Promise<JobPickerOption[]> {
     jobQuery = { employerId: { $in: await getSuperAgentEmployerIds(ctx.userId) } };
   }
   if (!jobQuery) return [];
-  return Job.find({ ...jobQuery, status: { $in: ["active", "closed"] } })
+  // deletedAt: null like every other job query. Without it, deleted jobs
+  // showed in the filter (opening one gave 404) and inflated "Across N open
+  // roles" (audit 2026-11-26 EMP-01).
+  return Job.find({ ...jobQuery, deletedAt: null, status: { $in: ["active", "closed"] } })
     .select("title requirements salary location employmentType workMode status createdAt")
     .sort({ createdAt: -1 })
     .limit(200)

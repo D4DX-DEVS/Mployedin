@@ -21,13 +21,14 @@ const profitAmountSchema = z
 const isoDateSchema = z.string().refine(isIsoDate, { message: "Use a real date as YYYY-MM-DD" });
 
 /** A non-negative integer: jobs or onboarded hires. */
-const countSchema = z.number().int().min(0);
+const countSchema = z.number().int().min(0).max(1_000_000);
 
 /** Invoiced revenue: finite, non-negative, at most two decimals. */
 const revenueSchema = z
   .number()
   .finite()
   .min(0)
+  .max(1_000_000_000_000)
   .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6, {
     message: "Use at most two decimal places",
   });
@@ -110,7 +111,9 @@ export const kpi3ProfileCreateSchema = z
 
     // Admin-only finance figure (R9)
     profitTarget: profitAmountSchema.default(0),
-    currency: z.string().length(3).default("AED"),
+    // No default: an edit without a currency keeps the stored one (SA-16);
+    // the route falls back to AED only on create.
+    currency: z.string().length(3).optional(),
 
     // KPI3 yearly totals (sums of periods)
     jobTarget: countSchema.optional(),

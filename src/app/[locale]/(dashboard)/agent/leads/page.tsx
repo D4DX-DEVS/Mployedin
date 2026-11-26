@@ -1,5 +1,6 @@
 "use client";
 
+import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { formErrorFromResponse } from "@/lib/errors/form-error";
@@ -100,6 +101,13 @@ function getLeadFields(t: ReturnType<typeof useTranslations>, { isEdit }: { isEd
     { name: "city", label: t("fieldCity"), type: "text" },
     { name: "industry", label: t("fieldIndustry"), type: "text" },
     { name: "expectedRevenue", label: t("fieldExpectedRevenue"), type: "number" },
+    // AG-06: the deal value's currency. Blank = the agent's own currency (server side).
+    {
+      name: "expectedRevenueCurrency",
+      label: t("fieldExpectedRevenueCurrency"),
+      type: "select",
+      options: [{ value: "", label: t("currencyDefaultOption") }, ...SUPPORTED_CURRENCIES.map((c) => ({ value: c.code, label: c.code }))],
+    },
     {
       name: "expectedHiring",
       label: t("moveFieldExpectedHiring"),
@@ -122,7 +130,7 @@ function getLeadFields(t: ReturnType<typeof useTranslations>, { isEdit }: { isEd
 // steps: who the lead is, then where the deal stands.
 const LEAD_FORM_STEPS = [
   { labelKey: "formStepCompany", fields: ["companyName", "contactPerson", "contactEmail", "contactPhone", "country", "city", "industry"] },
-  { labelKey: "formStepDeal", fields: ["expectedRevenue", "expectedHiring", "requirement", "source", "exhibitionId", "notes", "followUpAt"] },
+  { labelKey: "formStepDeal", fields: ["expectedRevenue", "expectedRevenueCurrency", "expectedHiring", "requirement", "source", "exhibitionId", "notes", "followUpAt"] },
 ] as const;
 
 /* ─── Kanban Column ─────────────────────────────────────────────────────── */
@@ -655,6 +663,7 @@ export default function AgentLeadsPage() {
     { header: t("exportHeaderScore"), key: "score" },
     { header: t("exportHeaderQualification"), key: "qualificationLevel" },
     { header: t("exportHeaderExpectedRevenue"), key: "expectedRevenue" },
+    { header: t("exportHeaderCurrency"), key: "expectedRevenueCurrency", formatter: (v) => (v ? String(v) : "AED") },
     { header: t("exportHeaderSource"), key: "source" },
     { header: t("exportHeaderExhibition"), key: "exhibitionId", formatter: (v) => v ? exhibitions.find((e) => e._id === String(v))?.eventName ?? "" : "" },
     { header: t("exportHeaderFollowUp"), key: "followUpAt", formatter: (v) => v ? formatListDate(new Date(String(v))) : "" },
@@ -892,7 +901,7 @@ export default function AgentLeadsPage() {
         value: lead.status,
         options: STAGES.map((s) => ({ value: s, label: STAGE_CONFIG[s].label })),
         onChange: (next) => { void requestStageChange(lead, next as LeadStatus); },
-        display: <StatusBadge status={lead.status} />,
+        display: <StatusBadge status={lead.status} label={STAGE_CONFIG[lead.status]?.label} />,
         pending: updating === lead._id,
         disabled: updating === lead._id || !can("leads", "update"),
       }}
@@ -1473,6 +1482,7 @@ export default function AgentLeadsPage() {
           city: editLead.city ?? "",
           industry: editLead.industry ?? "",
           expectedRevenue: editLead.expectedRevenue != null ? String(editLead.expectedRevenue) : "",
+          expectedRevenueCurrency: editLead.expectedRevenueCurrency ?? "",
           expectedHiring: editLead.expectedHiring ?? "",
           requirement: editLead.requirement ?? "",
           source: editLead.source ?? "",

@@ -30,10 +30,18 @@ export function JobMatchBanner({ jobId }: { jobId: string }) {
 
   if (!data || data.score === null || data.score === undefined) return null;
 
+  // Green only for a strong match; a 4% match read as good news (JS-13).
+  const tone =
+    data.score >= 70
+      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-800"
+      : data.score >= 40
+        ? "border-amber-500/25 bg-amber-500/10 text-amber-800"
+        : "border-border bg-muted text-muted-foreground";
+
   return (
     <a
       href="#job-match"
-      className="flex min-h-11 items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 sm:hidden"
+      className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-sm sm:hidden ${tone}`}
     >
       <Gauge className="size-4 shrink-0" aria-hidden="true" />
       <span className="font-semibold">{t("score", { score: formatCount(data.score, undefined, locale) })}</span>

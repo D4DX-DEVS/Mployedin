@@ -7,6 +7,7 @@ import Commission from "@/models/Commission";
 import ExhibitionRequest from "@/models/ExhibitionRequest";
 import Lead from "@/models/Lead";
 import { taskInboxCount } from "@/lib/agentTasks/inbox";
+import { AGENT_EARNED_COMMISSION_FILTER } from "@/lib/invoices/agentEarnedCommissionFilter";
 
 const EMPTY = {
   pendingExhibitionReviews: 0,
@@ -55,8 +56,9 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
         isDeleted: { $ne: true },
       }),
       // Commission.superAgentId references the SuperAgent profile _id, which is
-      // what /api/commissions filters this role on.
-      Commission.countDocuments({ superAgentId: scope.saProfileId, status: "pending" }),
+      // what /api/commissions filters this role on. Their own override lines
+      // are left out: only an admin can approve those.
+      Commission.countDocuments({ superAgentId: scope.saProfileId, status: "pending", ...AGENT_EARNED_COMMISSION_FILTER }),
       Lead.countDocuments({
         agentId: { $in: agentDocIds },
         followUpAt: { $lt: new Date() },

@@ -114,7 +114,8 @@ export function InvoiceTable({ invoices, loading, role, onSelect, hasActiveFilte
       header: t("balance"),
       headerClassName: `text-right ${hiddenTablet ?? ""}`.trim(),
       cellClassName: `text-right text-sm text-amber-600 ${hiddenTablet ?? ""}`.trim(),
-      cell: (inv) => `${inv.currency} ${formatCount((inv.balanceDue ?? 0))}`,
+      // A void or cancelled invoice is owed nothing (AG-11).
+      cell: (inv) => (inv.status === "void" || inv.status === "cancelled" ? "—" : `${inv.currency} ${formatCount((inv.balanceDue ?? 0))}`),
     },
     {
       key: "commission",

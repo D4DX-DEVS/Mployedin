@@ -34,7 +34,7 @@ jest.mock("@/lib/logger", () => ({ __esModule: true, default: { info: jest.fn(),
 
 function chain(result: unknown) {
   const node: Record<string, unknown> = {};
-  for (const m of ["sort", "skip", "limit", "populate", "select"]) node[m] = jest.fn(() => node);
+  for (const m of ["sort", "collation", "skip", "limit", "populate", "select"]) node[m] = jest.fn(() => node);
   node.lean = jest.fn(async () => result);
   return node;
 }

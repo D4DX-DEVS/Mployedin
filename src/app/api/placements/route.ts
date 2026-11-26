@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth } from "@/lib/auth/withAuth";
-import { getSuperAgentScope } from "@/lib/auth/agentRestrictions";
+import { getAgentEmployerIds, getSuperAgentScope } from "@/lib/auth/agentRestrictions";
 import { isValidObjectId } from "@/lib/security/sanitize";
 import Placement from "@/models/Placement";
 import { Employer } from "@/models/Employer";
@@ -63,7 +63,14 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   else if (ctx.role === "agent") {
     const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
     if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
-    query.agentId = agentDoc._id;
+    // AG-14: same portfolio scope as Reports (api/agent/analytics) — own
+    // placements plus placements at employers the agent can see. Bare
+    // Placement.agentId showed "No placements yet" while Reports counted 1.
+    const visibleEmployerIds = await getAgentEmployerIds(String(ctx.userId));
+    query.$or = [
+      { agentId: agentDoc._id },
+      ...(visibleEmployerIds.length > 0 ? [{ employerId: { $in: visibleEmployerIds } }] : []),
+    ];
   }
   else if (ctx.role === "job_seeker") {
     const jobSeekerDoc = await JobSeeker.findOne({ userId: ctx.userId }).select("_id").lean();

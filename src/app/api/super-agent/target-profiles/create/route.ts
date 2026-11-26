@@ -82,7 +82,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
           jobTarget: after.jobTarget,
           conversionTarget: after.conversionTarget,
           revenueTarget: after.revenueTarget,
-          currency: body.currency ?? "AED",
+          currency: body.currency ?? existing.currency ?? "AED",
           notes: body.notes,
           periods: toStoredPeriods(equalKpiPeriods(body.year, after)),
           setByRole: "super_agent",

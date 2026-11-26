@@ -192,7 +192,7 @@ export function AssignedTasksWorkspace({ audience, tabs }: { audience: "super_ag
       title={filtered ? t("noResultsTitle") : t("emptyTitle")}
       description={filtered ? t("noResultsDescription") : t("emptyDescription")}
       action={filtered
-        ? <Button variant="outline" size="sm" onClick={clearAll}>{tc("clearFilters")}</Button>
+        ? <Button variant="outline" size="sm" onClick={clearAll}>{tc("clearAllFilters")}</Button>
         : <Button size="sm" onClick={() => setAssignOpen(true)}>{t("assignButton")}</Button>}
     />
   );

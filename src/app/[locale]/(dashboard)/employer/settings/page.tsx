@@ -54,9 +54,9 @@ const WORK_TYPES = [
 ];
 
 const VERIFICATION_BADGES: Record<string, { label: string; color: string; icon: typeof Shield }> = {
-  basic: { label: "Basic", color: "bg-slate-100 text-slate-600 border-slate-200", icon: Shield },
-  company: { label: "Verified", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
-  premium: { label: "Premium", color: "bg-amber-50 text-amber-700 border-amber-200", icon: Sparkles },
+  basic: { label: "verificationBasic", color: "bg-slate-100 text-slate-600 border-slate-200", icon: Shield },
+  company: { label: "verificationVerified", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
+  premium: { label: "verificationPremium", color: "bg-amber-50 text-amber-700 border-amber-200", icon: Sparkles },
 };
 
 type TabKey = "profile" | "contact" | "hiring" | "brand" | "notifications" | "account";
@@ -501,7 +501,7 @@ function CompanySettingsPage() {
                 <h2 className="heading-section font-semibold truncate">{company?.companyName}</h2>
                 <Badge variant="outline" className={`${vBadge.color} text-[11px] font-medium px-2 py-0.5 border inline-flex items-center leading-none`}>
                   <VBadgeIcon className="w-3 h-3 me-1 shrink-0" />
-                  <span>{vBadge.label}</span>
+                  <span>{t(vBadge.label)}</span>
                 </Badge>
                 {planName && (
                   <Badge variant="outline" className="text-[11px] font-medium capitalize px-2 py-0.5 inline-flex items-center leading-none">
@@ -1009,7 +1009,7 @@ function CompanySettingsPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className={`${vBadge.color} text-[11px] font-medium px-2 py-0.5 border`}>
-                            {vBadge.label}
+                            {t(vBadge.label)}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1.5">
@@ -1205,7 +1205,7 @@ function CompanySettingsPage() {
                 </Button>
                 <Button type="submit" size="sm" disabled={saving} className="px-6 shadow-sm">
                   <Save className="w-4 h-4 me-2" />
-                  {saving ? "Saving…" : t("saveChanges")}
+                  {saving ? t("saving") : t("saveChanges")}
                 </Button>
               </div>
             </div>

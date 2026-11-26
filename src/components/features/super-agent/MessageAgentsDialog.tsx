@@ -144,7 +144,7 @@ export function MessageAgentsDialog({ open, onOpenChange, presetAgentUserId, onS
                     mode === value ? "border-primary bg-primary/10 font-semibold text-primary" : "border-border hover:border-primary/40",
                   )}
                 >
-                  {value === "all" ? t("allAgents", { count: agents?.length ?? 0 }) : t("chooseAgents")}
+                  {value === "all" ? (agents ? t("allAgents", { count: agents.length }) : t("allAgentsLoading")) : t("chooseAgents")}
                 </button>
               ))}
             </div>

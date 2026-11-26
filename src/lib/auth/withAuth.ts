@@ -16,6 +16,26 @@ type Resource = Parameters<typeof canAccess>[1];
 type Action = Parameters<typeof canAccess>[2];
 
 /**
+ * A request the caller got wrong, not a server fault. Examples: a malformed
+ * id or date that reached Mongoose (CastError), a value the schema refuses
+ * (ValidationError), or a body that is not JSON (SyntaxError from req.json()).
+ * Dozens of routes let these surface as "Internal server error" 500s (audit
+ * 2026-11-26 SA-04/SA-10/AG-05/AG-12/F-07/F-08). They are answered with 400
+ * here, so every route gets it without its own guard. Returns null for
+ * anything else.
+ */
+export function badInputResponse(err: unknown): NextResponse | null {
+  const name = (err as { name?: unknown } | null)?.name;
+  if (name === "CastError" || name === "ValidationError" || name === "StrictModeError") {
+    return NextResponse.json({ error: "Invalid id or value in the request" }, { status: 400 });
+  }
+  if (err instanceof SyntaxError) {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  return null;
+}
+
+/**
  * SECURITY (W2-2): re-check, on every tenant-view request, whether the actor
  * STILL satisfies the eligibility rule that allowed the switch. A valid signed
  * cookie + live TenantViewSession is not enough — a removed agent / de-scoped
@@ -406,6 +426,11 @@ export function withAuth(
         return response;
       } catch (err) {
         if (err instanceof NextResponse) return err;
+        const badInput = badInputResponse(err);
+        if (badInput) {
+          logger.warn({ err }, "[withAuth:tenantView] Bad input");
+          return badInput;
+        }
         logger.error({ err }, "[withAuth:tenantView] Unhandled error");
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
       }
@@ -470,6 +495,11 @@ export function withAuth(
     } catch (err) {
       // validateBody() throws a NextResponse on validation failure — surface it directly
       if (err instanceof NextResponse) return err;
+      const badInput = badInputResponse(err);
+      if (badInput) {
+        logger.warn({ err }, "[withAuth] Bad input");
+        return badInput;
+      }
       logger.error({ err }, "[withAuth] Unhandled error in route handler");
       return NextResponse.json(
         { error: "Internal server error" },

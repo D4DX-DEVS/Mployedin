@@ -1050,7 +1050,7 @@ export default function EmployerAIJobCreatePage() {
                     </div>
                     <span
                       className="ml-auto font-mono text-sm tabular-nums"
-                      aria-label={`Recording length ${Math.max(1, Math.floor(durationMs / 1000))} seconds`}
+                      aria-label={t("jobCreator.recordingLength", { seconds: Math.max(1, Math.floor(durationMs / 1000)) })}
                     >
                       {durationLabel}
                     </span>

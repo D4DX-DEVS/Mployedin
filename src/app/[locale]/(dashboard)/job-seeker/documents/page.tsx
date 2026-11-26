@@ -254,16 +254,9 @@ export default function JobSeekerDocumentsPage() {
         setExtracted(null); setOwnerMismatch(null);
         if (inputRef.current) inputRef.current.value = "";
       } else {
-        // If the documents API doesn't exist yet, still count the CV upload as success
-        if (category === "resume") {
-          setDocuments((prev) => [{ id: Date.now().toString(), name: file.name, category, url: "", size: file.size, uploadedAt: new Date().toISOString() }, ...prev]);
-          toast.success(t("resumeUploaded"));
-          setFile(null);
-          setExtracted(null); setOwnerMismatch(null);
-          if (inputRef.current) inputRef.current.value = "";
-        } else {
-          toast.error(t("uploadFailed"));
-        }
+        // A refused upload is a failure for every category: the CV branch
+        // used to show success and add a row that was never saved (JS-11).
+        toast.error(t("uploadFailed"));
       }
     } catch (e) {
       toast.error(t("uploadGenericFailed"));
@@ -675,14 +668,17 @@ export default function JobSeekerDocumentsPage() {
                           rel="noopener noreferrer"
                           className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors max-sm:flex max-sm:h-11 max-sm:w-11 max-sm:items-center max-sm:justify-center"
                           title={t("view")}
+                          aria-label={`${t("view")}: ${doc.name}`}
                         >
                           <Eye className="h-4 w-4" />
                         </a>
                       )}
                       <button
+                        type="button"
                         onClick={() => deleteDocument(doc)}
-                        className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                        className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors max-sm:flex max-sm:h-11 max-sm:w-11 max-sm:items-center max-sm:justify-center"
                         title={t("remove")}
+                        aria-label={`${t("remove")}: ${doc.name}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

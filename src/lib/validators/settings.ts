@@ -9,11 +9,25 @@ const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const agentSettingsUpdateSchema = z.object({
   country: z.string().max(5).trim().optional(),
   currencyCode: z.string().max(5).trim().optional(),
-  timezone: z.string().max(50).trim().optional(),
+  // Any IANA zone the runtime knows; "Mars/Base" was saved before (SA-14/AG-16).
+  timezone: z.string().max(50).trim().refine(isValidTimeZone, "Unknown timezone").optional(),
   workingHoursStart: z.string().regex(TIME_REGEX, "Invalid time format").optional(),
   workingHoursEnd: z.string().regex(TIME_REGEX, "Invalid time format").optional(),
   workingDays: z.array(z.enum(VALID_DAYS)).max(7).optional(),
-});
+}).refine(
+  (v) => !v.workingHoursStart || !v.workingHoursEnd || v.workingHoursEnd > v.workingHoursStart,
+  { message: "Working hours must end after they start", path: ["workingHoursEnd"] },
+);
+
+function isValidTimeZone(tz: string): boolean {
+  if (!tz) return true;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** PATCH /api/agent/settings/invoice-defaults & /api/super-agent/settings/invoice-defaults */
 export const invoiceDefaultsUpdateSchema = z.object({

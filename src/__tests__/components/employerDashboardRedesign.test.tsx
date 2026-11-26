@@ -124,12 +124,28 @@ describe("Employer task-first dashboard", () => {
         activeJobs={1}
         newApplications={0}
         scheduledInterviews={0}
-        totalApplications={2}
+        totalApplications={54}
+        shortlistedCount={2}
         hiredCount={0}
         locale="en"
       />,
     );
+    // EMP-02: the prompt counts shortlisted candidates, not all 54 applications.
     expect(screen.getByText("Schedule 2 interviews")).toBeInTheDocument();
+    expect(screen.queryByText("Schedule 54 interviews")).not.toBeInTheDocument();
+
+    rerender(
+      <PriorityActions
+        activeJobs={1}
+        newApplications={0}
+        scheduledInterviews={0}
+        totalApplications={54}
+        shortlistedCount={0}
+        hiredCount={0}
+        locale="en"
+      />,
+    );
+    expect(screen.queryByText(/Schedule \d+ interviews/)).not.toBeInTheDocument();
   });
 
   it("uses a four-column tablet signal strip instead of four separate cards", () => {

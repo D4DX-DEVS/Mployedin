@@ -961,5 +961,14 @@ export async function ensureIndexes() {
     { key: { number: 1 }, unique: true },
   ]);
 
+  // CV exports (mirrors CvExportRecord.ts; autoIndex is off).
+  await safeCreateIndexes(db, "cvexportrecords", [
+    { key: { seekerId: 1, status: 1, createdAt: -1 } },
+    { key: { jobId: 1, status: 1, seekerId: 1 } },
+    { key: { batchId: 1, actorId: 1 } },
+    // Unconfirmed rows (cancelled or failed exports) go after a day.
+    { key: { createdAt: 1 }, expireAfterSeconds: 24 * 60 * 60, partialFilterExpression: { status: "pending" }, name: "pending_ttl" },
+  ]);
+
   logger.info("[DB] Indexes ensured ✅");
 }

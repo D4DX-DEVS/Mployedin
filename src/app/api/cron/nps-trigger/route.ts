@@ -7,8 +7,8 @@ import { notify } from "@/lib/notifications/trigger";
 import { verifyCronRequest } from "@/lib/security/cron-auth";
 import { forEachBounded, byId } from "@/lib/cron/scale";
 import logger from "@/lib/logger";
+import { npsCandidateFilter } from "@/lib/cron/npsCandidateFilter";
 
-const TERMINAL_STATUSES = ["hired", "rejected", "withdrawn"];
 const WINDOW_HOURS = 24;       // send NPS request after 24h
 const MAX_WINDOW_DAYS = 14;    // don't send if final status >14 days ago (too late)
 
@@ -32,10 +32,7 @@ export async function GET(req: NextRequest) {
   const windowEnd = new Date(now.getTime() - WINDOW_HOURS * 60 * 60 * 1000);
 
   // Find terminal applications in the send window
-  const applications = await Application.find({
-    status: { $in: TERMINAL_STATUSES },
-    updatedAt: { $gte: windowStart, $lte: windowEnd },
-  })
+  const applications = await Application.find(npsCandidateFilter(windowStart, windowEnd))
     .limit(500)
     .select("_id jobSeekerId jobId employerId status updatedAt")
     .populate("jobId", "title")

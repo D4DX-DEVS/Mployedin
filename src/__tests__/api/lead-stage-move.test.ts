@@ -236,11 +236,19 @@ describe("/api/leads/[id]/follow-up", () => {
   it("schedules a follow-up and re-arms the reminder", async () => {
     lead.lastFollowupReminderAt = new Date();
     const res = await setFollowUp(
-      json(followUpUrl, "PUT", { followUpAt: "2026-10-04T10:30:00.000Z", followUpType: "whatsapp", followUpNote: "Send proposal" }),
+      json(followUpUrl, "PUT", { followUpAt: "2099-10-04T10:30:00.000Z", followUpType: "whatsapp", followUpNote: "Send proposal" }),
       {} as never,
     );
     expect(res.status).toBe(200);
     expect(lead).toMatchObject({ followUpType: "whatsapp", followUpNote: "Send proposal", lastFollowupReminderAt: undefined });
+  });
+
+  it("refuses a follow-up in the past (AG-13)", async () => {
+    const res = await setFollowUp(
+      json(followUpUrl, "PUT", { followUpAt: "2020-01-01T10:30:00.000Z", followUpType: "call" }),
+      {} as never,
+    );
+    expect(res.status).toBe(400);
   });
 
   it("marks a follow-up done: logs it as the planned contact and clears it", async () => {

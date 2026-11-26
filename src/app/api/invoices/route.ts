@@ -7,6 +7,7 @@
  * Employer/job_seeker: own invoices only.
  */
 
+import { withLegacyInvoiceAmounts, type InvoiceMoneyFields } from "@/lib/invoices/legacyAmounts";
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/withAuth";
 import connectDB from "@/lib/db/mongoose";
@@ -195,6 +196,7 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // every consumer already reads (InvoiceTable's AGENT column, the CSV/PDF
   // export column). Keeps the fix to one file.
   for (const inv of invoices as Array<Record<string, unknown>>) {
+    Object.assign(inv, withLegacyInvoiceAmounts(inv as InvoiceMoneyFields));
     const agent = inv.agentId as { _id?: unknown; userId?: { name?: string; email?: string } } | null | undefined;
     if (agent && typeof agent === "object" && agent.userId) {
       inv.agentId = { _id: agent._id, name: agent.userId.name, email: agent.userId.email };
@@ -231,17 +233,23 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // counts (BUG-02) — only drafts are not yet real receivables.
   const payable: readonly string[] = PENDING_BALANCE_INVOICE_STATUSES;
 
+  // AG-10: legacy invoices carry only `amount` (no totalAmount/paidAmount/
+  // balanceDue), so they summed as 0. Fall back field by field.
+  const totalExpr = { $cond: [{ $gt: [{ $ifNull: ["$totalAmount", 0] }, 0] }, "$totalAmount", { $ifNull: ["$amount", 0] }] };
+  const paidExpr = { $ifNull: ["$paidAmount", { $cond: [{ $eq: ["$status", "paid"] }, totalExpr, 0] }] };
+  const balanceExpr = { $ifNull: ["$balanceDue", { $max: [0, { $subtract: [totalExpr, paidExpr] }] }] };
+
   const [summaryAgg, currencyAgg] = await Promise.all([
     Invoice.aggregate([
       { $match: aggregationMatch },
       {
         $group: {
           _id: "$status",
-          total: { $sum: "$totalAmount" },
+          total: { $sum: totalExpr },
           count: { $sum: 1 },
           taxTotal: { $sum: "$taxAmount" },
-          paidTotal: { $sum: "$paidAmount" },
-          balanceTotal: { $sum: "$balanceDue" },
+          paidTotal: { $sum: paidExpr },
+          balanceTotal: { $sum: balanceExpr },
         },
       },
     ]),
@@ -255,10 +263,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
       {
         $group: {
           _id: { $ifNull: ["$currency", "AED"] },
-          total: { $sum: "$totalAmount" },
+          total: { $sum: totalExpr },
           count: { $sum: 1 },
-          paidTotal: { $sum: "$paidAmount" },
-          balanceTotal: { $sum: { $cond: [{ $in: ["$status", [...payable]] }, "$balanceDue", 0] } },
+          paidTotal: { $sum: paidExpr },
+          balanceTotal: { $sum: { $cond: [{ $in: ["$status", [...payable]] }, balanceExpr, 0] } },
         },
       },
       { $sort: { total: -1 } },

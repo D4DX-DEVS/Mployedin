@@ -20,9 +20,15 @@ jest.mock("@/lib/auth/withAuth", () => ({
   withAuth: (handler: (req: NextRequest, ctx: unknown, params?: Record<string, string>) => Promise<Response>) =>
     (req: NextRequest, context?: { params: Promise<Record<string, string>> }) =>
       (context?.params ?? Promise.resolve({})).then((params) =>
-        handler(req, { userId: EMPLOYER_USER, role: "employer", locale: "en" }, params)),
+        handler(req, { userId: EMPLOYER_USER, role: mockCtx.role, locale: "en" }, params)),
 }));
-jest.mock("@/lib/auth/agentRestrictions", () => ({ getSuperAgentScope: jest.fn(), getSuperAgentEmployerIds: jest.fn() }));
+const mockCtx = { role: "employer" };
+const mockAgentEmployerIds: jest.Mock<any> = jest.fn(async () => []);
+jest.mock("@/lib/auth/agentRestrictions", () => ({
+  getSuperAgentScope: jest.fn(),
+  getSuperAgentEmployerIds: jest.fn(),
+  getAgentEmployerIds: (...a: unknown[]) => mockAgentEmployerIds(...a),
+}));
 
 /** A Mongoose-style chain whose every builder method returns itself and resolves to `result`. */
 function chain<T>(result: T): any {
@@ -107,6 +113,22 @@ describe("per-job / per-application scoping params", () => {
     const { GET } = await import("@/app/api/placements/route");
     await GET(get("http://localhost:3000/api/placements?jobId=not-an-id"), {} as any);
     expect(placementFind.mock.calls[0][0]).not.toHaveProperty("jobId");
+  });
+
+  it("GET /api/placements scopes an agent to their portfolio, not bare agentId (AG-14)", async () => {
+    const Agent = (await import("@/models/Agent")).default as unknown as { findOne: jest.Mock<any> };
+    Agent.findOne.mockReturnValueOnce(chain({ _id: "agent-profile-1" }));
+    mockAgentEmployerIds.mockResolvedValueOnce(["emp-a", "emp-b"]);
+    mockCtx.role = "agent";
+    try {
+      const { GET } = await import("@/app/api/placements/route");
+      await GET(get("http://localhost:3000/api/placements"), {} as any);
+      const q = placementFind.mock.calls[0][0];
+      expect(q).not.toHaveProperty("agentId");
+      expect(q.$or).toEqual([{ agentId: "agent-profile-1" }, { employerId: { $in: ["emp-a", "emp-b"] } }]);
+    } finally {
+      mockCtx.role = "employer";
+    }
   });
 
   it("GET /api/employer/background-checks honours jobId and applicationId", async () => {
