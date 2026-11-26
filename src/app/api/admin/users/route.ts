@@ -338,6 +338,13 @@ async function patchHandler(req: NextRequest, ctx: AuthCtx) {
     if (role && role !== ctx.role) {
       return NextResponse.json({ error: "You cannot change your own role." }, { status: 400 });
     }
+    // Custom permissions can only narrow a role, so narrowing your own account
+    // can remove users:update, the permission needed to undo it. With a
+    // single admin there is then no way back (audit 2026-11-26 F-04).
+    // Switching yourself back to role defaults stays allowed.
+    if (permissionMode === "custom") {
+      return NextResponse.json({ error: "You cannot set custom permissions on your own account." }, { status: 400 });
+    }
   }
 
   const updateData: Record<string, unknown> = {};

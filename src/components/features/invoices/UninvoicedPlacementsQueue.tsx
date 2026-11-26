@@ -416,7 +416,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                     ) : (
                       <Zap className="h-3 w-3" />
                     )}
-                    Quick
+                    {t("quickGenerate")}
                   </Button>
                 </>
               ),
@@ -580,7 +580,7 @@ export function UninvoicedPlacementsQueue({ onInvoicesCreated, defaultCurrency }
                             ) : (
                               <Zap className="h-3 w-3" />
                             )}
-                            Quick
+                            {t("quickGenerate")}
                           </Button>
                           <button aria-label={isExpanded ? ta("collapse") : ta("expand")}
                             onClick={() => toggleExpand(p._id)}

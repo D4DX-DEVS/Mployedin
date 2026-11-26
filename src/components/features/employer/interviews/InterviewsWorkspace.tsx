@@ -898,7 +898,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
                 const isCompleted = iv.status === "completed";
                 // Selected in the pipeline counts as passed: whoever picked the
                 // candidate never recorded an outcome here, yet Make Offer is next.
-                const isPassed = (isCompleted && iv.outcome === "passed") || iv.applicationStatus === "selected";
+                const isPassed = (isCompleted && iv.outcome === "passed") || (iv.applicationStatus === "selected" && iv.status !== "cancelled");
                 const canUpdate = can("interviews", "update");
 
                 return (
@@ -1079,7 +1079,7 @@ export function InterviewsWorkspace({ jobId: propJobId, embedded = false }: Inte
             const round = iv.interviewRound ?? 1;
             const isScheduled = iv.status === "scheduled" || iv.status === "confirmed";
             const isCompleted = iv.status === "completed";
-            const isPassed = (isCompleted && iv.outcome === "passed") || iv.applicationStatus === "selected";
+            const isPassed = (isCompleted && iv.outcome === "passed") || (iv.applicationStatus === "selected" && iv.status !== "cancelled");
             const prior = historyByApp.get(iv.applicationId ?? iv._id);
 
             return (

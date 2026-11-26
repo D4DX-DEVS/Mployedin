@@ -52,6 +52,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     query.currency = currency;
   }
   if (dateFrom || dateTo) {
+    if ((dateFrom && Number.isNaN(Date.parse(dateFrom))) || (dateTo && Number.isNaN(Date.parse(dateTo)))) {
+      return NextResponse.json({ error: "Invalid date filter" }, { status: 400 });
+    }
     const dateFilter: Record<string, Date> = {};
     if (dateFrom) dateFilter.$gte = new Date(dateFrom);
     if (dateTo) {
@@ -63,9 +66,12 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   }
 
   // Agent / super-agent name search — names live on the linked User, not on
-  // the Agent/SuperAgent document, so resolve matching users first. Restricted
-  // to admin to avoid broadening the scoped query for super-agents/agents.
-  if (search && search.trim() && ctx.role === "admin") {
+  // the Agent/SuperAgent document, so resolve matching users first. A super
+  // agent's query already carries `superAgentId` (a separate key, ANDed with
+  // this $or), so the search can only narrow their own rows. It used to run
+  // for admin only, and the SA page's search box did nothing (audit 2026-11-26
+  // SA-03). The agent page has no search box.
+  if (search && search.trim() && (ctx.role === "admin" || ctx.role === "super_agent")) {
     const Agent = (await import("@/models/Agent")).default;
     const SuperAgent = (await import("@/models/SuperAgent")).default;
     const User = (await import("@/models/User")).default;

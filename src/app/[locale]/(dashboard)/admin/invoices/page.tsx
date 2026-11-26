@@ -173,7 +173,10 @@ export default function AdminInvoicesPage() {
 
   // Analytics
   const [analyticsPeriod, setAnalyticsPeriod] = useState("30d");
-  const { data: analyticsData, loading: analyticsLoading, refresh: refreshAnalytics } = useInvoiceAnalytics(analyticsPeriod);
+  // F-02: nothing converts between currencies, so the header figures are one
+  // currency at a time — the admin can switch (as the SA invoices page does).
+  const [analyticsCurrency, setAnalyticsCurrency] = useState<string | undefined>(undefined);
+  const { data: analyticsData, loading: analyticsLoading, refresh: refreshAnalytics } = useInvoiceAnalytics(analyticsPeriod, analyticsCurrency);
 
   // Fetch platform currency
   useEffect(() => {
@@ -397,7 +400,23 @@ export default function AdminInvoicesPage() {
 
       {/* Ledger / analytics / uninvoiced queue. The switcher was deleted once and
           left the ledger — and approving pending invoices — unreachable. */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* F-02: header figures are per currency; only shown when invoices exist in more than one. */}
+        {(analyticsData?.currencies?.length ?? 0) > 1 && (
+          <div role="group" aria-label={t("currency")} className="flex gap-1 rounded-lg bg-muted p-1 order-last sm:order-none">
+            {analyticsData?.currencies.map(code => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => setAnalyticsCurrency(code)}
+                aria-pressed={analyticsData?.currency === code}
+                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${analyticsData?.currency === code ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                {code}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex gap-1 rounded-lg bg-muted p-1">
           <button
             type="button"

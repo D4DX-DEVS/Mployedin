@@ -66,7 +66,9 @@ export function JobQualityScore({ values }: JobQualityScoreProps) {
       {
         label: t("factors.salary"),
         points: 20,
-        earned: salaryMin > 0 && salaryMax > 0,
+        // max ≥ min too: a reversed range blocks publishing, so it must not
+        // read "Ready" (audit 2026-11-26 EMP-03).
+        earned: salaryMin > 0 && salaryMax > 0 && salaryMax >= salaryMin,
         tip: t("tips.salary"),
       },
       {

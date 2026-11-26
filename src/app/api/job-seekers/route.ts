@@ -33,6 +33,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   await connectDB();
   const { searchParams } = new URL(req.url);
+
+  // The Industry filter's options: the active master industries the
+  // `industry` filter below matches on. Agent and super-agent pages used to
+  // read /api/admin/job-attributes/industries, which only admin may read (403),
+  // and which returns 10 rows by default. So the filter never loaded for them
+  // (audit 2026-11-26 AG-03/SA-06).
+  if (searchParams.get("industryOptions") === "1") {
+    const names = [...(await industryMasterNames())].sort((a, b) => a.localeCompare(b));
+    return NextResponse.json({ industries: names });
+  }
+
   const page = parseInt(searchParams.get("page") ?? "1");
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "10"), 50);
   const search = searchParams.get("search")?.trim();

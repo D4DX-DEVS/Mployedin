@@ -174,8 +174,8 @@ export default function AgentDetailPage() {
     try {
       const res = await fetch(`/api/super-agent/agents/${agentId}`);
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setError(err.error || t("agentDetailError"));
+        // The API's message is English-only; show our own copy (SA-19).
+        setError(res.status === 404 || res.status === 403 || res.status === 400 ? t("agentNotFound") : t("agentDetailError"));
         return;
       }
       setData(await res.json());
@@ -282,14 +282,17 @@ export default function AgentDetailPage() {
     }
   };
 
+  // The value saved is the API's day code (Mon…Sun). Only the chip text is
+  // translated. Saving the translated label made every Arabic edit fail with
+  // 400 ("الاثنين" is not in the enum) (audit 2026-11-26 SA-09).
   const ALL_DAYS = [
-    t("dayMonday"),
-    t("dayTuesday"),
-    t("dayWednesday"),
-    t("dayThursday"),
-    t("dayFriday"),
-    t("daySaturday"),
-    t("daySunday"),
+    { value: "Mon", label: t("dayMonday") },
+    { value: "Tue", label: t("dayTuesday") },
+    { value: "Wed", label: t("dayWednesday") },
+    { value: "Thu", label: t("dayThursday") },
+    { value: "Fri", label: t("dayFriday") },
+    { value: "Sat", label: t("daySaturday") },
+    { value: "Sun", label: t("daySunday") },
   ];
 
   const handleSendReminder = useCallback(async () => {
@@ -766,27 +769,27 @@ export default function AgentDetailPage() {
                 <div role="group" aria-labelledby="edit-agent-days-label" className="space-y-2">
                   <p id="edit-agent-days-label" className="text-sm font-medium">{t("formLabelWorkingDays")}</p>
                   <div className="flex flex-wrap gap-2">
-                    {ALL_DAYS.map((d) => (
+                    {ALL_DAYS.map(({ value, label }) => (
                       <button
-                        key={d}
+                        key={value}
                         type="button"
-                        aria-pressed={editForm.workingDays.includes(d)}
+                        aria-pressed={editForm.workingDays.includes(value)}
                         onClick={() =>
                           setEditForm((f) => ({
                             ...f,
-                            workingDays: f.workingDays.includes(d)
-                              ? f.workingDays.filter((x) => x !== d)
-                              : [...f.workingDays, d],
+                            workingDays: f.workingDays.includes(value)
+                              ? f.workingDays.filter((x) => x !== value)
+                              : [...f.workingDays, value],
                           }))
                         }
                         className={cn(
                           "rounded-lg border px-3 py-1.5 text-xs font-medium transition-all",
-                          editForm.workingDays.includes(d)
+                          editForm.workingDays.includes(value)
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border bg-background text-muted-foreground hover:bg-muted"
                         )}
                       >
-                        {d}
+                        {label}
                       </button>
                     ))}
                   </div>

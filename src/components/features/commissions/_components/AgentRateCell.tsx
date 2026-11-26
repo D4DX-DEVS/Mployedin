@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Percent } from "lucide-react";
 import { useCommissionRate } from "@/hooks/useCommissionRate";
@@ -64,11 +65,14 @@ export function AgentRateCell({
   }
 
   if (role === "agent") {
+    // A <span> with the badge look, not <Badge> (a <div>): the agent's phone
+    // card puts this inside a <p>, where a <div> is a hydration error (audit
+    // 2026-11-26 AG-09).
     return (
-      <Badge variant="secondary" className="gap-1 rounded-full">
-        <Percent className="h-3 w-3" />
+      <span className={cn(badgeVariants({ variant: "secondary" }), "gap-1 rounded-full")}>
+        <Percent className="h-3 w-3" aria-hidden="true" />
         {rate}%
-      </Badge>
+      </span>
     );
   }
 

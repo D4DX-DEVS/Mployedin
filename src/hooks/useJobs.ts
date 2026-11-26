@@ -33,7 +33,7 @@ export interface Job {
   workMode?: "onsite" | "hybrid" | "remote";
   employmentType?: "full_time" | "part_time" | "contract" | "internship" | "freelance";
   salary: { min: number; max: number; currency: string; isNegotiable?: boolean; period?: string };
-  requirements: { skills: string[]; experienceMin?: number; experienceMax?: number; education?: string; languages?: string[] };
+  requirements: { skills: string[]; experienceMin?: number; experienceMax?: number; education?: string; educationLevel?: number | null; educationField?: string; languages?: string[] };
   vacancies?: number;
   maxApplicants?: number;
   showSalary?: boolean;

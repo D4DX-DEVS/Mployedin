@@ -95,7 +95,7 @@ export function WithdrawApplicationDialog({
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">
+            <label id="withdraw-reason-label" htmlFor="withdraw-reason" className="text-sm font-medium">
               {t("withdrawal.reason")} <span className="text-destructive">{t("withdrawal.required")}</span>
             </label>
             <SearchableSelect
@@ -103,6 +103,8 @@ export function WithdrawApplicationDialog({
               value={reason}
               onValueChange={setReason}
               placeholder={t("withdrawal.selectReason")}
+              id="withdraw-reason"
+              ariaLabelledBy="withdraw-reason-label"
             />
           </div>
 

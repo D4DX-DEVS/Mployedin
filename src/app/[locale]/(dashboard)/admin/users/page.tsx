@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -115,8 +116,10 @@ export default function AdminUsersPage() {
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   // Create user modal state
+  const { data: session } = useSession();
+  const selfId = (session?.user as { id?: string } | undefined)?.id ?? "";
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", role: "agent" as string });
+  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", role: "employer" as string });
   const [createPermMode, setCreatePermMode] = useState<PermissionMode>("role_default");
   const [createPerms, setCreatePerms] = useState<CustomPermissions>({});
   const [createLoading, setCreateLoading] = useState(false);
@@ -548,7 +551,7 @@ export default function AdminUsersPage() {
         return;
       }
       setShowCreate(false);
-      setCreateForm({ name: "", email: "", password: "", role: "agent" });
+      setCreateForm({ name: "", email: "", password: "", role: "employer" });
       setCreatePermMode("role_default");
       setCreatePerms({});
       fetchUsers();
@@ -624,6 +627,8 @@ export default function AdminUsersPage() {
     setSelected(s => s.length === users.length ? [] : users.map(u => u._id));
 
   const rowActionsFor = (user: User): { quick: RowAction[]; menu: RowAction[] } => {
+    // The server refuses deactivating or deleting yourself (F-05); don't offer it.
+    const isSelf = Boolean(selfId) && user._id === selfId;
     const assignHref = assignmentHref(user, locale);
     const assignLabel = ASSIGN_LABEL[user.role];
     const menu: RowAction[] = [
@@ -645,7 +650,7 @@ export default function AdminUsersPage() {
         icon: KeyRound,
         onSelect: () => void sendPasswordReset(user),
       },
-      {
+      ...(isSelf ? [] : [{
         key: "toggleActive",
         label: user.isActive ? t("deactivate_user") : t("activate_user"),
         icon: user.isActive ? Ban : UserCheck,
@@ -658,7 +663,7 @@ export default function AdminUsersPage() {
         icon: Trash2,
         onSelect: () => void deleteUserAccount(user),
         destructive: true,
-      },
+      }]),
     ];
 
     const quick = {

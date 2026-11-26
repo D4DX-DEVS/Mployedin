@@ -39,20 +39,23 @@ async function handler(req: NextRequest, ctx: AuthContext) {
       ...(assignedEmployerIds?.length ? [{ employerId: { $in: assignedEmployerIds } }] : []),
     ],
   };
-  const portfolioJobIds = (await Job.find(jobFilter).select("_id").lean()).map((j) => j._id);
+  // Deleted jobs and their applications are not counted (AG-08), as on Home
+  // and in Reports (api/agent/analytics).
+  const portfolioJobIds = (await Job.find({ ...jobFilter, deletedAt: null }).select("_id").lean()).map((j) => j._id);
 
   const [
     activeJobs, totalApplications, scheduledInterviews,
     totalPlacements, totalLeads, pendingCommissions,
     totalOffers, recentApplications,
   ] = await Promise.all([
-    Job.countDocuments({ ...jobFilter, status: "active" }),
+    Job.countDocuments({ ...jobFilter, status: "active", deletedAt: null }),
     portfolioJobIds.length
       ? Application.countDocuments({ jobId: { $in: portfolioJobIds } })
       : Promise.resolve(0),
     // Confirmed ones are still upcoming — they used to drop out of the count.
     Interview.countDocuments({ agentId, status: { $in: ["scheduled", "confirmed"] } }),
-    Placement.countDocuments({ agentId }),
+    // Portfolio scope, the same filter Reports uses (AG-08).
+    Placement.countDocuments(jobFilter),
     Lead.countDocuments({ agentId }),
     Commission.countDocuments({ agentId, status: "pending" }),
     // Offers have no agentId; scope them to the agent's assigned employers.

@@ -73,7 +73,7 @@ export function StaffReportPage({ kind }: { kind: StaffKind }) {
   };
 
   return (
-    <div className="page-container space-y-4 sm:space-y-6">
+    <div className="page-container">
       <Link
         href={`/${locale}/admin/${reportBasePath(kind)}`}
         className="inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

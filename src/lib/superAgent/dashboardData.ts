@@ -12,6 +12,7 @@ import Placement from "@/models/Placement";
 import Lead from "@/models/Lead";
 import Commission from "@/models/Commission";
 import ExhibitionRequest from "@/models/ExhibitionRequest";
+import { AGENT_EARNED_COMMISSION_FILTER } from "@/lib/invoices/agentEarnedCommissionFilter";
 
 /**
  * Everything the super-agent home shows, counted live from the collections.
@@ -179,7 +180,10 @@ export async function loadSuperAgentDashboard(saUserId: string, now: Date = new 
       status: { $in: ["submitted", "under_review"] },
       isDeleted: { $ne: true },
     }),
-    saProfileId ? Commission.countDocuments({ superAgentId: saProfileId, status: "pending" }) : Promise.resolve(0),
+    // Only lines the SA may approve: their own override needs an admin.
+    saProfileId
+      ? Commission.countDocuments({ superAgentId: saProfileId, status: "pending", ...AGENT_EARNED_COMMISSION_FILTER })
+      : Promise.resolve(0),
     Lead.countDocuments({
       ...leadFilter,
       followUpAt: { $lt: now },

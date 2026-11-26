@@ -100,10 +100,13 @@ export async function GET(req: NextRequest) {
         reason: "Auto-renewal",
       });
 
-      // Invoice
-      const invoiceNumber = await generateInvoiceNumber();
-      await Invoice.create({
-        invoiceNumber,
+      // Invoice, only when the plan costs something. The same guard as
+      // lib/subscription/applyPlan.ts. Without it, every free-plan renewal
+      // issued a zero-value invoice that stayed "Issued" forever (144 of them
+      // by 2026-11-26, audit F-03/EMP-12).
+      const renewalPrice = sub.planSnapshot?.price ?? 0;
+      if (renewalPrice > 0) await Invoice.create({
+        invoiceNumber: await generateInvoiceNumber(),
         userId: sub.userId,
         subscriptionId: sub._id,
         planId: sub.planId,
@@ -111,8 +114,8 @@ export async function GET(req: NextRequest) {
         planName: sub.planSnapshot?.name ?? "Unknown",
         description: `Auto-renewal: ${sub.planSnapshot?.name} (${cycle})`,
         // Totals are derived from subtotal by Invoice.pre("save").
-        subtotal: sub.planSnapshot?.price ?? 0,
-        amount: sub.planSnapshot?.price ?? 0,
+        subtotal: renewalPrice,
+        amount: renewalPrice,
         currency: sub.planSnapshot?.currency ?? "AED",
         billingCycle: cycle,
         periodStart: newStart,

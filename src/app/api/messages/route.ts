@@ -38,12 +38,11 @@ async function POST(req: NextRequest, ctx: { userId: string; role: string; local
   const body = await validateBody(req, messageCreateSchema);
   const { channel = "general", content } = body;
 
-  // Resolve sender name from DB if not provided
-  let senderName = body.senderName;
-  if (!senderName) {
-    const user = await User.findById(ctx.userId).select("name email").lean();
-    senderName = (user as { name?: string; email?: string } | null)?.name || (user as { email?: string } | null)?.email || "Unknown";
-  }
+  // The sender's name always comes from their own account. It used to take
+  // body.senderName when sent, so an agent could post as "Super Admin"
+  // (audit 2026-11-26 AG-01); a client-sent name is now ignored.
+  const user = await User.findById(ctx.userId).select("name email").lean<{ name?: string; email?: string } | null>();
+  const senderName = user?.name || user?.email || "Unknown";
 
   const msg = await (Message as unknown as {
     create: (data: object) => Promise<{ _id: unknown; channel: string; content: string; senderId: string; senderRole: string; createdAt: Date }>

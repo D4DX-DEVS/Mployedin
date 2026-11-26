@@ -21,6 +21,11 @@ export default function ForgotPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    // Our own translated check, not the browser's English bubble (JS-06).
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError(t("invalidEmail"));
+      return;
+    }
     setLoading(true);
 
     try {
@@ -31,8 +36,8 @@ export default function ForgotPasswordPage() {
       });
 
       if (!res.ok && res.status !== 429) {
-        const data = await res.json().catch(() => null);
-        setError(data?.error ?? t("somethingWentWrong"));
+        // The API's text is English-only; show our own copy.
+        setError(res.status === 400 ? t("invalidEmail") : t("somethingWentWrong"));
       } else if (res.status === 429) {
         setError(t("tooManyRequests"));
       } else {
@@ -106,7 +111,7 @@ export default function ForgotPasswordPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <div className="field">
           <Label htmlFor="email" className="text-sm font-medium">{t("emailAddress")}</Label>
           <Input

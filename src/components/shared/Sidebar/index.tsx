@@ -188,6 +188,10 @@ export function Sidebar({
       if (item.children?.some((child) => pathname.startsWith(child.href + "/"))) return item.title;
     }
 
+    // A messages page no row claims (the employer reaches Messages from the
+    // top bar) lights nothing; the root prefix below would light Home (EMP-13).
+    if (/\/messages(\/|$)/.test(pathname)) return "";
+
     // Longest prefix wins. Scanning in array order made the workspace root
     // (always first, and a prefix of every route under it) match before the
     // real section, so every detail page like /job-seeker/jobs/123 lit up

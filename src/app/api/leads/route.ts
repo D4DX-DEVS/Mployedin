@@ -113,8 +113,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   // Resolve Agent._id from User._id
-  const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id").lean();
+  const agentDoc = await Agent.findOne({ userId: ctx.userId }).select("_id currencyCode").lean();
   if (!agentDoc) return NextResponse.json({ error: "Agent profile not found" }, { status: 404 });
+  // AG-06: a value sent without a currency is in the agent's own currency,
+  // not the schema's "AED" default (an INR agent's leads were labelled AED).
+  if (!body.expectedRevenueCurrency) {
+    body.expectedRevenueCurrency = (agentDoc as { currencyCode?: string }).currencyCode || "AED";
+  }
 
   // Calculate initial lead score
   const score = calculateLeadScore({

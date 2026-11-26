@@ -313,6 +313,7 @@
     "legalLinks": "الخصوصية وملفات تعريف الارتباط"
   },
   "forgotPasswordPage": {
+    "invalidEmail": "أدخل عنوان بريد إلكتروني صالحًا.",
     "title": "نسيت كلمة المرور؟",
     "description": "أدخل عنوان بريدك الإلكتروني وسنرسل لك رابطًا لإعادة تعيين كلمة المرور.",
     "checkEmailTitle": "تحقق من بريدك الإلكتروني",
@@ -3101,6 +3102,7 @@
       "langUrdu": "الأردية",
       "enterToSend": "Enter للإرسال · Shift+Enter لسطر جديد",
       "tapSendWhenReady": "اضغط إرسال عندما تكون جاهزًا.",
+      "recordingLength": "مدة التسجيل {seconds} ثانية",
       "eyebrow": "إنشاء وظيفة بالذكاء الاصطناعي",
       "discloseCompany": "إظهار بيانات الشركة",
       "discloseCompanyOn": "يرى الباحثون عن عمل اسم شركتك وشعارها وبياناتها.",
@@ -5957,6 +5959,9 @@
     "titleShort": "التحليلات"
   },
   "employerSettings": {
+    "verificationBasic": "أساسي",
+    "verificationVerified": "موثّق",
+    "verificationPremium": "مميز",
     "title": "إعدادات الشركة",
     "documentTitle": "إعدادات الشركة · MPLOYEDIN",
     "description": "إدارة ملف شركتك وتفضيلاتك وإشعاراتك",
@@ -15225,6 +15230,7 @@
     "formLabelPassword": "كلمة المرور",
     "formLabelCommissionRate": "نسبة العمولة (%)",
     "formHintCommissionRate": "حدد نسبة عمولة الوكيل (0–100%). الإعدادات الافتراضية هي 0%.",
+    "commissionRateRange": "أدخل نسبة عمولة من 0 إلى 100%.",
     "formLabelAssignedRegion": "المنطقة المعينة",
     "formHintAssignedRegion": "سيتم تعيين الوكيل تلقائياً لفريقك. يجب أن تكون منطقته ضمن أراضيك.",
     "buttonCreating": "جاري الإنشاء…",
@@ -15788,6 +15794,9 @@
     }
   },
   "superAgentCommissions": {
+    "typePlacement": "توظيف",
+    "typeOverride": "عمولة إشراف",
+    "typeBonus": "مكافأة",
     "statusUpdateFailed": "تعذر تحديث حالة العمولة",
     "pageTitle": "إدارة العمولات",
     "pageDescription": "راجع سجلات المدفوعات وأقرّها، وتحقق من معدل التجاوز الإقليمي.",
@@ -15828,6 +15837,8 @@
     "loadCommissionsError": "تعذّر تحميل العمولات. يرجى المحاولة مرة أخرى."
   },
   "superAgentJobSeekers": {
+    "allIndustries": "كل القطاعات",
+    "filterLabelIndustry": "القطاع",
     "pageTitle": "طالبو الوظائف",
     "pageDescription": "دليل للقراءة فقط للمرشحين في منطقتك، مرتبط بوكلائك.",
     "totalCandidates": "إجمالي المرشحين",
@@ -16150,6 +16161,8 @@
     "fieldCountry": "الدولة",
     "fieldIndustry": "القطاع",
     "fieldExpectedRevenue": "الإيراد المتوقع",
+    "fieldExpectedRevenueCurrency": "العملة",
+    "currencyDefaultOption": "عملتك",
     "fieldLeadSource": "مصدر الفرصة",
     "fieldExhibition": "المعرض",
     "fieldStage": "المرحلة",
@@ -16171,6 +16184,7 @@
     "exportHeaderScore": "التقييم",
     "exportHeaderQualification": "التصنيف",
     "exportHeaderExpectedRevenue": "الإيراد المتوقع",
+    "exportHeaderCurrency": "العملة",
     "exportHeaderSource": "المصدر",
     "exportHeaderExhibition": "المعرض",
     "exportHeaderFollowUp": "المتابعة",
@@ -16588,6 +16602,7 @@
     "durationMinutes": "{duration} دقيقة"
   },
   "agentJobSeekers": {
+    "filterLabelIndustry": "القطاع",
     "heroAgentWorkspace": "مساحة عمل الوكيل",
     "heroTitle": "طالبو الوظائف",
     "heroDescription": "راجع ملفات المرشحين الشخصية، وقيم جاهزية الملفات الشخصية، وحدّث التفاصيل الرئيسية قبل مطابقتهم مع الأدوار النشطة.",
@@ -16787,6 +16802,7 @@
     "statusFilterLabel": "الحالة",
     "statusAll": "كل الحالات",
     "columnActivity": "النشاط",
+    "agentRateLabel": "عمولة الوكيل:",
     "activityOpenJobs": "{count, plural, zero {لا وظائف مفتوحة} one {وظيفة مفتوحة واحدة} two {وظيفتان مفتوحتان} few {# وظائف مفتوحة} many {# وظيفة مفتوحة} other {# وظيفة مفتوحة}}",
     "activityNewApplicants": "{count, plural, zero {لا متقدمين جدد} one {متقدم جديد واحد} two {متقدمان جديدان} few {# متقدمين جدد} many {# متقدمًا جديدًا} other {# متقدم جديد}}",
     "activityInterviews": "{count, plural, zero {لا مقابلات قادمة} one {مقابلة قادمة واحدة} two {مقابلتان قادمتان} few {# مقابلات قادمة} many {# مقابلة قادمة} other {# مقابلة قادمة}}",
@@ -17008,6 +17024,7 @@
     "filterDateToLabel": "إلى تاريخ"
   },
   "agentCommissions": {
+    "statusFilterLabel": "الحالة",
     "agentWorkspace": "مساحة العمل للوكيل",
     "pageTitle": "عمولاتي",
     "pageDescription": "تتبع الأرباح الناشئة عن التوظيف الناجح وقم بفصل المدفوعات المعلقة عن خطوط العمولة المدفوعة بالفعل.",
@@ -17897,6 +17914,7 @@
     "visa": "ذكره صاحب العمل؛ تحقق منه مع المرشح."
   },
   "jobSeekerJobDetail": {
+    "backToJobSearch": "العودة إلى البحث عن الوظائف",
     "jobDetail": "تفاصيل الوظيفة",
     "notAvailableClosed": "هذه الوظيفة لم تعد تقبل الطلبات.",
     "browseOtherJobs": "تصفح وظائف أخرى",
@@ -18372,6 +18390,7 @@
     "commissionRoleSuperAgent": "الوكيل الرئيسي — {rate}%"
   },
   "uninvoicedPlacementsQueue": {
+    "quickGenerate": "سريع",
     "uninvoicedPlacements": "التوظيفات غير المفوترة",
     "placementsPending": "{count} توظيف{count, plural, =1 { } other {ات}} في انتظار إنشاء الفاتورة. اختر وأنشئ بشكل مجمع.",
     "searchPlacements": "البحث في التوظيفات…",
@@ -21488,6 +21507,7 @@
     "description": "أرسل رسالة واحدة إلى كل الوكلاء في فريقك، أو إلى الوكلاء الذين تختارهم فقط.",
     "sendTo": "إرسال إلى",
     "allAgents": "كل وكلائي ({count})",
+    "allAgentsLoading": "كل وكلائي",
     "chooseAgents": "اختيار الوكلاء",
     "searchAgents": "ابحث عن وكيل",
     "loadError": "تعذّر تحميل الوكلاء. أغلق النافذة وحاول مرة أخرى.",

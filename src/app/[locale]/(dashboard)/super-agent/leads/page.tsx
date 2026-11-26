@@ -22,6 +22,7 @@ import {
   SuperAgentSection,
 } from "@/components/features/super-agent/WorkspacePage";
 import { useTableExport } from "@/hooks/useTableExport";
+import { fetchAllPaginated } from "@/lib/fetchAllRows";
 import { InlineFilterBar, InlineFilterSearch } from "@/components/shared/InlineFilterBar";
 import { FilterField, PhoneFilterSheet, PhoneFiltersButton, SHEET_CONTROL } from "@/components/shared/PhoneFilterSheet";
 import { SortableTableHeader } from "@/components/shared/TableSortControl";
@@ -169,6 +170,26 @@ function countActiveFilters(f: Filters): number {
 /*  Page Component                                                     */
 /* ------------------------------------------------------------------ */
 
+/** One query string for the list and for Export (SA-12: Export walks every page). */
+function leadQuery(f: Filters, page: number, limit: number): URLSearchParams {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit), distinct: "true" });
+  if (f.status) params.set("status", f.status);
+  if (f.search.trim()) params.set("search", f.search.trim());
+  if (f.country) params.set("country", f.country);
+  if (f.industry) params.set("industry", f.industry);
+  if (f.source) params.set("source", f.source);
+  if (f.agentId) params.set("agentId", f.agentId);
+  if (f.dateFrom) params.set("dateFrom", f.dateFrom);
+  if (f.dateTo) params.set("dateTo", f.dateTo);
+  if (f.followUpFrom) params.set("followUpFrom", f.followUpFrom);
+  if (f.followUpTo) params.set("followUpTo", f.followUpTo);
+  if (f.hasNotes) params.set("hasNotes", f.hasNotes);
+  if (f.hasFollowUp) params.set("hasFollowUp", f.hasFollowUp);
+  if (f.sortBy) params.set("sortBy", f.sortBy);
+  if (f.sortOrder) params.set("sortOrder", f.sortOrder);
+  return params;
+}
+
 export default function SuperAgentLeadsPage() {
   const t = useTranslations("superAgentLeads");
   const tc = useTranslations("common");
@@ -225,21 +246,7 @@ export default function SuperAgentLeadsPage() {
     setLoading(true);
     setError("");
     const f = { ...filters, ...overrideFilters };
-    const params = new URLSearchParams({ page: String(page), limit: String(limit), distinct: "true" });
-    if (f.status) params.set("status", f.status);
-    if (f.search.trim()) params.set("search", f.search.trim());
-    if (f.country) params.set("country", f.country);
-    if (f.industry) params.set("industry", f.industry);
-    if (f.source) params.set("source", f.source);
-    if (f.agentId) params.set("agentId", f.agentId);
-    if (f.dateFrom) params.set("dateFrom", f.dateFrom);
-    if (f.dateTo) params.set("dateTo", f.dateTo);
-    if (f.followUpFrom) params.set("followUpFrom", f.followUpFrom);
-    if (f.followUpTo) params.set("followUpTo", f.followUpTo);
-    if (f.hasNotes) params.set("hasNotes", f.hasNotes);
-    if (f.hasFollowUp) params.set("hasFollowUp", f.hasFollowUp);
-    if (f.sortBy) params.set("sortBy", f.sortBy);
-    if (f.sortOrder) params.set("sortOrder", f.sortOrder);
+    const params = leadQuery(f as Filters, page, limit);
 
     try {
       const res = await fetch(`/api/super-agent/leads?${params}`);
@@ -412,8 +419,16 @@ export default function SuperAgentLeadsPage() {
     { header: tc("date"), key: "createdAt", formatter: (v) => v ? formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) : "" },
   ];
 
+  const fetchAllLeads = useCallback(
+    () => fetchAllPaginated<Record<string, unknown>>(
+      (pg, lim) => `/api/super-agent/leads?${leadQuery(filters, pg, lim)}`,
+      (json) => ({ rows: (json.items ?? []) as Record<string, unknown>[], total: Number(json.total ?? 0) }),
+    ),
+    [filters],
+  );
   const { handleExportCsv, handleExportExcel, handleExportPdf } = useTableExport({
     data: leads as unknown as Record<string, unknown>[],
+    fetchAll: fetchAllLeads,
     columns: exportColumns as unknown as ExportColumn<Record<string, unknown>>[],
     filename: "super-agent-leads",
     title: t("pageTitle"),

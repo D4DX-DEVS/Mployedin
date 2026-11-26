@@ -139,8 +139,10 @@ export const testimonialUpdateSchema = testimonialCreateSchema.partial();
 const blankToUndefined = (v: unknown) => (v === "" ? undefined : v);
 
 const faqBase = z.object({
-  question: z.string().min(1).max(500).trim(),
-  answer: z.string().min(1).max(5000).trim(),
+  // Trim first: with .min(1) before .trim(), "   " passed and saved as "",
+  // which the model then refused with a 500 (audit 2026-11-26 F-07).
+  question: z.string().trim().min(1).max(500),
+  answer: z.string().trim().min(1).max(5000),
   questionAr: bilingualText(500),
   answerAr: bilingualText(5000),
   category: z.preprocess(blankToUndefined, z.enum(FAQ_CATEGORIES).optional()),

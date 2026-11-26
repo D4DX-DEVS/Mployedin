@@ -227,8 +227,11 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
         $project: {
           totalAmount: 1,
           balanceDue: 1,
+          // A pending-approval invoice has no issuedAt yet. A null start made
+          // $dateDiff null, and $bucket put it in "365+" (audit 2026-11-26
+          // SA-07). Its age runs from when it was raised instead.
           daysSinceIssued: {
-            $dateDiff: { startDate: "$issuedAt", endDate: new Date(), unit: "day" },
+            $dateDiff: { startDate: { $ifNull: ["$issuedAt", "$createdAt"] }, endDate: new Date(), unit: "day" },
           },
         },
       },

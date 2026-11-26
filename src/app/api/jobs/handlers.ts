@@ -380,7 +380,7 @@ async function getHandler(req: NextRequest, ctx: AuthCtx) {
         // disagree, and the same figure did move when a search was typed.
         const vacancies = portfolioJobs
           .filter((j) => !status || (j as { status?: string }).status === status)
-          .reduce((sum, j) => sum + ((j as { vacancies?: number }).vacancies ?? 0), 0);
+          .reduce((sum, j) => sum + ((j as { vacancies?: number }).vacancies ?? 1), 0);
         const totalApplicants = portfolioJobIds.length
           ? await Application.countDocuments({ jobId: { $in: portfolioJobIds } })
           : 0;

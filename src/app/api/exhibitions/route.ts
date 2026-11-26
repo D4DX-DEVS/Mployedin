@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validateExhibitionDates } from "@/lib/exhibitions/dates";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import ExhibitionRequest, {
@@ -306,6 +307,10 @@ async function postHandler(req: NextRequest, ctx: AuthContext) {
       return NextResponse.json({ error: "additionalRequirements must be ≤ 2000 characters" }, { status: 400 });
     }
   }
+
+  // AG-05: no end-before-start, no unparseable or years-old dates.
+  const dateError = validateExhibitionDates(eventStartDate, eventEndDate, { isCreate: true });
+  if (dateError) return NextResponse.json({ error: dateError }, { status: 400 });
 
   const agentProfile = await Agent.findOne({ userId: ctx.userId }).select("superAgentId").lean();
 

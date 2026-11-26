@@ -313,6 +313,7 @@
     "legalLinks": "Privacy and cookies"
   },
   "forgotPasswordPage": {
+    "invalidEmail": "Enter a valid email address.",
     "title": "Forgot password?",
     "description": "Enter your email address and we'll send you a link to reset your password.",
     "checkEmailTitle": "Check your email",
@@ -3101,6 +3102,7 @@
       "langUrdu": "Urdu",
       "enterToSend": "Enter to send · Shift+Enter for a new line",
       "tapSendWhenReady": "Tap send when you're ready.",
+      "recordingLength": "Recording length {seconds} seconds",
       "eyebrow": "AI job creation",
       "discloseCompany": "Show company details",
       "discloseCompanyOn": "Job seekers see your company name, logo and details.",
@@ -5957,6 +5959,9 @@
     "titleShort": "Analytics"
   },
   "employerSettings": {
+    "verificationBasic": "Basic",
+    "verificationVerified": "Verified",
+    "verificationPremium": "Premium",
     "title": "Company Settings",
     "documentTitle": "Company Settings · MPLOYEDIN",
     "description": "Manage your company profile, preferences, and notifications",
@@ -15225,6 +15230,7 @@
     "formLabelPassword": "Password",
     "formLabelCommissionRate": "Commission Rate (%)",
     "formHintCommissionRate": "Set the agent's commission rate (0–100%). Default is 0%.",
+    "commissionRateRange": "Enter a commission rate from 0 to 100%.",
     "formLabelAssignedRegion": "Assigned Region",
     "formHintAssignedRegion": "The agent will be automatically assigned to your team. Their region must fall within your territory.",
     "buttonCreating": "Creating…",
@@ -15788,6 +15794,9 @@
     }
   },
   "superAgentCommissions": {
+    "typePlacement": "Placement",
+    "typeOverride": "Override",
+    "typeBonus": "Bonus",
     "statusUpdateFailed": "We couldn't update commission status",
     "pageTitle": "Commission Management",
     "pageDescription": "Review and approve payout records, and check the regional override rate.",
@@ -15828,6 +15837,8 @@
     "loadCommissionsError": "We couldn't load commissions. Please try again."
   },
   "superAgentJobSeekers": {
+    "allIndustries": "All industries",
+    "filterLabelIndustry": "Industry",
     "pageTitle": "Job Seekers",
     "pageDescription": "A read-only directory of candidates in your region, linked to your agents.",
     "totalCandidates": "Total Candidates",
@@ -16150,6 +16161,8 @@
     "fieldCountry": "Country",
     "fieldIndustry": "Industry",
     "fieldExpectedRevenue": "Expected Revenue",
+    "fieldExpectedRevenueCurrency": "Currency",
+    "currencyDefaultOption": "Your currency",
     "fieldLeadSource": "Lead Source",
     "fieldExhibition": "Exhibition",
     "fieldStage": "Stage",
@@ -16171,6 +16184,7 @@
     "exportHeaderScore": "Score",
     "exportHeaderQualification": "Qualification",
     "exportHeaderExpectedRevenue": "Expected Revenue",
+    "exportHeaderCurrency": "Currency",
     "exportHeaderSource": "Source",
     "exportHeaderExhibition": "Exhibition",
     "exportHeaderFollowUp": "Follow Up",
@@ -16588,6 +16602,7 @@
     "durationMinutes": "{duration} min"
   },
   "agentJobSeekers": {
+    "filterLabelIndustry": "Industry",
     "heroAgentWorkspace": "Agent workspace",
     "heroTitle": "Job Seekers",
     "heroDescription": "Review candidate profiles, gauge profile readiness, and update key details before matching them into active roles.",
@@ -16787,6 +16802,7 @@
     "statusFilterLabel": "Status",
     "statusAll": "All statuses",
     "columnActivity": "Activity",
+    "agentRateLabel": "Agent rate:",
     "activityOpenJobs": "{count, plural, one {# open job} other {# open jobs}}",
     "activityNewApplicants": "{count, plural, one {# new applicant} other {# new applicants}}",
     "activityInterviews": "{count, plural, one {# interview ahead} other {# interviews ahead}}",
@@ -17008,6 +17024,7 @@
     "filterDateToLabel": "To date"
   },
   "agentCommissions": {
+    "statusFilterLabel": "Status",
     "agentWorkspace": "Agent workspace",
     "pageTitle": "My Commissions",
     "pageDescription": "Track the earnings created by successful placements and quickly separate pending payouts from already paid commission lines.",
@@ -17897,6 +17914,7 @@
     "visa": "Stated by the employer; check with the candidate."
   },
   "jobSeekerJobDetail": {
+    "backToJobSearch": "Back to job search",
     "jobDetail": "Job detail",
     "notAvailableClosed": "This job is no longer accepting applications.",
     "browseOtherJobs": "Browse other jobs",
@@ -18372,6 +18390,7 @@
     "commissionRoleSuperAgent": "Super agent — {rate}%"
   },
   "uninvoicedPlacementsQueue": {
+    "quickGenerate": "Quick",
     "uninvoicedPlacements": "Uninvoiced Placements",
     "placementsPending": "{count} placement{count, plural, =1 { } other {s}} pending invoice generation. Select and generate in bulk.",
     "searchPlacements": "Search placements…",
@@ -21488,6 +21507,7 @@
     "description": "Send one message to every agent in your team, or only to the agents you choose.",
     "sendTo": "Send to",
     "allAgents": "All my agents ({count})",
+    "allAgentsLoading": "All my agents",
     "chooseAgents": "Choose agents",
     "searchAgents": "Search agents",
     "loadError": "We couldn't load your agents. Close this and try again.",

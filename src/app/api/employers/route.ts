@@ -433,6 +433,20 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   // company to an employer. Re-pin last: an employer only ever sees itself.
   if (ownEmployerUserId) query._id = ownEmployerUserId;
 
+  // F-09: employer Users with no Employer profile used to be dropped only
+  // after paging and counting — the admin total read 180 for 170 rows and
+  // pages came back short. Constrain the User query itself (ANDed, so it
+  // composes with any _id pin or search $or above) so the page slice and the
+  // total see only accounts that have a profile. The employer branch is
+  // already pinned to its own account, whose profile was checked above.
+  if (!ownEmployerUserId) {
+    const withProfile = await Employer.find({}).select("userId").lean();
+    query.$and = [
+      ...((query.$and as Record<string, unknown>[] | undefined) ?? []),
+      { _id: { $in: withProfile.map((p) => p.userId) } },
+    ];
+  }
+
   // Sorting. Company and industry live on Employer profiles rather than the
   // User document returned by this branch, so resolve those profile ids first
   // and preserve their order after fetching user records.
@@ -452,7 +466,10 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
     // Translate the User-side constraints into a userId constraint so the
     // ordering, the page slice and the total all see the same filtered set.
     const existingIdConstraint = query._id as { $in?: unknown[] } | string | undefined;
-    if (query.isActive !== undefined || existingIdConstraint !== undefined) {
+    // Always resolved, even with status=all and no id pin: a profile whose
+    // account is gone or no longer an employer used to be counted here
+    // (total 380, rows 379, one short page).
+    {
       const userMatch: Record<string, unknown> = { role: "employer" };
       if (query.isActive !== undefined) userMatch.isActive = query.isActive;
       if (
@@ -485,7 +502,9 @@ async function handler(req: NextRequest, ctx: AuthCtx) {
   const [users, total] = await Promise.all([
     User.find(query)
       .select("name email isActive createdAt")
-      .sort(profileSort ? { _id: 1 } : { [sortField]: sortDir })
+      // _id tiebreak: many employers share a name, and skip() over a
+      // non-unique sort repeated some rows across pages and never showed others.
+      .sort(profileSort ? { _id: 1 } : { [sortField]: sortDir, _id: 1 })
       .skip(profilePaginated ? 0 : skip)
       .limit(limit)
       .lean(),

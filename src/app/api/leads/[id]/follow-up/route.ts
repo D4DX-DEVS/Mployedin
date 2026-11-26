@@ -34,6 +34,11 @@ export const PUT = withAuth(async (req: NextRequest, ctx: AuthCtx) => {
   const { id, lead, error } = await loadLead(req, ctx);
   if (error) return error;
   const body = await validateBody(req, leadFollowUpSchema);
+  // A follow-up is the next contact; a past one fired no reminder (AG-13).
+  // Five minutes' grace covers a "now" picked a moment ago.
+  if (new Date(body.followUpAt).getTime() < Date.now() - 5 * 60_000) {
+    return NextResponse.json({ error: "Follow-up must be in the future" }, { status: 400 });
+  }
 
   lead!.followUpAt = new Date(body.followUpAt);
   lead!.followUpType = body.followUpType;

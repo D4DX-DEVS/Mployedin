@@ -41,6 +41,7 @@
  * Processes users in batches of 50 for reliability (Inngest retries per batch).
  */
 
+import { recommendableJobsFilter } from "@/lib/inngest/recommendableJobsFilter";
 import { inngest } from "./client";
 import { isDigestHourFor } from "@/lib/datetime/countryZone";
 import { connectDB } from "@/lib/db/mongoose";
@@ -252,10 +253,7 @@ export const dailyRecommendationsCron = inngest.createFunction(
     // the seeker's remote/onsite preference was collected and never enforced.
     const activeJobs: CandidateJob[] = await step.run("fetch-active-jobs", async () => {
       const now = new Date();
-      const jobs = await Job.find({
-        status: "active",
-        $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }],
-      })
+      const jobs = await Job.find(recommendableJobsFilter(now))
         .select(JOB_MATCH_FIELDS)
         .populate("employerId", "companyName")
         // Newest 500, not whichever 500 the server returns first (issue 3).

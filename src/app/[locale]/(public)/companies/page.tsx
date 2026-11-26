@@ -1,4 +1,5 @@
 import { connectDB } from "@/lib/db/mongoose";
+import { escapeRegex } from "@/lib/security/sanitize";
 import Employer from "@/models/Employer";
 import Job from "@/models/Job";
 import type { Metadata } from "next";
@@ -59,15 +60,23 @@ export default async function PublicCompaniesPage({ params, searchParams }: Page
 
   await connectDB();
 
-  const filter: Record<string, unknown> = { isActive: true };
+  // Public, unauthenticated input: escaped before it reaches $regex. Raw, a "("
+  // crashed the page and a crafted pattern could tie up the database
+  // (audit 2026-11-26 JS-03).
+  // A blank or placeholder name ("(blank)") is not a company to list (JS-07).
+  const filter: Record<string, unknown> = {
+    isActive: true,
+    companyName: { $regex: /\S/, $nin: ["(blank)", "(Blank)"] },
+  };
   if (search) {
+    const safeSearch = escapeRegex(search.slice(0, 100));
     filter.$or = [
-      { companyName: { $regex: search, $options: "i" } },
-      { industry: { $regex: search, $options: "i" } },
+      { companyName: { $regex: safeSearch, $options: "i" } },
+      { industry: { $regex: safeSearch, $options: "i" } },
     ];
   }
   if (industry) {
-    filter.industry = { $regex: industry, $options: "i" };
+    filter.industry = { $regex: escapeRegex(industry.slice(0, 100)), $options: "i" };
   }
 
   const [employers, total] = await Promise.all([

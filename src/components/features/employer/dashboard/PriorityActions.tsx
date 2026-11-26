@@ -32,6 +32,9 @@ interface PriorityActionsProps {
   newApplications: number;
   scheduledInterviews: number;
   totalApplications: number;
+  /** Candidates shortlisted and waiting for an interview (EMP-02). Optional for
+   *  older callers; when absent no "Schedule N interviews" prompt is shown. */
+  shortlistedCount?: number;
   hiredCount: number;
   locale: string;
 }
@@ -41,6 +44,7 @@ export function PriorityActions({
   newApplications,
   scheduledInterviews,
   totalApplications,
+  shortlistedCount = 0,
   hiredCount,
   locale,
 }: PriorityActionsProps) {
@@ -80,12 +84,14 @@ export function PriorityActions({
     });
   }
 
-  if (scheduledInterviews === 0 && totalApplications > 0) {
+  // EMP-02: count only shortlisted candidates — not every application ever
+  // (withdrawn, rejected and hired ones have nothing left to schedule).
+  if (scheduledInterviews === 0 && shortlistedCount > 0) {
     actions.push({
       icon: Calendar,
-      textKey: totalApplications !== 1 ? "scheduleCountInterviews" : "scheduleInterviewsAction",
-      textValues: { count: totalApplications },
-      href: `/${locale}/employer/applications`,
+      textKey: shortlistedCount !== 1 ? "scheduleCountInterviews" : "scheduleInterviewsAction",
+      textValues: { count: shortlistedCount },
+      href: `/${locale}/employer/applications?status=shortlisted`,
       priority: "suggestion",
       actionLabelKey: "scheduleInterviews",
     });

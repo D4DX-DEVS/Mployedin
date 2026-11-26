@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validateExhibitionDates } from "@/lib/exhibitions/dates";
 import { connectDB } from "@/lib/db/mongoose";
 import { withAuth, type AuthContext } from "@/lib/auth/withAuth";
 import ExhibitionRequest, {
@@ -139,6 +140,14 @@ async function patchHandler(req: NextRequest, ctx: AuthContext, params?: Record<
     if (eventLocation !== undefined) item.eventLocation = eventLocation.trim();
     if (venue !== undefined) item.venue = venue?.trim();
     if (country !== undefined) item.country = country?.trim();
+    // AG-05: check the dates as they will be after this edit.
+    if (eventStartDate !== undefined || eventEndDate !== undefined) {
+      const dateError = validateExhibitionDates(
+        eventStartDate !== undefined ? eventStartDate : item.eventStartDate,
+        eventEndDate !== undefined ? eventEndDate : item.eventEndDate,
+      );
+      if (dateError) return NextResponse.json({ error: dateError }, { status: 400 });
+    }
     if (eventStartDate !== undefined) item.eventStartDate = new Date(eventStartDate);
     if (eventEndDate !== undefined) item.eventEndDate = new Date(eventEndDate);
     if (organizerName !== undefined) item.organizerName = organizerName?.trim();

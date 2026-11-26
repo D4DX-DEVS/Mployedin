@@ -59,6 +59,7 @@ export default async function EmployerDashboard({ params }: { params: Promise<{ 
         newApplications={newApplications}
         scheduledInterviews={scheduledInterviews}
         totalApplications={totalApplications}
+        shortlistedCount={inReview}
         hiredCount={hiredCount}
         locale={locale}
       />
