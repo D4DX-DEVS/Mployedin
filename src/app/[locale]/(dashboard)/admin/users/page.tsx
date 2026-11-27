@@ -835,18 +835,20 @@ export default function AdminUsersPage() {
                   <RowActions name={user.name || user.email} {...rowActionsFor(user)} />
                 </div>
               ),
+              // Two items straight into the card's meta row (it wraps and spaces them);
+              // nested in one flex <p>, the row's nowrap rule stacked each icon above
+              // its text on phones (audit 2026-11-27 LA-03).
               meta: (
-                <p className="flex min-w-0 flex-wrap items-center gap-x-1">
-                  <span className="flex min-w-0 items-center gap-1">
+                <>
+                  <span className="inline-flex min-w-0 items-center gap-1">
                     <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
                     <span className="truncate">{t("exportHeaderLastLogin")}: {lastLogin ?? t("never")}</span>
                   </span>
-                  <span aria-hidden="true">·</span>
-                  <span className="flex min-w-0 items-center gap-1">
+                  <span className="inline-flex min-w-0 items-center gap-1">
                     <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
                     <span className="truncate">{t("joinedTableHeader")}: {joined}</span>
                   </span>
-                </p>
+                </>
               ),
               badges: user.permissionMode === "custom" ? (
                 <Badge variant="outline" className="text-[11px] border-amber-300 text-amber-600">{t("customPermissions")}</Badge>

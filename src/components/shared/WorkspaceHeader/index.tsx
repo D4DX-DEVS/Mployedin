@@ -68,6 +68,7 @@ export function WorkspaceHeader({
   const Heading = headingLevel === 2 ? "h2" : "h1";
   const hasMetrics = Boolean(metrics && metrics.length > 0);
   const interactive = Boolean(metrics?.some((m) => m.onClick || m.href));
+  const longestWord = typeof title === "string" ? Math.max(0, ...title.split(/\s+/).map((w) => w.length)) : 0;
 
   return (
     <section data-workspace-header="" className={cn("workspace-header", className)}>
@@ -77,7 +78,15 @@ export function WorkspaceHeader({
             {Icon ? <Icon className="h-5 w-5" /> : <PageNavIcon className="h-5 w-5" />}
           </span>
           <div className="workspace-header-text">
-            <Heading className="workspace-header-title text-balance">{title}</Heading>
+            <Heading
+              className="workspace-header-title text-balance"
+              // Phones: globals.css floors the title at its longest word so a
+              // wide action wraps below instead of breaking the word
+              // ("Communicati/on Templates", audit 2026-11-27).
+              style={longestWord ? ({ "--ws-title-word": String(longestWord) } as CSSProperties) : undefined}
+            >
+              {title}
+            </Heading>
             {(context || status) && (
               <p className="workspace-header-context">
                 {context && <span className="min-w-0 flex-1 basis-0 line-clamp-3 sm:line-clamp-1">{context}</span>}

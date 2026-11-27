@@ -25,6 +25,7 @@ import type { CommTemplateType } from "@/models/CommTemplate";
 import { toast } from "sonner";
 import { useCommTemplates, useCreateCommTemplate, useDeleteCommTemplate } from "@/hooks/useCommTemplates";
 import type { CommTemplate } from "@/hooks/useCommTemplates";
+import CommTemplatesLoading from "./loading";
 
 const TYPE_LABELS_KEY: Record<CommTemplateType, string> = {
   rejection: "rejection",
@@ -95,7 +96,7 @@ export default function CommTemplatesPage() {
     : templates.filter((t) => t.type === filterType);
 
   return (
-    <FeatureGate feature="commTemplates">
+    <FeatureGate feature="commTemplates" loadingFallback={<CommTemplatesLoading />}>
     <div className="page-container">
       {ConfirmDialogNode}
       <WorkspaceHeader

@@ -405,13 +405,14 @@ export default function SuperAgentAgentsPage() {
             they sat between the heading and the table on every visit. */}
         <SuperAgentInsightsPanel asDialog />
         {/* One message to every agent in the team, or to the ones ticked. */}
-        <Button variant="outline" onClick={() => setMessageOpen(true)} className="gap-2" aria-label={tm("openButton")}>
+        <Button variant="outline" onClick={() => setMessageOpen(true)} className="gap-2 max-sm:h-11 max-sm:w-11 max-sm:p-0" aria-label={tm("openButton")}>
           <MessageSquare className="h-4 w-4" aria-hidden="true" />
           <span className="max-sm:sr-only">{tm("openButton")}</span>
         </Button>
         <Button
           onClick={() => { setCreateError(""); setShowCreate(true); }}
-          className="gap-2"
+          // 44px on phones like every other page's primary action (audit 2026-11-27).
+          className="gap-2 max-sm:h-11"
         >
           <Plus className="h-4 w-4" />
           {t("addAgent")}

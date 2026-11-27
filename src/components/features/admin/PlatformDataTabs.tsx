@@ -50,6 +50,9 @@ export function PlatformDataTabs() {
               <Link
                 href={href}
                 aria-current={isActive ? "page" : undefined}
+                // On a phone the strip scrolls; bring the current tab into view so
+                // e.g. "Major subjects" isn't sitting off-screen (audit 2026-11-27).
+                ref={isActive ? (el) => el?.scrollIntoView({ block: "nearest", inline: "center" }) : undefined}
                 className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-3 text-sm font-medium transition-colors sm:min-h-9 ${
                   isActive
                     ? "bg-primary text-primary-foreground"

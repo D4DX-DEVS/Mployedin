@@ -43,7 +43,9 @@ export function AiSearchField({
   // away on the first keystroke. The inner box is the positioning context for
   // the Ask AI button, so the label sits outside it.
   return (
-    <div className={cn("min-w-0", className)}>
+    // max-sm:basis-36 after className: callers pass flex-[2_1_20rem], which on a
+    // 343px phone row pushed Filters + Export onto their own line (audit 2026-11-27).
+    <div className={cn("min-w-0", className, "max-sm:basis-36")}>
       <label htmlFor={id} className="mb-1 block truncate text-xs font-medium text-muted-foreground">
         {label ?? t("fieldLabel")}
       </label>

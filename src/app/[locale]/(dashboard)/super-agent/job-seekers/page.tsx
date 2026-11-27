@@ -359,6 +359,9 @@ export default function SuperAgentJobSeekersPage() {
         // One icon-sized button on phones: keep it on the title's row.
         inlineActions
       >
+        {/* Phones: the privacy notice (icon + popover) sits by the page action, so
+            the filter bar keeps search + Filters + Export on one line. */}
+        {isPhone && <CandidateDataNotice variant="candidateList" compact />}
         <button
           type="button"
           onClick={() => setReferOpen(true)}
@@ -373,8 +376,8 @@ export default function SuperAgentJobSeekersPage() {
       <ReferSeekerDialog open={referOpen} onOpenChange={setReferOpen} locale={locale} workspace="super-agent" />
 
       <div className="workspace-panel-surface rounded-2xl border-b-0 max-sm:hidden">
-        {/* The privacy notice sits by the heading on wider screens, so the
-            filter bar stays one line; phones (no heading) keep it on the bar. */}
+        {/* The privacy notice sits by the heading on wider screens and by the
+            page action on phones, so the filter bar stays one line. */}
         <div className="flex items-center gap-2">
           <h2 className="heading-section font-semibold text-foreground">{t("browseRegionalCandidates")}</h2>
           <CandidateDataNotice variant="candidateList" compact />
@@ -402,9 +405,6 @@ export default function SuperAgentJobSeekersPage() {
         <div className="contents max-sm:hidden">
           {dropdownFilters}
         </div>
-        {/* Privacy detail at the point candidate data is shown, as an icon +
-            popover. It was a full-width text banner above the metrics. */}
-        {isPhone && <CandidateDataNotice variant="candidateList" compact />}
       </InlineFilterBar>
 
       <PhoneFilterSheet

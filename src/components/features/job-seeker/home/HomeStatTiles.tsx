@@ -68,7 +68,8 @@ export function HomeStatTiles({ tiles, locale }: { tiles: HomeStatTile[]; locale
             <span className={cn("grid size-7 shrink-0 place-items-center rounded-lg sm:size-8", tile.tone)}>
               <tile.icon className="size-4" aria-hidden />
             </span>
-            <span className="truncate text-xs text-muted-foreground sm:text-sm">{tile.label}</span>
+            {/* Two lines on a phone rather than "Active applicatio…" (audit 2026-11-27 LJS-02). */}
+            <span className="line-clamp-2 text-xs leading-4 text-muted-foreground sm:text-sm sm:leading-5">{tile.label}</span>
           </span>
           <span className="text-lg font-bold leading-6 text-foreground sm:text-2xl sm:leading-8">
             {tile.value.toLocaleString(numberLocale)}

@@ -30,6 +30,8 @@ interface FeatureGateProps {
   disableOnly?: boolean;
   /** Label to show in the default fallback. */
   label?: string;
+  /** Shown while the plan check loads. Defaults to nothing (inline gates); pass a skeleton when the gate wraps a whole page. */
+  loadingFallback?: ReactNode;
 }
 
 export function FeatureGate({
@@ -38,11 +40,12 @@ export function FeatureGate({
   fallback,
   disableOnly = false,
   label,
+  loadingFallback = null,
 }: FeatureGateProps) {
   const { allowed, isLoading, remaining } = useFeatureGate(feature);
 
-  // While loading, show nothing to avoid layout shift
-  if (isLoading) return null;
+  // While loading, show nothing (or the caller's skeleton) to avoid layout shift
+  if (isLoading) return <>{loadingFallback}</>;
 
   if (allowed) {
     return <>{children}</>;

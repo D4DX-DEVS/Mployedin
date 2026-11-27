@@ -32,6 +32,7 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
 import { formatDate, formatDateTime, formatListDate } from "@/lib/ui/intlFormat";
+import { getLocalizedCountryName } from "@/lib/i18n/locations";
 
 /* ── Types ── */
 
@@ -437,7 +438,7 @@ export default function AgentDetailPage() {
           <div className="grid gap-0 sm:grid-cols-2">
             <DetailRow icon={Mail} label={tc("email")} value={user.email} />
             <DetailRow icon={User} label={tc("name")} value={user.name} />
-            <DetailRow icon={Globe} label={tc("country")} value={agent.country || "—"} />
+            <DetailRow icon={Globe} label={tc("country")} value={getLocalizedCountryName(agent.country, locale) || "—"} />
             <DetailRow icon={MapPin} label={t("timezoneLabe")} value={agent.timezone} />
             <DetailRow icon={Clock} label={t("workingHoursLabel")} value={`${agent.workingHoursStart} – ${agent.workingHoursEnd}`} />
             <DetailRow icon={Calendar} label={t("workingDaysLabel")} value={agent.workingDays?.join(", ") || "—"} />
