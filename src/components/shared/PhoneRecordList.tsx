@@ -283,11 +283,14 @@ function FactsCard({ item }: { item: PhoneRecord }) {
         // they wrap under the facts at the end instead of crushing them.
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
           <p className="line-clamp-3 min-w-[9rem] flex-1 text-xs leading-5 text-muted-foreground">
-            {/* The dot rides at the end of the fact before it, so a wrapped
-                line ends with "·" rather than starting with one. */}
+            {/* The dot rides at the end of the fact before it (a no-break space
+                glues it to the last word), so a wrapped line ends with "·" rather
+                than starting with one. Each fact stays on one line ("0 Applicants"
+                never splits); one longer than the line ends in "…" instead of being
+                clipped mid-word behind the card's buttons (audit 2026-11-27). */}
             {facts.map((fact, index) => (
               <span key={index}>
-                <span className="whitespace-nowrap">
+                <span className="inline-block max-w-full truncate align-top">
                   {fact}
                   {index < facts.length - 1 && <span aria-hidden="true">{" ·"}</span>}
                 </span>

@@ -1338,6 +1338,12 @@ input::placeholder {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Chromium ignores text-overflow on ::placeholder; it honours it on the input
+   itself while the placeholder shows. Without this the rule above did nothing
+   ("Search by job title, compa" — audit 2026-11-27). */
+input:placeholder-shown {
+  text-overflow: ellipsis;
+}
 .input-field:hover { border-color: hsl(var(--border)); }
 .input-field:focus {
   outline: none;
@@ -4663,7 +4669,10 @@ table.workspace-list-table tbody tr:focus-visible {
       display: contents;
     }
     .dashboard-main .workspace-header-row .workspace-header-icon { order: 1; }
-    .dashboard-main .workspace-header-row .workspace-header-title { order: 2; flex: 1 1 0; min-width: 7.5rem; }
+    /* Floor = the longest word at the 20px title size (~0.62em per glyph,
+       --ws-title-word set by WorkspaceHeader), so "Communication" never
+       breaks mid-word; the actions wrap to their own row instead. */
+    .dashboard-main .workspace-header-row .workspace-header-title { order: 2; flex: 1 1 0; min-width: min(100%, max(7.5rem, calc(var(--ws-title-word, 0) * 0.62 * 1.25rem))); }
     .dashboard-main .workspace-header-row > .workspace-header-actions { order: 3; }
     .dashboard-main .workspace-header-row .workspace-header-context { order: 4; flex: 1 1 100%; margin-top: 0; }
   }
@@ -5126,3 +5135,4 @@ table.workspace-list-table tbody tr:focus-visible {
     scroll-padding-bottom: 0;
   }
 }
+

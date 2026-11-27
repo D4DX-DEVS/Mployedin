@@ -185,7 +185,10 @@ export function AgentTodayQueue({ items, counts, locale, labels }: AgentTodayQue
             );
           })}
         </ul>
-      ) : (
+      ) : AGENT_QUEUE_COUNT_ORDER.some((key) => counts[key] > 0) ? null : (
+        // "Your queue is clear" only when nothing is waiting at all; with counts
+        // but nothing late, the chips above already say what needs doing
+        // (audit 2026-11-27 LAG-03: "3 things need you" sat above "queue is clear").
         <div className="workspace-empty-state mt-3 flex items-center gap-3 rounded-2xl p-4">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-status-selected" aria-hidden="true" />
           <div>

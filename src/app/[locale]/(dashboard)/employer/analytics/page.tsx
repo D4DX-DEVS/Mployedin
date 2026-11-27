@@ -186,7 +186,7 @@ export default function EmployerAnalyticsPage() {
           },
           {
             label: t("conversionRate"),
-            value: `${pipeline.conversionRates.overallHireRate}%`,
+            value: `${pipeline.conversionRates?.overallHireRate ?? 0}%`,
             description: t("conversionRateDesc"),
             icon: Zap,
             color: "purple",

@@ -40,7 +40,7 @@ export function DashboardToolbar({ updatedLabel, updatedAt, labels }: DashboardT
 
   return (
     <div className="flex w-full items-center gap-2 sm:w-auto" data-dashboard-toolbar>
-      <time dateTime={updatedAt} className="me-1 min-w-0 flex-1 truncate text-xs text-muted-foreground sm:flex-none" aria-live="polite">
+      <time dateTime={updatedAt} className="me-1 min-w-0 flex-1 line-clamp-2 text-xs leading-4 text-muted-foreground sm:flex-none sm:truncate" aria-live="polite">
         {pending ? labels.refreshing : updatedLabel}
       </time>
       <Button

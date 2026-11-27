@@ -120,13 +120,15 @@ export function DashboardPageHeader({
             Relationships" into a ~100px column — one or two characters per line,
             a 479px header. A floor here makes the row wrap instead of crushing. */}
         <div data-header-identity="" className="dashboard-page-header-identity min-w-0 max-w-3xl flex-1 basis-0 max-sm:min-w-[min(100%_-_3.25rem,var(--header-title-min))] lg:min-w-[16rem]"
-          // Phones: reserve roughly the title's one-line width (icon + ~0.66rem
-          // per character at 20px) so it never breaks mid-word; actions that
+          // Phones: reserve roughly the title's one-line width (icon + ~0.53 of the
+          // title font size per character: 0.66rem at the compact 20px, 0.8rem at
+          // the default 24px; a flat 0.66rem broke "Communicati/on Templates"
+          // mid-word, audit 2026-11-27) so it never breaks mid-word; actions that
           // do not fit beside it wrap to their own row. The reserve stops 3.25rem
           // short of the row so an icon-only action (refresh) still fits beside
           // a long title, which then wraps between words instead of leaving the
           // icon alone on a row ("Notification Control Center").
-          style={{ "--header-title-min": `${3.25 + title.length * 0.66}rem` } as CSSProperties}>
+          style={{ "--header-title-min": `calc(3.25rem + ${title.length} * 0.53 * ${compact ? "1.25rem" : "var(--text-page-title, 1.5rem)"})` } as CSSProperties}>
           <span data-header-icon="" className="dashboard-page-header-icon" aria-hidden="true">
             {Icon ? <Icon className="h-5 w-5" /> : <PageNavIcon className="h-5 w-5" />}
           </span>

@@ -37,7 +37,14 @@ async function getHandler(req: NextRequest, ctx: AuthCtx): Promise<NextResponse>
       perJob: [],
       perJobMeta: { total: 0, page: 1, pageSize, totalPages: 0 },
       jobOptions: [],
-      conversionRates: {},
+      // Same shape as the populated response so the page never prints "undefined%".
+      conversionRates: {
+        appliedToShortlisted: 0,
+        shortlistedToInterview: 0,
+        interviewToOffer: 0,
+        offerToHired: 0,
+        overallHireRate: 0,
+      },
       stalledCount: 0,
     }, {
       headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },

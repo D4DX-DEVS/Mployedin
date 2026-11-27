@@ -278,7 +278,7 @@ export default function AgentJobDetailPage() {
       {job.status !== "draft" && (
         <WorkspaceTabs
           tabs={[
-            { key: "overview", label: tWs("overview"), href: `/${locale}/agent/jobs/${id}` },
+            { key: "overview", label: tWs("tabOverview"), href: `/${locale}/agent/jobs/${id}` },
             { key: "matches", label: t("findCandidates"), href: `/${locale}/agent/jobs/${id}/matches` },
           ] as WorkspaceTab[]}
           activeKey="overview"

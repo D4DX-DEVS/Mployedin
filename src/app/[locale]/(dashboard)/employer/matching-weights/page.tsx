@@ -1,5 +1,7 @@
 "use client";
 
+import MatchingWeightsLoading from "./loading";
+
 import { useTranslations } from "next-intl";
 
 import { useState, useEffect } from "react";
@@ -118,7 +120,7 @@ export default function EmployerMatchingWeightsPage() {
   );
 
   return (
-    <FeatureGate feature="matchingWeightCustomization">
+    <FeatureGate feature="matchingWeightCustomization" loadingFallback={<MatchingWeightsLoading />}>
     <div className="page-container">
       <WorkspaceHeader
         title={t("title")}

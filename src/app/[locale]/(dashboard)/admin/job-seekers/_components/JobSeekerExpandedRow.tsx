@@ -183,17 +183,17 @@ export function JobSeekerExpandedRow({ seeker, locale, availabilityLabel, onView
           {/* View CV is the Standardised CV, made from the profile, so it is there
               even when nothing was uploaded; the upload has its own buttons. */}
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" onClick={onViewCv} className="min-h-11 flex-1 gap-1.5 sm:min-h-9">
+            <Button type="button" size="sm" onClick={onViewCv} className="min-h-11 w-full gap-1.5 sm:min-h-9 sm:w-auto sm:flex-1">
               <Eye className="size-4" aria-hidden="true" />
               {t("viewCvTitle")}
             </Button>
             {seeker.cv?.originalUrl && (
               <>
-                <Button type="button" size="sm" variant="outline" onClick={onViewOriginalCv} className="min-h-11 flex-1 gap-1.5 sm:min-h-9">
+                <Button type="button" size="sm" variant="outline" onClick={onViewOriginalCv} className="min-h-11 w-full gap-1.5 sm:min-h-9 sm:w-auto sm:flex-1">
                   <FileText className="size-4" aria-hidden="true" />
                   {tViewer("originalCv")}
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => void downloadCv()} disabled={downloading} className="min-h-11 flex-1 gap-1.5 sm:min-h-9">
+                <Button type="button" size="sm" variant="outline" onClick={() => void downloadCv()} disabled={downloading} className="min-h-11 w-full gap-1.5 sm:min-h-9 sm:w-auto sm:flex-1">
                   {downloading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Download className="size-4" aria-hidden="true" />}
                   {t("downloadCvLink")}
                 </Button>

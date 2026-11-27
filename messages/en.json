@@ -13124,6 +13124,7 @@
     "exportHeaderTotal": "Total",
     "exportHeaderPaid": "Paid",
     "exportHeaderBalance": "Balance",
+    "currency": "Currency",
     "exportHeaderCurrency": "Currency",
     "exportHeaderStatus": "Status",
     "exportHeaderIssued": "Issued",
@@ -19187,6 +19188,7 @@
     "endTimeFor": "{day} end time"
   },
   "changeEmailCard": {
+    "changeHint": "Changing your email requires your password and a confirmation link sent to the new address.",
     "account": "Account",
     "emailAddress": "Email address",
     "cancel": "Cancel",

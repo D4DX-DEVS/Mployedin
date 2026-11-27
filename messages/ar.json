@@ -13124,6 +13124,7 @@
     "exportHeaderTotal": "المجموع",
     "exportHeaderPaid": "المدفوع",
     "exportHeaderBalance": "الرصيد",
+    "currency": "العملة",
     "exportHeaderCurrency": "العملة",
     "exportHeaderStatus": "الحالة",
     "exportHeaderIssued": "صادر في",
@@ -19187,6 +19188,7 @@
     "endTimeFor": "وقت الانتهاء يوم {day}"
   },
   "changeEmailCard": {
+    "changeHint": "يتطلب تغيير بريدك الإلكتروني كلمة المرور ورابط تأكيد يُرسل إلى العنوان الجديد.",
     "account": "الحساب",
     "emailAddress": "عنوان البريد الإلكتروني",
     "cancel": "إلغاء",

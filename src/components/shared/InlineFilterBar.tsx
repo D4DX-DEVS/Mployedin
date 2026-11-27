@@ -95,7 +95,10 @@ export function InlineFilterSearch({ value, onChange, placeholder, label, icon, 
     // Phones: search fills the first line beside the icon-only Filters
     // button (2026-11-17); anything wider (Export, worded buttons) wraps to
     // the next line instead of squeezing the box ("Search job s").
-    <div className={cn("min-w-0 flex-[2_1_14rem]", className)}>
+    // Phones: a 9rem basis, not 14rem, so search + Filters + an icon + Export share
+    // one 343px line; at 14rem the Export button wrapped onto a row of its own
+    // (owner screenshot, audit 2026-11-27).
+    <div className={cn("min-w-0 flex-[2_1_14rem] max-sm:basis-36", className)}>
       {/* Phones: the label is screen-reader only; the magnifier and the
           placeholder already say "search", and the visible word cost the row
           a line of its own (2026-11-17). */}

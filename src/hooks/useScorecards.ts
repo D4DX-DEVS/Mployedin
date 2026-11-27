@@ -3,10 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 // ── Types ──────────────────────────────────────────────────────────
 export interface Scorecard {
   _id: string;
+  /** Null when the interview was deleted after the scorecard was written. */
   interviewId: {
     _id: string;
     scheduledAt: string;
-  };
+  } | null;
   applicationId: {
     _id: string;
     status: string;

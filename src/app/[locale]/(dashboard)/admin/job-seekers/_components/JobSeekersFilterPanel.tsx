@@ -2,8 +2,8 @@
 
 import { useState, useEffect, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { SlidersHorizontal, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Sparkles } from "lucide-react";
+import { PhoneFiltersButton } from "@/components/shared/PhoneFilterSheet";
 import { JobSeekersFilterSheet } from "./JobSeekersFilterSheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AiSearchField } from "@/components/shared/AiSearchField";
@@ -348,20 +348,9 @@ export function JobSeekersFilterPanel({
         className="basis-full max-sm:basis-0 max-sm:flex-1"
         inputClassName="h-11 rounded-lg bg-card sm:h-9"
       />
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setSheetOpen(true)}
-        aria-label={sheetActiveCount > 0 ? `${tr("filtersShort")} (${sheetActiveCount})` : tr("filtersShort")}
-        className={`h-11 shrink-0 gap-1.5 rounded-lg px-3 text-sm sm:hidden ${sheetActiveCount > 0 ? "border-primary/30 bg-primary/10 text-primary" : ""}`}
-      >
-        <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-        {sheetActiveCount > 0 ? (
-          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-bold text-primary-foreground">{sheetActiveCount}</span>
-        ) : (
-          <span className="max-[359px]:sr-only">{tr("filtersShort")}</span>
-        )}
-      </Button>
+      {/* The shared icon-only phone Filters button, as on every other list; the
+          worded one here squeezed the search to "Search name, s…" (audit 2026-11-27). */}
+      <PhoneFiltersButton activeCount={sheetActiveCount} onClick={() => setSheetOpen(true)} />
       {/* contents: from sm up these sit in the bar as before; phones use the sheet. */}
       <div className="contents max-sm:hidden">
       <SearchableSelect

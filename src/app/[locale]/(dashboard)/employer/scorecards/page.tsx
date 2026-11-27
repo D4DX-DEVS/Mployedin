@@ -112,10 +112,16 @@ export default function ScorecardListPage() {
     return t("candidateFallback", { id: sc._id.slice(-4) });
   }
 
+  // The interview can be deleted after the scorecard was written; show a dash instead of crashing.
+  function interviewDateOf(sc: { interviewId?: { scheduledAt?: string | Date } | null }): string {
+    const at = sc.interviewId?.scheduledAt;
+    return at ? formatDate(new Date(at), { day: "2-digit", month: "short", year: "numeric" }) : "—";
+  }
+
   const exportColumns: ExportColumn<Record<string, unknown>>[] = [
     // Same headers as the table; the recommendation exported as its label, not its key.
     { header: t("candidate"), key: "_id", formatter: (_v, r) => candidateNameOf(r as unknown as (typeof scorecards)[number]) },
-    { header: t("date"), key: "interviewId", formatter: (_v, r) => formatDate(new Date((r as Record<string, any>).interviewId?.scheduledAt), { day: "2-digit", month: "short", year: "numeric" }) },
+    { header: t("date"), key: "interviewId", formatter: (_v, r) => interviewDateOf(r as { interviewId?: { scheduledAt?: string } | null }) },
     { header: t("overallRating"), key: "overallScore", formatter: (v) => `${Number(v).toFixed(1)}/5` },
     { header: t("recommendation"), key: "recommendation", formatter: (v) => (RECOMMENDATION_LABELS_KEY[String(v)] ? t(RECOMMENDATION_LABELS_KEY[String(v)]) : String(v)) },
     { header: t("evaluated"), key: "createdAt", formatter: (v) => formatDate(new Date(String(v)), { day: "2-digit", month: "short", year: "numeric" }) },
@@ -212,7 +218,7 @@ export default function ScorecardListPage() {
                   <span className="min-w-0 flex-1">
                     <span className="block break-words text-sm font-semibold text-foreground">{name}</span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {formatDate(new Date(scorecard.interviewId.scheduledAt), { day: "2-digit", month: "short", year: "numeric" })}
+                      {interviewDateOf(scorecard)}
                     </span>
                     <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       <Badge className={getScoreBadgeColor(scorecard.overallScore)}>
@@ -273,9 +279,7 @@ export default function ScorecardListPage() {
                   <TableCell className="text-muted-foreground text-sm">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      {formatDate(new Date(
-                        scorecard.interviewId.scheduledAt
-                      ), { day: "2-digit", month: "short", year: "numeric" })}
+                      {interviewDateOf(scorecard)}
                     </div>
                   </TableCell>
                   <TableCell>

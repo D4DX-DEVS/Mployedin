@@ -1685,14 +1685,16 @@ export default function EmployerCandidatesPage() {
           aria-expanded={filtersExpanded}
           aria-label={t("filters")}
           className={cn(
-            "h-11 rounded-xl border-border bg-background px-3 text-sm font-semibold sm:h-10 sm:px-4",
+            // Phones: icon-only (label kept for screen readers) so Export stays on
+            // this row instead of dropping onto one of its own (audit 2026-11-27).
+            "h-11 min-w-11 rounded-xl border-border bg-background px-2 text-sm font-semibold sm:h-10 sm:px-4",
             filtersExpanded && "border-primary/30 bg-primary/10 text-primary"
           )}
         >
-          <SlidersHorizontal className="h-4 w-4 me-2" aria-hidden="true" />
-          <span>{t("filters")}</span>
+          <SlidersHorizontal className="h-4 w-4 sm:me-2" aria-hidden="true" />
+          <span className="max-sm:sr-only">{t("filters")}</span>
           {activeFilterChips.length > 0 ? (
-            <span className="ms-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+            <span className="ms-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 sm:ms-2 text-[11px] font-semibold text-primary-foreground">
               {activeFilterChips.length}
             </span>
           ) : null}

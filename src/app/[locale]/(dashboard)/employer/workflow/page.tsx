@@ -10,6 +10,7 @@ import { HiringRulesPanel } from "@/components/features/employer/workflow/Hiring
 import { DefaultWorkflowCard } from "@/components/features/employer/workflow/DefaultWorkflowCard";
 import { useWorkflow, useSaveWorkflow } from "@/hooks/useWorkflow";
 import { HIRING_RULE_DEFAULTS, resolveHiringRules, type HiringRules, type HiringRulesInput } from "@/lib/hiring/workflowSettings";
+import WorkflowLoading from "./loading";
 
 /**
  * Company-wide hiring setup: the workflow new jobs fall back to (a job whose
@@ -86,7 +87,7 @@ export default function EmployerWorkflowPage() {
   );
 
   return (
-    <FeatureGate feature="workflowCustomization">
+    <FeatureGate feature="workflowCustomization" loadingFallback={<WorkflowLoading />}>
       <div className="page-container">
         <WorkspaceHeader title={t("pageTitle")} context={t("pageDescriptionRules")} actions={saveButton} />
 
